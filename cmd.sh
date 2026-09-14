@@ -1,10 +1,12 @@
 echo "== ora"; date '+%F %T'
-echo "== HEAD sul server"
+echo "== HEAD + autopull"
 git -C /opt/withus-backend log --oneline -1
-echo "== autopull ultimi 10 minuti"
-journalctl -u withus-autopull --since '-10min' --no-pager 2>/dev/null | grep -aE 'aggiorno|riavviat|fatto' | tail -8
-echo "== servizi"
-for s in withus-backend allianz-scraper axa-scraper groupama-scraper; do printf '%-20s %s\n' "$s" "$(systemctl is-active $s)"; done
-echo "== health"; curl -s -m 8 http://127.0.0.1:3000/health; echo
-echo "== sessioni ancora in piedi?"
-for pair in "axa 4700" "groupama 4500"; do set -- $pair; printf "%-10s " "$1"; curl -s -m 8 "http://127.0.0.1:$2/loginstate" | head -c 160; echo; done
+journalctl -u withus-autopull --since '-15min' --no-pager 2>/dev/null | tail -10
+echo "== da quanto girano i servizi (nessun riavvio = sessione caduta da sola)"
+for s in axa-scraper groupama-scraper; do printf '%-18s %s\n' "$s" "$(systemctl show -p ActiveEnterTimestamp --value $s)"; done
+echo "== AXA: come e quando è caduta"
+journalctl -u axa-scraper --since '-3h' --no-pager 2>/dev/null | grep -aiE 'caduta|scadut|keep-alive|relogin|login|sessione' | tail -15
+echo "== GROUPAMA: caduta e codice automatico dalla posta"
+journalctl -u groupama-scraper --since '-3h' --no-pager 2>/dev/null | grep -aiE 'caduta|scadut|keep-alive|codice|posta|otp|login|sessione' | tail -20
+echo "== il backend ha provato a prendere il codice dalla posta?"
+journalctl -u withus-backend --since '-30min' --no-pager 2>/dev/null | grep -aiE 'codice|posta|otp|imap' | tail -15

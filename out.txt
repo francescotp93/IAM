@@ -1,17 +1,17 @@
-id: dopo145-1789388168  exit: 0  2026-09-14 12:16:16
+id: dopo146-1789389309  exit: 0  2026-09-14 12:35:28
 ----
 == ora
-2026-09-14 12:16:15
-93130c6 Merge pull request #145 from francescotp93/fix/codice-dalla-posta-anche-da-soli
-Sep 14 12:15:49 vps-d6443a46 autopull.sh[2525659]: [autopull] 2026-09-14 12:15:49 aggiorno abc7cd7 -> 93130c6
-Sep 14 12:15:51 vps-d6443a46 autopull.sh[2525659]: [autopull] withus-backend riavviato ✅
-Sep 14 12:15:51 vps-d6443a46 autopull.sh[2525659]: [autopull] axa-scraper riavviato (codice scraper cambiato)
-Sep 14 12:15:52 vps-d6443a46 autopull.sh[2525659]: [autopull] axa-scraper.service riavviato
+2026-09-14 12:35:27
+7b6f9e4 Merge pull request #146 from francescotp93/fix/codice-posta-sopra-interruttore
+Sep 14 12:34:56 vps-d6443a46 autopull.sh[2528882]: [autopull] 2026-09-14 12:34:56 aggiorno 93130c6 -> 7b6f9e4
+Sep 14 12:34:58 vps-d6443a46 autopull.sh[2528882]: [autopull] withus-backend riavviato ✅
+== il pezzo è vivo nel file in produzione? (deve stare PRIMA di !conRientro)
+290:      const alCodice = fermoAlCodice(statoOra, ora);
+315:    if (!conRientro) { m.ultimoEsito = 'rientro_disabilitato'; continue; }
 == stato login
-axa        {"running":false,"step":"pronto","since":1789388167020,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
+axa        {"running":false,"step":"loggato","since":1789389234315,"msg":"Login completato ✅"}
 groupama   {"running":false,"step":"loggato","since":1789385717463,"msg":"Login completato ✅"}
-== il guardiano è andato a prendere il codice?
-Sep 14 12:09:27 vps-d6443a46 node[2518402]: [vigilanza-fonti] giro 10 · controllate 7 · cadute 0 · rientrate 0
-Sep 14 12:14:27 vps-d6443a46 node[2518402]: [vigilanza-fonti] giro 11 · controllate 7 · cadute 0 · rientrate 0
-Sep 14 12:15:51 vps-d6443a46 node[2525746]: [vigilanza-fonti] memoria ripresa da disco: 10 fonti
-Sep 14 12:15:52 vps-d6443a46 node[2525746]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
+== primo giro del guardiano col codice nuovo
+Sep 14 12:30:55 vps-d6443a46 node[2525746]: [vigilanza-fonti] giro 4 · controllate 7 · cadute 0 · rientrate 0
+Sep 14 12:34:58 vps-d6443a46 node[2528955]: [vigilanza-fonti] memoria ripresa da disco: 10 fonti
+Sep 14 12:34:58 vps-d6443a46 node[2528955]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)

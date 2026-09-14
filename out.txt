@@ -1,26 +1,67 @@
-id: ssvero-1789392386  exit: 0  2026-09-14 13:26:50
+id: cookie-1789392805  exit: 0  2026-09-14 13:33:45
 ----
 == ora
-2026-09-14 13:26:50
-== AXA adesso
-{"url":"https://mobility.axa-italia.it/portal/?code=ZnecqR1EUw9P5xuUBMc0PCvBPW4FVslzRO7wl281dmt&state=b56e33f9-380b-4ecd-a8ad-4902e60494b6&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=31db4180-b423-4bc
-== la copia su disco, dopo il login delle 13:17
-scritto il          : 2026-09-14 13:17:31
-cookie              : 117
-voci localStorage   : 11
-voci sessionStorage : 0
-== giornale AXA dalle 13:15
-    - navigated to "https://mobility.axa-italia.it/portal/?code=DmJDz-qtxZElYlaIjG1L8iElIQHfLvApR13_YUvVcR8&state=efaa7a22-0e41-44cb-a00e-7a8f08565622&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=d88c…"
-13:16:46 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-13:16:48 [axa] AXA: submit 1
-13:16:53 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente (nessun seme salvato in Fonti)
-13:17:08 [axa] 2FA inserito → valore nel campo: "089804" OK
-13:17:08 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-13:17:10 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-13:17:11 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-13:17:12 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-13:17:13 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-13:17:14 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-13:17:22 [axa] il portale è fermo sulla pagina di rimbalzo: apro la home per far concludere l'accesso
-13:17:31 [axa] sessione salvata su disco (login riuscito): 0 voci di sessionStorage
-13:17:31 [axa] login completato ✅
+2026-09-14 13:33:45
+== COOKIE SALVATI SU DISCO — domini, nomi e scadenze. MAI i valori.
+totale cookie: 111
+
+per dominio:
+  idp.axa-italia.it                   75 cookie   (1 di sola sessione)
+  .axa-italia.it                       9 cookie   (9 di sola sessione)
+  mobility.axa-italia.it               5 cookie   (5 di sola sessione)
+  ais.axa-italia.it                    4 cookie   (4 di sola sessione)
+  axa-italy-b2b.eu.auth0.com           4 cookie   (4 di sola sessione)
+  auth.axa-italia.it                   4 cookie   (3 di sola sessione)
+  volm.axa-italia.it                   3 cookie   (3 di sola sessione)
+  fws.axa-italia.it                    3 cookie   (3 di sola sessione)
+  crmagenti.axa-italia.it              2 cookie   (0 di sola sessione)
+  .upload.wikimedia.org                1 cookie   (0 di sola sessione)
+  .transmitsecurity.io                 1 cookie   (0 di sola sessione)
+
+cookie che SCADONO CON IL BROWSER (expires <= 0) — sono quelli che non sopravvivono da soli:
+  tenantId                       idp.axa-italia.it                  httpOnly=False secure=False sameSite=Lax
+  TS015fed07                     .axa-italia.it                     httpOnly=False secure=False sameSite=Lax
+  TS014898c1026                  volm.axa-italia.it                 httpOnly=False secure=True sameSite=Lax
+  ROUTEID                        ais.axa-italia.it                  httpOnly=False secure=False sameSite=Lax
+  axaUser                        .axa-italia.it                     httpOnly=False secure=True sameSite=None
+  dtCookie                       .axa-italia.it                     httpOnly=False secure=False sameSite=Lax
+  TS01673e59                     .axa-italia.it                     httpOnly=False secure=False sameSite=Lax
+  TS012e66c9                     fws.axa-italia.it                  httpOnly=False secure=False sameSite=Lax
+  TS0139130f                     .axa-italia.it                     httpOnly=False secure=True sameSite=Lax
+  TS014898c1026                  ais.axa-italia.it                  httpOnly=False secure=True sameSite=Lax
+  did                            axa-italy-b2b.eu.auth0.com         httpOnly=True secure=True sameSite=None
+  did_compat                     axa-italy-b2b.eu.auth0.com         httpOnly=True secure=True sameSite=Lax
+  24edd12ad6ef5cbff89c4fd8e2924f auth.axa-italia.it                 httpOnly=True secure=True sameSite=None
+  bda988195999e16e2bbc2c1355e20f mobility.axa-italia.it             httpOnly=True secure=True sameSite=None
+  TS014898c1                     volm.axa-italia.it                 httpOnly=False secure=True sameSite=Lax
+  SMUSRMSG                       .axa-italia.it                     httpOnly=False secure=True sameSite=None
+  TSd36b70cf027                  volm.axa-italia.it                 httpOnly=False secure=True sameSite=Lax
+  auth0                          axa-italy-b2b.eu.auth0.com         httpOnly=True secure=True sameSite=None
+  auth0_compat                   axa-italy-b2b.eu.auth0.com         httpOnly=True secure=True sameSite=Lax
+  TS014898c1                     ais.axa-italia.it                  httpOnly=False secure=True sameSite=Lax
+  TSd36b70cf027                  ais.axa-italia.it                  httpOnly=False secure=True sameSite=Lax
+  TS011c051c                     .axa-italia.it                     httpOnly=False secure=True sameSite=Lax
+  mod_auth_openidc_session       mobility.axa-italia.it             httpOnly=True secure=True sameSite=None
+  TS014898c1                     auth.axa-italia.it                 httpOnly=False secure=True sameSite=Lax
+  ADRUM                          .axa-italia.it                     httpOnly=False secure=True sameSite=Lax
+  TS0181f4f5                     mobility.axa-italia.it             httpOnly=False secure=True sameSite=Lax
+  SMSESSION                      .axa-italia.it                     httpOnly=False secure=True sameSite=None
+  TS014898c1                     fws.axa-italia.it                  httpOnly=False secure=True sameSite=Lax
+  TSd36b70cf027                  fws.axa-italia.it                  httpOnly=False secure=True sameSite=Lax
+  TSa92d17cb027                  auth.axa-italia.it                 httpOnly=False secure=True sameSite=Lax
+  mobilityId                     mobility.axa-italia.it             httpOnly=False secure=False sameSite=Lax
+  TS5aada0e8027                  mobility.axa-italia.it             httpOnly=False secure=True sameSite=Lax
+
+i piu' longevi (primi 8), solo nome e dominio:
+  ts_hwid                        idp.axa-italia.it                  scade 2027-09-14
+  WMF-Uniq                       .upload.wikimedia.org              scade 2027-09-14
+  LSKey-c$CookieConsentPolicy    crmagenti.axa-italia.it            scade 2027-06-29
+  CookieConsentPolicy            crmagenti.axa-italia.it            scade 2027-06-29
+  _session.legacy.sig            idp.axa-italia.it                  scade 2026-09-28
+  _session.legacy                idp.axa-italia.it                  scade 2026-09-28
+  _session.sig                   idp.axa-italia.it                  scade 2026-09-28
+  _session                       idp.axa-italia.it                  scade 2026-09-28
+
+origini con localStorage (solo conteggio):
+  https://mobility.axa-italia.it                4 voci
+  https://auth.axa-italia.it                    6 voci

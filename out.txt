@@ -1,12 +1,6 @@
-id: dopo147-1789390208  exit: 0  2026-09-14 12:50:44
+id: fresco-1789390523  exit: 0  2026-09-14 12:56:11
 ----
-== ora
-2026-09-14 12:50:43
-7b6f9e4 Merge pull request #146 from francescotp93/fix/codice-posta-sopra-interruttore
-== la riga nuova è nel file in produzione?
-0
-== le sessioni hanno retto il riavvio?
-axa        {"running":false,"step":"loggato","since":1789389234315,"msg":"Login completato ✅"}
-groupama   {"running":false,"step":"loggato","since":1789385717463,"msg":"Login completato ✅"}
-axa       auth.json 2026-09-14 12:36:12
-groupama  auth.json 2026-09-14 12:30:04
+ora: 12:55:55  ultimo salvataggio axa: 12:36:12  (età: 19 minuti)
+aspetto il prossimo salvataggio periodico, al massimo 4 minuti
+SALVATO ADESSO alle 12:56:07 — è il momento buono per rilasciare
+da7ab03 Merge pull request #147 from francescotp93/fix/axa-non-promette-quel-che-non-ha

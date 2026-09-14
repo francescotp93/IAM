@@ -1480,6 +1480,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <div class="topnav">
       <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i><span>Moduli</span></div>
       <div class="nav-item" id="nav-anag" style="display:none" onclick="apriAnagView('clienti')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
+      <div class="nav-item" id="nav-pp" style="display:none" onclick="ppgApriPagina()"><i class="ti ti-file-pencil"></i><span>Personalizzati</span></div>
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('utility')"><i class="ti ti-folder"></i><span>Utility</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-portafoglio" onclick="showPage('portafoglio')"><i class="ti ti-briefcase"></i><span>Portafoglio</span></div>
@@ -2961,6 +2962,35 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       </div>
     </div>
 
+    <!-- ── PREVENTIVI PERSONALIZZATI ──────────────────────────────────────
+         L'elenco di tutti i preventivi scritti a mano. Il preventivo nasce
+         dentro la scheda di un cliente — si fa per qualcuno, non in astratto —
+         ma da li' non lo trova chi non sa gia' che esiste. Questa e' la porta
+         che il menu di IAM chiama con ?page=preventivi-personalizzati.
+         L'id della pagina e' un contratto con la scocca di IAM: rinominarlo
+         rompe la voce di menu senza rompere nessuna prova del modulo
+         (CLAUDE.md §6c). -->
+    <div class="page" id="page-preventivi-personalizzati">
+      <div class="page-title">Preventivi personalizzati</div>
+      <div class="page-sub">I preventivi scritti a mano per i clienti. Apri una riga per modificarla, stamparla o mandarla.</div>
+      <div id="ppg-avviso" style="margin-top:.8rem"></div>
+      <div class="anag-search" style="margin-top:.4rem">
+        <input id="ppg-q" placeholder="Filtra per cliente, compagnia, prodotto o numero…" oninput="ppgRender()">
+        <button class="btn-add" onclick="ppgNuovo()"><i class="ti ti-plus"></i> Nuovo</button>
+      </div>
+      <div class="ana-toggle" style="margin-top:.7rem">
+        <button class="ana-tab active" id="ppg-f-tutti" onclick="ppgFiltro('tutti')">Tutti <span id="ppg-c-tutti" class="cl-count" style="margin-left:4px">·</span></button>
+        <button class="ana-tab" id="ppg-f-autorizzare" onclick="ppgFiltro('autorizzare')"><i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> Da autorizzare <span id="ppg-c-autorizzare" class="cl-count" style="margin-left:4px">·</span></button>
+        <button class="ana-tab" id="ppg-f-scontati" onclick="ppgFiltro('scontati')">Scontati <span id="ppg-c-scontati" class="cl-count" style="margin-left:4px">·</span></button>
+      </div>
+      <div class="table-wrap" style="margin-top:1rem">
+        <table class="storico-table">
+          <thead><tr><th>Numero</th><th>Cliente</th><th>Compagnia / Prodotto</th><th class="soldi">Premio</th><th>Creato</th><th></th></tr></thead>
+          <tbody id="ppg-body"><tr><td colspan="6"><div class="empty-state">Caricamento…</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ── PERFORMANCE ── -->
     <div class="page" id="page-performance">
       <div class="perf-head">
@@ -3531,6 +3561,10 @@ function initMain() {
   document.getElementById('nav-titoli').style.display = 'flex';        // Blocco A
   loadScadenzario();   // riempie il numero sulla voce di menu senza aprire la pagina
   loadTitoli();        // e quello degli insoluti
+  /* Il segnalatore non fa preventivi: la voce non si accende nemmeno.
+     La decisione e' sempre la stessa funzione, non un controllo a parte. */
+  const navPP = document.getElementById('nav-pp');
+  if (navPP) navPP.style.display = (typeof ppVietato === 'function' && ppVietato()) ? 'none' : 'flex';
   document.getElementById('nav-doc').style.display    = 'flex';
   document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
@@ -3660,6 +3694,9 @@ const PAGINE_DA_AVVIARE = {
      pagina senza leggere i numeri di legge dalla tabella, e il primo calcolo
      uscirebbe con la copia di riserva senza che nessuno lo sappia. */
   previdenza:   () => apriPensione(),
+  /* Il contenuto lo scrive il codice: senza porta, ?page=preventivi-
+     personalizzati aprirebbe un riquadro vuoto (CLAUDE.md §6b). */
+  'preventivi-personalizzati': () => ppgApriPagina(),
 };
 
 /* Apre una pagina chiesta dalla scocca, passando dalla sua porta se ne ha una.
@@ -9427,7 +9464,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi','preventivi-personalizzati':'nav-pp'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
@@ -23674,7 +23711,7 @@ async function ppSalva(clienteId, id) {
       if (error) throw error;
     }
     document.getElementById('pp-overlay').remove();
-    await ppCarica(clienteId);
+    await ppAggiorna(clienteId);
     try { quotoToast(id ? 'Preventivo personalizzato aggiornato' : 'Preventivo personalizzato salvato'); } catch (e) {}
   } catch (e) {
     dai('Non riesco a salvare: ' + (e.message || e));
@@ -23688,9 +23725,18 @@ async function ppElimina(id) {
     const { error } = await db.from('quote_preventivi_personalizzati').delete().eq('id', id);
     if (error) throw error;
     document.getElementById('pp-overlay').remove();
-    await ppCarica(PP_CLIENTE);
+    await ppAggiorna(PP_CLIENTE);
     try { quotoToast('Preventivo personalizzato eliminato'); } catch (e) {}
   } catch (e) { alert('Non riesco a eliminare: ' + (e.message || e)); }
+}
+
+/* Dopo un salvataggio si aggiorna la vista che e' davvero aperta: la linguetta
+   dentro la scheda cliente, la schermata d'elenco, o tutte e due (dall'elenco
+   si puo' aprire la scheda di un cliente). Aggiornarne una sola lascerebbe
+   l'altra con un numero vecchio sotto gli occhi. */
+async function ppAggiorna(clienteId) {
+  if (document.getElementById('cl-pers')) await ppCarica(clienteId);
+  if (typeof PAGINA_CORRENTE !== 'undefined' && PAGINA_CORRENTE === 'preventivi-personalizzati') await ppgCarica();
 }
 
 
@@ -24176,7 +24222,8 @@ async function ppDaConsegnare(id) {
   if (vietato) { alert(vietato); return null; }
   const r = (PP_CACHE || []).find(x => x.id === id);
   if (!r) { alert('Preventivo non trovato.'); return null; }
-  const documento = ppDocumento(r, await ppContesto(r));
+  const ctx = await ppContesto(r);
+  const documento = ppDocumento(r, ctx);
 
   /* Regola di casa n.1: quello che non e' confermato non esce di casa. Il
      foglio si puo' scaricare — serve per farlo completare — ma al cliente non
@@ -24197,12 +24244,11 @@ async function ppDaConsegnare(id) {
   }
 
   const blob = await ppPdfBlob(documento);
-  return { r: r, documento: documento, blob: blob };
-}
-
-function ppRecapito(campo) {
-  const cl = (ANAG_CACHE || []).find(a => a.id === PP_CLIENTE);
-  return cl ? String(cl[campo] || '').trim() : '';
+  /* Il cliente torna insieme al resto: e' gia' stato letto per costruire il
+     documento, e chi consegna deve leggere i recapiti DA QUELLA scheda. Prima
+     si passava dall'ultimo cliente aperto sullo schermo — che dall'elenco
+     generale e' il cliente sbagliato, e in silenzio. */
+  return { r: r, documento: documento, blob: blob, cliente: ctx.cliente };
 }
 
 /* ── 2. EMAIL CON IL PDF ALLEGATO ────────────────────────────────────────────
@@ -24213,13 +24259,9 @@ function ppRecapito(campo) {
 async function ppInviaEmail(id) {
   const pronto = await ppDaConsegnare(id);
   if (!pronto) return;
-  const { r, documento, blob } = pronto;
+  const { documento, blob, cliente } = pronto;
 
-  let email = ppRecapito('email');
-  if (!email) {
-    try { const { data } = await db.from('quote_anagrafiche').select('email').eq('id', r.cliente_id).single(); email = (data && data.email) || ''; }
-    catch (e) {}
-  }
+  let email = String((cliente && cliente.email) || '').trim();
   if (!email) {
     email = (prompt('Nessuna email registrata per questo cliente.\nA quale indirizzo mando il preventivo?', '') || '').trim();
     if (!email) return;
@@ -24265,7 +24307,7 @@ async function ppInviaEmail(id) {
 async function ppWhatsApp(id) {
   const pronto = await ppDaConsegnare(id);
   if (!pronto) return;
-  const { r, documento, blob } = pronto;
+  const { r, documento, blob, cliente } = pronto;
   const file = new File([blob], documento.nomeFile, { type: 'application/pdf' });
 
   /* Condivisione nativa: il PDF entra in WhatsApp come allegato. Vale su
@@ -24301,7 +24343,7 @@ async function ppWhatsApp(id) {
   /* Il numero si normalizza come nel modulo pensione: WhatsApp vuole il
      prefisso internazionale senza il piu' e senza spazi. Senza numero si apre
      lo stesso e il destinatario si sceglie dalla rubrica. */
-  let n = String(ppRecapito('cellulare') || ppRecapito('telefono') || '').replace(/\D/g, '');
+  let n = String((cliente && (cliente.cellulare || cliente.telefono)) || '').replace(/\D/g, '');
   if (n && n.length >= 9 && n.length <= 11 && n.slice(0, 2) !== '39') n = '39' + n;
   window.open('https://wa.me/' + n + '?text=' + encodeURIComponent(testo), '_blank');
 }
@@ -24322,6 +24364,207 @@ async function ppLinkFirmato(blob, r) {
     throw new Error('Non riesco a creare il collegamento: ' + ((e2 && e2.message) || 'nessun indirizzo restituito'));
   }
   return data.signedUrl;
+}
+
+
+/* ══════════ PREVENTIVI PERSONALIZZATI · LA SCHERMATA D'ELENCO ══════════
+   Il preventivo personalizzato NASCE dentro la scheda di un cliente, ed e'
+   giusto cosi': si fa per qualcuno, non in astratto. Ma da li' non lo trova
+   chi non sa gia' che esiste.
+
+   Questo difetto in casa e' gia' successo, ed e' scritto nella prova
+   `verifica/menu-pagine-quoto.test.mjs` di IAM: il 2 settembre 2026 le
+   Convenzioni erano costruite, provate e pubblicate, e Francesco tre minuti
+   dopo diceva «NON LO VEDO». Aveva ragione: dentro IAM la barra di QUOTO non
+   si vede mai, il menu e' quello di IAM, e nessuno aveva messo la voce.
+   «Una schermata senza voce nel menu, per chi lavora, non esiste.»
+
+   Questa e' la porta che il menu di IAM puo' chiamare (?page=preventivi-
+   personalizzati). Prefisso `ppg`: verificato libero prima di sceglierlo. */
+
+let PPG_FILTRO = 'tutti';
+let PPG_NOMI = {};      // cliente_id -> nominativo, per non mostrare un UUID
+let PPG_TIMER = null;
+
+/* La porta della pagina: registrata in PAGINE_DA_AVVIARE, perche' una pagina
+   il cui contenuto lo scrive il codice, senza porta, dalla scocca di IAM si
+   apre vuota (CLAUDE.md §6b). */
+async function ppgApriPagina() {
+  showPage('preventivi-personalizzati');
+  const body = document.getElementById('ppg-body');
+  const vietato = ppVietato();
+  if (vietato) {
+    if (body) body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${esc(vietato)}</div></td></tr>`;
+    return;
+  }
+  await ppgCarica();
+}
+
+async function ppgCarica() {
+  const body = document.getElementById('ppg-body');
+  if (!body || !db) return;
+  if (ppVietato()) return;
+  body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Caricamento…</div></td></tr>';
+  try { await ppAzienda(); } catch (e) {}
+  const av = document.getElementById('ppg-avviso');
+  if (av) av.innerHTML = ppAvvisoAzienda();
+  try {
+    /* La RLS decide che cosa si vede: quote_vede(creato_da), la stessa che
+       filtra le anagrafiche. Qui non si aggiunge nessun filtro per ruolo —
+       aggiungerne uno vorrebbe dire tenere due regole allineate a mano. */
+    const { data, error } = await db.from('quote_preventivi_personalizzati')
+      .select('*').order('creato_il', { ascending: false }).limit(500);
+    if (error) throw error;
+    /* Le righe finiscono nella STESSA cache della scheda cliente: cosi'
+       modifica, stampa, email e WhatsApp funzionano da qui senza una seconda
+       strada da tenere allineata. Le due viste non sono mai aperte insieme:
+       quella che si apre riempie la cache per se'. */
+    PP_CACHE = data || [];
+    const ids = [...new Set(PP_CACHE.map(r => r.cliente_id).filter(Boolean))];
+    PPG_NOMI = {};
+    if (ids.length) {
+      const { data: an } = await db.from('quote_anagrafiche').select('id,nominativo').in('id', ids);
+      (an || []).forEach(a => { PPG_NOMI[a.id] = a.nominativo; });
+    }
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Elenco non disponibile.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
+    return;
+  }
+  ppgRender();
+}
+
+function ppgFiltro(k) {
+  PPG_FILTRO = k;
+  ['tutti', 'autorizzare', 'scontati'].forEach(x => {
+    const b = document.getElementById('ppg-f-' + x);
+    if (b) b.classList.toggle('active', x === k);
+  });
+  ppgRender();
+}
+
+function ppgNome(r) { return PPG_NOMI[r.cliente_id] || '—'; }
+
+function ppgRender() {
+  const body = document.getElementById('ppg-body');
+  if (!body) return;
+  const lista = PP_CACHE || [];
+  const conta = (id, n) => { const e = document.getElementById(id); if (e) e.textContent = n; };
+  conta('ppg-c-tutti', lista.length);
+  conta('ppg-c-autorizzare', lista.filter(r => r.da_autorizzare).length);
+  conta('ppg-c-scontati', lista.filter(r => r.sconto_applicato).length);
+
+  const q = (document.getElementById('ppg-q') ? document.getElementById('ppg-q').value : '').trim().toLowerCase();
+  const perFiltro = r => PPG_FILTRO === 'autorizzare' ? !!r.da_autorizzare
+                       : PPG_FILTRO === 'scontati' ? !!r.sconto_applicato : true;
+  const perTesto = r => !q || [ppNumero(r), ppgNome(r), r.compagnia, r.tipo_prodotto, r.garanzia]
+    .filter(Boolean).join(' ').toLowerCase().includes(q);
+
+  const righe = lista.filter(perFiltro).filter(perTesto);
+  if (!righe.length) {
+    body.innerHTML = '<tr><td colspan="6"><div class="empty-state">'
+      + (lista.length ? 'Nessun preventivo con questi filtri.' : 'Nessun preventivo personalizzato. Premi «Nuovo» per scriverne uno.')
+      + '</div></td></tr>';
+    return;
+  }
+  body.innerHTML = righe.map(r => {
+    /* Lo sconto si legge in un colpo d'occhio o non si legge: pieno barrato,
+       scontato sotto in grassetto. Stessa regola del PDF e della scheda. */
+    const scontato = r.sconto_applicato && r.premio_scontato != null;
+    const prezzo = scontato
+      ? `<span style="text-decoration:line-through;color:var(--muted)">${esc(soldi(r.premio_pieno))}</span><br><b>${esc(ppPremioTesto(r.premio_scontato, r.frazionamento))}</b>`
+      : `<b>${esc(ppPremioTesto(r.premio_pieno, r.frazionamento))}</b>`;
+    return `<tr>
+      <td style="white-space:nowrap">${esc(ppNumero(r))}${r.da_autorizzare ? ' <span class="tk-badge st-aperto">da autorizzare</span>' : ''}</td>
+      <td><a href="javascript:void(0)" onclick="apriAnagraficaId('${esc(r.cliente_id)}')">${esc(ppgNome(r))}</a></td>
+      <td>${esc(r.compagnia)}<div class="cl-sub">${esc(r.tipo_prodotto)}${r.garanzia ? ' · ' + esc(r.garanzia) : ''}</div></td>
+      <td class="soldi">${prezzo}</td>
+      <td style="white-space:nowrap">${esc(dataIt(r.creato_il))}</td>
+      <td style="white-space:nowrap">
+        <button class="sc-edit" title="Apri e modifica" onclick="ppgApriRiga('${esc(r.id)}')"><i class="ti ti-pencil"></i></button>
+        <button class="sc-edit" title="Scarica il PDF" onclick="ppgAzione('${esc(r.id)}','pdf')"><i class="ti ti-file-type-pdf"></i></button>
+        <button class="sc-edit" title="Invia al cliente per email" onclick="ppgAzione('${esc(r.id)}','email')"><i class="ti ti-mail"></i></button>
+        <button class="sc-edit" title="Condividi su WhatsApp" onclick="ppgAzione('${esc(r.id)}','whatsapp')"><i class="ti ti-brand-whatsapp"></i></button>
+      </td></tr>`;
+  }).join('');
+}
+
+/* Da qui si agisce su un preventivo di un cliente qualunque: prima si dice
+   QUALE cliente, poi si chiama la stessa azione della scheda. Senza questo
+   passaggio l'azione lavorerebbe sull'ultimo cliente aperto — cioe' sul
+   cliente sbagliato, in silenzio. */
+function ppgContesto(id) {
+  const r = (PP_CACHE || []).find(x => x.id === id);
+  if (!r) return null;
+  PP_CLIENTE = r.cliente_id;
+  return r;
+}
+
+function ppgApriRiga(id) {
+  const r = ppgContesto(id);
+  if (!r) { alert('Preventivo non trovato.'); return; }
+  ppApri(r.cliente_id, id);
+}
+
+function ppgAzione(id, che) {
+  const r = ppgContesto(id);
+  if (!r) { alert('Preventivo non trovato.'); return; }
+  if (che === 'pdf') return ppScaricaPdf(id);
+  if (che === 'email') return ppInviaEmail(id);
+  if (che === 'whatsapp') return ppWhatsApp(id);
+}
+
+/* ── NUOVO: prima il cliente ─────────────────────────────────────────────────
+   Un preventivo senza cliente non e' un preventivo: non ha un destinatario,
+   non ha un'anagrafica da stampare in testa al foglio, e non si potrebbe
+   mandare a nessuno. Quindi la prima domanda e' «per chi». */
+function ppgNuovo() {
+  const vietato = ppVietato();
+  if (vietato) { alert(vietato); return; }
+  document.getElementById('ppg-cli-ov')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+  <div class="modal-ov" id="ppg-cli-ov" onclick="if(event.target.id==='ppg-cli-ov')this.remove()">
+    <div class="modal" style="width:560px;max-width:96vw">
+      <div class="modal-title">Per quale cliente?</div>
+      <div class="field"><label>Cerca nell'anagrafica</label>
+        <input id="ppg-cli-q" placeholder="Nominativo, codice fiscale o partita IVA…" autocomplete="off" oninput="ppgCercaCliente(this.value)"></div>
+      <div id="ppg-cli-res" class="geo-res show" style="position:static;max-height:260px"><div class="cl-empty" style="padding:10px 12px">Scrivi almeno due lettere.</div></div>
+      <div class="modal-actions" style="margin-top:.8rem">
+        <button class="ghost" onclick="document.getElementById('ppg-cli-ov').remove()">Annulla</button>
+      </div>
+    </div>
+  </div>`);
+  setTimeout(() => { const i = document.getElementById('ppg-cli-q'); if (i) i.focus(); }, 50);
+}
+
+function ppgCercaCliente(q) {
+  clearTimeout(PPG_TIMER);
+  PPG_TIMER = setTimeout(async () => {
+    const box = document.getElementById('ppg-cli-res');
+    if (!box) return;
+    const s = String(q == null ? '' : q).trim();
+    if (s.length < 2) { box.innerHTML = '<div class="cl-empty" style="padding:10px 12px">Scrivi almeno due lettere.</div>'; return; }
+    try {
+      const qs = sbq(s);
+      const { data } = await db.from('quote_anagrafiche')
+        .select('*')
+        .or(`nominativo.ilike.%${qs}%,codice_fiscale.ilike.%${qs}%,partita_iva.ilike.%${qs}%`)
+        .limit(8);
+      const lista = data || [];
+      if (!lista.length) { box.innerHTML = '<div class="cl-empty" style="padding:10px 12px">Nessun cliente trovato.</div>'; return; }
+      /* Le schede trovate entrano in cache: da li' le leggono la scheda
+         cliente e il documento, senza una seconda interrogazione. */
+      lista.forEach(a => { if (!(ANAG_CACHE || []).some(x => x.id === a.id)) ANAG_CACHE = [...(ANAG_CACHE || []), a]; });
+      box.innerHTML = lista.map(a => `<div class="geo-item" onclick="ppgScegliCliente('${esc(a.id)}')">${esc(a.nominativo)}<small style="display:block;color:var(--muted)">${esc(a.codice_fiscale || a.partita_iva || '')}</small></div>`).join('');
+    } catch (e) {
+      box.innerHTML = `<div class="cl-empty" style="padding:10px 12px">${esc(e.message || e)}</div>`;
+    }
+  }, 250);
+}
+
+function ppgScegliCliente(id) {
+  document.getElementById('ppg-cli-ov')?.remove();
+  PP_CLIENTE = id;
+  ppApri(id);
 }
 
 /* ══════════ RICERCA GLOBALE ══════════ */

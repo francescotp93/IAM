@@ -5808,6 +5808,143 @@ const avvio = async () => {
 
     await context.close();
   }
+
+  /* ── LA PORTA DAL MENU DI IAM ────────────────────────────────────────────
+     Il difetto che queste prove impediscono e' quello del 2 settembre 2026:
+     una schermata costruita, provata e pubblicata di qua, e nessuna voce di
+     menu di la'. «NON LO VEDO», e aveva ragione.
+
+     Il buco sta esattamente in mezzo ai due repository, dove non guarda
+     nessuno: quello del preventivatore ha la schermata e le sue prove verdi,
+     IAM ha il menu e le sue prove verdi. IAM adesso controlla che la voce ci
+     sia; QUESTA controlla l'altra meta' — che la pagina chiesta esista qui. */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const erroriPpg = [];
+    page.on('pageerror', e => erroriPpg.push(e.message));
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html?page=preventivi-personalizzati', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+
+    await prova('ponte IAM→QUOTO: ogni pagina che il menu di IAM chiede esiste qui', async () => {
+      const menu = scocca('withus-one.js');
+      /* Si legge il codice del menu, non un elenco a parte: un elenco a parte
+         diverge alla prima voce nuova — e' la stessa scelta fatta dalla prova
+         gemella dentro IAM. */
+      const chieste = new Set();
+      for (const m of menu.matchAll(/\b(?:aprireQuoto|Q)\(\s*'([a-z0-9:_-]+)'/gi)) chieste.add(m[1].split(':')[0]);
+      deve(chieste.size > 5, 'ho trovato solo ' + chieste.size + ' pagine chieste: la prova non starebbe guardando niente');
+      const mancanti = await page.evaluate(lista => lista.filter(n =>
+        !document.getElementById('page-' + n) &&
+        !(typeof PAGINE_DA_AVVIARE === 'object' && PAGINE_DA_AVVIARE[n])), [...chieste]);
+      deve(!mancanti.length, 'il menu di IAM chiede pagine che qui non esistono: ' + mancanti.join(', '));
+      return chieste.size + ' pagine chieste dal menu, tutte presenti';
+    });
+
+    await prova('personalizzati: la pagina si apre dal parametro, e non resta vuota', async () => {
+      const r = await page.evaluate(() => ({
+        attiva: document.getElementById('page-preventivi-personalizzati')?.classList.contains('active'),
+        porta: typeof PAGINE_DA_AVVIARE['preventivi-personalizzati'] === 'function',
+        corpo: !!document.getElementById('ppg-body'),
+        voce: getComputedStyle(document.getElementById('nav-pp')).display
+      }));
+      deve(r.attiva, 'la pagina non risulta aperta');
+      /* Senza porta in PAGINE_DA_AVVIARE la scocca di IAM aprirebbe un
+         riquadro vuoto: il contenuto lo scrive il codice (CLAUDE.md §6b). */
+      deve(r.porta, 'la pagina non ha una porta: dalla scocca si aprirebbe vuota');
+      deve(r.corpo, 'manca il corpo della tabella');
+      deve(r.voce !== 'none', 'la voce nella barra di QUOTO non si accende');
+    });
+
+    await prova('personalizzati: l\'elenco mostra le righe, i conteggi e i filtri', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_preventivi_personalizzati:lista'] = { data: [
+          { id: 'p1', numero: 1, creato_il: '2026-09-14T10:00:00Z', cliente_id: 'cli-1',
+            compagnia: 'HDI Assicurazioni', tipo_prodotto: 'Casa - Multirischio', garanzia: 'Furto',
+            premio_pieno: 480, frazionamento: 'annuale', sconto_applicato: false, premio_scontato: null,
+            da_autorizzare: false, descrizioni: [] },
+          { id: 'p2', numero: 2, creato_il: '2026-09-14T11:00:00Z', cliente_id: 'cli-2',
+            compagnia: 'Italiana Assicurazioni', tipo_prodotto: 'Infortuni', garanzia: null,
+            premio_pieno: 600, frazionamento: 'mensile', sconto_applicato: true, premio_scontato: 480,
+            da_autorizzare: true, descrizioni: [] }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [
+          { id: 'cli-1', nominativo: 'ROSSI MARIO' }, { id: 'cli-2', nominativo: 'ACME SRL' }
+        ], error: null };
+        await ppgCarica();
+        const leggi = () => ({
+          testo: document.getElementById('ppg-body').textContent,
+          righe: document.querySelectorAll('#ppg-body tr').length,
+          tutti: document.getElementById('ppg-c-tutti').textContent,
+          aut: document.getElementById('ppg-c-autorizzare').textContent,
+          sco: document.getElementById('ppg-c-scontati').textContent
+        });
+        const pieno = leggi();
+        ppgFiltro('autorizzare');
+        const soloAut = leggi();
+        ppgFiltro('tutti');
+        document.getElementById('ppg-q').value = 'acme';
+        ppgRender();
+        const cercato = leggi();
+        document.getElementById('ppg-q').value = '';
+        ppgFiltro('tutti');
+        return { pieno, soloAut, cercato };
+      });
+      deve(r.pieno.righe === 2, 'righe in elenco: ' + r.pieno.righe);
+      deve(/ROSSI MARIO/.test(r.pieno.testo), 'il cliente esce come identificativo invece che col nome');
+      deve(/€ 480,00 annuale/.test(r.pieno.testo), 'il premio perde il frazionamento in elenco');
+      deve(/€ 480,00 mensile/.test(r.pieno.testo), 'lo scontato perde il frazionamento');
+      deve(r.pieno.tutti === '2' && r.pieno.aut === '1' && r.pieno.sco === '1',
+        'conteggi sbagliati: tutti=' + r.pieno.tutti + ' aut=' + r.pieno.aut + ' sco=' + r.pieno.sco);
+      deve(r.soloAut.righe === 1 && /ACME/.test(r.soloAut.testo), 'il filtro «da autorizzare» non filtra');
+      deve(r.cercato.righe === 1 && /ACME/.test(r.cercato.testo), 'la ricerca non filtra');
+      return '2 righe, conteggi, filtro e ricerca';
+    });
+
+    await prova('personalizzati: «Nuovo» chiede prima per quale cliente', async () => {
+      const r = await page.evaluate(() => {
+        document.getElementById('ppg-cli-ov')?.remove();
+        ppgNuovo();
+        const ov = document.getElementById('ppg-cli-ov');
+        return { aperto: !!ov, testo: ov ? ov.textContent : '',
+                 moduloPreventivo: !!document.getElementById('pp-overlay') };
+      });
+      deve(r.aperto, 'non chiede niente');
+      deve(/Per quale cliente/i.test(r.testo), 'la domanda non e\' chiara: ' + r.testo.slice(0, 60));
+      /* Un preventivo senza cliente non ha destinatario, non ha un'anagrafica
+         da stampare in testa al foglio e non si puo' mandare a nessuno. */
+      deve(!r.moduloPreventivo, 'apre il modulo del preventivo senza sapere per chi');
+    });
+
+    await prova('personalizzati: dall\'elenco si agisce sul cliente della riga, non sull\'ultimo aperto', async () => {
+      const r = await page.evaluate(() => {
+        document.getElementById('ppg-cli-ov')?.remove();
+        PP_CLIENTE = 'cliente-sbagliato';
+        ppgContesto('p2');
+        return PP_CLIENTE;
+      });
+      deve(r === 'cli-2', 'il contesto resta sul cliente sbagliato: ' + r);
+    });
+
+    await prova('personalizzati: il segnalatore non vede la voce ne\' l\'elenco', async () => {
+      const r = await page.evaluate(async () => {
+        const prima = currentUser.profilo;
+        currentUser.profilo = 'segnalatore';
+        await ppgApriPagina();
+        const testo = document.getElementById('ppg-body').textContent;
+        currentUser.profilo = prima;
+        return testo;
+      });
+      deve(/[Ss]egnalatore/.test(r), 'l\'elenco si apre lo stesso: ' + r.slice(0, 80));
+    });
+
+    await prova('personalizzati: nessun errore JavaScript in tutto il blocco', async () => {
+      deve(erroriPpg.length === 0, erroriPpg.slice(0, 3).join(' | '));
+    });
+
+    await context.close();
+  }
   await browser.close();
 };
 

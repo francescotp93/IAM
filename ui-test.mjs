@@ -5624,6 +5624,190 @@ const avvio = async () => {
 
     await context.close();
   }
+
+  /* ── LA CONSEGNA DEL PREVENTIVO (Fase 3) ─────────────────────────────────
+     Scaricare, mandare per email con il PDF allegato, mandare su WhatsApp.
+
+     Le prove che contano sono le porte, non i bottoni: un foglio con dentro
+     un «da confermare» non deve raggiungere un cliente, e un preventivo che
+     aspetta il via della direzione non deve partire per distrazione. Il resto
+     — che l'email passi dalla posta dell'agenzia e non da un canale nuovo,
+     che senza condivisione nativa si ripieghi sul collegamento — e' quello
+     che distingue questa consegna da un mailto. */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const erroriTre = [];
+    page.on('pageerror', e => erroriTre.push(e.message));
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    /* Il banco: un preventivo pronto, il suo contorno completo, e tutte le
+       uscite verso il mondo sostituite da una spia. Il PDF non si disegna —
+       quello ha gia' le sue prove — cosi' queste non dipendono da jsPDF. */
+    const prepara = (modRiga, opts) => page.evaluate(({ mr, o }) => {
+      window.__SPIA = { mail: [], aperti: [], caricati: [], condivisi: [], avvisi: [], domande: [] };
+      window.alert = m => window.__SPIA.avvisi.push(String(m));
+      window.confirm = m => { window.__SPIA.domande.push(String(m)); return !!o.confermaSi; };
+      window.prompt = () => '';
+      window.open = u => { window.__SPIA.aperti.push(String(u)); return null; };
+      ppPdfBlob = async () => new Blob(['%PDF-finto'], { type: 'application/pdf' });
+      payFetch = async (path, body) => {
+        window.__SPIA.mail.push({ path, body });
+        if (o.mailErrore) throw new Error(o.mailErrore);
+        return { ok: true };
+      };
+      db.storage = { from: () => ({
+        upload: async (path, blob, op) => { window.__SPIA.caricati.push({ path, op }); return { error: null }; },
+        createSignedUrl: async (path, sec) => ({ data: { signedUrl: 'https://archivio.esempio/' + path + '?token=xyz&sec=' + sec }, error: null })
+      }) };
+      Object.defineProperty(navigator, 'canShare', { value: () => !!o.condivisioneNativa, configurable: true });
+      Object.defineProperty(navigator, 'share', { value: async d => { window.__SPIA.condivisi.push({ file: d.files && d.files[0] && d.files[0].name, titolo: d.title }); }, configurable: true });
+
+      // contorno: azienda con RUI, collaboratore con RUI, cliente completo
+      PP_AZIENDA = null; INTERM_CACHE = null;
+      window.__COLLAUDO.risposte['iam_azienda:single'] = { data: { dati: {
+        rs: 'With Us Assicurazioni S.r.l.', sede: 'Via Roma 1, Napoli', piva: '01234567890',
+        rui_sezione: 'A', rui_numero: 'A000123456', rui_data: '2019-03-01' } }, error: null };
+      window.__COLLAUDO.risposte['quote_collaboratori:lista'] = { data: [
+        { id: 'c1', nome: 'Anna', cognome: 'Bianchi', attivo: true, iam_id: null,
+          rui_numero: 'E000987654', rui_sezione: 'E', rui_data: '12/05/2021', veste: 'Collaboratore sez. E' }
+      ], error: null };
+      const cliente = { id: 'cli-1', tipo: 'fisica', nominativo: 'ROSSI MARIO',
+        codice_fiscale: 'RSSMRA80A01H501U', data_nascita: '1980-01-01', indirizzo: 'Via Verdi',
+        civico: '10', cap: '80100', comune: 'Napoli', provincia: 'NA',
+        cellulare: '333 1234567', email: 'mario.rossi@email.it' };
+      window.__COLLAUDO.risposte['quote_anagrafiche:single'] = { data: cliente, error: null };
+      ANAG_CACHE = [cliente];
+      PP_CLIENTE = 'cli-1';
+      PP_CACHE = [Object.assign({
+        id: 'p1', numero: 7, creato_il: '2026-09-14T10:00:00Z', cliente_id: 'cli-1',
+        compagnia: 'HDI Assicurazioni', tipo_prodotto: 'Casa - Multirischio',
+        garanzia: 'Furto e incendio', premio_pieno: 480, frazionamento: 'annuale',
+        sconto_applicato: false, premio_scontato: null, da_autorizzare: false,
+        descrizioni: ['Massimale RC 1.000.000'], intermediario_id: 'c1',
+        disclaimer: 'Avvertenza di prova.'
+      }, mr || {})];
+    }, { mr: modRiga || null, o: opts || {} });
+    const spia = () => page.evaluate(() => window.__SPIA);
+
+    await prova('consegna: l\'email passa dalla posta dell\'agenzia, con il PDF allegato', async () => {
+      await prepara();
+      await page.evaluate(() => ppInviaEmail('p1'));
+      const s = await spia();
+      deve(s.mail.length === 1, 'chiamate di invio: ' + s.mail.length);
+      const c = s.mail[0];
+      deve(c.path === '/mail/send', 'l\'email passa da «' + c.path + '» invece che dalla posta dell\'agenzia');
+      deve(c.body.to === 'mario.rossi@email.it', 'destinatario: ' + c.body.to);
+      deve(/PP-2026-0007/.test(c.body.subject || ''), 'oggetto senza il numero: ' + c.body.subject);
+      const att = c.body.attachments || [];
+      deve(att.length === 1, 'allegati: ' + att.length + ' (atteso 1)');
+      deve(/\.pdf$/.test(att[0].name || ''), 'l\'allegato non e\' un PDF: ' + att[0].name);
+      deve((att[0].content || '').length > 0, 'l\'allegato e\' vuoto');
+      deve(/€ 480,00 annuale/.test(c.body.html || ''), 'nel corpo il premio perde il frazionamento');
+      return 'un allegato, oggetto e premio a posto';
+    });
+
+    await prova('consegna: da telefono il PDF parte come allegato, e non si archivia niente', async () => {
+      await prepara(null, { condivisioneNativa: true });
+      await page.evaluate(() => ppWhatsApp('p1'));
+      const s = await spia();
+      deve(s.condivisi.length === 1, 'condivisioni native: ' + s.condivisi.length);
+      deve(/\.pdf$/.test(s.condivisi[0].file || ''), 'non ha condiviso un PDF: ' + s.condivisi[0].file);
+      /* Se il file parte davvero, mettere una copia in archivio sarebbe solo
+         un documento con dati personali lasciato in giro per niente. */
+      deve(s.caricati.length === 0, 'archivia il PDF anche quando lo ha gia\' consegnato');
+      deve(s.aperti.length === 0, 'apre comunque wa.me con un collegamento');
+    });
+
+    await prova('consegna: da computer si ripiega sul collegamento che scade', async () => {
+      await prepara(null, { condivisioneNativa: false });
+      await page.evaluate(() => ppWhatsApp('p1'));
+      const s = await spia();
+      deve(s.caricati.length === 1, 'caricamenti in archivio: ' + s.caricati.length);
+      deve(s.caricati[0].path === 'cli-1/p1.pdf', 'percorso: ' + s.caricati[0].path);
+      /* Percorso fisso e sovrascrittura: ricondividere non lascia cinque copie
+         dei dati della stessa persona in archivio. */
+      deve(s.caricati[0].op && s.caricati[0].op.upsert === true, 'non sovrascrive: ogni invio lascia una copia nuova');
+      deve(s.aperti.length === 1, 'aperture di WhatsApp: ' + s.aperti.length);
+      const url = decodeURIComponent(s.aperti[0]);
+      deve(url.startsWith('https://wa.me/393331234567?text='), 'numero non normalizzato col prefisso: ' + url.slice(0, 40));
+      deve(/archivio\.esempio\/cli-1\/p1\.pdf/.test(url), 'nel messaggio non c\'e\' il collegamento al documento');
+      deve(/€ 480,00 annuale/.test(url), 'nel messaggio il premio perde il frazionamento');
+      deve(/valido fino al/.test(url), 'il messaggio non dice che il collegamento scade');
+      return 'collegamento firmato, numero col 39, scadenza detta';
+    });
+
+    await prova('consegna: quello che non e\' confermato non raggiunge il cliente', async () => {
+      /* Regola di casa n.1. Qui il RUI dell'agenzia manca: il foglio direbbe
+         «da confermare» al posto dell'iscrizione dell'intermediario. */
+      await prepara();
+      await page.evaluate(() => {
+        PP_AZIENDA = null;
+        window.__COLLAUDO.risposte['iam_azienda:single'] = { data: { dati: {
+          rs: 'With Us Assicurazioni S.r.l.', sede: 'Via Roma 1, Napoli', piva: '01234567890' } }, error: null };
+      });
+      await page.evaluate(() => ppInviaEmail('p1'));
+      await page.evaluate(() => ppWhatsApp('p1'));
+      const s = await spia();
+      deve(s.mail.length === 0, 'ha mandato l\'email lo stesso');
+      deve(s.aperti.length === 0 && s.condivisi.length === 0 && s.caricati.length === 0,
+        'ha mandato il preventivo su WhatsApp lo stesso');
+      deve(s.avvisi.length === 2, 'avvisi dati: ' + s.avvisi.length + ' (attesi 2)');
+      deve(/da confermare/i.test(s.avvisi[0]), 'non dice perche\' si ferma: ' + s.avvisi[0]);
+      deve(/RUI dell'agenzia/.test(s.avvisi[0]), 'non dice QUALE dato manca: ' + s.avvisi[0]);
+      return 'email e WhatsApp fermati, e detto quale dato manca';
+    });
+
+    await prova('consegna: il «da autorizzare» si chiede, non si manda di nascosto', async () => {
+      await prepara({ da_autorizzare: true }, { confermaSi: false });
+      await page.evaluate(() => ppInviaEmail('p1'));
+      let s = await spia();
+      deve(s.domande.length === 1, 'domande fatte: ' + s.domande.length);
+      deve(/AUTORIZZARE DALLA DIREZIONE/.test(s.domande[0]), 'la domanda non dice qual e\' il problema');
+      deve(s.mail.length === 0, 'ha mandato l\'email anche dopo un «no»');
+
+      await prepara({ da_autorizzare: true }, { confermaSi: true });
+      await page.evaluate(() => ppInviaEmail('p1'));
+      s = await spia();
+      deve(s.mail.length === 1, 'dopo il «sì» non manda: ' + s.mail.length);
+      return 'chiede, e rispetta la risposta';
+    });
+
+    await prova('consegna: senza casella di posta lo dice, non mostra un 403', async () => {
+      await prepara(null, { mailErrore: 'Non hai accesso a questa casella.' });
+      await page.evaluate(() => ppInviaEmail('p1'));
+      const s = await spia();
+      deve(s.avvisi.length === 1, 'avvisi: ' + s.avvisi.length);
+      deve(/casella di posta dell'agenzia/i.test(s.avvisi[0]), 'messaggio: ' + s.avvisi[0]);
+      deve(/IAM/.test(s.avvisi[0]), 'non dice dove si rimedia: ' + s.avvisi[0]);
+    });
+
+    await prova('consegna: il segnalatore non consegna niente a nessuno', async () => {
+      await prepara();
+      const r = await page.evaluate(async () => {
+        const prima = currentUser.profilo;
+        currentUser.profilo = 'segnalatore';
+        await ppInviaEmail('p1');
+        await ppWhatsApp('p1');
+        await ppScaricaPdf('p1');
+        currentUser.profilo = prima;
+        return window.__SPIA;
+      });
+      deve(r.mail.length === 0 && r.aperti.length === 0 && r.condivisi.length === 0 && r.caricati.length === 0,
+        'una delle tre strade si e\' aperta lo stesso');
+      deve(r.avvisi.length === 3 && r.avvisi.every(a => /[Ss]egnalatore/.test(a)),
+        'i rifiuti non spiegano perche\': ' + JSON.stringify(r.avvisi));
+      return 'tutte e tre le porte chiuse';
+    });
+
+    await prova('consegna: nessun errore JavaScript in tutto il blocco', async () => {
+      deve(erroriTre.length === 0, erroriTre.slice(0, 3).join(' | '));
+    });
+
+    await context.close();
+  }
   await browser.close();
 };
 

@@ -23471,7 +23471,11 @@ function ppRenderLista() {
       <div style="flex:1"><b>${esc(r.tipo_prodotto)}</b>${auth}
         <div class="cl-sub">${esc(ppNumero(r))} · ${esc(r.compagnia)}${r.garanzia ? ' · ' + esc(r.garanzia) : ''} · ${esc(dataIt(r.creato_il))}${righe ? ' · ' + righe + (righe === 1 ? ' descrizione' : ' descrizioni') : ''}</div></div>
       <div style="text-align:right">${prezzo}
-        <div><button class="sc-edit" style="margin-top:5px" onclick="event.stopPropagation();ppScaricaPdf('${esc(r.id)}')"><i class="ti ti-file-type-pdf"></i> PDF</button></div>
+        <div style="margin-top:5px;display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
+          <button class="sc-edit" title="Scarica il PDF" onclick="event.stopPropagation();ppScaricaPdf('${esc(r.id)}')"><i class="ti ti-file-type-pdf"></i> PDF</button>
+          <button class="sc-edit" title="Invia al cliente per email, con il PDF allegato" onclick="event.stopPropagation();ppInviaEmail('${esc(r.id)}')"><i class="ti ti-mail"></i></button>
+          <button class="sc-edit" title="Condividi su WhatsApp" onclick="event.stopPropagation();ppWhatsApp('${esc(r.id)}')"><i class="ti ti-brand-whatsapp"></i></button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -23601,7 +23605,9 @@ async function ppApri(clienteId, id) {
       <div class="modal-actions">
         <button class="primary" onclick="ppSalva('${esc(clienteId)}'${id ? ",'" + esc(id) + "'" : ''})">Salva</button>
         <button class="ghost" onclick="document.getElementById('pp-overlay').remove()">Annulla</button>
-        ${r ? `<button class="ghost" onclick="ppScaricaPdf('${esc(r.id)}')"><i class="ti ti-file-type-pdf"></i> Scarica PDF</button>` : ''}
+        ${r ? `<button class="ghost" onclick="ppScaricaPdf('${esc(r.id)}')"><i class="ti ti-file-type-pdf"></i> Scarica PDF</button>
+        <button class="ghost" onclick="ppInviaEmail('${esc(r.id)}')"><i class="ti ti-mail"></i> Email al cliente</button>
+        <button class="ghost" onclick="ppWhatsApp('${esc(r.id)}')"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>` : ''}
         ${r && currentUser.role === 'admin' ? `<button class="ghost" style="color:#c0392b" onclick="ppElimina('${esc(r.id)}')"><i class="ti ti-trash"></i> Elimina</button>` : ''}
       </div>
     </div>
@@ -24122,6 +24128,200 @@ function ppAvvisoAzienda() {
   return '<div style="background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12px">'
     + '<i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> L\'iscrizione RUI dell\'agenzia non è stata ancora inserita: '
     + 'sui PDF la carta intestata stampa «da confermare». Si compila in IAM, Operativa › Azienda.</div>';
+}
+
+
+/* ══════════ PREVENTIVI PERSONALIZZATI · LA CONSEGNA (Fase 3) ══════════
+   Tre strade per lo stesso foglio: scaricarlo, mandarlo per email con il PDF
+   allegato, mandarlo su WhatsApp.
+
+   SU WHATSAPP IL PDF NON SI ALLEGA DA UN COLLEGAMENTO. Non e' un limite
+   nostro: wa.me porta un testo, non un file, e in questo repository sta gia'
+   scritto (modulo pensione). Quindi due strade, scelte dal dispositivo e non
+   dall'utente:
+     · dal telefono — condivisione nativa del sistema: il PDF parte come
+       allegato vero, dentro WhatsApp;
+     · dal computer — il PDF va in archivio e su WhatsApp parte un
+       collegamento firmato che scade.
+   L'API ufficiale di WhatsApp Business farebbe l'allegato anche da computer,
+   ma vuole numero dedicato, template approvati e un costo per messaggio: si
+   apre quando serve per i rinnovi e le scadenze, non per consegnare un
+   preventivo.
+
+   LA PORTA CHE CONTA. Il foglio si SCARICA sempre — serve anche solo per
+   portarlo in direzione. Al CLIENTE non parte se c'e' dentro un «da
+   confermare»: e' la regola di casa n.1, e qui non e' un principio astratto
+   ma la differenza fra un preventivo e un documento con dei buchi che il
+   cliente legge come se fossero dati. */
+
+const PP_BUCKET = 'preventivi';
+/* Sette giorni: un collegamento che muore in un'ora e' inutile al cliente,
+   uno che non muore mai e' un documento con i suoi dati personali appeso a
+   un indirizzo indovinabile per sempre. */
+const PP_LINK_GIORNI = 7;
+
+function ppBase64(blob) {
+  return new Promise((ok, ko) => {
+    const f = new FileReader();
+    f.onload = () => { const s = String(f.result || ''); ok(s.slice(s.indexOf(',') + 1)); };
+    f.onerror = () => ko(new Error('non riesco a leggere il PDF generato'));
+    f.readAsDataURL(blob);
+  });
+}
+
+/* Il preventivo pronto da consegnare: riga, documento e PDF in un colpo solo.
+   Torna null (dopo aver spiegato perche') se al cliente non deve partire. */
+async function ppDaConsegnare(id) {
+  const vietato = ppVietato();
+  if (vietato) { alert(vietato); return null; }
+  const r = (PP_CACHE || []).find(x => x.id === id);
+  if (!r) { alert('Preventivo non trovato.'); return null; }
+  const documento = ppDocumento(r, await ppContesto(r));
+
+  /* Regola di casa n.1: quello che non e' confermato non esce di casa. Il
+     foglio si puo' scaricare — serve per farlo completare — ma al cliente non
+     si manda: leggerebbe «da confermare» al posto dell'iscrizione RUI del suo
+     intermediario. */
+  if (documento.daConfermare.length) {
+    alert('Non mando questo preventivo al cliente: ci sono ' + documento.daConfermare.length +
+      ' dato/i ancora da confermare.\n\n· ' + documento.daConfermare.join('\n· ') +
+      '\n\nCompletali e riprova. Il PDF puoi comunque scaricarlo.');
+    return null;
+  }
+  /* Un preventivo che aspetta il via della direzione non e' ancora una
+     proposta dell'agenzia. Non lo blocco — la direzione puo' aver detto di si'
+     a voce — ma non lo lascio partire per distrazione. */
+  if (documento.autorizzare &&
+      !confirm('Questo preventivo è segnato DA AUTORIZZARE DALLA DIREZIONE, e il documento lo dice a chiare lettere.\n\nMandarlo lo stesso al cliente?')) {
+    return null;
+  }
+
+  const blob = await ppPdfBlob(documento);
+  return { r: r, documento: documento, blob: blob };
+}
+
+function ppRecapito(campo) {
+  const cl = (ANAG_CACHE || []).find(a => a.id === PP_CLIENTE);
+  return cl ? String(cl[campo] || '').trim() : '';
+}
+
+/* ── 2. EMAIL CON IL PDF ALLEGATO ────────────────────────────────────────────
+   Si passa da /mail/send, la posta dell'agenzia gia' configurata: stesse
+   caselle, stesso mittente, e la copia finisce in «Posta inviata» come per
+   ogni altro messaggio scritto a mano. Nessun canale nuovo, e soprattutto
+   nessuna seconda identita' con cui l'agenzia si presenta ai clienti. */
+async function ppInviaEmail(id) {
+  const pronto = await ppDaConsegnare(id);
+  if (!pronto) return;
+  const { r, documento, blob } = pronto;
+
+  let email = ppRecapito('email');
+  if (!email) {
+    try { const { data } = await db.from('quote_anagrafiche').select('email').eq('id', r.cliente_id).single(); email = (data && data.email) || ''; }
+    catch (e) {}
+  }
+  if (!email) {
+    email = (prompt('Nessuna email registrata per questo cliente.\nA quale indirizzo mando il preventivo?', '') || '').trim();
+    if (!email) return;
+  }
+
+  const saluto = documento.cliente.nominativo;
+  const oggetto = 'Preventivo ' + documento.numero + ' · ' + documento.corpo.prodotto;
+  /* Corpo breve: il documento e' l'allegato. Una email che ripete il PDF
+     invita a leggere quella invece del foglio, e le due cose divergono al
+     primo ritocco. */
+  const html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.6;color:#1f2a37">'
+    + '<p>Gentile ' + esc(saluto) + ',</p>'
+    + '<p>in allegato trova il preventivo <b>' + esc(documento.numero) + '</b> per <b>'
+    + esc(documento.corpo.prodotto) + '</b> (' + esc(documento.corpo.compagnia) + ').</p>'
+    + '<p style="font-size:16px"><b>Premio: ' + esc(documento.premio.testoDaPagare) + '</b></p>'
+    + '<p>Resto a disposizione per ogni chiarimento.</p>'
+    + '<p style="margin-top:18px">' + esc(documento.intermediario.nome) + '<br>'
+    + '<span style="color:#5a6b7c">' + esc(documento.azienda.ragioneSociale) + '</span></p>'
+    + '<p style="margin-top:18px;font-size:11.5px;color:#8b9aa9;line-height:1.5">' + esc(documento.disclaimer) + '</p>'
+    + '</div>';
+
+  try {
+    await payFetch('/mail/send', {
+      to: email, subject: oggetto, html: html,
+      attachments: [{ name: documento.nomeFile, content: await ppBase64(blob) }]
+    });
+    try { quotoToast('Preventivo inviato a ' + email); } catch (e) {}
+  } catch (e) {
+    const m = String(e.message || e);
+    /* La posta dell'agenzia e' per casella, non per persona: chi non ne ha
+       assegnata una riceverebbe un «403» e non saprebbe che farsene. */
+    if (/casella/i.test(m)) {
+      alert('Il tuo utente non ha una casella di posta dell\'agenzia assegnata, quindi da qui non può inviare.\n\nSi assegna in IAM, nella scheda utente (campo caselle di posta).');
+    } else {
+      alert('Invio non riuscito: ' + m);
+    }
+  }
+}
+
+/* ── 3. WHATSAPP ─────────────────────────────────────────────────────────────
+   Prima si prova a consegnare il file vero. Solo se il dispositivo non sa
+   farlo si ripiega sul collegamento. */
+async function ppWhatsApp(id) {
+  const pronto = await ppDaConsegnare(id);
+  if (!pronto) return;
+  const { r, documento, blob } = pronto;
+  const file = new File([blob], documento.nomeFile, { type: 'application/pdf' });
+
+  /* Condivisione nativa: il PDF entra in WhatsApp come allegato. Vale su
+     telefono e richiede una pagina servita in HTTPS. */
+  if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'Preventivo ' + documento.numero,
+        text: 'Preventivo ' + documento.numero + ' · ' + documento.corpo.prodotto
+      });
+      try { quotoToast('Preventivo condiviso'); } catch (e) {}
+      return;
+    } catch (e) {
+      /* Annullato dall'utente: non e' un guasto e non si ripiega su niente. */
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+
+  // Ripiego: il PDF in archivio, e su WhatsApp il collegamento firmato.
+  let url;
+  try { url = await ppLinkFirmato(blob, r); }
+  catch (e) { alert(String(e.message || e)); return; }
+
+  const scadenza = new Date(Date.now() + PP_LINK_GIORNI * 86400000).toLocaleDateString('it-IT');
+  const testo = 'Gentile ' + documento.cliente.nominativo + ', ecco il preventivo '
+    + documento.numero + ' per ' + documento.corpo.prodotto + ' (' + documento.corpo.compagnia + ').'
+    + '\nPremio: ' + documento.premio.testoDaPagare + '.'
+    + '\n\nIl documento: ' + url
+    + '\n(il collegamento resta valido fino al ' + scadenza + ')'
+    + '\n\n' + documento.intermediario.nome + ' — ' + documento.azienda.ragioneSociale;
+
+  /* Il numero si normalizza come nel modulo pensione: WhatsApp vuole il
+     prefisso internazionale senza il piu' e senza spazi. Senza numero si apre
+     lo stesso e il destinatario si sceglie dalla rubrica. */
+  let n = String(ppRecapito('cellulare') || ppRecapito('telefono') || '').replace(/\D/g, '');
+  if (n && n.length >= 9 && n.length <= 11 && n.slice(0, 2) !== '39') n = '39' + n;
+  window.open('https://wa.me/' + n + '?text=' + encodeURIComponent(testo), '_blank');
+}
+
+/* Il PDF in archivio, e un collegamento che scade.
+   Il percorso e' fisso — cliente/preventivo.pdf — e si sovrascrive: cosi'
+   ricondividere lo stesso preventivo non lascia in giro cinque copie dei dati
+   di una persona, e il collegamento vecchio smette di puntare a un documento
+   superato. */
+async function ppLinkFirmato(blob, r) {
+  const path = r.cliente_id + '/' + r.id + '.pdf';
+  const { error } = await db.storage.from(PP_BUCKET)
+    .upload(path, blob, { contentType: 'application/pdf', upsert: true });
+  if (error) throw new Error('Non riesco a mettere il PDF in archivio: ' + (error.message || error));
+  const { data, error: e2 } = await db.storage.from(PP_BUCKET)
+    .createSignedUrl(path, PP_LINK_GIORNI * 24 * 3600);
+  if (e2 || !data || !data.signedUrl) {
+    throw new Error('Non riesco a creare il collegamento: ' + ((e2 && e2.message) || 'nessun indirizzo restituito'));
+  }
+  return data.signedUrl;
 }
 
 /* ══════════ RICERCA GLOBALE ══════════ */

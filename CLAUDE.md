@@ -80,7 +80,7 @@ Verificate il 12/09/2026:
 | CODEX.md dice | Realtà |
 |---|---|
 | `QUOTE/preventivatore.html` esiste **solo** sul ramo `claude/vibrant-tesla-o0glfd` | **Falso**: è su `main`, 16.516 byte |
-| «atteso: 157/157» per `node ui-test.mjs` | Il banco è cresciuto: **340 prove**. Il numero in CODEX è vecchio di parecchi rilasci |
+| «atteso: 157/157» per `node ui-test.mjs` | Il banco è cresciuto: **348 prove**. Il numero in CODEX è vecchio di parecchi rilasci |
 
 Resta **vero e non risolto** quello che CODEX segnala su `deploy/autopull.sh`:
 non dare per scontato che il codice che leggi sia quello vivo sulla VPS.
@@ -97,7 +97,7 @@ workflow GitHub Actions.** Una PR non ha CI. I numeri che scrivi in una PR
 vengono da quello che hai girato tu.
 
 ```bash
-# 1. il browser vero — 340 prove
+# 1. il browser vero — 348 prove
 node static-server.js &          # il collaudo si aspetta la porta 8077
 node ui-test.mjs
 

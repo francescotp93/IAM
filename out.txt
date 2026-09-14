@@ -1,16 +1,21 @@
-id: pomeriggio-1789229345  exit: 0  2026-09-12 16:09:35
+id: chiamate-1789384211  exit: 0  2026-09-14 11:10:46
 ----
 == ora
-2026-09-12 16:09:35
-== auth.json
-axa       2026-09-12 15:59:03  17881 byte
-groupama  2026-09-12 15:53:53  5935 byte
-== stato login
-axa        {"running":false,"step":"loggato","since":1789220293734,"msg":"Login completato ✅"}
-groupama   {"running":false,"step":"loggato","since":1789220038252,"msg":"Sessione attiva"}
-== axa: cadute e rientri dal login delle 13:38
-== groupama: cadute e rientri
-Sep 12 13:33:42 vps-d6443a46 start-service.sh[1978140]: 13:33:42 [groupama] SIGTERM: salvo la sessione prima di chiudere
-Sep 12 13:33:42 vps-d6443a46 start-service.sh[1978140]: 13:33:42 [groupama] sessione NON salvata: browserContext.storageState: Target page, context or browser has been closed
-Sep 12 13:33:47 vps-d6443a46 start-service.sh[2150639]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-Sep 12 13:33:58 vps-d6443a46 start-service.sh[2150756]: 13:33:58 [groupama] sessione persistente attiva ✅
+2026-09-14 11:10:45
+== chiamate di quotazione ricevute dal backend, per giorno (ultimi 7 giorni)
+    108 2026-09-09
+    139 2026-09-10
+    215 2026-09-11
+
+== ultime 60 righe che parlano di premi/quotazioni
+2026-09-09T17:31:11+00:00 vps-d6443a46 node[1497266]: 2026-09-09T17:31:11.726Z OPTIONS /moto/premio 204 1ms u:-
+2026-09-09T17:32:13+00:00 vps-d6443a46 node[1497266]: 2026-09-09T17:31:11.799Z GET    /moto/premio 200 61237ms u:a5ab0cd0
+2026-09-10T17:14:14+00:00 vps-d6443a46 node[1745866]: 2026-09-10T17:14:14.521Z OPTIONS /moto/premio 204 1ms u:-
+2026-09-10T17:15:05+00:00 vps-d6443a46 node[1745866]: 2026-09-10T17:14:14.588Z GET    /moto/premio 200 50602ms u:a5ab0cd0
+2026-09-11T09:31:07+00:00 vps-d6443a46 node[1899044]: 2026-09-11T09:31:07.352Z OPTIONS /moto/premio 204 0ms u:-
+2026-09-11T09:31:55+00:00 vps-d6443a46 node[1899044]: 2026-09-11T09:31:07.412Z GET    /moto/premio 502 48051ms u:fdf3efa2
+2026-09-11T15:20:43+00:00 vps-d6443a46 node[1958452]: 2026-09-11T15:20:43.705Z OPTIONS /moto/premio 204 1ms u:-
+2026-09-11T15:21:44+00:00 vps-d6443a46 node[1958452]: 2026-09-11T15:20:43.768Z GET    /moto/premio 502 60412ms u:a5ab0cd0
+
+== errori del backend negli ultimi 7 giorni (ultimi 40)
+-- No entries --

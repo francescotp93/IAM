@@ -1,21 +1,19 @@
-id: chiamate-1789384211  exit: 0  2026-09-14 11:10:46
+id: timeout-1789384305  exit: 0  2026-09-14 11:11:55
 ----
-== ora
-2026-09-14 11:10:45
-== chiamate di quotazione ricevute dal backend, per giorno (ultimi 7 giorni)
-    108 2026-09-09
-    139 2026-09-10
-    215 2026-09-11
+== c'è un proxy davanti al backend?
+-- timeout configurati --
+-- blocchi che inoltrano al backend --
 
-== ultime 60 righe che parlano di premi/quotazioni
-2026-09-09T17:31:11+00:00 vps-d6443a46 node[1497266]: 2026-09-09T17:31:11.726Z OPTIONS /moto/premio 204 1ms u:-
-2026-09-09T17:32:13+00:00 vps-d6443a46 node[1497266]: 2026-09-09T17:31:11.799Z GET    /moto/premio 200 61237ms u:a5ab0cd0
-2026-09-10T17:14:14+00:00 vps-d6443a46 node[1745866]: 2026-09-10T17:14:14.521Z OPTIONS /moto/premio 204 1ms u:-
-2026-09-10T17:15:05+00:00 vps-d6443a46 node[1745866]: 2026-09-10T17:14:14.588Z GET    /moto/premio 200 50602ms u:a5ab0cd0
-2026-09-11T09:31:07+00:00 vps-d6443a46 node[1899044]: 2026-09-11T09:31:07.352Z OPTIONS /moto/premio 204 0ms u:-
-2026-09-11T09:31:55+00:00 vps-d6443a46 node[1899044]: 2026-09-11T09:31:07.412Z GET    /moto/premio 502 48051ms u:fdf3efa2
-2026-09-11T15:20:43+00:00 vps-d6443a46 node[1958452]: 2026-09-11T15:20:43.705Z OPTIONS /moto/premio 204 1ms u:-
-2026-09-11T15:21:44+00:00 vps-d6443a46 node[1958452]: 2026-09-11T15:20:43.768Z GET    /moto/premio 502 60412ms u:a5ab0cd0
-
-== errori del backend negli ultimi 7 giorni (ultimi 40)
--- No entries --
+== timeout lato backend verso gli scraper
+46:  const to = setTimeout(() => ctrl.abort(), 15000);
+79:    const to = setTimeout(() => ctrl.abort(), 200000); // il nuovo wizard moto.app può metterci ~2 min
+127:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000);
+311:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // margine per coda scraper (browser singolo) + re-login
+347:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000); // copre l'eventuale ripiego browser sotto lock
+380:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // TCM: wizard 10 step + eventuale coda/re-login
+415:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 210000);
+477:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 210000);
+520:    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 95000);
+539:    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 225000);
+602:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 280000); // pacchetto esclusivo: fino a ~27s in piu' sul caso lento (~225s); il frontend attende 390s
+640:    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000);

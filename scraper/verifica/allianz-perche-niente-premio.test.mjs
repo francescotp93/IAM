@@ -28,7 +28,11 @@ const src = fs.readFileSync(path.join(RADICE, 'allianz/quote-service.mjs'), 'utf
 /* Il file vero apre un browser: qui si estrae il pezzo puro e si prova da solo.
    Se la funzione non c'e' (com'era prima del 14/09/2026) le prove devono dire
    COSA manca, non esplodere leggendo il file. */
-const da = src.indexOf('function motivoPremioAssente');
+/* Si parte dalle COSTANTI che la funzione usa, non dalla sua riga: estrarre
+   solo il corpo lasciava fuori GIRI_OFFERTA/SECONDI_OFFERTA e la prova moriva
+   con «SECONDI_OFFERTA is not defined» — un rosso che non dice niente sul
+   comportamento. */
+const da = src.indexOf('const GIRI_OFFERTA') > -1 ? src.indexOf('const GIRI_OFFERTA') : src.indexOf('function motivoPremioAssente');
 const fine = src.indexOf('\n}', da);
 const sorgente = da < 0 ? '' : src.slice(da, fine + 2);
 const motivoPremioAssente = da < 0
@@ -89,6 +93,28 @@ prova('l\'offerta vista si registra davvero durante l\'attesa', () => {
   deve(/offertaVista = true;/.test(blocco),
     'la traccia non viene mai messa a vero dentro l\'attesa: resta sempre «non partito»');
   return 'si segna quando l\'offerta compare';
+});
+
+prova('l\'attesa dell\'offerta sta dentro il tempo che il backend concede', () => {
+  /* 14/09/2026, riga 12 del registro: la chiamata e' durata 96 secondi e si e'
+     chiusa dicendo «non ha finito entro 26 secondi». Il backend ne concede 225.
+     Si rinunciava dopo un ottavo del tempo disponibile, e il preventivo si
+     perdeva mentre il portale stava ancora lavorando. */
+  const g = (src.match(/const GIRI_OFFERTA = (\d+);/) || [])[1];
+  deve(g, 'l\'attesa dell\'offerta non ha un nome: e\' un numero sparso nel codice e nessuno sa a cosa corrisponde');
+  const secondi = Number(g) * 2;
+  deve(secondi >= 50, 'si aspetta solo ' + secondi + ' secondi: si rinuncia mentre il portale sta ancora calcolando');
+  deve(secondi <= 180, 'si aspetta ' + secondi + ' secondi: si rischia di sfondare il tempo che il backend concede (225)');
+  return secondi + ' secondi';
+});
+
+prova('il numero nel messaggio viene dall\'attesa vera, non scritto a mano', () => {
+  /* Se sono due numeri separati, il giorno che si cambia l'attesa il messaggio
+     racconta un'altra cosa — ed e' esattamente il tipo di riga che fa perdere
+     tempo a chi legge il registro. */
+  const f = src.slice(src.indexOf('function motivoPremioAssente'), src.indexOf('\n}', src.indexOf('function motivoPremioAssente')));
+  deve(!/entro \d+ secondi/.test(f), 'il messaggio ha il numero scritto a mano: cambiando l\'attesa direbbe il falso');
+  deve(/SECONDI_OFFERTA/.test(f), 'il messaggio non usa il valore vero dell\'attesa');
 });
 
 const ko = esiti.filter(e => !e[0]);

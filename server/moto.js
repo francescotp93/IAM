@@ -452,6 +452,24 @@ motoRouter.get('/preventivoGroupama/status/:jobId', (req, res) => {
 // Lo scraper guida il portale Mobility (targa→CERCA→avente diritto→fattori→quotazione) e
 // restituisce il premio annuo. Servono i dati del contraente (CF guida la tariffa).
 const AXA = process.env.AXA_SCRAPER_URL || 'http://127.0.0.1:4700';
+/* PERCHE' IL PREMIO AXA NON C'E'.
+   Fino al 14/09/2026 qui usciva sempre «sessione scaduta? rifai il login da
+   Fonti → AXA» ogni volta che lo scraper non mandava un errore suo. Con un
+   punto interrogativo, cioe' un'ipotesi — ma chi legge fa quello che c'e'
+   scritto.
+   Misurato quel giorno, riga 13 del registro esiti: nella risposta c'era
+   `prodotto: "Nuova Protezione Auto"`. Quel nome si legge DALLA PAGINA DEL
+   PREVENTIVO: lo scraper era dentro il portale, e i campi del premio erano
+   semplicemente vuoti. La sessione non c'entrava, e per tutto il giorno si
+   sono rifatti accessi inseguendo il problema sbagliato.
+   E' la lezione n.1 di FONTI.md, ancora: un motivo si guarda prima di dirlo. */
+function perchePremioAxaAssente(d) {
+  if (d && d.error) return d.error;                 // lo scraper ha una sua spiegazione: vale piu' della nostra
+  const dentro = !!(d && (d.prodotto || d.targa || d.premio_annuale !== undefined || d.premio_alla_firma !== undefined));
+  if (dentro) return 'AXA: il preventivo si e\' aperto' + (d.prodotto ? ' («' + d.prodotto + '»)' : '')
+    + ' ma il premio non e\' comparso nei campi. Non e\' la sessione: il portale non ha finito il calcolo. Riprova fra poco; se si ripete serve una cattura su questo caso.';
+  return 'Premio AXA non disponibile: lo scraper non e\' arrivato al preventivo. Controlla l\'accesso da QUOTO → Fonti → AXA.';
+}
 const jobsAXA = new Map();
 motoRouter.post('/preventivoAxa/start', (req, res) => {
   const { targa, cf, cognome, nome, data_nascita, data_acquisto, tipoGuida, massimale, frazionamento } = req.body || {};
@@ -478,7 +496,7 @@ motoRouter.post('/preventivoAxa/start', (req, res) => {
       const r = await fetch(AXA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);
       const d = await r.json().catch(() => ({}));
       if (!d || !d.ok || d.premio_annuale_num == null) {
-        const msg = (d && d.error) || 'Premio AXA non disponibile (sessione scaduta? rifai il login da Fonti → AXA).';
+        const msg = perchePremioAxaAssente(d);
         jobsAXA.set(jobId, { status: 'error', error: msg, url: d && d.url, dump: d && d.dump, esito_id: await esito(req, Object.assign(base, { risposta: d, errore: msg, durata_ms: Date.now() - t0 })), t: Date.now() });
         return;
       }

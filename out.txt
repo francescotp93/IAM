@@ -1,59 +1,36 @@
-id: fontiaccedi-1789391874  exit: 0  2026-09-14 13:18:22
+id: cfonti-1789392334  exit: 0  2026-09-14 13:25:51
 ----
 == ora
-2026-09-14 13:18:22
-== il backend ha ricevuto richieste su /fonti negli ultimi 25 minuti?
-2026-09-14T13:16:50+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:16:50.756Z OPTIONS /fonti/c-axa/loginstate 204 1ms u:-
-2026-09-14T13:16:50+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:16:50.805Z GET    /fonti/c-axa/loginstate 304 8ms u:a5ab0cd0
-2026-09-14T13:16:53+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:16:53.900Z GET    /fonti/c-axa/loginstate 304 5ms u:a5ab0cd0
-2026-09-14T13:16:56+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:16:56.954Z OPTIONS /fonti/c-axa/loginstate 204 1ms u:-
-2026-09-14T13:16:57+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:16:57.064Z GET    /fonti/c-axa/loginstate 200 6ms u:a5ab0cd0
-2026-09-14T13:17:08+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:08.780Z OPTIONS /fonti/c-axa/conferma-codice 204 1ms u:-
-2026-09-14T13:17:11+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:11.966Z POST   /fonti/c-axa/conferma-codice 200 9ms u:a5ab0cd0
-2026-09-14T13:17:12+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:12.029Z OPTIONS /fonti 204 1ms u:-
-2026-09-14T13:17:15+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:12.081Z GET    /fonti 200 3510ms u:a5ab0cd0
-2026-09-14T13:17:15+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:15.698Z OPTIONS /fonti/connettore 204 0ms u:-
-2026-09-14T13:17:15+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:15.699Z OPTIONS /fonti/connettore/catture 204 0ms u:-
-2026-09-14T13:17:15+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:15.747Z GET    /fonti/connettore/catture 304 4ms u:a5ab0cd0
-2026-09-14T13:17:15+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:15.748Z GET    /fonti/connettore 304 4ms u:a5ab0cd0
-2026-09-14T13:17:29+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:29.755Z OPTIONS /fonti/c-axa/conferma-codice 204 1ms u:-
-2026-09-14T13:17:29+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:29.806Z POST   /fonti/c-axa/conferma-codice 200 10ms u:a5ab0cd0
-2026-09-14T13:17:29+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:29.870Z OPTIONS /fonti 204 1ms u:-
-2026-09-14T13:17:31+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:08.831Z POST   /fonti/c-axa/conferma-codice 200 22563ms u:a5ab0cd0
-2026-09-14T13:17:33+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:29.920Z GET    /fonti 200 3539ms u:a5ab0cd0
-2026-09-14T13:17:33+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:33.522Z OPTIONS /fonti/connettore 204 1ms u:-
-2026-09-14T13:17:33+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:33.525Z OPTIONS /fonti/connettore/catture 204 0ms u:-
-2026-09-14T13:17:33+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:33.568Z GET    /fonti/connettore 304 2ms u:a5ab0cd0
-2026-09-14T13:17:33+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:33.571Z GET    /fonti/connettore/catture 304 1ms u:a5ab0cd0
-2026-09-14T13:17:37+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:33.513Z GET    /fonti 200 3510ms u:a5ab0cd0
-2026-09-14T13:17:37+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:37.094Z GET    /fonti/connettore/catture 304 2ms u:a5ab0cd0
-2026-09-14T13:17:37+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:37.095Z GET    /fonti/connettore 304 4ms u:a5ab0cd0
+2026-09-14 13:25:45
+== le fonti registrate: SOLO id, indirizzo del servizio e se è attiva
+PREDEFINITE:
+  allianz        surl=(nessuno)                    attiva=None  ha_credenziali=sì
+  24h            surl=(nessuno)                    attiva=None  ha_credenziali=sì
+  __connettore   surl=(nessuno)                    attiva=None  ha_credenziali=no
+PERSONALIZZATE (__custom):
+  c-italiana     surl=(nessuno)                    attiva=True  ha_credenziali=sì
+  c-hdi          surl=(nessuno)                    attiva=True  ha_credenziali=sì
+  c-groupama     surl=(nessuno)                    attiva=True  ha_credenziali=sì
+  c-prima        surl=(nessuno)                    attiva=False  ha_credenziali=sì
+  c-axa          surl=(nessuno)                    attiva=True  ha_credenziali=sì
+  c-inlinea      surl=(nessuno)                    attiva=False  ha_credenziali=sì
+  c-sara-assicurazioni surl=(nessuno)                    attiva=False  ha_credenziali=sì
+  c-kube         surl=(nessuno)                    attiva=False  ha_credenziali=sì
+  c-quotiamo     surl=(nessuno)                    attiva=False  ha_credenziali=sì
+  c-assieasy     surl=(nessuno)                    attiva=True  ha_credenziali=sì
+  c-rc-polizza   surl=(nessuno)                    attiva=False  ha_credenziali=sì
 
-== errori del backend
+== il quotatore è dirottato da una variabile d'ambiente?
+(nessuna variabile *_SCRAPER_URL nel servizio)
 
-== e Caddy cosa ha visto arrivare? (registro nuovo)
-"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/loginstate"	"duration":0.001963532	"status":204
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/loginstate"	"duration":0.008177915	"status":304
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/loginstate"	"duration":0.005822902	"status":304
-"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/loginstate"	"duration":0.001280807	"status":204
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/loginstate"	"duration":0.006909553	"status":200
-"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/conferma-codice"	"duration":0.001523899	"status":204
-"method":"POST","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/conferma-codice"	"duration":0.01029274	"status":200
-"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti?[parametri non registrati]"	"duration":0.004445287	"status":204
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti?[parametri non registrati]"	"duration":3.512563558	"status":200
-"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/connettore"	"duration":0.001167672	"status":204
-"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/connettore/catture"	"duration":0.001518092	"status":204
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore/catture"	"duration":0.004883925	"status":304
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore"	"duration":0.005893748	"status":304
-"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/conferma-codice"	"duration":0.002039548	"status":204
-"method":"POST","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/conferma-codice"	"duration":0.011254004	"status":200
-"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti?[parametri non registrati]"	"duration":0.001634025	"status":204
-"method":"POST","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/conferma-codice"	"duration":22.565308511	"status":200
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti?[parametri non registrati]"	"duration":3.542013132	"status":200
-"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/connettore"	"duration":0.005461514	"status":204
-"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/connettore/catture"	"duration":0.007300872	"status":204
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore"	"duration":0.002709443	"status":304
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore/catture"	"duration":0.002634382	"status":304
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti?[parametri non registrati]"	"duration":3.514094089	"status":200
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore/catture"	"duration":0.003743841	"status":304
-"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore"	"duration":0.006741081	"status":304
+== chi risponde sulle porte degli scraper
+  4700 -> {"running":false,"step":"loggato","since":1789391851389,"msg":"Login completato ✅"}
+  4500 -> {"running":false,"step":"loggato","since":1789390638038,"msg":"Sessione attiva"}
+  4400 -> {"running":false,"step":"loggato","since":1789213786561,"msg":"Accesso eseguito ✅","esit
+  4300 -> 
+  4200 -> {"running":false,"step":"idle","since":0,"msg":""}
+  4100 -> {"endpoints":["/status","/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela
+  4600 -> {"running":false,"step":"pronto","since":1788935728557,"msg":"Pronto: avvia il login da Fo
+  4800 -> {"running":false,"step":"pronto","since":1789392002604,"msg":"Pronto: avvia il login da Fo
+  4900 -> {"running":false,"step":"pronto","since":1788935731446,"msg":"Pronto: avvia il login"}
+  5000 -> 

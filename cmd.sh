@@ -1,7 +1,9 @@
 echo "== ora"; date '+%F %T'
-echo "== /status (dice se siamo DENTRO il portale, non se il login è stato fatto da qui)"
-curl -s -m 15 "http://127.0.0.1:4700/status" | head -c 400; echo
-echo "== /loginstate (dice a che punto è la PROCEDURA di login)"
-curl -s -m 10 "http://127.0.0.1:4700/loginstate" | head -c 200; echo
-echo "== chi ha scritto auth.json alle 13:07? cerco il salvataggio nel giornale"
-journalctl -u axa-scraper --since '13:02' --no-pager 2>/dev/null | sed 's/.*start-service.sh\[[0-9]*\]: //' | tail -20
+echo "== il backend ha ricevuto richieste su /fonti negli ultimi 25 minuti?"
+journalctl -u withus-backend --since '-25min' --no-pager -o short-iso 2>/dev/null | grep -aE '/fonti' | tail -25
+echo
+echo "== errori del backend"
+journalctl -u withus-backend --since '-25min' --no-pager -o short-iso 2>/dev/null | grep -aiE 'error|errore|ECONN|refused|timeout|401|403|502' | tail -15
+echo
+echo "== e Caddy cosa ha visto arrivare? (registro nuovo)"
+journalctl -u caddy --since '-25min' --no-pager 2>/dev/null | grep -a 'handled request' | grep -aoE '"method":"[A-Z]+","host":"[^"]*","uri":"[^"]*"|"status":[0-9]+|"duration":[0-9.]+' | paste - - - 2>/dev/null | tail -25

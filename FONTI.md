@@ -493,6 +493,48 @@ credenziali sono a posto». Nessuno dei cinque difetti era dove sembrava.
 
 ---
 
+### 9-ter. AXA, la fine della storia: non era il COSA si salva, era il QUANTO si aspetta
+
+Stessa giornata, 14/09/2026, dopo due spiegazioni sbagliate di fila (§9-bis).
+
+Il fatto che ha chiuso il caso: guardando i cookie salvati — nomi e domini, mai
+i valori — si e' visto che **c'erano tutti**. Settantacinque su
+`idp.axa-italia.it`, cioe' il servizio che decide se sei riconosciuto, col loro
+`_session` in scadenza **due settimane dopo**. E al riavvio il portale ci
+consegnava un indirizzo con `code=`: cioe' l'identita' era stata riconosciuta e
+il biglietto emesso.
+
+Non era una sessione scaduta. Era **un accesso riuscito che non veniva portato
+a termine**: si restava parcheggiati sulla pagina di rimbalzo dell'OIDC.
+
+E la correzione esisteva gia', da sabato — solo su UNA delle due strade:
+
+| | al LOGIN | all'ACCENSIONE |
+|---|---|---|
+| attesa | fino a 30 secondi | un solo controllo, subito |
+| se resta sul rimbalzo | apre la home e il giro si conclude | niente |
+| esito osservato | `13:17:22` spinta → `13:17:31` dentro ✅ | `13:02:39` ripristino → `13:02:50` «non piu' valida» ❌ |
+
+Undici secondi contro trenta, e una spinta che c'era da una parte sola.
+
+**Le due lezioni.**
+
+1. Quando due strade fanno la stessa cosa, la parte comune si scrive **una
+   volta sola**. Qui la pazienza e' finita in `attendiAccesso`, usata da
+   entrambe. Il *criterio* per dire «sono dentro» resta invece di chi chiama:
+   al login basta non vedere password ne' codice, all'accensione serve il
+   marcatore vero della home — quello e' un giudizio, e i giudizi non si
+   uniformano per comodita' (il falso positivo del 12/09 nasceva proprio dal
+   criterio leggero).
+2. Due spiegazioni sbagliate di fila avevano in comune la stessa forma:
+   riguardavano **cosa mettere nella copia** (i cookie ruotano; manca il
+   sessionStorage). Nessuna delle due guardava se la copia venisse *usata* bene.
+   Quando una spiegazione porta a «salviamo di piu'» o «salviamo piu' spesso»,
+   vale la pena chiedersi prima se il problema sia nel salvataggio o
+   nell'**uso** di quello che si e' salvato.
+
+---
+
 ### 9-bis. AXA: la copia della sessione non invecchiava, era incompleta
 
 Misurato il 14/09/2026, e vale la pena scriverlo perche' la spiegazione

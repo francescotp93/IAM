@@ -478,6 +478,45 @@ let QUOTING = false; // preventivo in corso → /status usa la cache, niente kee
 const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') setLogged(true); else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
 const isLogged = async () => /axa/i.test(page.url() || '') && !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await otpField());
 
+/* UN INDIRIZZO CHE PORTA ANCORA `code=` O `state=` E' IL RIMBALZO, NON LA HOME.
+   E' la pagina su cui il portale atterra a meta' del giro di autenticazione. */
+const soloRimbalzo = (u) => /[?&](code|state)=/.test(String(u || ''));
+
+/* ASPETTA CHE L'ACCESSO SI CONCLUDA, E SE RESTA APPESO GLI DA' LA SPINTA.
+   Sta qui, in un posto solo, perche' serve a DUE strade che facevano cose
+   diverse — ed e' la differenza che il 14/09/2026 e' costata mezza giornata.
+
+   Al LOGIN si aspettava fino a trenta secondi e, a meta' attesa, si apriva la
+   home per far concludere il giro OIDC. Funziona: alle 13:17:22 quella spinta
+   ha chiuso un accesso che era fermo sul rimbalzo.
+   All'ACCENSIONE invece si rimettevano i cookie e si guardava UNA VOLTA SOLA,
+   subito: alle 13:02:39 la sessione e' stata ripristinata e alle 13:02:50 —
+   undici secondi dopo — dichiarata «non piu' valida». Non lo era. I cookie di
+   `idp.axa-italia.it` erano salvati e vivi (il loro `_session` scade due
+   settimane dopo), e il portale ci aveva appena consegnato un `code=`: cioe'
+   il servizio di identita' ci aveva riconosciuti. Mancava solo l'ultimo passo,
+   e nessuno glielo lasciava fare.
+   Da qui la regola: chi aspetta un accesso aspetta allo stesso modo. Il
+   CRITERIO per dire «sono dentro» resta di chi chiama — al login basta non
+   vedere password ne' codice, all'accensione serve il marcatore vero della
+   home — perche' quello e' un giudizio, e i giudizi non si uniformano per
+   comodita'. Qui si condivide solo la pazienza. */
+async function attendiAccesso(controlla, { giri = 30, spintaAl = 12, trustDevicePerPrimi = 0 } = {}) {
+  let dentro = false;
+  for (let i = 0; i < giri && !dentro; i++) {
+    await page.waitForTimeout(1000);
+    if (i < trustDevicePerPrimi) await trustDevice().catch(() => {});
+    dentro = await controlla();
+    /* Una volta sola, a meta' attesa: una navigazione in piu' disturberebbe un
+       accesso che sta riuscendo per conto suo. */
+    if (!dentro && i === spintaAl && soloRimbalzo(page.url())) {
+      log('il portale è fermo sulla pagina di rimbalzo: apro la home per far concludere l\'accesso');
+      await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+    }
+  }
+  return dentro;
+}
+
 // Naviga superando Cloudflare: la sfida JS ("Just a moment"/"verifica umano") si risolve da sola
 // in qualche secondo; sul blocco duro ("you have been blocked") attendo e ritento (a volte il timing
 // diverso passa). Navigo POCHE volte e con pause: le navigazioni a raffica peggiorano il blocco.
@@ -674,20 +713,7 @@ async function doCodice(codice) {
        pomeriggio sarebbe fallito lo stesso.
        Un indirizzo che porta ancora `code=` o `state=` è il rimbalzo, non la
        home: la si aspetta, e se non arriva si dice che non è arrivata. */
-    const soloRimbalzo = (u) => /[?&](code|state)=/.test(String(u || ''));
-    let dentro = false;
-    for (let i = 0; i < 30 && !dentro; i++) {
-      await page.waitForTimeout(1000);
-      if (i < 5) await trustDevice().catch(() => {});
-      dentro = await isLogged();
-      /* Il giro OIDC può restare appeso sul rimbalzo: una navigazione pulita
-         sulla home, senza i parametri, lo fa concludere. Si tenta una volta
-         sola, a metà attesa, per non disturbare un login che sta riuscendo. */
-      if (!dentro && i === 12 && soloRimbalzo(page.url())) {
-        log('il portale è fermo sulla pagina di rimbalzo: apro la home per far concludere l\'accesso');
-        await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-      }
-    }
+    const dentro = await attendiAccesso(isLogged, { giri: 30, spintaAl: 12, trustDevicePerPrimi: 5 });
     if (dentro) { HOLD = false; await salvaSessione('login riuscito'); setState('loggato', 'Login completato ✅'); log('login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
     /* PERCHE' NON E' ANDATA: fino al 12/09/2026 qui il giornale taceva. Nel
        giornale si leggeva «2FA inserito OK», poi piu' niente: impossibile
@@ -740,7 +766,16 @@ async function autoLoginFlow() { return doAccedi(); }
        allo spegnimento. PRIMA di dichiararsi fuori — e di far chiedere un altro
        codice Guardian — si rimette quella salvata e si ricontrolla. */
     if (!dentro && await ripristinaSessione()) {
+      /* `ripristinaSessione` naviga essa stessa sul portale per rimettere la
+         memoria di pagina: e' quella navigazione a far partire il giro di
+         autenticazione, che atterra sul rimbalzo. Guardare subito dopo vuol
+         dire guardare a meta' del giro e chiamarla morta. Si aspetta, e se
+         resta appesa le si da' la stessa spinta del login. */
+      await attendiAccesso(isLogged, { giri: 20, spintaAl: 6 });
       logCache.t = 0;                  // la risposta di un attimo fa non vale più
+      /* Il verdetto resta del controllo severo — quello che pretende il
+         marcatore della home — perche' sul rimbalzo il controllo leggero
+         direbbe di si'. E' il falso positivo del 12/09, e non deve tornare. */
       dentro = await loggedIn();
       if (dentro) log('rientrato con la sessione salvata: nessun codice da chiedere ✅');
       else log('la sessione salvata non è più valida: serve un accesso con il codice');

@@ -104,10 +104,17 @@ prova('«sono dentro» lo dice la home, non l\'indirizzo', () => {
 });
 
 prova('se il portale resta appeso al rimbalzo, si prova ad aprirgli la home', () => {
-  const i = src.indexOf('const soloRimbalzo');
-  const blocco = src.slice(i, i + 1200);
+  /* Il blocco si prende INTERO, dalla sua prima riga alla sua chiusura, non a
+     misura di caratteri: contarli rende la prova fragile a qualunque commento o
+     spostamento: è già successo il 12/09/2026 su Groupama e di nuovo il 14/09
+     qui, quando la spinta è stata spostata dentro `attendiAccesso` — prova
+     rossa su un comportamento identico. Quello che si verifica non cambia. */
+  const i = src.indexOf('async function attendiAccesso');
+  const blocco = i < 0 ? '' : src.slice(i, src.indexOf('\n}', i));
+  deve(blocco, 'non trovo più l\'attesa dell\'accesso: prova da riscrivere, non da cancellare');
   deve(/page\.goto\(PORTAL_URL/.test(blocco), 'non si tenta di far concludere il giro aprendo la home');
-  deve(/i === \d+/.test(blocco), 'il tentativo non è limitato a una volta sola: rischia di disturbare un login che sta riuscendo');
+  deve(/i === spintaAl/.test(blocco), 'il tentativo non è limitato a una volta sola: rischia di disturbare un login che sta riuscendo');
+  deve(/soloRimbalzo/.test(blocco), 'si aprirebbe la home anche quando non siamo sul rimbalzo');
 });
 
 prova('un codice rifiutato lascia scritto perché', () => {
@@ -214,6 +221,41 @@ prova('del sessionStorage si scrive QUANTE voci, mai cosa contengono', () => {
       'una riga di giornale si porta dietro il contenuto del sessionStorage: ' + r);
   }
   deve(/quante/.test(salva), 'non si conta niente: al riavvio non si potra\' dire se il pezzo c\'era');
+});
+
+prova('all\'accensione si aspetta l\'accesso come si aspetta al login', () => {
+  /* LA DIFFERENZA CHE E' COSTATA MEZZA GIORNATA, il 14/09/2026.
+     Al login si aspettava fino a 30 secondi e a metà attesa si apriva la home
+     per far concludere il giro di autenticazione — e funziona: alle 13:17:22
+     quella spinta ha chiuso un accesso fermo sul rimbalzo.
+     All'accensione invece si rimettevano i cookie e si guardava UNA VOLTA
+     SOLA, subito: 13:02:39 sessione ripristinata, 13:02:50 «non più valida».
+     Non lo era. I cookie dell'identità erano salvati e vivi, e il portale
+     aveva appena consegnato un `code=`: mancava solo l'ultimo passo, e nessuno
+     glielo lasciava fare. Si è dato la colpa ai cookie che ruotano, poi al
+     sessionStorage: due spiegazioni sbagliate, perché il guasto non era nel
+     COSA si salva ma in QUANTO si aspetta. */
+  deve(/async function attendiAccesso/.test(src),
+    'l\'attesa non è in un posto solo: le due strade torneranno a comportarsi diversamente');
+  const avvio = src.indexOf('// Avvio: NON invio le credenziali') > -1
+    ? src.slice(src.indexOf('// Avvio: NON invio le credenziali'))
+    : src.slice(src.indexOf('ripristinaSessione()', src.indexOf('async function ripristinaSessione') + 50));
+  const blocco = avvio.slice(0, 2200);
+  deve(/attendiAccesso/.test(blocco),
+    'all\'accensione si guarda ancora una volta sola: una sessione viva viene dichiarata morta a metà del giro di autenticazione');
+  deve(/loggedIn\(\)/.test(blocco),
+    'il verdetto finale non usa più il controllo severo: sul rimbalzo quello leggero direbbe di sì, ed è il falso positivo del 12/09');
+  return 'stessa pazienza, verdetto severo';
+});
+
+prova('la spinta sulla pagina di rimbalzo esiste ancora, e in un posto solo', () => {
+  /* È il pezzo che fa concludere il giro OIDC. Se sparisce, tornano sia il
+     login che si arrende sia l'accensione che butta via una sessione buona. */
+  const quante = (src.match(/apro la home per far concludere l/g) || []).length;
+  deve(quante === 1, 'la spinta è sparita o è stata duplicata (' + quante + ' volte): duplicarla vuol dire due comportamenti che divergono');
+  const f = src.slice(src.indexOf('async function attendiAccesso'), src.indexOf('async function attendiAccesso') + 1200);
+  deve(/soloRimbalzo\(page\.url\(\)\)/.test(f), 'la spinta non guarda più se siamo davvero sul rimbalzo: navigherebbe a caso');
+  deve(/i === spintaAl/.test(f), 'la spinta non è più una volta sola a metà attesa: disturberebbe un accesso che sta riuscendo');
 });
 
 let ko = 0;

@@ -1,10 +1,12 @@
-echo "== chi ascolta verso l'esterno"
-ss -lntp 2>/dev/null | grep -vE '127\.0\.0\.1|\[::1\]' | head -15
-echo "== servizi web attivi"
-systemctl list-units --type=service --state=running --no-pager 2>/dev/null | grep -iE 'nginx|caddy|apache|httpd|traefik|cloudflared|tunnel' || echo "nessun proxy web fra i servizi attivi"
-echo "== caddy?"
-ls -l /etc/caddy/Caddyfile 2>/dev/null && grep -nE "timeout|reverse_proxy" /etc/caddy/Caddyfile 2>/dev/null | head -20
-echo "== cloudflared?"
-ls /etc/cloudflared/ 2>/dev/null; cat /etc/cloudflared/config.yml 2>/dev/null | head -20
-echo "== a chi punta il frontend (config pubblica)"
-grep -rhoE "https?://[a-z0-9.-]*withus[a-z0-9.-]*[^\"' ]*" /opt/withus-backend/index.html 2>/dev/null | sort -u | head -10
+echo "== Caddyfile completo (74 byte)"
+cat /etc/caddy/Caddyfile
+echo
+echo "== versione Caddy"
+caddy version 2>/dev/null || /usr/bin/caddy version 2>/dev/null
+echo
+echo "== cosa ha registrato Caddy per le quotazioni lente (09-11 settembre)"
+journalctl -u caddy --since '2026-09-09' --until '2026-09-12' --no-pager 2>/dev/null | grep -a '/moto/premio' | tail -20
+echo
+echo "== la porta 3000 è aperta verso l'esterno?"
+ufw status 2>/dev/null | head -12
+iptables -S 2>/dev/null | grep -iE '3000|DROP|REJECT' | head -10

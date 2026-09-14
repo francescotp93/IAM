@@ -103,6 +103,40 @@ prova('e la posta la interroga davvero', () => {
     'la lettura della posta non è esportata: solo il pulsante «Accedi» può usarla, e il caso senza nessuno resta scoperto');
 });
 
+prova('la lettura della posta sta SOPRA l\'interruttore del rientro automatico', () => {
+  /* QUESTA E' LA PROVA CHE MANCAVA, ed e' costata una PR intera.
+     Il 14/09/2026 il pezzo era stato scritto sotto `if (!conRientro) continue;`.
+     In produzione FONTI_AUTOLOGIN non c'e' — il guardiano lo dice da solo ad
+     ogni avvio, «rientro automatico: no» — quindi il giro usciva PRIMA di
+     arrivarci: otto prove verdi su codice che sulla macchina non girava mai.
+     E' il difetto che CLAUDE.md mette al primo posto, e nessuna prova verde se
+     ne accorge da sola: va sorvegliato l'ORDINE.
+
+     Perche' sopra e non sotto, nel merito: quell'interruttore governa il
+     rimandare CREDENZIALI ai portali da soli, spento apposta dopo la mattina
+     dei quattro codici Groupama. Prendere un codice gia' arrivato nella
+     casella non e' quella cosa: non manda niente a nessuno e non fa nascere
+     nessuna mail nuova. */
+  const posta = src.indexOf('fermoAlCodice(statoOra');
+  const interruttore = src.indexOf("if (!conRientro)");
+  deve(interruttore > -1, 'non trovo piu\' l\'interruttore del rientro automatico: prova da riscrivere');
+  deve(posta > -1, 'non trovo piu\' la lettura della posta nel giro di controllo');
+  deve(posta < interruttore,
+    'la lettura della posta e\' finita sotto FONTI_AUTOLOGIN: con l\'interruttore spento — cioe\' com\'e\' in produzione — non viene eseguita mai');
+});
+
+prova('ma si porta dietro i controlli che stavano piu\' sotto', () => {
+  /* Salendo sopra l'interruttore ci si lascia alle spalle due guardie che
+     servivano: lo scraper spento (non ha senso interrogarlo) e la quarantena
+     (senza, si fruga nella posta ogni cinque minuti per sempre). */
+  const da = src.indexOf('IL CODICE DALLA POSTA STA SOPRA');
+  const cond = da < 0 ? '' : src.slice(src.indexOf('if (', da), src.indexOf('fermoAlCodice(statoOra', da));
+  deve(/r && r\.ok/.test(cond),
+    'si interroga anche uno scraper che non risponde: chiamata sprecata a ogni giro');
+  deve(/quarantenaFinoA <= ora/.test(cond),
+    'la quarantena non vale piu\' per la posta: si va a frugare nella casella ogni cinque minuti all\'infinito');
+});
+
 prova('«consegnato» non viene scambiato per «entrato»', () => {
   /* Se il portale rifiuta il codice serve comunque una persona. Dire «rientrata»
      spegnerebbe l'allarme su una fonte che è ancora fuori. */

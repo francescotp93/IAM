@@ -22020,6 +22020,10 @@ function apriAnagrafica(id) {
           <div class="cl-tabs">
             <button class="cl-tab active" data-t="pol" onclick="clTab('pol')"><i class="ti ti-file-invoice"></i> Polizze</button>
             <button class="cl-tab" data-t="prev" onclick="clTab('prev')"><i class="ti ti-file-text"></i> Preventivi</button>
+            <!-- Il preventivo scritto a mano: sta accanto a quelli calcolati
+                 perche' per il cliente sono la stessa cosa, ma resta un
+                 elenco separato perche' per i conti dell'agenzia non lo e'. -->
+            ${ppVietato() ? '' : '<button class="cl-tab" data-t="pers" onclick="clTab(\'pers\')"><i class="ti ti-file-pencil"></i> Personalizzati</button>'}
             <button class="cl-tab" data-t="doc" onclick="clTab('doc')"><i class="ti ti-files"></i> Documenti</button>
             <button class="cl-tab" data-t="sin" onclick="clTab('sin')"><i class="ti ti-alert-triangle"></i> Sinistri</button>
             <!-- Blocco C: la cronologia. In un gestionale è il cuore della
@@ -22031,6 +22035,7 @@ function apriAnagrafica(id) {
           </div>
           <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
           <div id="cl-prev" class="cl-pane" style="display:none"></div>
+          <div id="cl-pers" class="cl-pane" style="display:none"></div>
           <div id="cl-doc" class="cl-pane" style="display:none"></div>
           <div id="cl-sin" class="cl-pane" style="display:none"></div>
           <div id="cl-note" class="cl-pane" style="display:none"></div>
@@ -22055,6 +22060,7 @@ function apriAnagrafica(id) {
   document.body.insertAdjacentHTML('beforeend', html);
   caricaCollegati(a.id, a.nominativo);
   caricaGruppiCliente(a.id);
+  if (!ppVietato()) ppCarica(a.id);
   // L'intermediario può non essere ancora in cache (scheda aperta senza passare da
   // Clienti): lo carico e riempio la riga quando c'è.
   if (a.intermediario_id) caricaIntermediari().then(() => { const el = document.getElementById('sc-interm'); if (el) { const n = intermediarioNome(a.intermediario_id); if (n) { el.textContent = n; el.classList.remove('empty'); } } });
@@ -22884,7 +22890,7 @@ async function decidiResidenza(id, campi, riga){
 }
 
 function clTab(t) {
-  ['pol','prev','doc','sin','note','tratt','cro'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
+  ['pol','prev','pers','doc','sin','note','tratt','cro'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
   document.querySelectorAll('.cl-tab').forEach(b => b.classList.toggle('active', b.dataset.t === t));
 }
 async function caricaCollegati(id, nominativo) {
@@ -23315,6 +23321,362 @@ function popolaSelectInterm(selId, valore) {
     const nome = esc(((c.cognome || '') + ' ' + (c.nome || '')).trim() || 'Collaboratore');
     return `<option value="${esc(c.id)}"${c.id === valore ? ' selected' : ''}>${nome}</option>`;
   }).join('');
+}
+
+
+/* ══════════ PREVENTIVI PERSONALIZZATI ══════════
+   Il preventivo scritto a mano per un cliente: quello che non esce da nessun
+   motore di tariffa. Vive nella scheda cliente, linguetta «Personalizzati»,
+   e si salva in quote_preventivi_personalizzati.
+
+   Perche' non nello Storico insieme agli altri: li' ogni riga nasce da un
+   motore (modulo, prodotto_id, dati della richiesta) e alimenta Performance e
+   tasso di conversione. Un premio battuto a mano dentro quel conto lo
+   falserebbe, e un numero falso in un cruscotto e' peggio di un numero che
+   manca, perche' nessuno lo mette in dubbio.
+
+   Prefisso globale `pp`: verificato libero prima di sceglierlo. */
+
+const PP_FRAZIONAMENTI = [
+  ['annuale', 'Annuale'], ['semestrale', 'Semestrale'],
+  ['quadrimestrale', 'Quadrimestrale'], ['trimestrale', 'Trimestrale'],
+  ['mensile', 'Mensile'], ['premio_unico', 'Premio unico']
+];
+
+/* Il testo che il cliente legge. Sta qui solo come valore di partenza del
+   modulo nuovo: sulla riga salvata se ne conserva una copia propria, perche'
+   se un domani il testo cambia i preventivi gia' consegnati devono continuare
+   a mostrare quello che il cliente ha letto davvero. */
+const PP_DISCLAIMER_DEFAULT = 'Il presente preventivo ha carattere puramente indicativo e non costituisce proposta contrattuale né impegno all\'assunzione del rischio. Le condizioni, le garanzie, le esclusioni e i massimali sono quelli riportati nel set informativo del prodotto, che deve essere consegnato e letto prima della sottoscrizione. Il premio indicato può variare in base ai dati definitivi e alle valutazioni della Compagnia.';
+
+let PP_CACHE = [];        // i preventivi personalizzati del cliente aperto
+let PP_CLIENTE = null;    // id del cliente aperto
+let PP_CATALOGO = null;   // { compagnie: [...], prodotti: [...] }
+
+function ppFrazLabel(k) {
+  const v = PP_FRAZIONAMENTI.find(f => f[0] === k);
+  return v ? v[1] : (k || '');
+}
+
+/* Quante rate in un anno. Il premio unico non e' un annuale travestito: e' un
+   versamento solo, e chiedergli «quante rate» non ha senso — per questo torna
+   null e non 1. */
+function ppRateAnno(k) {
+  if (k === 'premio_unico') return null;
+  return (typeof titRateAnno === 'function') ? titRateAnno(k) : 1;
+}
+
+function ppNumero(r) {
+  return (r && r.numero)
+    ? ('PP-' + new Date(r.creato_il).getFullYear() + '-' + String(r.numero).padStart(4, '0'))
+    : ('#' + String((r && r.id) || '').slice(0, 8));
+}
+
+/* Il premio non si mostra MAI senza il suo frazionamento: «€ 40,00» da solo
+   non dice se sono quaranta al mese o quaranta all'anno, e fra i due c'e' un
+   fattore dodici. Questa funzione e' l'unico posto dove i due pezzi si
+   scrivono insieme, cosi' il PDF della Fase 2 non puo' dimenticarne uno. */
+function ppPremioTesto(importo, fraz) {
+  if (importo == null || importo === '') return '—';
+  const et = fraz === 'premio_unico' ? 'premio unico' : ppFrazLabel(fraz).toLowerCase();
+  return soldi(importo) + ' ' + et;
+}
+
+/* La porta: un preventivo personalizzato E' un preventivo. Il segnalatore non
+   e' iscritto al RUI e non fa intermediazione, quindi qui non entra — e non
+   per pulizia dell'interfaccia, ma perche' lo vieta la legge. Si passa dalla
+   stessa funzione che sorveglia tutte le altre porte, non da un controllo
+   scritto apposta per questa. */
+function ppVietato() {
+  return (typeof profiloVietaPreventivo === 'function')
+    ? profiloVietaPreventivo(currentUser) : null;
+}
+
+/* L'elenco delle tendine e' l'unione di quello che il sistema gia' conosce: il
+   catalogo prodotti e i nomi gia' usati su preventivi e polizze. NON e'
+   un'anagrafica compagnie — quella non esiste ancora — quindi «Altro» resta
+   sempre a disposizione e nessun nome viene inventato per riempire il menu. */
+async function ppCatalogo() {
+  if (PP_CATALOGO) return PP_CATALOGO;
+  const compagnie = [], prodotti = [];
+  const aggiungi = (lista, v) => {
+    const s = String(v == null ? '' : v).trim();
+    if (!s) return;
+    if (lista.some(x => x.toLowerCase() === s.toLowerCase())) return;
+    lista.push(s);
+  };
+  try {
+    const { data } = await db.from('quote_prodotti_catalogo')
+      .select('nome,compagnie').eq('attivo', true).order('ordine');
+    (data || []).forEach(p => {
+      aggiungi(prodotti, p.nome);
+      (p.compagnie || []).forEach(c => aggiungi(compagnie, c));
+    });
+  } catch (e) {}
+  try {
+    const { data } = await db.from('quote_preventivi').select('compagnia,prodotto').limit(500);
+    (data || []).forEach(p => { aggiungi(compagnie, p.compagnia); aggiungi(prodotti, p.prodotto); });
+  } catch (e) {}
+  try {
+    const { data } = await db.from('quote_polizze').select('compagnia,prodotto').limit(500);
+    (data || []).forEach(p => { aggiungi(compagnie, p.compagnia); aggiungi(prodotti, p.prodotto); });
+  } catch (e) {}
+  const ord = (a, b) => a.localeCompare(b, 'it');
+  PP_CATALOGO = { compagnie: compagnie.sort(ord), prodotti: prodotti.sort(ord) };
+  return PP_CATALOGO;
+}
+
+async function ppCarica(clienteId) {
+  PP_CLIENTE = clienteId;
+  const pane = document.getElementById('cl-pers');
+  if (!pane || !db) return;
+  if (ppVietato()) { pane.innerHTML = `<div class="cl-empty">${esc(ppVietato())}</div>`; return; }
+  pane.innerHTML = '<div class="cl-empty">Caricamento…</div>';
+  try {
+    const { data, error } = await db.from('quote_preventivi_personalizzati')
+      .select('*').eq('cliente_id', clienteId).order('creato_il', { ascending: false });
+    if (error) throw error;
+    PP_CACHE = data || [];
+  } catch (e) {
+    pane.innerHTML = `<div class="cl-empty">Preventivi personalizzati non disponibili.<br><small>${esc(e.message || e)}</small></div>`;
+    return;
+  }
+  ppRenderLista();
+}
+
+function ppRenderLista() {
+  const pane = document.getElementById('cl-pers');
+  if (!pane) return;
+  const nuovo = `<div style="margin-bottom:10px"><button class="btn-emetti gruppi-add-btn" style="padding:5px 12px" onclick="ppApri('${esc(PP_CLIENTE)}')"><i class="ti ti-plus"></i> Nuovo preventivo personalizzato</button></div>`;
+  if (!PP_CACHE.length) {
+    pane.innerHTML = nuovo + '<div class="cl-empty">Nessun preventivo personalizzato per questo cliente.</div>';
+    return;
+  }
+  pane.innerHTML = nuovo + PP_CACHE.map(r => {
+    /* Lo sconto si legge in un colpo d'occhio o non si legge: il pieno
+       barrato accanto allo scontato. Due numeri incolonnati senza il segno
+       che li distingue sono due prezzi, non uno sconto. */
+    const scontato = r.sconto_applicato && r.premio_scontato != null;
+    const prezzo = scontato
+      ? `<span style="text-decoration:line-through;color:var(--muted);font-weight:500">${esc(soldi(r.premio_pieno))}</span> <b>${esc(ppPremioTesto(r.premio_scontato, r.frazionamento))}</b>`
+      : `<b>${esc(ppPremioTesto(r.premio_pieno, r.frazionamento))}</b>`;
+    const auth = r.da_autorizzare ? ' <span class="tk-badge st-aperto">da autorizzare</span>' : '';
+    const righe = Array.isArray(r.descrizioni) ? r.descrizioni.length : 0;
+    return `<div class="cl-row" style="align-items:center;cursor:pointer" onclick="ppApri('${esc(PP_CLIENTE)}','${esc(r.id)}')">
+      <div style="flex:1"><b>${esc(r.tipo_prodotto)}</b>${auth}
+        <div class="cl-sub">${esc(ppNumero(r))} · ${esc(r.compagnia)}${r.garanzia ? ' · ' + esc(r.garanzia) : ''} · ${esc(dataIt(r.creato_il))}${righe ? ' · ' + righe + (righe === 1 ? ' descrizione' : ' descrizioni') : ''}</div></div>
+      <div style="text-align:right">${prezzo}</div>
+    </div>`;
+  }).join('');
+}
+
+/* Una tendina con «Altro»: il valore scelto e il testo libero finiscono nella
+   STESSA colonna, cosi' un raggruppamento per compagnia continua a funzionare
+   senza dover unire due campi ogni volta. */
+function ppSelectConAltro(idSel, idTxt, voci, valore, etichetta) {
+  const noto = valore && voci.some(v => v.toLowerCase() === String(valore).toLowerCase());
+  const opts = voci.map(v => `<option value="${esc(v)}"${noto && v.toLowerCase() === String(valore).toLowerCase() ? ' selected' : ''}>${esc(v)}</option>`).join('');
+  const altro = valore && !noto;
+  return `<div class="field"><label>${esc(etichetta)} <span class="req">*</span></label>
+    <select id="${idSel}" onchange="ppAltroToggle('${idSel}','${idTxt}')">
+      <option value="">— scegli —</option>${opts}
+      <option value="__altro__"${altro ? ' selected' : ''}>Altro…</option>
+    </select>
+    <input type="text" id="${idTxt}" placeholder="Scrivi il nome per esteso" value="${esc(altro ? valore : '')}" style="margin-top:7px;display:${altro ? 'block' : 'none'}">
+  </div>`;
+}
+
+function ppAltroToggle(idSel, idTxt) {
+  const sel = document.getElementById(idSel), txt = document.getElementById(idTxt);
+  if (!sel || !txt) return;
+  const altro = sel.value === '__altro__';
+  txt.style.display = altro ? 'block' : 'none';
+  if (altro) txt.focus(); else txt.value = '';
+}
+
+/* Il valore finale di una tendina con «Altro»: il testo libero se e' quello
+   scelto, altrimenti la voce del menu. */
+function ppValoreConAltro(idSel, idTxt) {
+  const sel = document.getElementById(idSel), txt = document.getElementById(idTxt);
+  if (!sel) return '';
+  return (sel.value === '__altro__' ? (txt ? txt.value : '') : sel.value).trim();
+}
+
+function ppDescRiga(testo) {
+  return `<div class="pp-desc-riga" style="display:flex;gap:7px;margin-bottom:7px">
+    <input type="text" class="pp-desc-txt" value="${esc(testo || '')}" placeholder="Es. Massimale RC 5.000.000 € · Franchigia 250 €" style="flex:1">
+    <button type="button" class="ghost" style="padding:6px 10px" title="Togli questa riga" onclick="this.parentNode.remove()"><i class="ti ti-minus"></i></button>
+  </div>`;
+}
+
+function ppDescAggiungi(testo) {
+  const box = document.getElementById('pp-desc');
+  if (!box) return;
+  box.insertAdjacentHTML('beforeend', ppDescRiga(testo));
+  const ultimo = box.querySelector('.pp-desc-riga:last-child .pp-desc-txt');
+  if (ultimo && !testo) ultimo.focus();
+}
+
+function ppDescLeggi() {
+  return [...document.querySelectorAll('#pp-desc .pp-desc-txt')]
+    .map(i => i.value.trim()).filter(Boolean);
+}
+
+/* Lo sconto spento non lascia in giro un premio scontato: il campo si svuota
+   e si blocca. Se restasse scritto, il database lo rifiuterebbe (vincolo
+   pp_sconto_coerente) e l'utente vedrebbe un errore che non ha causato. */
+function ppScontoToggle() {
+  const on = document.getElementById('pp-sconto').checked;
+  const campo = document.getElementById('pp-scontato');
+  if (!campo) return;
+  campo.disabled = !on;
+  if (!on) campo.value = '';
+  const box = document.getElementById('pp-scontato-box');
+  if (box) box.style.opacity = on ? '1' : '.45';
+}
+
+async function ppApri(clienteId, id) {
+  const vietato = ppVietato();
+  if (vietato) { alert(vietato); return; }
+  const cat = await ppCatalogo();
+  await caricaIntermediari();
+  const r = id ? PP_CACHE.find(x => x.id === id) : null;
+  const desc = (r && Array.isArray(r.descrizioni)) ? r.descrizioni : [];
+  const frazOpts = PP_FRAZIONAMENTI.map(([k, l]) =>
+    `<option value="${k}"${(r ? r.frazionamento : 'annuale') === k ? ' selected' : ''}>${esc(l)}</option>`).join('');
+  const intermSel = r ? (r.intermediario_id || '') : (mioIntermediarioId() || '');
+  const sconto = !!(r && r.sconto_applicato);
+
+  const html = `
+  <div class="modal-ov" id="pp-overlay" onclick="if(event.target.id==='pp-overlay')this.remove()">
+    <div class="modal" style="width:720px;max-width:96vw;max-height:92vh;overflow:auto">
+      <div class="modal-title">${r ? 'Preventivo personalizzato · ' + esc(ppNumero(r)) : 'Nuovo preventivo personalizzato'}</div>
+
+      ${ppSelectConAltro('pp-compagnia', 'pp-compagnia-altro', cat.compagnie, r ? r.compagnia : '', 'Compagnia')}
+      ${ppSelectConAltro('pp-prodotto', 'pp-prodotto-altro', cat.prodotti, r ? r.tipo_prodotto : '', 'Tipo prodotto')}
+
+      <div class="field"><label>Garanzia scelta</label>
+        <input type="text" id="pp-garanzia" value="${esc(r ? (r.garanzia || '') : '')}" placeholder="Es. Furto e incendio · RC Capofamiglia"></div>
+
+      <div class="field"><label>Frazionamento</label>
+        <select id="pp-frazionamento">${frazOpts}</select>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:5px">Vale sia per il premio pieno sia per quello scontato: è uno solo.</div></div>
+
+      <div class="field"><label>Premio pieno € <span class="req">*</span></label>
+        <input type="number" step="0.01" min="0" id="pp-premio" value="${r && r.premio_pieno != null ? esc(r.premio_pieno) : ''}"></div>
+
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="pp-sconto" ${sconto ? 'checked' : ''} onchange="ppScontoToggle()" style="width:auto;margin:0">
+          Sconto applicato</label></div>
+
+      <div class="field" id="pp-scontato-box" style="opacity:${sconto ? '1' : '.45'}">
+        <label>Premio scontato €</label>
+        <input type="number" step="0.01" min="0" id="pp-scontato" ${sconto ? '' : 'disabled'} value="${r && r.premio_scontato != null ? esc(r.premio_scontato) : ''}"></div>
+
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="pp-autorizzare" ${r && r.da_autorizzare ? 'checked' : ''} style="width:auto;margin:0">
+          Da autorizzare dalla Direzione</label></div>
+
+      <div class="field"><label>Descrizioni</label>
+        <div id="pp-desc">${desc.map(t => ppDescRiga(t)).join('')}</div>
+        <button type="button" class="ghost" style="padding:6px 12px" onclick="ppDescAggiungi()"><i class="ti ti-plus"></i> Aggiungi riga</button></div>
+
+      <div class="field"><label>Intermediario di riferimento</label>
+        <select id="pp-intermediario"><option value="">— nessuno —</option></select></div>
+
+      <div class="field"><label>Disclaimer</label>
+        <textarea id="pp-disclaimer" rows="5" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;resize:vertical">${esc(r ? r.disclaimer : PP_DISCLAIMER_DEFAULT)}</textarea>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:5px">Modificabile su questo preventivo: la copia salvata resta quella che il cliente ha letto.</div></div>
+
+      <div class="modal-err" id="pp-err"></div>
+      <div class="modal-actions">
+        <button class="primary" onclick="ppSalva('${esc(clienteId)}'${id ? ",'" + esc(id) + "'" : ''})">Salva</button>
+        <button class="ghost" onclick="document.getElementById('pp-overlay').remove()">Annulla</button>
+        ${r && currentUser.role === 'admin' ? `<button class="ghost" style="color:#c0392b" onclick="ppElimina('${esc(r.id)}')"><i class="ti ti-trash"></i> Elimina</button>` : ''}
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  popolaSelectInterm('pp-intermediario', intermSel);
+  if (!desc.length) ppDescAggiungi('');
+}
+
+async function ppSalva(clienteId, id) {
+  const err = document.getElementById('pp-err');
+  const dai = m => { if (err) err.textContent = m; else alert(m); };
+  const vietato = ppVietato();
+  if (vietato) { dai(vietato); return; }
+
+  const compagnia = ppValoreConAltro('pp-compagnia', 'pp-compagnia-altro');
+  const prodotto = ppValoreConAltro('pp-prodotto', 'pp-prodotto-altro');
+  if (!compagnia) { dai('Scegli la compagnia (o «Altro…» e scrivi il nome).'); return; }
+  if (!prodotto) { dai('Scegli il tipo di prodotto (o «Altro…» e scrivi il nome).'); return; }
+
+  const premioRaw = document.getElementById('pp-premio').value.trim();
+  if (premioRaw === '' || isNaN(Number(premioRaw)) || Number(premioRaw) < 0) {
+    dai('Il premio pieno serve, ed è un importo: non lasciarlo vuoto.'); return;
+  }
+  const premio = Number(premioRaw);
+
+  const sconto = document.getElementById('pp-sconto').checked;
+  let scontato = null;
+  if (sconto) {
+    const s = document.getElementById('pp-scontato').value.trim();
+    if (s === '' || isNaN(Number(s))) { dai('Hai acceso lo sconto: scrivi il premio scontato, oppure spegnilo.'); return; }
+    scontato = Number(s);
+    /* Uno «sconto» più alto del pieno non è uno sconto. Fermarlo qui e non
+       lasciarlo al vincolo del database: l'errore di Postgres non dice a
+       nessuno che cosa ha sbagliato. */
+    if (scontato > premio) { dai('Il premio scontato non può superare quello pieno.'); return; }
+    if (scontato < 0) { dai('Il premio scontato non può essere negativo.'); return; }
+  }
+
+  const riga = {
+    cliente_id: clienteId,
+    compagnia: compagnia,
+    tipo_prodotto: prodotto,
+    garanzia: document.getElementById('pp-garanzia').value.trim() || null,
+    premio_pieno: premio,
+    frazionamento: document.getElementById('pp-frazionamento').value,
+    sconto_applicato: sconto,
+    premio_scontato: scontato,
+    da_autorizzare: document.getElementById('pp-autorizzare').checked,
+    descrizioni: ppDescLeggi(),
+    intermediario_id: document.getElementById('pp-intermediario').value || null,
+    disclaimer: document.getElementById('pp-disclaimer').value.trim() || PP_DISCLAIMER_DEFAULT,
+    aggiornato_il: new Date().toISOString()
+  };
+
+  try {
+    if (id) {
+      const { error } = await db.from('quote_preventivi_personalizzati').update(riga).eq('id', id);
+      if (error) throw error;
+    } else {
+      riga.creato_da = currentUser.id;
+      riga.creato_nome = currentUser.name || null;
+      const { error } = await db.from('quote_preventivi_personalizzati').insert(riga);
+      if (error) throw error;
+    }
+    document.getElementById('pp-overlay').remove();
+    await ppCarica(clienteId);
+    try { quotoToast(id ? 'Preventivo personalizzato aggiornato' : 'Preventivo personalizzato salvato'); } catch (e) {}
+  } catch (e) {
+    dai('Non riesco a salvare: ' + (e.message || e));
+  }
+}
+
+async function ppElimina(id) {
+  if (currentUser.role !== 'admin') return;
+  if (!confirm('Eliminare questo preventivo personalizzato? Non si torna indietro.')) return;
+  try {
+    const { error } = await db.from('quote_preventivi_personalizzati').delete().eq('id', id);
+    if (error) throw error;
+    document.getElementById('pp-overlay').remove();
+    await ppCarica(PP_CLIENTE);
+    try { quotoToast('Preventivo personalizzato eliminato'); } catch (e) {}
+  } catch (e) { alert('Non riesco a eliminare: ' + (e.message || e)); }
 }
 
 /* ══════════ RICERCA GLOBALE ══════════ */

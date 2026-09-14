@@ -1,24 +1,59 @@
-id: axavivo-1789391595  exit: 0  2026-09-14 13:13:31
+id: fontiaccedi-1789391874  exit: 0  2026-09-14 13:18:22
 ----
 == ora
-2026-09-14 13:13:31
-== /status (dice se siamo DENTRO il portale, non se il login è stato fatto da qui)
-{"url":"https://mobility.axa-italia.it/portal/?code=yGqi8VldBUQERAvP_xwCqdPxM4-MAtMHnlfHDrsnKtN&state=7c2fcbca-088a-448f-bdf2-c3e2441c5f77&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=a08dab45-85b5-4354-bfc9-0420a481be9b#!/","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"ha_totp":false,"totp_illeggibile":false,"login_msg":"Pronto: avvia il log
-== /loginstate (dice a che punto è la PROCEDURA di login)
-{"running":false,"step":"pronto","since":1789390970569,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
-== chi ha scritto auth.json alle 13:07? cerco il salvataggio nel giornale
-Sep 14 13:02:12 vps-d6443a46 systemd[1]: Stopping axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700...
-13:02:12 [axa] SIGTERM: nessuna sessione viva, tengo la copia su disco
-Sep 14 13:02:13 vps-d6443a46 systemd[1]: axa-scraper.service: Deactivated successfully.
-Sep 14 13:02:13 vps-d6443a46 systemd[1]: Stopped axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Sep 14 13:02:13 vps-d6443a46 systemd[1]: axa-scraper.service: Consumed 1min 8.204s CPU time over 5min 10.243s wall clock time, 830M memory peak.
-Sep 14 13:02:13 vps-d6443a46 systemd[1]: Started axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Sep 14 13:02:13 vps-d6443a46 systemd[1]: Stopping axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700...
-Sep 14 13:02:13 vps-d6443a46 systemd[1]: axa-scraper.service: Deactivated successfully.
-Sep 14 13:02:13 vps-d6443a46 systemd[1]: Stopped axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Sep 14 13:02:13 vps-d6443a46 systemd[1]: Started axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-🔑 VNC AXA su 127.0.0.1:5906 (password: axa2026) — tunnel SSH dal Mac per il primo login se serve
-13:02:19 [axa] telecomando HTTP su 127.0.0.1:4700
-13:02:39 [axa] sessione ripresa da auth.json: 104 cookie, 0 voci di sessionStorage
-13:02:50 [axa] la sessione salvata non è più valida: serve un accesso con il codice
-13:02:50 [axa] PRONTO al login — attendo Accedi dall'utente
+2026-09-14 13:18:22
+== il backend ha ricevuto richieste su /fonti negli ultimi 25 minuti?
+2026-09-14T13:16:50+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:16:50.756Z OPTIONS /fonti/c-axa/loginstate 204 1ms u:-
+2026-09-14T13:16:50+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:16:50.805Z GET    /fonti/c-axa/loginstate 304 8ms u:a5ab0cd0
+2026-09-14T13:16:53+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:16:53.900Z GET    /fonti/c-axa/loginstate 304 5ms u:a5ab0cd0
+2026-09-14T13:16:56+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:16:56.954Z OPTIONS /fonti/c-axa/loginstate 204 1ms u:-
+2026-09-14T13:16:57+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:16:57.064Z GET    /fonti/c-axa/loginstate 200 6ms u:a5ab0cd0
+2026-09-14T13:17:08+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:08.780Z OPTIONS /fonti/c-axa/conferma-codice 204 1ms u:-
+2026-09-14T13:17:11+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:11.966Z POST   /fonti/c-axa/conferma-codice 200 9ms u:a5ab0cd0
+2026-09-14T13:17:12+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:12.029Z OPTIONS /fonti 204 1ms u:-
+2026-09-14T13:17:15+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:12.081Z GET    /fonti 200 3510ms u:a5ab0cd0
+2026-09-14T13:17:15+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:15.698Z OPTIONS /fonti/connettore 204 0ms u:-
+2026-09-14T13:17:15+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:15.699Z OPTIONS /fonti/connettore/catture 204 0ms u:-
+2026-09-14T13:17:15+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:15.747Z GET    /fonti/connettore/catture 304 4ms u:a5ab0cd0
+2026-09-14T13:17:15+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:15.748Z GET    /fonti/connettore 304 4ms u:a5ab0cd0
+2026-09-14T13:17:29+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:29.755Z OPTIONS /fonti/c-axa/conferma-codice 204 1ms u:-
+2026-09-14T13:17:29+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:29.806Z POST   /fonti/c-axa/conferma-codice 200 10ms u:a5ab0cd0
+2026-09-14T13:17:29+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:29.870Z OPTIONS /fonti 204 1ms u:-
+2026-09-14T13:17:31+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:08.831Z POST   /fonti/c-axa/conferma-codice 200 22563ms u:a5ab0cd0
+2026-09-14T13:17:33+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:29.920Z GET    /fonti 200 3539ms u:a5ab0cd0
+2026-09-14T13:17:33+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:33.522Z OPTIONS /fonti/connettore 204 1ms u:-
+2026-09-14T13:17:33+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:33.525Z OPTIONS /fonti/connettore/catture 204 0ms u:-
+2026-09-14T13:17:33+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:33.568Z GET    /fonti/connettore 304 2ms u:a5ab0cd0
+2026-09-14T13:17:33+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:33.571Z GET    /fonti/connettore/catture 304 1ms u:a5ab0cd0
+2026-09-14T13:17:37+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:33.513Z GET    /fonti 200 3510ms u:a5ab0cd0
+2026-09-14T13:17:37+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:37.094Z GET    /fonti/connettore/catture 304 2ms u:a5ab0cd0
+2026-09-14T13:17:37+00:00 vps-d6443a46 node[2533226]: 2026-09-14T13:17:37.095Z GET    /fonti/connettore 304 4ms u:a5ab0cd0
+
+== errori del backend
+
+== e Caddy cosa ha visto arrivare? (registro nuovo)
+"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/loginstate"	"duration":0.001963532	"status":204
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/loginstate"	"duration":0.008177915	"status":304
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/loginstate"	"duration":0.005822902	"status":304
+"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/loginstate"	"duration":0.001280807	"status":204
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/loginstate"	"duration":0.006909553	"status":200
+"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/conferma-codice"	"duration":0.001523899	"status":204
+"method":"POST","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/conferma-codice"	"duration":0.01029274	"status":200
+"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti?[parametri non registrati]"	"duration":0.004445287	"status":204
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti?[parametri non registrati]"	"duration":3.512563558	"status":200
+"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/connettore"	"duration":0.001167672	"status":204
+"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/connettore/catture"	"duration":0.001518092	"status":204
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore/catture"	"duration":0.004883925	"status":304
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore"	"duration":0.005893748	"status":304
+"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/conferma-codice"	"duration":0.002039548	"status":204
+"method":"POST","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/conferma-codice"	"duration":0.011254004	"status":200
+"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti?[parametri non registrati]"	"duration":0.001634025	"status":204
+"method":"POST","host":"api.withusassicurazioni.it","uri":"/fonti/c-axa/conferma-codice"	"duration":22.565308511	"status":200
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti?[parametri non registrati]"	"duration":3.542013132	"status":200
+"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/connettore"	"duration":0.005461514	"status":204
+"method":"OPTIONS","host":"api.withusassicurazioni.it","uri":"/fonti/connettore/catture"	"duration":0.007300872	"status":204
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore"	"duration":0.002709443	"status":304
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore/catture"	"duration":0.002634382	"status":304
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti?[parametri non registrati]"	"duration":3.514094089	"status":200
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore/catture"	"duration":0.003743841	"status":304
+"method":"GET","host":"api.withusassicurazioni.it","uri":"/fonti/connettore"	"duration":0.006741081	"status":304

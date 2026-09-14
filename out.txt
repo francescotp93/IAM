@@ -1,9 +1,22 @@
-id: caddylog-1789391104  exit: 0  2026-09-14 13:05:35
+id: caddyfix-1789391201  exit: 0  2026-09-14 13:07:06
 ----
-copia di sicurezza: /etc/caddy/Caddyfile.bak-20260914-130530
-== la configurazione sta in piedi?
-valida
-Job for caddy.service failed.
-See "systemctl status caddy.service" and "journalctl -xeu caddy.service" for details.
-health dal mondo esterno: HTTP 200
-== cosa ha registrato davvero (deve NON contenere parametri)
+== PRIMA DI TUTTO: rimetto la configurazione che funziona (/etc/caddy/Caddyfile.bak-20260914-130530)
+ripristinata e ricaricata
+health: HTTP 200
+sul disco adesso c'e':
+api.withusassicurazioni.it {
+	encode gzip
+	reverse_proxy localhost:3000
+}
+
+== PERCHE' IL RICARICAMENTO ERA FALLITO
+Sep 14 13:05:30 vps-d6443a46 caddy[1323]: {"level":"error","ts":1789391130.8554292,"logger":"admin.api","msg":"request error","error":"loading config: loading new config: setting up custom log 'log0': opening log writer using &logging.FileWriter{Filename:\"/var/log/caddy/api-access.log\", Mode:0x0, DirMode:\"\", Roll:(*bool)(nil), RollSizeMB:10, RollInterval:0, RollAtMinutes:[]int(nil), RollAt:[]string(nil), RollCompress:(*bool)(nil), RollCompression:\"\", RollLocalTime:false, RollKeep:5, RollKeepDays:30, BackupTimeFormat:\"\"}: open /var/log/caddy/api-access.log: permission denied","status_code":400}
+Sep 14 13:05:30 vps-d6443a46 caddy[2535447]: Error: sending configuration to instance: caddy responded with error: HTTP 400: {"error":"loading config: loading new config: setting up custom log 'log0': opening log writer using \u0026logging.FileWriter{Filename:\"/var/log/caddy/api-access.log\", Mode:0x0, DirMode:\"\", Roll:(*bool)(nil), RollSizeMB:10, RollInterval:0, RollAtMinutes:[]int(nil), RollAt:[]string(nil), RollCompress:(*bool)(nil), RollCompression:\"\", RollLocalTime:false, RollKeep:5, RollKeepDays:30, BackupTimeFormat:\"\"}: open /var/log/caddy/api-access.log: permission denied"}
+Sep 14 13:05:30 vps-d6443a46 systemd[1]: caddy.service: Control process exited, code=exited, status=1/FAILURE
+Sep 14 13:05:30 vps-d6443a46 systemd[1]: Reload failed for caddy.service - Caddy.
+== il servizio puo' scrivere in /var/log?
+User=caddy
+ReadWritePaths=
+ProtectSystem=full
+LogsDirectory=
+drwxr-xr-x 2 caddy caddy 4096 Sep 14 13:05 /var/log/caddy

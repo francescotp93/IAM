@@ -5376,6 +5376,57 @@ const avvio = async () => {
       return '2 descrizioni su 3 righe, la vuota scartata';
     });
 
+    await prova('personalizzati: l\'intermediario si puo\' scrivere a mano', async () => {
+      await apriScheda();
+      const r = await page.evaluate(async () => {
+        document.getElementById('pp-overlay')?.remove();
+        await ppApri('cli-1');
+        const sel = document.getElementById('pp-intermediario');
+        const voci = [...sel.options].map(o => o.value);
+        const primaNascosto = getComputedStyle(document.getElementById('pp-interm-manuale')).display === 'none';
+        sel.value = '__altro__'; sel.dispatchEvent(new Event('change'));
+        const dopoVisibile = getComputedStyle(document.getElementById('pp-interm-manuale')).display !== 'none';
+        // compilo tutto il resto e salvo
+        const s2 = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('change')); };
+        s2('pp-compagnia', '__altro__'); document.getElementById('pp-compagnia-altro').value = 'Reale Mutua';
+        s2('pp-prodotto', '__altro__'); document.getElementById('pp-prodotto-altro').value = 'Casa';
+        document.getElementById('pp-premio').value = '300';
+        document.getElementById('pp-interm-nome').value = 'Verdi Giuseppe';
+        document.getElementById('pp-interm-rui').value = 'E000111222';
+        await ppSalva('cli-1');
+        const ins = window.__COLLAUDO.db.filter(x =>
+          x.tabella === 'quote_preventivi_personalizzati' && x.operazione === 'insert').pop();
+        return { voci, primaNascosto, dopoVisibile, payload: ins && ins.payload };
+      });
+      deve(r.voci.includes('__altro__'), 'nella tendina non c\'e\' la voce per scriverlo a mano');
+      deve(r.primaNascosto, 'i campi a mano si vedono anche senza averli chiesti');
+      deve(r.dopoVisibile, 'scegliendo «Altro» i campi a mano non compaiono');
+      const p = r.payload;
+      deve(p, 'non ha salvato');
+      deve(p.intermediario_nome === 'Verdi Giuseppe', 'nome salvato: ' + p.intermediario_nome);
+      deve(p.intermediario_rui === 'E000111222', 'RUI salvato: ' + p.intermediario_rui);
+      /* Il database rifiuta di avere tutti e due: se partisse anche l'id, il
+         salvataggio fallirebbe con un errore che l'utente non ha causato. */
+      deve(p.intermediario_id === null, 'parte anche il collaboratore: il database rifiuterebbe la riga');
+      return 'nome e iscrizione a mano, senza collaboratore';
+    });
+
+    await prova('personalizzati: tornando alla tendina i campi a mano si svuotano', async () => {
+      await apriScheda();
+      const r = await page.evaluate(async () => {
+        document.getElementById('pp-overlay')?.remove();
+        await ppApri('cli-1');
+        const sel = document.getElementById('pp-intermediario');
+        sel.value = '__altro__'; sel.dispatchEvent(new Event('change'));
+        document.getElementById('pp-interm-nome').value = 'Verdi Giuseppe';
+        sel.value = ''; sel.dispatchEvent(new Event('change'));
+        return { nome: document.getElementById('pp-interm-nome').value,
+                 nascosto: getComputedStyle(document.getElementById('pp-interm-manuale')).display === 'none' };
+      });
+      deve(r.nome === '', 'il nome scritto a mano resta: il database rifiuterebbe la riga con tutti e due');
+      deve(r.nascosto, 'i campi a mano restano visibili');
+    });
+
     await prova('personalizzati: l\'intermediario parte da chi e\' collegato, e si puo\' cambiare', async () => {
       const r = await page.evaluate(async () => {
         INTERM_CACHE = null;
@@ -5516,6 +5567,34 @@ const avvio = async () => {
       deve(d.daConfermare.length === 0,
         'chiede di confermare qualcosa che non manca: ' + JSON.stringify(d.daConfermare));
       return 'firma l\'agenzia, con la sua iscrizione';
+    });
+
+    await prova('documento: l\'intermediario scritto a mano vince sull\'agenzia', async () => {
+      /* L'ordine e' uno solo: collaboratore scelto, poi quello scritto a mano,
+         poi l'agenzia. Serve a chi non ha (ancora) una scheda collaboratore, o
+         a un collaboratore di passaggio. */
+      const d = await documento({ intermediario_nome: 'Verdi Giuseppe', intermediario_rui: 'E000111222' },
+                                { intermediario: null });
+      deve(d.intermediario.nome === 'Verdi Giuseppe', 'nome: ' + d.intermediario.nome);
+      deve(d.intermediario.rui === 'n. E000111222', 'RUI: ' + d.intermediario.rui);
+      deve(d.daConfermare.length === 0, 'segnala un dato mancante che c\'e\': ' + JSON.stringify(d.daConfermare));
+      /* Se il collaboratore c'e', comanda lui: i due campi a mano non possono
+         nemmeno essere pieni insieme (lo vieta il database), ma se lo fossero
+         la risposta non deve dipendere dall'ordine del codice. */
+      const conCollab = await documento({ intermediario_nome: 'Verdi Giuseppe', intermediario_rui: 'E000111222' });
+      deve(conCollab.intermediario.nome === 'Bianchi Anna', 'col collaboratore scelto vince il nome scritto a mano: ' + conCollab.intermediario.nome);
+      return 'a mano davanti all\'agenzia, dietro al collaboratore';
+    });
+
+    await prova('documento: un intermediario a mano senza iscrizione non passa', async () => {
+      /* Un nome senza numero e' un documento senza l'unica cosa che rende
+         verificabile chi lo ha fatto. */
+      const d = await documento({ intermediario_nome: 'Verdi Giuseppe', intermediario_rui: '' },
+                                { intermediario: null });
+      deve(d.intermediario.nome === 'Verdi Giuseppe', 'nome: ' + d.intermediario.nome);
+      deve(d.intermediario.rui === 'da confermare', 'RUI: ' + d.intermediario.rui);
+      deve(d.daConfermare.some(x => /RUI dell'intermediario/.test(x)),
+        'l\'iscrizione mancante non finisce in elenco: ' + JSON.stringify(d.daConfermare));
     });
 
     await prova('documento: senza collaboratore E senza RUI agenzia, lo dice una volta sola', async () => {

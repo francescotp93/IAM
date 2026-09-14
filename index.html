@@ -23534,6 +23534,22 @@ function ppSelectConAltro(idSel, idTxt, voci, valore, etichetta) {
   </div>`;
 }
 
+/* I campi a mano compaiono solo quando servono, e svuotarli quando si torna
+   alla tendina non e' pulizia: con entrambi pieni il database rifiuta il
+   salvataggio, e l'utente vedrebbe un errore che non ha causato. */
+function ppIntermToggle() {
+  const sel = document.getElementById('pp-intermediario');
+  const box = document.getElementById('pp-interm-manuale');
+  if (!sel || !box) return;
+  const aMano = sel.value === '__altro__';
+  box.style.display = aMano ? 'block' : 'none';
+  if (aMano) { const n = document.getElementById('pp-interm-nome'); if (n && !n.value) n.focus(); }
+  else {
+    const n = document.getElementById('pp-interm-nome'); if (n) n.value = '';
+    const u = document.getElementById('pp-interm-rui'); if (u) u.value = '';
+  }
+}
+
 function ppAltroToggle(idSel, idTxt) {
   const sel = document.getElementById(idSel), txt = document.getElementById(idTxt);
   if (!sel || !txt) return;
@@ -23592,6 +23608,7 @@ async function ppApri(clienteId, id) {
   const desc = (r && Array.isArray(r.descrizioni)) ? r.descrizioni : [];
   const frazOpts = PP_FRAZIONAMENTI.map(([k, l]) =>
     `<option value="${k}"${(r ? r.frazionamento : 'annuale') === k ? ' selected' : ''}>${esc(l)}</option>`).join('');
+  const aMano = !!(r && !r.intermediario_id && (r.intermediario_nome || r.intermediario_rui));
   const intermSel = r ? (r.intermediario_id || '') : (mioIntermediarioId() || '');
   const sconto = !!(r && r.sconto_applicato);
 
@@ -23632,7 +23649,14 @@ async function ppApri(clienteId, id) {
         <button type="button" class="ghost" style="padding:6px 12px" onclick="ppDescAggiungi()"><i class="ti ti-plus"></i> Aggiungi riga</button></div>
 
       <div class="field"><label>Intermediario di riferimento</label>
-        <select id="pp-intermediario"><option value="">— nessuno —</option></select></div>
+        <select id="pp-intermediario" onchange="ppIntermToggle()"><option value="">— nessuno —</option></select>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:5px">Se non scegli nessuno, sul documento firma l'agenzia con la sua iscrizione.</div></div>
+
+      <div class="field" id="pp-interm-manuale" style="display:none">
+        <label>Intermediario scritto a mano</label>
+        <input type="text" id="pp-interm-nome" placeholder="Nome e cognome, oppure ragione sociale">
+        <input type="text" id="pp-interm-rui" placeholder="Iscrizione RUI — es. E000123456" style="margin-top:7px">
+        <div style="font-size:11.5px;color:var(--muted);margin-top:5px">Senza iscrizione il documento scrive «da confermare» e non parte al cliente.</div></div>
 
       <div class="field"><label>Disclaimer</label>
         <textarea id="pp-disclaimer" rows="5" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;resize:vertical">${esc(r ? r.disclaimer : PP_DISCLAIMER_DEFAULT)}</textarea>
@@ -23651,6 +23675,19 @@ async function ppApri(clienteId, id) {
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
   popolaSelectInterm('pp-intermediario', intermSel);
+  /* «Altro» si aggiunge QUI e non dentro popolaSelectInterm: quella tendina la
+     usa anche la scheda cliente, dove un intermediario scritto a mano non
+     vorrebbe dire niente. */
+  const selInt = document.getElementById('pp-intermediario');
+  if (selInt) {
+    selInt.insertAdjacentHTML('beforeend', '<option value="__altro__">Altro — scrivilo a mano…</option>');
+    if (aMano) {
+      selInt.value = '__altro__';
+      document.getElementById('pp-interm-nome').value = r.intermediario_nome || '';
+      document.getElementById('pp-interm-rui').value = r.intermediario_rui || '';
+    }
+    ppIntermToggle();
+  }
   if (!desc.length) ppDescAggiungi('');
 }
 
@@ -23684,6 +23721,12 @@ async function ppSalva(clienteId, id) {
     if (scontato < 0) { dai('Il premio scontato non può essere negativo.'); return; }
   }
 
+  const intScelto = document.getElementById('pp-intermediario').value;
+  const intManuale = intScelto === '__altro__';
+  const intNome = intManuale ? (document.getElementById('pp-interm-nome').value || '').trim() : '';
+  const intRui = intManuale ? (document.getElementById('pp-interm-rui').value || '').trim() : '';
+  if (intManuale && !intNome) { dai('Hai scelto di scrivere l\'intermediario a mano: manca il nome.'); return; }
+
   const riga = {
     cliente_id: clienteId,
     compagnia: compagnia,
@@ -23695,7 +23738,11 @@ async function ppSalva(clienteId, id) {
     premio_scontato: scontato,
     da_autorizzare: document.getElementById('pp-autorizzare').checked,
     descrizioni: ppDescLeggi(),
-    intermediario_id: document.getElementById('pp-intermediario').value || null,
+    intermediario_id: intManuale ? null : (intScelto || null),
+    /* O l'uno o l'altro, mai tutti e due: e' anche un vincolo del database,
+       e con entrambi pieni nessuno saprebbe quale dei due va sul foglio. */
+    intermediario_nome: intManuale ? intNome : null,
+    intermediario_rui: intManuale ? (intRui || null) : null,
     disclaimer: document.getElementById('pp-disclaimer').value.trim() || PP_DISCLAIMER_DEFAULT,
     aggiornato_il: new Date().toISOString()
   };
@@ -23841,11 +23888,21 @@ function ppDocumento(r, ctx) {
      per dirne uno — non poteva mandare nessun preventivo, e il messaggio
      gli chiedeva un dato che per lui non esiste. */
   const nomeIm = im ? ((im.cognome || '') + ' ' + (im.nome || '')).trim() : '';
+  const aMano = !im && !!(forse(r.intermediario_nome) || forse(r.intermediario_rui));
   const intermediario = im
     ? {
         nome: dato(nomeIm, 'intermediario di riferimento'),
         rui: ppRuiTesto(im.rui_sezione, im.rui_numero, im.rui_data, 'iscrizione RUI dell\'intermediario', mancanti),
         veste: forse(im.veste)
+      }
+    : aMano
+    ? {
+        /* Scritto a mano. L'iscrizione qui e' obbligatoria quanto altrove: chi
+           scrive un nome e non il numero sta consegnando un documento senza
+           l'unica cosa che rende verificabile l'intermediario. */
+        nome: dato(r.intermediario_nome, 'nome dell\'intermediario'),
+        rui: ppRuiTesto(null, r.intermediario_rui, null, 'iscrizione RUI dell\'intermediario', mancanti),
+        veste: null
       }
     : {
         /* L'agenzia in persona. Ragione sociale e RUI sono gia' stati letti e

@@ -498,13 +498,19 @@ fontiRouter.post('/:id/accedi', async (req, res) => {
    Vive per conto suo: qualunque cosa vada storta qui dentro non deve toccare
    la risposta del login, che è già partita. */
 const otpInCorso = new Set();
-async function codiceDallaPosta(id, dopo) {
-  if (!MITTENTI_OTP[String(id).toLowerCase()]) return;   // portale che non manda codici per email
-  if (otpInCorso.has(id)) return;                        // già in ascolto: due ricerche insieme sprecherebbero il codice
+/* Esportata dal 14/09/2026, e restituisce un esito invece di niente: serve
+   anche alla vigilanza (server/fontiWatchdog.js), che incontra lo scraper
+   fermo sulla schermata del codice quando a metterlo li' e' stato lui stesso,
+   rientrando per conto proprio. Fino a ieri questa funzione era appesa SOLO al
+   pulsante «Accedi» premuto da una persona: lavorava quando la persona c'era,
+   e taceva nell'unico caso per cui era stata scritta. */
+export async function codiceDallaPosta(id, dopo) {
+  if (!MITTENTI_OTP[String(id).toLowerCase()]) return false;   // portale che non manda codici per email
+  if (otpInCorso.has(id)) return false;                       // già in ascolto: due ricerche insieme sprecherebbero il codice
   otpInCorso.add(id);
   try {
     const t = await attendiCodice({ fonte: id, dopo, log: (m) => { try { console.log(m); } catch (_) {} } });
-    if (!t) return;
+    if (!t) return false;
     const store = load();
     /* Si salva come fa la rotta a mano, così lo stato del pannello resta
        coerente e il codice non viene poi scartato «per vecchiaia». */
@@ -512,10 +518,15 @@ async function codiceDallaPosta(id, dopo) {
     const s = f ? (store[f.id] = store[f.id] || {}) : (store.__custom || {})[id];
     if (s) { s.codice = enc(t.codice); s.codice_ts = Date.now(); save(store); }
     const out = await proxyScraper(id, store, '/codice?codice=' + encodeURIComponent(t.codice), 40000);
-    const esito = (out.body && (out.body.loggato ? 'dentro' : (out.body.msg || out.body.step || 'non accettato'))) || 'senza risposta';
+    const dentro = !!(out.body && out.body.loggato);
+    const esito = (out.body && (dentro ? 'dentro' : (out.body.msg || out.body.step || 'non accettato'))) || 'senza risposta';
     console.log('[otp-posta] codice di ' + id + ' consegnato al portale → ' + esito);
+    /* «Consegnato» non e' «entrato»: se il portale non l'ha accettato serve
+       comunque una persona, e chi ci ha chiamato deve saperlo. */
+    return dentro;
   } catch (e) {
     console.log('[otp-posta] recupero automatico non riuscito (' + String(e && e.message || e).slice(0, 120) + '): il codice resta da inserire a mano');
+    return false;
   } finally { otpInCorso.delete(id); }
 }
 // POST /fonti/:id/conferma-codice — schermata 2: salva il codice e lo conferma SUL PORTALE (sincrono).

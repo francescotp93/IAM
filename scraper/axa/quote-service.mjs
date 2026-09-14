@@ -553,10 +553,31 @@ async function doAccedi() {
       if (semeKo) log('ATTENZIONE segreto TOTP non utilizzabile: ' + semeKo);
       if (c.totpSecret && !semeKo) {
         setState('invio_totp', 'Genero il codice Guardian…', true);
-        for (const code of totpCandidates(c.totpSecret)) { if (await fillOtpCode(code)) { await trustDevice(); await page.waitForTimeout(300); await clickConfirm(); await page.waitForTimeout(4000); if (await isLogged()) break; } }
+        /* DI QUESTO TENTATIVO DEVE RESTARE TRACCIA. Il 14/09/2026 il seme c'era,
+           il codice e' stato generato e provato, e AXA non ha fatto entrare: nel
+           giornale non e' rimasta una riga, e Francesco ha letto «apri AXA
+           Guardian e prendi il codice» come se il tentativo non fosse mai
+           avvenuto. Cosi' si rifa' il codice a mano ogni volta e il seme
+           sbagliato resta li' per sempre. */
+        log('provo il codice Guardian generato dal seme…');
+        let compilato = false;
+        for (const code of totpCandidates(c.totpSecret)) { if (await fillOtpCode(code)) { compilato = true; await trustDevice(); await page.waitForTimeout(300); await clickConfirm(); await page.waitForTimeout(4000); if (await isLogged()) break; } }
         if (await isLogged()) { await salvaSessione('login automatico'); return setState('loggato', 'Login completato ✅ (codice automatico)'); }
+        HOLD = true; HOLD_DA = Date.now();
+        /* Due guasti diversi, e si distinguono da qui: il codice e' ENTRATO nel
+           campo e il portale l'ha rifiutato (il seme non e' piu' quello
+           dell'app: va rifatto col QR, altrimenti domani siamo daccapo), oppure
+           nel campo non c'e' proprio entrato (e' cambiata la schermata: il seme
+           non c'entra niente). Dirlo sbagliato manda a rigenerare un seme che
+           andava bene — errore gia' fatto su Allianz il 2 settembre. */
+        if (compilato) {
+          log('AXA ha rifiutato il codice generato dal seme: il seme salvato non e\' piu\' quello dell\'app');
+          return setState('attesa_otp', 'AXA ha rifiutato il codice generato automaticamente: il seme salvato in Fonti non è più quello dell\'app Guardian. Adesso scrivi il codice dall\'app; poi rifai il seme scansionando il QR, altrimenti succede di nuovo al prossimo rientro.');
+        }
+        log('il campo del codice non si e\' lasciato compilare: non e\' il seme, e\' cambiata la schermata');
+        return setState('attesa_otp', 'Il codice automatico non è entrato nel campo: la schermata di AXA è cambiata. Scrivi il codice dall\'app Guardian — il seme salvato in Fonti non c\'entra e non va toccato.');
       }
-      HOLD = true; HOLD_DA = Date.now(); log('schermata 2FA Guardian raggiunta: attendo il codice dall\'utente'); return setState('attesa_otp', 'Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma');
+      HOLD = true; HOLD_DA = Date.now(); log('schermata 2FA Guardian raggiunta: attendo il codice dall\'utente (nessun seme salvato in Fonti)'); return setState('attesa_otp', 'Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma');
     }
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
     // Distinguo la causa: password SCADUTA vs credenziali errate vs fallimento generico (messaggi chiari in card).

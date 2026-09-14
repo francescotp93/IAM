@@ -26,7 +26,7 @@
 //      tentativo a vuoto ripetuto all'infinito. Si avvisa e basta.
 // ═══════════════════════════════════════════════════════════════════════════════
 import { Router } from 'express';
-import { elencoFontiTecnico } from './fonti.js';
+import { elencoFontiTecnico, codiceDallaPosta } from './fonti.js';
 import fs from 'fs';
 import { sondaTutte, invalidaSonda, statoInterruttori } from './fontiSonda.js';
 
@@ -129,6 +129,27 @@ const PASSI_SERVE_CODICE = /^(attesa_codice|attesa_otp)$/i;
    (verifica/vigilanza-codice.test.mjs). Dice se lo scraper si è fermato ad
    aspettare un codice che solo una persona può avere. */
 export const serveIlCodice = step => PASSI_SERVE_CODICE.test(String(step || ''));
+/* Quanto si guarda indietro nella posta. `since` e' il momento in cui lo
+   scraper si e' FERMATO sulla schermata del codice; la mail invece era partita
+   qualche secondo PRIMA, quando il login e' cominciato. Cercare a partire da
+   `since` esatto vorrebbe dire scartare proprio quella mail. Tre minuti di
+   margine coprono il login piu' lento senza allargare troppo: chi legge la
+   posta scarta comunque tutto cio' che ha piu' di dieci minuti. */
+const MARGINE_POSTA_MS = 3 * 60 * 1000;
+/* Lo scraper e' GIA' fermo ad aspettare un codice? Funzione a se', e pura,
+   perche' e' una regola e le regole si provano
+   (verifica/vigilanza-codice-dalla-posta.test.mjs).
+   Torna il momento da cui cercare nella posta, oppure null.
+   Un login ANCORA IN CORSO non e' un'attesa: intromettersi mentre lo scraper
+   sta lavorando vuol dire consegnargli un codice mentre ne sta chiedendo un
+   altro. */
+export function fermoAlCodice(stato, adesso = Date.now()) {
+  if (!stato || stato.running) return null;
+  if (!serveIlCodice(stato.step)) return null;
+  const since = Number(stato.since);
+  const base = Number.isFinite(since) && since > 0 ? since : adesso;
+  return { step: String(stato.step), dopo: base - MARGINE_POSTA_MS };
+}
 /* Ritorna { dentro, serveCodice, step } invece di un sì/no.
    PERCHE' LA DISTINZIONE CONTA: fermarsi sulla schermata del codice NON e' un
    tentativo fallito, e' un tentativo RIUSCITO a metà che ora aspetta una
@@ -238,6 +259,43 @@ export async function giroDiControllo({ conRientro = AUTOLOGIN } = {}) {
     if (!f.ha_credenziali) { m.ultimoEsito = 'senza_credenziali'; continue; }
     if (m.quarantenaFinoA > ora) { m.ultimoEsito = 'in_quarantena'; continue; }
     if (ora - m.ultimoTentativo < PAUSA_TENTATIVI_MS) { m.ultimoEsito = 'attesa_fra_tentativi'; continue; }
+
+    /* PRIMA di bussare con un altro /login: lo scraper potrebbe essere GIA'
+       fermo sulla schermata del codice, messosi li' DA SOLO rientrando per
+       conto proprio quando si e' accorto che la sessione era scaduta. In quel
+       caso un /login non aiuta: fa partire un secondo login e una SECONDA mail
+       con un codice nuovo, che rende inutile il primo — esattamente lo spreco
+       che questo file evita da un'altra parte.
+       E soprattutto: il codice, su Groupama, ce lo possiamo prendere noi. La
+       lettura automatica della posta c'e' dal 13/09/2026, ma era agganciata
+       solo al pulsante «Accedi» premuto da una persona. Misurato il
+       14/09/2026: Groupama era rientrato da solo alle 11:22:51 e quattro
+       secondi dopo aspettava un codice che nessuno e' andato a prendere. */
+    let statoOra = null;
+    try { statoOra = await chiediScraper(f.surl, '/loginstate', 8000); } catch { statoOra = null; }
+    const alCodice = fermoAlCodice(statoOra, ora);
+    if (alCodice) {
+      m.ultimoTentativo = ora;
+      m.tentativi = 0;                       // aspettare un codice non e' un fallimento
+      const dentro = await codiceDallaPosta(f.id, alCodice.dopo).catch(() => false);
+      if (dentro) {
+        m.salute = 'ok'; m.ultimoEsito = 'rientrato_col_codice_dalla_posta'; m.dal = ora;
+        rientrati.push(f.nome + ' (rientro automatico, codice preso dalla posta dell\'agenzia)');
+        azioni.push({ fonte: f.nome, azione: 'codice_dalla_posta', esito: 'riuscito' });
+        continue;
+      }
+      /* Non ce l'abbiamo fatta: casella non configurata, mail che non arriva,
+         portale che non manda codici per posta. Da qui in poi e' come prima —
+         si sta fermi e lo si dice una volta — ma almeno ci abbiamo provato. */
+      m.ultimoEsito = 'serve_codice';
+      m.quarantenaFinoA = ora + ATTESA_CODICE_MS;
+      azioni.push({ fonte: f.nome, azione: 'codice_dalla_posta', esito: 'serve_codice' });
+      if (!m.dettaQuarantena) {
+        caduti.push(f.nome + ' — il portale aspetta il codice di verifica e dalla posta non l\'ho recuperato: va inserito a mano da Fonti');
+        m.dettaQuarantena = true;
+      }
+      continue;
+    }
 
     m.ultimoTentativo = ora; m.tentativi++;
     const esito = await tentaRientro(f.surl);

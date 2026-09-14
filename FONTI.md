@@ -453,6 +453,22 @@ credenziali sono a posto». Nessuno dei cinque difetti era dove sembrava.
 7. **Quando c'e' una persona che aspetta, non si sprecano i suoi trenta
    secondi.** Nel login guidato non si tenta con un codice salvato: si chiede
    subito quello del momento.
+8. **Un automatismo agganciato al pulsante lavora solo quando c'e' gia'
+   qualcuno.** La lettura del codice dalla posta (13/09/2026) pendeva dalla
+   rotta che parte quando una persona preme «Accedi»: funzionava nel caso in
+   cui la persona era davanti allo schermo, e taceva nell'unico caso per cui
+   era stata scritta. Misurato il 14/09/2026 alle 11:22, con l'ufficio vuoto:
+   Groupama rientra da solo, si ferma quattro secondi dopo sulla schermata del
+   codice, e la mail col codice resta nella casella. **Un automatismo si
+   aggancia allo STATO, non al gesto**: «lo scraper sta aspettando un codice»
+   e' vero comunque, che qualcuno abbia premuto un tasto o no.
+9. **Un tentativo che non lascia traccia e' un tentativo che non e'
+   avvenuto**, per chi legge. Stessa mattina, AXA: seme valido, codice generato
+   e provato, portale che lo rifiuta — e nel giornale quindici secondi di
+   silenzio, con in agenzia il messaggio «apri l'app e prendi il codice». Si
+   digita a mano, si torna operativi, e il seme sbagliato resta li' per la
+   prossima volta. Il difetto non e' il codice rifiutato: e' che nessuno lo
+   sappia.
 
 ---
 

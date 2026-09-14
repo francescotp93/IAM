@@ -1,29 +1,15 @@
-id: fronte-1789384350  exit: 0  2026-09-14 11:13:05
+id: caddy-1789384414  exit: 0  2026-09-14 11:13:41
 ----
-== chi ascolta verso l'esterno
-State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                                    
-LISTEN 0      4096   127.0.0.53%lo:53        0.0.0.0:*    users:(("systemd-resolve",pid=1497298,fd=18))             
-LISTEN 0      4096      127.0.0.54:53        0.0.0.0:*    users:(("systemd-resolve",pid=1497298,fd=20))             
-LISTEN 0      4096         0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=1497279,fd=3),("systemd",pid=1,fd=242))
-LISTEN 0      511                *:3000            *:*    users:(("node",pid=2150374,fd=21))                        
-LISTEN 0      4096               *:443             *:*    users:(("caddy",pid=1323,fd=7))                           
-LISTEN 0      4096            [::]:22           [::]:*    users:(("sshd",pid=1497279,fd=4),("systemd",pid=1,fd=243))
-LISTEN 0      4096               *:80              *:*    users:(("caddy",pid=1323,fd=9))                           
-== servizi web attivi
-  caddy.service               loaded active running Caddy
-  hdi-tunnel.service          loaded active running HDI tunnel nuovo:4401 -> vecchio:4400 (IP fidato)
-== caddy?
--rw-r--r-- 1 root root 74 Jun 29 11:30 /etc/caddy/Caddyfile
-3:	reverse_proxy localhost:3000
-== cloudflared?
-== a chi punta il frontend (config pubblica)
-https://api.withusassicurazioni.it
-https://iam.withusassicurazioni.it
-https://iam.withusassicurazioni.it/
-https://quoto.withusassicurazioni.it
-https://quoto.withusassicurazioni.it/
-https://quoto.withusassicurazioni.it/docs/casa/GlobaleCasa_Condizioni.pdf
-https://quoto.withusassicurazioni.it/docs/casa/GlobaleCasa_DIP.pdf
-https://quoto.withusassicurazioni.it/docs/casa/GlobaleCasa_DIP_Aggiuntivo.pdf
-https://quoto.withusassicurazioni.it/withus-logo-white.png
-https://quoto.withusassicurazioni.it/withus-logo.png
+== Caddyfile completo (74 byte)
+api.withusassicurazioni.it {
+	encode gzip
+	reverse_proxy localhost:3000
+}
+
+== versione Caddy
+v2.11.4 h1:XKxkMTgNSizEvKG6QHue6cAsFOteU2qA61w2tKkCWi0=
+
+== cosa ha registrato Caddy per le quotazioni lente (09-11 settembre)
+
+== la porta 3000 è aperta verso l'esterno?
+Status: inactive

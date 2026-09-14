@@ -22056,11 +22056,15 @@ function apriAnagrafica(id) {
           <div class="cl-linked-head"><span><i class="ti ti-link"></i> Posizioni del cliente</span><span id="cl-count" class="cl-count">…</span></div>
           <div class="cl-tabs">
             <button class="cl-tab active" data-t="pol" onclick="clTab('pol')"><i class="ti ti-file-invoice"></i> Polizze</button>
-            <button class="cl-tab" data-t="prev" onclick="clTab('prev')"><i class="ti ti-file-text"></i> Preventivi</button>
+            <!-- «Preventivi» e «Personalizzati», una accanto all'altra, si
+                 confondono al primo colpo d'occhio: e' successo a chi sapeva
+                 gia' cosa cercare. I nomi adesso dicono la differenza vera —
+                 chi ha fatto il numero, un motore di tariffa o una persona. -->
+            <button class="cl-tab" data-t="prev" onclick="clTab('prev')"><i class="ti ti-file-text"></i> Da tariffa</button>
             <!-- Il preventivo scritto a mano: sta accanto a quelli calcolati
                  perche' per il cliente sono la stessa cosa, ma resta un
                  elenco separato perche' per i conti dell'agenzia non lo e'. -->
-            ${ppVietato() ? '' : '<button class="cl-tab" data-t="pers" onclick="clTab(\'pers\')"><i class="ti ti-file-pencil"></i> Personalizzati</button>'}
+            ${ppVietato() ? '' : '<button class="cl-tab" data-t="pers" onclick="clTab(\'pers\')"><i class="ti ti-file-pencil"></i> Scritti a mano</button>'}
             <button class="cl-tab" data-t="doc" onclick="clTab('doc')"><i class="ti ti-files"></i> Documenti</button>
             <button class="cl-tab" data-t="sin" onclick="clTab('sin')"><i class="ti ti-alert-triangle"></i> Sinistri</button>
             <!-- Blocco C: la cronologia. In un gestionale è il cuore della

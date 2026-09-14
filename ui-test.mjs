@@ -5231,15 +5231,27 @@ const avvio = async () => {
         const b = document.querySelector('.cl-tab[data-t="pers"]');
         if (!b) return { linguetta: false };
         clTab('pers');
+        const p = document.querySelector('.cl-tab[data-t="prev"]');
         return {
-          linguetta: true, testo: b.textContent.trim(),
+          linguetta: true, testo: b.textContent.trim(), testoPrev: p ? p.textContent.trim() : '',
           pers: getComputedStyle(document.getElementById('cl-pers')).display,
           prev: getComputedStyle(document.getElementById('cl-prev')).display
         };
       });
-      deve(r.linguetta, 'la linguetta «Personalizzati» non c\'e\'');
-      deve(r.pers !== 'none', 'il riquadro dei personalizzati resta nascosto');
-      deve(r.prev === 'none', 'aprendo i personalizzati resta aperto anche l\'elenco dei preventivi');
+      deve(r.linguetta, 'la linguetta dei preventivi scritti a mano non c\'e\'');
+      deve(r.pers !== 'none', 'il riquadro dei preventivi scritti a mano resta nascosto');
+      deve(r.prev === 'none', 'aprendone uno resta aperto anche l\'altro elenco');
+      /* I NOMI. «Preventivi» e «Personalizzati», una accanto all'altra, si
+         confondono al primo colpo d'occhio: e' successo a chi sapeva gia' cosa
+         cercare, che ha guardato la linguetta sbagliata e ha letto «nessun
+         preventivo». I nomi adesso dicono la differenza vera — chi ha fatto il
+         numero, un motore di tariffa o una persona — e nessuno dei due
+         contiene la parola che li rendeva gemelli. */
+      deve(r.testo === 'Scritti a mano', 'la linguetta si chiama «' + r.testo + '»');
+      deve(r.testoPrev === 'Da tariffa', 'l\'altra linguetta si chiama «' + r.testoPrev + '»');
+      deve(!/preventiv/i.test(r.testo + ' ' + r.testoPrev),
+        'le due linguette tornano a chiamarsi tutte e due «preventivi qualcosa»: si confondono');
+      return 'Da tariffa · Scritti a mano';
     });
 
     await prova('personalizzati: l\'elenco mostra lo sconto come sconto, non come secondo prezzo', async () => {

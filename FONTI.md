@@ -493,6 +493,36 @@ credenziali sono a posto». Nessuno dei cinque difetti era dove sembrava.
 
 ---
 
+### 9-bis. AXA: la copia della sessione non invecchiava, era incompleta
+
+Misurato il 14/09/2026, e vale la pena scriverlo perche' la spiegazione
+comoda ha retto mezza giornata prima di cadere.
+
+Sintomo: ad ogni riavvio del servizio, AXA fuori dal portale. Groupama, stesso
+riavvio, dentro senza accorgersene.
+
+Prima spiegazione (sbagliata): «i cookie di AXA ruotano, la copia su disco
+invecchia». Sembrava reggere — la copia rifiutata al mattino aveva un'ora e
+tre quarti — e ha prodotto una correzione ragionevole: salvare la sessione
+ogni venti minuti.
+
+Il fatto che l'ha smontata: al rilascio delle 12:57 il riavvio ha ripreso una
+copia scritta alle **12:56:07**, vecchia di un minuto. Rifiutata uguale.
+
+Spiegazione vera: `storageState` di Playwright salva **cookie e localStorage,
+non il sessionStorage** (sta nella sua documentazione). Groupama tiene la
+sessione nei cookie e infatti sopravvive; le applicazioni su Auth0 — AXA —
+tengono volentieri il gettone nel sessionStorage, e quello lo buttavamo via ad
+ogni riavvio. Nessun intervallo di salvataggio, per quanto corto, avrebbe mai
+rimediato.
+
+**La lezione**: quando una spiegazione porta a «facciamo la stessa cosa piu'
+spesso», conviene prima trovare il caso estremo che la falsifica. Un minuto e'
+bastato. Se non si fosse guardato, si sarebbe accorciato l'intervallo
+all'infinito, ogni volta con la sensazione di aver quasi risolto.
+
+---
+
 ## 10. Glossario
 
 | termine | significato |

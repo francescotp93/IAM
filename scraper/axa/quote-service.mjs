@@ -175,8 +175,35 @@ let page = ctx.pages()[0] || await ctx.newPage();
    niente. Da qui in avanti: si rilegge all'accensione, si tiene aggiornato
    mentre si lavora, e si salva prima di spegnersi. */
 const AUTH = path.join(__dir, 'auth.json');
+/* IL PEZZO CHE `storageState` NON SALVA.
+   Playwright, nel suo `storageState`, mette i cookie e il localStorage. Il
+   sessionStorage NO: sta scritto nella sua documentazione, e il sessionStorage
+   e' proprio il posto dove le applicazioni costruite su Auth0 tengono
+   volentieri il gettone di accesso.
+   Perche' lo sappiamo che serve: il 14/09/2026, al rilascio delle 12:57, il
+   riavvio ha rimesso dentro una copia salvata alle 12:56:07 — vecchia di UN
+   MINUTO — e il portale l'ha rifiutata lo stesso. Quindi il problema di AXA non
+   era che la copia invecchiasse (era la spiegazione di quella mattina, ed era
+   sbagliata): era che alla copia mancava un pezzo. Groupama, che la sessione la
+   tiene nei cookie, lo stesso riavvio l'ha attraversato senza accorgersene.
+   Nel giornale finisce SOLO QUANTE voci sono, mai il loro contenuto: li dentro
+   ci sono gettoni che valgono quanto una password. */
 async function salvaSessione(motivo = '') {
-  try { await ctx.storageState({ path: AUTH }); if (motivo) log('sessione salvata su disco (' + motivo + ')'); return true; }
+  try {
+    await ctx.storageState({ path: AUTH });
+    const voci = await page.evaluate(() => {
+      try { const o = {}; for (let i = 0; i < sessionStorage.length; i++) { const k = sessionStorage.key(i); o[k] = sessionStorage.getItem(k); } return o; }
+      catch (e) { return {}; }
+    }).catch(() => ({}));
+    const quante = Object.keys(voci || {}).length;
+    if (quante) {
+      const dentro = JSON.parse(fs.readFileSync(AUTH, 'utf8'));
+      dentro.sessionStorageWithus = voci;          // chiave nostra, accanto a quelle di Playwright
+      fs.writeFileSync(AUTH, JSON.stringify(dentro));
+    }
+    if (motivo) log('sessione salvata su disco (' + motivo + '): ' + quante + ' voci di sessionStorage');
+    return true;
+  }
   catch (e) { log('sessione NON salvata:', e.message); return false; }
 }
 /* Rimette nel browser appena acceso la sessione salvata. NON promette di essere
@@ -193,14 +220,22 @@ async function ripristinaSessione() {
      e ci tiene dei pezzi di stato. Best effort: se non riesce restano i cookie,
      che sono la parte che conta. */
   const org = (s.origins || []).filter(o => o && Array.isArray(o.localStorage) && o.localStorage.length);
-  if (org.length) {
+  const ss = s.sessionStorageWithus && typeof s.sessionStorageWithus === 'object' ? s.sessionStorageWithus : null;
+  const quanteSs = ss ? Object.keys(ss).length : 0;
+  if (org.length || quanteSs) {
     try {
       await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.evaluate(voci => { try { for (const [k, v] of voci) localStorage.setItem(k, v); } catch (e) {} },
+      if (org.length) await page.evaluate(voci => { try { for (const [k, v] of voci) localStorage.setItem(k, v); } catch (e) {} },
         org.flatMap(o => o.localStorage.map(v => [v.name, v.value])));
+      /* Il sessionStorage si rimette DOPO essere approdati sul portale: e' legato
+         all'indirizzo della pagina, scriverlo altrove non lo vedrebbe nessuno. */
+      if (quanteSs) await page.evaluate(voci => { try { for (const [k, v] of voci) sessionStorage.setItem(k, v); } catch (e) {} }, Object.entries(ss));
     } catch (e) { log('memoria di pagina non rimessa (non grave):', e.message); }
   }
-  log('sessione ripresa da auth.json:', cookies.length, 'cookie');
+  /* Il conteggio nel giornale non e' decorazione: al prossimo riavvio dira' se
+     l'ipotesi del 14/09 era giusta. Zero voci di sessionStorage e sessione
+     rifiutata = il gettone sta da un'altra parte ancora, e si riparte da li'. */
+  log('sessione ripresa da auth.json: ' + cookies.length + ' cookie, ' + quanteSs + ' voci di sessionStorage');
   return true;
 }
 

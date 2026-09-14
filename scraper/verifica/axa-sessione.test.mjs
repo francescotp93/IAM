@@ -184,6 +184,38 @@ prova('i segnali di spegnimento li prende il nostro codice, non Playwright', () 
   return 'i segnali arrivano a noi';
 });
 
+prova('si salva anche il sessionStorage, che storageState non prende', () => {
+  /* IL PEZZO CHE MANCAVA ALLA COPIA. `storageState` di Playwright mette nel
+     file i cookie e il localStorage, e il sessionStorage no — sta scritto nella
+     sua documentazione. Ed e' proprio li' che le applicazioni costruite su
+     Auth0 tengono volentieri il gettone di accesso.
+     La prova che serviva davvero l'ha data il rilascio del 14/09/2026 alle
+     12:57: il riavvio ha rimesso dentro una copia di UN MINUTO e il portale
+     l'ha rifiutata. Non era la copia a essere vecchia — era incompleta. Prima
+     di allora si era dato la colpa all'invecchiamento, e si sarebbe accorciato
+     l'intervallo di salvataggio all'infinito senza risolvere niente. */
+  deve(/sessionStorage/.test(src),
+    'del sessionStorage non si salva niente: al riavvio si rimette dentro una sessione a cui manca il pezzo che conta');
+  const salva = src.slice(src.indexOf('async function salvaSessione'), src.indexOf('async function ripristinaSessione'));
+  deve(/sessionStorage\.key\(/.test(salva), 'la copia non legge le voci del sessionStorage');
+  const ripristina = src.slice(src.indexOf('async function ripristinaSessione'), src.indexOf('async function ripristinaSessione') + 2200);
+  deve(/sessionStorage\.setItem/.test(ripristina), 'le voci si salvano e non si rimettono mai: rete stesa e non agganciata, come auth.json fino all\'11/09');
+  return 'salvato e rimesso';
+});
+
+prova('del sessionStorage si scrive QUANTE voci, mai cosa contengono', () => {
+  /* Sono gettoni di accesso: valgono quanto una password, e un giornale lo
+     leggono in tanti. Il conteggio invece serve, ed e' innocuo: al prossimo
+     riavvio dira' se l'ipotesi era giusta. */
+  const salva = src.slice(src.indexOf('async function salvaSessione'), src.indexOf('async function ripristinaSessione'));
+  const righeLog = salva.match(/log\([^)]*\)/g) || [];
+  for (const r of righeLog) {
+    deve(!/voci\)|JSON\.stringify\(voci|getItem/.test(r),
+      'una riga di giornale si porta dietro il contenuto del sessionStorage: ' + r);
+  }
+  deve(/quante/.test(salva), 'non si conta niente: al riavvio non si potra\' dire se il pezzo c\'era');
+});
+
 let ko = 0;
 for (const [ok, nome, nota] of esiti) { if (!ok) ko++; console.log((ok ? '  ok  ' : '  KO  ') + nome + (nota ? '  — ' + nota : '')); }
 console.log('\nAXA SESSIONE: ' + (esiti.length - ko) + ' superate, ' + ko + ' fallite');

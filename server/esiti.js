@@ -232,7 +232,13 @@ export function preparaRiga(e) {
     premio: esito === 'ok' ? premio : (premio != null && premio > 0 ? premio : null),
     fonte: fonte ? String(fonte).replace(/^mii\/.*$/, 'mii') : null,
     durata_ms: e.durata_ms != null ? Math.max(0, Math.round(e.durata_ms)) : null,
-    errore: e.errore ? String(e.errore).slice(0, 1000) : null,
+    /* Anche il messaggio d'errore passa dalle maschere. Sembra innocuo — e'
+       una frase nostra — ma spesso dentro ci sono le PAROLE DEL PORTALE, e i
+       portali nei loro avvisi citano volentieri chi hanno davanti. E' lo stesso
+       difetto chiuso l'11/09/2026 sulla diagnostica e rimasto aperto qui: la
+       riga 5 del registro pesava 77 KB di anagrafiche perche' nessuno guardava
+       dentro le stringhe. Un campo non e' sicuro perche' e' corto. */
+    errore: e.errore ? pulisciTesto(e.errore).slice(0, 1000) : null,
     diagnostica: diagnosticaPulita(d, e.diagnostica_extra),
   };
 }

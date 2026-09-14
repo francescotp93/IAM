@@ -507,6 +507,14 @@ prova lo sorveglia (`server/verifica/esiti.test.mjs`).
 > pesa 208 byte e dice le stesse cose utili.
 > *Un campo che non si legge come oggetto non è un campo innocuo.*
 
+> **Il seguito, il 14/09/2026.** La stessa pulizia non passava da `errore`, che
+> veniva solo accorciato a mille caratteri. Sembra un campo innocuo — è una
+> frase nostra — ma dentro ci finiscono **le parole del portale**, e i portali
+> nei loro avvisi citano volentieri chi hanno davanti. Ora anche `errore` passa
+> dalle maschere. La targa invece resta in chiaro: è una colonna del registro
+> per scelta, serve a ritrovare la quotazione.
+> *Un campo non è sicuro perché è corto.*
+
 **Quando il premio arriva dalla via lenta, il registro dice perché.** HDI ha
 due vie: quella diretta produce i campi che spiegano il prezzo (garanzie
 spente, valore del veicolo, sconto massimo, segnalazioni), il ripiego sul

@@ -58,6 +58,17 @@ async function launchCtx() {
   for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) { try { fs.rmSync(userDataDir + '/' + f, { force: true }); } catch {} }
   const c = await chromium.launchPersistentContext(userDataDir, {
     headless: false, viewport: null, locale: 'it-IT',
+    /* I SEGNALI LI PRENDIAMO NOI. Playwright, di suo, si mette in ascolto di
+       SIGTERM/SIGINT/SIGHUP e alla loro comparsa CHIUDE IL BROWSER. Il nostro
+       gestore di spegnimento parte nello stesso istante, e quando arriva a
+       scrivere la sessione il contesto non c'e' piu':
+         13:33:42 [groupama] SIGTERM: salvo la sessione prima di chiudere
+         13:33:42 [groupama] sessione NON salvata: browserContext... has been closed
+       Misurato il 12/09/2026 al rilascio delle 13:33. Il salvataggio allo
+       spegnimento c'era, partiva, e perdeva una corsa contro Playwright.
+       Spegnendo questi tre interruttori i segnali arrivano solo a noi: si salva
+       e poi si chiude, nell'ordine giusto. */
+    handleSIGTERM: false, handleSIGINT: false, handleSIGHUP: false,
     args: ['--no-sandbox', '--start-maximized', '--disable-blink-features=AutomationControlled',
       // ── Ottimizzazione RAM/CPU (server piccolo): meno processi, niente GPU/estensioni/telemetria ──
       '--disable-dev-shm-usage', '--disable-gpu', '--disable-software-rasterizer', '--disable-extensions',

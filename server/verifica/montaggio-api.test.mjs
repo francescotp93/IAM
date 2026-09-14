@@ -27,6 +27,22 @@ prova('l\'API e\' montata sul backend avviato dalla VPS', () => {
   deve(/creaApiQuotazione/.test(idx), 'non usa il router del contratto');
 });
 
+prova('la porta del backend si apre solo verso l\'interno della macchina', () => {
+  /* `app.listen(PORT)` senza indirizzo apre su TUTTE le interfacce. Misurato il
+     14/09/2026: la porta 3000 risultava in ascolto su `*`, e `ufw` sulla
+     macchina era spento — quindi l'unica difesa era quella di rete del
+     fornitore, che dal codice non si vede e su cui non si puo' contare.
+     Davanti c'e' Caddy, sulla stessa macchina, che inoltra a localhost:3000 e
+     mette l'HTTPS: esporre anche la porta nuda significa offrire la stessa API
+     senza cifratura, a chiunque la trovi.
+     Resta la via d'uscita (BIND_HOST), ma va scelta: non si torna scoperti per
+     distrazione. */
+  deve(/app\.listen\(PORT, HOST/.test(idx),
+    'il backend ascolta su tutte le interfacce: l\'API e\' raggiungibile da fuori scavalcando Caddy, quindi senza HTTPS');
+  deve(/BIND_HOST \|\| '127\.0\.0\.1'/.test(idx),
+    'l\'indirizzo predefinito non e\' quello interno: il valore sicuro dev\'essere quello che si ottiene senza fare niente');
+});
+
 prova('la chiave interna non e\' scritta nel codice, da nessuna parte', () => {
   /* Questa prova chiedeva «la chiave arriva da process.env». Era il MEZZO, non
      il FINE: dal 20/08/2026 la chiave nasce dentro Supabase e i due lati del

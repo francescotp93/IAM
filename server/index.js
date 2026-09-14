@@ -205,8 +205,18 @@ app.use('/plurima-explore', plurimaExploreRouter);
 
 // ── Avvio ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log('withus-backend in ascolto sulla porta ' + PORT);
+/* SI ASCOLTA SOLO DA DENTRO LA MACCHINA. `app.listen(PORT)` senza indirizzo
+   apre la porta su TUTTE le interfacce: l'API resta raggiungibile da Internet
+   scavalcando Caddy, quindi senza HTTPS — e il 14/09/2026 il firewall della
+   macchina (`ufw`) risultava spento, quindi l'unica difesa era quella di rete
+   del fornitore, che da qui non si vede.
+   Davanti c'e' Caddy, sulla stessa macchina, che inoltra a localhost:3000: per
+   lui non cambia nulla. Se un giorno servisse davvero esporla (un altro host
+   che chiama il backend), si mette BIND_HOST=0.0.0.0 e si torna a prima: e'
+   una scelta che va fatta apposta, non per distrazione. */
+const HOST = process.env.BIND_HOST || '127.0.0.1';
+app.listen(PORT, HOST, () => {
+  console.log('withus-backend in ascolto su ' + HOST + ':' + PORT + (HOST === '127.0.0.1' ? ' (solo dalla macchina, davanti c\'e\' Caddy)' : ' — ATTENZIONE: porta aperta verso l\'esterno'));
   startBackupScheduler();
   startFontiWatchdog();
 });

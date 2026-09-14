@@ -99,6 +99,29 @@ prova('da sloggati NON si sovrascrive la copia buona', () => {
   return 'si salva solo quando c\'è qualcosa di buono da salvare';
 });
 
+prova('i segnali di spegnimento li prende il nostro codice, non Playwright', () => {
+  /* SENZA QUESTO IL SALVATAGGIO ALLO SPEGNIMENTO NON SERVE A NIENTE, e sembra
+     che funzioni. Playwright, di suo, ascolta SIGTERM/SIGINT/SIGHUP e alla loro
+     comparsa chiude il browser. Il nostro gestore parte nello stesso istante e
+     perde la corsa: quando arriva a scrivere, il contesto e' gia' chiuso.
+     Misurato su Groupama il 12/09/2026, al rilascio delle 13:33:
+       13:33:42  SIGTERM: salvo la sessione prima di chiudere
+       13:33:42  sessione NON salvata: browserContext... has been closed
+     Quel giorno e' andata bene lo stesso — la copia periodica su disco era di
+     quattro minuti prima — ma le protezioni erano due e ne ha lavorata una. */
+  deve(/handleSIGTERM: false/.test(src), 'Playwright chiude il browser al segnale prima che noi salviamo: il salvataggio allo spegnimento parte e fallisce sempre');
+  deve(/handleSIGINT: false/.test(src), 'Ctrl-C e riavvii manuali continuano a portarsi via la sessione');
+  deve(/handleSIGHUP: false/.test(src), 'la chiusura del terminale chiude il browser prima del salvataggio');
+  /* Gli interruttori vanno dove si apre il browser, non in un punto qualunque:
+     se finiscono fuori dalle opzioni non li legge nessuno e non se ne accorge
+     nessuno. */
+  const da = src.indexOf('launchPersistentContext');
+  const opzioni = da < 0 ? '' : src.slice(da, src.indexOf('});', da));
+  deve(/handleSIGTERM: false/.test(opzioni),
+    'gli interruttori non stanno fra le opzioni di apertura del browser: non hanno effetto');
+  return 'i segnali arrivano a noi';
+});
+
 const ko = esiti.filter(e => !e[0]);
 console.log('\n── Groupama · una volta dentro, si resta dentro ────────────');
 for (const [ok, n, d] of esiti) console.log((ok ? '  ✅ ' : '  ❌ ') + n + (d ? ' — ' + d : ''));

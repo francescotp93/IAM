@@ -1,13 +1,21 @@
-id: prova151-1789417734  exit: 0  2026-09-14 20:30:26
+id: perche-1789417877  exit: 0  2026-09-14 20:31:40
 ----
-== stato PRIMA del rilascio
-20:29:25
-{"running":false,"step":"loggato","since":1789391851389,"msg":"Login completato ✅"}
-aspetto che autopull prenda il codice nuovo (max 4 min)
-aggiornato a c7800a7 alle 20:29:26
-aspetto che AXA si riaccenda e decida (60s)
-== LA PROVA: AXA ha superato il riavvio da sola?
-{"running":false,"step":"loggato","since":1789391851389,"msg":"Login completato ✅"}
-== cosa dice il giornale
-== e Allianz? (deve aver preso i 60 secondi di attesa)
-1
+== ora
+2026-09-14 20:31:40
+== da quanto girano
+withus-backend     Mon 2026-09-14 20:29:02 UTC
+axa-scraper        Mon 2026-09-14 20:30:33 UTC
+allianz-scraper    Mon 2026-09-14 20:30:33 UTC
+groupama-scraper   Mon 2026-09-14 12:57:02 UTC
+== cosa ha fatto autopull negli ultimi 15 minuti
+Sep 14 20:29:00 vps-d6443a46 autopull.sh[2600145]: [autopull] 2026-09-14 20:29:00 aggiorno b3e79ff -> c7800a7
+Sep 14 20:29:02 vps-d6443a46 autopull.sh[2600145]: [autopull] withus-backend riavviato ✅
+Sep 14 20:30:32 vps-d6443a46 autopull.sh[2600145]: [autopull] allianz-scraper riavviato (codice scraper cambiato)
+Sep 14 20:30:32 vps-d6443a46 autopull.sh[2600145]: [autopull] axa-scraper riavviato (codice scraper cambiato)
+Sep 14 20:30:33 vps-d6443a46 autopull.sh[2600145]: [autopull] allianz-scraper.service riavviato
+Sep 14 20:30:33 vps-d6443a46 autopull.sh[2600145]: [autopull] axa-scraper.service riavviato
+Sep 14 20:30:33 vps-d6443a46 autopull.sh[2600145]: [autopull] fatto.
+== il codice nuovo è nel file dello scraper AXA?
+3
+== quale versione sta ESEGUENDO il processo (data del file vs avvio del servizio)
+2026-09-14 20:29:01.070150313 +0000  scraper axa sul disco

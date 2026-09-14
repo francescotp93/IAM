@@ -124,6 +124,27 @@ await prova('anche il messaggio d\'errore passa dalle maschere', () => {
   deve(lungo.errore.length <= 1000, 'il messaggio non e\' piu\' accorciato: ' + lungo.errore.length + ' caratteri');
 });
 
+await prova('AXA senza premio non accusa la sessione se lo scraper era dentro', () => {
+  /* 14/09/2026, riga 13 del registro: «sessione scaduta? rifai il login» — ma
+     nella risposta c'era `prodotto: "Nuova Protezione Auto"`, un nome che si
+     legge DALLA PAGINA DEL PREVENTIVO. Lo scraper era dentro, i campi del
+     premio erano vuoti, e per tutto il giorno si sono rifatti accessi
+     inseguendo il problema sbagliato. */
+  const src = fs.readFileSync(path.join(qui, 'moto.js'), 'utf8');
+  deve(/function perchePremioAxaAssente/.test(src),
+    'il motivo non viene calcolato: si torna a dire «sessione scaduta?» a ogni premio mancante');
+  const f = src.slice(src.indexOf('function perchePremioAxaAssente'), src.indexOf('\n}', src.indexOf('function perchePremioAxaAssente')));
+  deve(/d\.error/.test(f), 'la spiegazione dello scraper non ha la precedenza sulla nostra');
+  deve(/d\.prodotto/.test(f), 'non si guarda se lo scraper era arrivato al preventivo: e\' il segno che la sessione c\'era');
+  deve(/Non e' la sessione|non e\\' la sessione/i.test(f) || /Non e\\' la sessione/.test(f),
+    'quando lo scraper era dentro non si dice che NON e\' la sessione: si continua a mandare a rifare il login');
+  /* Si cerca la FRASE COME MESSAGGIO, non la parola: il commento qui sopra la
+     cita apposta per spiegare cosa non va, e una prova che inciampa sulla
+     propria spiegazione e' una prova scritta male. */
+  deve(!/'Premio AXA non disponibile \(sessione scaduta\?/.test(src),
+    'il vecchio messaggio che indovina la sessione e\' ancora usato nel codice');
+});
+
 await prova('quando HDI ripiega sul browser, il registro dice perché la via veloce è caduta', () => {
   const r = E.preparaRiga({ compagnia: 'HDI Assicurazioni', targa: 'AA000AA', fonte: 'browser',
     risposta: { ok: true, premio_annuale: '583,25', premio_src: 'api:pacchetto' }, premio: 583.25,

@@ -826,11 +826,25 @@ const ALLIANZ_MOTOR_ESCLUSIVO = (process.env.ALLIANZ_MOTOR_ESCLUSIVO || '1') !==
 
    Le parole del portale valgono piu' delle nostre: se ne dice una, si riporta
    quella. */
+/* QUANTO SI ASPETTA L'OFFERTA. Era 13 giri da 2 secondi = 26, dentro un budget
+   che il backend fissa a 225: si rinunciava dopo un ottavo del tempo concesso.
+   Misurato il 14/09/2026, riga 12 del registro esiti: la chiamata e' durata 96
+   secondi e si e' chiusa con «ha aperto l'offerta ma non ha finito il calcolo
+   entro 26 secondi». Quindi l'offerta c'era e il portale stava ancora
+   lavorando: non un guasto, un'attesa tarata male.
+   E' un'IPOTESI, non una certezza — il portale potrebbe essersi impuntato lo
+   stesso. Ma ora il messaggio distingue i casi, quindi la prossima volta il
+   registro dira' se sessanta secondi bastano. Se non bastassero, il numero da
+   cambiare e' uno solo. */
+const GIRI_OFFERTA = 30;                       // 30 × 2s = 60 secondi
+const SECONDI_OFFERTA = GIRI_OFFERTA * 2;
 function motivoPremioAssente(avviso, offertaVista) {
   const a = String(avviso == null ? '' : avviso).replace(/\s+/g, ' ').trim();
   if (a) return 'Allianz non completa il preventivo: «' + a + '»';
   if (!offertaVista) return 'Allianz non ha aperto l\'offerta: il calcolo non e\' partito. Controlla targa e data di nascita sul portale, poi riprova.';
-  return 'Allianz ha aperto l\'offerta ma non ha finito il calcolo entro 26 secondi: riprova fra poco.';
+  /* Il numero nel messaggio viene dall'attesa vera: scriverlo a mano vuol dire
+     che un giorno l'attesa cambia e il messaggio racconta un'altra cosa. */
+  return 'Allianz ha aperto l\'offerta ma non ha finito il calcolo entro ' + SECONDI_OFFERTA + ' secondi: riprova fra poco.';
 }
 
 /* Raccoglie l'avviso che il portale mostra sul modulo. La rete e' larga di
@@ -996,7 +1010,7 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
      guasti con due rimedi diversi, che fino al 14/09/2026 uscivano dalla stessa
      frase. */
   let offertaVista = false;
-  for (let i = 0; i < 13 && !data; i++) {
+  for (let i = 0; i < GIRI_OFFERTA && !data; i++) {
     await wait(2000);
     const off = offFrame(); if (!off) continue;
     offertaVista = true;

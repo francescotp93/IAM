@@ -1,15 +1,17 @@
-id: caddy-1789384414  exit: 0  2026-09-14 11:13:41
+id: dopo144-1789385022  exit: 0  2026-09-14 11:24:17
 ----
-== Caddyfile completo (74 byte)
-api.withusassicurazioni.it {
-	encode gzip
-	reverse_proxy localhost:3000
-}
-
-== versione Caddy
-v2.11.4 h1:XKxkMTgNSizEvKG6QHue6cAsFOteU2qA61w2tKkCWi0=
-
-== cosa ha registrato Caddy per le quotazioni lente (09-11 settembre)
-
-== la porta 3000 è aperta verso l'esterno?
-Status: inactive
+== ora
+2026-09-14 11:24:15
+== HEAD sul server
+3be56cd Scheda cliente: un elenco solo per i preventivi, personalizzati compresi (#143)
+== autopull ultimi 10 minuti
+== servizi
+withus-backend       active
+allianz-scraper      active
+axa-scraper          active
+groupama-scraper     active
+== health
+{"ok":true}
+== sessioni ancora in piedi?
+axa        {"running":false,"step":"attesa_otp","since":1789384994312,"msg":"Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma"}
+groupama   {"running":false,"step":"attesa_otp","since":1789384975487,"msg":"Credenziali OK — inserisci il codice OTP ricevuto via email"}

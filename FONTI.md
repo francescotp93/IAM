@@ -462,6 +462,12 @@ credenziali sono a posto». Nessuno dei cinque difetti era dove sembrava.
    codice, e la mail col codice resta nella casella. **Un automatismo si
    aggancia allo STATO, non al gesto**: «lo scraper sta aspettando un codice»
    e' vero comunque, che qualcuno abbia premuto un tasto o no.
+   *Coda, lo stesso giorno:* la correzione era stata scritta **sotto**
+   `FONTI_AUTOLOGIN`, che in produzione e' spento — otto prove verdi su codice
+   che sulla macchina non girava mai (§1 di `CLAUDE.md`, e una prova verde non
+   se ne accorge: va sorvegliato l'**ordine**). Quell'interruttore governa il
+   rimandare CREDENZIALI ai portali da soli; prendere un codice gia' arrivato
+   in casella non e' quella cosa, e sta sopra.
 9. **Un tentativo che non lascia traccia e' un tentativo che non e'
    avvenuto**, per chi legge. Stessa mattina, AXA: seme valido, codice generato
    e provato, portale che lo rifiuta — e nel giornale quindici secondi di

@@ -497,10 +497,23 @@ const soloRimbalzo = (u) => /[?&](code|state)=/.test(String(u || ''));
    il servizio di identita' ci aveva riconosciuti. Mancava solo l'ultimo passo,
    e nessuno glielo lasciava fare.
    Da qui la regola: chi aspetta un accesso aspetta allo stesso modo. Il
-   CRITERIO per dire «sono dentro» resta di chi chiama — al login basta non
-   vedere password ne' codice, all'accensione serve il marcatore vero della
-   home — perche' quello e' un giudizio, e i giudizi non si uniformano per
-   comodita'. Qui si condivide solo la pazienza. */
+   CRITERIO e' il MARCATORE DELLA HOME — la piastrella EMISSIONE o il pulsante
+   Esci — e vale per tutte e due.
+
+   CORREZIONE DEL 14/09/2026, SERA, ED E' UN ERRORE DA NON RIFARE. La prima
+   versione di questa funzione lasciava il criterio a chi chiamava, e
+   all'accensione le si passava il controllo leggero: «indirizzo AXA, niente
+   campo password, niente campo codice». Sembra ragionevole. Non lo e': quel
+   controllo scarta i parametri dall'indirizzo prima di guardarlo, quindi della
+   PAGINA DI RIMBALZO vede solo `mobility.axa-italia.it/portal/`, che e'
+   identica alla home. Dice «sì» quasi subito.
+   Risultato misurato: 20:30:58 sessione ripristinata, 20:31:04 dichiarata non
+   valida. SEI secondi su venti di attesa, e la spinta — che scatta al sesto
+   giro — non e' mai partita. Un'attesa costruita per superare il rimbalzo si
+   accontentava del rimbalzo.
+   Da qui la regola: chi aspetta un accesso aspetta il segnale che NON si puo'
+   confondere. Il controllo leggero resta buono per rispondere «siamo dentro?»
+   a chi lo chiede, non per decidere quando smettere di aspettare. */
 async function attendiAccesso(controlla, { giri = 30, spintaAl = 12, trustDevicePerPrimi = 0 } = {}) {
   let dentro = false;
   for (let i = 0; i < giri && !dentro; i++) {
@@ -713,7 +726,10 @@ async function doCodice(codice) {
        pomeriggio sarebbe fallito lo stesso.
        Un indirizzo che porta ancora `code=` o `state=` è il rimbalzo, non la
        home: la si aspetta, e se non arriva si dice che non è arrivata. */
-    const dentro = await attendiAccesso(isLogged, { giri: 30, spintaAl: 12, trustDevicePerPrimi: 5 });
+    /* SI ASPETTA IL MARCATORE DELLA HOME, non l'assenza di password. Vedi il
+       commento di `attendiAccesso`: il controllo leggero dice «sì» sulla
+       pagina di rimbalzo, e chi aspetta su quel segnale non aspetta affatto. */
+    const dentro = await attendiAccesso(loggedMarker, { giri: 30, spintaAl: 12, trustDevicePerPrimi: 5 });
     if (dentro) { HOLD = false; await salvaSessione('login riuscito'); setState('loggato', 'Login completato ✅'); log('login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
     /* PERCHE' NON E' ANDATA: fino al 12/09/2026 qui il giornale taceva. Nel
        giornale si leggeva «2FA inserito OK», poi piu' niente: impossibile
@@ -771,7 +787,7 @@ async function autoLoginFlow() { return doAccedi(); }
          autenticazione, che atterra sul rimbalzo. Guardare subito dopo vuol
          dire guardare a meta' del giro e chiamarla morta. Si aspetta, e se
          resta appesa le si da' la stessa spinta del login. */
-      await attendiAccesso(isLogged, { giri: 20, spintaAl: 6 });
+      await attendiAccesso(loggedMarker, { giri: 20, spintaAl: 6 });
       logCache.t = 0;                  // la risposta di un attimo fa non vale più
       /* Il verdetto resta del controllo severo — quello che pretende il
          marcatore della home — perche' sul rimbalzo il controllo leggero

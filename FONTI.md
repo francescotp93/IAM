@@ -535,6 +535,36 @@ Undici secondi contro trenta, e una spinta che c'era da una parte sola.
 
 ---
 
+### 9-quater. L'attesa che si accontentava del segnale che doveva superare
+
+Coda immediata di §9-ter, la sera stessa. La correzione era giusta
+nell'intenzione e sbagliata nel dettaglio che conta.
+
+`attendiAccesso` era stata scritta lasciando il CRITERIO a chi la chiamava, con
+una motivazione che suonava bene: «i giudizi non si uniformano per comodita'».
+All'accensione le si passava il controllo leggero — indirizzo AXA, niente campo
+password, niente campo codice.
+
+Quel controllo **scarta i parametri dall'indirizzo prima di guardarlo**. Della
+pagina di rimbalzo vede quindi solo `mobility.axa-italia.it/portal/`, che e'
+identica alla home. Dice «sì» quasi subito.
+
+Misurato: `20:30:58` sessione ripristinata, `20:31:04` dichiarata non valida.
+**Sei secondi su venti di attesa**, e la spinta — che scatta al sesto giro —
+non e' mai partita. Un'attesa costruita apposta per superare il rimbalzo si
+accontentava del rimbalzo.
+
+Ora entrambe le strade aspettano il **marcatore della home**: la piastrella
+EMISSIONE o il pulsante Esci. Sulla pagina di rimbalzo non c'e', e non si puo'
+confondere.
+
+**La lezione**: quando si scrive un'attesa, la domanda non e' «qual e' un
+controllo ragionevole?» ma **«questo controllo puo' essere vero proprio nella
+situazione da cui sto aspettando di uscire?»**. Se puo', l'attesa non esiste —
+e sembra che esista, il che e' peggio.
+
+---
+
 ### 9-bis. AXA: la copia della sessione non invecchiava, era incompleta
 
 Misurato il 14/09/2026, e vale la pena scriverlo perche' la spiegazione

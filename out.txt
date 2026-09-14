@@ -1,9 +1,8 @@
-id: caddygiornale-1789391284  exit: 0  2026-09-14 13:08:15
+id: caddyrifiniture-1789391376  exit: 0  2026-09-14 13:09:49
 ----
-copia della configurazione funzionante: /etc/caddy/Caddyfile.buona-20260914-130811
-configurazione valida
+copia: /etc/caddy/Caddyfile.buona-20260914-130945
+configurazione aggiornata
 RICARICAMENTO RIUSCITO
-== prova con parametri finti, per vedere cosa viene registrato
-health (con parametri finti): HTTP 200
-== la riga registrata:
-Sep 14 13:08:13 vps-d6443a46 caddy[1323]: {"level":"info","ts":1789391293.4553015,"logger":"http.log.access.log0","msg":"handled request","request":{"remote_ip":"51.254.0.0","remote_port":"39478","client_ip":"51.254.142.199","proto":"HTTP/2.0","method":"GET","host":"api.withusassicurazioni.it","uri":"/health?[parametri non registrati]","tls":{"resumed":false,"version":772,"cipher_suite":4865,"proto":"h2","server_name":"api.withusassicurazioni.it","ech":false}},"bytes_read":0,"user_id":"","duration":0.009799624,"size":11,"status":200,"resp_headers":{"Via":["1.1 Caddy"],"Alt-Svc":["h3=\":443\"; ma=2592000"],"Content-Length":["11"],"Date":["Mon, 14 Sep 2026 13:08:13 GMT"],"Content-Type":["appli
+health: HTTP 200
+== la riga registrata adesso:
+Sep 14 13:09:47 vps-d6443a46 caddy[1323]: {"level":"info","ts":1789391387.8535755,"logger":"http.log.access.log0","msg":"handled request","request":{"remote_ip":"51.254.0.0","remote_port":"38486","client_ip":"51.254.0.0","proto":"HTTP/2.0","method":"GET","host":"api.withusassicurazioni.it","uri":"/health?[parametri non registrati]","tls":{"resumed":false,"version":772,"cipher_suite":4865,"proto":"h2","server_name":"api.withusassicurazioni.it","ech":false}},"bytes_read":0,"user_id":"","duration":0.004280154,"size":11,"status":200}

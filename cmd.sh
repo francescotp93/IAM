@@ -1,12 +1,9 @@
 echo "== ora"; date '+%F %T'
-echo "== HEAD + autopull"
-git -C /opt/withus-backend log --oneline -1
-journalctl -u withus-autopull --since '-15min' --no-pager 2>/dev/null | tail -10
-echo "== da quanto girano i servizi (nessun riavvio = sessione caduta da sola)"
-for s in axa-scraper groupama-scraper; do printf '%-18s %s\n' "$s" "$(systemctl show -p ActiveEnterTimestamp --value $s)"; done
-echo "== AXA: come e quando è caduta"
-journalctl -u axa-scraper --since '-3h' --no-pager 2>/dev/null | grep -aiE 'caduta|scadut|keep-alive|relogin|login|sessione' | tail -15
-echo "== GROUPAMA: caduta e codice automatico dalla posta"
-journalctl -u groupama-scraper --since '-3h' --no-pager 2>/dev/null | grep -aiE 'caduta|scadut|keep-alive|codice|posta|otp|login|sessione' | tail -20
-echo "== il backend ha provato a prendere il codice dalla posta?"
-journalctl -u withus-backend --since '-30min' --no-pager 2>/dev/null | grep -aiE 'codice|posta|otp|imap' | tail -15
+echo "== AXA: tutto quello che ha detto dalle 11:20"
+journalctl -u axa-scraper --since '11:20' --no-pager 2>/dev/null | sed 's/.*start-service.sh\[[0-9]*\]: //' | tail -40
+echo
+echo "== stato adesso"
+for pair in "axa 4700" "groupama 4500"; do set -- $pair; printf "%-10s " "$1"; curl -s -m 8 "http://127.0.0.1:$2/loginstate" | head -c 200; echo; done
+echo "== allianz riavviato col codice nuovo?"
+systemctl show -p ActiveEnterTimestamp --value allianz-scraper
+grep -c "motivoPremioAssente" /opt/withus-backend/scraper/allianz/quote-service.mjs

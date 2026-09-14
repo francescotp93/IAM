@@ -577,7 +577,13 @@ async function doAccedi() {
         log('il campo del codice non si e\' lasciato compilare: non e\' il seme, e\' cambiata la schermata');
         return setState('attesa_otp', 'Il codice automatico non è entrato nel campo: la schermata di AXA è cambiata. Scrivi il codice dall\'app Guardian — il seme salvato in Fonti non c\'entra e non va toccato.');
       }
-      HOLD = true; HOLD_DA = Date.now(); log('schermata 2FA Guardian raggiunta: attendo il codice dall\'utente (nessun seme salvato in Fonti)'); return setState('attesa_otp', 'Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma');
+      /* Due motivi diversi per arrivare qui, e vanno detti diversi: il seme non
+         c'è proprio, oppure c'è e non si può usare (in quel caso `semeKo` dice
+         anche perche'). Scriverli uguali manda a cercare un seme che c'è, o a
+         fidarsi di uno che non funziona. */
+      HOLD = true; HOLD_DA = Date.now();
+      log('schermata 2FA Guardian raggiunta: attendo il codice dall\'utente (' + (c.totpSecret ? 'seme in Fonti non utilizzabile: ' + semeKo : 'nessun seme salvato in Fonti') + ')');
+      return setState('attesa_otp', 'Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma');
     }
     if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅'); }
     // Distinguo la causa: password SCADUTA vs credenziali errate vs fallimento generico (messaggi chiari in card).
@@ -863,10 +869,22 @@ async function _drivePreventivoAXA(d) {
   };
   let portal = await ensurePortal();
   if (portal === 'expired') {
-    // RE-LOGIN AUTOMATICO: doAccedi rifà utente+password e, se AXA richiede il 2FA, GENERA e inserisce
-    // da solo il codice Guardian (TOTP salvato in Fonti) → la sessione si rinnova senza intervento umano.
-    // Nota: il keep-alive attivo dovrebbe già averla rinnovata prima; questo è la rete di sicurezza.
-    log('sessione AXA scaduta → re-login automatico (Auth0 + codice Guardian TOTP)…');
+    // RE-LOGIN AUTOMATICO: doAccedi rifà utente+password e, se AXA richiede il 2FA e in Fonti c'è un
+    // seme usabile, GENERA e inserisce da solo il codice Guardian → la sessione si rinnova senza
+    // intervento umano. Nota: il keep-alive attivo dovrebbe già averla rinnovata prima; questo è la
+    // rete di sicurezza.
+    /* PRIMA SI GUARDA, POI SI DICE. Fino al 14/09/2026 qui si annunciava «(Auth0 + codice Guardian
+       TOTP)…» SEMPRE, senza aver guardato se un seme ci fosse. Una riga che promette una cosa che
+       non è stata verificata: il giornale diceva che il codice se lo generava da solo mentre in
+       realtà si fermava ad aspettare una persona. Quella mattina ha ingannato chi leggeva — e la
+       lezione n.1 di FONTI.md dice esattamente questo: «un motivo va calcolato una volta e portato
+       fino a chi legge; se ogni chiamante se lo inventa, prima o poi ne inventa uno falso». */
+    const cPrima = creds();
+    const semeKoPrima = motivoSemeNonValido(cPrima.totpSecret);
+    log('sessione AXA scaduta → ' + (cPrima.totpSecret && !semeKoPrima
+      ? 'rientro automatico (Auth0 + codice Guardian generato dal seme)…'
+      : 'provo a rientrare, ma il codice Guardian dovrà scriverlo una persona ('
+        + (cPrima.totpSecret ? 'il seme in Fonti non è utilizzabile: ' + semeKoPrima : 'in Fonti non c\'è nessun seme') + ')…'));
     const st = await doAccedi();
     if (st.step !== 'loggato') {
       const cN = creds();

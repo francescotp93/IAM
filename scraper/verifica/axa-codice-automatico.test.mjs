@@ -88,6 +88,42 @@ prova('quando il seme non c\'è, il messaggio resta quello di prima', () => {
     'è sparito il messaggio del caso normale: chi non ha il seme non sa più cosa fare');
 });
 
+prova('il giornale non promette il codice automatico senza aver guardato se c\'è il seme', () => {
+  /* QUESTA PROVA NASCE DA UN ERRORE DI LETTURA, il 14/09/2026, e l'errore l'ha
+     indotto una riga di giornale. Il preventivatore, trovando la sessione
+     scaduta, annunciava SEMPRE «re-login automatico (Auth0 + codice Guardian
+     TOTP)…» — anche quando in Fonti un seme non c'era. Chi leggeva il giornale
+     concludeva che il codice fosse stato generato e rifiutato dal portale, e
+     andava a cercare un guasto nel seme. Il seme non esisteva.
+     È la lezione n.1 di FONTI.md applicata al giornale invece che alla
+     schermata: un motivo si calcola PRIMA di annunciarlo. */
+  deve(!/log\('sessione AXA scaduta → re-login automatico \(Auth0 \+ codice Guardian TOTP\)…'\)/.test(src),
+    'l\'annuncio del codice Guardian esce ancora senza aver guardato se il seme esiste: il giornale racconta un tentativo che non avviene');
+  const da = src.indexOf("if (portal === 'expired')");
+  const blocco = da < 0 ? '' : src.slice(da, da + 1800);
+  deve(blocco, 'non trovo più il ramo «sessione scaduta» del preventivatore: prova da riscrivere');
+  deve(/motivoSemeNonValido/.test(blocco),
+    'prima di annunciare il rientro non si controlla il seme: si promette una cosa non verificata');
+  const guarda = blocco.indexOf('motivoSemeNonValido');
+  const dice = blocco.indexOf('log(\'sessione AXA scaduta');
+  deve(guarda > -1 && dice > -1 && guarda < dice,
+    'si annuncia PRIMA di guardare: l\'ordine è quello che rende falsa la riga');
+});
+
+prova('«non c\'è il seme» e «il seme non si può usare» restano due frasi diverse', () => {
+  /* Sono due rimedi opposti: nel primo caso il seme va salvato, nel secondo c'è
+     già e va sostituito. Il messaggio che avevo scritto il 14/09 diceva «nessun
+     seme salvato» anche quando il seme c'era — mandando a cercare una cosa che
+     era lì. */
+  const da = src.indexOf("schermata 2FA Guardian raggiunta");
+  const riga = da < 0 ? '' : src.slice(da - 200, da + 320);
+  deve(riga, 'non trovo più la riga del 2FA in attesa: prova da riscrivere');
+  deve(/c\.totpSecret \?/.test(riga),
+    'la riga non distingue il seme assente da quello inutilizzabile: un rimedio su due è sbagliato');
+  deve(/nessun seme salvato in Fonti/.test(riga) && /non utilizzabile/.test(riga),
+    'manca una delle due frasi: ' + riga.slice(0, 200));
+});
+
 prova('un tentativo riuscito continua a dirlo', () => {
   deve(/Login completato ✅ \(codice automatico\)/.test(blocco),
     'il caso felice non si distingue più da un login fatto a mano');

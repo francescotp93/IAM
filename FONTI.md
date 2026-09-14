@@ -469,12 +469,27 @@ credenziali sono a posto». Nessuno dei cinque difetti era dove sembrava.
    rimandare CREDENZIALI ai portali da soli; prendere un codice gia' arrivato
    in casella non e' quella cosa, e sta sopra.
 9. **Un tentativo che non lascia traccia e' un tentativo che non e'
-   avvenuto**, per chi legge. Stessa mattina, AXA: seme valido, codice generato
-   e provato, portale che lo rifiuta — e nel giornale quindici secondi di
-   silenzio, con in agenzia il messaggio «apri l'app e prendi il codice». Si
-   digita a mano, si torna operativi, e il seme sbagliato resta li' per la
-   prossima volta. Il difetto non e' il codice rifiutato: e' che nessuno lo
-   sappia.
+   avvenuto**, per chi legge. Stessa mattina, AXA: la sessione scade, nel
+   giornale compare «re-login automatico (Auth0 + codice Guardian TOTP)…» e poi
+   quindici secondi di silenzio, con in agenzia il messaggio «apri l'app e
+   prendi il codice». Se il codice automatico viene generato e il portale lo
+   rifiuta, questo va detto: altrimenti si digita a mano, si torna operativi, e
+   il seme sbagliato resta li' per la prossima volta. Il difetto non e' il
+   codice rifiutato: e' che nessuno lo sappia.
+
+   **E qui c'e' il seguito, che vale piu' della lezione stessa.** Quel giorno
+   quella ricostruzione era SBAGLIATA: in Fonti, per AXA, un seme non c'era per
+   niente, e nessun codice e' mai stato generato. A sviare e' stata proprio una
+   riga di giornale — il preventivatore, trovando la sessione scaduta,
+   annunciava «(Auth0 + codice Guardian TOTP)…» **sempre**, senza aver guardato
+   se un seme ci fosse. Due righe quasi identiche in due punti diversi del file,
+   una condizionata e una no: si e' letta quella sbagliata e si e' cercato un
+   guasto in un seme che non esisteva.
+   E' la lezione n.1 applicata al GIORNALE invece che alla schermata: **un
+   motivo si calcola prima di annunciarlo**, anche quando a leggerlo e' solo chi
+   lavora al codice. E, per chi indaga: due messaggi che si somigliano non sono
+   lo stesso messaggio — si confrontano le parole esatte prima di dedurne un
+   percorso.
 
 ---
 

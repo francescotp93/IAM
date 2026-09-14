@@ -1,19 +1,29 @@
-id: timeout-1789384305  exit: 0  2026-09-14 11:11:55
+id: fronte-1789384350  exit: 0  2026-09-14 11:13:05
 ----
-== c'è un proxy davanti al backend?
--- timeout configurati --
--- blocchi che inoltrano al backend --
-
-== timeout lato backend verso gli scraper
-46:  const to = setTimeout(() => ctrl.abort(), 15000);
-79:    const to = setTimeout(() => ctrl.abort(), 200000); // il nuovo wizard moto.app può metterci ~2 min
-127:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000);
-311:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // margine per coda scraper (browser singolo) + re-login
-347:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 230000); // copre l'eventuale ripiego browser sotto lock
-380:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000); // TCM: wizard 10 step + eventuale coda/re-login
-415:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 210000);
-477:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 210000);
-520:    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 95000);
-539:    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 225000);
-602:      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 280000); // pacchetto esclusivo: fino a ~27s in piu' sul caso lento (~225s); il frontend attende 390s
-640:    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 150000);
+== chi ascolta verso l'esterno
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                                    
+LISTEN 0      4096   127.0.0.53%lo:53        0.0.0.0:*    users:(("systemd-resolve",pid=1497298,fd=18))             
+LISTEN 0      4096      127.0.0.54:53        0.0.0.0:*    users:(("systemd-resolve",pid=1497298,fd=20))             
+LISTEN 0      4096         0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=1497279,fd=3),("systemd",pid=1,fd=242))
+LISTEN 0      511                *:3000            *:*    users:(("node",pid=2150374,fd=21))                        
+LISTEN 0      4096               *:443             *:*    users:(("caddy",pid=1323,fd=7))                           
+LISTEN 0      4096            [::]:22           [::]:*    users:(("sshd",pid=1497279,fd=4),("systemd",pid=1,fd=243))
+LISTEN 0      4096               *:80              *:*    users:(("caddy",pid=1323,fd=9))                           
+== servizi web attivi
+  caddy.service               loaded active running Caddy
+  hdi-tunnel.service          loaded active running HDI tunnel nuovo:4401 -> vecchio:4400 (IP fidato)
+== caddy?
+-rw-r--r-- 1 root root 74 Jun 29 11:30 /etc/caddy/Caddyfile
+3:	reverse_proxy localhost:3000
+== cloudflared?
+== a chi punta il frontend (config pubblica)
+https://api.withusassicurazioni.it
+https://iam.withusassicurazioni.it
+https://iam.withusassicurazioni.it/
+https://quoto.withusassicurazioni.it
+https://quoto.withusassicurazioni.it/
+https://quoto.withusassicurazioni.it/docs/casa/GlobaleCasa_Condizioni.pdf
+https://quoto.withusassicurazioni.it/docs/casa/GlobaleCasa_DIP.pdf
+https://quoto.withusassicurazioni.it/docs/casa/GlobaleCasa_DIP_Aggiuntivo.pdf
+https://quoto.withusassicurazioni.it/withus-logo-white.png
+https://quoto.withusassicurazioni.it/withus-logo.png

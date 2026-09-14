@@ -1,8 +1,24 @@
-id: caddyrifiniture-1789391376  exit: 0  2026-09-14 13:09:49
+id: axass-1789391534  exit: 0  2026-09-14 13:12:29
 ----
-copia: /etc/caddy/Caddyfile.buona-20260914-130945
-configurazione aggiornata
-RICARICAMENTO RIUSCITO
-health: HTTP 200
-== la riga registrata adesso:
-Sep 14 13:09:47 vps-d6443a46 caddy[1323]: {"level":"info","ts":1789391387.8535755,"logger":"http.log.access.log0","msg":"handled request","request":{"remote_ip":"51.254.0.0","remote_port":"38486","client_ip":"51.254.0.0","proto":"HTTP/2.0","method":"GET","host":"api.withusassicurazioni.it","uri":"/health?[parametri non registrati]","tls":{"resumed":false,"version":772,"cipher_suite":4865,"proto":"h2","server_name":"api.withusassicurazioni.it","ech":false}},"bytes_read":0,"user_id":"","duration":0.004280154,"size":11,"status":200}
+== ora
+2026-09-14 13:12:29
+== stato login
+axa        {"running":false,"step":"pronto","since":1789390970569,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
+groupama   {"running":false,"step":"loggato","since":1789390638038,"msg":"Sessione attiva"}
+== il sessionStorage è finito nella copia? (solo conteggio, mai il contenuto)
+cookie salvati        : 121
+voci di localStorage  : 10
+voci di sessionStorage: 0
+auth.json scritto: 2026-09-14 13:07:34.983996354 +0000 (38474 byte)
+== giornale AXA dall'accesso
+12:57:01 [axa] SIGTERM: salvo la sessione prima di chiudere
+12:57:01 [axa] sessione NON salvata: browserContext.storageState: Target page, context or browser has been closed
+🔑 VNC AXA su 127.0.0.1:5906 (password: axa2026) — tunnel SSH dal Mac per il primo login se serve
+12:57:28 [axa] sessione ripresa da auth.json: 104 cookie
+12:57:40 [axa] la sessione salvata non è più valida: serve un accesso con il codice
+12:57:40 [axa] PRONTO al login — attendo Accedi dall'utente
+13:02:12 [axa] SIGTERM: nessuna sessione viva, tengo la copia su disco
+🔑 VNC AXA su 127.0.0.1:5906 (password: axa2026) — tunnel SSH dal Mac per il primo login se serve
+13:02:39 [axa] sessione ripresa da auth.json: 104 cookie, 0 voci di sessionStorage
+13:02:50 [axa] la sessione salvata non è più valida: serve un accesso con il codice
+13:02:50 [axa] PRONTO al login — attendo Accedi dall'utente

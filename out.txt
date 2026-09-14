@@ -1,36 +1,26 @@
-id: cfonti-1789392334  exit: 0  2026-09-14 13:25:51
+id: ssvero-1789392386  exit: 0  2026-09-14 13:26:50
 ----
 == ora
-2026-09-14 13:25:45
-== le fonti registrate: SOLO id, indirizzo del servizio e se è attiva
-PREDEFINITE:
-  allianz        surl=(nessuno)                    attiva=None  ha_credenziali=sì
-  24h            surl=(nessuno)                    attiva=None  ha_credenziali=sì
-  __connettore   surl=(nessuno)                    attiva=None  ha_credenziali=no
-PERSONALIZZATE (__custom):
-  c-italiana     surl=(nessuno)                    attiva=True  ha_credenziali=sì
-  c-hdi          surl=(nessuno)                    attiva=True  ha_credenziali=sì
-  c-groupama     surl=(nessuno)                    attiva=True  ha_credenziali=sì
-  c-prima        surl=(nessuno)                    attiva=False  ha_credenziali=sì
-  c-axa          surl=(nessuno)                    attiva=True  ha_credenziali=sì
-  c-inlinea      surl=(nessuno)                    attiva=False  ha_credenziali=sì
-  c-sara-assicurazioni surl=(nessuno)                    attiva=False  ha_credenziali=sì
-  c-kube         surl=(nessuno)                    attiva=False  ha_credenziali=sì
-  c-quotiamo     surl=(nessuno)                    attiva=False  ha_credenziali=sì
-  c-assieasy     surl=(nessuno)                    attiva=True  ha_credenziali=sì
-  c-rc-polizza   surl=(nessuno)                    attiva=False  ha_credenziali=sì
-
-== il quotatore è dirottato da una variabile d'ambiente?
-(nessuna variabile *_SCRAPER_URL nel servizio)
-
-== chi risponde sulle porte degli scraper
-  4700 -> {"running":false,"step":"loggato","since":1789391851389,"msg":"Login completato ✅"}
-  4500 -> {"running":false,"step":"loggato","since":1789390638038,"msg":"Sessione attiva"}
-  4400 -> {"running":false,"step":"loggato","since":1789213786561,"msg":"Accesso eseguito ✅","esit
-  4300 -> 
-  4200 -> {"running":false,"step":"idle","since":0,"msg":""}
-  4100 -> {"endpoints":["/status","/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela
-  4600 -> {"running":false,"step":"pronto","since":1788935728557,"msg":"Pronto: avvia il login da Fo
-  4800 -> {"running":false,"step":"pronto","since":1789392002604,"msg":"Pronto: avvia il login da Fo
-  4900 -> {"running":false,"step":"pronto","since":1788935731446,"msg":"Pronto: avvia il login"}
-  5000 -> 
+2026-09-14 13:26:50
+== AXA adesso
+{"url":"https://mobility.axa-italia.it/portal/?code=ZnecqR1EUw9P5xuUBMc0PCvBPW4FVslzRO7wl281dmt&state=b56e33f9-380b-4ecd-a8ad-4902e60494b6&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=31db4180-b423-4bc
+== la copia su disco, dopo il login delle 13:17
+scritto il          : 2026-09-14 13:17:31
+cookie              : 117
+voci localStorage   : 11
+voci sessionStorage : 0
+== giornale AXA dalle 13:15
+    - navigated to "https://mobility.axa-italia.it/portal/?code=DmJDz-qtxZElYlaIjG1L8iElIQHfLvApR13_YUvVcR8&state=efaa7a22-0e41-44cb-a00e-7a8f08565622&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=d88c…"
+13:16:46 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+13:16:48 [axa] AXA: submit 1
+13:16:53 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente (nessun seme salvato in Fonti)
+13:17:08 [axa] 2FA inserito → valore nel campo: "089804" OK
+13:17:08 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+13:17:10 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+13:17:11 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+13:17:12 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+13:17:13 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+13:17:14 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+13:17:22 [axa] il portale è fermo sulla pagina di rimbalzo: apro la home per far concludere l'accesso
+13:17:31 [axa] sessione salvata su disco (login riuscito): 0 voci di sessionStorage
+13:17:31 [axa] login completato ✅

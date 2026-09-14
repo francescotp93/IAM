@@ -1,25 +1,24 @@
-id: caduta-1789385086  exit: 0  2026-09-14 11:25:17
+id: axatotp-1789385164  exit: 0  2026-09-14 11:26:20
 ----
 == ora
-2026-09-14 11:25:16
-== HEAD + autopull
-abc7cd7 Merge pull request #144 from francescotp93/fix/allianz-dice-perche
-Sep 14 11:22:04 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Sep 14 11:22:04 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 14 11:22:04 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 6.381s CPU time over 7.439s wall clock time, 98.5M memory peak.
-Sep 14 11:23:03 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Sep 14 11:23:11 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Sep 14 11:23:11 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 14 11:23:11 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 6.322s CPU time over 7.555s wall clock time, 98M memory peak.
-Sep 14 11:24:11 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Sep 14 11:24:21 vps-d6443a46 autopull.sh[2518300]: [autopull] 2026-09-14 11:24:21 aggiorno 3be56cd -> abc7cd7
-Sep 14 11:24:23 vps-d6443a46 autopull.sh[2518300]: [autopull] withus-backend riavviato ✅
-== da quanto girano i servizi (nessun riavvio = sessione caduta da sola)
-axa-scraper        Sat 2026-09-12 13:33:43 UTC
-groupama-scraper   Sat 2026-09-12 13:33:43 UTC
-== AXA: come e quando è caduta
-Sep 14 11:22:59 vps-d6443a46 start-service.sh[2150754]: 11:22:59 [axa] sessione AXA scaduta → re-login automatico (Auth0 + codice Guardian TOTP)…
-== GROUPAMA: caduta e codice automatico dalla posta
-Sep 14 11:22:51 vps-d6443a46 start-service.sh[2150756]: 11:22:51 [groupama] sessione ISA scaduta → re-login automatico (utente+password)…
-Sep 14 11:22:55 vps-d6443a46 start-service.sh[2150756]: 11:22:55 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-== il backend ha provato a prendere il codice dalla posta?
+2026-09-14 11:26:20
+== AXA: tutto quello che ha detto dalle 11:20
+11:22:59 [axa] sessione AXA scaduta → re-login automatico (Auth0 + codice Guardian TOTP)…
+11:23:02 [axa] AXA: User ID inserito
+11:23:02 [axa] AXA: password inserita (form unico)
+11:23:02 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+11:23:04 [axa] AXA: submit 1
+11:23:07 [axa] AXA: password inserita (passo 2)
+11:23:07 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+11:23:09 [axa] AXA: submit 2
+11:23:11 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
+11:23:14 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
+11:23:14 [axa] AXA Guardian → inserimento manuale attivato (clicked=true)
+11:23:14 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente
+
+== stato adesso
+axa        {"running":false,"step":"attesa_otp","since":1789384994312,"msg":"Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma"}
+groupama   {"running":false,"step":"attesa_otp","since":1789384975487,"msg":"Credenziali OK — inserisci il codice OTP ricevuto via email"}
+== allianz riavviato col codice nuovo?
+Mon 2026-09-14 11:25:54 UTC
+2

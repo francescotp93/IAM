@@ -5504,12 +5504,51 @@ const avvio = async () => {
       deve(d.intermediario.veste === 'Collaboratore sez. E', 'veste: ' + d.intermediario.veste);
     });
 
-    await prova('documento: senza intermediario non se ne inventa uno', async () => {
+    await prova('documento: senza collaboratore scelto, l\'intermediario e\' l\'agenzia', async () => {
+      /* Un preventivo fatto in agenzia e non da un sub-agente e' il caso
+         normale, non un dato mancante: l'intermediario iscritto c'e' lo
+         stesso, ed e' l'agenzia. Prima qui usciva «da confermare» e la
+         consegna si bloccava — chi non ha una scheda collaboratore legata al
+         proprio utente non poteva mandare nessun preventivo. */
       const d = await documento(null, { intermediario: null });
-      deve(d.intermediario.nome === 'da confermare', 'nome: ' + d.intermediario.nome);
+      deve(d.intermediario.nome === 'With Us Assicurazioni S.r.l.', 'nome: ' + d.intermediario.nome);
+      deve(d.intermediario.rui === 'sez. A n. A000123456 dal 01/03/2019', 'RUI: ' + d.intermediario.rui);
+      deve(d.daConfermare.length === 0,
+        'chiede di confermare qualcosa che non manca: ' + JSON.stringify(d.daConfermare));
+      return 'firma l\'agenzia, con la sua iscrizione';
+    });
+
+    await prova('documento: senza collaboratore E senza RUI agenzia, lo dice una volta sola', async () => {
+      const d = await documento(null, { intermediario: null, azienda: { rui_numero: '', rui_sezione: '', rui_data: '' } });
       deve(d.intermediario.rui === 'da confermare', 'RUI: ' + d.intermediario.rui);
-      const quante = d.daConfermare.filter(x => /RUI dell'intermediario/.test(x)).length;
-      deve(quante === 1, 'il RUI mancante dell\'intermediario e\' elencato ' + quante + ' volte (attesa 1)');
+      /* La stessa iscrizione mancante compare in due posti del foglio, ma e'
+         UNA cosa mancante: elencarla due volte farebbe sembrare piu' grave un
+         problema solo, e chi legge andrebbe a cercare due dati diversi. */
+      const quante = d.daConfermare.filter(x => /RUI/.test(x)).length;
+      deve(quante === 1, 'l\'iscrizione mancante e\' elencata ' + quante + ' volte (attesa 1): ' + JSON.stringify(d.daConfermare));
+    });
+
+    await prova('documento: una scheda azienda incompleta non resta in memoria', async () => {
+      /* L'avviso dice «il RUI non c'e', si compila in IAM». Se la copia vecchia
+         restasse in memoria, l'utente lo compilerebbe davvero e tornando qui
+         non cambierebbe niente: l'istruzione che diamo porterebbe dritta dentro
+         il guasto. */
+      const r = await page.evaluate(async () => {
+        PP_AZIENDA = null;
+        window.__COLLAUDO.risposte['iam_azienda:single'] = { data: { dati: { rs: 'Agenzia' } }, error: null };
+        await ppAzienda();
+        window.__COLLAUDO.risposte['iam_azienda:single'] = { data: { dati: { rs: 'Agenzia', rui_numero: 'A111' } }, error: null };
+        const dopoCompilato = (await ppAzienda()).rui_numero || '';
+        window.__COLLAUDO.risposte['iam_azienda:single'] = { data: { dati: { rs: 'Agenzia', rui_numero: 'A222' } }, error: null };
+        const dopoCompleta = (await ppAzienda()).rui_numero || '';
+        PP_AZIENDA = null;
+        return { dopoCompilato, dopoCompleta };
+      });
+      deve(r.dopoCompilato === 'A111', 'non rilegge la scheda dopo che e\' stata completata: «' + r.dopoCompilato + '»');
+      /* Una volta completa, invece, si tiene: non ha senso richiederla a ogni
+         apertura di scheda cliente. */
+      deve(r.dopoCompleta === 'A111', 'una scheda completa non resta in memoria: «' + r.dopoCompleta + '»');
+      return 'incompleta si rilegge, completa si tiene';
     });
 
     await prova('documento: il premio sul foglio porta sempre il suo frazionamento', async () => {

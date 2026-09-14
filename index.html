@@ -23774,8 +23774,14 @@ function ppDataIt(v) {
 let PP_AZIENDA = null;
 /* I dati della societa' di intermediazione: quelli della sezione Azienda del
    profilo IAM, non una copia scritta qui dentro. */
+/* La copia in memoria si tiene solo se e' COMPLETA. Senza questa regola
+   succedeva la cosa piu' antipatica possibile: l'avviso diceva «il RUI
+   dell'agenzia non c'e', si compila in IAM», l'utente andava a compilarlo,
+   tornava qui — e non cambiava niente, perche' la copia vecchia era rimasta
+   in memoria. L'istruzione che davamo portava dritta dentro il guasto. */
 async function ppAzienda(force) {
-  if (PP_AZIENDA && !force) return PP_AZIENDA;
+  const completa = PP_AZIENDA && String(PP_AZIENDA.rui_numero || '').trim();
+  if (completa && !force) return PP_AZIENDA;
   try {
     const { data } = await db.from('iam_azienda').select('dati').eq('id', 1).single();
     PP_AZIENDA = (data && data.dati) || {};
@@ -23824,18 +23830,31 @@ function ppDocumento(r, ctx) {
     contatti: contatti
   };
 
-  // ── l'intermediario che firma la proposta ──
+  /* ── L'INTERMEDIARIO CHE FIRMA LA PROPOSTA ─────────────────────────────────
+     Se non e' stato scelto un collaboratore, l'intermediario NON manca: e'
+     l'agenzia stessa, con la sua iscrizione. E' il caso normale di un
+     preventivo fatto in agenzia e non da un sub-agente, e il documento resta
+     a norma perche' un intermediario iscritto ce l'ha lo stesso.
+
+     Prima qui si scriveva «da confermare» e la consegna si bloccava: chi non
+     ha una scheda collaboratore legata al proprio utente — l'agente generale,
+     per dirne uno — non poteva mandare nessun preventivo, e il messaggio
+     gli chiedeva un dato che per lui non esiste. */
   const nomeIm = im ? ((im.cognome || '') + ' ' + (im.nome || '')).trim() : '';
-  const intermediario = {
-    nome: dato(nomeIm, 'intermediario di riferimento'),
-    rui: im
-      ? ppRuiTesto(im.rui_sezione, im.rui_numero, im.rui_data, 'iscrizione RUI dell\'intermediario', mancanti)
-      : PP_DA_CONFERMARE,
-    veste: im ? forse(im.veste) : null
-  };
-  /* Senza intermediario non c'e' nemmeno un RUI da cercare: la voce mancante e'
-     una sola, e va detta una volta. */
-  if (!im) mancanti.push('iscrizione RUI dell\'intermediario');
+  const intermediario = im
+    ? {
+        nome: dato(nomeIm, 'intermediario di riferimento'),
+        rui: ppRuiTesto(im.rui_sezione, im.rui_numero, im.rui_data, 'iscrizione RUI dell\'intermediario', mancanti),
+        veste: forse(im.veste)
+      }
+    : {
+        /* L'agenzia in persona. Ragione sociale e RUI sono gia' stati letti e
+           gia' segnalati se mancano: qui non si rimette la stessa voce
+           nell'elenco, o il foglio direbbe due volte la stessa cosa. */
+        nome: azienda.ragioneSociale,
+        rui: azienda.rui,
+        veste: null
+      };
 
   // ── il cliente, dall'anagrafica ──
   const giuridica = cl && cl.tipo === 'giuridica';

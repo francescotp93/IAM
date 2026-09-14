@@ -5225,33 +5225,22 @@ const avvio = async () => {
       deve(r.annuale === 1, 'annuale: ' + r.annuale + ' (atteso 1)');
     });
 
-    await prova('personalizzati: la linguetta sta nella scheda cliente e apre il suo riquadro', async () => {
+    await prova('personalizzati: l\'elenco dei preventivi e\' uno solo', async () => {
       await apriScheda();
       const r = await page.evaluate(() => {
-        const b = document.querySelector('.cl-tab[data-t="pers"]');
-        if (!b) return { linguetta: false };
-        clTab('pers');
-        const p = document.querySelector('.cl-tab[data-t="prev"]');
-        return {
-          linguetta: true, testo: b.textContent.trim(), testoPrev: p ? p.textContent.trim() : '',
-          pers: getComputedStyle(document.getElementById('cl-pers')).display,
-          prev: getComputedStyle(document.getElementById('cl-prev')).display
-        };
+        const tabs = [...document.querySelectorAll('.cl-tab')].map(b => ({ t: b.dataset.t, l: b.textContent.trim() }));
+        clTab('prev');
+        return { tabs, prev: getComputedStyle(document.getElementById('cl-prev')).display,
+                 pers: !!document.getElementById('cl-pers') };
       });
-      deve(r.linguetta, 'la linguetta dei preventivi scritti a mano non c\'e\'');
-      deve(r.pers !== 'none', 'il riquadro dei preventivi scritti a mano resta nascosto');
-      deve(r.prev === 'none', 'aprendone uno resta aperto anche l\'altro elenco');
-      /* I NOMI. «Preventivi» e «Personalizzati», una accanto all'altra, si
-         confondono al primo colpo d'occhio: e' successo a chi sapeva gia' cosa
-         cercare, che ha guardato la linguetta sbagliata e ha letto «nessun
-         preventivo». I nomi adesso dicono la differenza vera — chi ha fatto il
-         numero, un motore di tariffa o una persona — e nessuno dei due
-         contiene la parola che li rendeva gemelli. */
-      deve(r.testo === 'Scritti a mano', 'la linguetta si chiama «' + r.testo + '»');
-      deve(r.testoPrev === 'Da tariffa', 'l\'altra linguetta si chiama «' + r.testoPrev + '»');
-      deve(!/preventiv/i.test(r.testo + ' ' + r.testoPrev),
-        'le due linguette tornano a chiamarsi tutte e due «preventivi qualcosa»: si confondono');
-      return 'Da tariffa · Scritti a mano';
+      /* DUE LINGUETTE PER LA STESSA COSA erano due posti dove cercarla, e chi
+         cercava guardava quella sbagliata. Adesso ce n'e' una, e si chiama
+         come la chiama chi lavora. */
+      deve(!r.pers, 'e\' tornata una seconda linguetta per i preventivi personalizzati');
+      const prev = r.tabs.filter(x => x.t === 'prev');
+      deve(prev.length === 1 && prev[0].l === 'Preventivi', 'la linguetta si chiama «' + (prev[0] || {}).l + '»');
+      deve(r.prev !== 'none', 'il riquadro dei preventivi resta nascosto');
+      return r.tabs.length + ' linguette, una sola per i preventivi';
     });
 
     await prova('personalizzati: l\'elenco mostra lo sconto come sconto, non come secondo prezzo', async () => {
@@ -5269,12 +5258,15 @@ const avvio = async () => {
               sconto_applicato: true, premio_scontato: 480, da_autorizzare: true, descrizioni: ['a', 'b'] }
           ], error: null
         };
-        await ppCarica('cli-1');
-        const box = document.getElementById('cl-pers');
+        /* Si passa dall'elenco vero, quello unito: e' li' che il preventivo
+           personalizzato deve farsi riconoscere in mezzo agli altri. */
+        await caricaCollegati('cli-1', 'CLIENTE DI PROVA');
+        const box = document.getElementById('cl-prev');
         const barrato = box.querySelector('span[style*="line-through"]');
         return {
           testo: box.textContent, html: box.innerHTML,
-          barrato: barrato ? barrato.textContent.trim() : null
+          barrato: barrato ? barrato.textContent.trim() : null,
+          distintivi: box.querySelectorAll('.tk-badge.st-quotato').length
         };
       });
       deve(/PP-2026-0001/.test(r.testo), 'manca il numero del primo preventivo');
@@ -5282,7 +5274,11 @@ const avvio = async () => {
       deve(r.barrato === '€ 600,00', 'il premio pieno non e\' barrato accanto allo scontato: ' + r.barrato);
       deve(r.testo.includes('€ 480,00 mensile'), 'lo scontato non porta il frazionamento scelto');
       deve(/da autorizzare/i.test(r.testo), 'il «da autorizzare» non si vede nell\'elenco');
-      return 'due preventivi, uno scontato';
+      /* In un elenco misto, il distintivo e' l'unica cosa che dice che quel
+         numero l'ha scritto una persona e non calcolato un motore. */
+      deve(r.distintivi === 2, 'i preventivi personalizzati non si distinguono nell\'elenco: ' + r.distintivi + ' distintivi su 2');
+      deve(/personalizzato/i.test(r.testo), 'il distintivo non dice che cos\'e\'');
+      return 'due preventivi nell\'elenco unito, uno scontato, tutti e due riconoscibili';
     });
 
     await prova('personalizzati: «Altro» scrive il nome libero nella stessa colonna della tendina', async () => {
@@ -5946,15 +5942,18 @@ const avvio = async () => {
 
      Il buco sta esattamente in mezzo ai due repository, dove non guarda
      nessuno: quello del preventivatore ha la schermata e le sue prove verdi,
-     IAM ha il menu e le sue prove verdi. IAM adesso controlla che la voce ci
-     sia; QUESTA controlla l'altra meta' — che la pagina chiesta esista qui. */
+     IAM ha il menu e le sue prove verdi. Questa controlla il ponte dal lato
+     di qua: ogni pagina che il menu di IAM chiede deve esistere davvero.
+     Vale per tutte, non per una in particolare — ed e' il motivo per cui
+     resta anche adesso che i preventivi personalizzati non hanno piu' una
+     schermata propria. */
   {
     const context = await browser.newContext();
     const page = await context.newPage();
     const erroriPpg = [];
     page.on('pageerror', e => erroriPpg.push(e.message));
     await page.addInitScript(initScript(true));
-    await page.goto(BASE + '/index.html?page=preventivi-personalizzati', { waitUntil: 'domcontentloaded' });
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(3000);
 
     await prova('ponte IAM→QUOTO: ogni pagina che il menu di IAM chiede esiste qui', async () => {
@@ -5970,103 +5969,6 @@ const avvio = async () => {
         !(typeof PAGINE_DA_AVVIARE === 'object' && PAGINE_DA_AVVIARE[n])), [...chieste]);
       deve(!mancanti.length, 'il menu di IAM chiede pagine che qui non esistono: ' + mancanti.join(', '));
       return chieste.size + ' pagine chieste dal menu, tutte presenti';
-    });
-
-    await prova('personalizzati: la pagina si apre dal parametro, e non resta vuota', async () => {
-      const r = await page.evaluate(() => ({
-        attiva: document.getElementById('page-preventivi-personalizzati')?.classList.contains('active'),
-        porta: typeof PAGINE_DA_AVVIARE['preventivi-personalizzati'] === 'function',
-        corpo: !!document.getElementById('ppg-body'),
-        voce: getComputedStyle(document.getElementById('nav-pp')).display
-      }));
-      deve(r.attiva, 'la pagina non risulta aperta');
-      /* Senza porta in PAGINE_DA_AVVIARE la scocca di IAM aprirebbe un
-         riquadro vuoto: il contenuto lo scrive il codice (CLAUDE.md §6b). */
-      deve(r.porta, 'la pagina non ha una porta: dalla scocca si aprirebbe vuota');
-      deve(r.corpo, 'manca il corpo della tabella');
-      deve(r.voce !== 'none', 'la voce nella barra di QUOTO non si accende');
-    });
-
-    await prova('personalizzati: l\'elenco mostra le righe, i conteggi e i filtri', async () => {
-      const r = await page.evaluate(async () => {
-        window.__COLLAUDO.risposte['quote_preventivi_personalizzati:lista'] = { data: [
-          { id: 'p1', numero: 1, creato_il: '2026-09-14T10:00:00Z', cliente_id: 'cli-1',
-            compagnia: 'HDI Assicurazioni', tipo_prodotto: 'Casa - Multirischio', garanzia: 'Furto',
-            premio_pieno: 480, frazionamento: 'annuale', sconto_applicato: false, premio_scontato: null,
-            da_autorizzare: false, descrizioni: [] },
-          { id: 'p2', numero: 2, creato_il: '2026-09-14T11:00:00Z', cliente_id: 'cli-2',
-            compagnia: 'Italiana Assicurazioni', tipo_prodotto: 'Infortuni', garanzia: null,
-            premio_pieno: 600, frazionamento: 'mensile', sconto_applicato: true, premio_scontato: 480,
-            da_autorizzare: true, descrizioni: [] }
-        ], error: null };
-        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [
-          { id: 'cli-1', nominativo: 'ROSSI MARIO' }, { id: 'cli-2', nominativo: 'ACME SRL' }
-        ], error: null };
-        await ppgCarica();
-        const leggi = () => ({
-          testo: document.getElementById('ppg-body').textContent,
-          righe: document.querySelectorAll('#ppg-body tr').length,
-          tutti: document.getElementById('ppg-c-tutti').textContent,
-          aut: document.getElementById('ppg-c-autorizzare').textContent,
-          sco: document.getElementById('ppg-c-scontati').textContent
-        });
-        const pieno = leggi();
-        ppgFiltro('autorizzare');
-        const soloAut = leggi();
-        ppgFiltro('tutti');
-        document.getElementById('ppg-q').value = 'acme';
-        ppgRender();
-        const cercato = leggi();
-        document.getElementById('ppg-q').value = '';
-        ppgFiltro('tutti');
-        return { pieno, soloAut, cercato };
-      });
-      deve(r.pieno.righe === 2, 'righe in elenco: ' + r.pieno.righe);
-      deve(/ROSSI MARIO/.test(r.pieno.testo), 'il cliente esce come identificativo invece che col nome');
-      deve(/€ 480,00 annuale/.test(r.pieno.testo), 'il premio perde il frazionamento in elenco');
-      deve(/€ 480,00 mensile/.test(r.pieno.testo), 'lo scontato perde il frazionamento');
-      deve(r.pieno.tutti === '2' && r.pieno.aut === '1' && r.pieno.sco === '1',
-        'conteggi sbagliati: tutti=' + r.pieno.tutti + ' aut=' + r.pieno.aut + ' sco=' + r.pieno.sco);
-      deve(r.soloAut.righe === 1 && /ACME/.test(r.soloAut.testo), 'il filtro «da autorizzare» non filtra');
-      deve(r.cercato.righe === 1 && /ACME/.test(r.cercato.testo), 'la ricerca non filtra');
-      return '2 righe, conteggi, filtro e ricerca';
-    });
-
-    await prova('personalizzati: «Nuovo» chiede prima per quale cliente', async () => {
-      const r = await page.evaluate(() => {
-        document.getElementById('ppg-cli-ov')?.remove();
-        ppgNuovo();
-        const ov = document.getElementById('ppg-cli-ov');
-        return { aperto: !!ov, testo: ov ? ov.textContent : '',
-                 moduloPreventivo: !!document.getElementById('pp-overlay') };
-      });
-      deve(r.aperto, 'non chiede niente');
-      deve(/Per quale cliente/i.test(r.testo), 'la domanda non e\' chiara: ' + r.testo.slice(0, 60));
-      /* Un preventivo senza cliente non ha destinatario, non ha un'anagrafica
-         da stampare in testa al foglio e non si puo' mandare a nessuno. */
-      deve(!r.moduloPreventivo, 'apre il modulo del preventivo senza sapere per chi');
-    });
-
-    await prova('personalizzati: dall\'elenco si agisce sul cliente della riga, non sull\'ultimo aperto', async () => {
-      const r = await page.evaluate(() => {
-        document.getElementById('ppg-cli-ov')?.remove();
-        PP_CLIENTE = 'cliente-sbagliato';
-        ppgContesto('p2');
-        return PP_CLIENTE;
-      });
-      deve(r === 'cli-2', 'il contesto resta sul cliente sbagliato: ' + r);
-    });
-
-    await prova('personalizzati: il segnalatore non vede la voce ne\' l\'elenco', async () => {
-      const r = await page.evaluate(async () => {
-        const prima = currentUser.profilo;
-        currentUser.profilo = 'segnalatore';
-        await ppgApriPagina();
-        const testo = document.getElementById('ppg-body').textContent;
-        currentUser.profilo = prima;
-        return testo;
-      });
-      deve(/[Ss]egnalatore/.test(r), 'l\'elenco si apre lo stesso: ' + r.slice(0, 80));
     });
 
     await prova('personalizzati: nessun errore JavaScript in tutto il blocco', async () => {

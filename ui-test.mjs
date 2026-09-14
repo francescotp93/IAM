@@ -5428,6 +5428,202 @@ const avvio = async () => {
 
     await context.close();
   }
+
+  /* ── IL DOCUMENTO DEL PREVENTIVO PERSONALIZZATO (Fase 2) ─────────────────
+     Il foglio che esce di casa. Qui si prova quello che ci sara' SCRITTO
+     SOPRA — ppDocumento() — separatamente da come e' disegnato: se il premio
+     perde il frazionamento, o se il RUI dell'agenzia esce vuoto invece che
+     marcato, il danno e' lo stesso su qualunque impaginazione.
+
+     L'ultima prova invece guarda davvero il disegno: intercetta ogni scritta
+     che finisce nel PDF e controlla che le cose obbligatorie ci siano. */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const erroriDoc = [];
+    page.on('pageerror', e => erroriDoc.push(e.message));
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    // Il preventivo di riferimento e il suo contorno: sempre gli stessi, cosi'
+    // ogni prova cambia UNA cosa sola e si vede che cosa l'ha spostata.
+    const BASE_DOC = {
+      riga: {
+        id: 'p1', numero: 1, creato_il: '2026-09-14T10:00:00Z', cliente_id: 'cli-1',
+        compagnia: 'HDI Assicurazioni', tipo_prodotto: 'Casa - Multirischio',
+        garanzia: 'Furto e incendio', premio_pieno: 480, frazionamento: 'annuale',
+        sconto_applicato: false, premio_scontato: null, da_autorizzare: false,
+        descrizioni: ['Massimale RC 5.000.000 €, esteso ai familiari', '   ', 'Franchigia 250 €'],
+        disclaimer: 'Disclaimer scritto su questo preventivo.'
+      },
+      ctx: {
+        azienda: { rs: 'With Us Assicurazioni S.r.l.', sede: 'Via Roma 1, Napoli',
+                   piva: '01234567890', email: 'info@withus.it', pec: 'pec@withus.it',
+                   rui_sezione: 'A', rui_numero: 'A000123456', rui_data: '2019-03-01' },
+        intermediario: { id: 'c1', nome: 'Anna', cognome: 'Bianchi',
+                         rui_numero: 'E000987654', rui_sezione: 'E', rui_data: '12/05/2021',
+                         veste: 'Collaboratore sez. E' },
+        cliente: { id: 'cli-1', tipo: 'fisica', nominativo: 'ROSSI MARIO',
+                   codice_fiscale: 'RSSMRA80A01H501U', data_nascita: '1980-01-01',
+                   indirizzo: 'Via Verdi', civico: '10', cap: '80100', comune: 'Napoli',
+                   provincia: 'NA', cellulare: '3331234567', email: 'mario@rossi.it' }
+      }
+    };
+    const documento = (modRiga, modCtx) => page.evaluate(({ b, mr, mc }) => {
+      const riga = Object.assign({}, b.riga, mr || {});
+      const ctx = {
+        azienda: Object.assign({}, b.ctx.azienda, (mc || {}).azienda || {}),
+        intermediario: (mc && 'intermediario' in mc) ? mc.intermediario : b.ctx.intermediario,
+        cliente: (mc && 'cliente' in mc) ? mc.cliente : b.ctx.cliente
+      };
+      return ppDocumento(riga, ctx);
+    }, { b: BASE_DOC, mr: modRiga || null, mc: modCtx || null });
+
+    await prova('documento: la carta intestata viene dai dati azienda, non da una copia scritta qui', async () => {
+      const d = await documento();
+      deve(d.azienda.ragioneSociale === 'With Us Assicurazioni S.r.l.', 'ragione sociale: ' + d.azienda.ragioneSociale);
+      deve(d.azienda.sede === 'Via Roma 1, Napoli', 'sede: ' + d.azienda.sede);
+      deve(d.azienda.rui === 'sez. A n. A000123456 dal 01/03/2019', 'RUI agenzia: ' + d.azienda.rui);
+      deve(d.daConfermare.length === 0, 'segnala come mancante qualcosa che c\'e\': ' + d.daConfermare.join(', '));
+      return 'RUI composto e data in italiano';
+    });
+
+    await prova('documento: senza il RUI dell\'agenzia scrive «da confermare», non uno spazio vuoto', async () => {
+      const d = await documento(null, { azienda: { rui_numero: '', rui_sezione: '', rui_data: '' } });
+      deve(d.azienda.rui === 'da confermare', 'il RUI mancante esce come «' + d.azienda.rui + '»');
+      deve(d.daConfermare.some(x => /RUI dell'agenzia/.test(x)),
+        'il dato mancante non finisce nell\'elenco: ' + JSON.stringify(d.daConfermare));
+      return 'marcato e in elenco';
+    });
+
+    await prova('documento: il blocco intermediario porta nome e iscrizione RUI', async () => {
+      const d = await documento();
+      deve(d.intermediario.nome === 'Bianchi Anna', 'nome: ' + d.intermediario.nome);
+      deve(d.intermediario.rui === 'sez. E n. E000987654 dal 12/05/2021', 'RUI: ' + d.intermediario.rui);
+      deve(d.intermediario.veste === 'Collaboratore sez. E', 'veste: ' + d.intermediario.veste);
+    });
+
+    await prova('documento: senza intermediario non se ne inventa uno', async () => {
+      const d = await documento(null, { intermediario: null });
+      deve(d.intermediario.nome === 'da confermare', 'nome: ' + d.intermediario.nome);
+      deve(d.intermediario.rui === 'da confermare', 'RUI: ' + d.intermediario.rui);
+      const quante = d.daConfermare.filter(x => /RUI dell'intermediario/.test(x)).length;
+      deve(quante === 1, 'il RUI mancante dell\'intermediario e\' elencato ' + quante + ' volte (attesa 1)');
+    });
+
+    await prova('documento: il premio sul foglio porta sempre il suo frazionamento', async () => {
+      const a = await documento();
+      const m = await documento({ premio_pieno: 40, frazionamento: 'mensile' });
+      const u = await documento({ premio_pieno: 1000, frazionamento: 'premio_unico' });
+      deve(a.premio.testoDaPagare === '€ 480,00 annuale', 'annuale: ' + a.premio.testoDaPagare);
+      deve(m.premio.testoDaPagare === '€ 40,00 mensile', 'mensile: ' + m.premio.testoDaPagare);
+      deve(u.premio.testoDaPagare === '€ 1.000,00 premio unico', 'premio unico: ' + u.premio.testoDaPagare);
+      return 'tre frazionamenti';
+    });
+
+    await prova('documento: con lo sconto il pieno resta sul foglio, e quello da pagare e\' lo scontato', async () => {
+      const d = await documento({ sconto_applicato: true, premio_scontato: 384, frazionamento: 'mensile', premio_pieno: 480 });
+      deve(d.premio.scontato === true, 'lo sconto non risulta attivo');
+      deve(d.premio.testoPieno === '€ 480,00 mensile', 'pieno: ' + d.premio.testoPieno);
+      deve(d.premio.testoScontato === '€ 384,00 mensile', 'scontato: ' + d.premio.testoScontato);
+      deve(d.premio.testoDaPagare === d.premio.testoScontato, 'il numero grande non e\' quello che il cliente paga');
+      const senza = await documento();
+      deve(senza.premio.testoScontato === null, 'senza sconto resta in giro un premio scontato');
+      deve(senza.premio.testoDaPagare === senza.premio.testoPieno, 'senza sconto il numero grande non e\' il premio pieno');
+      return 'due numeri quando serve, uno quando no';
+    });
+
+    await prova('documento: il «da autorizzare» ha una dicitura, non un puntino', async () => {
+      const no = await documento();
+      const si = await documento({ da_autorizzare: true });
+      deve(no.autorizzare === false, 'risulta da autorizzare anche quando non lo e\'');
+      deve(si.autorizzare === true, 'il flag non arriva al documento');
+      deve(/DA AUTORIZZARE DALLA DIREZIONE/.test(si.bandaAutorizzare), 'dicitura: ' + si.bandaAutorizzare);
+    });
+
+    await prova('documento: righe vuote fuori, e il disclaimer e\' quello salvato sul preventivo', async () => {
+      const d = await documento();
+      deve(d.corpo.descrizioni.length === 2,
+        'le descrizioni sul foglio sono ' + JSON.stringify(d.corpo.descrizioni));
+      deve(d.disclaimer === 'Disclaimer scritto su questo preventivo.',
+        'stampa la costante invece del testo salvato: ' + d.disclaimer);
+      /* Il cliente sul foglio viene dall'anagrafica, non da quello che e'
+         stato battuto nel modulo del preventivo. */
+      deve(d.cliente.nominativo === 'ROSSI MARIO', 'cliente: ' + d.cliente.nominativo);
+      deve(d.cliente.identificativo === 'RSSMRA80A01H501U', 'identificativo: ' + d.cliente.identificativo);
+      deve(/Via Verdi 10, 80100 Napoli \(NA\)/.test(d.cliente.indirizzo || ''), 'indirizzo: ' + d.cliente.indirizzo);
+      return '2 descrizioni su 3, disclaimer della riga';
+    });
+
+    await prova('documento: una societa\' porta la partita IVA, non il codice fiscale di una persona', async () => {
+      const d = await documento(null, { cliente: { id: 'cli-2', tipo: 'giuridica',
+        nominativo: 'ACME SRL', ragione_sociale: 'ACME S.r.l.', partita_iva: '09876543210',
+        codice_fiscale: 'ACMXXX', data_nascita: '1980-01-01' } });
+      deve(d.cliente.nominativo === 'ACME S.r.l.', 'nominativo: ' + d.cliente.nominativo);
+      deve(d.cliente.etichettaId === 'Partita IVA', 'etichetta: ' + d.cliente.etichettaId);
+      deve(d.cliente.identificativo === '09876543210', 'identificativo: ' + d.cliente.identificativo);
+      deve(d.cliente.nascita === null, 'a una societa\' mette una data di nascita: ' + d.cliente.nascita);
+    });
+
+    /* ── il disegno vero ──────────────────────────────────────────────────
+       jsPDF si prende dal pacchetto installato in locale, non dalla rete: una
+       prova che dipende da un CDN e' rossa per la strada, non per il
+       contenuto. Se il pacchetto non c'e', la prova lo dice e non finge. */
+    await prova('PDF: sul foglio finiscono davvero le cose obbligatorie', async () => {
+      let disponibile = true;
+      try { await page.addScriptTag({ path: 'node_modules/jspdf/dist/jspdf.umd.min.js' }); }
+      catch (e) { disponibile = false; }
+      if (!disponibile) return 'saltata: manca jspdf in locale (npm i --no-save jspdf@2.5.1)';
+
+      const r = await page.evaluate(async (b) => {
+        /* Spia: ogni scritta che va nel PDF viene annotata. Cosi' si controlla
+           il contenuto del foglio senza doverlo riaprire e leggere. */
+        const Vero = window.jspdf.jsPDF;
+        const testi = [];
+        window.jspdf = { jsPDF: function (opts) {
+          const d = new Vero(opts);
+          const orig = d.text.bind(d);
+          d.text = function (v, x, y, o) { testi.push(Array.isArray(v) ? v.join(' ') : String(v)); return orig(v, x, y, o); };
+          return d;
+        } };
+        PP_LOGO = '';   // niente rete per il marchio: qui si prova il testo
+        const riga = Object.assign({}, b.riga, { da_autorizzare: true, sconto_applicato: true, premio_scontato: 384 });
+        const doc = ppDocumento(riga, b.ctx);
+        const blob = await ppPdfBlob(doc);
+        const inizio = new TextDecoder('latin1').decode(await blob.slice(0, 5).arrayBuffer());
+        return { testi, tipo: blob.type, peso: blob.size, inizio };
+      }, BASE_DOC);
+
+      deve(r.inizio === '%PDF-', 'quello che esce non e\' un PDF: «' + r.inizio + '»');
+      deve(r.peso > 1000, 'il PDF pesa ' + r.peso + ' byte: e\' vuoto');
+      const tutto = r.testi.join(' | ');
+      const servono = [
+        'PP-2026-0001', 'With Us Assicurazioni S.r.l.', 'sez. A n. A000123456',
+        'Bianchi Anna', 'E000987654', 'ROSSI MARIO', 'HDI ASSICURAZIONI',
+        'Casa - Multirischio', 'EUR 480,00 annuale', 'EUR 384,00 annuale',
+        'DA AUTORIZZARE DALLA DIREZIONE', 'Massimale RC 5.000.000',
+        'Disclaimer scritto su questo preventivo.'
+      ];
+      const mancano = servono.filter(t => !tutto.includes(t));
+      deve(!mancano.length, 'sul foglio non c\'e\': ' + mancano.join(' / '));
+      /* Il simbolo dell'euro: le font standard di jsPDF lo fanno sparire in
+         silenzio, quindi sul PDF deve arrivare gia' scritto per esteso. */
+      deve(!/€/.test(tutto), 'va nel PDF un simbolo € che jsPDF farebbe sparire');
+      /* L'euro sta da tutte e due le parti del numero: «€ 480,00» e
+         «5.000.000 €,». Con una sostituzione sola la seconda usciva
+         «5.000.000 EUR , con» — lo spazio prima della virgola. */
+      deve(!/EUR\s+[,.;:]/.test(tutto), 'nel PDF resta uno spazio fra EUR e la punteggiatura: ' +
+        (tutto.match(/[^|]*EUR\s+[,.;:][^|]*/) || [''])[0].trim());
+      return servono.length + ' voci obbligatorie, tutte sul foglio';
+    });
+
+    await prova('documento: nessun errore JavaScript in tutto il blocco', async () => {
+      deve(erroriDoc.length === 0, erroriDoc.slice(0, 3).join(' | '));
+    });
+
+    await context.close();
+  }
   await browser.close();
 };
 

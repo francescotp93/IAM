@@ -1480,7 +1480,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <div class="topnav">
       <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i><span>Moduli</span></div>
       <div class="nav-item" id="nav-anag" style="display:none" onclick="apriAnagView('clienti')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
-      <div class="nav-item" id="nav-pp" style="display:none" onclick="ppgApriPagina()"><i class="ti ti-file-pencil"></i><span>Personalizzati</span></div>
+      <div class="nav-item" id="nav-pp" style="display:none" onclick="ppgApriPagina()"><i class="ti ti-file-pencil"></i><span>Scritti a mano</span></div>
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('utility')"><i class="ti ti-folder"></i><span>Utility</span></div>
       <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-portafoglio" onclick="showPage('portafoglio')"><i class="ti ti-briefcase"></i><span>Portafoglio</span></div>
@@ -2971,7 +2971,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
          rompe la voce di menu senza rompere nessuna prova del modulo
          (CLAUDE.md §6c). -->
     <div class="page" id="page-preventivi-personalizzati">
-      <div class="page-title">Preventivi personalizzati</div>
+      <div class="page-title">Preventivi scritti a mano</div>
       <div class="page-sub">I preventivi scritti a mano per i clienti. Apri una riga per modificarla, stamparla o mandarla.</div>
       <div id="ppg-avviso" style="margin-top:.8rem"></div>
       <div class="anag-search" style="margin-top:.4rem">
@@ -23483,7 +23483,7 @@ async function ppCarica(clienteId) {
     if (error) throw error;
     PP_CACHE = data || [];
   } catch (e) {
-    pane.innerHTML = `<div class="cl-empty">Preventivi personalizzati non disponibili.<br><small>${esc(e.message || e)}</small></div>`;
+    pane.innerHTML = `<div class="cl-empty">Preventivi scritti a mano non disponibili.<br><small>${esc(e.message || e)}</small></div>`;
     return;
   }
   ppRenderLista();
@@ -23493,9 +23493,9 @@ function ppRenderLista() {
   const pane = document.getElementById('cl-pers');
   if (!pane) return;
   const nuovo = ppAvvisoAzienda()
-    + `<div style="margin-bottom:10px"><button class="btn-emetti gruppi-add-btn" style="padding:5px 12px" onclick="ppApri('${esc(PP_CLIENTE)}')"><i class="ti ti-plus"></i> Nuovo preventivo personalizzato</button></div>`;
+    + `<div style="margin-bottom:10px"><button class="btn-emetti gruppi-add-btn" style="padding:5px 12px" onclick="ppApri('${esc(PP_CLIENTE)}')"><i class="ti ti-plus"></i> Nuovo preventivo scritto a mano</button></div>`;
   if (!PP_CACHE.length) {
-    pane.innerHTML = nuovo + '<div class="cl-empty">Nessun preventivo personalizzato per questo cliente.</div>';
+    pane.innerHTML = nuovo + '<div class="cl-empty">Nessun preventivo scritto a mano per questo cliente.</div>';
     return;
   }
   pane.innerHTML = nuovo + PP_CACHE.map(r => {
@@ -23619,7 +23619,7 @@ async function ppApri(clienteId, id) {
   const html = `
   <div class="modal-ov" id="pp-overlay" onclick="if(event.target.id==='pp-overlay')this.remove()">
     <div class="modal" style="width:720px;max-width:96vw;max-height:92vh;overflow:auto">
-      <div class="modal-title">${r ? 'Preventivo personalizzato · ' + esc(ppNumero(r)) : 'Nuovo preventivo personalizzato'}</div>
+      <div class="modal-title">${r ? 'Preventivo scritto a mano · ' + esc(ppNumero(r)) : 'Nuovo preventivo scritto a mano'}</div>
 
       ${ppSelectConAltro('pp-compagnia', 'pp-compagnia-altro', cat.compagnie, r ? r.compagnia : '', 'Compagnia')}
       ${ppSelectConAltro('pp-prodotto', 'pp-prodotto-altro', cat.prodotti, r ? r.tipo_prodotto : '', 'Tipo prodotto')}
@@ -23763,7 +23763,7 @@ async function ppSalva(clienteId, id) {
     }
     document.getElementById('pp-overlay').remove();
     await ppAggiorna(clienteId);
-    try { quotoToast(id ? 'Preventivo personalizzato aggiornato' : 'Preventivo personalizzato salvato'); } catch (e) {}
+    try { quotoToast(id ? 'Preventivo scritto a mano aggiornato' : 'Preventivo scritto a mano salvato'); } catch (e) {}
   } catch (e) {
     dai('Non riesco a salvare: ' + (e.message || e));
   }
@@ -23771,13 +23771,13 @@ async function ppSalva(clienteId, id) {
 
 async function ppElimina(id) {
   if (currentUser.role !== 'admin') return;
-  if (!confirm('Eliminare questo preventivo personalizzato? Non si torna indietro.')) return;
+  if (!confirm('Eliminare questo preventivo scritto a mano? Non si torna indietro.')) return;
   try {
     const { error } = await db.from('quote_preventivi_personalizzati').delete().eq('id', id);
     if (error) throw error;
     document.getElementById('pp-overlay').remove();
     await ppAggiorna(PP_CLIENTE);
-    try { quotoToast('Preventivo personalizzato eliminato'); } catch (e) {}
+    try { quotoToast('Preventivo scritto a mano eliminato'); } catch (e) {}
   } catch (e) { alert('Non riesco a eliminare: ' + (e.message || e)); }
 }
 
@@ -24542,7 +24542,7 @@ function ppgRender() {
   const righe = lista.filter(perFiltro).filter(perTesto);
   if (!righe.length) {
     body.innerHTML = '<tr><td colspan="6"><div class="empty-state">'
-      + (lista.length ? 'Nessun preventivo con questi filtri.' : 'Nessun preventivo personalizzato. Premi «Nuovo» per scriverne uno.')
+      + (lista.length ? 'Nessun preventivo con questi filtri.' : 'Nessun preventivo scritto a mano. Premi «Nuovo» per scriverne uno.')
       + '</div></td></tr>';
     return;
   }

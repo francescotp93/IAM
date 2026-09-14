@@ -1,9 +1,10 @@
-echo "== c'è un proxy davanti al backend?"
-ls /etc/nginx/sites-enabled/ 2>/dev/null
-echo "-- timeout configurati --"
-grep -rnE "proxy_read_timeout|proxy_connect_timeout|proxy_send_timeout|keepalive_timeout|send_timeout" /etc/nginx/ 2>/dev/null | head -20
-echo "-- blocchi che inoltrano al backend --"
-grep -rn "proxy_pass" /etc/nginx/sites-enabled/ 2>/dev/null | head -10
-echo
-echo "== timeout lato backend verso gli scraper"
-grep -rnE "timeout: *[0-9]{4,}|AbortSignal.timeout\([0-9]+\)|setTimeout\(.*[0-9]{5,}" /opt/withus-backend/server/moto.js 2>/dev/null | head -12
+echo "== chi ascolta verso l'esterno"
+ss -lntp 2>/dev/null | grep -vE '127\.0\.0\.1|\[::1\]' | head -15
+echo "== servizi web attivi"
+systemctl list-units --type=service --state=running --no-pager 2>/dev/null | grep -iE 'nginx|caddy|apache|httpd|traefik|cloudflared|tunnel' || echo "nessun proxy web fra i servizi attivi"
+echo "== caddy?"
+ls -l /etc/caddy/Caddyfile 2>/dev/null && grep -nE "timeout|reverse_proxy" /etc/caddy/Caddyfile 2>/dev/null | head -20
+echo "== cloudflared?"
+ls /etc/cloudflared/ 2>/dev/null; cat /etc/cloudflared/config.yml 2>/dev/null | head -20
+echo "== a chi punta il frontend (config pubblica)"
+grep -rhoE "https?://[a-z0-9.-]*withus[a-z0-9.-]*[^\"' ]*" /opt/withus-backend/index.html 2>/dev/null | sort -u | head -10

@@ -1,6 +1,25 @@
-id: fresco-1789390523  exit: 0  2026-09-14 12:56:11
+id: rilascio148-1789390620  exit: 0  2026-09-14 12:58:13
 ----
-ora: 12:55:55  ultimo salvataggio axa: 12:36:12  (età: 19 minuti)
-aspetto il prossimo salvataggio periodico, al massimo 4 minuti
-SALVATO ADESSO alle 12:56:07 — è il momento buono per rilasciare
-da7ab03 Merge pull request #147 from francescotp93/fix/axa-non-promette-quel-che-non-ha
+aspetto che autopull prenda il codice nuovo e riavvii gli scraper (max 4 min)
+aggiornato a c2cf0c1 alle 12:57:27
+== servizi
+withus-backend       active  da: Mon 2026-09-14 12:57:01 UTC
+axa-scraper          active  da: Mon 2026-09-14 12:57:02 UTC
+groupama-scraper     active  da: Mon 2026-09-14 12:57:02 UTC
+== la porta 3000 adesso
+LISTEN 0      511        127.0.0.1:3000      0.0.0.0:*    users:(("node",pid=2533226,fd=23))                        
+{"ok":true}
+== LE SESSIONI HANNO RETTO IL RIAVVIO?
+axa        {"running":false,"step":"pronto","since":1789390660052,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
+groupama   {"running":false,"step":"loggato","since":1789390638038,"msg":"Sessione attiva"}
+== cosa dicono i giornali
+12:57:01 [axa] SIGTERM: salvo la sessione prima di chiudere
+12:57:01 [axa] sessione NON salvata: browserContext.storageState: Target page, context or browser has been closed
+🔑 VNC AXA su 127.0.0.1:5906 (password: axa2026) — tunnel SSH dal Mac per il primo login se serve
+12:57:28 [axa] sessione ripresa da auth.json: 104 cookie
+12:57:40 [axa] la sessione salvata non è più valida: serve un accesso con il codice
+12:57:40 [axa] PRONTO al login — attendo Accedi dall'utente
+12:57:01 [groupama] SIGTERM: salvo la sessione prima di chiudere
+12:57:01 [groupama] sessione NON salvata: browserContext.storageState: Target page, context or browser has been closed
+🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+12:57:18 [groupama] sessione persistente attiva ✅

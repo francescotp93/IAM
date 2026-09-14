@@ -1,15 +1,9 @@
-id: dopo149-1789390955  exit: 0  2026-09-14 13:03:11
+id: caddylog-1789391104  exit: 0  2026-09-14 13:05:35
 ----
-aspetto il rilascio (max 3 min)
-aggiornato a 2d98749 alle 13:02:41
-== servizi
-withus-backend     active da: Mon 2026-09-14 12:57:01 UTC
-axa-scraper        active da: Mon 2026-09-14 13:02:13 UTC
-groupama-scraper   active da: Mon 2026-09-14 12:57:02 UTC
-== stato login
-axa        {"running":false,"step":"pronto","since":1789390970569,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
-groupama   {"running":false,"step":"loggato","since":1789390638038,"msg":"Sessione attiva"}
-== spegnimento: stavolta ha salvato? (codice nuovo sui segnali)
-13:02:12 [axa] SIGTERM: nessuna sessione viva, tengo la copia su disco
-13:02:39 [axa] sessione ripresa da auth.json: 104 cookie, 0 voci di sessionStorage
-13:02:50 [axa] la sessione salvata non è più valida: serve un accesso con il codice
+copia di sicurezza: /etc/caddy/Caddyfile.bak-20260914-130530
+== la configurazione sta in piedi?
+valida
+Job for caddy.service failed.
+See "systemctl status caddy.service" and "journalctl -xeu caddy.service" for details.
+health dal mondo esterno: HTTP 200
+== cosa ha registrato davvero (deve NON contenere parametri)

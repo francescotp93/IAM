@@ -1,12 +1,9 @@
-echo "== ora"; date '+%F %T'
-echo "== chiamate di quotazione ricevute dal backend, per giorno (ultimi 7 giorni)"
-journalctl -u withus-backend --since '-7 days' --no-pager -o short-iso 2>/dev/null \
- | grep -aiE '/premio|/quote/|quotazion|preventiv' \
- | awk '{print substr($1,1,10)}' | sort | uniq -c
+echo "== c'è un proxy davanti al backend?"
+ls /etc/nginx/sites-enabled/ 2>/dev/null
+echo "-- timeout configurati --"
+grep -rnE "proxy_read_timeout|proxy_connect_timeout|proxy_send_timeout|keepalive_timeout|send_timeout" /etc/nginx/ 2>/dev/null | head -20
+echo "-- blocchi che inoltrano al backend --"
+grep -rn "proxy_pass" /etc/nginx/sites-enabled/ 2>/dev/null | head -10
 echo
-echo "== ultime 60 righe che parlano di premi/quotazioni"
-journalctl -u withus-backend --since '-7 days' --no-pager -o short-iso 2>/dev/null \
- | grep -aiE '/premio|/quote/|quotazion|esito|registraEsito' | tail -60
-echo
-echo "== errori del backend negli ultimi 7 giorni (ultimi 40)"
-journalctl -u withus-backend --since '-7 days' --no-pager -o short-iso -p err 2>/dev/null | tail -40
+echo "== timeout lato backend verso gli scraper"
+grep -rnE "timeout: *[0-9]{4,}|AbortSignal.timeout\([0-9]+\)|setTimeout\(.*[0-9]{5,}" /opt/withus-backend/server/moto.js 2>/dev/null | head -12

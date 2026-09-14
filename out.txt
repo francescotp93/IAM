@@ -1,24 +1,17 @@
-id: axatotp-1789385164  exit: 0  2026-09-14 11:26:20
+id: dopo145-1789388168  exit: 0  2026-09-14 12:16:16
 ----
 == ora
-2026-09-14 11:26:20
-== AXA: tutto quello che ha detto dalle 11:20
-11:22:59 [axa] sessione AXA scaduta → re-login automatico (Auth0 + codice Guardian TOTP)…
-11:23:02 [axa] AXA: User ID inserito
-11:23:02 [axa] AXA: password inserita (form unico)
-11:23:02 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-11:23:04 [axa] AXA: submit 1
-11:23:07 [axa] AXA: password inserita (passo 2)
-11:23:07 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-11:23:09 [axa] AXA: submit 2
-11:23:11 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-11:23:14 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-11:23:14 [axa] AXA Guardian → inserimento manuale attivato (clicked=true)
-11:23:14 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente
-
-== stato adesso
-axa        {"running":false,"step":"attesa_otp","since":1789384994312,"msg":"Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma"}
-groupama   {"running":false,"step":"attesa_otp","since":1789384975487,"msg":"Credenziali OK — inserisci il codice OTP ricevuto via email"}
-== allianz riavviato col codice nuovo?
-Mon 2026-09-14 11:25:54 UTC
-2
+2026-09-14 12:16:15
+93130c6 Merge pull request #145 from francescotp93/fix/codice-dalla-posta-anche-da-soli
+Sep 14 12:15:49 vps-d6443a46 autopull.sh[2525659]: [autopull] 2026-09-14 12:15:49 aggiorno abc7cd7 -> 93130c6
+Sep 14 12:15:51 vps-d6443a46 autopull.sh[2525659]: [autopull] withus-backend riavviato ✅
+Sep 14 12:15:51 vps-d6443a46 autopull.sh[2525659]: [autopull] axa-scraper riavviato (codice scraper cambiato)
+Sep 14 12:15:52 vps-d6443a46 autopull.sh[2525659]: [autopull] axa-scraper.service riavviato
+== stato login
+axa        {"running":false,"step":"pronto","since":1789388167020,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
+groupama   {"running":false,"step":"loggato","since":1789385717463,"msg":"Login completato ✅"}
+== il guardiano è andato a prendere il codice?
+Sep 14 12:09:27 vps-d6443a46 node[2518402]: [vigilanza-fonti] giro 10 · controllate 7 · cadute 0 · rientrate 0
+Sep 14 12:14:27 vps-d6443a46 node[2518402]: [vigilanza-fonti] giro 11 · controllate 7 · cadute 0 · rientrate 0
+Sep 14 12:15:51 vps-d6443a46 node[2525746]: [vigilanza-fonti] memoria ripresa da disco: 10 fonti
+Sep 14 12:15:52 vps-d6443a46 node[2525746]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)

@@ -244,6 +244,17 @@ Casi reali chiusi da poco:
 «Ho cercato e non c'è» e «non ho cercato» sono due fatti diversi: il primo si
 accetta, il secondo si va a guardare.
 
+**Lo stesso vale per un premio che non arriva** (Allianz, 14/09/2026). Sotto la
+frase «Premio non disponibile (calcolo non completato o veicolo non quotabile)»
+c'erano **tre** fatti diversi: il portale che rifiuta e lo dice (targa che ANIA
+non conosce: quel preventivo non si fa), il calcolo che non parte (si resta sul
+modulo: i dati vanno guardati) e il calcolo che parte e non finisce nei 26
+secondi che aspettiamo (il portale è lento: riprovare ha senso). Misurato
+l'11/09 sulla riga 3 del registro: 59 secondi di lavoro, e una risposta da cui
+non si poteva decidere nemmeno se valesse la pena riprovare. Ora i tre casi
+escono distinti, e se il portale mostra un avviso si riporta **quello**, che
+vale più di qualunque nostra ipotesi.
+
 ---
 
 ## 6. La vigilanza

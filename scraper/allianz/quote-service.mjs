@@ -806,6 +806,52 @@ const ALLIANZ_MOTOR_ESCLUSIVO = (process.env.ALLIANZ_MOTOR_ESCLUSIVO || '1') !==
 // `assistenza` = Auto Rischi Diversi (Assistenza Auto + Rapid Repair + Imprevisti): il portale li
 // pre-include, il pacchetto base di QUOTO no -> default false, cioe' li togliamo.
 // `rivalsa` = Protezione Rivalsa: default true (rinuncia alla rivalsa del pacchetto base QUOTO).
+/* ─────────────────────────────────────────────────────────────────────────────
+   PERCHE' IL PREMIO NON C'E'
+
+   Fino al 14/09/2026 da qui usciva una frase sola — «Premio non disponibile
+   (calcolo non completato o veicolo non quotabile)» — che teneva insieme tre
+   guasti diversi, con tre rimedi diversi:
+
+     a) il portale RIFIUTA e lo dice (targa che ANIA non conosce, veicolo non
+        assicurabile): non c'e' niente da correggere, quel preventivo non si fa;
+     b) il calcolo NON PARTE: si resta sul modulo, l'offerta non si apre mai.
+        Di solito sono i dati a non passare, e vanno guardati;
+     c) il calcolo PARTE e NON FINISCE nei 26 secondi che aspettiamo: il portale
+        e' lento, e riprovare ha senso.
+
+   Misurato sul campo l'11/09/2026, riga 3 del registro esiti: 59 secondi di
+   lavoro e una frase da cui non si poteva decidere nulla — nemmeno se valesse
+   la pena riprovare. Ora si dice quale dei tre e' stato.
+
+   Le parole del portale valgono piu' delle nostre: se ne dice una, si riporta
+   quella. */
+function motivoPremioAssente(avviso, offertaVista) {
+  const a = String(avviso == null ? '' : avviso).replace(/\s+/g, ' ').trim();
+  if (a) return 'Allianz non completa il preventivo: «' + a + '»';
+  if (!offertaVista) return 'Allianz non ha aperto l\'offerta: il calcolo non e\' partito. Controlla targa e data di nascita sul portale, poi riprova.';
+  return 'Allianz ha aperto l\'offerta ma non ha finito il calcolo entro 26 secondi: riprova fra poco.';
+}
+
+/* Raccoglie l'avviso che il portale mostra sul modulo. La rete e' larga di
+   proposito: `[role=alert]` e `[aria-live]` sono standard e valgono ovunque,
+   il resto sono nomi plausibili dei componenti NDBX di Allianz, non verificati
+   su cattura. Se non trovano niente non si perde nulla — restano i casi (b) e
+   (c), che si reggono sulla struttura e non su un selettore.
+   Si prende un testo corto: un avviso e' una riga, non una pagina, e cosi' non
+   ci si porta dietro mezzo modulo. */
+async function leggiAvvisoPortale(fr) {
+  if (!fr) return null;
+  return fr.evaluate(() => {
+    const sel = '[role=alert], [aria-live="assertive"], nx-message, nx-error, .nx-message, .nx-error, .alert-danger, .error-message';
+    for (const e of document.querySelectorAll(sel)) {
+      const t = (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim();
+      if (t.length > 3 && t.length <= 300) return t;
+    }
+    return null;
+  }).catch(() => null);
+}
+
 async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni = true, guidaEsperta = false, massimale = '563064501300', assistenza = false, rivalsa = true, garanzie = [], esclusivo = ALLIANZ_MOTOR_ESCLUSIVO }) {
   bersaniTarga = String(bersaniTarga || '').toUpperCase().trim();
   const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -946,9 +992,14 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
     return { sintesi: await j('offerta/sintesi-offerta'), soluzioni: await j('offerta/soluzioni'), sezioni: await j('offerta/sezioni'), interruttori: await j('offerta/interruttori') };
   }).catch(() => null);
   let data = null;
+  /* Distingue «il calcolo non e' partito» da «e' partito e non ha finito»: due
+     guasti con due rimedi diversi, che fino al 14/09/2026 uscivano dalla stessa
+     frase. */
+  let offertaVista = false;
   for (let i = 0; i < 13 && !data; i++) {
     await wait(2000);
     const off = offFrame(); if (!off) continue;
+    offertaVista = true;
     const r = await leggiOfferta(off);
     if (r && r.sintesi && r.soluzioni) data = r;
   }
@@ -1229,7 +1280,9 @@ async function quotaMotor({ targa, nascita, tipo, bersaniTarga = '', infortuni =
       if (d2) data = d2;
     }
   }
-  if (!data) return { ok: false, error: 'Premio non disponibile (calcolo non completato o veicolo non quotabile)' };
+  /* Si guarda prima dove il portale si e' fermato: se l'offerta si e' aperta
+     l'avviso e' li', altrimenti e' rimasto sul modulo. */
+  if (!data) return { ok: false, error: motivoPremioAssente(await leggiAvvisoPortale(offFrame() || fr), offertaVista) };
   // 5) parse → premio + garanzie
   const s = data.sintesi || {};
   const pacchetti = [];

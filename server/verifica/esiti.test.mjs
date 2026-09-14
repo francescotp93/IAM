@@ -104,6 +104,26 @@ await prova('un corpo JSON dentro una stringa viene ripulito, non copiato', () =
   deve(!libero.includes('RSSMRA80A01H501U') && !libero.includes('example.it'), 'testo libero non ripulito: ' + libero);
 });
 
+await prova('anche il messaggio d\'errore passa dalle maschere', () => {
+  /* 14/09/2026. Le maschere c'erano — diagnostica e richiesta ci passavano — ma
+     `errore` no: veniva solo accorciato a mille caratteri. Sembrava innocuo
+     perche' e' «una frase nostra». Non lo e': dentro ci finiscono le parole del
+     portale, e i portali nei loro avvisi citano volentieri chi hanno davanti.
+     E' lo stesso difetto trovato l'11/09 sulla diagnostica, lasciato aperto sul
+     campo accanto. Un campo non e' sicuro perche' e' corto. */
+  const r = E.preparaRiga({ compagnia: 'Allianz', targa: 'AA000AA',
+    errore: 'Allianz non completa il preventivo: «Contraente ' + CLIENTE.cf + ' gia\' presente, scrivere a ' + CLIENTE.email + '»' });
+  deve(!r.errore.includes(CLIENTE.cf), 'il codice fiscale resta nel messaggio d\'errore: ' + r.errore);
+  deve(!r.errore.includes(CLIENTE.email), 'l\'indirizzo email resta nel messaggio d\'errore: ' + r.errore);
+  /* Ripulire non vuol dire svuotare: quello che serve a capire deve restare. */
+  deve(/Allianz non completa il preventivo/.test(r.errore), 'ha buttato via anche la diagnosi: ' + r.errore);
+  /* La targa invece e' una colonna del registro per scelta: non si maschera. */
+  deve(r.targa === 'AA000AA', 'la targa non c\'e\' piu\': ' + r.targa);
+  /* Il tetto dei mille caratteri resta: una riga di registro non e' un giornale. */
+  const lungo = E.preparaRiga({ compagnia: 'Allianz', errore: 'x'.repeat(4000) });
+  deve(lungo.errore.length <= 1000, 'il messaggio non e\' piu\' accorciato: ' + lungo.errore.length + ' caratteri');
+});
+
 await prova('quando HDI ripiega sul browser, il registro dice perché la via veloce è caduta', () => {
   const r = E.preparaRiga({ compagnia: 'HDI Assicurazioni', targa: 'AA000AA', fonte: 'browser',
     risposta: { ok: true, premio_annuale: '583,25', premio_src: 'api:pacchetto' }, premio: 583.25,

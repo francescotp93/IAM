@@ -258,6 +258,31 @@ prova('la spinta sulla pagina di rimbalzo esiste ancora, e in un posto solo', ()
   deve(/i === spintaAl/.test(f), 'la spinta non è più una volta sola a metà attesa: disturberebbe un accesso che sta riuscendo');
 });
 
+prova('si aspetta il MARCATORE della home, non l\'assenza di password', () => {
+  /* L'ERRORE DELLA SERA DEL 14/09/2026, ed è mio: avevo appena scritto
+     l'attesa condivisa e le passavo il controllo leggero — «indirizzo AXA,
+     niente campo password, niente campo codice». Sembra ragionevole, e non lo
+     è: quel controllo scarta i parametri dall'indirizzo prima di guardarlo,
+     quindi della PAGINA DI RIMBALZO vede solo `mobility.axa-italia.it/portal/`,
+     identica alla home. Dice «sì» quasi subito.
+     Misurato: 20:30:58 sessione ripristinata, 20:31:04 dichiarata non valida.
+     Sei secondi su venti, e la spinta — che scatta al sesto giro — non è mai
+     partita. Un'attesa costruita per superare il rimbalzo si accontentava del
+     rimbalzo.
+     Il marcatore invece è la piastrella EMISSIONE o il pulsante Esci: sulla
+     pagina di rimbalzo non c'è, e non si può confondere. */
+  /* Solo le CHIAMATE, non la definizione: `async function attendiAccesso(
+     controlla, …)` finiva nella rete e la prova si lamentava del nome del
+     parametro invece che di un comportamento. */
+  const chiamate = src.match(/await attendiAccesso\(\s*([A-Za-z_$][\w$]*)/g) || [];
+  deve(chiamate.length >= 2, 'non trovo più le due chiamate all\'attesa: prova da riscrivere, non da cancellare');
+  for (const c of chiamate) {
+    deve(/loggedMarker/.test(c),
+      'un\'attesa usa ancora un controllo che la pagina di rimbalzo soddisfa (' + c + '): esce subito e la spinta non scatta mai');
+  }
+  return chiamate.length + ' attese, tutte sul marcatore';
+});
+
 let ko = 0;
 for (const [ok, nome, nota] of esiti) { if (!ok) ko++; console.log((ok ? '  ok  ' : '  KO  ') + nome + (nota ? '  — ' + nota : '')); }
 console.log('\nAXA SESSIONE: ' + (esiti.length - ko) + ' superate, ' + ko + ' fallite');

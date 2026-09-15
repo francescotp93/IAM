@@ -1,3 +1,13 @@
-id: rilascio153-1789469884  exit: 0  2026-09-15 11:02:20
+id: stato153-1789470181  exit: 0  2026-09-15 11:03:34
 ----
-aspetto che autopull prenda 7844b5b e riavvii AXA (max 4 min)
+== ora
+2026-09-15 11:03:33
+== HEAD: f0d2a2d
+== codice nuovo nel file: 2 chiamate
+== AXA avviato alle: Tue 2026-09-15 10:58:13 UTC
+== stato
+{"running":false,"step":"pronto","since":1789469929598,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
+== giornale AXA (ultime righe utili)
+10:58:25 [axa] sessione ripresa da auth.json: 77 cookie, 0 voci di sessionStorage
+10:58:49 [axa] la sessione salvata non è più valida: serve un accesso con il codice
+10:58:49 [axa] PRONTO al login — attendo Accedi dall'utente

@@ -1,13 +1,74 @@
-id: stato153-1789470181  exit: 0  2026-09-15 11:03:34
+id: sopralluogo-caddy-1789505512  exit: 0  2026-09-15 20:52:07
 ----
-== ora
-2026-09-15 11:03:33
-== HEAD: f0d2a2d
-== codice nuovo nel file: 2 chiamate
-== AXA avviato alle: Tue 2026-09-15 10:58:13 UTC
-== stato
-{"running":false,"step":"pronto","since":1789469929598,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
-== giornale AXA (ultime righe utili)
-10:58:25 [axa] sessione ripresa da auth.json: 77 cookie, 0 voci di sessionStorage
-10:58:49 [axa] la sessione salvata non è più valida: serve un accesso con il codice
-10:58:49 [axa] PRONTO al login — attendo Accedi dall'utente
+== ora: 2026-09-15 20:52:05  host: vps-d6443a46
+== caddy: v2.11.4 h1:XKxkMTgNSizEvKG6QHue6cAsFOteU2qA61w2tKkCWi0=  stato: active  enabled: enabled
+== unit caddy (ProtectSystem, ExecReload):
+User=caddy
+ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
+ExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile --force
+ProtectSystem=full
+== /etc/caddy/Caddyfile (1502 byte):
+api.withusassicurazioni.it {
+    encode gzip
+
+    # Registro delle richieste — acceso il 14/09/2026.
+    # PERCHE': un preventivo impiega 50-80 secondi, e non c'era modo di sapere
+    # se l'operatore vede un errore mentre il server ha risposto bene. Il
+    # giornale del backend racconta com'e' andata DA DENTRO; questo racconta
+    # com'e' andata per chi sta dall'altra parte del filo.
+    # VA NEL GIORNALE DI SISTEMA, non in un file: il servizio gira con
+    # ProtectSystem=full e non puo' scrivere in /var/log (provato il 14/09:
+    # "permission denied", ricaricamento fallito). Cosi' non serve allargare i
+    # permessi del servizio per un registro diagnostico, e la rotazione la fa
+    # gia' journald.  Si legge con:  journalctl -u caddy | grep handled
+    # COSA NON ENTRA QUI, di proposito: i parametri dell'indirizzo (nei
+    # preventivi ci sono targa e data di nascita), gli indirizzi di rete per
+    # intero, le intestazioni. Restano rotta, esito e durata.
+    log {
+        output stderr
+        format filter {
+            wrap json
+            fields {
+                request>uri regexp "\?.*" "?[parametri non registrati]"
+                request>remote_ip ip_mask 16 64
+                request>headers delete
+                # Anche questo e' l'indirizzo di chi chiama, sotto un altro nome:
+                # mascherarne uno solo e lasciare l'altro non maschera niente.
+                request>client_ip ip_mask 16 64
+                # Le intestazioni di risposta non servono a capire com'e' andata,
+                # e una di loro puo' portarsi dietro un cookie di sessione.
+                resp_headers delete
+            }
+        }
+    }
+
+    reverse_proxy localhost:3000
+}
+== copie: 3
+total 24
+drwxr-xr-x   2 root root 4096 Sep 14 13:09 .
+drwxr-xr-x 114 root root 4096 Sep 10 06:37 ..
+-rw-r--r--   1 root root 1502 Sep 14 13:09 Caddyfile
+-rw-r--r--   1 root root   74 Jun 29 11:30 Caddyfile.bak-20260914-130530
+-rw-r--r--   1 root root   74 Jun 29 11:30 Caddyfile.buona-20260914-130811
+-rw-r--r--   1 root root 1171 Sep 14 13:08 Caddyfile.buona-20260914-130945
+== chi ascolta su 80/443:
+LISTEN 0 4096 *:443 *:* users:(("caddy",pid=1323,fd=9)) 
+LISTEN 0 4096 *:80 *:* users:(("caddy",pid=1323,fd=13)) 
+== /opt/withus-iam: 5001d2d 2026-09-15 12:58:21 +0200  file: 30  owner: root:root 755
+== /opt/withus-backend: f0d2a2d owner: withus:withus 755 index.html: root 644
+== caddy puo' leggere? (utente del servizio)
+utente: caddy
+iam/index.html leggibile da caddy
+quoto/index.html leggibile da caddy
+== segnalini setup.d:
+00-chiave-claude.sh.fatto
+00-chiave-claude.sh.log
+60-hdi-scraper-porta-4400.sh.fatto
+60-hdi-scraper-porta-4400.sh.log
+== risposta locale con Host iam. (oggi dovrebbe essere il blocco di default o niente):
+http:308 https:000
+== api health: 200
+== backend in ascolto: 1
+== .env CORS_ORIGINS impostato? 0
+== spazio disco: 180G liberi su 193G

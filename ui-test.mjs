@@ -6043,7 +6043,12 @@ const avvio = async () => {
          gemella dentro IAM. */
       const chieste = new Set();
       for (const m of menu.matchAll(/\b(?:aprireQuoto|Q)\(\s*'([a-z0-9:_-]+)'/gi)) chieste.add(m[1].split(':')[0]);
-      deve(chieste.size > 5, 'ho trovato solo ' + chieste.size + ' pagine chieste: la prova non starebbe guardando niente');
+      /* Dal 15/09/2026 il menu «Nuovo preventivo» e' un albero (MEGA) e ogni
+         voce dichiara la sua pagina con `p: '…'`: anche quelle vanno lette. */
+      const iMega = menu.indexOf('var MEGA = {');
+      const mega = iMega >= 0 ? menu.slice(iMega, menu.indexOf('\n  };', iMega)) : '';
+      for (const m of mega.matchAll(/\bp:\s*'([a-z0-9:_-]+)'/g)) chieste.add(m[1]);
+      deve(chieste.size > 20, 'ho trovato solo ' + chieste.size + ' pagine chieste: la prova non starebbe guardando niente');
       const mancanti = await page.evaluate(lista => lista.filter(n =>
         !document.getElementById('page-' + n) &&
         !(typeof PAGINE_DA_AVVIARE === 'object' && PAGINE_DA_AVVIARE[n])), [...chieste]);

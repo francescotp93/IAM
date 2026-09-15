@@ -3598,15 +3598,119 @@ function initMain() {
    La chiave e' un nome stabile, non il titolo a schermo: i titoli cambiano,
    e un menu che smette di funzionare perche' e' stata rinominata una scheda
    e' un guasto che nessuno collega alla causa. */
+/* Le chiavi sono CONTRATTO con IAM (INTERFACCIA-QUOTO-IAM.md §2.6): il menu
+   della scocca le scrive in `prod`, e una chiave che qui non c'e' e' un clic
+   che non fa niente, senza nessun errore visibile. Si cambiano nei due repo
+   nella stessa sessione, QUOTO per primo.
+   Imbarcazioni, Infortuni al conducente, CVT/ARD e Auto d'epoca sono uscite
+   dal menu di IAM il 15/09/2026 (brief «ristrutturazione menu»): le chiavi sono
+   tolte di proposito, cosi' un collegamento salvato non le riapre. I moduli
+   dentro QUOTO restano — si raggiungono ancora dalla pagina Motor. */
 const PRODOTTI_DIRETTI = {
+  /* Motor */
   autovetture:  () => openAuto('Autovettura'),
   motocicli:    () => openAuto('Motociclo'),
   autocarri:    () => openAuto('Autocarro'),
-  imbarcazioni: () => openAuto('Imbarcazione'),
-  conducente:   () => openAuto('Infortuni al conducente'),
-  storici:      () => openSaraVintage(),
-  cvtard:       () => showPage('cvtard'),
+  /* Persona · Vita. La scheda del prodotto e' una finestra sopra la pagina
+     Vita: si apre la pagina sotto, cosi' chiudendola non si resta nel vuoto. */
+  tcm:          () => { openVita(); openVitaProd('tcm'); },
+  tcm_mutuo:    () => { openVita(); openVitaProd('tcm_mutuo'); },
+  /* Casa e Patrimonio · Tutela legale (My Drive / My Way / Rimborso Utenze) */
+  tl_mydrive:   () => openTL('mydrive'),
+  tl_myway:     () => openTL('myway'),
+  tl_utenze:    () => openTL('utenze'),
+  /* Impresa · Multirischi */
+  imp_catastrofali: () => openICat(),
+  imp_fotovoltaico: () => openFotovoltaico('business', false, 'impresa'),
+  /* Impresa · Attivita' ricettive e balneari (HDI Rischi Diversi) */
+  albergo:      () => openRcRd('albergo'),
+  lidi:         () => openRcRd('lidi'),
+  /* Impresa · Sanitario e RC Professionale (tariffa a classi e a sottocategorie) */
+  rcp_medici:     () => apriRcProfDiretto('MEDICI'),
+  rcp_paramedici: () => apriRcProfDiretto('PARAMEDICI'),
+  rcp_avvocati:   () => apriRcProfDiretto('AVVOCATI'),
+  rcp_nonreg:     () => apriRcProfDiretto('__nonreg'),
+  rcp_tecnici_architetti:  () => apriRcProfDiretto('TECNICI', 'ARCHITECTS/ENGINEERS'),
+  rcp_tecnici_geometri:    () => apriRcProfDiretto('TECNICI', 'SURVEYORS'),
+  rcp_tecnici_periti:      () => apriRcProfDiretto('TECNICI', 'EXPERT-CONSULTANTS'),
+  rcp_tecnici_geologi:     () => apriRcProfDiretto('TECNICI', 'GEOLOGI'),
+  rcp_tecnici_agronomi:    () => apriRcProfDiretto('TECNICI', 'AGRONOMIST'),
+  rcp_tecnici_chimici:     () => apriRcProfDiretto('TECNICI', 'PHYSICIST/CHEMIST'),
+  rcp_fiscale_commercialisti:          () => apriRcProfDiretto('A.FISCALE', 'ACCOUNTANTS (COMMERCIALISTI)'),
+  rcp_fiscale_commercialisti_revisori: () => apriRcProfDiretto('A.FISCALE', 'ACCOUNTANTS WITH AUDITOR'),
+  rcp_fiscale_revisore:                () => apriRcProfDiretto('A.FISCALE', 'AUDITING (REVISORE)'),
+  rcp_fiscale_revisore_sindaco:        () => apriRcProfDiretto('A.FISCALE', 'AUDITING STATUTORY'),
+  rcp_fiscale_visto_leggero:           () => apriRcProfDiretto('A.FISCALE', 'VISTO LEGGERO'),
+  rcp_varie_informatici:      () => apriRcProfDiretto('VARIE', 'IT SERVICES'),
+  rcp_varie_perito_agrario:   () => apriRcProfDiretto('VARIE', 'AGRONOMISTS(PERITO AGRARIO)'),
+  rcp_varie_agenti_immobiliari: () => apriRcProfDiretto('VARIE', 'REAL ESTATE AGENTS'),
+  rcp_varie_amministratori_condominio: () => apriRcProfDiretto('VARIE', 'CONDOMINIUM ADMINISTRATORS'),
+  rcp_varie_mediatori_creditizi: () => apriRcProfDiretto('VARIE', 'CREDIT BROKER'),
+  rcp_varie_dpo:              () => apriRcProfDiretto('VARIE', 'DPO'),
+  /* Impresa · AMTRUST (Professione Protetta): le chiavi sono quelle di
+     tariffe/amtrust.json con il prefisso amt_ */
+  amt_commercialista_protetto: () => apriAmtrustDiretto('commercialista_protetto'),
+  amt_ingegno_protetto:        () => apriAmtrustDiretto('ingegno_protetto'),
+  amt_professioni_intellettuali: () => apriAmtrustDiretto('professioni_intellettuali'),
+  amt_pubblico_impiego:        () => apriAmtrustDiretto('pubblico_impiego'),
+  amt_medico_protetto:         () => apriAmtrustDiretto('medico_protetto'),
+  amt_dentista_protetto:       () => apriAmtrustDiretto('dentista_protetto'),
+  amt_farmacista_protetto:     () => apriAmtrustDiretto('farmacista_protetto'),
+  amt_studi_dentistici:        () => apriAmtrustDiretto('studi_dentistici'),
+  amt_poliambulatori:          () => apriAmtrustDiretto('poliambulatori'),
+  amt_residenze_sanitarie:     () => apriAmtrustDiretto('residenze_sanitarie'),
+  amt_farmacie:                () => apriAmtrustDiretto('farmacie'),
+  /* Cauzioni: le chiavi sono quelle di CAUZIONI_*_PRODUCTS con il prefisso cauz_ */
+  cauz_provvisoria:   () => openCauzioniAppalti('provvisoria', true),
+  cauz_definitiva:    () => openCauzioniAppalti('definitiva', true),
+  cauz_anticipazione: () => openCauzioniAppalti('anticipazione', true),
+  cauz_provvisoria_privati: () => openCauzioniPrivati('provvisoria_privati', true),
+  cauz_definitiva_privati:  () => openCauzioniPrivati('definitiva_privati', true),
+  cauz_legge_210:            () => openCauzioni('legge_210', true),
+  cauz_concessione_edilizia: () => openCauzioni('concessione_edilizia', true),
+  cauz_contributi_agea:      () => openCauzioni('contributi_agea', true),
+  cauz_rimborso_iva:         () => openCauzioni('rimborso_iva', true),
+  cauz_generico:             () => openCauzioni('generico', true),
+  cauz_autotrasportatori:    () => openCauzioni('autotrasportatori', true),
+  cauz_ingresso_stranieri:   () => openCauzioni('ingresso_stranieri', true),
+  cauz_albo_gestori_ambientali: () => openCauzioni('albo_gestori_ambientali', true),
 };
+
+/* ── RC Professionale aperta dritta su una categoria o sottocategoria ──────
+   Perche' non basta chiamare rcpOpenCat: la pagina «rcprof» si riempie da
+   renderRcprof, che AZZERA la vista, aspetta la tariffa e poi disegna
+   l'elenco delle categorie. Se si imposta la vista prima che la tariffa sia
+   arrivata, quel disegno la sovrascrive e si torna all'elenco: il menu
+   prometteva «Geometri» e apriva la pagina che li contiene tutti.
+   Quindi: prima la tariffa, poi la pagina, poi la vista. Con la tariffa gia'
+   in memoria il disegno di renderRcprof parte in coda (microtask) e trova la
+   vista gia' impostata: ridisegna la stessa cosa.
+   La sottocategoria si cerca per INIZIO del nome, non per posizione: la
+   posizione cambia se qualcuno riordina la tariffa, il nome no. */
+async function apriRcProfDiretto(categoria, inizioNomeSub) {
+  await ensureRcProf();
+  showPage('rcprof');
+  if (categoria === '__nonreg') { await rcpOpenNonReg(); return true; }
+  if (!RC_PROF || !RC_PROF[categoria]) { console.warn('RC Professionale: categoria sconosciuta', categoria); return false; }
+  rcpOpenCat(categoria);
+  if (inizioNomeSub && RCP.view === 'subs') {
+    const subs = (RC_PROF[categoria] || {}).sottocategorie || [];
+    const i = subs.findIndex(x => String(x.nome || '').toUpperCase().startsWith(String(inizioNomeSub).toUpperCase()));
+    if (i < 0) { console.warn('RC Professionale: sottocategoria sconosciuta', categoria, inizioNomeSub); return false; }
+    rcpOpenSub(i);
+  }
+  return true;
+}
+/* Stessa ragione per AMTRUST: amtOpenProd attende la sua tabella e poi
+   disegna; la pagina deve essere gia' accesa quando disegna. */
+async function apriAmtrustDiretto(key) {
+  await ensureRcProf();
+  await ensureAmtrust();
+  if (!((AMTRUST && AMTRUST.prodotti) || {})[key]) { console.warn('AMTRUST: prodotto sconosciuto', key); return false; }
+  showPage('rcprof');
+  await amtOpenProd(key);
+  return true;
+}
 function apriProdotto(chiave) {
   /* Seconda porta: i collegamenti diretti ai prodotti (menu della scocca,
      lente di ricerca, link salvati). Senza questo controllo il segnalatore
@@ -3618,8 +3722,12 @@ function apriProdotto(chiave) {
   /* Chiave sconosciuta: si resta dove si e' invece di aprire un prodotto a
      caso. Meglio la pagina che li contiene tutti che quello sbagliato. */
   if (!f) return false;
-  f();
-  return true;
+  /* Alcuni prodotti caricano la tariffa prima di aprirsi (RC Professionale,
+     AMTRUST): li' f() restituisce una promessa. La si passa a chi chiama, cosi'
+     chi deve aspettare l'apertura (le prove) puo' farlo; chi non aspetta ha
+     comunque «true», come prima. */
+  const r = f();
+  return (r && typeof r.then === 'function') ? r.then(() => true) : true;
 }
 
 /* ── Pagine che non bastano ad accendersi da sole ──────────────────────────
@@ -3656,6 +3764,12 @@ const PAGINE_DA_AVVIARE = {
      giusta a meta' che una pagina bianca — ma resta una cosa da sistemare
      nel modulo, non qui. */
   rcrd:         () => openRcRd('albergo'),
+  /* Dal menu di IAM (15/09/2026): i tre prodotti di tutela legale hanno una
+     chiave `prod` ciascuno, ma la pagina chiesta da sola non deve aprirsi
+     bianca. Rischi catastrofali abitazione viveva sotto «Beni», che dal menu
+     e' sparita: adesso ha la sua porta. */
+  tutelalegale: () => openTL('mydrive'),
+  rcab:         () => openRCab(),
   /* Il modulo pensione va aperto dalla sua porta: showPage accenderebbe la
      pagina senza leggere i numeri di legge dalla tabella, e il primo calcolo
      uscirebbe con la copia di riserva senza che nessuno lo sappia. */
@@ -5819,7 +5933,7 @@ function fvStepImpianto(){
     <div class="aw-row3">
       <div class="aw-field"><label>Decorrenza *</label><input type="date" id="fv-dataEffetto" value="${esc(d.dataEffetto||new Date().toISOString().slice(0,10))}"></div>
       <div class="aw-field"><label>Durata *</label><select id="fv-durata">${FV_DURATE.map(y=>`<option value="${y}" ${Number(d.durata)===y?'selected':''}>${y} ${y===1?'Anno':'Anni'}</option>`).join('')}</select></div>
-      <div class="aw-field"><label>Città ubicazione impianto *</label><input id="fv-citta" value="${esc(d.citta||'')}" placeholder="Comune dell'impianto"></div>
+      <div class="aw-field geo-wrap"><label>Città ubicazione impianto *</label><input id="fv-comune" value="${esc(d.citta||'')}" autocomplete="off" placeholder="Inizia a digitare…" oninput="resComuneSearch(this)" onblur="resComuneBlur(this)"><input type="hidden" id="fv-prov" value="${esc(d.provincia||'')}"><input type="hidden" id="fv-cap" value="${esc(d.cap||'')}"></div>
     </div>
     <div class="aw-field"><label>Indirizzo ubicazione impianto (via e numero civico) *</label><input id="fv-indirizzo" value="${esc(d.indirizzo||'')}" placeholder="Via e numero civico"></div>
     <div class="aw-sec" style="text-align:left;color:var(--blue)">Garanzie e somme assicurate</div>
@@ -5921,7 +6035,9 @@ function saveFvStep(){
   if(FV_STEP===0){
     FV_DATA.dataEffetto=document.getElementById('fv-dataEffetto')?.value||FV_DATA.dataEffetto;
     FV_DATA.durata=parseInt(document.getElementById('fv-durata')?.value||FV_DATA.durata||1,10);
-    FV_DATA.citta=document.getElementById('fv-citta')?.value.trim()||'';
+    FV_DATA.citta=document.getElementById('fv-comune')?.value.trim()||'';
+    FV_DATA.provincia=document.getElementById('fv-prov')?.value.trim()||'';
+    FV_DATA.cap=document.getElementById('fv-cap')?.value.trim()||'';
     FV_DATA.indirizzo=document.getElementById('fv-indirizzo')?.value.trim()||'';
     FV_DATA.sommaIncendio=fvNum(document.getElementById('fv-sIncendio')?.value);
     FV_DATA.sommaFurto=FV_DATA.garFurto?fvNum(document.getElementById('fv-sFurto')?.value):0;

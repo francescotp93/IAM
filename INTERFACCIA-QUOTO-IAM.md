@@ -143,6 +143,71 @@ QUOTO che non sa ancora ascoltare il canale.
 > ammesse e i parametri rimasti nell'indirizzo (`from`, `page`, `prod`) sono
 > parte del contratto. Si cambiano **solo modificando entrambi i repo**.
 
+### 2.6 Le chiavi di `prod` — una per ogni voce del menu «Nuovo preventivo»
+
+Dal 15/09/2026 il menu di IAM arriva fino al **singolo prodotto**: ogni foglia
+dell'albero manda `page` (la pagina che lo contiene) e `prod` (la chiave qui
+sotto). QUOTO la risolve in `PRODOTTI_DIRETTI` (`QUOTE/index.html`). Una chiave
+che manca da un lato è un clic che non fa niente, **senza nessun errore
+visibile**: per questo l'elenco sta qui, e due prove lo sorvegliano dalle due
+parti (`QUOTE/server/verifica/prodotti-diretti.test.mjs`,
+`Agente-sospesi/verifica/menu-preventivo-albero.test.mjs`).
+
+| Voce del menu IAM | `page` | `prod` |
+|---|---|---|
+| Motor → Autovetture | `rca` | `autovetture` |
+| Motor → Moto e ciclomotori | `rca` | `motocicli` |
+| Motor → Autocarri | `rca` | `autocarri` |
+| Persona → Vita → TCM | `vita` | `tcm` |
+| Persona → Vita → TCM Mutuo | `vita` | `tcm_mutuo` |
+| Casa e Patrimonio → Tutela legale → MyDrive | `tutelalegale` | `tl_mydrive` |
+| Casa e Patrimonio → Tutela legale → MyWay | `tutelalegale` | `tl_myway` |
+| Casa e Patrimonio → Tutela legale → Rimborso utenze | `tutelalegale` | `tl_utenze` |
+| Impresa → Multirischi Impresa → Rischi Catastrofali | `impresa` | `imp_catastrofali` |
+| Impresa → Multirischi Impresa → Fotovoltaico | `impresa` | `imp_fotovoltaico` |
+| Impresa → Albergo | `rcrd` | `albergo` |
+| Impresa → Lidi balneari | `rcrd` | `lidi` |
+| Impresa → Sanitario → Medici | `rcprof` | `rcp_medici` |
+| Impresa → Sanitario → Sanitario non medico | `rcprof` | `rcp_paramedici` |
+| Impresa → RC Professionali → Avvocati | `rcprof` | `rcp_avvocati` |
+| Impresa → RC Professionali → Professioni non regolamentate | `rcprof` | `rcp_nonreg` |
+| Impresa → RC Professionali → Tecnici → Architetti / Ingegneri | `rcprof` | `rcp_tecnici_architetti` |
+| Impresa → RC Professionali → Tecnici → Geometri | `rcprof` | `rcp_tecnici_geometri` |
+| Impresa → RC Professionali → Tecnici → Periti | `rcprof` | `rcp_tecnici_periti` |
+| Impresa → RC Professionali → Tecnici → Geologi | `rcprof` | `rcp_tecnici_geologi` |
+| Impresa → RC Professionali → Tecnici → Agronomi | `rcprof` | `rcp_tecnici_agronomi` |
+| Impresa → RC Professionali → Tecnici → Chimici / Fisici | `rcprof` | `rcp_tecnici_chimici` |
+| Impresa → RC Professionali → Area Fiscale → Commercialisti | `rcprof` | `rcp_fiscale_commercialisti` |
+| Impresa → RC Professionali → Area Fiscale → Commercialisti sindaci revisori | `rcprof` | `rcp_fiscale_commercialisti_revisori` |
+| Impresa → RC Professionali → Area Fiscale → Revisore | `rcprof` | `rcp_fiscale_revisore` |
+| Impresa → RC Professionali → Area Fiscale → Revisore sindaco | `rcprof` | `rcp_fiscale_revisore_sindaco` |
+| Impresa → RC Professionali → Area Fiscale → Visto leggero | `rcprof` | `rcp_fiscale_visto_leggero` |
+| Impresa → RC Professionali → Professioni Varie → Servizi informatici | `rcprof` | `rcp_varie_informatici` |
+| Impresa → RC Professionali → Professioni Varie → Perito agrario | `rcprof` | `rcp_varie_perito_agrario` |
+| Impresa → RC Professionali → Professioni Varie → Agenti immobiliari | `rcprof` | `rcp_varie_agenti_immobiliari` |
+| Impresa → RC Professionali → Professioni Varie → Amministratori di condominio | `rcprof` | `rcp_varie_amministratori_condominio` |
+| Impresa → RC Professionali → Professioni Varie → Mediatori creditizi e agenti in attività finanziaria | `rcprof` | `rcp_varie_mediatori_creditizi` |
+| Impresa → RC Professionali → Professioni Varie → DPO | `rcprof` | `rcp_varie_dpo` |
+| Impresa → RC Professionali → AMTRUST → *(prodotto)* | `rcprof` | `amt_` + chiave di `tariffe/amtrust.json` (`amt_commercialista_protetto`, `amt_ingegno_protetto`, `amt_professioni_intellettuali`, `amt_pubblico_impiego`, `amt_medico_protetto`, `amt_dentista_protetto`, `amt_farmacista_protetto`, `amt_studi_dentistici`, `amt_poliambulatori`, `amt_residenze_sanitarie`, `amt_farmacie`) |
+| Impresa → Cauzioni appalti → Provvisoria / Definitiva / Anticipazione | `cauzioni-appalti` | `cauz_provvisoria`, `cauz_definitiva`, `cauz_anticipazione` |
+| Impresa → Cauzioni fra privati → Provvisoria / Definitiva | `cauzioni-privati` | `cauz_provvisoria_privati`, `cauz_definitiva_privati` |
+| Impresa → Fideiussioni → *(tipo)* | `cauzioni` | `cauz_legge_210`, `cauz_concessione_edilizia`, `cauz_contributi_agea`, `cauz_rimborso_iva`, `cauz_generico`, `cauz_autotrasportatori`, `cauz_ingresso_stranieri`, `cauz_albo_gestori_ambientali` |
+
+Le voci che aprono una pagina intera (Infortuni alla circolazione, RC vita
+privata, Casa, Animali, Fotovoltaico consumer, Rischi catastrofali abitazione,
+Viaggio, Infortuni) mandano solo `page`: `infcirc`, `rcvp`, `casa`, `animali`,
+`fotovoltaico`, `rcab`, `viaggio`, `infortuni`. Ognuna ha la sua porta in
+`PAGINE_DA_AVVIARE` o in `showPage`.
+
+**Chiavi tolte il 15/09/2026**, di proposito, perché le voci sono uscite dal
+menu: `imbarcazioni`, `conducente`, `storici`, `cvtard`. Un collegamento salvato
+con una di queste non apre più niente. I moduli dentro QUOTO esistono ancora e si
+raggiungono dalla pagina Motor.
+
+**Voci senza prodotto in QUOTO**, quindi in menu come «In arrivo» (grigie, non
+cliccabili): Multirischi Impresa → RC Attività e Cyber. Restano tali finché in
+QUOTO `IMPRESA_PRODUCTS` le tiene `active:false`.
+
 ---
 
 ## 3. Sessione condivisa

@@ -4529,37 +4529,117 @@ const avvio = async () => {
       /* Il menu «Nuovo preventivo» aveva cinque etichette Motor che aprivano
          tutte la stessa schermata: la scelta andava rifatta a mano dentro.
          Il menu prometteva una strada e ne apriva un'altra. */
-      const r = await page.evaluate(() => {
+      /* Dal 15/09/2026 il menu di IAM arriva fino al singolo prodotto (RC
+         Professionale per sottocategoria, AMTRUST per prodotto, cauzioni per
+         tipo): la «firma» di un'apertura non e' piu' solo pagina + veicolo, ma
+         cio' che la pagina ha davvero dentro. */
+      const r = await page.evaluate(async () => {
         const esiti = {};
-        for (const k of Object.keys(PRODOTTI_DIRETTI)) {
-          AUTO_DATA = {}; 
-          const ok = apriProdotto(k);
+        const firma = () => {
           const pagina = [...document.querySelectorAll('.page')].find(p => p.classList.contains('active'));
-          esiti[k] = { ok, pagina: pagina ? pagina.id : null, veicolo: (AUTO_DATA || {}).tipoVeicolo || null };
+          const id = pagina ? pagina.id : null;
+          const ov = document.getElementById('vita-ov');
+          return {
+            pagina: id,
+            veicolo: id === 'page-auto' ? ((AUTO_DATA || {}).tipoVeicolo || null) : null,
+            rcp: id === 'page-rcprof' ? [RCP.view, RCP.cat, RCP.subIdx, RCP.view === 'amtquote' ? AMT.key : null].join('/') : null,
+            tl: id === 'page-tutelalegale' ? TL_DATA.prodotto : null,
+            cauz: id === 'page-cauz-prov' ? CAUZ_DATA.tipo : null,
+            fv: id === 'page-fotovoltaico' ? FV_DATA.variante + '/' + FV_DATA.origin : null,
+            rcrd: id === 'page-rcrd' ? RCRD_DATA.grp : null,
+            vita: ov ? ov.querySelector('.modal-title').textContent.trim() : null,
+          };
+        };
+        for (const k of Object.keys(PRODOTTI_DIRETTI)) {
+          AUTO_DATA = {};
+          document.getElementById('vita-ov')?.remove();
+          const ok = await apriProdotto(k);
+          esiti[k] = Object.assign({ ok }, firma());
         }
+        document.getElementById('vita-ov')?.remove();
         return { esiti, sconosciuta: apriProdotto('non-esiste'), vuota: apriProdotto('') };
       });
       deve(r.sconosciuta === false, 'una chiave sconosciuta apre qualcosa lo stesso');
       deve(r.vuota === false, 'una chiave vuota apre qualcosa lo stesso');
+      /* Ogni voce del menu di IAM, con quello che deve aprire. Le chiavi tolte
+         dal menu (imbarcazioni, conducente, storici, cvtard) NON devono
+         esistere: un collegamento salvato non deve riaprire una voce sparita. */
       const attesi = {
-        autovetture:  ['page-auto', 'Autovettura'],
-        motocicli:    ['page-auto', 'Motociclo'],
-        autocarri:    ['page-auto', 'Autocarro'],
-        imbarcazioni: ['page-auto', 'Imbarcazione'],
-        conducente:   ['page-auto', 'Infortuni al conducente'],
-        storici:      ['page-saravintage', null],
-        cvtard:       ['page-cvtard', null],
+        autovetture:  { pagina: 'page-auto', veicolo: 'Autovettura' },
+        motocicli:    { pagina: 'page-auto', veicolo: 'Motociclo' },
+        autocarri:    { pagina: 'page-auto', veicolo: 'Autocarro' },
+        tcm:          { pagina: 'page-vita', vita: /^TCM — Temporanea/ },
+        tcm_mutuo:    { pagina: 'page-vita', vita: /^TCM Mutuo/ },
+        tl_mydrive:   { pagina: 'page-tutelalegale', tl: 'mydrive' },
+        tl_myway:     { pagina: 'page-tutelalegale', tl: 'myway' },
+        tl_utenze:    { pagina: 'page-tutelalegale', tl: 'utenze' },
+        imp_catastrofali: { pagina: 'page-impresa-cat' },
+        imp_fotovoltaico: { pagina: 'page-fotovoltaico', fv: 'business/impresa' },
+        albergo:      { pagina: 'page-rcrd', rcrd: 'albergo' },
+        lidi:         { pagina: 'page-rcrd', rcrd: 'lidi' },
+        rcp_medici:     { pagina: 'page-rcprof', rcp: /^medquote\/MEDICI\// },
+        rcp_paramedici: { pagina: 'page-rcprof', rcp: /^medquote\/PARAMEDICI\// },
+        rcp_avvocati:   { pagina: 'page-rcprof', rcp: /^quote\/AVVOCATI\// },
+        rcp_nonreg:     { pagina: 'page-rcprof', rcp: /^nonreg\/__nonreg\// },
+        rcp_tecnici_architetti: { pagina: 'page-rcprof', rcp: /^quote\/TECNICI\/0\// },
+        rcp_tecnici_geometri:   { pagina: 'page-rcprof', rcp: /^quote\/TECNICI\/1\// },
+        rcp_tecnici_periti:     { pagina: 'page-rcprof', rcp: /^quote\/TECNICI\/2\// },
+        rcp_tecnici_geologi:    { pagina: 'page-rcprof', rcp: /^quote\/TECNICI\/3\// },
+        rcp_tecnici_agronomi:   { pagina: 'page-rcprof', rcp: /^quote\/TECNICI\/4\// },
+        rcp_tecnici_chimici:    { pagina: 'page-rcprof', rcp: /^quote\/TECNICI\/5\// },
+        rcp_fiscale_commercialisti:          { pagina: 'page-rcprof', rcp: /^quote\/A\.FISCALE\/0\// },
+        rcp_fiscale_commercialisti_revisori: { pagina: 'page-rcprof', rcp: /^quote\/A\.FISCALE\/1\// },
+        rcp_fiscale_revisore:                { pagina: 'page-rcprof', rcp: /^quote\/A\.FISCALE\/2\// },
+        rcp_fiscale_revisore_sindaco:        { pagina: 'page-rcprof', rcp: /^quote\/A\.FISCALE\/3\// },
+        rcp_fiscale_visto_leggero:           { pagina: 'page-rcprof', rcp: /^quote\/A\.FISCALE\/4\// },
+        rcp_varie_informatici:        { pagina: 'page-rcprof', rcp: /^quote\/VARIE\/0\// },
+        rcp_varie_perito_agrario:     { pagina: 'page-rcprof', rcp: /^quote\/VARIE\/1\// },
+        rcp_varie_agenti_immobiliari: { pagina: 'page-rcprof', rcp: /^quote\/VARIE\/2\// },
+        rcp_varie_amministratori_condominio: { pagina: 'page-rcprof', rcp: /^quote\/VARIE\/3\// },
+        rcp_varie_mediatori_creditizi: { pagina: 'page-rcprof', rcp: /^quote\/VARIE\/4\// },
+        rcp_varie_dpo:                { pagina: 'page-rcprof', rcp: /^quote\/VARIE\/5\// },
+        amt_commercialista_protetto: { pagina: 'page-rcprof', rcp: /\/commercialista_protetto$/ },
+        amt_ingegno_protetto:        { pagina: 'page-rcprof', rcp: /\/ingegno_protetto$/ },
+        amt_professioni_intellettuali: { pagina: 'page-rcprof', rcp: /\/professioni_intellettuali$/ },
+        amt_pubblico_impiego:        { pagina: 'page-rcprof', rcp: /\/pubblico_impiego$/ },
+        amt_medico_protetto:         { pagina: 'page-rcprof', rcp: /\/medico_protetto$/ },
+        amt_dentista_protetto:       { pagina: 'page-rcprof', rcp: /\/dentista_protetto$/ },
+        amt_farmacista_protetto:     { pagina: 'page-rcprof', rcp: /\/farmacista_protetto$/ },
+        amt_studi_dentistici:        { pagina: 'page-rcprof', rcp: /\/studi_dentistici$/ },
+        amt_poliambulatori:          { pagina: 'page-rcprof', rcp: /\/poliambulatori$/ },
+        amt_residenze_sanitarie:     { pagina: 'page-rcprof', rcp: /\/residenze_sanitarie$/ },
+        amt_farmacie:                { pagina: 'page-rcprof', rcp: /\/farmacie$/ },
+        cauz_provvisoria:   { pagina: 'page-cauz-prov', cauz: 'Provvisoria' },
+        cauz_definitiva:    { pagina: 'page-cauz-prov', cauz: 'Definitiva' },
+        cauz_anticipazione: { pagina: 'page-cauz-prov', cauz: 'Anticipazione' },
+        cauz_provvisoria_privati: { pagina: 'page-cauz-prov', cauz: 'Provvisoria fra privati' },
+        cauz_definitiva_privati:  { pagina: 'page-cauz-prov', cauz: 'Definitiva fra privati' },
+        cauz_legge_210:            { pagina: 'page-cauz-prov', cauz: 'Legge 210' },
+        cauz_concessione_edilizia: { pagina: 'page-cauz-prov', cauz: 'Concessione edilizia' },
+        cauz_contributi_agea:      { pagina: 'page-cauz-prov', cauz: 'Contributi AGEA' },
+        cauz_rimborso_iva:         { pagina: 'page-cauz-prov', cauz: 'Rimborso IVA' },
+        cauz_generico:             { pagina: 'page-cauz-prov', cauz: 'Cauzione generico' },
+        cauz_autotrasportatori:    { pagina: 'page-cauz-prov', cauz: 'Idoneità autotrasportatori' },
+        cauz_ingresso_stranieri:   { pagina: 'page-cauz-prov', cauz: 'Ingresso stranieri' },
+        cauz_albo_gestori_ambientali: { pagina: 'page-cauz-prov', cauz: 'Albo gestori ambientali' },
       };
-      for (const [k, [pag, veic]] of Object.entries(attesi)) {
+      for (const k of ['imbarcazioni', 'conducente', 'storici', 'cvtard']) {
+        deve(!(k in r.esiti), 'la chiave «' + k + '» e\' uscita dal menu di IAM ma apre ancora qualcosa');
+      }
+      const mancanti = Object.keys(r.esiti).filter(k => !attesi[k]);
+      deve(mancanti.length === 0, 'chiavi che la prova non conosce (aggiungerle qui e in INTERFACCIA-QUOTO-IAM.md §2.6): ' + mancanti.join(', '));
+      for (const [k, att] of Object.entries(attesi)) {
         const e = r.esiti[k];
         deve(e && e.ok, 'la chiave «' + k + '» non apre niente');
-        deve(e.pagina === pag, k + ' apre «' + e.pagina + '» invece di «' + pag + '»');
-        if (veic) deve(e.veicolo === veic, k + ' apre il veicolo «' + e.veicolo + '» invece di «' + veic + '»');
+        for (const [campo, val] of Object.entries(att)) {
+          const ok = val instanceof RegExp ? val.test(String(e[campo])) : e[campo] === val;
+          deve(ok, k + ': ' + campo + ' e\' «' + e[campo] + '» invece di «' + val + '»');
+        }
       }
       /* Due chiavi che aprono lo stesso identico prodotto sarebbero due voci
          di menu per la stessa cosa: e' il difetto che stiamo togliendo. */
-      const firme = Object.values(r.esiti).map(e => e.pagina + '/' + e.veicolo);
-      deve(new Set(firme).size === firme.length, 'due voci aprono lo stesso prodotto: ' + firme.join(', '));
+      const firme = Object.values(r.esiti).map(e => JSON.stringify(Object.assign({}, e, { ok: undefined })));
+      deve(new Set(firme).size === firme.length, 'due voci aprono lo stesso prodotto: ' + firme.filter((f, i) => firme.indexOf(f) !== i).join(', '));
       return Object.keys(attesi).length + ' prodotti, ognuno con la sua schermata';
     });
 
@@ -5963,7 +6043,12 @@ const avvio = async () => {
          gemella dentro IAM. */
       const chieste = new Set();
       for (const m of menu.matchAll(/\b(?:aprireQuoto|Q)\(\s*'([a-z0-9:_-]+)'/gi)) chieste.add(m[1].split(':')[0]);
-      deve(chieste.size > 5, 'ho trovato solo ' + chieste.size + ' pagine chieste: la prova non starebbe guardando niente');
+      /* Dal 15/09/2026 il menu «Nuovo preventivo» e' un albero (MEGA) e ogni
+         voce dichiara la sua pagina con `p: '…'`: anche quelle vanno lette. */
+      const iMega = menu.indexOf('var MEGA = {');
+      const mega = iMega >= 0 ? menu.slice(iMega, menu.indexOf('\n  };', iMega)) : '';
+      for (const m of mega.matchAll(/\bp:\s*'([a-z0-9:_-]+)'/g)) chieste.add(m[1]);
+      deve(chieste.size > 20, 'ho trovato solo ' + chieste.size + ' pagine chieste: la prova non starebbe guardando niente');
       const mancanti = await page.evaluate(lista => lista.filter(n =>
         !document.getElementById('page-' + n) &&
         !(typeof PAGINE_DA_AVVIARE === 'object' && PAGINE_DA_AVVIARE[n])), [...chieste]);

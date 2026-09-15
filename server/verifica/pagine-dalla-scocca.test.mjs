@@ -51,9 +51,9 @@ const haPorta = (n) => new RegExp('(^|\\s)' + n + ':\\s*\\(\\) =>').test(porte) 
    PAGINE_DA_AVVIARE e non qui. */
 const SOLO_DA_DENTRO = {
   auto:          'aperta da openAuto, che la scocca raggiunge con ?prod= (PRODOTTI_DIRETTI)',
-  tutelalegale:  'aperta da dentro Tutela legale',
-  'impresa-cat': 'aperta da dentro Multirischio impresa',
-  rcab:          'aperta da dentro Beni (rischi catastrofali abitazione)',
+  /* «tutelalegale» e «rcab» erano qui: dal 15/09/2026 il menu di IAM le chiede
+     per nome, quindi sono passate in PAGINE_DA_AVVIARE. */
+  'impresa-cat': 'aperta da dentro Multirischio impresa, o con ?prod=imp_catastrofali',
   fi:            'aperta da dentro Beni (fulmine, incendio e scoppio)',
   'cauz-prov':   'aperta da dentro Cauzioni',
 };

@@ -1,15 +1,18 @@
-echo "== ora: $(date '+%F %T')  host: $(hostname)"
-echo "== caddy: $(caddy version 2>/dev/null | head -1)  stato: $(systemctl is-active caddy 2>/dev/null)  enabled: $(systemctl is-enabled caddy 2>/dev/null)"
-echo "== unit caddy (ProtectSystem, ExecReload):"; systemctl cat caddy 2>/dev/null | grep -E '^(ExecStart|ExecReload|ProtectSystem|ReadWritePaths|User)=' | head -8
-echo "== /etc/caddy/Caddyfile ($(wc -c < /etc/caddy/Caddyfile 2>/dev/null) byte):"; sed 's/\t/    /g' /etc/caddy/Caddyfile 2>/dev/null
-echo "== copie: $(ls /etc/caddy/Caddyfile.buona-* /etc/caddy/Caddyfile.bak* 2>/dev/null | wc -l)"; ls -la /etc/caddy/ 2>/dev/null | head -12
-echo "== chi ascolta su 80/443:"; ss -ltnp 2>/dev/null | grep -E ':(80|443) ' | sed 's/  */ /g'
-echo "== /opt/withus-iam: $(git -C /opt/withus-iam rev-parse --short HEAD 2>/dev/null) $(git -C /opt/withus-iam log -1 --format='%ci' 2>/dev/null)  file: $(ls /opt/withus-iam 2>/dev/null | wc -l)  owner: $(stat -c '%U:%G %a' /opt/withus-iam 2>/dev/null)"
-echo "== /opt/withus-backend: $(git -C /opt/withus-backend rev-parse --short HEAD) owner: $(stat -c '%U:%G %a' /opt/withus-backend) index.html: $(stat -c '%U %a' /opt/withus-backend/index.html 2>/dev/null)"
-echo "== caddy puo' leggere? (utente del servizio)"; U=$(systemctl show -p User --value caddy 2>/dev/null); echo "utente: ${U:-root}"; [ -n "$U" ] && { sudo -u "$U" test -r /opt/withus-iam/index.html && echo "iam/index.html leggibile da $U" || echo "iam/index.html NON leggibile da $U"; sudo -u "$U" test -r /opt/withus-backend/index.html && echo "quoto/index.html leggibile da $U" || echo "quoto/index.html NON leggibile da $U"; }
-echo "== segnalini setup.d:"; ls /var/lib/withus-autopull/ 2>/dev/null
-echo "== risposta locale con Host iam. (oggi dovrebbe essere il blocco di default o niente):"; curl -s -o /dev/null -w 'http:%{http_code} ' -m 8 -H 'Host: iam.withusassicurazioni.it' http://127.0.0.1/; curl -sk -o /dev/null -w 'https:%{http_code}\n' -m 8 --resolve iam.withusassicurazioni.it:443:127.0.0.1 https://iam.withusassicurazioni.it/
-echo "== api health: $(curl -s -m 8 -o /dev/null -w '%{http_code}' https://api.withusassicurazioni.it/health)"
-echo "== backend in ascolto: $(ss -ltn 2>/dev/null | grep -c ':3000 ')"
-echo "== .env CORS_ORIGINS impostato? $(grep -c '^CORS_ORIGINS=' /opt/withus-backend/server/.env 2>/dev/null)"
-echo "== spazio disco: $(df -h / | tail -1 | awk '{print $4" liberi su "$2}')"
+echo "== ora: $(date '+%F %T')"
+# aspetto che l'autopull abbia tirato il commit c479f7b ed eseguito l'impianto (max ~3 min)
+for i in $(seq 1 36); do
+  H=$(git -C /opt/withus-backend rev-parse --short HEAD 2>/dev/null)
+  if [ -f /var/lib/withus-autopull/20-dominio-unico-caddy.sh.log ] && [ "$H" = "c479f7b" ]; then break; fi
+  sleep 5
+done
+echo "== HEAD backend: $(git -C /opt/withus-backend rev-parse --short HEAD)  (atteso c479f7b)"
+echo "== segnalini:"; ls /var/lib/withus-autopull/ | grep 20-dominio
+echo "== LOG impianto:"; cat /var/lib/withus-autopull/20-dominio-unico-caddy.sh.log 2>/dev/null || echo "(nessun log ancora)"
+echo "== autopull, ultime righe utili:"; journalctl -u withus-autopull --since '-6min' --no-pager 2>/dev/null | grep -E 'autopull\]' | tail -12
+echo "== caddy: $(systemctl is-active caddy)"
+echo "== Caddyfile, ultime 4 righe:"; tail -4 /etc/caddy/Caddyfile
+echo "== /etc/caddy/withus:"; ls -la /etc/caddy/withus 2>/dev/null
+echo "== api health: $(curl -s -m 10 -o /dev/null -w '%{http_code}' https://api.withusassicurazioni.it/health)"
+echo "== configurazione in esecuzione contiene iam.: $(curl -s -m 5 http://127.0.0.1:2019/config/ | grep -o 'iam.withusassicurazioni.it' | wc -l) volte"
+echo "== http con Host iam. → $(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -m 8 -H 'Host: iam.withusassicurazioni.it' http://127.0.0.1/)"
+echo "== giornale caddy sul certificato di iam. (ultimi 5 min):"; journalctl -u caddy --since '-5min' --no-pager -o cat 2>/dev/null | grep -i 'iam.withus' | grep -iE 'obtain|error|challenge|retry' | tail -6 | cut -c1-300

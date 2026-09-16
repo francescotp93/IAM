@@ -1,5 +1,11 @@
-id: cutover-iam-1789550014  exit: 0  2026-09-16 09:14:09
+id: cutover-iam-2-1789550095  exit: 0  2026-09-16 09:18:31
 ----
-== ora: 2026-09-16 09:14:09
-== DNS visto dal VPS: iam. → 185.199.110.153
-DNS non ancora propagato qui: non ricarico. Riprovare.
+== ora: 2026-09-16 09:15:09
+== NS autoritativi di withusassicurazioni.it: dns3.arubadns.net. dns.technorail.com. dns4.arubadns.cz. dns2.technorail.com. 
+== @dns3.arubadns.net.  A=francescotp93.github.io.  CNAME=francescotp93.github.io.  AAAA=francescotp93.github.io. 
+== @dns.technorail.com.  A=francescotp93.github.io.  CNAME=francescotp93.github.io.  AAAA=francescotp93.github.io. 
+== @dns2.technorail.com.  A=francescotp93.github.io.  CNAME=francescotp93.github.io.  AAAA=francescotp93.github.io. 
+== @dns4.arubadns.cz.  A=francescotp93.github.io.  CNAME=francescotp93.github.io.  AAAA=francescotp93.github.io. 
+== risolutore del VPS ora: 185.199.108.153  TTL residuo: 3538
+== risolutore del VPS dopo ~200 s: 185.199.111.153
+NON ANCORA: il VPS vede ancora il vecchio indirizzo. Non ricarico Caddy.

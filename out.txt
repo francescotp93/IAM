@@ -1,14 +1,8 @@
-id: cutover-iam-5-1789553036  exit: 0  2026-09-16 10:04:37
+id: verifica-riquadro-1789553360  exit: 0  2026-09-16 10:09:52
 ----
-== ora: 2026-09-16 10:04:25
-== autoritativo Aruba: A=51.254.142.199 
-== reload caddy (fa ripartire subito la richiesta del certificato)
-reload ok
-== https://iam./ con certificato verificato: 200 dopo ~15 s
-{"level":"error","ts":1789553065.598673,"logger":"tls","msg":"job failed","error":"iam.withusassicurazioni.it: obtaining certificate: context canceled"}
-{"level":"info","ts":1789553070.9063141,"logger":"tls.obtain","msg":"certificate obtained successfully","identifier":"iam.withusassicurazioni.it","issuer":"acme-v02.api.letsencrypt.org-directory"}
-IAM /=200 js=200 analisi=200 | nascosti verifica=404 vercel.json=404
-QUOTO /nuovo-preventivo=308 /=200 motore=200 json=200 lab=200 | nascosti server=404 env=404 md=404
-servizi via iam.: /health=200 /pay/config=200 | api.=200 quoto.=200
-md5 IAM servito/disco: e8d44060 / e8d44060  HEAD iam: bbe1f12
-== risolutore VPS: 185.199.108.153 (cache, si aggiorna da sola entro il TTL)
+== /opt/withus-iam HEAD: 1a90581 (atteso 1a90581) dopo ~30 s
+== withus-one.js servito: var QUOTO = '/nuovo-preventivo/'
+== index.html servito: const QUOTO_URL = '/nuovo-preventivo/'  tag: withus-one.js?v=20260916a
+== riquadro: 200
+== caddy: active  api: 200
+== richieste a iam. nel registro (ultimi 10 min): 69

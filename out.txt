@@ -1,14 +1,40 @@
-id: verifica-repo-unico-1789563456  exit: 0  2026-09-16 12:58:09
+id: rinomina-iam-1789566807  exit: 0  2026-09-16 13:54:01
 ----
-== HEAD backend: 8123865 (atteso 8123865) dopo ~5 s
-== iam/ sul disco: 26 file; index: 644 root
-== autopull, righe Caddy/impianto:
-Sep 16 12:57:31 vps-d6443a46 autopull.sh[2944585]: [autopull] 2026-09-16 12:57:31 aggiorno 616b011 -> 8123865
-Sep 16 12:57:34 vps-d6443a46 autopull.sh[2944585]: [autopull] Caddy: siti aggiornati e ricaricati ✅ (iam.caddy )
-== /etc/caddy/withus/iam.caddy → root IAM: root * /opt/withus-backend/iam
-== configurazione in esecuzione contiene /opt/withus-backend/iam: 1 volte; /opt/withus-iam: 0
-IAM /=200 js=200 | nascosti verifica=404 sql=404 .gitignore=404 CLAUDE.md=404
-QUOTO /nuovo-preventivo/=200 motore=200 | /nuovo-preventivo/iam/=404 (404 atteso)
-servizi /health=200 api.=200
-md5 IAM servito / iam/ nel repo / vecchio clone: 0346e921 / 0346e921 / 0346e921
-== caddy: active  backend: active
+== HEAD backend: ff26950 (atteso ff26950) dopo ~25 s
+== segnalino:
+-rw-r--r--  1 root root    0 Sep 16 08:18 20-dominio-unico-caddy.sh.fatto
+-rw-r--r--  1 root root  590 Sep 16 08:18 20-dominio-unico-caddy.sh.log
+-rw-r--r--  1 root root    0 Sep 16 13:53 30-rinomina-repo-iam.sh.fatto
+-rw-r--r--  1 root root  349 Sep 16 13:53 30-rinomina-repo-iam.sh.log
+== log dello script:
+[2026-09-16 13:53:43] il repository IAM risponde su GitHub
+[2026-09-16 13:53:46] /opt/withus-backend: origin -> https://github.com/francescotp93/IAM.git
+[2026-09-16 13:53:53] /opt/withus-cmd: origin -> https://***@github.com/francescotp93/IAM.git
+[2026-09-16 13:53:55] tolto /opt/withus-iam
+[2026-09-16 13:53:55] fatto: i remoti seguono il nome IAM
+== remoti:
+/opt/withus-backend -> https://github.com/francescotp93/IAM.git
+/opt/withus-cmd -> https://***@github.com/francescotp93/IAM.git
+== /opt/withus-iam:
+non c'e'
+== Caddy nomina withus-iam?
+0
+== ultimo autopull:
+Sep 16 13:52:28 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Sep 16 13:52:33 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 16 13:52:33 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 16 13:52:33 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 4.898s CPU time over 5.367s wall clock time, 100.5M memory peak.
+Sep 16 13:53:31 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Sep 16 13:53:38 vps-d6443a46 autopull.sh[2951712]: [autopull] 2026-09-16 13:53:38 aggiorno f7d9682 -> ff26950
+Sep 16 13:53:40 vps-d6443a46 autopull.sh[2951712]: [autopull] withus-backend riavviato ✅
+Sep 16 13:53:55 vps-d6443a46 autopull.sh[2951712]: [autopull] impianto '30-rinomina-repo-iam.sh' completato ✅ (log in /var/lib/withus-autopull/30-rinomina-repo-iam.sh.log)
+Sep 16 13:53:55 vps-d6443a46 autopull.sh[2951712]: [autopull] fatto.
+Sep 16 13:53:55 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 16 13:53:55 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 16 13:53:55 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 21.346s CPU time over 24.059s wall clock time, 109.9M memory peak.
+== cmd-runner.sh sul disco:
+14:REPO_PATH=francescotp93/IAM   # dal 16/09/2026 il repository si chiama IAM (era QUOTE)
+== siti in piedi:
+200 https://iam.withusassicurazioni.it/
+200 https://iam.withusassicurazioni.it/nuovo-preventivo/
+200 https://api.withusassicurazioni.it/health

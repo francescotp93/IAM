@@ -1,8 +1,24 @@
-id: verifica-riquadro-1789553360  exit: 0  2026-09-16 10:09:52
+id: prova146-1789556479  exit: 0  2026-09-16 11:01:55
 ----
-== /opt/withus-iam HEAD: 1a90581 (atteso 1a90581) dopo ~30 s
-== withus-one.js servito: var QUOTO = '/nuovo-preventivo/'
-== index.html servito: const QUOTO_URL = '/nuovo-preventivo/'  tag: withus-one.js?v=20260916a
-== riquadro: 200
-== caddy: active  api: 200
-== richieste a iam. nel registro (ultimi 10 min): 69
+== ora
+2026-09-16 11:01:55
+== stato
+groupama   {"running":false,"step":"pronto","since":1789556479780,"msg":"Sessione scaduta: rifai il login da Fonti → Groupama"}
+axa        {"running":false,"step":"pronto","since":1789469929598,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
+axa       auth.json 2026-09-14 20:12:34
+groupama  auth.json 2026-09-14 20:17:13
+== IL PUNTO: il backend è andato a prendere il codice dalla posta?
+Sep 16 10:03:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 278 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:08:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 279 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:13:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 280 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:18:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 281 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:23:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 282 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:28:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 283 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:33:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 284 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:38:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 285 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:43:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 286 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:48:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 287 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:53:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 288 · controllate 7 · cadute 0 · rientrate 0
+Sep 16 10:58:18 vps-d6443a46 node[2727923]: [vigilanza-fonti] giro 289 · controllate 7 · cadute 0 · rientrate 0
+== Groupama: caduta e rientro
+== AXA: il codice dal seme è stato rifiutato?

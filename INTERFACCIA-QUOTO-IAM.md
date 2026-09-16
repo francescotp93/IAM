@@ -1,11 +1,11 @@
 # CONTRATTO DI INTERFACCIA — QUOTO ⇄ IAM
 
 > **Fonte unica della verità sul confine tra le due app.**
-> Questo file è identico nei due repository (`francescotp93/QUOTE` e
-> `francescotp93/Agente-sospesi`). Ogni modifica a un punto di contatto
-> elencato qui **deve essere replicata in entrambi i repo nella stessa
-> sessione di lavoro**, altrimenti l'integrazione si rompe e sembra che
-> "uno dei due progetti abbia perso le modifiche".
+> Dal 16/09/2026 le due app vivono in **un solo repository**: QUOTO alla
+> radice, IAM nella cartella `iam/`. Questo file esiste **una volta sola**, qui.
+> (Fino a quel giorno era in copia nei due repository `QUOTE` e
+> `Agente-sospesi`, e ogni modifica andava replicata a mano nella stessa
+> sessione: era la classe di guasti più frequente del confine.)
 
 ## Le due app
 - **IAM** (`Agente-sospesi`) → gestione utenti/agenti, pubblicato su GitHub Pages.

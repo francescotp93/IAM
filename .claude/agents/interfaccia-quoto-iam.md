@@ -19,7 +19,7 @@ contratto). Tratta quel file come legge.
    modo coerente. Se vedi codice che ne tocca una sola, segnalalo.
 2. **Modifiche speculari.** Se cambi un punto di contatto (colonna condivisa,
    URL del redirect, nomi parametri `from`/`email`), la modifica va replicata
-   in ENTRAMBI i repo (`QUOTE` e `Agente-sospesi`) nella stessa sessione.
+   nelle due parti del repository unico (radice = QUOTO, `iam/` = IAM) nella stessa PR. (Fino al 16/09/2026 erano due repository, `QUOTE` e `Agente-sospesi`.)
    Non lasciare mai un lato modificato e l'altro no.
 3. **Splash/redirect bloccati.** Il blocco `if (t === 'quoto')` in IAM e il
    redirect a `https://francescotp93.github.io/QUOTE/?from=iam` sono BLOCCATI

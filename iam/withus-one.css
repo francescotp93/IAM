@@ -1,0 +1,686 @@
+/* ═══════════════════════════════════════════════════════════════════
+   IAM — Scocca a tre barre
+   ───────────────────────────────────────────────────────────────────
+   Impostazione presa dal mockup approvato:
+     BARRA 1  intestazione bianca — logo, ricerca globale, utente
+     BARRA 2  barra scura — menu orizzontale con tendine e mega-menu
+     BARRA 3  riga del titolo — titolo, briciole di pane, azioni
+
+   Tutte le classi hanno il prefisso w1- per non toccare nessuno stile
+   già presente in IAM. Rimuovendo questo file e il suo script, IAM
+   torna esattamente com'era.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root{
+  --w1-verde:#02984e; --w1-verde2:#01c061; --w1-verde-scuro:#016b38;
+  --w1-verde-tenue:#eaf7f0;
+  --w1-scuro:#1b2733; --w1-scuro2:#243342;
+  --w1-card:#fff; --w1-bordo:#dde3e9; --w1-bordo2:#e9edf1;
+  --w1-txt:#1f2a37; --w1-txt2:#5a6b7c; --w1-txt3:#8b9aa9;
+  --w1-rosso:#c92a2a; --w1-ambra:#b8860b;
+  --w1-r:4px;
+  /* Una fascia sola: prima --w1-h1 (60) + --w1-h2 (44) = 104 px. Ora un'altezza
+     unica di 56, la stessa per la fascia, per le voci di menu e per l'aggancio
+     delle tendine. */
+  --w1-h1:56px; --w1-h2:56px;
+}
+
+/* Il verde della tavolozza diventa il verde With Us: chi sceglie "Verde"
+   dal menu Aspetto ottiene l'identità dell'agenzia, non un verde generico. */
+body.accent-green{ --acc:#02984e; --acc2:#016b38; --acc-rgb:2,152,78; }
+
+/* La vecchia intestazione e la vecchia barra a icone spariscono: le loro
+   funzioni sono tutte nelle tre barre nuove. Restano nel DOM perché la
+   logica dei permessi continua a scriverci sopra. */
+#app.w1 > .hdr,
+#app.w1 > .nav { display:none !important; }
+
+/* ═══ SIDEBAR + FASCIA — la navigazione a sinistra, gli strumenti in alto ═══
+   A 1280px sette voci di menu in una riga si accavallavano con la ricerca.
+   Come i CRM: le voci vanno in una colonna a sinistra (comprimibile a icone,
+   la scelta si ricorda) e in alto resta solo ricerca + agenda + posta + stato
+   + utente. Il contenuto scorre a destra della sidebar. */
+:root{ --w1-sidew:238px; }
+body.w1-min{ --w1-sidew:66px; }
+#app.w1{ padding-left:var(--w1-sidew); box-sizing:border-box; transition:padding-left .18s ease; }
+
+/* ═══ FASCIA UNICA — logo + menu + ricerca + chip, tutto scuro ═══════ */
+.w1-top{
+  flex:0 0 auto; height:var(--w1-h1); box-sizing:border-box;
+  background:var(--w1-scuro); border-bottom:1px solid rgba(0,0,0,.18);
+  display:flex; align-items:center; gap:10px; padding:0 14px;
+  position:relative; z-index:220;
+}
+/* Il logo è il pulsante «casa»: marchio bianco sul fondo scuro, cliccabile,
+   con lo stato attivo quando si è sulla Scrivania (come una voce di menu). */
+.w1-logo-btn{ display:flex; align-items:center; height:100%; padding:0 8px 0 2px; border-radius:var(--w1-r); flex:0 0 auto; cursor:pointer; border-bottom:3px solid transparent; box-sizing:border-box; }
+.w1-logo-btn:hover{ background:var(--w1-scuro2); }
+.w1-logo-btn.act{ border-bottom-color:var(--w1-verde2); }
+.w1-top .w1-logo{ height:30px; width:auto; display:block; flex:0 0 auto; }
+.w1-top .w1-sep{ width:1px; height:26px; background:rgba(255,255,255,.14); flex:0 0 auto; }
+.w1-appname{
+  font-size:11px; letter-spacing:1.6px; color:var(--w1-txt3);
+  font-weight:600; text-transform:uppercase; line-height:1.2; flex:0 0 auto;
+}
+.w1-appname b{
+  display:block; font-size:13px; letter-spacing:.4px;
+  color:var(--w1-txt); font-weight:700;
+}
+/* PIATTAFORMA IAM. Il primo tentativo impilava le tre iniziali su tre righe:
+   in una barra alta 56 px si leggeva male. «IAM» resta grande come il nome che
+   e', le tre parole gli stanno accanto in piccolo, su una riga sola. */
+.w1-appname-t{ display:block; }
+.w1-iam{ display:flex; align-items:baseline; gap:6px; }
+.w1-iam b{
+  font-size:14px; font-weight:800; letter-spacing:.6px;
+  color:var(--w1-txt); text-transform:none;
+}
+.w1-iam-e{
+  font-size:9.5px; font-weight:500; letter-spacing:.2px;
+  color:var(--w1-txt3); text-transform:none; white-space:nowrap;
+}
+/* Sotto una certa larghezza restano solo le tre lettere: la spiegazione e'
+   un di piu', il nome no. */
+@media(max-width:1180px){ .w1-iam-e{ display:none; } }
+
+.w1-burger{
+  display:none; background:none; border:none; color:var(--w1-txt2);
+  cursor:pointer; padding:6px; border-radius:var(--w1-r); flex:0 0 auto;
+}
+.w1-burger:hover{ background:#f2f5f7; color:var(--w1-txt); }
+
+/* Ricerca più stretta (invito «Cerca»): sta a destra, prima delle icone. */
+.w1-gsearch{ flex:0 1 300px; max-width:300px; position:relative; }
+.w1-gsearch input{
+  width:100%; height:34px; box-sizing:border-box;
+  border:1px solid rgba(255,255,255,.16); border-radius:var(--w1-r);
+  background:rgba(255,255,255,.10); padding:0 58px 0 32px;
+  font-size:13px; font-family:inherit; color:#fff; outline:none;
+}
+.w1-gsearch input::placeholder{ color:rgba(255,255,255,.55); }
+.w1-gsearch input:focus{
+  background:rgba(255,255,255,.16); border-color:var(--w1-verde2);
+  box-shadow:0 0 0 3px rgba(1,192,97,.14);
+}
+.w1-gsearch .w1-si{
+  position:absolute; left:9px; top:9px; color:rgba(255,255,255,.55); pointer-events:none;
+}
+.w1-gsearch .w1-kbd{
+  position:absolute; right:7px; top:8px; font-size:10px; color:rgba(255,255,255,.5);
+  border:1px solid rgba(255,255,255,.16); border-radius:3px; padding:2px 5px;
+  background:rgba(255,255,255,.06); font-family:inherit; pointer-events:none;
+}
+
+/* I risultati della ricerca: prodotti + ricerca clienti.
+   Sta sopra al riquadro del preventivatore (che è un iframe e in certi
+   browser si prende il davanti), quindi z-index alto e non «auto». */
+.w1-gres{
+  display:none; position:absolute; top:42px; left:0; right:0; z-index:520;
+  background:#fff; border:1px solid var(--w1-bordo); border-radius:var(--w1-r);
+  box-shadow:0 8px 24px rgba(16,30,44,.14); padding:4px 0; max-height:60vh;
+  overflow-y:auto;
+}
+.w1-gres.open{ display:block; }
+.w1-gres .w1-gt{
+  font-size:10px; text-transform:uppercase; letter-spacing:.6px;
+  color:var(--w1-txt3); padding:7px 12px 3px; font-weight:600;
+}
+.w1-gres .w1-gr{
+  display:flex; align-items:center; gap:9px; padding:7px 12px;
+  font-size:13px; color:var(--w1-txt); cursor:pointer;
+}
+.w1-gres .w1-gr span{ flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.w1-gres .w1-gr em{ font-style:normal; font-size:11px; color:var(--w1-txt3); flex:none; }
+.w1-gres .w1-gr .w1-i{ flex:none; width:16px; height:16px; color:var(--w1-txt2); }
+/* Una riga sola evidenziata, e la stessa sia col mouse sia con le frecce:
+   due evidenziazioni diverse insieme fanno sembrare che stia per aprirsi
+   la riga sbagliata. */
+.w1-gres .w1-gr.sel, .w1-gres .w1-gr:hover{
+  background:var(--w1-verde-tenue); color:var(--w1-verde-scuro);
+}
+.w1-gres .w1-gr.sel .w1-i, .w1-gres .w1-gr:hover .w1-i{ color:var(--w1-verde-scuro); }
+
+/* Lo spaziatore che spinge ricerca, icone e utente contro il margine destro.
+   C'e' sempre stato nel markup (`<div class="w1-spacer">` dentro .w1-top) ma
+   l'unica regola scritta era `.w1-mbar .w1-spacer`: quello di primo livello
+   restava senza crescita, si schiacciava a zero, e il chip con l'indirizzo
+   dell'utente finiva a meta' barra con un vuoto di trecento pixel alla sua
+   destra. (27/08/2026) */
+.w1-top > .w1-spacer{ flex:1 1 auto; min-width:12px; }
+
+.w1-tright{ margin-left:0; display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+.w1-ibtn{
+  width:34px; height:34px; border:1px solid transparent; border-radius:var(--w1-r);
+  background:none; color:#c7d2dd; display:flex; align-items:center;
+  justify-content:center; cursor:pointer; position:relative; flex:0 0 auto;
+}
+.w1-ibtn:hover{ background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.14); color:#fff; }
+.w1-dot{
+  position:absolute; top:4px; right:4px; min-width:15px; height:15px;
+  border-radius:8px; background:var(--w1-rosso); color:#fff; font-size:9px;
+  font-weight:700; display:flex; align-items:center; justify-content:center;
+  padding:0 4px; border:2px solid var(--w1-scuro); box-sizing:border-box;
+}
+.w1-pill{
+  font-size:10px; font-weight:700; letter-spacing:.3px; padding:4px 9px;
+  border-radius:var(--w1-r); background:rgba(255,255,255,.10); color:#c7d2dd;
+  border:1px solid rgba(255,255,255,.16); white-space:nowrap;
+}
+.w1-pill.ok{ background:rgba(1,192,97,.20); color:#8ff0bf; border-color:rgba(1,192,97,.35); }
+.w1-pill.warn{ background:rgba(201,42,42,.22); color:#ffb3b3; border-color:rgba(201,42,42,.4); }
+
+/* Il riquadro dell'utente. Rifatto nella stessa lingua del tasto «Nuovo
+   preventivo» (pastiglia tonda, avatar rotondo) ma in tono minore: fondo appena
+   schiarito, non il verde pieno. Il tasto è un'azione, questo dice solo dove sei.
+   La riga in alto porta il NOME, non l'indirizzo (vedi onLogin): trenta caratteri
+   di email non li leggeva nessuno e rubavano spazio. L'indirizzo resta nel menu. */
+.w1-user{
+  display:flex; align-items:center; gap:9px; padding:3px 12px 3px 3px;
+  border:1px solid rgba(255,255,255,.14); border-radius:999px;
+  cursor:pointer; background:rgba(255,255,255,.07); margin-left:6px; flex:0 0 auto;
+  transition:background .15s, border-color .15s;
+}
+.w1-user:hover{ background:rgba(255,255,255,.15); border-color:rgba(255,255,255,.26); }
+.w1-av{
+  width:30px; height:30px; border-radius:50%;
+  background:linear-gradient(135deg,var(--w1-verde),var(--w1-verde2));
+  color:#fff; font-weight:700; font-size:11px; display:flex;
+  align-items:center; justify-content:center; letter-spacing:.5px;
+  background-size:cover; background-position:center; flex:0 0 auto;
+}
+.w1-uinfo{ line-height:1.25; text-align:left; min-width:0; }
+/* Il taglio con i puntini è una rete di sicurezza: un cognome lungo (o chi resta
+   senza nome e ricade sull'indirizzo) non deve allargare la fascia per tutti. */
+.w1-uinfo b{
+  display:block; font-size:12px; font-weight:600; color:#fff;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:190px;
+}
+.w1-uinfo span{ font-size:10.5px; color:#c7d2dd; }
+
+/* ═══ Voci di menu — ora annidate nella fascia unica (niente più barra propria) */
+.w1-mbar{
+  flex:0 1 auto; height:var(--w1-h1); box-sizing:border-box;
+  background:transparent; display:flex; align-items:stretch;
+  padding:0; position:relative; z-index:1; min-width:0;
+}
+.w1-m{ position:relative; display:flex; align-items:center; }
+.w1-m > a{
+  display:flex; align-items:center; gap:6px; padding:0 14px;
+  height:var(--w1-h2); color:#c7d2dd; font-size:12.5px; font-weight:500;
+  letter-spacing:.2px; cursor:pointer; border-bottom:3px solid transparent;
+  white-space:nowrap; box-sizing:border-box; user-select:none;
+}
+.w1-m > a:hover, .w1-m.open > a{ background:var(--w1-scuro2); color:#fff; }
+.w1-m.act > a{ color:#fff; border-bottom-color:var(--w1-verde2); }
+.w1-m > a .w1-ch{ opacity:.55; width:12px; height:12px; stroke-width:2.2; }
+/* Il tasto principale del gestionale. Rifatto il 27/08/2026.
+   Prima: maiuscolo a 11,5px con la spaziatura allargata. Due parole lunghe
+   scritte cosi' si leggono lettera per lettera invece che a colpo d'occhio —
+   su un tasto premuto cento volte al giorno e' tempo buttato. Ora e' in tondo
+   a 13px: stessa larghezza, lettura immediata.
+   Via anche il gradiente: su fondo scuro sporcava il verde dell'agenzia, e il
+   verde pieno e' il colore del marchio. Pastiglia tonda per distinguerlo dalle
+   voci di menu, che sono squadrate e sottolineate. */
+.w1-m.nuovo > a{
+  background:var(--w1-verde);
+  color:#fff; font-weight:600; margin:0 12px 0 6px; height:36px;
+  border-radius:999px; padding:0 16px 0 13px; border-bottom:none;
+  letter-spacing:.1px; text-transform:none; font-size:13px; gap:8px;
+  transition:background .15s;
+}
+.w1-m.nuovo > a .w1-i{ width:15px; height:15px; }
+.w1-m.nuovo > a:hover{ background:#03ab59; }
+.w1-m.nuovo > a:active{ background:var(--w1-verde-scuro); }
+.w1-mbar .w1-spacer{ flex:1 1 auto; }
+.w1-mtick{
+  background:var(--w1-rosso); color:#fff; margin-left:6px; font-size:10px;
+  font-weight:700; border-radius:9px; padding:1px 7px;
+}
+
+/* tendina */
+.w1-dd{
+  position:absolute; top:var(--w1-h2); left:0; background:#fff;
+  border:1px solid var(--w1-bordo); border-top:2px solid var(--w1-verde);
+  border-radius:0 0 var(--w1-r) var(--w1-r);
+  box-shadow:0 12px 30px rgba(20,32,45,.16);
+  min-width:262px; padding:7px 0; display:none; z-index:230;
+}
+.w1-m.open .w1-dd{ display:block; }
+.w1-dd.right{ left:auto; right:0; }
+.w1-dd a{
+  display:flex; align-items:center; gap:10px; padding:8px 16px;
+  color:var(--w1-txt); font-size:12.5px; cursor:pointer;
+}
+.w1-dd a:hover{ background:var(--w1-verde-tenue); color:var(--w1-verde-scuro); }
+.w1-dd a svg{ color:var(--w1-txt3); }
+.w1-dd a:hover svg{ color:var(--w1-verde); }
+.w1-dd .w1-t{
+  padding:9px 16px 5px; font-size:10px; font-weight:700; letter-spacing:1.1px;
+  color:var(--w1-txt3); text-transform:uppercase;
+}
+.w1-dd hr{ border:none; border-top:1px solid var(--w1-bordo2); margin:6px 0; }
+/* Sotto-elenco (3° livello) dentro una voce della tendina — a fisarmonica.
+   Uguale su desktop e su telefono: un clic apre/chiude i figli qui sotto, niente
+   flyout laterale (che a schermo stretto e dentro il cassetto si romperebbe). */
+.w1-subwrap{ display:block; }
+.w1-has-sub{ cursor:pointer; }
+.w1-has-sub .w1-subch{ margin-left:auto; opacity:.5; transition:transform .15s; }
+.w1-subwrap.open > .w1-has-sub .w1-subch{ transform:rotate(180deg); }
+.w1-subwrap.open > .w1-has-sub{ background:var(--w1-verde-tenue); color:var(--w1-verde-scuro); }
+.w1-subdd{ display:none; }
+.w1-subwrap.open > .w1-subdd{ display:block; }
+.w1-subdd a{ padding-left:40px; }
+.w1-bdg{
+  margin-left:auto; background:#f0f3f6; color:var(--w1-txt2); font-size:10px;
+  font-weight:700; border-radius:9px; padding:1px 7px; white-space:nowrap;
+}
+.w1-bdg.g{ background:var(--w1-verde-tenue); color:var(--w1-verde-scuro); }
+.w1-bdg.r{ background:#fdecec; color:var(--w1-rosso); }
+.w1-bdg.a{ background:#fdf7e6; color:var(--w1-ambra); }
+.w1-tag{
+  margin-left:auto; font-size:9px; font-weight:700; letter-spacing:.4px;
+  text-transform:uppercase; border-radius:2px; padding:1px 5px;
+  border:1px solid var(--w1-bordo); color:var(--w1-txt3); white-space:nowrap;
+}
+.w1-tag.c{ color:var(--w1-verde-scuro); border-color:#b9e3cb; background:var(--w1-verde-tenue); }
+.w1-tag.r{ color:var(--w1-ambra); border-color:#f0dfb0; background:#fdf7e6; }
+
+/* mega-menu prodotti */
+.w1-mega{
+  position:absolute; top:var(--w1-h2); left:0; background:#fff;
+  border:1px solid var(--w1-bordo); border-top:2px solid var(--w1-verde);
+  border-radius:0 0 var(--w1-r) var(--w1-r);
+  box-shadow:0 14px 36px rgba(20,32,45,.18);
+  display:none; z-index:230; width:840px; padding:18px 22px 0;
+}
+.w1-m.open .w1-mega{ display:block; }
+.w1-mega .w1-cols{ display:grid; grid-template-columns:repeat(4,1fr); gap:0 26px; }
+.w1-mega h5{
+  font-size:10px; font-weight:700; letter-spacing:1.1px; color:var(--w1-verde);
+  text-transform:uppercase; padding-bottom:7px; margin-bottom:6px;
+  border-bottom:1px solid var(--w1-bordo2); display:flex; align-items:center; gap:7px;
+}
+.w1-mega a{
+  display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:3px;
+  font-size:12.5px; color:var(--w1-txt); cursor:pointer;
+}
+.w1-mega a:hover{ background:var(--w1-verde-tenue); color:var(--w1-verde-scuro); }
+.w1-mega .w1-foot{
+  margin:16px -22px 0; padding:11px 22px; background:#f7f9fa;
+  border-top:1px solid var(--w1-bordo2); display:flex; align-items:center;
+  gap:18px; font-size:12px; color:var(--w1-txt2); flex-wrap:wrap;
+}
+.w1-mega .w1-foot a{ color:var(--w1-verde-scuro); font-weight:600; padding:0; }
+.w1-mega .w1-foot a:hover{ background:none; text-decoration:underline; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   LA NAVIGAZIONE COME SIDEBAR (colonna a sinistra, scura, comprimibile)
+   Sovrascrive le regole orizzontali qui sopra: .w1-mbar diventa una barra
+   fissa a tutta altezza; le voci vanno in colonna; le tendine e il mega-menu
+   diventano fisarmoniche scure dentro la colonna. Da compressa (icone),
+   escono come flyout al passaggio del mouse.
+   ═══════════════════════════════════════════════════════════════════ */
+.w1-mbar{
+  position:fixed; left:0; top:0; bottom:0; width:var(--w1-sidew); height:auto;
+  flex-direction:column; align-items:stretch; justify-content:flex-start;
+  background:var(--w1-scuro); padding:0; z-index:240; box-shadow:none;
+  overflow:hidden; transition:width .18s ease;
+  border-right:1px solid rgba(0,0,0,.22);
+}
+/* In cima: l'hamburger (comprime/espande) a sinistra e il logo-Scrivania che
+   riempie il resto, centrato. Il comando di compressione sta qui in alto,
+   accanto al logo (IAM.md §13.4), non più in un piede che rubava una riga. */
+.w1-side-head{
+  flex:0 0 auto; height:var(--w1-h1); display:flex; align-items:center;
+  justify-content:flex-start; gap:8px; padding:0 10px;
+  border-bottom:1px solid rgba(255,255,255,.08); overflow:hidden;
+}
+/* L'hamburger: pulsantino a icona, compatto, a sinistra del logo. */
+.w1-side-toggle{
+  flex:0 0 auto; width:34px; height:34px; display:flex; align-items:center;
+  justify-content:center; padding:0; background:none; border:none;
+  color:var(--w1-txt3); font-family:inherit; cursor:pointer;
+  border-radius:var(--w1-r);
+}
+.w1-side-toggle:hover{ background:var(--w1-scuro2); color:#fff; }
+.w1-side-toggle .w1-i{ width:20px; height:20px; }
+/* In cima alla colonna il logo non è una «voce di menu»: niente sottolineatura
+   verde di stato (la striscia sotto sembrava una selezione a caso). Riempie lo
+   spazio che resta accanto all'hamburger e ci si centra dentro. */
+.w1-side-head .w1-logo-btn{
+  flex:1 1 auto; display:flex; align-items:center; justify-content:center;
+  height:auto; padding:0 6px; border-bottom:none;
+}
+/* Il marchio With Us verde su trasparente (niente riquadro bianco), più grande:
+   è la prima cosa che si legge in cima alla colonna. */
+.w1-side-head .w1-logo{ height:40px; width:auto; display:block; }
+/* Il quadratino-casa si vede solo a sidebar compressa (vedi body.w1-min). */
+.w1-logo-min{ display:none; }
+.w1-side-nav{ flex:1 1 auto; overflow-y:auto; overflow-x:hidden; padding:8px 0; min-height:0; }
+
+/* Voci in colonna */
+.w1-mbar .w1-m{ display:block; position:relative; }
+.w1-mbar .w1-m > a{
+  height:44px; padding:0 16px; border-bottom:none; border-left:3px solid transparent;
+  white-space:nowrap; overflow:hidden; text-decoration:none;
+}
+.w1-mbar .w1-m > a > span{ flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; }
+.w1-mbar .w1-m.act > a{ color:#fff; border-bottom-color:transparent; border-left-color:var(--w1-verde2); background:rgba(255,255,255,.05); }
+.w1-mbar .w1-m > a .w1-ch{ margin-left:auto; flex:0 0 auto; transition:transform .15s; }
+.w1-mbar .w1-m.open > a .w1-ch{ transform:rotate(180deg); }
+/* «Nuovo preventivo»: pastiglia verde piena, in cima alla colonna. NON prende
+   il trattamento «attivo» delle altre voci (bordo verde a sinistra + fondo
+   schiarito): sulla pastiglia tonda quel bordo diventava un arco verde storto e
+   il fondo copriva il verde. È un'azione, non una posizione: resta sempre verde. */
+.w1-mbar .w1-m.nuovo > a{
+  margin:2px 10px 10px; height:40px; border-radius:999px; padding:0 14px;
+  justify-content:flex-start; text-transform:none; font-size:13px; letter-spacing:.1px;
+}
+.w1-mbar .w1-m.nuovo > a,
+.w1-mbar .w1-m.nuovo.act > a,
+.w1-mbar .w1-m.nuovo.open > a{ background:var(--w1-verde); border-left-color:transparent; color:#fff; }
+.w1-mbar .w1-m.nuovo > a:hover{ background:#03ab59; }
+.w1-mbar .w1-m.nuovo.act > a{ background:var(--w1-verde-scuro); }   /* attivo = verde scuro, niente arco */
+
+/* Tendine e mega-menu: fisarmonica scura DENTRO la colonna */
+.w1-mbar .w1-dd, .w1-mbar .w1-mega{
+  position:static; top:auto; left:auto; right:auto; width:auto; min-width:0;
+  box-shadow:none; border:none; border-radius:0;
+  border-top:1px solid rgba(255,255,255,.06);
+  background:rgba(0,0,0,.22); padding:4px 0; z-index:auto;
+}
+.w1-mbar .w1-dd a, .w1-mbar .w1-mega a{ color:#c7d2dd; padding:8px 16px 8px 42px; }
+.w1-mbar .w1-dd a:hover, .w1-mbar .w1-mega a:hover{ background:rgba(255,255,255,.06); color:#fff; }
+.w1-mbar .w1-dd a svg, .w1-mbar .w1-mega a svg{ color:rgba(255,255,255,.5); }
+.w1-mbar .w1-dd a:hover svg, .w1-mbar .w1-mega a:hover svg{ color:var(--w1-verde2); }
+.w1-mbar .w1-dd .w1-t, .w1-mbar .w1-mega h5{ color:rgba(255,255,255,.4); border-bottom:none; padding:9px 16px 5px; }
+.w1-mbar .w1-dd hr{ border-top-color:rgba(255,255,255,.08); }
+.w1-mbar .w1-mega{ width:auto; padding:4px 0; }
+.w1-mbar .w1-mega .w1-cols{ display:block; }
+.w1-mbar .w1-mega .w1-foot{ display:none; }
+.w1-mbar .w1-bdg{ background:rgba(255,255,255,.12); color:#fff; }
+.w1-mbar .w1-subwrap.open > .w1-has-sub{ background:rgba(255,255,255,.06); color:#fff; }
+.w1-mbar .w1-subdd a{ padding-left:58px; }
+
+/* ═══ IL MENU PRODOTTI COME ALBERO (15/09/2026) ═══════════════════════
+   Quattro categorie chiuse; ogni clic apre un livello sotto. Il rientro a
+   sinistra cresce col livello (data-liv), cosi' si vede a colpo d'occhio
+   cosa sta dentro cosa. Le etichette lunghe (AMTRUST, mediatori creditizi)
+   vanno a capo invece di sparire con i puntini. */
+.w1-mbar .w1-mega a, .w1-mbar .w1-mega .w1-soon{ white-space:normal; line-height:1.3; }
+.w1-mbar .w1-mega .w1-subwrap[data-liv="0"] > .w1-has-sub{
+  padding-left:20px; font-weight:600; color:#e3e9ef; font-size:12.5px;
+}
+.w1-mbar .w1-mega .w1-subwrap[data-liv="0"] > .w1-has-sub svg:first-child{ color:var(--w1-verde2); }
+.w1-mbar .w1-mega .w1-subwrap[data-liv="0"]{ border-top:1px solid rgba(255,255,255,.05); }
+.w1-mbar .w1-mega .w1-subwrap[data-liv="0"]:first-child{ border-top:none; }
+.w1-mbar .w1-mega [data-liv="1"]{ padding-left:40px; }
+.w1-mbar .w1-mega [data-liv="2"]{ padding-left:56px; }
+.w1-mbar .w1-mega [data-liv="3"]{ padding-left:72px; }
+.w1-mbar .w1-mega [data-liv="4"]{ padding-left:88px; }
+.w1-mbar .w1-mega .w1-subwrap[data-liv]{ padding-left:0; }
+.w1-mbar .w1-mega a{ text-decoration:none; }
+/* nodo aperto: l'intestazione resta evidenziata finche' i figli sono visibili */
+.w1-mbar .w1-mega .w1-subwrap.open > .w1-has-sub{ background:rgba(255,255,255,.06); color:#fff; }
+.w1-mbar .w1-mega .w1-subwrap.open > .w1-has-sub svg:first-child{ color:var(--w1-verde2); }
+
+/* «In arrivo»: si vede, in grigio, con la scritta; non e' un link, non
+   prende il fuoco, il puntatore non cambia. */
+.w1-soon{
+  display:flex; align-items:center; gap:8px; padding:8px 16px;
+  color:rgba(255,255,255,.38); font-size:12.5px; cursor:default; user-select:none;
+}
+.w1-soon svg{ color:rgba(255,255,255,.25); }
+.w1-soon .w1-bdg{ margin-left:auto; background:rgba(255,255,255,.08); color:rgba(255,255,255,.55); }
+
+/* ═══ SU TELEFONO: un livello alla volta, a schermo intero ═══════════ */
+.w1-drill{
+  display:none; position:fixed; inset:0; z-index:260;
+  background:var(--w1-scuro); color:#fff; flex-direction:column;
+}
+.w1-drill.open{ display:flex; }
+.w1-drill-h{
+  flex:0 0 auto; display:flex; align-items:center; gap:6px; height:56px;
+  padding:0 8px; border-bottom:1px solid rgba(255,255,255,.1);
+}
+.w1-drill-back{
+  display:flex; align-items:center; gap:6px; padding:8px 10px; min-height:40px;
+  background:none; border:none; color:#fff; font:inherit; font-size:13.5px;
+  border-radius:var(--w1-r); cursor:pointer;
+}
+.w1-drill-back svg{ transform:rotate(180deg); }   /* «Indietro»: la freccia guarda a sinistra */
+.w1-drill-x svg{ transform:none; }
+.w1-drill-x{ margin-left:auto; }
+.w1-drill-t{ flex:1 1 auto; font-weight:600; font-size:15px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-left:6px; }
+.w1-drill-b{ flex:1 1 auto; overflow-y:auto; padding:6px 0; -webkit-overflow-scrolling:touch; }
+.w1-drill-row{
+  display:flex; align-items:center; gap:12px; padding:14px 18px; min-height:52px;
+  color:#e3e9ef; font-size:14.5px; text-decoration:none; cursor:pointer;
+  border-bottom:1px solid rgba(255,255,255,.05); line-height:1.3;
+}
+.w1-drill-row svg:first-child{ color:var(--w1-verde2); }
+.w1-drill-row .w1-ch{ margin-left:auto; flex:0 0 auto; transform:rotate(0); color:rgba(255,255,255,.5); }
+.w1-drill-row:active{ background:rgba(255,255,255,.06); }
+.w1-drill-row.w1-soon{ color:rgba(255,255,255,.38); cursor:default; }
+.w1-drill-row.w1-soon svg:first-child{ color:rgba(255,255,255,.25); }
+@media (min-width: 901px){ .w1-drill{ display:none !important; } }
+
+/* ── Sidebar compressa: sole icone, i sotto-menu escono come flyout ── */
+body.w1-min .w1-mbar{ overflow:visible; }
+body.w1-min .w1-side-nav{ overflow:visible; }
+/* Compressa la colonna è stretta (66px): hamburger e quadratino-casa non ci
+   stanno affiancati, quindi si impilano — l'hamburger sopra (per riespandere,
+   altrimenti non si riapre più) e il quadratino-casa sotto (per tornare alla
+   Scrivania, che da compressa il marchio largo sparisce). */
+body.w1-min .w1-side-head{
+  flex-direction:column; height:auto; justify-content:center;
+  gap:8px; padding:9px 0;
+}
+body.w1-min .w1-side-toggle{ width:40px; height:40px; }
+body.w1-min .w1-side-head .w1-logo{ display:none; }
+body.w1-min .w1-logo-min{ display:block; width:22px; height:22px; color:#fff; }
+body.w1-min .w1-side-head .w1-logo-btn{
+  flex:0 0 auto; width:40px; height:40px; padding:0; border-radius:11px;
+  background:var(--w1-verde); align-items:center; justify-content:center;
+}
+body.w1-min .w1-side-head .w1-logo-btn:hover{ background:#03ab59; }
+body.w1-min .w1-mbar .w1-m > a{ justify-content:center; padding:0; }
+body.w1-min .w1-mbar .w1-m > a > span,
+body.w1-min .w1-mbar .w1-m > a .w1-ch{ display:none; }
+body.w1-min .w1-mbar .w1-m.nuovo > a{ margin:2px 12px 10px; padding:0; }
+/* i sotto-menu: nascosti da fermi, escono a destra AL CLIC sulla voce (.open).
+   Prima uscivano al passaggio del mouse (:hover) e sparivano appena il
+   puntatore usciva di un pixel: il brief del 14/09/2026 vuole apertura al
+   clic e chiusura solo con clic fuori o Esc. Niente :hover che apre. */
+body.w1-min .w1-mbar .w1-m.open > .w1-dd,
+body.w1-min .w1-mbar .w1-m.open > .w1-mega{
+  display:block; position:absolute; left:100%; top:0; width:250px;
+  background:var(--w1-scuro2); border-radius:0 var(--w1-r) var(--w1-r) 0;
+  box-shadow:10px 10px 34px rgba(0,0,0,.45); z-index:250; padding:6px 0;
+  border-top:none; max-height:calc(100vh - 16px); overflow-y:auto;
+}
+body.w1-min .w1-mbar .w1-m.open > .w1-mega{ width:320px; }
+
+/* ═══ BARRA 3 — titolo e briciole ══════════════════════════════════ */
+.w1-pbar{
+  flex:0 0 auto; background:#fff; border-bottom:1px solid var(--w1-bordo);
+  padding:13px 22px; display:flex; align-items:center; gap:14px;
+  position:relative; z-index:200;
+}
+/* Titolo con il pittogramma della sezione a fianco. Sotto i 520px il
+   pittogramma sparisce: su uno schermo stretto lo spazio serve al titolo,
+   e un simbolo che spinge fuori le parole non aiuta nessuno. */
+.w1-pbar .w1-pt{ display:flex; align-items:center; gap:10px; min-width:0; }
+@media (max-width:520px){ .w1-pbar .w1-pt .wus-pictogram{ display:none; } }
+.w1-pbar h1{ font-size:17px; font-weight:600; letter-spacing:-.2px; color:var(--w1-txt); margin:0; }
+.w1-crumb{
+  font-size:11px; color:var(--w1-txt3); display:flex; align-items:center;
+  gap:5px; margin-top:1px;
+}
+.w1-pbar .w1-az{ margin-left:auto; display:flex; gap:8px; }
+.w1-b{
+  display:inline-flex; align-items:center; gap:7px; height:32px; padding:0 13px;
+  border-radius:var(--w1-r); border:1px solid var(--w1-bordo); background:#fff;
+  color:var(--w1-txt); font-size:12.5px; font-weight:500; font-family:inherit;
+  cursor:pointer; white-space:nowrap;
+}
+.w1-b:hover{ background:#f4f7f9; border-color:#ccd5dd; }
+.w1-b.p{
+  background:linear-gradient(135deg,var(--w1-verde),var(--w1-verde2));
+  border-color:var(--w1-verde); color:#fff; font-weight:600;
+}
+.w1-b.p:hover{ filter:brightness(1.07); }
+
+/* ═══ icone ════════════════════════════════════════════════════════ */
+svg.w1-i{
+  width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.6;
+  stroke-linecap:round; stroke-linejoin:round; flex:none; vertical-align:-3px;
+}
+svg.w1-i.sm{ width:14px; height:14px; }
+svg.w1-i.lg{ width:20px; height:20px; }
+
+/* ═══ tema scuro di IAM ════════════════════════════════════════════
+   La FASCIA in cima è scura in tutti e due i temi (di proposito: il logo bianco
+   e le voci chiare vivono sul fondo scuro sempre). Quindi qui si adatta solo la
+   riga del titolo (.w1-pbar), che resta chiara come il resto della pagina. */
+body.theme-dark .w1-pbar{ background:var(--surf); border-bottom-color:var(--bord2); }
+body.theme-dark .w1-pbar h1{ color:var(--txt); }
+body.theme-dark .w1-dot{ border-color:var(--w1-scuro); }
+
+/* ═══ scrim e drawer per schermo piccolo ═══════════════════════════ */
+.w1-scrim{
+  display:none; position:fixed; inset:0; z-index:210;
+  background:rgba(0,0,0,.5);
+}
+.w1-scrim.open{ display:block; }
+
+@media (max-width: 1180px){
+  .w1-m > a{ padding:0 10px; font-size:12px; }
+  .w1-mega{ width:660px; }
+  .w1-mega .w1-cols{ grid-template-columns:repeat(2,1fr); }
+}
+
+/* Su schermo stretto la sidebar si ritira in un cassetto: la apre il burger,
+   il contenuto torna a tutta larghezza (niente colonna fissa a sinistra). */
+@media (max-width: 900px){
+  #app.w1{ padding-left:0; }
+  .w1-top{ gap:12px; padding:0 12px; }
+  .w1-burger{ display:flex; }
+  .w1-appname, .w1-top .w1-sep{ display:none; }
+  .w1-gsearch{ display:none; }
+  .w1-uinfo{ display:none; }
+  .w1-pill{ display:none; }
+  .w1-fuori{ left:0; }
+
+  .w1-mbar{
+    width:272px; z-index:240;
+    transform:translateX(-100%); transition:transform .22s ease;
+    box-shadow:0 0 40px rgba(0,0,0,.5); border-right:none;
+  }
+  .w1-mbar.open{ transform:translateX(0); }
+  /* Nel cassetto la sidebar è sempre a etichette, mai a icone, anche se la
+     preferenza salvata era «compressa». */
+  body.w1-min .w1-mbar{ width:272px; }
+  body.w1-min .w1-side-head{ flex-direction:row; height:var(--w1-h1); justify-content:flex-start; gap:8px; padding:0 12px; }
+  body.w1-min .w1-side-head .w1-logo{ display:block; }
+  body.w1-min .w1-logo-min{ display:none; }
+  body.w1-min .w1-side-head .w1-logo-btn{ flex:1 1 auto; width:auto; height:auto; padding:0 6px; background:none; border-radius:var(--w1-r); }
+  body.w1-min .w1-mbar .w1-m > a{ justify-content:flex-start; padding:0 16px; }
+  body.w1-min .w1-mbar .w1-m > a > span,
+  body.w1-min .w1-mbar .w1-m > a .w1-ch{ display:inline; }
+  body.w1-min .w1-mbar .w1-m.nuovo > a{ margin:2px 10px 10px; }
+  /* i sotto-menu tornano fisarmonica (niente flyout dentro il cassetto) */
+  body.w1-min .w1-mbar .w1-m.open > .w1-dd,
+  body.w1-min .w1-mbar .w1-m.open > .w1-mega{ display:block; position:static; width:auto; max-height:none; box-shadow:none; background:rgba(0,0,0,.22); }
+  /* Su mobile la sidebar è un cassetto che apre e chiude il burger in alto
+     (.w1-burger): l'hamburger di testa non deve comparire, altrimenti se ne
+     vedrebbero due (IAM.md §13.4). */
+  .w1-side-toggle{ display:none; }
+  .w1-mega{ padding:4px 0; }
+  .w1-mega .w1-cols{ display:block; }
+  .w1-mega .w1-foot{ display:none; }
+  .w1-bdg{ background:rgba(255,255,255,.12); color:#fff; }
+  .w1-tag{ background:none; }
+  .w1-pbar{ padding:10px 14px; }
+  .w1-pbar h1{ font-size:15px; }
+  .w1-pbar .w1-az{ display:none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   IL PREVENTIVATORE DENTRO LA SCOCCA
+   ───────────────────────────────────────────────────────────────────────
+   Non è più una destinazione: è una pagina ospitata dentro IAM.
+   Il riquadro occupa esattamente lo spazio dei pannelli, senza margini e
+   senza barre di scorrimento doppie: chi lo usa non deve accorgersi che
+   dentro c'è un'altra pagina.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+#panel-quoto-live{ padding:0; overflow:hidden; }
+
+.w1-stage{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  background:#fff;
+}
+
+.w1-frame{
+  flex:1 1 auto; width:100%; height:100%;
+  border:0; display:block; background:#fff;
+}
+
+/* Attesa del preventivatore. Al posto della rotellina c'e' il marchio:
+   e' lo stesso fotogramma che mostra QUOTO mentre si apre (#boot-screen),
+   cosi' il passaggio da IAM al preventivatore non ha stacchi — una sola
+   schermata bianca con il logo che respira, dall'inizio alla fine. */
+/* ═══ I PANNELLI CHE VIVONO FUORI DA #app ══════════════════════════
+   Fonti compagnie, Stato collegamenti e Analisi dei bisogni sono figli di
+   <body>, non di #app. La regola `.panel{position:absolute;inset:0}` li
+   ancora all'angolo della finestra, cioe' SOTTO la fascia: il loro titolo e
+   la riga dei conteggi restavano coperti, e non c'era modo di scoprirli
+   perche' il pannello e' gia' in cima al proprio scorrimento — si scorreva
+   e non succedeva niente. (27/08/2026)
+   L'altezza arriva da misuraTesta() in withus-one.js e non e' scritta a
+   mano: la fascia cambia altezza quando le voci vanno a capo, e un numero
+   fisso oggi e' un ritaglio domani. Il valore di scorta serve solo al primo
+   fotogramma, prima che la misura sia stata presa. */
+/* Oltre all'altezza (sotto la fascia) ora anche a destra della sidebar. */
+.w1-fuori{ top:var(--w1-testa, 118px); left:var(--w1-sidew); }
+
+.w1-load{
+  position:absolute; inset:0; z-index:2;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  background:#fff;
+  font-size:12.5px; color:var(--w1-txt2);
+  letter-spacing:.2px;
+}
+
+.w1-load-logo{
+  width:164px; height:auto; display:block;
+  animation:w1-respiro 1.6s ease-in-out infinite;
+}
+
+/* La scritta resta nel documento ma non a schermo: sotto il marchio non serve
+   a chi vede (il logo che respira dice gia' che si sta aprendo), serve a chi
+   usa un lettore di schermo — e a lui la rotellina non avrebbe detto nulla. */
+.w1-load-txt{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
+
+@keyframes w1-respiro{
+  0%,100%{ opacity:.45; transform:scale(.965); }
+  50%    { opacity:1;   transform:scale(1); }
+}
+
+/* Chi ha chiesto meno movimento vede il marchio fermo, non un vuoto. */
+@media (prefers-reduced-motion:reduce){
+  .w1-load-logo{ animation:none; opacity:1; }
+}
+
+body.theme-dark .w1-stage,
+body.theme-dark .w1-frame{ background:var(--surf); }
+
+/* L'attesa resta bianca anche in tema scuro: il preventivatore che sta per
+   comparire dentro il riquadro e' chiaro, quindi un velo scuro qui vorrebbe
+   dire far lampeggiare lo schermo due volte in due secondi. Bianco e poi
+   bianco: il marchio e' l'unica cosa che si muove. */

@@ -1,0 +1,10 @@
+{
+  "nome": "With Us - Analisi dei bisogni - Claude Code integration kit",
+  "versione": "1.0.0",
+  "data": "2026-08-04",
+  "repos": [
+    "francescotp93/Agente-sospesi",
+    "francescotp93/QUOTE"
+  ],
+  "note": "Non eseguire SQL, invii, push o deploy senza conferma."
+}

@@ -1,0 +1,101 @@
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  DA APPROVARE — NON ESEGUITO
+--
+--  Questo file NON e' stato lanciato sull'archivio. Cambia le regole di accesso
+--  in produzione: lo esegue Francesco, o Leo dopo il suo via libera esplicito.
+--
+--  A COSA SERVE
+--  A far funzionare l'invito di un collaboratore per come uno se lo aspetta:
+--  scelgo ruolo e accessi, premo "Invita", e la persona entra gia' con quel
+--  ruolo. Oggi non e' cosi'.
+--
+--  COSA SUCCEDE OGGI (e perche')
+--  Sulla tabella iam_utenti — la tabella delle utenze che accedono a IAM — le
+--  regole di scrittura sono queste:
+--
+--    u_insert        chi entra puo' creare SOLO la propria scheda, e SOLO con
+--                    il ruolo piu' basso;
+--    u_update_admin  un amministratore puo' modificare qualunque scheda;
+--    u_update_self   ciascuno puo' modificare la propria;
+--    u_delete        un amministratore puo' cancellare.
+--
+--  Manca la regola che permetterebbe a un amministratore di CREARE la scheda di
+--  un altro. Non esiste. Quindi, quando si invita qualcuno, la sua scheda non
+--  nasce: nasce solo l'utenza di accesso (quella la crea Supabase). Il ruolo
+--  scelto al momento dell'invito non ha nessun posto dove essere scritto.
+--
+--  Nel codice questo e' gia' stato aggirato, senza toccare l'archivio: la scheda
+--  nasce da sola al primo ingresso della persona, col ruolo piu' basso, e le
+--  scelte fatte all'invito vengono applicate subito dopo con una modifica (che
+--  un amministratore puo' fare). Funziona. Ha pero' due difetti:
+--    - fino al primo ingresso della persona la sua scheda non esiste, quindi non
+--      compare nell'elenco Utenti;
+--    - le scelte fatte all'invito restano segnate sul computer di chi ha
+--      invitato. Se invita da un altro computer, o svuota la cronologia, quelle
+--      scelte vanno rifatte a mano dal pannello.
+--
+--  COSA FA QUESTA MIGRAZIONE
+--  Aggiunge la regola mancante: un amministratore puo' creare la scheda di un
+--  altro utente. Da quel momento l'invito scrive ruolo e accessi subito, la
+--  scheda compare nell'elenco Utenti nello stesso istante, e tutto il giro
+--  dell'"invito in sospeso" diventa un semplice paracadute che non entra quasi
+--  mai in funzione. Il codice non va cambiato: funziona gia' in tutti e due i
+--  casi, perche' prova la scrittura e mette da parte solo cio' che non passa.
+--
+--  PERCHE' E' SICURO
+--  La colonna id di iam_utenti e' legata ad auth.users (iam_utenti_id_fkey):
+--  non si puo' creare una scheda per un id che non corrisponde a un'utenza di
+--  accesso davvero esistente. Un amministratore, quindi, non puo' inventare
+--  utenti: puo' solo dare una scheda a chi un accesso ce l'ha gia'. E creare la
+--  scheda di un altro e' comunque meno di quello che un amministratore puo' gia'
+--  fare oggi, visto che puo' modificarla e cancellarla (u_update_admin,
+--  u_delete). Nessun potere nuovo: si chiude solo un buco.
+--
+--  PRIMA DI ESEGUIRE
+--   1. Verificare che iam_is_admin() sia la funzione usata dalle altre regole
+--      (lo e': u_update_admin e u_delete la usano gia').
+--   2. Dopo l'esecuzione, invitare un collaboratore di prova e controllare che
+--      compaia subito nell'elenco Utenti con il ruolo scelto.
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+drop policy if exists u_insert_admin on public.iam_utenti;
+
+create policy u_insert_admin on public.iam_utenti
+for insert
+with check ( iam_is_admin() );
+
+-- Per tornare indietro: drop policy u_insert_admin on public.iam_utenti;
+-- L'app continua a funzionare, torna semplicemente a far nascere la scheda al
+-- primo ingresso della persona.
+
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  IL NUMERO RUI — nota, nessuna modifica proposta qui
+--
+--  Nella finestra di invito si puo' scrivere il numero RUI. Non veniva salvato
+--  da nessuna parte: si tentava di scriverlo su iam_utenti, dove quella casella
+--  NON esiste, e l'errore faceva cadere l'intera scrittura della scheda. Questa
+--  era una delle cause per cui l'invito non assegnava il ruolo.
+--
+--  La tentazione e' aggiungere la colonna rui a iam_utenti. Sarebbe sbagliato:
+--  il RUI c'e' gia', su iam_team, che e' l'anagrafica dei collaboratori. Oggi
+--  in archivio ci sono 12 collaboratori su iam_team (11 con il RUI compilato) e
+--  5 utenze su iam_utenti: sono due cose diverse — chi lavora con l'agenzia e
+--  chi ha un accesso a IAM. Duplicare il RUI sulle utenze significherebbe avere
+--  due numeri per la stessa persona, destinati prima o poi a divergere. Su un
+--  dato di vigilanza non e' accettabile.
+--
+--  Le due tabelle oggi non sono collegate: l'unico aggancio e' l'email, e
+--  combacia in un caso su dodici. La strada giusta e' un collegamento vero:
+--
+--    alter table public.iam_team add column utente_id uuid references public.iam_utenti(id);
+--
+--  con il RUI che resta dov'e'. Non la propongo per l'esecuzione adesso perche'
+--  va decisa insieme al riordino dell'anagrafica collaboratori (e va deciso cosa
+--  fare degli undici collaboratori senza utenza), non infilata di straforo in
+--  una correzione sugli inviti.
+--
+--  Nel frattempo il RUI scritto all'invito non viene perso: resta segnato
+--  sull'invito, in vista nel pannello Utenti, e si applichera' da solo quando ci
+--  sara' un posto dove metterlo.
+-- ═══════════════════════════════════════════════════════════════════════════════

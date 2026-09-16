@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "**/*",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/nuovo-preventivo",       "dest": "https://quoto.withusassicurazioni.it/" },
+    { "src": "/nuovo-preventivo/(.*)",  "dest": "https://quoto.withusassicurazioni.it/$1" },
+
+    { "src": "/api/(.*)",          "dest": "https://quoto.withusassicurazioni.it/api/$1" },
+    { "src": "/auth/(.*)",         "dest": "https://quoto.withusassicurazioni.it/auth/$1" },
+    { "src": "/backup/(.*)",       "dest": "https://quoto.withusassicurazioni.it/backup/$1" },
+    { "src": "/catalogo/(.*)",     "dest": "https://quoto.withusassicurazioni.it/catalogo/$1" },
+    { "src": "/crm/(.*)",          "dest": "https://quoto.withusassicurazioni.it/crm/$1" },
+    { "src": "/diag/(.*)",         "dest": "https://quoto.withusassicurazioni.it/diag/$1" },
+    { "src": "/firma-collab/(.*)", "dest": "https://quoto.withusassicurazioni.it/firma-collab/$1" },
+    { "src": "/fonti",             "dest": "https://quoto.withusassicurazioni.it/fonti" },
+    { "src": "/fonti/(.*)",        "dest": "https://quoto.withusassicurazioni.it/fonti/$1" },
+    { "src": "/health",            "dest": "https://quoto.withusassicurazioni.it/health" },
+    { "src": "/l/(.*)",            "dest": "https://quoto.withusassicurazioni.it/l/$1" },
+    { "src": "/lead/(.*)",         "dest": "https://quoto.withusassicurazioni.it/lead/$1" },
+    { "src": "/login/(.*)",        "dest": "https://quoto.withusassicurazioni.it/login/$1" },
+    { "src": "/mail/(.*)",         "dest": "https://quoto.withusassicurazioni.it/mail/$1" },
+    { "src": "/marketing/(.*)",    "dest": "https://quoto.withusassicurazioni.it/marketing/$1" },
+    { "src": "/moto/(.*)",         "dest": "https://quoto.withusassicurazioni.it/moto/$1" },
+    { "src": "/notify/(.*)",       "dest": "https://quoto.withusassicurazioni.it/notify/$1" },
+    { "src": "/pay/(.*)",          "dest": "https://quoto.withusassicurazioni.it/pay/$1" },
+    { "src": "/preventivi/(.*)",   "dest": "https://quoto.withusassicurazioni.it/preventivi/$1" },
+    { "src": "/products/(.*)",     "dest": "https://quoto.withusassicurazioni.it/products/$1" },
+    { "src": "/public/(.*)",       "dest": "https://quoto.withusassicurazioni.it/public/$1" },
+    { "src": "/scrape/(.*)",       "dest": "https://quoto.withusassicurazioni.it/scrape/$1" },
+    { "src": "/shop/(.*)",         "dest": "https://quoto.withusassicurazioni.it/shop/$1" },
+    { "src": "/sign/(.*)",         "dest": "https://quoto.withusassicurazioni.it/sign/$1" },
+    { "src": "/user/(.*)",         "dest": "https://quoto.withusassicurazioni.it/user/$1" },
+
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/(.*).html",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    }
+  ]
+}

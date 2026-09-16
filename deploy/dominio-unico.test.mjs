@@ -49,7 +49,8 @@ prova('il sito e\' iam.withusassicurazioni.it, con QUOTO sotto /nuovo-preventivo
   deve(/^iam\.withusassicurazioni\.it \{/m.test(caddy), 'manca il blocco del sito');
   deve(/handle_path \/nuovo-preventivo\/\* \{[\s\S]*?root \* \/opt\/withus-backend/.test(caddy), 'QUOTO non e\' servito da /opt/withus-backend sotto /nuovo-preventivo/');
   deve(/redir \/nuovo-preventivo \/nuovo-preventivo\/ 308/.test(caddy), 'senza la barra finale i percorsi relativi della pagina si perdono');
-  deve(/handle \{[\s\S]*?root \* \/opt\/withus-iam/.test(caddy), 'IAM non e\' servito da /opt/withus-iam alla radice');
+  deve(/handle \{[\s\S]*?root \* \/opt\/withus-backend\/iam/.test(caddy), 'IAM non e\' servito da /opt/withus-backend/iam (la cartella iam/ del repository unico)');
+  deve(!/\/opt\/withus-iam/.test(caddy), 'c\'e\' ancora il vecchio clone separato /opt/withus-iam');
   const aperte = (caddy.match(/\{/g) || []).length, chiuse = (caddy.match(/\}/g) || []).length;
   deve(aperte === chiuse, 'graffe sbilanciate: ' + aperte + ' aperte, ' + chiuse + ' chiuse');
 });
@@ -65,7 +66,7 @@ prova('i percorsi di servizio sono quelli che IAM gia\' inoltra (vercel.json)', 
   /* La fonte e' Agente-sospesi/vercel.json, se il repo gemello e' accanto;
      altrimenti l'elenco copiato da li' il 28/07/2026. */
   let attesi = ['/api', '/auth', '/backup', '/catalogo', '/crm', '/diag', '/firma-collab', '/fonti', '/health', '/l', '/lead', '/login', '/mail', '/marketing', '/moto', '/notify', '/pay', '/preventivi', '/products', '/public', '/scrape', '/shop', '/sign', '/user'];
-  for (const c of ['/home/user/agente-sospesi/vercel.json', path.join(RADICE, '..', 'agente-sospesi', 'vercel.json')]) {
+  for (const c of [path.join(RADICE, 'iam', 'vercel.json'), '/home/user/agente-sospesi/vercel.json', path.join(RADICE, '..', 'agente-sospesi', 'vercel.json')]) {
     if (fs.existsSync(c)) {
       const v = JSON.parse(fs.readFileSync(c, 'utf8'));
       attesi = [...new Set(v.routes.map(r => r.src.replace(/\/\(\.\*\)$/, '').replace(/\/$/, '')).filter(s => /^\/[a-z-]+$/.test(s) && s !== '/nuovo-preventivo'))];
@@ -81,7 +82,7 @@ prova('i percorsi di servizio sono quelli che IAM gia\' inoltra (vercel.json)', 
 // ── 2. nascosto quello che va nascosto, e NIENTE di quello che il browser carica ──
 prova('QUOTO: il sorgente del backend e la configurazione restano fuori', () => {
   const n = nascosti('sorgente_quoto');
-  for (const dovuto of ['/server/*', '/scraper/*', '/supabase/*', '/deploy/*', '/config/*', '/node_modules/*', '/.git/*', '/.env', '/.env.*', '*.mjs', '/package.json', '/static-server.js'])
+  for (const dovuto of ['/server/*', '/scraper/*', '/supabase/*', '/deploy/*', '/config/*', '/node_modules/*', '/.git/*', '/.env', '/.env.*', '*.mjs', '/package.json', '/static-server.js', '/iam/*'])
     deve(n.includes(dovuto), 'non nascosto: ' + dovuto);
   return n.length + ' regole';
 });

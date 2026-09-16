@@ -1,22 +1,14 @@
-id: quando-1789556580  exit: 0  2026-09-16 11:03:29
+id: verifica-repo-unico-1789563456  exit: 0  2026-09-16 12:58:09
 ----
-== ora
-2026-09-16 11:03:29
-== Groupama: TUTTO quello che ha detto da lunedì sera (ultime righe)
-20:21:12 [groupama] la sessione Groupama è caduta adesso: era attiva da 444 minuti (è caduta ISA)
-12:13:13 [groupama] [recovery] pagina non risponde → la ricreo
-13:53:13 [groupama] [recovery] pagina non risponde → la ricreo
-14:13:13 [groupama] [recovery] pagina non risponde → la ricreo
-14:33:13 [groupama] [recovery] pagina non risponde → la ricreo
-14:53:13 [groupama] [recovery] pagina non risponde → la ricreo
-15:13:13 [groupama] [recovery] pagina non risponde → la ricreo
-15:33:13 [groupama] [recovery] pagina non risponde → la ricreo
-15:53:13 [groupama] [recovery] pagina non risponde → la ricreo
-16:33:13 [groupama] [recovery] pagina non risponde → la ricreo
-16:53:13 [groupama] [recovery] pagina non risponde → la ricreo
-
-== da quanto gira il servizio groupama
-Mon 2026-09-14 12:57:02 UTC
-== cosa pensa il guardiano di ogni fonte (ultimo giro)
-{"error":"Accesso non autorizzato (token mancante)."}
-== memoria del guardiano su disco (stato per fonte)
+== HEAD backend: 8123865 (atteso 8123865) dopo ~5 s
+== iam/ sul disco: 26 file; index: 644 root
+== autopull, righe Caddy/impianto:
+Sep 16 12:57:31 vps-d6443a46 autopull.sh[2944585]: [autopull] 2026-09-16 12:57:31 aggiorno 616b011 -> 8123865
+Sep 16 12:57:34 vps-d6443a46 autopull.sh[2944585]: [autopull] Caddy: siti aggiornati e ricaricati ✅ (iam.caddy )
+== /etc/caddy/withus/iam.caddy → root IAM: root * /opt/withus-backend/iam
+== configurazione in esecuzione contiene /opt/withus-backend/iam: 1 volte; /opt/withus-iam: 0
+IAM /=200 js=200 | nascosti verifica=404 sql=404 .gitignore=404 CLAUDE.md=404
+QUOTO /nuovo-preventivo/=200 motore=200 | /nuovo-preventivo/iam/=404 (404 atteso)
+servizi /health=200 api.=200
+md5 IAM servito / iam/ nel repo / vecchio clone: 0346e921 / 0346e921 / 0346e921
+== caddy: active  backend: active

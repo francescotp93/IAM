@@ -280,15 +280,21 @@ verdi in sessione web con il repo gemello clonato in `/home/user/agente-sospesi`
 
 | dominio | chi risponde |
 |---|---|
-| `quoto.withusassicurazioni.it` | GitHub Pages, da `main` |
-| `iam.withusassicurazioni.it` | GitHub Pages, da `main` di Agente-sospesi. **Non Vercel**: Vercel fa solo le anteprime delle PR |
-| `api.withusassicurazioni.it` | il VPS OVH, dietro Caddy |
+| `iam.withusassicurazioni.it` | **dal 16/09/2026 il VPS OVH, Caddy** (`deploy/caddy/iam.caddy`): IAM alla radice da `/opt/withus-iam`, QUOTO sotto `/nuovo-preventivo/` da `/opt/withus-backend`, i percorsi di servizio al backend. Prima era GitHub Pages; **Vercel non è mai stato la produzione**, fa solo le anteprime delle PR |
+| `quoto.withusassicurazioni.it` | GitHub Pages, da `main`. Resta come strada diretta e rientro; il riquadro dentro IAM non lo usa più |
+| `api.withusassicurazioni.it` | il VPS OVH, dietro Caddy, col registro (`deploy/REGISTRO-RICHIESTE.md`) |
 
-Il VPS ha già IAM clonato in `/opt/withus-iam`, tenuto su `main` da
-`deploy/autopull.sh` dal 21/08/2026. Manca il blocco Caddy e il cambio DNS:
-il piano è `deploy/TRASLOCO-OVH.md`, l'idea del dominio unico è
-`deploy/DOMINIO-UNICO.md`, la decisione del 28/07/2026 è
-`Agente-sospesi/INDIRIZZO-UNICO.md`. Nessuno dei tre è stato eseguito.
+Il sito Caddy di `iam.` si modifica **nel repository**, mai a mano sul server:
+`deploy/autopull.sh` lo valida e lo ricarica, e rimette quello di prima se non
+vale. Storia del passaggio: `deploy/TRASLOCO-OVH.md`, `deploy/DOMINIO-UNICO.md`,
+`Agente-sospesi/INDIRIZZO-UNICO.md`. Il riquadro di IAM carica
+`/nuovo-preventivo/` (Agente-sospesi#52): stessa origine, login condiviso dal
+browser, clic nel riquadro visibili alla scocca.
+
+**Il canale comandi funziona ed è il modo di guardare dentro il VPS**
+(`deploy/cmd-runner.sh`): si scrive `cmd.id` + `cmd.sh` sul ramo `claude-cmd`,
+entro 30 s il server esegue e riscrive `out.txt`. Timeout 250 s per comando.
+Usato il 15-16/09 per il sopralluogo di Caddy e il cutover del DNS.
 
 **Cose dell'ambiente di sessione web.**
 - Il proxy git risponde `403` alla cancellazione di rami remoti: i rami fusi li

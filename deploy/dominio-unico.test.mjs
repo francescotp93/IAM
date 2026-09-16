@@ -101,6 +101,22 @@ prova('QUOTO: nessun file che index.html carica nel browser e\' nascosto (motori
   return caricati.size + ' file caricati dalla pagina, nessuno nascosto';
 });
 
+prova('QUOTO: solo IAM puo\' incorniciarlo — frame-ancestors nell\'header, dentro il blocco /nuovo-preventivo/', () => {
+  /* Fino al 16/09/2026 la regola stava solo nella pagina (referrer), perche'
+     GitHub Pages non manda header. Dietro Caddy il posto giusto e' l'header:
+     il browser rifiuta il riquadro prima di eseguire una riga di QUOTO.
+     Deve stare nel blocco di QUOTO, prima di file_server, e dire 'self'. */
+  const blocco = (caddy.match(/handle_path \/nuovo-preventivo\/\* \{([\s\S]*?)\n\t\}/) || [])[1] || '';
+  deve(blocco, 'manca il blocco handle_path /nuovo-preventivo/*');
+  const csp = blocco.match(/^\s*header Content-Security-Policy "([^"]+)"/m);
+  deve(csp, 'nessun header Content-Security-Policy nel blocco di QUOTO');
+  deve(/frame-ancestors 'self'/.test(csp[1]), 'la CSP non dice frame-ancestors \'self\' (dice: ' + csp[1] + ')');
+  deve(!/frame-ancestors[^;"]*(\*|https?:)/.test(csp[1]), 'frame-ancestors ammette origini esterne');
+  deve(blocco.indexOf('header Content-Security-Policy') < blocco.indexOf('file_server'), 'l\'header sta dopo file_server: non verrebbe applicato');
+  deve(/^\s*header X-Frame-Options SAMEORIGIN/m.test(blocco), 'manca X-Frame-Options SAMEORIGIN (browser vecchi)');
+  return 'frame-ancestors \'self\' + X-Frame-Options SAMEORIGIN, prima di file_server';
+});
+
 prova('IAM: prove, migrazioni e configurazione Vercel restano fuori; index.html no', () => {
   const n = nascosti('sorgente_iam');
   for (const dovuto of ['/verifica/*', '/sql/*', '/.git/*', '/vercel.json', '/package.json', '*.mjs'])

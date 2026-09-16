@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guida installazione · Agente Sospesi</title>
+<style>
+:root{--accent:#1a3a5c;--green:#1a8a5a;--red:#c0392b;--amber:#9a6010;--bg:#f4f3ef;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--text2:#58574f;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
+.page{max-width:720px;margin:0 auto;padding:40px 24px 80px;}
+h1{font-size:28px;font-weight:800;color:var(--accent);margin-bottom:6px;}
+.subtitle{font-size:16px;color:var(--text2);margin-bottom:40px;}
+.step{background:var(--surface);border-radius:16px;padding:24px 28px;margin-bottom:20px;border-left:4px solid var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--accent);color:#fff;border-radius:50%;font-size:15px;font-weight:800;margin-bottom:12px;}
+.step h2{font-size:18px;font-weight:700;margin-bottom:8px;}
+.step p{font-size:14px;color:var(--text2);margin-bottom:10px;}
+.step a{color:var(--accent);font-weight:600;}
+.code{background:#f0eeea;border-radius:8px;padding:12px 16px;font-family:'Courier New',monospace;font-size:13px;margin:10px 0;border:1px solid rgba(0,0,0,.1);word-break:break-all;}
+.tip{background:#e6f5ee;border-radius:10px;padding:12px 16px;font-size:13px;color:#0f5c3a;margin-top:12px;display:flex;gap:8px;align-items:flex-start;}
+.warn{background:#fdf4e3;border-radius:10px;padding:12px 16px;font-size:13px;color:var(--amber);margin-top:12px;display:flex;gap:8px;align-items:flex-start;}
+.important{background:#fdf0ee;border-radius:10px;padding:12px 16px;font-size:13px;color:var(--red);margin-top:12px;display:flex;gap:8px;align-items:flex-start;}
+ol{padding-left:20px;display:flex;flex-direction:column;gap:8px;}
+ol li{font-size:14px;color:var(--text2);}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;}
+.badge.free{background:#e6f5ee;color:var(--green);}
+.divider{height:1px;background:var(--border);margin:30px 0;}
+.final-box{background:var(--accent);color:#fff;border-radius:16px;padding:28px;margin-top:32px;text-align:center;}
+.final-box h2{font-size:22px;margin-bottom:8px;}
+.final-box p{opacity:.8;font-size:14px;line-height:1.6;}
+.highlight{background:#fff3cd;border-radius:8px;padding:14px 18px;font-size:14px;margin:12px 0;border-left:4px solid #f0a500;}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>🛡 Guida Installazione</h1>
+<p class="subtitle">Agente Sospesi Assicurativi</p>
+
+<div class="highlight">
+  ✅ <strong>Tutto gratuito:</strong> Vercel ospita l'app gratis. Non paghi nulla.
+</div>
+
+<!-- STEP 1 -->
+<div class="step">
+  <div class="step-num">1</div>
+  <h2>Crea un account Vercel <span class="badge free">100% GRATUITO</span></h2>
+  <p>Vercel è il servizio che mette la tua app online. Il piano gratuito è più che sufficiente.</p>
+  <ol>
+    <li>Vai su <a href="https://vercel.com" target="_blank">vercel.com</a></li>
+    <li>Clicca <strong>Sign Up</strong></li>
+    <li>Scegli <strong>Continue with Google</strong> — il modo più rapido</li>
+    <li>Completa fino ad arrivare alla dashboard</li>
+  </ol>
+  <div class="tip">💡 Non devi capire come funziona Vercel. È solo il "garage" dove carichi i 4 file dell'app.</div>
+</div>
+
+<!-- STEP 2 -->
+<div class="step">
+  <div class="step-num">2</div>
+  <h2>Carica i file su Vercel e ottieni il link</h2>
+  <p>Hai 4 file nella cartella: <strong>index.html</strong>, <strong>config.js</strong>, <strong>vercel.json</strong>, <strong>GUIDA.html</strong>.</p>
+  <ol>
+    <li>Vai su <a href="https://vercel.com/new" target="_blank">vercel.com/new</a></li>
+    <li>Scorri in fondo alla pagina fino a vedere <strong>"Continue with a template"</strong> oppure cerca il pulsante <strong>"Deploy a folder"</strong> o <strong>"Import"</strong></li>
+    <li>Trascina l'intera cartella <strong>agente-sospesi</strong> nella finestra, oppure usa il pulsante Sfoglia per selezionarla</li>
+    <li>Clicca <strong>Deploy</strong> e aspetta circa 30 secondi</li>
+    <li>Vercel ti mostra un indirizzo del tipo: <code style="color:var(--accent)">agente-sospesi-xxx.vercel.app</code></li>
+  </ol>
+  <div class="tip">💡 Copia quell'indirizzo e mandatelo a te stesso via WhatsApp o email. Aprilo dal telefono e aggiungilo alla schermata home come un'app vera.</div>
+</div>
+
+<!-- STEP 3 -->
+<div class="step">
+  <div class="step-num">3</div>
+  <h2>Aggiungi l'app alla schermata home del telefono</h2>
+  <p>Così la trovi sempre a portata di mano, come un'app normale.</p>
+  <p><strong>Su iPhone (Safari):</strong></p>
+  <ol>
+    <li>Apri il link dell'app in Safari</li>
+    <li>Tocca l'icona di condivisione (quadrato con freccia in su) in basso</li>
+    <li>Scorri e tocca <strong>"Aggiungi a schermata Home"</strong></li>
+    <li>Dai un nome (es. "Sospesi") e tocca <strong>Aggiungi</strong></li>
+  </ol>
+  <p style="margin-top:10px"><strong>Su Android (Chrome):</strong></p>
+  <ol>
+    <li>Apri il link in Chrome</li>
+    <li>Tocca i tre puntini in alto a destra</li>
+    <li>Tocca <strong>"Aggiungi a schermata Home"</strong></li>
+  </ol>
+</div>
+
+<!-- STEP 4 -->
+<div class="step">
+  <div class="step-num">4</div>
+  <h2>Utilizzo quotidiano — cosa fare ogni mattina</h2>
+  <ol>
+    <li>Apri l'app dal telefono (o dal PC)</li>
+    <li>Vai su <strong>Carica</strong> → carica il file Excel dei sospesi aggiornato al giorno prima</li>
+    <li>Carica il file incassi (Excel o Word)</li>
+    <li>Inserisci i dati manuali: contanti in cassa, versamenti alle compagnie, spese</li>
+    <li>Premi <strong>Analizza ora</strong></li>
+    <li>Vai su <strong>Anomalie</strong> per vedere subito gli alert critici</li>
+    <li>Usa la tab <strong>AI</strong> per fare domande specifiche sui dati</li>
+  </ol>
+  <div class="tip">💡 Dal secondo giorno in poi l'app confronta automaticamente i sospesi con il giorno precedente e rileva quelli spariti senza incasso.</div>
+</div>
+
+<!-- PROBLEMI -->
+<div class="step" style="border-left-color:var(--red)">
+  <div class="step-num" style="background:var(--red)">!</div>
+  <h2>Problemi comuni e soluzioni</h2>
+
+  <p style="margin-top:14px"><strong>🔴 Il file Excel non viene riconosciuto</strong><br>
+  Esporta il file direttamente dal gestionale senza modificare i nomi delle colonne. La prima riga deve contenere le intestazioni (Nominativo, Polizza, ecc.).</p>
+
+  <p style="margin-top:14px"><strong>🟡 I sospesi spariti non vengono rilevati il primo giorno</strong><br>
+  È normale. L'app ha bisogno di due caricamenti consecutivi per fare il confronto. Dal secondo giorno funziona automaticamente.</p>
+
+  <p style="margin-top:14px"><strong>🟡 La cassa risulta sempre "in scostamento"</strong><br>
+  Assicurati di inserire tutti i movimenti: contanti in cassa, versamenti alle compagnie E spese. Se hai incassi tramite POS o bonifico, inseriscili nelle note.</p>
+
+  <p style="margin-top:14px"><strong>🟡 Vercel non trova i file</strong><br>
+  Assicurati di caricare la cartella intera (agente-sospesi) e non i singoli file separati.</p>
+</div>
+
+<div class="divider"></div>
+
+<div class="final-box">
+  <h2>🎉 La tua app è pronta!</h2>
+  <p>Hai un agente AI professionale per il controllo sospesi,<br>completamente gratuito e accessibile da qualsiasi dispositivo.<br><br>
+  Per qualsiasi domanda o modifica, torna su Claude e descrivi cosa vuoi cambiare.</p>
+</div>
+
+</div>
+</body>
+</html>

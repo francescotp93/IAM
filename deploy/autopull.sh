@@ -20,25 +20,11 @@ export HOME="${HOME:-/root}"
 git config --system --get-all safe.directory 2>/dev/null | grep -qx "$REPO" || git config --system --add safe.directory "$REPO" 2>/dev/null || true
 git config --global --get-all safe.directory 2>/dev/null | grep -qx "$REPO" || git config --global --add safe.directory "$REPO" 2>/dev/null || true
 
-# ── IAM (frontend statico servito da Caddy da QUESTA macchina) ───────────────
-# Dal 21/08/2026 anche IAM e' ospitato qui: Caddy lo serve da /opt/withus-iam.
-# DEVE stare PRIMA del "nessuna novita' → exit 0" del backend qui sotto: IAM ha
-# un suo repo (Agente-sospesi), quindi cambia in modo indipendente da QUOTE. Se
-# lo si controlla solo quando cambia il backend, un fix pubblicato solo su IAM
-# non arriva mai in produzione finche' non si tocca anche QUOTE — ed e' proprio
-# il buco che teneva iam.withusassicurazioni.it fermo a una versione vecchia.
-# Si usa `git -C` (niente cd): non si tocca la CWD dei loop scraper. Agisce solo
-# se la cartella e' gia' clonata. Niente da riavviare: Caddy rilegge i file statici.
-IAM=/opt/withus-iam
-if [ -d "$IAM/.git" ]; then
-  git config --system --get-all safe.directory 2>/dev/null | grep -qx "$IAM" || git config --system --add safe.directory "$IAM" 2>/dev/null || true
-  if git -C "$IAM" fetch origin main --quiet 2>/dev/null; then
-    L=$(git -C "$IAM" rev-parse HEAD 2>/dev/null); R=$(git -C "$IAM" rev-parse FETCH_HEAD 2>/dev/null)
-    if [ -n "$R" ] && [ "$L" != "$R" ]; then
-      git -C "$IAM" reset --hard "$R" --quiet 2>/dev/null && echo "[autopull] IAM aggiornato ${L:0:7} -> ${R:0:7}"
-    fi
-  fi
-fi
+# ── IAM ────────────────────────────────────────────────────────────────────────
+# Dal 21/08/2026 al 16/09/2026 qui c'era un secondo clone (/opt/withus-iam, repo
+# Agente-sospesi) tenuto su main a parte. Dal 16/09/2026 IAM e' la cartella iam/
+# di QUESTO repository: arriva con lo stesso pull del backend, Caddy la serve da
+# /opt/withus-backend/iam (deploy/caddy/iam.caddy). Un clone solo, una verita'.
 
 cd "$REPO" || exit 0
 

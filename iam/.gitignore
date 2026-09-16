@@ -1,0 +1,6 @@
+# Worktree e file locali dell'agente
+.claude/
+# ...ma traccia le definizioni degli agenti specializzati
+!.claude/
+!.claude/agents/
+!.claude/agents/**

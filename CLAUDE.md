@@ -112,6 +112,9 @@ node withus-one/verifica/controlla.mjs
 # 4. l'impianto sul VPS (autopull, scraper, il sito Caddy del dominio unico)
 node deploy/impianto.test.mjs
 node deploy/dominio-unico.test.mjs
+
+# 5. IAM (la scocca e il gestionale, cartella iam/) — 52 prove
+node iam/controlla-tutto.mjs
 ```
 
 ### Le trappole d'ambiente, e come distinguerle da un guasto vero
@@ -309,3 +312,36 @@ Usato il 15-16/09 per il sopralluogo di Caddy e il cutover del DNS.
   comando: esce con `144`. Non è un guasto.
 - Le PR si fondono con squash; nessuno dei due repository cancella i rami da
   solo (Settings → «Automatically delete head branches» è spento).
+
+---
+
+## 10. Il repository unico (dal 16/09/2026)
+
+**IAM vive qui, nella cartella `iam/`.** Fino al 16/09/2026 era il repository
+`francescotp93/Agente-sospesi`; da quel giorno quel repository è archivio in
+sola lettura (la storia sta lì) e il codice sta qui, importato in un solo commit
+che cita il commit d'origine. Questo repository si chiamerà **IAM**: il nome
+`QUOTE` è il nome vecchio, e GitHub rimanda da solo dal vecchio al nuovo.
+
+Cosa cambia per chi lavora:
+
+- **Un confine, un file.** `INTERFACCIA-QUOTO-IAM.md`, `IAM.md` e `WORKFLOW.md`
+  esistono **una volta sola, alla radice**. Non c'è più niente da «replicare
+  nell'altro repo nella stessa sessione»: una modifica al confine è una PR che
+  tocca la radice e `iam/` insieme, e le prove dei due lati girano nello stesso
+  clone (`ui-test.mjs` cerca la scocca prima in `./iam`).
+- **Un pull, un sito.** Il VPS non ha più il secondo clone `/opt/withus-iam`:
+  Caddy serve `iam.withusassicurazioni.it` da `/opt/withus-backend/iam`, che
+  arriva con lo stesso `autopull` del backend (`deploy/caddy/iam.caddy`).
+- **Le prove di IAM** si lanciano con `node iam/controlla-tutto.mjs` e hanno
+  la loro radice in `iam/`; la sola che legge un documento condiviso
+  (`menu-preventivo-albero`) lo cerca alla radice del repository.
+- **Gli agenti** di Claude Code stanno tutti in `.claude/agents/` alla radice
+  (`iam-specialist` è arrivato da Agente-sospesi).
+- `iam/vercel.json` e `iam/INDIRIZZO-UNICO.md` raccontano la strada di prima
+  (Vercel faceva solo anteprime): restano finché il progetto Vercel esiste.
+
+Ciò che **non** è cambiato: `index.html` di QUOTO e `iam/index.html` restano
+due documenti, e il preventivatore vive ancora in un riquadro (stessa origine,
+`/nuovo-preventivo/`). Fonderli in una sola applicazione è il passo 3, da fare a
+moduli.

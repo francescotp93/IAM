@@ -1,0 +1,43 @@
+{
+  "reportId": "AB-20260804-00417",
+  "versioneQuestionario": "ABQ-1.0.0",
+  "versioneRegole": "ABR-1.0.0",
+  "versionePrivacy": "PRIV-DA-APPROVARE",
+  "modalita": "agenzia",
+  "cliente": {
+    "id": "demo",
+    "nome": "Mario",
+    "cognome": "Rossi",
+    "emailMascherata": "m***@example.it",
+    "telefonoMascherato": "+39 *** 4567"
+  },
+  "risposte": {
+    "famiglia": "figli",
+    "dipendenzaReddito": "totale",
+    "casa": "mutuo",
+    "patrimonio": [
+      "prima_casa"
+    ],
+    "coperture": [
+      "casa",
+      "previdenza"
+    ],
+    "copertureConfermate": true,
+    "interessi": [
+      "famiglia",
+      "salute",
+      "pensione"
+    ],
+    "note": "Esempio dimostrativo."
+  },
+  "consensi": {
+    "privacy": {
+      "accettato": true,
+      "otpRiferimento": "otp-demo",
+      "verificatoIl": "2026-08-04T16:25:00Z"
+    },
+    "marketing": {
+      "accettato": false
+    }
+  }
+}

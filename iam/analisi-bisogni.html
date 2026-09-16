@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>La tua analisi dei bisogni — With Us Assicurazioni</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  ANALISI DEI BISOGNI — la pagina che apre il cliente
+
+  Sta nella radice di IAM perché GitHub Pages serve file, non percorsi: un
+  indirizzo come /analisi-bisogni/<codice> darebbe 404. Qui il codice è un
+  parametro, e il file è sempre lo stesso.
+
+  Tre cose da sapere prima di toccarla:
+
+  1. È PUBBLICA DAVVERO. Chiunque conosca l'indirizzo la scarica, con o senza
+     codice. Non deve contenere niente che un estraneo non possa leggere:
+     nessuna chiave, nessun dato di cliente, nessun pezzo dell'area interna.
+
+  2. NON PARLA CON SUPABASE. Le tabelle hanno RLS attiva e zero policy: dal
+     browser non si legge e non si scrive nulla. Tutto passa dal motore, che
+     controlla il codice dell'invito e risponde solo con quello che serve.
+
+  3. IL CODICE STA NELL'INDIRIZZO, MA NON CI RESTA. Appena letto viene tolto
+     dalla barra con replaceState: un indirizzo che contiene un segreto
+     finisce nella cronologia, nei preferiti e negli screenshot che le
+     persone si mandano.
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{
+  --verde:#02984e;--verde-vivo:#01c061;--verde-scuro:#016b38;--verde-tenue:#eaf7f0;
+  --ink:#1f2a37;--ink2:#5b6b7c;--ink3:#93a0ac;--linea:#dfe5e9;--linea2:#cfd8de;
+  --ambra:#b06a00;--ambra-bg:#fff4e6;--rosso:#a3352a;--rosso-bg:#fff5f3;
+  --blu:#356b8c;--blu-bg:#eef7fb;
+  --ombra:0 10px 30px rgba(16,24,32,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ink);background:linear-gradient(180deg,#f7f9fa,#eef2f4)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.foglio{max-width:720px;margin:0 auto;padding:22px 16px 40px}
+.testa{display:flex;align-items:center;gap:12px;padding:6px 0 20px}
+.marchio{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--verde-vivo),var(--verde));color:#fff;font-weight:800;font-size:15px;letter-spacing:.5px}
+.testa strong{display:block;font-size:14px}
+.testa small{display:block;color:var(--ink3);font-size:11px;margin-top:2px}
+.scheda{background:#fff;border:1px solid var(--linea);border-radius:16px;box-shadow:var(--ombra);padding:24px}
+h1{font-size:23px;letter-spacing:-.025em;margin:0 0 10px;line-height:1.2}
+p.intro{margin:0;color:var(--ink2);font-size:14px;line-height:1.65}
+.avanz{display:flex;align-items:center;gap:11px;margin-bottom:22px}
+.barra{flex:1;height:6px;border-radius:999px;background:#e7ecef;overflow:hidden}
+.barra span{display:block;height:100%;background:linear-gradient(90deg,var(--verde),var(--verde-vivo));transition:width .35s}
+.passo-n{font-size:12px;font-weight:700;color:var(--ink2);white-space:nowrap}
+.dom{margin-bottom:18px}
+.dom h2{margin:0 0 7px;font-size:19px;letter-spacing:-.02em}
+.dom p{margin:0;color:var(--ink2);font-size:13.5px;line-height:1.6}
+.scelte{display:grid;gap:10px}
+.scelta{border:1px solid var(--linea);background:#fff;border-radius:12px;padding:14px;text-align:left;
+  display:block;width:100%;color:var(--ink);transition:border-color .15s}
+.scelta:hover{border-color:#b8d7c4}
+.scelta.sel{border-color:var(--verde);background:linear-gradient(180deg,#f9fdfb,#eef9f3);box-shadow:0 0 0 3px rgba(2,152,78,.08)}
+.scelta strong{display:block;font-size:14px;margin-bottom:3px}
+.scelta small{display:block;color:var(--ink2);font-size:12px;line-height:1.45}
+.sez+.sez{margin-top:20px}
+.sez-t{font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
+.campi{display:grid;gap:12px}
+.campo label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);margin-bottom:6px}
+.campo input,.campo select,.campo textarea{width:100%;border:1px solid var(--linea2);border-radius:10px;padding:12px;background:#fff;color:var(--ink)}
+.campo textarea{resize:vertical;min-height:100px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0 3px rgba(2,152,78,.12)}
+.priv{border:1px solid #cfdee6;background:var(--blu-bg);border-radius:12px;padding:15px}
+.priv-r{display:flex;gap:12px;align-items:flex-start;font-size:13px;color:#3e6073;line-height:1.6;cursor:pointer}
+.priv-r+.priv-r{margin-top:12px;padding-top:12px;border-top:1px solid #dceaf0}
+.priv-r input{margin-top:3px;accent-color:var(--verde);flex:0 0 auto;width:17px;height:17px}
+.az{display:flex;gap:10px;justify-content:space-between;margin-top:24px;padding-top:18px;border-top:1px solid var(--linea)}
+.b{height:46px;border-radius:11px;padding:0 20px;border:1px solid var(--linea);background:#fff;color:var(--ink);font-size:14px;font-weight:800;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.b.pri{background:linear-gradient(180deg,var(--verde-vivo),var(--verde));border-color:var(--verde);color:#fff}
+.b:disabled{opacity:.5;cursor:not-allowed}
+.avviso{margin-top:14px;padding:13px 15px;border-left:3px solid var(--ambra);background:var(--ambra-bg);border-radius:6px;color:#7a4a00;font-size:13px;line-height:1.6}
+.nota{margin-top:14px;padding:13px 15px;border-left:3px solid var(--blu);background:var(--blu-bg);border-radius:6px;color:#3e6073;font-size:13px;line-height:1.6}
+.otp{margin-top:14px;border:1px solid var(--linea);border-radius:12px;padding:15px}
+.otp h3{margin:0 0 6px;font-size:14px}
+.otp p{margin:0;color:var(--ink2);font-size:12.5px;line-height:1.55}
+.otp-r{display:grid;gap:9px;margin-top:12px}
+#otp-codice{letter-spacing:6px;font-size:19px;text-align:center;font-weight:800}
+.esito-t{text-align:center;padding:8px 0 4px}
+.simbolo{width:60px;height:60px;border-radius:18px;display:grid;place-items:center;margin:0 auto 14px;
+  background:var(--verde-tenue);color:var(--verde-scuro);font-size:30px;font-weight:800}
+.aree{display:grid;gap:12px;margin-top:20px}
+.area{border:1px solid var(--linea);border-radius:12px;padding:15px}
+.area-t{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.area-t strong{font-size:14px}
+.eti{display:inline-flex;align-items:center;padding:5px 11px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+.eti.rosso{background:var(--rosso-bg);color:var(--rosso)}
+.eti.ambra{background:var(--ambra-bg);color:var(--ambra)}
+.eti.blu{background:var(--blu-bg);color:var(--blu)}
+.eti.verde{background:var(--verde-tenue);color:var(--verde-scuro)}
+.eti.grigio{background:#f0f3f5;color:#6b7684}
+.area p{margin:0;color:var(--ink2);font-size:13px;line-height:1.6}
+.area ul{margin:9px 0 0;padding-left:18px;color:var(--ink2);font-size:12.5px;line-height:1.65}
+.pie{text-align:center;color:var(--ink3);font-size:11px;line-height:1.7;padding:22px 4px 0}
+.caricando{text-align:center;padding:40px 10px;color:var(--ink3);font-size:14px}
+@media(max-width:520px){
+  .foglio{padding:14px 10px 30px}
+  .scheda{padding:18px;border-radius:14px}
+  h1{font-size:20px}
+  .az{flex-direction:column-reverse}
+  .az .b{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="foglio">
+  <div class="testa">
+    <div class="marchio">WU</div>
+    <div><strong>With Us Assicurazioni</strong><small>Analisi dei bisogni</small></div>
+  </div>
+  <div class="scheda" id="scheda">
+    <div class="caricando" id="caricando">Apriamo la tua analisi…</div>
+  </div>
+  <div class="pie">
+    With Us Soc. Coop. · Vico Giunone 3, 91027 Paceco (TP) · RUI A000747484<br>
+    I dati raccolti servono a preparare il confronto con il tuo consulente. Non è un preventivo.
+  </div>
+</div>
+
+<script>
+'use strict';
+const MOTORE = 'https://api.withusassicurazioni.it';
+
+/* Il codice si legge dall'indirizzo e SUBITO DOPO si toglie dalla barra. Un
+   indirizzo che contiene un segreto finisce nella cronologia, nei preferiti e
+   negli screenshot che le persone si mandano fra loro. Da qui in avanti vive
+   solo in memoria, per il tempo della compilazione. */
+const TOKEN = new URLSearchParams(location.search).get('t') || '';
+if (TOKEN) history.replaceState(null, '', location.pathname);
+
+let DATI = null, PASSO = 0, VERSIONE_PRIVACY = '';
+
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const scheda = () => document.getElementById('scheda');
+
+async function chiedi(percorso, opzioni){
+  opzioni = opzioni || {};
+  const r = await fetch(MOTORE + '/analisi-bisogni/pubblica' + percorso, Object.assign({}, opzioni, {
+    headers: Object.assign({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN }, opzioni.headers || {}),
+  }));
+  let corpo = null; try { corpo = await r.json(); } catch (_) {}
+  if (!r.ok) throw new Error((corpo && corpo.errore) || 'Non riusciamo a completare l\'operazione. Riprova fra qualche minuto.');
+  return corpo;
+}
+
+/* Ogni schermata di errore dice che cosa fare, e non perché è successo: al
+   cliente non serve sapere se il codice è scaduto o revocato, gli serve sapere
+   che deve chiamare il consulente. */
+function fermati(messaggio, titolo){
+  scheda().innerHTML = '<div class="esito-t"><div class="simbolo" style="background:#f0f3f5;color:#6b7684">!</div>'
+    + '<h1>' + esc(titolo || 'Non possiamo aprire questa analisi') + '</h1>'
+    + '<p class="intro">' + esc(messaggio) + '</p></div>';
+}
+
+// ── Le domande ──────────────────────────────────────────────────────────────
+const PRODOTTI = [
+  ['casa','Polizza casa','Abitazione, contenuto e responsabilità'],
+  ['salute','Polizza salute','Spese sanitarie e accesso alle cure'],
+  ['infortuni','Polizza infortuni','Invalidità e conseguenze economiche'],
+  ['tcm','TCM o protezione del mutuo','Protezione del debito e della famiglia'],
+  ['previdenza','Previdenza integrativa','Integrazione del reddito futuro'],
+  ['rcfam','RC famiglia','Danni involontari a terzi'],
+  ['tutela','Tutela legale','Assistenza e spese legali'],
+  ['professionale','Protezione professionale','Rischi dell’attività o impresa'],
+];
+const INTERESSI = [
+  ['famiglia','Protezione della famiglia','Continuità del reddito e serenità'],
+  ['casa','Casa e patrimonio','Immobile, contenuto ed eventi'],
+  ['salute','Salute','Cure, prevenzione e spese'],
+  ['infortuni','Infortuni','Capacità lavorativa e invalidità'],
+  ['mutuo','Mutuo e debiti','Protezione degli impegni finanziari'],
+  ['risparmio','Risparmio','Costruzione di capitale nel tempo'],
+  ['pensione','Pensione','Integrazione del reddito futuro'],
+  ['impresa','Professione o impresa','Continuità e responsabilità'],
+];
+
+const PASSI = [
+  { t:'I tuoi dati', d:'Sono già compilati dal tuo consulente. Correggili pure se qualcosa è cambiato.', r: pAnagrafica },
+  { t:'La tua famiglia', d:'Due domande per capire chi dipende dal tuo reddito e quanto sarebbe difficile sostituirlo.', r: pFamiglia },
+  { t:'Casa e patrimonio', d:'Dove abiti e che cosa possiedi: serve a capire quali aree hanno qualcosa da proteggere.', r: pCasa },
+  { t:'Quello che hai già', d:'Seleziona le polizze che hai. Se non ne hai nessuna, prosegui senza selezionare niente.', r: pCoperture },
+  { t:'Che cosa ti sta a cuore', d:'Puoi scegliere più di una voce. Le tue priorità entrano nella lettura finale.', r: pInteressi },
+  { t:'C’è altro?', d:'Uno spazio libero per cambiamenti recenti, dubbi o progetti. Non è obbligatorio.', r: pNote },
+  { t:'Privacy e firma', d:'Il consenso necessario serve per concludere. Quello commerciale è separato e facoltativo.', r: pPrivacy },
+];
+
+function scelte(chiave, voci){
+  return '<div class="scelte">' + voci.map(function(o){
+    return '<button type="button" class="scelta' + (DATI[chiave] === o[0] ? ' sel' : '') + '" data-k="' + chiave + '" data-v="' + o[0] + '">'
+      + '<strong>' + esc(o[1]) + '</strong><small>' + esc(o[2]) + '</small></button>';
+  }).join('') + '</div>';
+}
+function multi(chiave, voci){
+  return '<div class="scelte">' + voci.map(function(o){
+    return '<button type="button" class="scelta' + (DATI[chiave].indexOf(o[0]) >= 0 ? ' sel' : '') + '" data-m="' + chiave + '" data-v="' + o[0] + '">'
+      + '<strong>' + esc(o[1]) + '</strong><small>' + esc(o[2]) + '</small></button>';
+  }).join('') + '</div>';
+}
+function campo(id, etichetta, valore, tipo){
+  return '<div class="campo"><label for="f-' + id + '">' + esc(etichetta) + '</label>'
+    + '<input id="f-' + id + '" type="' + (tipo || 'text') + '" value="' + esc(valore || '') + '"></div>';
+}
+
+function pAnagrafica(){
+  const a = DATI.anagrafica || {};
+  return '<div class="campi">' + campo('nome','Nome',a.nome) + campo('cognome','Cognome',a.cognome)
+    + campo('nascita','Data di nascita',a.nascita,'date') + campo('email','Email',a.email,'email')
+    + campo('telefono','Telefono',a.telefono,'tel') + '</div>';
+}
+function pFamiglia(){
+  return '<div class="sez"><div class="sez-t">La tua situazione</div>' + scelte('famiglia', [
+      ['solo','Vivo da solo','Nessuno dipende economicamente da me'],
+      ['coppia','Vivo in coppia','Spese e progetti condivisi'],
+      ['figli','Ho figli','Una o più persone dipendono dal mio reddito'],
+      ['allargata','Famiglia allargata','Ho responsabilità verso più persone']]) + '</div>'
+    + '<div class="sez"><div class="sez-t">Quanto conta il tuo reddito</div>' + scelte('dipendenzaReddito', [
+      ['bassa','Poco','Ci sono altre entrate sufficienti'],
+      ['media','Abbastanza','È importante, ma non è l’unico'],
+      ['alta','Molto','Sostiene gran parte delle spese'],
+      ['totale','È tutto','Senza, sarebbe difficile andare avanti']]) + '</div>';
+}
+function pCasa(){
+  return '<div class="sez"><div class="sez-t">Dove abiti</div>' + scelte('casa', [
+      ['proprieta','Casa di proprietà','Nessun mutuo attivo'],
+      ['mutuo','Casa di proprietà con mutuo','Il finanziamento è ancora in corso'],
+      ['affitto','In affitto','L’abitazione non è mia'],
+      ['multi','Ho più immobili','Patrimonio immobiliare articolato']]) + '</div>'
+    + '<div class="sez"><div class="sez-t">Che cosa possiedi — più di una risposta</div>' + multi('patrimonio', [
+      ['prima_casa','L’abitazione in cui vivo',''],
+      ['altri_immobili','Altri immobili','Seconda casa o immobili a reddito'],
+      ['veicoli','Veicoli','Auto, moto o altri mezzi'],
+      ['risparmi','Risparmi o investimenti',''],
+      ['impresa','Un’attività o un’impresa',''],
+      ['oggetti_valore','Oggetti di valore','Gioielli, arte o collezioni']]) + '</div>';
+}
+function pCoperture(){
+  return '<div class="sez"><div class="sez-t">Le polizze che hai già — più di una risposta</div>' + multi('coperture', PRODOTTI) + '</div>'
+    + '<div class="nota">Se non hai nessuna di queste polizze, prosegui senza selezionare niente: anche questa è una risposta, e ci serve saperlo.</div>';
+}
+function pInteressi(){
+  return '<div class="sez"><div class="sez-t">Le tue priorità — più di una risposta</div>' + multi('interessi', INTERESSI) + '</div>';
+}
+function pNote(){
+  const sel = v => DATI.contatto === v ? ' selected' : '';
+  return '<div class="campi"><div class="campo"><label for="f-note">Raccontaci quello che ritieni importante</label>'
+    + '<textarea id="f-note" placeholder="Per esempio: ho appena acceso un mutuo, sta per nascere un figlio, ho una polizza ma non ricordo che cosa copre…">' + esc(DATI.note) + '</textarea></div>'
+    + '<div class="campo"><label for="f-contatto">Come preferisci essere ricontattato</label>'
+    + '<select id="f-contatto"><option' + sel('Telefono') + '>Telefono</option><option' + sel('WhatsApp') + '>WhatsApp</option>'
+    + '<option' + sel('Email') + '>Email</option><option' + sel('In agenzia') + '>In agenzia</option></select></div></div>';
+}
+function pPrivacy(){
+  return '<div class="priv">'
+    + '<label class="priv-r"><input type="checkbox" id="f-privacy"' + (DATI.privacy ? ' checked' : '') + '>'
+    + '<span><strong>Consenso necessario.</strong> Acconsento al trattamento dei miei dati personali per la gestione '
+    + 'dell’analisi dei bisogni e per il confronto con un consulente With Us (Reg. UE 2016/679).</span></label>'
+    + '<label class="priv-r"><input type="checkbox" id="f-marketing"' + (DATI.marketing ? ' checked' : '') + '>'
+    + '<span><strong>Consenso facoltativo.</strong> Acconsento a ricevere comunicazioni commerciali coerenti con gli interessi '
+    + 'che ho indicato. Se non lo do, l’analisi si conclude lo stesso.</span></label></div>'
+    + '<div class="otp"><h3>Firma con un codice</h3>'
+    + '<p>Ti inviamo un codice di sei cifre alla tua email. Serve a confermare che sei tu.</p>'
+    + '<div class="otp-r"><button type="button" class="b" id="otp-invia">Inviami il codice</button>'
+    + '<input id="otp-codice" inputmode="numeric" maxlength="6" placeholder="——————" autocomplete="one-time-code"></div>'
+    + '<p id="otp-stato" style="margin-top:10px"></p></div>';
+}
+
+// ── Disegno e navigazione ───────────────────────────────────────────────────
+function disegna(){
+  const p = PASSI[PASSO];
+  scheda().innerHTML =
+      '<div class="avanz"><div class="barra"><span style="width:' + Math.round(((PASSO + 1) / PASSI.length) * 100) + '%"></span></div>'
+    + '<span class="passo-n">' + (PASSO + 1) + ' di ' + PASSI.length + '</span></div>'
+    + '<div class="dom"><h2>' + esc(p.t) + '</h2><p>' + esc(p.d) + '</p></div>'
+    + p.r()
+    + '<div class="az"><button type="button" class="b" id="indietro"' + (PASSO === 0 ? ' disabled' : '') + '>Indietro</button>'
+    + '<button type="button" class="b pri" id="avanti">' + (PASSO === PASSI.length - 1 ? 'Concludi' : 'Continua') + '</button></div>';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function raccogli(){
+  const v = id => { const e = document.getElementById('f-' + id); return e ? e.value.trim() : null; };
+  if (PASSO === 0) {
+    DATI.anagrafica = DATI.anagrafica || {};
+    ['nome','cognome','nascita','email','telefono'].forEach(k => { const x = v(k); if (x !== null) DATI.anagrafica[k] = x; });
+  }
+  // Superato questo passo, «niente selezionato» vuol dire davvero «non ne ho».
+  if (PASSO === 3) DATI.copertureConfermate = true;
+  if (PASSO === 5) {
+    const n = v('note'); if (n !== null) DATI.note = n;
+    const c = document.getElementById('f-contatto'); if (c) DATI.contatto = c.value;
+  }
+  if (PASSO === 6) {
+    const p = document.getElementById('f-privacy'), m = document.getElementById('f-marketing');
+    if (p) DATI.privacy = p.checked;
+    if (m) DATI.marketing = m.checked;
+  }
+}
+
+function manca(){
+  if (PASSO === 0 && (!DATI.anagrafica.nome || !DATI.anagrafica.cognome)) return 'Servono almeno il nome e il cognome.';
+  if (PASSO === 0 && !DATI.anagrafica.email) return 'Serve la tua email: è lì che arriva il codice per firmare.';
+  if (PASSO === 1 && (!DATI.famiglia || !DATI.dipendenzaReddito)) return 'Rispondi a entrambe le domande.';
+  if (PASSO === 2 && !DATI.casa) return 'Indica dove abiti.';
+  return null;
+}
+
+/* Si salva a ogni passo, non solo alla fine: chi compila da casa si
+   interrompe — squilla il telefono, finisce la batteria — e ricominciare da
+   capo è il modo più sicuro per non farlo più. */
+async function salva(){
+  try { await chiedi('/risposte', { method: 'PATCH', body: JSON.stringify({ risposte: DATI }) }); }
+  catch (e) { /* Il salvataggio è un aiuto, non un ostacolo: se non riesce si prosegue. */ }
+}
+
+document.addEventListener('click', async function(ev){
+  const s = ev.target.closest('[data-k]');
+  if (s) { DATI[s.dataset.k] = s.dataset.v; disegna(); return; }
+  const m = ev.target.closest('[data-m]');
+  if (m) {
+    const a = DATI[m.dataset.m], i = a.indexOf(m.dataset.v);
+    if (i >= 0) a.splice(i, 1); else a.push(m.dataset.v);
+    disegna(); return;
+  }
+  if (ev.target.closest('#indietro')) { raccogli(); if (PASSO > 0) { PASSO--; disegna(); } return; }
+  if (ev.target.closest('#avanti')) {
+    raccogli();
+    const errore = manca();
+    if (errore) { alert(errore); return; }
+    await salva();
+    if (PASSO < PASSI.length - 1) { PASSO++; disegna(); }
+    else concludi();
+    return;
+  }
+  if (ev.target.closest('#otp-invia')) { inviaCodice(ev.target.closest('#otp-invia')); return; }
+  if (ev.target.closest('#firma')) { firma(ev.target.closest('#firma')); return; }
+});
+
+async function inviaCodice(bottone){
+  const stato = document.getElementById('otp-stato');
+  bottone.disabled = true;
+  try {
+    raccogli();
+    await salva();
+    const r = await chiedi('/privacy/otp/invia', { method: 'POST', body: '{}' });
+    stato.textContent = 'Codice inviato a ' + r.recapito + '. Vale cinque minuti.';
+  } catch (e) {
+    stato.textContent = e.message;
+  } finally {
+    setTimeout(() => { bottone.disabled = false; }, 60000);   // un minuto, come il motore
+  }
+}
+
+function concludi(){
+  const stato = document.getElementById('otp-stato');
+  if (!DATI.privacy) { alert('Per concludere devi accettare il consenso necessario.'); return; }
+  const codice = (document.getElementById('otp-codice') || {}).value || '';
+  if (!/^\d{6}$/.test(codice.trim())) {
+    if (stato) stato.textContent = 'Inserisci il codice di sei cifre che ti abbiamo inviato.';
+    return;
+  }
+  firma();
+}
+
+async function firma(){
+  const stato = document.getElementById('otp-stato');
+  const codice = document.getElementById('otp-codice').value.trim();
+  try {
+    if (stato) stato.textContent = 'Stiamo registrando la tua firma…';
+    const r = await chiedi('/privacy/otp/verifica', {
+      method: 'POST',
+      body: JSON.stringify({ codice: codice, consensi: { privacy: DATI.privacy, marketing: DATI.marketing } }),
+    });
+    mostraEsito(r);
+  } catch (e) {
+    if (stato) stato.textContent = e.message;
+  }
+}
+
+const COLORI = { rosso:'rosso', ambra:'ambra', blu:'blu', verde:'verde', grigio:'grigio' };
+
+function mostraEsito(r){
+  const n = (r.rating && r.rating.necessita) || [];
+  /* Si mostra solo quello che il cliente può leggere da solo senza fraintendere:
+     le aree, il loro stato e il perché. Nessun prodotto suggerito e nessun
+     prezzo — quella è una conversazione, non una schermata. */
+  scheda().innerHTML =
+      '<div class="esito-t"><div class="simbolo">✓</div>'
+    + '<h1>Grazie, abbiamo tutto</h1>'
+    + '<p class="intro">La tua analisi è stata registrata e firmata. Il tuo consulente With Us la riceverà '
+    + 'e ti contatterà per commentarla insieme.</p></div>'
+    + '<div class="aree">' + n.map(function(a){
+        return '<div class="area"><div class="area-t"><strong>' + esc(a.etichetta) + '</strong>'
+          + '<span class="eti ' + (COLORI[a.colore] || 'grigio') + '">' + esc(a.stato) + '</span></div>'
+          + '<p>' + esc(a.prossimoPasso) + '</p>'
+          + '<ul>' + a.motivi.slice(0, 2).map(m => '<li>' + esc(m) + '</li>').join('') + '</ul></div>';
+      }).join('') + '</div>'
+    + '<div class="nota">Questa è una fotografia iniziale, non un preventivo e non una raccomandazione. '
+    + 'Le polizze che hai già vanno verificate nel contenuto — massimali, esclusioni e franchigie — insieme al tuo consulente.</div>';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Avvio ───────────────────────────────────────────────────────────────────
+(async function(){
+  if (!TOKEN) {
+    fermati('Questo indirizzo va aperto dal link personale che ti ha inviato il tuo consulente With Us.', 'Manca il link personale');
+    return;
+  }
+  try {
+    const s = await chiedi('/sessione');
+    VERSIONE_PRIVACY = s.versione_privacy || '';
+    if (s.stato === 'firmata') {
+      fermati('Questa analisi è già stata completata e firmata. Per rivederla, contatta il tuo consulente With Us.', 'Analisi già conclusa');
+      return;
+    }
+    const r = s.risposte || {};
+    DATI = {
+      anagrafica: r.anagrafica || { nome: (s.cliente && s.cliente.nome) || '' },
+      famiglia: r.famiglia || null, dipendenzaReddito: r.dipendenzaReddito || null, casa: r.casa || null,
+      patrimonio: r.patrimonio || [], coperture: r.coperture || [], copertureConfermate: Boolean(r.copertureConfermate),
+      interessi: r.interessi || [], note: r.note || '', contatto: r.contatto || 'Telefono',
+      privacy: false, marketing: false,   // i consensi si danno adesso, non si ereditano
+    };
+    disegna();
+  } catch (e) {
+    fermati(e.message);
+  }
+})();
+</script>
+</body>
+</html>

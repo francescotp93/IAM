@@ -9,7 +9,9 @@
 #  Tre cose sotto lo stesso nome:
 #    1. /nuovo-preventivo/…  → QUOTO, i file statici gia' in /opt/withus-backend
 #    2. /api, /moto, /pay, …  → il backend sulla stessa macchina (porta 3000)
-#    3. tutto il resto        → IAM, i file statici in /opt/withus-iam
+#    3. tutto il resto        → IAM, i file statici in /opt/withus-backend/iam
+#       (dal 16/09/2026 IAM e' la cartella iam/ del repository unico: si
+#       aggiorna con lo stesso pull del backend, niente secondo clone)
 #
 #  Stessa origine per IAM e per il preventivatore nel riquadro: il browser
 #  condivide il login da solo, i token smettono di viaggiare nell'indirizzo, e
@@ -45,6 +47,8 @@ iam.withusassicurazioni.it {
 			path /.git/* /.github/* /.claude/* /withus-one/verifica/*
 			path /.env /.env.* /package.json /package-lock.json /static-server.js /CNAME
 			path *.mjs *.md *.py *.sh *.sql *.service *.timer
+			# IAM ha la sua porta, la radice: sotto /nuovo-preventivo/iam/ non serve
+			path /iam/*
 		}
 		respond @sorgente_quoto 404
 
@@ -64,13 +68,13 @@ iam.withusassicurazioni.it {
 
 	# ── 3. IAM alla radice ─────────────────────────────────────────────────
 	handle {
-		root * /opt/withus-iam
+		root * /opt/withus-backend/iam
 
 		# Prove, migrazioni, documenti interni e la configurazione di Vercel
 		# non sono pagine: fuori (deploy/TRASLOCO-OVH.md).
 		@sorgente_iam {
-			path /verifica/* /sql/* /docs/* /compliance/* /.git/* /.github/*
-			path /package.json /controlla-tutto.mjs /vercel.json /CNAME
+			path /verifica/* /sql/* /docs/* /compliance/* /.git/* /.github/* /.claude/*
+			path /package.json /controlla-tutto.mjs /vercel.json /CNAME /.gitignore /.nojekyll
 			path *.mjs *.md
 		}
 		respond @sorgente_iam 404

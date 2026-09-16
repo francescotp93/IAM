@@ -31,7 +31,7 @@ log() { echo "[$(date '+%F %T')] $*"; }
 
 command -v caddy >/dev/null 2>&1 || { log "caddy non installato: mi fermo"; exit 1; }
 [ -f "$CF" ] || { log "manca $CF: mi fermo"; exit 1; }
-[ -f /opt/withus-iam/index.html ] || { log "manca /opt/withus-iam/index.html (IAM non ancora clonato): riprovero'"; exit 1; }
+[ -f /opt/withus-backend/iam/index.html ] || { log "manca /opt/withus-backend/iam/index.html (la cartella iam/ del repository): riprovero'"; exit 1; }
 [ -f /opt/withus-backend/index.html ] || { log "manca /opt/withus-backend/index.html: mi fermo"; exit 1; }
 ls "$SRC"/*.caddy >/dev/null 2>&1 || { log "nessun sito in $SRC: niente da fare"; exit 1; }
 

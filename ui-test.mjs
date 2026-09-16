@@ -31,7 +31,9 @@ function deve(c, msg) { if (!c) throw new Error(msg); }
    prove erano rosse dove il percorso non esisteva: rosse per la strada, non per
    il contenuto — e un rosso che non vuol dire niente e' peggio di una prova in
    meno, perche' insegna a non guardarlo. */
-const CASE_SCOCCA = ['/workspace/agente-sospesi', '../agente-sospesi',
+/* Dal 16/09/2026 la scocca vive in iam/ dentro questo repository: si cerca
+   prima li'. Le altre strade restano per i cloni vecchi accanto. */
+const CASE_SCOCCA = ['./iam', '/workspace/agente-sospesi', '../agente-sospesi',
                      (process.env.HOME || '') + '/agente-sospesi'];
 function scocca(file) {
   for (const d of CASE_SCOCCA) {

@@ -89,24 +89,31 @@ La sessione viaggia **da finestra a finestra**, non dentro l'indirizzo.
 
 ### 2.3 Chi può incorniciare QUOTO
 
-La facciata di QUOTO sta su GitHub Pages, che **non permette header di
-risposta**: niente `Content-Security-Policy: frame-ancestors`, niente
-`X-Frame-Options`. Finché è così la guardia sta **nella pagina**
-(`QUOTE/index.html`, primo `<script>` del `<head>`): se QUOTO è dentro un
-riquadro e il referrer non è `iam.` o `quoto.`, la pagina non parte.
-Fallisce **chiusa**: referrer assente = rifiuto.
+**Dal 16/09/2026 la regola sta nell'header**, perché il preventivatore è servito
+da Caddy sul VPS (`deploy/caddy/iam.caddy`, blocco `/nuovo-preventivo/*`):
 
-L'iframe lato IAM porta `referrerpolicy="origin"` — serve esattamente a far
-funzionare quella guardia — e `allow=""`, che toglie al riquadro fotocamera,
-microfono, posizione e pagamenti.
+```
+Content-Security-Policy: frame-ancestors 'self'
+X-Frame-Options: SAMEORIGIN
+```
+
+`'self'` è `https://iam.withusassicurazioni.it`: la sola origine che può aprire
+il riquadro. Il browser rifiuta ogni altra cornice **prima** di eseguire una
+riga di QUOTO. La prova `deploy/dominio-unico.test.mjs` controlla che l'header
+ci sia, dica `'self'`, non ammetta origini esterne e stia prima di `file_server`.
+
+La guardia **nella pagina** (`index.html`, primo `<script>` del `<head>`: se
+QUOTO è dentro un riquadro e il referrer non è `iam.` o `quoto.`, la pagina non
+parte; referrer assente = rifiuto) **resta come seconda rete**. Serve ancora
+alla strada diretta `quoto.withusassicurazioni.it`, che sta su GitHub Pages e
+non può mandare header.
+
+L'iframe lato IAM porta `referrerpolicy="origin"` — serve a far funzionare
+quella seconda rete — e `allow="clipboard-write"`, che toglie al riquadro
+fotocamera, microfono, posizione e pagamenti.
 `sandbox` **non** è impostata: QUOTO ha bisogno di `allow-scripts` e
 `allow-same-origin` insieme, che annullano quasi tutta la protezione; le voci
 utili vanno collaudate una per una (pagamenti, scarico PDF, stampa).
-
-> Se un domani QUOTO passa dietro nginx/Vercel, il posto giusto per la regola
-> diventa l'header: `Content-Security-Policy: frame-ancestors
-> https://iam.withusassicurazioni.it` + `Referrer-Policy: strict-origin-when-cross-origin`.
-> La guardia nella pagina resta come seconda rete.
 
 ### 2.4 Strada residua — il salto a pagina intera
 

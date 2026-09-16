@@ -52,6 +52,15 @@ iam.withusassicurazioni.it {
 		}
 		respond @sorgente_quoto 404
 
+		# Chi puo' incorniciare il preventivatore: solo questa origine, cioe'
+		# IAM. Su GitHub Pages questa regola non si poteva scrivere (niente
+		# header di risposta) e stava dentro la pagina, sul referrer
+		# (index.html, primo <script>): quella guardia resta come seconda
+		# rete, ma la prima e' questa, che il browser applica prima di
+		# eseguire una riga di codice (INTERFACCIA-QUOTO-IAM §2.3).
+		header Content-Security-Policy "frame-ancestors 'self'"
+		header X-Frame-Options SAMEORIGIN
+
 		file_server
 	}
 

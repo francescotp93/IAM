@@ -1,74 +1,40 @@
-id: sopralluogo-caddy-1789505512  exit: 0  2026-09-15 20:52:07
+id: verifica-impianto-caddy-1789546719  exit: 0  2026-09-16 08:18:52
 ----
-== ora: 2026-09-15 20:52:05  host: vps-d6443a46
-== caddy: v2.11.4 h1:XKxkMTgNSizEvKG6QHue6cAsFOteU2qA61w2tKkCWi0=  stato: active  enabled: enabled
-== unit caddy (ProtectSystem, ExecReload):
-User=caddy
-ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
-ExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile --force
-ProtectSystem=full
-== /etc/caddy/Caddyfile (1502 byte):
-api.withusassicurazioni.it {
-    encode gzip
+== ora: 2026-09-16 08:18:50
+== HEAD backend: c479f7b  (atteso c479f7b)
+== segnalini:
+20-dominio-unico-caddy.sh.fatto
+20-dominio-unico-caddy.sh.log
+== LOG impianto:
+[2026-09-16 08:18:23] copia di sicurezza: /etc/caddy/Caddyfile.buona-20260916-081823
+[2026-09-16 08:18:23] siti copiati in /etc/caddy/withus: iam.caddy 
+[2026-09-16 08:18:23] riga di import aggiunta al Caddyfile
+[2026-09-16 08:18:23] caddy validate: ok
+[2026-09-16 08:18:25] api. risponde ancora 200
+[2026-09-16 08:18:25] il sito iam.withusassicurazioni.it e' nella configurazione in esecuzione ✅
+[2026-09-16 08:18:25] fatto. Prossimo passo (Francesco, su Aruba): iam → A 51.254.142.199. Verifica: curl -H 'Host: iam.withusassicurazioni.it' http://127.0.0.1/ deve dare 308 verso https.
+== autopull, ultime righe utili:
+Sep 16 08:18:20 vps-d6443a46 autopull.sh[2905024]: [autopull] 2026-09-16 08:18:20 aggiorno f0d2a2d -> c479f7b
+Sep 16 08:18:25 vps-d6443a46 autopull.sh[2905024]: [autopull] impianto '20-dominio-unico-caddy.sh' completato ✅ (log in /var/lib/withus-autopull/20-dominio-unico-caddy.sh.log)
+Sep 16 08:18:25 vps-d6443a46 autopull.sh[2905024]: [autopull] fatto.
+== caddy: active
+== Caddyfile, ultime 4 righe:
 
-    # Registro delle richieste — acceso il 14/09/2026.
-    # PERCHE': un preventivo impiega 50-80 secondi, e non c'era modo di sapere
-    # se l'operatore vede un errore mentre il server ha risposto bene. Il
-    # giornale del backend racconta com'e' andata DA DENTRO; questo racconta
-    # com'e' andata per chi sta dall'altra parte del filo.
-    # VA NEL GIORNALE DI SISTEMA, non in un file: il servizio gira con
-    # ProtectSystem=full e non puo' scrivere in /var/log (provato il 14/09:
-    # "permission denied", ricaricamento fallito). Cosi' non serve allargare i
-    # permessi del servizio per un registro diagnostico, e la rotazione la fa
-    # gia' journald.  Si legge con:  journalctl -u caddy | grep handled
-    # COSA NON ENTRA QUI, di proposito: i parametri dell'indirizzo (nei
-    # preventivi ci sono targa e data di nascita), gli indirizzi di rete per
-    # intero, le intestazioni. Restano rotta, esito e durata.
-    log {
-        output stderr
-        format filter {
-            wrap json
-            fields {
-                request>uri regexp "\?.*" "?[parametri non registrati]"
-                request>remote_ip ip_mask 16 64
-                request>headers delete
-                # Anche questo e' l'indirizzo di chi chiama, sotto un altro nome:
-                # mascherarne uno solo e lasciare l'altro non maschera niente.
-                request>client_ip ip_mask 16 64
-                # Le intestazioni di risposta non servono a capire com'e' andata,
-                # e una di loro puo' portarsi dietro un cookie di sessione.
-                resp_headers delete
-            }
-        }
-    }
-
-    reverse_proxy localhost:3000
-}
-== copie: 3
-total 24
-drwxr-xr-x   2 root root 4096 Sep 14 13:09 .
-drwxr-xr-x 114 root root 4096 Sep 10 06:37 ..
--rw-r--r--   1 root root 1502 Sep 14 13:09 Caddyfile
--rw-r--r--   1 root root   74 Jun 29 11:30 Caddyfile.bak-20260914-130530
--rw-r--r--   1 root root   74 Jun 29 11:30 Caddyfile.buona-20260914-130811
--rw-r--r--   1 root root 1171 Sep 14 13:08 Caddyfile.buona-20260914-130945
-== chi ascolta su 80/443:
-LISTEN 0 4096 *:443 *:* users:(("caddy",pid=1323,fd=9)) 
-LISTEN 0 4096 *:80 *:* users:(("caddy",pid=1323,fd=13)) 
-== /opt/withus-iam: 5001d2d 2026-09-15 12:58:21 +0200  file: 30  owner: root:root 755
-== /opt/withus-backend: f0d2a2d owner: withus:withus 755 index.html: root 644
-== caddy puo' leggere? (utente del servizio)
-utente: caddy
-iam/index.html leggibile da caddy
-quoto/index.html leggibile da caddy
-== segnalini setup.d:
-00-chiave-claude.sh.fatto
-00-chiave-claude.sh.log
-60-hdi-scraper-porta-4400.sh.fatto
-60-hdi-scraper-porta-4400.sh.log
-== risposta locale con Host iam. (oggi dovrebbe essere il blocco di default o niente):
-http:308 https:000
+# Siti versionati in QUOTE/deploy/caddy/, copiati qui dall'autopull (15/09/2026).
+# Si modificano nel repository, non qui: deploy/autopull.sh li valida e li ricarica.
+import /etc/caddy/withus/*.caddy
+== /etc/caddy/withus:
+total 16
+drwxr-xr-x 2 root root 4096 Sep 16 08:18 .
+drwxr-xr-x 3 root root 4096 Sep 16 08:18 ..
+-rw-r--r-- 1 root root 4264 Sep 16 08:18 iam.caddy
 == api health: 200
-== backend in ascolto: 1
-== .env CORS_ORIGINS impostato? 0
-== spazio disco: 180G liberi su 193G
+== configurazione in esecuzione contiene iam.: 2 volte
+== http con Host iam. → 308 https://iam.withusassicurazioni.it/
+== giornale caddy sul certificato di iam. (ultimi 5 min):
+{"level":"error","ts":1789546704.9703124,"logger":"http.acme_client","msg":"validating authorization","identifier":"iam.withusassicurazioni.it","problem":{"type":"urn:ietf:params:acme:error:tls","title":"","detail":"185.199.110.153: remote error: tls: no application protocol","instance":"","subprobl
+{"level":"info","ts":1789546706.3166838,"logger":"http.acme_client","msg":"trying to solve challenge","identifier":"iam.withusassicurazioni.it","challenge_type":"http-01","ca":"https://acme-v02.api.letsencrypt.org/directory"}
+{"level":"error","ts":1789546706.8210251,"logger":"http.acme_client","msg":"challenge failed","identifier":"iam.withusassicurazioni.it","challenge_type":"http-01","problem":{"type":"urn:ietf:params:acme:error:unauthorized","title":"","detail":"2606:50c0:8002::153: Invalid response from http://iam.wi
+{"level":"error","ts":1789546706.821154,"logger":"http.acme_client","msg":"validating authorization","identifier":"iam.withusassicurazioni.it","problem":{"type":"urn:ietf:params:acme:error:unauthorized","title":"","detail":"2606:50c0:8002::153: Invalid response from http://iam.withusassicurazioni.it
+{"level":"error","ts":1789546706.8212774,"logger":"tls.obtain","msg":"could not get certificate from issuer","identifier":"iam.withusassicurazioni.it","issuer":"acme-v02.api.letsencrypt.org-directory","error":"HTTP 403 urn:ietf:params:acme:error:unauthorized - 2606:50c0:8002::153: Invalid response f
+{"level":"error","ts":1789546706.821341,"logger":"tls.obtain","msg":"will retry","error":"[iam.withusassicurazioni.it] Obtain: [iam.withusassicurazioni.it] solving challenge: iam.withusassicurazioni.it: [iam.withusassicurazioni.it] authorization failed: HTTP 403 urn:ietf:params:acme:error:unauthoriz

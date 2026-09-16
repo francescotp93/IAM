@@ -18,9 +18,9 @@ la sua costruzione interna: due basi di codice che stanno diventando una sola.
 
 | pezzo | Che cos'è | Dove vive | Online su |
 |---|---|---|---|
-| **il preventivatore** | le 49 schermate prodotto | `francescotp93/QUOTE` → `index.html` | `quoto.withusassicurazioni.it` |
-| **il gestionale** | clienti, portafoglio, contabilità, rete | `francescotp93/Agente-sospesi` → `index.html` | `iam.withusassicurazioni.it` |
-| **la scocca** | le 3 barre comuni (intestazione, menu, titolo) | `Agente-sospesi/withus-one.js` + `.css` | dentro il gestionale |
+| **il preventivatore** | le 49 schermate prodotto | `francescotp93/IAM` → `index.html` | `quoto.withusassicurazioni.it` |
+| **il gestionale** | clienti, portafoglio, contabilità, rete | `francescotp93/IAM` → `iam/index.html` | `iam.withusassicurazioni.it` |
+| **la scocca** | le 3 barre comuni (intestazione, menu, titolo) | `iam/withus-one.js` + `.css` | dentro il gestionale |
 | **la scocca a moduli** | riscrittura in parallelo, non ancora pubblicata | `QUOTE/withus-one/` | — |
 
 > I nomi di file `withus-one.*` restano come sono: sono nomi interni, e

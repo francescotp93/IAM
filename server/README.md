@@ -10,7 +10,7 @@ ci pensa questo backend, sempre acceso, che espone un'API sicura alle app.
 ## Deploy su Render (gratis)
 
 1. Vai su **render.com** → registrati / accedi **con GitHub**.
-2. **New +** → **Web Service** → collega il repo **`francescotp93/QUOTE`**.
+2. **New +** → **Web Service** → collega il repo **`francescotp93/IAM`** (fino al 16/09/2026 si chiamava `QUOTE`).
 3. Configura:
    - **Root Directory:** `server`
    - **Runtime:** Node

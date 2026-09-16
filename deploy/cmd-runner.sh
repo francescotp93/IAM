@@ -11,7 +11,7 @@ set -u
 export HOME=/root
 DIR=/opt/withus-cmd
 TOKENF=/root/.withus-gh-token
-REPO_PATH=francescotp93/QUOTE
+REPO_PATH=francescotp93/IAM   # dal 16/09/2026 il repository si chiama IAM (era QUOTE)
 BR=claude-cmd
 [ -f "$TOKENF" ] || exit 0
 TOKEN=$(tr -d ' \n\r\t' < "$TOKENF")

@@ -1,7 +1,8 @@
 # WORKFLOW — IAM & QUOTO
 
 Regole operative per non perdere mai più lavoro tra i due progetti.
-Vale identico per `francescotp93/Agente-sospesi` (IAM) e `francescotp93/QUOTE` (QUOTO).
+Vale per il repository unico `francescotp93/IAM` (fino al 16/09/2026 `QUOTE`;
+`Agente-sospesi` è archivio, il suo codice è la cartella `iam/`).
 
 ## 🥇 Regola d'oro
 **Un repo = un solo ramo (`main`) = ciò che viene pubblicato.**

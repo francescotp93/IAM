@@ -110,6 +110,45 @@ prove['bootstrap punta al ramo main'] = /^BR=main\b/m.test(bootstrap);
 prove['la chiave di cifratura non e\' scritta nel file'] =
   /^SECRET="\$\{FONTI_SECRET:-/m.test(bootstrap);
 
+// ── 6) Il repository si chiama IAM (16/09/2026): l'impianto non usa il nome vecchio ─
+//    GitHub rimanda da QUOTE a IAM finche' nessuno crea un repository con il nome
+//    vecchio. Un impianto che funziona per via di un redirect non e' un impianto:
+//    tutto cio' che clona o fa fetch deve nominare francescotp93/IAM.
+const NOME_VECCHIO = /francescotp93\/QUOTE(\.git)?\b/;
+const cmdRunner = fs.readFileSync(path.join(RADICE, 'deploy/cmd-runner.sh'), 'utf8');
+const setupServer = fs.readFileSync(path.join(RADICE, 'server/deploy/setup.sh'), 'utf8');
+const codiceSenzaCommenti = t => t.split('\n').filter(r => !/^\s*#/.test(r)).join('\n');
+prove['bootstrap clona francescotp93/IAM, non il nome vecchio'] =
+  /github\.com\/francescotp93\/IAM\.git/.test(bootstrap) && !NOME_VECCHIO.test(codiceSenzaCommenti(bootstrap));
+prove['il canale comandi legge il ramo claude-cmd da francescotp93/IAM'] =
+  /^REPO_PATH=francescotp93\/IAM\b/m.test(cmdRunner) && !NOME_VECCHIO.test(codiceSenzaCommenti(cmdRunner).replace(/#.*$/gm, ''));
+prove['setup.sh del server clona francescotp93/IAM'] =
+  /^REPO=https:\/\/github\.com\/francescotp93\/IAM\.git$/m.test(setupServer) && !NOME_VECCHIO.test(codiceSenzaCommenti(setupServer));
+
+//    Sul VPS i cloni esistono gia' con il remoto vecchio: li sposta uno script
+//    d'impianto una-tantum, che deve (a) accertarsi che il nome nuovo risponda
+//    PRIMA di toccare i remoti, (b) toccare tutti e due i cloni, (c) togliere il
+//    secondo clone /opt/withus-iam solo se Caddy non lo usa e non ha modifiche
+//    locali, (d) uscire con 1 quando non ha finito, cosi' l'autopull ritenta.
+const rinominaPath = path.join(RADICE, 'deploy/setup.d/30-rinomina-repo-iam.sh');
+const rinomina = fs.existsSync(rinominaPath) ? fs.readFileSync(rinominaPath, 'utf8') : '';
+const rinominaCodice = codiceSenzaCommenti(rinomina);
+const posLsRemote = rinominaCodice.search(/git ls-remote[^\n]*francescotp93\/IAM|git ls-remote[^\n]*"\$NUOVO"/);
+const posSetUrl = rinominaCodice.indexOf('remote set-url origin');
+prove['c\'e\' lo script d\'impianto che sposta i remoti sul nome nuovo'] = !!rinomina;
+prove['lo script controlla che IAM risponda prima di toccare i remoti'] =
+  posLsRemote >= 0 && posSetUrl > posLsRemote && /ls-remote[^\n]*\n[^\n]*\n[^\n]*exit 1/.test(rinominaCodice.slice(posLsRemote));
+prove['lo script tocca il clone del deploy e quello del canale comandi'] =
+  /\/opt\/withus-backend/.test(rinominaCodice) && /\/opt\/withus-cmd/.test(rinominaCodice);
+prove['lo script toglie /opt/withus-iam solo se Caddy non lo usa e non ha modifiche locali'] =
+  /rm -rf "\$VECCHIO"/.test(rinominaCodice) && /^VECCHIO=\/opt\/withus-iam$/m.test(rinominaCodice) &&
+  /127\.0\.0\.1:2019\/config\/[^\n]*\|\s*grep -q "\$VECCHIO"/.test(rinominaCodice) &&
+  /status --porcelain/.test(rinominaCodice) &&
+  rinominaCodice.indexOf('2019/config/') < rinominaCodice.indexOf('rm -rf "$VECCHIO"') &&
+  rinominaCodice.indexOf('status --porcelain') < rinominaCodice.indexOf('rm -rf "$VECCHIO"');
+prove['lo script esce con 1 quando non ha finito, cosi\' l\'autopull ritenta'] =
+  (rinominaCodice.match(/exit 1/g) || []).length >= 4 && /^exit 0$/m.test(rinominaCodice);
+
 console.log('\ncompagnie trovate (' + compagnie.length + '):', compagnie.join(', '));
 if (sbagliati.length) console.log('file d\'ambiente sbagliati:', sbagliati.join(' | '));
 console.log('riga elenco:', rigaElenco.trim().slice(0, 100));

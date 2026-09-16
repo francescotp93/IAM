@@ -58,9 +58,9 @@ git config --system --add safe.directory "$APP" || true
 
 echo "==> [5/9] Clono il repo (branch $BR)"
 if [ ! -d "$APP/.git" ]; then
-  git clone "https://x-access-token:${GH_TOKEN}@github.com/francescotp93/QUOTE.git" "$APP"
+  git clone "https://x-access-token:${GH_TOKEN}@github.com/francescotp93/IAM.git" "$APP"
 fi
-git -C "$APP" remote set-url origin https://github.com/francescotp93/QUOTE.git
+git -C "$APP" remote set-url origin https://github.com/francescotp93/IAM.git
 git -C "$APP" fetch origin "$BR"
 git -C "$APP" checkout -B "$BR" "origin/$BR"
 

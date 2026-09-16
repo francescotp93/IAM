@@ -312,6 +312,11 @@ Usato il 15-16/09 per il sopralluogo di Caddy e il cutover del DNS.
   comando: esce con `144`. Non è un guasto.
 - Le PR si fondono con squash; nessuno dei due repository cancella i rami da
   solo (Settings → «Automatically delete head branches» è spento).
+- Dopo la rinomina `QUOTE` → `IAM` (16/09/2026) una sessione aperta prima ha
+  lo scope GitHub col nome vecchio: gli strumenti GitHub vanno chiamati con
+  `repo: QUOTE` (GitHub rimanda), col nome nuovo rispondono «Access denied».
+  Stesso discorso per `git push`: `origin` resta sull'URL con `QUOTE`, col
+  nuovo il proxy risponde 403; GitHub avvisa «This repository moved» e accetta.
 
 ---
 

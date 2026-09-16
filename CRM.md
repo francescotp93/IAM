@@ -1,7 +1,7 @@
 # CRM IAM — specifica di costruzione
 
 > **Come si usa questo file.** È autosufficiente: mettilo nella radice del repo
-> `francescotp93/QUOTE` (dove già sta) e in una sessione Claude Code scrivi
+> `francescotp93/IAM` (dove già sta) e in una sessione Claude Code scrivi
 > *"leggi CRM.md e fai il punto X"*. È scritto come **analisi dei
 > vuoti**, non come progetto da zero: dice cosa esiste già, cosa manca e in che
 > ordine costruirlo. Non contiene codice, testi, documenti o grafica di terzi.
@@ -45,8 +45,8 @@ nata dall'unificazione di due applicazioni:
 
 | | provenienza | contenuto |
 |---|---|---|
-| **IAM** | `francescotp93/Agente-sospesi` | scrivania, contabilità collaboratori, ticket, KPI/gare, diario di lavoro, trattative, team |
-| **QUOTO** | `francescotp93/QUOTE` | preventivatore multi-compagnia, anagrafiche, storico, emissioni, richieste, sinistri, fonti |
+| **IAM** | `francescotp93/IAM` (cartella `iam/`) | scrivania, contabilità collaboratori, ticket, KPI/gare, diario di lavoro, trattative, team |
+| **QUOTO** | `francescotp93/IAM` (radice) | preventivatore multi-compagnia, anagrafiche, storico, emissioni, richieste, sinistri, fonti |
 
 Impianto tecnico:
 

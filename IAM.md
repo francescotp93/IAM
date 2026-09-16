@@ -5,9 +5,9 @@
 > dicono *come funziona* e restano validi come allegati tecnici: quando uno di
 > loro contraddice questo file, vale questo file.
 >
-> È identico nei due repository (`francescotp93/QUOTE` e
-> `francescotp93/Agente-sospesi`). Ogni modifica va replicata in entrambi nella
-> stessa sessione di lavoro.
+> Vive **una volta sola**, alla radice del repository unico `francescotp93/IAM`
+> (fino al 16/09/2026 si chiamava `QUOTE`; `Agente-sospesi` è archivio e il suo
+> codice sta nella cartella `iam/`). Non c'è più niente da replicare altrove.
 >
 > Scritto il **4 agosto 2026**. I numeri di §7 sono stati misurati quel giorno,
 > non ricordati. Il repository è pubblico: qui dentro non entrano indirizzi di
@@ -47,9 +47,9 @@ diventa il nome del sistema.
 
 | Parola | Che cos'era | Che cos'è adesso |
 |---|---|---|
-| **QUOTO** | un'applicazione, un marchio, un sottodominio | il **repository** `francescotp93/QUOTE`, e nient'altro |
+| **QUOTO** | un'applicazione, un marchio, un sottodominio | il **preventivatore**, cioè la radice del repository `francescotp93/IAM` (che fino al 16/09/2026 si chiamava `QUOTE`), e nient'altro |
 | **With Us One** | a seconda del documento: la scocca, la piattaforma, o una riscrittura | **niente.** Il nome è ritirato |
-| **Agente sospesi** | — | il **repository** `francescotp93/Agente-sospesi` |
+| **Agente sospesi** | — | il **repository** `francescotp93/Agente-sospesi`, dal 16/09/2026 archivio in sola lettura: il codice è la cartella `iam/` di `francescotp93/IAM` |
 
 Il motivo per cui «With Us One» va ritirato e non riusato: nei documenti attuali
 indica tre cose diverse — la barra di navigazione (`CODEX.md` riga 20), una

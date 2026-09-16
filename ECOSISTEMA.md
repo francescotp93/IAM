@@ -21,8 +21,8 @@ che parla con i portali delle compagnie**.
 
 | | cos'è | dove vive |
 |---|---|---|
-| **IAM** | il gestionale dell'agenzia: clienti, portafoglio, contabilità, collaboratori | `francescotp93/Agente-sospesi` → `iam.withusassicurazioni.it` |
-| **QUOTO** | il preventivatore: 49 schermate di prodotti assicurativi | `francescotp93/QUOTE` → `quoto.withusassicurazioni.it` |
+| **IAM** | il gestionale dell'agenzia: clienti, portafoglio, contabilità, collaboratori | `francescotp93/IAM`, cartella `iam/` (fino al 16/09/2026 repository `Agente-sospesi`, ora archivio) → `iam.withusassicurazioni.it` |
+| **QUOTO** | il preventivatore: 49 schermate di prodotti assicurativi | `francescotp93/IAM` (radice; fino al 16/09/2026 il repository si chiamava `QUOTE`) → `quoto.withusassicurazioni.it` |
 | **Il motore** | backend + 11 scraper che quotano sui portali delle compagnie | VPS OVH → `api.withusassicurazioni.it` |
 | **Il database** | Supabase, uno solo, condiviso | progetto `ekjxrnsfqxnfxzrthdcf` |
 
@@ -149,7 +149,7 @@ distingue i colori deve poter lavorare lo stesso.
 
 ## 3. La struttura dei file
 
-### QUOTO (`francescotp93/QUOTE`)
+### QUOTO (`francescotp93/IAM`, radice)
 
 ```
 index.html            18.166 righe — TUTTO il preventivatore, 49 schermate
@@ -169,7 +169,7 @@ preventivatore che gira anche da telefono, senza compilazione. Ci si lavora
 **per numero di riga**, non con sostituzioni di testo: una `.replace()` su una
 stringa comune ne colpisce sette punti invece di uno.
 
-### IAM (`francescotp93/Agente-sospesi`)
+### IAM (`francescotp93/IAM`, cartella `iam/`)
 
 ```
 index.html        11.959 righe — le 13 schermate del gestionale

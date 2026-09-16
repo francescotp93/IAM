@@ -1,5 +1,5 @@
 > **Dal 16/09/2026 questa cartella è `iam/` dentro il repository unico**
-> (`francescotp93/QUOTE`, che si chiamerà IAM). Il repository `Agente-sospesi`
+> `francescotp93/IAM` (fino al 16/09/2026 `QUOTE`). Il repository `Agente-sospesi`
 > è archivio: la storia sta lì, il codice vive qui. I documenti condivisi
 > — `IAM.md`, `WORKFLOW.md`, `INTERFACCIA-QUOTO-IAM.md` — stanno **una volta
 > sola, alla radice del repository**, non più in copia qui dentro. Le prove
@@ -16,7 +16,8 @@
 > `IAM.md`.
 >
 > In breve: **IAM (Insurance Agency Management) è il sistema, uno solo.**
-> «QUOTO» è il nome del repository `francescotp93/QUOTE`, non di un'applicazione;
+> «QUOTO» è il nome del preventivatore alla radice del repository `francescotp93/IAM`
+> (era il nome del repository stesso fino al 16/09/2026), non di un'applicazione a sé;
 > «With Us One» è un nome ritirato. Davanti a un utente si legge solo IAM.
 
 ## BLOCCHI — Non modificare senza esplicita richiesta dell'utente
@@ -37,9 +38,9 @@ La grafica di questa sezione funziona esattamente come voluto dall'utente. Non t
 ## Architettura generale
 
 - **Stack:** Vanilla JS + HTML/CSS monolitico (`index.html`), Supabase (PostgreSQL + Auth), GitHub Pages
-- **Deploy:** GitHub Pages da branch `main`
+- **Deploy:** Caddy sul VPS da `/opt/withus-backend/iam`, cioè `iam/` di `main` (fino al 16/09/2026 GitHub Pages)
 - **Supabase:** tabella principale utenti `iam_utenti` con colonne: `ruolo` (top_master/master/operativo), `quoto` (bool), `accesso_quoto` (bool)
-- **Quoto:** app separata su `francescotp93/QUOTE`, stessa istanza Supabase, accede a `iam_utenti`
+- **Quoto:** il preventivatore alla radice dello stesso repository, stessa istanza Supabase, accede a `iam_utenti`
 
 ## Collaboratori: due tabelle, una persona (31 agosto 2026)
 

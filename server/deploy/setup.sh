@@ -4,7 +4,7 @@
 set -euo pipefail
 
 APP_DIR=/opt/withus-backend
-REPO=https://github.com/francescotp93/QUOTE.git
+REPO=https://github.com/francescotp93/IAM.git
 DOMAIN=api.withusassicurazioni.it   # cambia se usi un altro dominio
 
 echo "==> Aggiorno il sistema"

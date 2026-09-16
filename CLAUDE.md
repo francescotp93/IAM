@@ -320,8 +320,10 @@ Usato il 15-16/09 per il sopralluogo di Caddy e il cutover del DNS.
 **IAM vive qui, nella cartella `iam/`.** Fino al 16/09/2026 era il repository
 `francescotp93/Agente-sospesi`; da quel giorno quel repository è archivio in
 sola lettura (la storia sta lì) e il codice sta qui, importato in un solo commit
-che cita il commit d'origine. Questo repository si chiamerà **IAM**: il nome
-`QUOTE` è il nome vecchio, e GitHub rimanda da solo dal vecchio al nuovo.
+che cita il commit d'origine. Questo repository si chiama **IAM**
+(`francescotp93/IAM`, rinominato il 16/09/2026): `QUOTE` è il nome vecchio,
+GitHub rimanda da solo dal vecchio al nuovo, e sul VPS i remoti li sposta
+`deploy/setup.d/30-rinomina-repo-iam.sh`, che toglie anche `/opt/withus-iam`.
 
 Cosa cambia per chi lavora:
 

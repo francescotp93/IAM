@@ -29,7 +29,7 @@ Aspetta che il DNS si propaghi (qualche minuto).
 Collegati via SSH (`ssh root@IP`) e lancia:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/francescotp93/QUOTE/main/server/deploy/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/francescotp93/IAM/main/server/deploy/setup.sh | bash
 ```
 
 Lo script installa Node, Caddy, scarica il codice e configura il servizio.

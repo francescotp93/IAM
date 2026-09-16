@@ -1,11 +1,11 @@
-id: cutover-iam-3-1789551513  exit: 0  2026-09-16 09:42:26
+id: cutover-iam-4-1789552781  exit: 0  2026-09-16 10:03:11
 ----
-== ora: 2026-09-16 09:39:05
-== NS autoritativi di withusassicurazioni.it: dns.technorail.com. dns3.arubadns.net. dns4.arubadns.cz. dns2.technorail.com. 
-== @dns4.arubadns.cz.  A=francescotp93.github.io.  CNAME=francescotp93.github.io.  AAAA=francescotp93.github.io. 
-== @dns2.technorail.com.  A=francescotp93.github.io.  CNAME=francescotp93.github.io.  AAAA=francescotp93.github.io. 
-== @dns.technorail.com.  A=francescotp93.github.io.  CNAME=francescotp93.github.io.  AAAA=francescotp93.github.io. 
-== @dns3.arubadns.net.  A=francescotp93.github.io.  CNAME=francescotp93.github.io.  AAAA=francescotp93.github.io. 
-== risolutore del VPS ora: 185.199.111.153  TTL residuo: 2103
-== risolutore del VPS dopo ~200 s: 185.199.109.153
+== ora: 2026-09-16 09:59:50
+== NS autoritativi di withusassicurazioni.it: dns.technorail.com. dns4.arubadns.cz. dns2.technorail.com. dns3.arubadns.net. 
+== @dns.technorail.com.  A=51.254.142.199  CNAME= AAAA=
+== @dns2.technorail.com.  A=51.254.142.199  CNAME= AAAA=
+== @dns3.arubadns.net.  A=51.254.142.199  CNAME= AAAA=
+== @dns4.arubadns.cz.  A=51.254.142.199  CNAME= AAAA=
+== risolutore del VPS ora: 185.199.110.153  TTL residuo: 858
+== risolutore del VPS dopo ~200 s: 185.199.111.153
 NON ANCORA: il VPS vede ancora il vecchio indirizzo. Non ricarico Caddy.

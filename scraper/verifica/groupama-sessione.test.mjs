@@ -122,6 +122,49 @@ prova('i segnali di spegnimento li prende il nostro codice, non Playwright', () 
   return 'i segnali arrivano a noi';
 });
 
+prova('quando la sessione cade si tenta il rientro, UNA volta sola', () => {
+  /* PERCHE' ORA SI', QUANDO PRIMA NO. Fino al 16/09/2026 qui si scriveva
+     «rifai il login» e ci si fermava, e la ragione era buona: ogni tentativo fa
+     spedire una mail col codice, e l'11/09 quattro tentativi di fila avevano
+     riempito la casella dell'agenzia senza riuscire mai — quel codice lo poteva
+     leggere solo una persona.
+     Dal 13/09 la casella la legge il backend, quindi un tentativo non spreca
+     più un codice: ne fa nascere uno che consumiamo noi.
+     Misurato il 16/09: sessione caduta lunedì alle 20:21, e due giorni dopo era
+     ancora giù — perché nessuno tentava mai, e quindi la lettura automatica
+     della posta non veniva MAI chiamata. Il pezzo costruito il 13/09 aspettava
+     un evento che nessuno produceva. */
+  const da = src.indexOf('è caduta adesso');
+  const blocco = da < 0 ? '' : src.slice(da, src.indexOf('}, 4 * 60 * 1000)', da));
+  deve(blocco, 'non trovo più il ramo della caduta: prova da riscrivere, non da cancellare');
+  deve(/doAccedi\(/.test(blocco),
+    'alla caduta non si tenta più il rientro: si torna ad aspettare che qualcuno se ne accorga a mano');
+  deve(/rientroTentato/.test(blocco),
+    'il tentativo non è contato: senza un freno diventa una mail col codice ogni quattro minuti, cioè il guasto dell\'11/09');
+});
+
+prova('il tentativo si riarma solo rientrando, non da solo', () => {
+  /* Se il contatore si azzerasse col tempo, o non si azzerasse mai, si
+     avrebbero i due guasti opposti: la raffica di mail, oppure una sola
+     occasione per sempre — e alla seconda caduta nessuno proverebbe più. */
+  deve(/let rientroTentato = false;/.test(src), 'il contatore del tentativo non esiste');
+  /* Si guarda la POSIZIONE, non una rete di caratteri: la prima versione di
+     questa prova pretendeva che fra «loggato» e l'azzeramento non ci fosse un
+     punto e virgola, e falliva su codice giusto. */
+  const set = src.slice(src.indexOf('const setState ='), src.indexOf('const setState =') + 400);
+  const dentro = set.indexOf("step === 'loggato'");
+  const azzera = set.indexOf('rientroTentato = false');
+  deve(dentro > -1, 'non trovo più il punto in cui si dichiara di essere dentro');
+  deve(azzera > dentro && (azzera - dentro) < 150,
+    'il tentativo non si riarma quando si torna dentro: alla prossima caduta nessuno proverà a rientrare');
+  /* La DICHIARAZIONE non e' un azzeramento: contarla insieme agli altri faceva
+     fallire la prova su codice giusto (terzo inciampo dello stesso tipo oggi —
+     una rete di caratteri al posto di una domanda chiara). */
+  const azzeramenti = src.split('\n').filter(r => r.includes('rientroTentato = false') && !r.trim().startsWith('let ')).length;
+  deve(azzeramenti === 1,
+    'il contatore viene azzerato in ' + azzeramenti + ' punti: basta uno sbagliato per riaprire la raffica di mail');
+});
+
 const ko = esiti.filter(e => !e[0]);
 console.log('\n── Groupama · una volta dentro, si resta dentro ────────────');
 for (const [ok, n, d] of esiti) console.log((ok ? '  ✅ ' : '  ❌ ') + n + (d ? ' — ' + d : ''));

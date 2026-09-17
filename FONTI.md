@@ -565,6 +565,39 @@ e sembra che esista, il che e' peggio.
 
 ---
 
+### 9-quinquies. Groupama rientra da solo — e perche' prima no
+
+Acceso il 17/09/2026, su decisione di Francesco.
+
+**Com'era, e perche' era giusto.** Quando la sessione cadeva, il keep-alive
+scriveva «rifai il login da Fonti» e si fermava. Non era pigrizia: su Groupama
+ogni tentativo fa spedire una mail col codice, e l'11/09 quattro tentativi di
+fila avevano riempito la casella dell'agenzia **senza mai riuscire**, perche'
+quel codice lo poteva leggere solo una persona. Fermarsi era la scelta giusta.
+
+**Cos'e' cambiato.** Dal 13/09 la casella la legge il backend. Un tentativo non
+spreca piu' un codice: ne fa nascere uno che consumiamo noi.
+
+**Il buco che si e' visto solo misurando.** Il 16/09: sessione caduta lunedi'
+alle 20:21, e **due giorni dopo era ancora giu'**. La lettura automatica della
+posta — costruita il 13/09, collegata bene, con dieci prove verdi — non era mai
+stata chiamata **nemmeno una volta**, perche' si attiva quando lo scraper e'
+fermo sulla schermata del codice, e lo scraper non ci arrivava mai: non
+tentava. Un pezzo di automazione che aspetta un evento che nessuno produce.
+
+**Com'e' adesso**: alla caduta si rimandano utente e password (UN tentativo
+solo), si arriva alla schermata del codice, e la vigilanza del backend — giro
+ogni cinque minuti — lo prende dalla posta e lo consegna. Se la posta non
+risponde, ci si ferma: il secondo tentativo sarebbe solo un'altra mail inutile,
+e da li' in poi decide una persona, esattamente come prima.
+
+**La lezione, che vale oltre questo caso**: quando si aggiunge un pezzo che si
+attiva su una condizione, chiedersi *chi produce quella condizione*. Se la
+risposta e' «un altro pezzo che pero' e' stato spento apposta», il lavoro non
+e' finito — ed e' finito verde, il che lo rende invisibile.
+
+---
+
 ### 9-bis. AXA: la copia della sessione non invecchiava, era incompleta
 
 Misurato il 14/09/2026, e vale la pena scriverlo perche' la spiegazione

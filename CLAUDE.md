@@ -106,6 +106,7 @@ node server/verifica/pensione-motore.test.mjs
 node server/verifica/irpef.test.mjs
 node server/verifica/tfr-datore.test.mjs
 node server/verifica/analisi-registro.test.mjs
+node server/verifica/pdf-withus.test.mjs
 node server/verifica/tracciabilita.test.mjs
 
 # 3. la scocca a moduli
@@ -169,6 +170,13 @@ mancanza: non c'è un passo di build da tenere in piedi. Un modulo ESM
 server-side non si può collegare a una schermata — è uno dei motivi per cui
 `server/pensione.js` non è mai stato usato da nessuno.
 
+**I PDF hanno una carta intestata sola.** Chi deve produrre un documento con
+l'aspetto With Us non ricopia `ppPdfBlob`: costruisce un documento
+strutturato (intestazione, colonne, blocchi, firma, avvertenze) e lo passa a
+`PdfWithus.disegna`. jsPDF si carica dal CDN solo quando qualcuno stampa;
+Helvetica non ha l'euro, e `safe()` lo scrive «EUR» perché altrimenti sparisce
+in silenzio.
+
 Corollario: **la schermata non contiene formule.** Raccoglie dati, chiama il
 motore, mostra la risposta. Un calcolo scritto dentro `index.html` non si può
 provare senza aprire un browser. Anche il foglio stampato per il cliente sta
@@ -208,6 +216,7 @@ IAM chiede `?page=previdenza`. Rinominare un id rompe il modulo dentro IAM
 | `tariffe/motore/pensione.js` | il calcolo, il foglio per il cliente, la riga d'archivio, il messaggio WhatsApp |
 | `tariffe/motore/irpef.js` | il conto delle imposte — **spostato** da `previdenza.js` senza cambiare un'operazione (439 righe identiche) |
 | `tariffe/motore/tfr-datore.js` | il TFR visto dal datore di lavoro (17/09/2026): deduzione 6%/4%, esonero Fondo garanzia, contributi minori, rivalutazione, Tesoreria da 50 addetti. Numeri di legge con fonte, copia di riserva della tabella |
+| `tariffe/motore/pdf-withus.js` | la carta intestata dei PDF (17/09/2026): fascia coi due cerchi, schede, intestazione, piede, filigrana, tabelle. Le stesse primitive per il preventivo personalizzato (`ppPdfBlob`) e per il foglio pensione (`Pensione.documentoPdf` → `PdfWithus.disegna`). Si prova in Node con un `doc` finto |
 | `#page-previdenza` in `index.html` | il cliente dall'anagrafica (componente `clp*`, dal 17/09/2026), quattro campi e la risposta sotto, un passo solo |
 | `server/parametriPrevidenziali.js` | serve i numeri di legge dalla tabella; il motore ne tiene una copia di riserva |
 | `server/analisiPrevidenziali.js` | ogni foglio stampato lascia la sua riga a registro |

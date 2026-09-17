@@ -1143,6 +1143,118 @@ bloccoTfr + bloccoDatore + bloccoRiscatto + bloccoMarchi +
   return { ok: true, html: html };
 }
 
+/* ══ IL DOCUMENTO PER IL PDF ═════════════════════════════════════════════
+   Stessa carta intestata del preventivo personalizzato, per costruzione: qui
+   si produce un DOCUMENTO STRUTTURATO (intestazione, colonne, blocchi, firma,
+   avvertenze) e lo disegna tariffe/motore/pdf-withus.js con le stesse
+   primitive del personalizzato. Questa funzione non tocca jsPDF: si prova in
+   Node, e il PDF che ne esce ha i numeri del foglio HTML, non una grafica
+   somigliante. Gli stessi requisiti del foglio: cliente in anagrafica, chi
+   firma, un calcolo che regge. */
+function documentoPdf(d) {
+  d = d || {};
+  var problemi = problemiDelFoglio(d);
+  if (problemi.length) return { ok: false, problemi: problemi };
+  var e = d.esito, cli = d.cliente || {}, con = d.consulente || {}, az = d.azienda || {};
+  var data = d.dataRiferimento || new Date().toLocaleDateString('it-IT');
+  var marchi = daConfermare().concat(e.datore && e.datore.ok ? e.datore.daConfermare : []);
+  var testo = function (h) { return String(h == null ? '' : h).replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"'); };
+
+  var blocchi = [];
+  blocchi.push({ tipo: 'titolo', testo: 'Dove sei oggi, e dove arrivi' });
+  blocchi.push({ tipo: 'tessere', voci: [
+    { etichetta: 'Oggi porti a casa', valore: euro(e.redditoNettoMensile), nota: 'al mese, netti' },
+    { etichetta: 'Pensione pubblica', valore: euro(e.pensioneNettaMensile), nota: perc(e.tassoSostituzioneNetto) + ' di quello che prendi oggi' },
+    { etichetta: e.gapMensile > 0 ? 'Ti mancheranno' : 'Sei coperto', valore: euro(e.gapMensile), tono: e.gapMensile > 0 ? 'gap' : 'ok',
+      nota: 'al mese' + (e.gapMensile > 0 ? ', il ' + perc(e.gapPercentuale) + ' del reddito di oggi' : '') },
+  ] });
+  blocchi.push({ tipo: 'testo', paragrafi: [
+    'Andrai in pensione a ' + e.etaPensione + ' anni, con ' + e.anniContributi + ' anni di contributi' +
+      (e.versamentoMensile > 0
+        ? '. Versando ' + euro(e.versamentoMensile) + ' al mese per i ' + e.anniAllaPensione + ' anni che mancano, il fondo aggiungerebbe ' +
+          euro(e.fondo.renditaMensileNetta) + ' al mese (montante stimato ' + euro(e.fondo.montante) + ').'
+        : '. Oggi non stai versando in nessun fondo: il divario qui sopra è tutto scoperto.'),
+    'Reddito calcolato su ' + e.mensilita + ' mensilità (' + euro(e.nettoAnnuo) + ' netti l\'anno). La pensione pubblica si riceve in ' +
+      e.mensilitaPensione + ' rate l\'anno, la rendita del fondo in ' + e.mensilitaRendita + '.',
+    'Tariffa di riferimento: ' + FONDO.prodotto.etichetta + '. Alternativa: ' + FONDO.prodotto.alternativa + '.',
+  ], size: 7.8, leading: 3.8 });
+
+  blocchi.push({ tipo: 'titolo', testo: 'Con quanto al mese lo copri' });
+  if (e.versamentoMensile > 0 && e.gapSenzaFondoMensile > e.gapMensile + 0.5) {
+    blocchi.push({ tipo: 'testo', paragrafi: ['Sono ipotesi di versamento al posto dei ' + euro(e.versamentoMensile) + ' di adesso, non in aggiunta: le percentuali si riferiscono al divario di ' +
+      euro(e.gapSenzaFondoMensile) + ' al mese che resterebbe con la sola pensione pubblica.'], size: 7.8, leading: 3.8 });
+  }
+  blocchi.push({ tipo: 'tabella', intestazioni: ['Se versi', 'Ti tornano', 'Cosa copre'], larghezze: [1, 1, 2], righe: e.proposte.map(function (p) {
+    return { evidenzia: !!p.eQuelloCheAzzera, celle: [
+      { testo: euro(p.versamentoMensile) + ' al mese', stile: 'bold' }, euro(p.renditaMensileNetta) + ' al mese',
+      (p.azzera ? 'copre tutto il divario' : 'copre il ' + perc(p.coperturaGap) + ' del divario') +
+        (p.oltreIlTettoDeducibile ? ' · oltre il tetto deducibile' : '') + (p.fuoriPortata ? ' · oltre un quinto del reddito' : '') ] };
+  }) });
+
+  blocchi.push({ tipo: 'titolo', testo: 'Quanto ti fa risparmiare di tasse' });
+  if (!e.fiscale.disponibile) blocchi.push({ tipo: 'testo', paragrafi: [e.fiscale.perche], size: 7.8 });
+  else if (e.fiscale.inPerdita) blocchi.push({ tipo: 'testo', tono: 'rosso', titolo: 'ATTENZIONE: A QUESTO LIVELLO DI REDDITO DEDURRE NON CONVIENE', paragrafi: [
+    'Il versamento farebbe perdere il trattamento integrativo, e il conto finale sarebbe in perdita di ' + euro(Math.abs(e.fiscale.risparmioAnnuo)) +
+    ' l\'anno. Il fondo resta utile per la pensione, ma il vantaggio fiscale qui non c\'è.'] });
+  else blocchi.push({ tipo: 'testo', tono: 'verde', paragrafi: [
+    euro(e.fiscale.risparmioAnnuo) + ' l\'anno di minori imposte, versando ' + euro(e.fiscale.versatoAnnuo) + '. Ogni euro dedotto vale ' + perc(e.fiscale.aliquotaEffettiva, 1) + '.' +
+    (e.fiscale.oltreIlTetto ? ' Il versamento supera il tetto di deducibilità di ' + euro(LEGGE.tettoDeducibilita.v, 2) + ': ' + euro(e.fiscale.eccedenza) + ' l\'anno non danno diritto a deduzione.' : '') +
+    (e.fiscale.impostaAzzerata ? ' L\'imposta è già azzerata dalle detrazioni: la deduzione non produce risparmio.' : '')] });
+
+  if (e.mostraTfr) {
+    blocchi.push({ tipo: 'titolo', testo: 'TFR: in azienda o nel fondo?' });
+    blocchi.push({ tipo: 'testo', paragrafi: ['Un confronto, non un consiglio. La scelta dipende anche da cose che in questo foglio non ci sono.'], size: 7.8 });
+    blocchi.push({ tipo: 'tabella', intestazioni: ['', 'TFR in azienda', 'TFR nel fondo'], larghezze: [1, 2, 2], primaColonnaInGrassetto: true,
+      righe: TFR.righe.map(function (r) { return [r.voce, r.azienda, r.fondo]; }) });
+  }
+
+  if (e.datore && e.datore.ok && TFR_DATORE) {
+    var dt = e.datore;
+    var colA = dt.confronto === 'azienda' ? 'TFR in azienda' : 'TFR al Fondo di Tesoreria INPS';
+    blocchi.push({ tipo: 'titolo', testo: 'Il TFR dei suoi dipendenti: in azienda o nel fondo?' });
+    blocchi.push({ tipo: 'testo', tono: 'ambra', paragrafi: [dt.nota], size: 7.8 });
+    blocchi.push({ tipo: 'tabella', intestazioni: ['', colA, 'TFR al fondo pensione', 'Per l\'azienda, col fondo'], larghezze: [1.4, 1.6, 1.6, 1], primaColonnaInGrassetto: true,
+      righe: dt.voci.map(function (v) {
+        var diff = v.informativa ? '—' : (v.crescente ? TFR_DATORE.euro(v.differenzaTotale) + ' in ' + dt.anni + ' anni' : (v.differenzaAnnua ? '+' + TFR_DATORE.euro(v.differenzaAnnua) + ' l\'anno' : '0 €'));
+        return [v.etichetta, v.azienda, v.fondo, diff];
+      }).concat([{ evidenzia: true, celle: ['Vantaggio per l\'azienda col fondo',
+        dt.confronto === 'azienda' ? 'Il primo anno ' + TFR_DATORE.euro(dt.risparmioAnnuo) + '; in ' + dt.anni + ' anni ' + TFR_DATORE.euro(dt.ventennale.totale) + ' (di cui ' + TFR_DATORE.euro(dt.ventennale.rivalutazioneEvitata) + ' di rivalutazione non pagata).' : 'Neutro: il TFR esce in ogni caso e le misure compensative spettano in entrambi i casi.',
+        '', { testo: TFR_DATORE.euro(dt.risparmioAnnuo) + ' l\'anno · ' + TFR_DATORE.euro(dt.ventennale.totale) + ' in ' + dt.anni + ' anni', stile: 'bold' }] }]) });
+    blocchi.push({ tipo: 'testo', titolo: 'LE DIFFERENZE, UNA PER UNA', paragrafi: testo(TFR_DATORE.spiegazioneHtml(dt).replace(/<\/p>\s*<p>/g, '\n')).split('\n').filter(Boolean), size: 7.8, leading: 3.8 });
+  }
+
+  var q = TFR.quandoLiRiprendo;
+  blocchi.push({ tipo: 'titolo', testo: q.titolo });
+  if (e.mostraTfr) blocchi.push({ tipo: 'tabella', intestazioni: ['Se il TFR resta in azienda', 'Nel fondo pensione'],
+    righe: [[q.azienda.map(function (x) { return '· ' + x; }).join('\n'), q.fondo.map(function (x) { return '· ' + x; }).join('\n')]] });
+  else blocchi.push({ tipo: 'testo', titolo: 'NEL FONDO PENSIONE', punti: true, paragrafi: q.fondo.slice(), size: 7.8, leading: 3.8 });
+  blocchi.push({ tipo: 'testo', paragrafi: [q.fonte + ' — ' + q.daVerificare], size: 7 });
+
+  if (marchi.length) blocchi.push({ tipo: 'testo', tono: 'ambra', titolo: 'VALORI ANCORA DA CONFERMARE', punti: true,
+    paragrafi: marchi.map(function (m) { return m.gruppo + ' · ' + m.etichetta + ' — ' + m.fonte; }), size: 7.2, leading: 3.6 });
+
+  var nomeFile = 'Analisi-previdenziale-' + String(cli.nome || '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + String(data).replace(/\//g, '-') + '.pdf';
+  return {
+    ok: true,
+    documento: {
+      tipo: 'ANALISI PREVIDENZIALE', numero: data, sotto: 'La tua pensione, in una pagina', titoloPdf: 'Analisi previdenziale · ' + cli.nome,
+      azienda: { ragioneSociale: az.ragioneSociale || 'With Us Assicurazioni', sede: az.sede || '', piva: az.piva || '', rui: az.rui || '', contatti: az.contatti || [] },
+      banda: e.prudenziale ? { tono: 'ambra', testo: 'STIMA PRUDENZIALE: eta\' di inizio lavoro non indicata, scenario peggiorativo' } : null,
+      filigrana: marchi.length ? 'STIMA' : null,
+      colonne: [
+        { titolo: 'CLIENTE', righe: [cli.nome, e.etichettaLavoro + ' · ' + e.eta + ' anni', 'Reddito su ' + e.mensilita + ' mensilità' + (cli.telefono ? ' · ' + cli.telefono : '')] },
+        { titolo: 'CONSULENTE', righe: [con.nome, [con.ruolo, con.rui ? 'RUI ' + con.rui : ''].filter(Boolean).join(' · '), [con.email, con.telefono].filter(Boolean).join(' · ')].filter(Boolean) },
+      ],
+      blocchi: blocchi,
+      firma: { nome: con.nome, ruolo: con.ruolo, rui: con.rui, email: con.email, telefono: con.telefono },
+      avvertenze: disclaimer(e),
+      piedeSinistra: (az.ragioneSociale || 'With Us Assicurazioni') + ' · Analisi previdenziale',
+      piedeDestra: cli.nome + ' · ' + data,
+      nomeFile: nomeFile,
+    },
+  };
+}
+
 /* ══ LA RIGA D'ARCHIVIO ══════════════════════════════════════════════════
    Ogni foglio che esce lascia la sua riga: chi, per chi, con quali numeri e
    con quale versione delle regole. Serve fra un anno, quando i parametri
@@ -1266,6 +1378,7 @@ var API = {
   etaPensioneAll: etaPensioneAll,
   disclaimer: disclaimer,
   foglioHtml: foglioHtml,
+  documentoPdf: documentoPdf,
   problemiDelFoglio: problemiDelFoglio,
   schedaArchivio: schedaArchivio,
   messaggioWhatsApp: messaggioWhatsApp,

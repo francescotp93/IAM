@@ -1,21 +1,11 @@
-id: grpok-1789629449  exit: 0  2026-09-17 07:17:45
+id: lav1-pr1-1789629762  exit: 0  2026-09-17 07:23:17
 ----
-== ora
-2026-09-17 07:17:45
-== stato groupama
-{"running":false,"step":"loggato","since":1789629427141,"msg":"Login completato ✅"}
-auth.json: 2026-09-17 07:17:07
-== IL PUNTO: il backend ha preso il codice dalla posta?
-== giornale groupama, ultimi 30 minuti
-06:53:43 [groupama] telecomando HTTP su 127.0.0.1:4500
-06:53:44 [groupama] sessione ripresa da auth.json: 19 cookie
-06:53:44 [groupama] la sessione salvata non e' piu' valida: serve un accesso con codice
-06:53:44 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
-06:57:46 [groupama] rientro automatico: provo UNA volta a rifare l'accesso — il codice lo prende il backend dalla posta dell'agenzia
-06:57:46 [groupama] fill user/pass: {"ok":true}
-06:57:50 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-06:57:50 [groupama] rientro automatico → attesa_otp: schermata del codice raggiunta, ora tocca al backend prenderlo dalla posta
-07:09:44 [groupama] attesa del codice scaduta (10 min): il keep-alive riprende
-07:16:13 [groupama] codice gia' chiesto 18 min fa e non ancora usato: NON ne chiedo un altro (freno anti-raffica)
-07:17:04 [groupama] OTP inserito → valore nel campo: "021283" OK
-07:17:07 [groupama] sessione salvata su disco (login riuscito)
+== HEAD backend: 78782aa (atteso 78782aa) dopo ~5 s
+index servito=69c20edd disco=69c20edd OK
+== motore servito ha daAnagrafica:
+2
+== backend:
+active
+200
+== server analisi ha la regola:
+0

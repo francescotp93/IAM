@@ -1,9 +1,41 @@
-id: otp-sera-1789672000  exit: 0  2026-09-17 19:07:05
+id: ricontrollo-1789672084  exit: 0  2026-09-17 19:08:15
 ----
-== ora
-2026-09-17 19:07:05
-== giornale groupama, dalle 18:00
+== ora e fuso del server
+2026-09-17 19:08:15 UTC (+0000)
 
-== backend: righe su groupama / otp-posta / vigilanza, dalle 18:00
+== CONTROPROVA: la finestra di tempo funziona? quante righe in tutto
+tutto il diario, ultimi 70 minuti: 1465
+tutto il diario, dalle 08:00 di oggi:  0
+  di cui con 'password: ':            0
 
-== la vigilanza con rientro e' accesa?
+== groupama, ultimi 70 minuti, SENZA filtri
+righe totali: 6
+Sep 17 18:22:55 vps-d6443a46 start-service.sh[3099796]: 18:22:55 [groupama] la sessione Groupama è caduta adesso: era attiva da 632 minuti (è caduta ISA)
+Sep 17 18:22:55 vps-d6443a46 start-service.sh[3099796]: 18:22:55 [groupama] rientro automatico: provo UNA volta a rifare l'accesso — il codice lo prende il backend dalla posta dell'agenzia
+Sep 17 18:22:56 vps-d6443a46 start-service.sh[3099796]: 18:22:56 [groupama] fill user/pass: {"ok":true}
+Sep 17 18:23:00 vps-d6443a46 start-service.sh[3099796]: 18:23:00 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
+Sep 17 18:23:00 vps-d6443a46 start-service.sh[3099796]: 18:23:00 [groupama] rientro automatico → attesa_otp: schermata del codice raggiunta, ora tocca al backend prenderlo dalla posta
+Sep 17 18:34:53 vps-d6443a46 start-service.sh[3099796]: 18:34:53 [groupama] attesa del codice scaduta (10 min): il keep-alive riprende
+
+== backend, ultimi 70 minuti
+righe totali: 30
+[vigilanza-fonti] giro 43 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 44 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 45 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 46 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 47 · controllate 7 · cadute 0 · rientrate 0
+[otp-posta] nessun codice di c-groupama nella posta dopo 90s e 13 controlli: lo inserisca una persona
+[otp-posta] c-groupama: nessun codice utile nella posta (cercato dalle 18:20:00 in poi); resta da inserire a mano
+[vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
+[vigilanza-fonti] giro 48 · controllate 7 · cadute 1 · rientrate 0
+[vigilanza-fonti] giro 49 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 50 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 51 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 52 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 53 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 54 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 55 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 56 · controllate 7 · cadute 0 · rientrate 0
+
+== da dove prende le variabili il backend
+EnvironmentFiles=/opt/withus-backend/server/.env (ignore_errors=no)

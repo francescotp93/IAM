@@ -390,11 +390,17 @@ let QUOTING = false; // un preventivo ISA è in corso (il keep-alive non deve to
    «Invia altro codice» (/resend) e l'accesso forzato (/accedi?forza=1). */
 const RAFFICA_CODICE_MS = Number(process.env.GROUPAMA_PAUSA_CODICE_MS || 30 * 60 * 1000);
 let OTP_CHIESTO_IL = 0;   // quando il portale ha spedito l'ultimo codice (0 = nessuno in volo)
+/* UN SOLO TENTATIVO DI RIENTRO PER OGNI CADUTA. Si rimette a falso quando si
+   torna dentro (in `setState`), cioe' quando c'e' una caduta NUOVA da coprire.
+   Non e' prudenza generica: su Groupama ogni tentativo fa spedire una mail col
+   codice, e l'11/09/2026 quattro tentativi di fila hanno riempito la casella
+   dell'agenzia. Un tentativo si', il secondo lo decide una persona. */
+let rientroTentato = false;
 /* Il codice in volo si azzera QUI, in un punto solo: appena si è dentro, quel
    codice è stato usato (o non serviva) e il freno non ha più motivo di esistere.
    Farlo in setState invece che nei quattro punti che dichiarano «loggato»
    significa che non se ne può dimenticare uno domani. */
-const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') { OTP_CHIESTO_IL = 0; setLogged(true); } else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
+const setState = (step, msg, running = false) => { LOGIN_STATE = { running, step, since: Date.now(), msg }; if (step === 'loggato') { OTP_CHIESTO_IL = 0; rientroTentato = false; setLogged(true); } else if (['pronto', 'non_loggato', 'timeout_otp', 'error'].includes(step)) setLogged(false); return LOGIN_STATE; };
 const isLogged = async () => !(await hasPasswordField()) && !(await otpField()) && (await loggedMarker());
 
 /* ── PERCHE' IL LOGIN NON E' ANDATO ────────────────────────────────────────────
@@ -885,6 +891,31 @@ setInterval(async () => {
         log('la sessione Groupama è caduta adesso: era attiva da ' + durata + ' minuti' + (isaPwd ? ' (è caduta ISA)' : ' (è caduto il portale)'));
       }
       LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Sessione scaduta: rifai il login da Fonti → Groupama' };
+      /* RIENTRO AUTOMATICO, UN TENTATIVO SOLO — acceso il 17/09/2026.
+         Fino a ieri qui si scriveva «rifai il login» e ci si fermava. Era la
+         scelta giusta ALLORA: ogni tentativo fa spedire una mail col codice, e
+         l'11/09 quattro tentativi di fila avevano riempito la casella
+         dell'agenzia senza mai riuscire, perche' quel codice lo poteva leggere
+         solo una persona.
+         Dal 13/09 la casella la legge il backend. Quindi un tentativo non
+         spreca piu' un codice: ne fa nascere uno che consumiamo noi. La
+         sequenza e': qui si rimandano utente e password, si arriva alla
+         schermata del codice, e la vigilanza del backend — che passa ogni
+         cinque minuti — lo prende dalla posta e lo consegna.
+         Perche' UNO SOLO: se la posta non risponde, il secondo tentativo
+         sarebbe solo un'altra mail inutile. Dopo il primo si sta fermi e
+         decide una persona, esattamente come prima.
+         Misurato il 16/09: la sessione era caduta lunedi' alle 20:21 e due
+         giorni dopo era ancora giu', perche' nessuno tentava mai e quindi la
+         lettura della posta non veniva mai chiamata. */
+      if (!rientroTentato) {
+        rientroTentato = true;
+        log('rientro automatico: provo UNA volta a rifare l\'accesso — il codice lo prende il backend dalla posta dell\'agenzia');
+        const st = await doAccedi().catch(e => ({ step: 'errore', msg: String(e && e.message || e) }));
+        log('rientro automatico → ' + (st && st.step) + (st && st.step === 'attesa_otp'
+          ? ': schermata del codice raggiunta, ora tocca al backend prenderlo dalla posta'
+          : ''));
+      }
     }
     /* Copia fresca della sessione, circa ogni 20 minuti finché siamo dentro.
        Salvarla solo al login non bastava: il portale rinnova i suoi cookie

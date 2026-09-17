@@ -1,12 +1,24 @@
-id: acceso-1789627990  exit: 0  2026-09-17 06:53:31
+id: acceso2-1789628047  exit: 0  2026-09-17 06:56:36
 ----
+aspetto 2 minuti che l'aggiornamento scenda e il servizio riparta
 == ora
-2026-09-17 06:53:30
-== HEAD: 9e387eb
-== il rientro automatico e' nel file? 0 riferimenti
-== groupama avviato alle: Thu 2026-09-17 06:19:25 UTC
+2026-09-17 06:56:35
+== HEAD: 6365b7a
+== rientro automatico nel file: 4 riferimenti
+== groupama avviato alle: Thu 2026-09-17 06:53:38 UTC
 == stato
-{"running":false,"step":"pronto","since":1789627893345,"msg":"Sessione scaduta: rifai il login da Fonti → Groupama"}
-== giornale groupama, ultimi 15 minuti
--- No entries --
-== il backend e' andato a prendere il codice?
+{"running":false,"step":"pronto","since":1789628024981,"msg":"Pronto: avvia il login da Fonti per ricevere l'OTP"}
+== giornale groupama
+Sep 17 06:53:37 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 06:53:38 vps-d6443a46 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
+Sep 17 06:53:38 vps-d6443a46 systemd[1]: groupama-scraper.service: Deactivated successfully.
+Sep 17 06:53:38 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 06:53:38 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+06:53:43 [groupama] telecomando HTTP su 127.0.0.1:4500
+06:53:44 [groupama] sessione ripresa da auth.json: 19 cookie
+06:53:44 [groupama] la sessione salvata non e' piu' valida: serve un accesso con codice
+06:53:44 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+== backend: codice dalla posta?
+Sep 17 06:48:46 vps-d6443a46 node[2951776]: [vigilanza-fonti] giro 204 · controllate 7 · cadute 0 · rientrate 0
+Sep 17 06:53:46 vps-d6443a46 node[2951776]: [vigilanza-fonti] giro 205 · controllate 7 · cadute 0 · rientrate 0

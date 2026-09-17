@@ -1391,6 +1391,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
 @media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}.tk-layout{grid-template-columns:1fr}.perm-list{grid-template-columns:1fr}}
 @media(max-width:560px){.form-row,.provider-form,.tk-field-row{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:1fr}.main-content{padding:.9rem .9rem 96px}.aw-card{padding:1.4rem 1rem}.modal{padding:1.4rem}}
+.pv-cliente-fisso{min-height:38px;display:flex;align-items:center;padding:0 10px;border:1px dashed var(--line);border-radius:10px;font-weight:600;background:#fafbfc}
+.clp-form{padding:10px 12px;cursor:default}
+.clp-res{max-height:420px}
 </style>
 <script>
 /* ── CHI PUO' INCORNICIARE QUOTO ────────────────────────────────────────────
@@ -1756,6 +1759,14 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
       <div class="pv-card">
         <div class="pv-sec">Chi hai davanti</div>
+        <!-- IL CLIENTE VIENE DALL'ANAGRAFICA, dal 17/09/2026. Niente nominativi
+             volanti: si cerca nel portafoglio o si censisce qui la persona nuova,
+             e ogni analisi resta agganciata a una scheda (componente clp*). -->
+        <div class="aw-grid">
+          <div class="aw-field geo-wrap" style="grid-column:1/-1"><label>Cliente (dall'anagrafica)</label>
+            <input id="pens-cliente-q" autocomplete="off" placeholder="Cerca per nome, codice fiscale o telefono… o censisci una persona nuova"
+                   oninput="clpCerca(this)" onfocus="clpCerca(this)"></div>
+        </div>
         <div id="pens-da-cliente"></div>
         <div class="aw-grid">
           <div class="aw-field"><label>Età</label><input id="pens-eta" type="number" min="16" max="75" placeholder="es. 38"></div>
@@ -4157,6 +4168,7 @@ function pensPulisci() {
   PENS.esito = null; PENS.cliente = null; PENS.mensilitaAMano = false;
   pensMensilitaProposta();
   var da = document.getElementById('pens-da-cliente'); if (da) da.innerHTML = '';
+  var cq = document.getElementById('pens-cliente-q'); if (cq) { cq.value = ''; clpChiudi('pens-cliente-q'); }
   var es = document.getElementById('pens-esito'); if (es) es.innerHTML = '';
   pensBase('netto');
 }
@@ -4363,8 +4375,8 @@ function pensRendi(e) {
   /* IL FOGLIO E L'INVIO. */
   h += '<div class="pv-card"><div class="pv-sec">Il foglio per il cliente</div>' +
     '<div class="aw-grid">' +
-    '<div class="aw-field"><label>Cliente</label><input id="pens-cli" placeholder="Nome e cognome" value="' +
-      esc((PENS.cliente && PENS.cliente.nome) || '') + '"></div>' +
+    '<div class="aw-field"><label>Cliente (dall\'anagrafica)</label><div id="pens-cli" class="pv-cliente-fisso">' +
+      (PENS.cliente && PENS.cliente.id ? esc(PENS.cliente.nome) : '<span style="color:var(--pv-rosso,#c0392b)">nessuno: scegli il cliente in cima alla schermata</span>') + '</div></div>' +
     '<div class="aw-field"><label>Consulente che firma</label><input id="pens-cons" value="' +
       esc((typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.nome) || (currentUser && currentUser.name) || '') + '"></div>' +
     '<div class="aw-field"><label>Ruolo</label><input id="pens-ruolo" value="Consulente previdenziale"></div>' +
@@ -4401,7 +4413,7 @@ function pensDatiFoglio() {
   var v = function (id) { return (document.getElementById(id) || {}).value || ''; };
   return {
     esito: PENS.esito,
-    cliente: { nome: v('pens-cli'), telefono: v('pens-tel') },
+    cliente: { id: (PENS.cliente && PENS.cliente.id) || null, nome: (PENS.cliente && PENS.cliente.nome) || '', telefono: v('pens-tel') },
     consulente: { nome: v('pens-cons'), ruolo: v('pens-ruolo'), rui: v('pens-rui'), email: v('pens-mail') },
     /* UNA data sola per il foglio e per l'archivio. Prendendola due volte
        dall'orologio, un'analisi stampata a mezzanotte finirebbe a registro col
@@ -4492,54 +4504,55 @@ async function pensArchivia(d) {
    Si va dal piu' specifico al piu' generico: i titoli professionali, poi i
    mestieri da dipendente, e in fondo le parole larghe («agente», «titolare»,
    «autonomo») che da sole non bastano a decidere. */
-var PENS_PROFESSIONI = [
-  { re: /avvoc|medic|chirurg|ingegn|architett|commercialist|notai|geometr|dentist|odontoiatr|veterinar|psicolog|farmacist|attuar|biolog|chimic|agronom|giornalist/i, lavoro: 'professionista' },
-  { re: /impiegat|operai|dirigent|quadro|insegnant|docent|infermier|dipendent|funzionar|magazzinier|commess|autist|metalmeccanic|bancari|militare|carabinier|polizi|vigile|oss\b|educator|bidell/i, lavoro: 'dipendente' },
-  { re: /artigian|commerciant|negoz|imprendit|titolare|autonom|partita iva|p\.?iva|agente|rappresentant|idraulic|elettricist|muratore|parrucchier|estetist|ristorator|barista|tassist|autotrasport|coltivator|agricol/i, lavoro: 'autonomo' },
-];
-function pensLavoroDaProfessione(p) {
-  var t = String(p || '');
-  if (!t.trim()) return null;
-  for (var i = 0; i < PENS_PROFESSIONI.length; i++) if (PENS_PROFESSIONI[i].re.test(t)) return PENS_PROFESSIONI[i].lavoro;
-  return null;
-}
+/* La deduzione del tipo di lavoro dalla professione sta nel motore
+   (Pensione.lavoroDaProfessione, con l'ordine che conta): qui il ponte. */
+function pensLavoroDaProfessione(p) { return window.Pensione ? Pensione.lavoroDaProfessione(p) : null; }
 
+/* Dal tasto «Calcola pensione» sulla scheda cliente: si passa per la stessa
+   porta del componente di ricerca. */
 function pensDaCliente(id) {
   var a = (typeof ANAG_CACHE !== 'undefined' && ANAG_CACHE || []).filter(function (x) { return x.id === id; })[0];
   if (!a) { alert('Anagrafica non trovata.'); return; }
-  if (a.tipo === 'giuridica') { alert('Il calcolo della pensione si fa su una persona fisica, non su una società.'); return; }
-
   var ov = document.getElementById('anag-overlay'); if (ov) ov.remove();
-  pensPulisci();
-  PENS.cliente = { id: a.id, nome: a.nominativo || '', telefono: a.cellulare || a.telefono || '' };
+  pensApplicaCliente(a, true);
+}
 
-  var eta = window.Pensione ? Pensione.etaDaNascita(a.data_nascita) : null;
-  var dedotto = pensLavoroDaProfessione(a.professione);
-  var i = document.getElementById('pens-eta'); if (i && eta) i.value = eta;
-  var l = document.getElementById('pens-lavoro'); if (l && dedotto) l.value = dedotto;
+/* Il cliente e' scelto (dalla ricerca in cima o dalla scheda): quello che la
+   scheda sa non si richiede, quello che e' stato dedotto si DICE. */
+function pensApplicaCliente(a, arrivoDaScheda) {
+  if (!window.Pensione) { alert('Il motore del calcolo non è caricato: ricarica la pagina.'); return; }
+  var r = Pensione.daAnagrafica(a);
+  if (!r.ok) { alert(r.motivo); return; }
+  if (arrivoDaScheda) pensPulisci();
+  PENS.cliente = r.cliente;
+  var cq = document.getElementById('pens-cliente-q'); if (cq) cq.value = a.nominativo || r.cliente.nome;
+
+  var i = document.getElementById('pens-eta'); if (i && r.eta) i.value = r.eta;
+  var l = document.getElementById('pens-lavoro'); if (l && r.lavoroDedotto) l.value = r.lavoroDedotto;
   /* Il tipo di lavoro e' appena cambiato: le mensilita' lo seguono. */
   pensMensilitaProposta();
 
-  /* Si scrive COSA e' stato ripreso e COSA e' stato dedotto. Un campo
-     riempito da solo, senza dire da dove viene, e' un campo che nessuno
-     ricontrolla. */
-  var note = [];
-  if (eta) note.push('età <b>' + eta + ' anni</b> dalla data di nascita');
-  else note.push('<b>età non ricavabile</b>: in anagrafica manca la data di nascita, scrivila a mano');
-  if (dedotto && window.Pensione) note.push('tipo di lavoro <b>' + esc(Pensione.LAVORI[dedotto].etichetta.toLowerCase()) + '</b> dedotto da «' + esc(a.professione) + '» — <b>controllalo</b>');
-  else if (a.professione) note.push('la professione in anagrafica («' + esc(a.professione) + '») non è riconducibile a un tipo: scegli tu');
-  else note.push('in anagrafica non c\'è la professione: scegli il tipo di lavoro');
-
   var box = document.getElementById('pens-da-cliente');
   if (box) {
-    box.innerHTML = '<div class="pv-nota" style="margin-top:0"><b>' + esc(a.nominativo) + '</b> — ripreso dalla scheda: ' +
-      note.join(' · ') + '.<br>Resta da chiedere: <b>a che età ha cominciato a lavorare</b> e quanto guadagna al mese.</div>';
+    box.innerHTML = '<div class="pv-nota" style="margin-top:0"><b>' + esc(r.cliente.nome) + '</b> — ripreso dalla scheda: ' +
+      r.note.map(function (n) {
+        var t = esc(n.testo);
+        if (n.tipo === 'eta') t = t.replace(/(\d+ anni)/, '<b>$1</b>');
+        if (n.tipo === 'eta-manca') t = t.replace(/^età non ricavabile/, '<b>età non ricavabile</b>');
+        if (n.tipo === 'lavoro-dedotto') t = t.replace(/^tipo di lavoro (.+?) dedotto/, 'tipo di lavoro <b>$1</b> dedotto').replace(/controllalo$/, '<b>controllalo</b>');
+        return t;
+      }).join(' · ') +
+      '.<br>Resta da chiedere: <b>' + esc(r.daChiedere[0]) + '</b> e ' + esc(r.daChiedere[1]) + '.</div>';
   }
-  showPage('previdenza');
-  if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
-  pensAvvisi();
-  var r = document.getElementById('pens-reddito'); if (r && r.focus) r.focus();
+  if (PENS.esito) pensRendi(PENS.esito);
+  if (arrivoDaScheda) {
+    showPage('previdenza');
+    if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
+    pensAvvisi();
+  }
+  var rd = document.getElementById('pens-reddito'); if (rd && rd.focus) rd.focus();
 }
+clpInstalla('pens-cliente-q', { soloFisiche: true, origine: 'analisi pensione', onScelto: function (a) { pensApplicaCliente(a, false); } });
 
 function openVitaProd(key){
   const p = VITA_PRODOTTI.find(x=>x.key===key); if(!p) return;
@@ -21417,6 +21430,129 @@ async function eliminaCollaboratore(id) {
     alert('Errore: ' + (e.message || e));
   }
 }
+
+/* ══════════ SCEGLI UN CLIENTE — un componente solo (17/09/2026) ══════════
+   Lo stesso autocomplete sull'anagrafica era copiato venti volte, uno per
+   wizard, ognuno con la sua tendina, il suo timer e il suo bug. Questo e' il
+   componente unico, sul modello di casa (resComuneSearch): prende l'ELEMENTO
+   input, si costruisce la tendina dentro il .geo-wrap che lo contiene, cerca
+   su nominativo, codice fiscale, partita IVA e telefoni, e in fondo offre
+   «Censisci come nuovo cliente». La scheda nuova nasce con cognome, nome,
+   codice fiscale valido, data di nascita, professione e cellulare: niente
+   nominativi volanti, una persona in anagrafica o niente.
+
+   Uso:  <div class="aw-field geo-wrap"><label>Cliente</label>
+           <input id="xx-cliente-q" autocomplete="off" oninput="clpCerca(this)" onfocus="clpCerca(this)"></div>
+         clpInstalla('xx-cliente-q', { soloFisiche: true, onScelto: function (a) { ... } });
+   Il primo che lo usa e' il modulo pensione; gli altri venti si portano qui a
+   moduli, uno per PR, quando si tocca quel wizard. */
+/* Il registro sta su window e nasce al primo uso: il modulo pensione chiama
+   clpInstalla 17.000 righe PRIMA di questo blocco, quando un `var CLP` qui
+   sarebbe ancora undefined. */
+function clpReg() { return (window.__CLP_REG = window.__CLP_REG || {}); }
+var clpTimer = null;
+function clpInstalla(inputId, opz) { clpReg()[inputId] = opz || {}; }
+function clpBox(input) {
+  var wrap = input.closest('.geo-wrap') || input.parentElement;
+  var box = wrap.querySelector('.clp-res');
+  if (!box) { box = document.createElement('div'); box.className = 'geo-res clp-res'; wrap.appendChild(box); }
+  return box;
+}
+function clpChiudi(inputId) {
+  var input = document.getElementById(inputId); if (!input) return;
+  var box = clpBox(input); box.classList.remove('show'); box.innerHTML = '';
+}
+function clpCerca(input) {
+  var box = clpBox(input);
+  clearTimeout(clpTimer);
+  var q = String(input.value || '').trim();
+  if (q.length < 2) { box.classList.remove('show'); box.innerHTML = ''; return; }
+  var opz = clpReg()[input.id] || {};
+  clpTimer = setTimeout(async function () {
+    var righe = [];
+    try {
+      var qs = sbq(q);
+      var ric = db.from('quote_anagrafiche').select('id,tipo,nominativo,nome,cognome,codice_fiscale,partita_iva,data_nascita,professione,telefono,cellulare,email,comune,lead')
+        .or('nominativo.ilike.%' + qs + '%,codice_fiscale.ilike.%' + qs + '%,partita_iva.ilike.%' + qs + '%,telefono.ilike.%' + qs + '%,cellulare.ilike.%' + qs + '%')
+        .order('nominativo').limit(8);
+      var r = await ric;
+      righe = (r && r.data) || [];
+      if (opz.soloFisiche) righe = righe.filter(function (a) { return a.tipo !== 'giuridica'; });
+    } catch (e) { righe = []; }
+    window.__CLP = { inputId: input.id, righe: righe, q: q };
+    box.innerHTML = righe.map(function (a, i) {
+      var det = [a.codice_fiscale || a.partita_iva, a.comune, a.data_nascita ? ('nato/a ' + String(a.data_nascita).split('-').reverse().join('/')) : ''].filter(Boolean).join(' · ');
+      return '<div class="geo-item" onclick="clpScegli(' + i + ')"><b>' + esc(a.nominativo || [a.nome, a.cognome].filter(Boolean).join(' ')) + '</b>' +
+        (a.lead ? ' <span class="pv-piccolo">lead</span>' : '') + (det ? '<div class="pv-piccolo">' + esc(det) + '</div>' : '') + '</div>';
+    }).join('') +
+      (righe.length ? '' : '<div class="geo-item" style="color:var(--muted)">Nessun cliente con «' + esc(q) + '»</div>') +
+      '<div class="geo-item clp-nuovo" style="color:var(--blue);font-weight:600" onclick="clpNuovo()"><i class="ti ti-user-plus"></i> Censisci «' + esc(q) + '» come nuovo cliente</div>';
+    box.classList.add('show');
+  }, 300);
+}
+function clpScegli(i) {
+  var st = window.__CLP || {}; var a = (st.righe || [])[i]; if (!a) return;
+  var input = document.getElementById(st.inputId); if (!input) return;
+  input.value = a.nominativo || [a.nome, a.cognome].filter(Boolean).join(' ');
+  clpChiudi(st.inputId);
+  var opz = clpReg()[st.inputId] || {};
+  if (typeof opz.onScelto === 'function') opz.onScelto(a);
+}
+/* La scheda nuova si compila QUI, nella tendina, senza cambiare pagina: il
+   consulente ha il cliente davanti. Il testo scritto nel campo di ricerca
+   prova a dividersi in cognome e nome (il primo pezzo e' il cognome, come nel
+   nominativo d'archivio), e resta correggibile. */
+function clpNuovo() {
+  var st = window.__CLP || {}; var input = document.getElementById(st.inputId); if (!input) return;
+  var box = clpBox(input);
+  var pezzi = String(st.q || '').trim().split(/\s+/);
+  var cognome = pezzi.length > 1 ? pezzi[0] : '', nome = pezzi.length > 1 ? pezzi.slice(1).join(' ') : (pezzi[0] || '');
+  var f = function (id, label, val, extra) {
+    return '<div class="aw-field"><label>' + label + '</label><input id="clp-' + id + '" value="' + esc(val || '') + '" ' + (extra || '') + '></div>';
+  };
+  box.innerHTML = '<div class="clp-form" onclick="event.stopPropagation()">' +
+    '<div class="pv-sec" style="margin:0 0 6px">Nuovo cliente in anagrafica</div>' +
+    '<div class="aw-grid">' +
+    f('cognome', 'Cognome *', cognome) + f('nome', 'Nome *', nome) +
+    f('cf', 'Codice fiscale *', '', 'maxlength="16" style="text-transform:uppercase"') +
+    f('nascita', 'Data di nascita', '', 'type="date"') +
+    f('professione', 'Professione', '') + f('cellulare', 'Cellulare', '', 'inputmode="tel"') +
+    '</div><div id="clp-errore" class="pv-piccolo" style="color:var(--pv-rosso,#c0392b);min-height:1em;margin-top:4px"></div>' +
+    '<div class="pv-azioni" style="margin-top:6px">' +
+    '<button type="button" class="btn-primary" onclick="clpSalvaNuovo()"><i class="ti ti-device-floppy"></i> Salva in anagrafica</button>' +
+    '<button type="button" class="btn-ghost" onclick="clpChiudi(\'' + esc(st.inputId) + '\')">Annulla</button></div></div>';
+  box.classList.add('show');
+  var c = document.getElementById('clp-cognome'); if (c && c.focus) c.focus();
+}
+async function clpSalvaNuovo() {
+  var st = window.__CLP || {}; var input = document.getElementById(st.inputId); if (!input) return;
+  var v = function (id) { return String((document.getElementById('clp-' + id) || {}).value || '').trim(); };
+  var err = document.getElementById('clp-errore');
+  var dica = function (t) { if (err) err.textContent = t; };
+  var cognome = v('cognome'), nome = v('nome'), cf = cfNormalizza(v('cf'));
+  if (!cognome || !nome) { dica('Servono cognome e nome.'); return; }
+  if (!cf) { dica('Serve il codice fiscale: senza, la persona non si riconosce la prossima volta.'); return; }
+  if (!cfValido(cf)) { dica(cfMotivo(cf) || 'Il codice fiscale non è valido.'); return; }
+  var gia = await anagGiaCensita(cf, '');
+  if (gia) { dica('Questo codice fiscale è già in anagrafica: ' + (gia.nominativo || '') + '. Lo riprendo.'); window.__CLP.righe = [gia]; clpScegli(0); return; }
+  var riga = { tipo: 'fisica', cognome: cognome, nome: nome, nominativo: (cognome + ' ' + nome).toUpperCase(), codice_fiscale: cf,
+               data_nascita: v('nascita') || null, professione: v('professione') || null, cellulare: v('cellulare') || null,
+               creato_da: currentUser ? currentUser.id : null };
+  try {
+    var r = await db.from('quote_anagrafiche').insert(riga).select('*').single();
+    if (r.error) throw r.error;
+    var a = Object.assign({}, riga, r.data || {});
+    if (typeof logMovimento === 'function') logMovimento('Nuovo cliente censito (' + ((clpReg()[st.inputId] || {}).origine || 'ricerca cliente') + ') · ' + riga.nominativo, 'cliente');
+    window.__CLP.righe = [a]; clpScegli(0);
+  } catch (e) { dica('Non è stato possibile salvare: ' + (e && e.message ? e.message : e)); }
+}
+/* Un clic fuori chiude la tendina. Dentro no: la scheda nuova ha sei campi. */
+document.addEventListener('mousedown', function (ev) {
+  document.querySelectorAll('.clp-res.show').forEach(function (box) {
+    var wrap = box.closest('.geo-wrap') || box.parentElement;
+    if (wrap && !wrap.contains(ev.target)) { box.classList.remove('show'); box.innerHTML = ''; }
+  });
+});
 
 /* ══════════ ANAGRAFICHE (modello Assieasy) ══════════ */
 let ANAG_TIPO = 'fisica';

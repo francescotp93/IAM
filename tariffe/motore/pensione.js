@@ -83,7 +83,7 @@
 (function () {
 'use strict';
 
-var VERSIONE = 'pensione-2026-09-12';
+var VERSIONE = 'pensione-2026-09-17';
 
 /* Il motore fiscale. Nel browser arriva da window, in Node da require: si
    prende quello che c'è. Senza, il modulo NON inventa un'imposta — dice che
@@ -286,6 +286,64 @@ function etaDaNascita(dataNascita, oggi) {
   var m = o.getMonth() - d.getMonth();
   if (m < 0 || (m === 0 && o.getDate() < d.getDate())) anni--;
   return (anni >= 0 && anni < 120) ? anni : null;
+}
+
+/* ══ DALLA SCHEDA CLIENTE ═══════════════════════════════════════════════════
+   Dal 17/09/2026 l'analisi parte da una persona dell'anagrafica, non da un
+   nome scritto a mano. Quello che la scheda sa non si richiede: la data di
+   nascita dà l'età, la professione PROPONE il tipo di lavoro. Propone, non
+   decide: la professione è testo libero scritto da persone diverse in momenti
+   diversi, e un autonomo calcolato come dipendente sono nove punti di
+   aliquota di computo. Si dice che è stata dedotta, e resta modificabile.
+
+   L'ORDINE DELL'ELENCO CONTA, e il primo giro lo aveva sbagliato: «Agente di
+   polizia» finiva fra gli autonomi perché «agente» compariva prima di
+   «polizia». Dal più specifico al più generico: i titoli professionali, poi i
+   mestieri da dipendente, in fondo le parole larghe («agente», «titolare»,
+   «autonomo») che da sole non bastano. */
+var PROFESSIONI = [
+  { re: /avvoc|medic|chirurg|ingegn|architett|commercialist|notai|geometr|dentist|odontoiatr|veterinar|psicolog|farmacist|attuar|biolog|chimic|agronom|giornalist/i, lavoro: 'professionista' },
+  { re: /impiegat|operai|dirigent|quadro|insegnant|docent|infermier|dipendent|funzionar|magazzinier|commess|autist|metalmeccanic|bancari|militare|carabinier|polizi|vigile|oss\b|educator|bidell/i, lavoro: 'dipendente' },
+  { re: /artigian|commerciant|negoz|imprendit|titolare|autonom|partita iva|p\.?iva|agente|rappresentant|idraulic|elettricist|muratore|parrucchier|estetist|ristorator|barista|tassist|autotrasport|coltivat|agricolt|allevat/i, lavoro: 'autonomo' },
+];
+function lavoroDaProfessione(p) {
+  var t = String(p || '');
+  if (!t.trim()) return null;
+  for (var i = 0; i < PROFESSIONI.length; i++) if (PROFESSIONI[i].re.test(t)) return PROFESSIONI[i].lavoro;
+  return null;
+}
+
+/* Il nome sul foglio è «Nome Cognome» quando la scheda li ha separati; il
+   nominativo (che in archivio è MAIUSCOLO, «ROSSI MARIO») è il ripiego. Un
+   messaggio che comincia con «Ciao ROSSI» lo legge il cliente. */
+function nomeCliente(a) {
+  a = a || {};
+  var nc = [a.nome, a.cognome].map(function (x) { return String(x || '').trim(); }).filter(Boolean).join(' ');
+  return nc || String(a.nominativo || '').trim();
+}
+
+/* Cosa si riprende dalla scheda, cosa si deduce, cosa resta da chiedere.
+   Restituisce anche le NOTE da mostrare: un campo riempito da solo, senza dire
+   da dove viene, è un campo che nessuno ricontrolla. */
+function daAnagrafica(a, oggi) {
+  if (!a || typeof a !== 'object' || !a.id) return { ok: false, motivo: 'Anagrafica non trovata.' };
+  if (a.tipo === 'giuridica') return { ok: false, motivo: 'Il calcolo della pensione si fa su una persona fisica, non su una società.' };
+  var eta = etaDaNascita(a.data_nascita, oggi);
+  var dedotto = lavoroDaProfessione(a.professione);
+  var note = [];
+  if (eta) note.push({ tipo: 'eta', testo: 'età ' + eta + ' anni dalla data di nascita' });
+  else note.push({ tipo: 'eta-manca', testo: 'età non ricavabile: in anagrafica manca la data di nascita, scrivila a mano' });
+  if (dedotto) note.push({ tipo: 'lavoro-dedotto', testo: 'tipo di lavoro ' + LAVORI[dedotto].etichetta.toLowerCase() + ' dedotto da «' + String(a.professione) + '» — controllalo' });
+  else if (a.professione) note.push({ tipo: 'lavoro-ignoto', testo: 'la professione in anagrafica («' + String(a.professione) + '») non è riconducibile a un tipo: scegli tu' });
+  else note.push({ tipo: 'lavoro-manca', testo: 'in anagrafica non c\'è la professione: scegli il tipo di lavoro' });
+  return {
+    ok: true,
+    cliente: { id: a.id, nome: nomeCliente(a), telefono: a.cellulare || a.telefono || '', email: a.email || '' },
+    eta: eta,
+    lavoroDedotto: dedotto,
+    note: note,
+    daChiedere: ['a che età ha cominciato a lavorare', 'quanto guadagna al mese'],
+  };
 }
 
 /* Quanti anni di contributi avrà AL PENSIONAMENTO — non quanti ne ha adesso.
@@ -873,6 +931,7 @@ function problemiDelFoglio(d) {
     if (!(e.eta > 0)) p.push('Manca l\'età della persona.');
   }
   if (!d || !d.cliente || !String(d.cliente.nome || '').trim()) p.push('Manca il nome del cliente: un foglio senza intestatario non si consegna.');
+  else if (!d.cliente.id) p.push('Il foglio si intesta a un cliente dell\'anagrafica: scegli o censisci la persona, niente nominativi volanti.');
   if (!d || !d.consulente || !String(d.consulente.nome || '').trim()) p.push('Manca il consulente che firma.');
   return p;
 }
@@ -1048,13 +1107,14 @@ function schedaArchivio(d) {
   var e = d.esito;
   if (!e || typeof e !== 'object' || !(e.redditoNettoMensile >= 0)) problemi.push('Il calcolo non è riuscito: non c\'è niente da archiviare.');
   if (!d.consulente || !String(d.consulente.nome || '').trim()) problemi.push('Manca il consulente che firma: un\'analisi che non è di nessuno non si archivia.');
+  if (!d.anagraficaId) problemi.push('Manca il cliente dell\'anagrafica: ogni analisi è agganciata a una scheda, non a un nome.');
   if (problemi.length) return { ok: false, problemi: problemi };
 
   var cli = d.cliente || {}, con = d.consulente || {};
   return {
     ok: true,
     riga: {
-      anagrafica_id: d.anagraficaId || null,
+      anagrafica_id: d.anagraficaId,
       titolo: 'Pensione · ' + (String(cli.nome || '').trim() || 'senza intestatario'),
       dati: {
         eta: e.eta, lavoro: e.lavoro, etichettaLavoro: e.etichettaLavoro,
@@ -1133,6 +1193,9 @@ var API = {
   MENSILITA_PENSIONE: MENSILITA_PENSIONE,
   MENSILITA_RENDITA: MENSILITA_RENDITA,
   etaDaNascita: etaDaNascita,
+  lavoroDaProfessione: lavoroDaProfessione,
+  nomeCliente: nomeCliente,
+  daAnagrafica: daAnagrafica,
   carriera: carriera,
   tassoLordo: tassoLordo,
   rendimentoNetto: rendimentoNetto,

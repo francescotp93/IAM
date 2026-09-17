@@ -51,6 +51,9 @@ export function preparaRiga(corpo, utente) {
     return { ok: false, errore: 'La scheda non porta la versione delle regole di calcolo.' };
   }
   if (!r.risultato || typeof r.risultato !== 'object') return { ok: false, errore: 'La scheda non porta il risultato.' };
+  /* Dal 17/09/2026 ogni analisi e' agganciata a una scheda dell'anagrafica:
+     un nome scritto a mano non basta, fra un anno non si saprebbe di chi era. */
+  if (!UUID.test(String(r.anagrafica_id || ''))) return { ok: false, errore: 'La scheda non porta il cliente dell\'anagrafica: scegli o censisci la persona prima di archiviare.' };
   if (!r.parametri_usati || typeof r.parametri_usati !== 'object') {
     return { ok: false, errore: 'La scheda non porta i parametri usati.' };
   }
@@ -58,7 +61,7 @@ export function preparaRiga(corpo, utente) {
   const riga = {
     /* MAI da `r.creato_da`: vedi la regola 1 in cima al file. */
     creato_da: utente.id,
-    anagrafica_id: UUID.test(String(r.anagrafica_id || '')) ? r.anagrafica_id : null,
+    anagrafica_id: r.anagrafica_id,
     titolo: String(r.titolo || 'Analisi previdenziale').trim().slice(0, 200),
     dati: r.dati && typeof r.dati === 'object' ? r.dati : {},
     obiettivo: r.obiettivo && typeof r.obiettivo === 'object' ? r.obiettivo : {},

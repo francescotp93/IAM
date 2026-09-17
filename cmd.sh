@@ -1,27 +1,37 @@
 echo "== ora"; date '+%F %T %Z'
-echo "== 1. metto da parte il file del servizio (si rimette dov'era in un secondo)"
-mkdir -p /root/servizi-sospesi
-if [ -f /etc/systemd/system/groupama-scraper.service ]; then
-  cp -a /etc/systemd/system/groupama-scraper.service /root/servizi-sospesi/groupama-scraper.service
-  echo "copia di sicurezza: /root/servizi-sospesi/groupama-scraper.service"
-  systemctl stop groupama-scraper.service 2>&1
-  mv /etc/systemd/system/groupama-scraper.service /root/servizi-sospesi/groupama-scraper.service.SOSPESO
-  systemctl daemon-reload
-  echo "file spostato"
-else
-  echo "ATTENZIONE: il file non e' dove pensavo, non tocco niente"
-fi
-sleep 2
-echo
-echo "== 2. CONTROPROVA: provo ad accenderlo, DEVE fallire"
-systemctl start groupama-scraper.service 2>&1 | head -3
-echo -n "stato: "; systemctl is-active groupama-scraper.service 2>&1
-echo -n "risponde sulla 4500? "; curl -s --max-time 5 http://127.0.0.1:4500/loginstate || echo "NO — e' fermo"
-echo
-echo "== 3. QUANTE VOLTE HA CHIESTO UN CODICE OGGI, e a ogni riavvio"
-journalctl -u groupama-scraper --since "today" --no-pager -o short 2>/dev/null | grep -cE "schermata OTP raggiunta" | sed 's/^/codici chiesti oggi: /'
-journalctl -u groupama-scraper --since "today" --no-pager -o short 2>/dev/null | grep -E "schermata OTP raggiunta|Started groupama|rientro automatico: provo" | tail -30
-echo
-echo "== 4. gli altri restano su"
-for n in moto allianz italiana hdi axa; do printf '%-10s %s\n' "$n" "$(systemctl is-active $n-scraper.service 2>/dev/null)"; done
-printf '%-10s %s\n' "backend" "$(systemctl is-active withus-backend 2>/dev/null)"
+rm -rf /tmp/sonda && mkdir -p /tmp/sonda
+ln -s /opt/withus-backend/server/node_modules /tmp/sonda/node_modules
+cat > /tmp/sonda/sonda.mjs <<'JS'
+import { caselleDisponibili, conImap } from '/opt/withus-backend/server/mail.js';
+import { simpleParser } from 'mailparser';
+const caselle = caselleDisponibili();
+console.log('caselle configurate: ' + caselle.length);
+for (const c of caselle) {
+  const dom = (String(c).split('@')[1] || '').toLowerCase();
+  console.log('--- casella @' + dom + ' ---');
+  try {
+    await conImap(c, async (client) => {
+      const lock = await client.getMailboxLock('INBOX');
+      try {
+        const tot = client.mailbox ? client.mailbox.exists : 0;
+        const da = Math.max(1, tot - 19);
+        const out = [];
+        for await (const m of client.fetch(da + ':*', { source: true, internalDate: true })) {
+          const q = m.internalDate ? new Date(m.internalDate) : null;
+          const p = await simpleParser(m.source).catch(() => null);
+          const a = p && p.from && p.from.value && p.from.value[0] ? String(p.from.value[0].address || '') : '';
+          const d = (a.split('@')[1] || '(sconosciuto)').toLowerCase();
+          out.push({ t: q ? q.getTime() : 0, riga: '  ' + (q ? q.toISOString().replace('T',' ').slice(0,19) : '        ?        ') + '  @' + d });
+        }
+        out.sort((x,y) => y.t - x.t);
+        console.log('  ultimi ' + out.length + ' messaggi, dal piu\' recente (ora UTC, solo il dominio di chi scrive):');
+        for (const o of out) console.log(o.riga);
+      } finally { lock.release(); }
+    });
+  } catch (e) { console.log('  casella non leggibile: ' + String(e && e.message || e).slice(0,140)); }
+}
+JS
+cd /opt/withus-backend/server
+set -a; . ./.env 2>/dev/null; set +a
+node /tmp/sonda/sonda.mjs 2>&1 | tail -55
+rm -rf /tmp/sonda

@@ -1,22 +1,17 @@
-id: tessera2-1789628630  exit: 0  2026-09-17 07:04:22
+id: cerchio-1789628712  exit: 0  2026-09-17 07:09:11
 ----
-== HEAD backend: 87d3fc8 (atteso 87d3fc8) dopo ~10 s
-== md5 servito vs disco
-/nuovo-preventivo/index.html servito=403ad6ed disco=403ad6ed OK
-/index.html servito=d8e8b13f disco=d8e8b13f OK
-/withus-one.js servito=b74ff96e disco=b74ff96e OK
-== la scocca servita ha quoto-apri:
-2
-== IAM chiede la scocca con la versione nuova:
-withus-one.js?v=20260917a
-== QUOTO servito senza loadUtenti:
-0
-== siti:
-200 https://iam.withusassicurazioni.it/
-200 https://iam.withusassicurazioni.it/nuovo-preventivo/
-200 https://api.withusassicurazioni.it/health
-== backend:
-active
-Sep 17 07:04:21 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Sep 17 07:04:21 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 17 07:04:21 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 9.298s CPU time over 10.337s wall clock time, 80.3M memory peak.
+aspetto il rilascio e un giro di vigilanza
+== ora
+2026-09-17 07:09:10
+== HEAD: 079636f
+== il riconoscimento del nome c'è? /opt/withus-backend/server/otpPosta.js:2 /opt/withus-backend/server/fonti.js:2 
+== stato groupama
+{"running":false,"step":"attesa_otp","since":1789628270081,"msg":"Credenziali OK — inserisci il codice OTP ricevuto via email"}
+== IL PUNTO: righe [otp-posta]
+Sep 17 07:03:46 vps-d6443a46 node[2951776]: [vigilanza-fonti] giro 207 · controllate 7 · cadute 0 · rientrate 0
+Sep 17 07:04:20 vps-d6443a46 node[3089599]: [vigilanza-fonti] memoria ripresa da disco: 10 fonti
+Sep 17 07:04:20 vps-d6443a46 node[3089599]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
+Sep 17 07:04:54 vps-d6443a46 node[3089599]: [vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
+Sep 17 07:05:21 vps-d6443a46 node[3090061]: [vigilanza-fonti] memoria ripresa da disco: 10 fonti
+Sep 17 07:05:21 vps-d6443a46 node[3090061]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
+Sep 17 07:05:54 vps-d6443a46 node[3090061]: [vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0

@@ -1,14 +1,8 @@
-echo "== ora"; date '+%F %T'
-echo "== scheda del servizio"
-systemctl show notifica-telegram --no-pager -p FragmentPath -p Description -p ExecStart -p Type -p Restart -p ActiveEnterTimestamp -p InactiveEnterTimestamp -p ExecMainStartTimestamp -p ExecMainExitTimestamp -p NRestarts -p Result 2>&1
-echo "== file dell'unita' (senza righe di ambiente)"
-F=$(systemctl show notifica-telegram -p FragmentPath --value 2>/dev/null)
-if [ -n "$F" ] && [ -f "$F" ]; then sed -e 's/\(TOKEN[^=]*=\).*/\1***/I' -e 's/\(KEY[^=]*=\).*/\1***/I' -e 's/\(PASS[^=]*=\).*/\1***/I' -e 's/\(SECRET[^=]*=\).*/\1***/I' "$F"; else echo "nessun file"; fi
-echo "== prima e ultima traccia nel diario (tutta la storia disponibile)"
-journalctl -u notifica-telegram --no-pager -o short -n 1 2>/dev/null
-echo "   ---"
-journalctl -u notifica-telegram --no-pager -o short 2>/dev/null | head -3
-echo "== ultime 25 righe"
-journalctl -u notifica-telegram --no-pager -o short 2>/dev/null | tail -25
-echo "== quanto indietro arriva il diario"
-journalctl --no-pager -o short -n 1 --since "@0" 2>/dev/null | head -1
+ATTESO=224a925
+for i in $(seq 1 40); do H=$(git -C /opt/withus-backend rev-parse --short=7 HEAD 2>/dev/null); [ "$H" = "$ATTESO" ] && break; sleep 5; done
+echo "== HEAD backend: $H (atteso $ATTESO) dopo ~$((i*5)) s"
+a=$(curl -s https://iam.withusassicurazioni.it/nuovo-preventivo/index.html | md5sum | cut -c1-8); b=$(md5sum /opt/withus-backend/index.html | cut -c1-8); echo "index servito=$a disco=$b $([ "$a" = "$b" ] && echo OK || echo DIVERSO)"
+echo "== motore datore servito:"; curl -s -o /dev/null -w '%{http_code}\n' https://iam.withusassicurazioni.it/nuovo-preventivo/tariffe/motore/tfr-datore.js
+echo "== backend attivo e parametri serviti (chiavi tfr_*):"; systemctl is-active withus-backend
+TOK=$(grep -o '"anon"' /dev/null); curl -s -o /dev/null -w 'numeri senza token: %{http_code}\n' https://api.withusassicurazioni.it/parametri-previdenziali/numeri
+journalctl -u withus-autopull --no-pager -n 8 2>/dev/null | grep autopull | tail -3

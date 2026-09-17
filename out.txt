@@ -1,11 +1,16 @@
-id: lav1-pr3-1789631140  exit: 0  2026-09-17 07:49:46
+id: lav1-pr3-bis-1789631486  exit: 0  2026-09-17 07:54:30
 ----
-== HEAD backend: 480baa6 (atteso 4bc2bcf) dopo ~200 s
-index servito=6047dc9a disco=6047dc9a OK
-404 pdf-withus.js
-200 tfr-datore.js
-200 pensione.js
-200 irpef.js
-== backend:
-active
-health 200
+== HEAD backend: 4bc2bcf (atteso 4bc2bcf) dopo ~135 s
+index servito=1fc58654 disco=1fc58654 OK
+200 pdf-withus.js
+== ultimi giri autopull:
+Sep 17 07:51:01 vps-d6443a46 autopull.sh[3096698]: [autopull] kube-scraper.service riavviato
+Sep 17 07:52:31 vps-d6443a46 autopull.sh[3096698]: [autopull] moto-scraper.service riavviato
+Sep 17 07:52:46 vps-d6443a46 autopull.sh[3096698]: [autopull] prima-scraper.service riavviato
+Sep 17 07:54:17 vps-d6443a46 autopull.sh[3096698]: [autopull] quotiamo-scraper.service riavviato
+Sep 17 07:54:17 vps-d6443a46 autopull.sh[3096698]: [autopull] fatto.
+Sep 17 07:54:25 vps-d6443a46 autopull.sh[3101220]: [autopull] 2026-09-17 07:54:25 aggiorno 480baa6 -> 4bc2bcf
+Sep 17 07:54:26 vps-d6443a46 autopull.sh[3101220]: [autopull] withus-backend riavviato ✅
+Sep 17 07:54:27 vps-d6443a46 autopull.sh[3101220]: [autopull] fatto.
+== scraper attivi:
+10

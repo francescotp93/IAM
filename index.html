@@ -63,6 +63,7 @@
 <script src="tariffe/motore/tutelalegale.js?v=20260817"></script>
 <script src="tariffe/motore/irpef.js?v=20260912"></script>
 <script src="tariffe/motore/tfr-datore.js?v=20260917"></script>
+<script src="tariffe/motore/pdf-withus.js?v=20260917"></script>
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
@@ -4468,7 +4469,7 @@ function pensRendi(e) {
       esc((PENS.cliente && PENS.cliente.telefono) || '') + '" placeholder="per WhatsApp — es. 3331234567"></div>' +
     '</div>' +
     '<div class="pv-azioni">' +
-      '<button class="btn-primary" onclick="pensFoglio()"><i class="ti ti-printer"></i> Apri il foglio da stampare</button>' +
+      '<button class="btn-primary" onclick="pensFoglio()"><i class="ti ti-file-type-pdf"></i> Scarica il foglio in PDF</button>' +
       '<button class="btn-ghost" onclick="pensWhatsApp()"><i class="ti ti-brand-whatsapp"></i> Messaggio WhatsApp</button>' +
     '</div>' +
     '<div class="pv-piccolo" style="margin-top:9px">WhatsApp non permette di allegare un file da un collegamento: ' +
@@ -4506,17 +4507,49 @@ function pensDatiFoglio() {
   };
 }
 
+/* Il foglio esce in PDF con la stessa carta intestata del preventivo
+   personalizzato: il motore produce il documento strutturato
+   (Pensione.documentoPdf), pdf-withus.js lo disegna con le primitive del
+   personalizzato, jsPDF si carica solo adesso. Se il generatore non si
+   carica (niente rete) resta il foglio HTML da stampare: meglio un foglio
+   in meno bello che nessun foglio davanti al cliente. */
+async function pensPdfBlob(d) {
+  var jsPDF = await ppCaricaJsPdf();
+  var logo = await ppLogo();
+  var az = await ppAzienda();
+  var r = Pensione.documentoPdf(Object.assign({}, d, { azienda: {
+    ragioneSociale: az.rs || '', sede: az.sede || '', piva: az.piva || '',
+    rui: (typeof ppRuiTesto === 'function' && az.rui_numero) ? ppRuiTesto(az.rui_sezione, az.rui_numero, az.rui_data) : '',
+    contatti: [az.tel, az.email, az.pec].filter(Boolean) } }));
+  if (!r.ok) throw new Error(r.problemi.join(' '));
+  var doc = PdfWithus.disegna(jsPDF, r.documento, { logo: logo });
+  return { blob: doc.output('blob'), nomeFile: r.documento.nomeFile };
+}
+
 function pensFoglio() {
   if (!PENS.esito) { alert('Prima calcola: il foglio si costruisce sul risultato.'); return; }
   var d = pensDatiFoglio();
-  var r = Pensione.foglioHtml(d);
-  if (!r.ok) { alert('Non posso produrre il foglio:\n\n· ' + r.problemi.join('\n· ')); return; }
-  var w = window.open('', '_blank');
-  if (!w) { alert('Il browser ha bloccato la finestra: consenti le finestre per stampare il foglio.'); return; }
-  w.document.write(r.html); w.document.close();
-  /* PRIMA il foglio, POI l'archivio. Il consulente e' seduto davanti a un
-     cliente: nessun salvataggio deve poter trattenere la stampa. */
-  pensArchivia(d);
+  /* Il rifiuto e' SINCRONO e viene prima di tutto: niente si scarica e niente
+     va a registro finche' mancano cliente o firma. */
+  var problemi = Pensione.problemiDelFoglio(d);
+  if (problemi.length) { alert('Non posso produrre il foglio:\n\n· ' + problemi.join('\n· ')); return; }
+  var box = document.getElementById('pens-archivio');
+  var dica = function (t, colore) { if (box) box.innerHTML = '<div style="margin-top:10px;font-size:12.5px;color:' + colore + '">' + esc(t) + '</div>'; };
+  dica('Preparo il PDF…', 'var(--pv-ink2)');
+  pensPdfBlob(d).then(function (r) {
+    ppScaricaBlob(r.blob, r.nomeFile);
+    /* PRIMA il foglio, POI l'archivio: nessun salvataggio deve poter
+       trattenere quello che il cliente sta aspettando. */
+    pensArchivia(d);
+  }).catch(function (e) {
+    /* Il PDF non e' uscito: si dice perche' e si offre il foglio HTML. */
+    var r = Pensione.foglioHtml(d);
+    if (r.ok) {
+      var w = window.open('', '_blank');
+      if (w) { w.document.write(r.html); w.document.close(); pensArchivia(d); }
+      else dica('Il PDF non si è generato (' + (e && e.message ? e.message : e) + ') e il browser ha bloccato la finestra del foglio: consenti le finestre e riprova.', 'var(--pv-rosso)');
+    } else dica('Il PDF non si è generato: ' + (e && e.message ? e.message : e), 'var(--pv-rosso)');
+  });
 }
 
 function pensWhatsApp() {
@@ -24112,88 +24145,26 @@ async function ppPdfBlob(d) {
     author: d.azienda.ragioneSociale, keywords: 'preventivo assicurativo personalizzato'
   });
 
-  const C = {
-    verde: [2, 152, 78], verdeVivo: [1, 192, 97], verdeScuro: [1, 107, 56],
-    verdeTenue: [234, 247, 240], scuro: [21, 33, 45], cerchio1: [14, 43, 28],
-    cerchio2: [17, 53, 36], testo: [31, 42, 55], testo2: [90, 107, 124],
-    testo3: [139, 154, 169], bordo: [221, 227, 233], sfondo: [245, 247, 248],
-    bianco: [255, 255, 255], chiaro: [188, 205, 214],
-    rosso: [192, 57, 43], rossoTenue: [253, 230, 230], ambra: [176, 106, 0]
-  };
-  const pageW = 210, pageH = 297, margin = 16, contentW = 178;
-  /* Helvetica di jsPDF non ha i caratteri tipografici italiani: un apostrofo
-     curvo uscirebbe come un geroglifico. Si normalizzano, non si tolgono. */
-  const safe = v => String(v == null ? '' : v)
-    .replace(/[’‘]/g, "'").replace(/[“”]/g, '"')
-    .replace(/[–—]/g, '-').replace(/…/g, '...')
-    /* Provato: le font standard di jsPDF non hanno il simbolo dell'euro e lo
-       fanno SPARIRE, senza dire niente. Un importo senza valuta su un foglio
-       che si consegna e' peggio di un importo scritto per esteso.
-       Due sostituzioni e non una perche' l'euro sta da tutte e due le parti:
-       «€ 480,00» davanti al numero, «5.000.000 €,» dopo — e con una regola
-       sola la seconda usciva «5.000.000 EUR , con», con lo spazio prima
-       della virgola. */
-    .replace(/€\s*(?=\d)/g, 'EUR ')
-    .replace(/\s*€/g, ' EUR');
-  const setFill = a => doc.setFillColor(a[0], a[1], a[2]);
-  const setText = a => doc.setTextColor(a[0], a[1], a[2]);
-  const setDraw = a => doc.setDrawColor(a[0], a[1], a[2]);
-  const scrivi = (v, x, y, size, style, color, maxW, leading) => {
-    doc.setFont('helvetica', style || 'normal'); doc.setFontSize(size || 9);
-    setText(color || C.testo);
-    const righe = maxW ? doc.splitTextToSize(safe(v), maxW) : [safe(v)];
-    doc.text(righe, x, y);
-    return y + righe.length * (leading || 4.4);
-  };
-  const scheda = (x, y, w, h, fill, stroke, r) => {
-    if (fill) setFill(fill);
-    if (stroke) { setDraw(stroke); doc.setLineWidth(.25); }
-    doc.roundedRect(x, y, w, h, r || 3, r || 3, stroke ? (fill ? 'FD' : 'S') : 'F');
-  };
-  const altezzaRighe = (v, size, maxW, leading) => {
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(size);
-    return doc.splitTextToSize(safe(v), maxW).length * leading;
-  };
-
-  // ── fascia scura con i cerchi astratti: la firma grafica del marchio ──
-  const fascia = (alta) => {
-    setFill(C.sfondo); doc.rect(0, 0, pageW, pageH, 'F');
-    setFill(C.scuro); doc.rect(0, 0, pageW, alta, 'F');
-    setFill(C.cerchio1); doc.circle(178, alta - 34, 24, 'F');
-    setFill(C.cerchio2); doc.circle(202, alta - 50, 19, 'F');
-    if (logo) { doc.addImage(logo, 'PNG', margin, 12, 27.6, 12); }
-    else {
-      scheda(margin, 12, 12, 12, C.verde, null, 3);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); setText(C.bianco);
-      doc.text('WU', margin + 6, 19.7, { align: 'center' });
-    }
-  };
+  /* LE PRIMITIVE SONO CONDIVISE (17/09/2026): tavolozza, fascia coi cerchi,
+     schede, intestazione, piede e filigrana stanno in
+     tariffe/motore/pdf-withus.js, e le usa anche il foglio dell'analisi
+     previdenziale. «Stessa interfaccia grafica» vuol dire lo stesso codice.
+     L'impaginato del preventivo — cliente e intermediario affiancati, il
+     premio, le descrizioni — resta qui. */
+  const P = PdfWithus.primitive(doc, logo);
+  const C = P.C;
+  const pageW = P.PAGINA.w, margin = P.PAGINA.margine, contentW = P.PAGINA.contenuto;
+  const safe = P.safe, setFill = P.setFill, setText = P.setText, setDraw = P.setDraw;
+  const scrivi = P.scrivi, scheda = P.scheda, altezzaRighe = P.altezzaRighe, fascia = P.fascia;
 
   // ── pagina 1 ──
   fascia(62);
-  // intestazione tipo carta intestata: la societa' di intermediazione
-  let yi = 31;
-  yi = scrivi(d.azienda.ragioneSociale, margin, yi, 10.5, 'bold', C.bianco, 110, 4.6);
-  yi = scrivi(d.azienda.sede, margin, yi + .6, 7.5, 'normal', C.chiaro, 110, 3.6);
-  yi = scrivi('P.IVA ' + d.azienda.piva + '  ·  RUI ' + d.azienda.rui, margin, yi + .4, 7.5, 'normal', C.chiaro, 118, 3.6);
-  if (d.azienda.contatti.length) scrivi(d.azienda.contatti.join('  ·  '), margin, yi + .4, 7.5, 'normal', C.chiaro, 118, 3.6);
-  // a destra: che documento e', e quale
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); setText(C.verdeVivo);
-  doc.text('PREVENTIVO PERSONALIZZATO', pageW - margin, 17, { align: 'right' });
-  doc.setFontSize(15); setText(C.bianco);
-  doc.text(safe(d.numero), pageW - margin, 24.5, { align: 'right' });
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); setText(C.chiaro);
-  doc.text('del ' + safe(d.data), pageW - margin, 30, { align: 'right' });
+  P.intestazione(d.azienda, 'PREVENTIVO PERSONALIZZATO', d.numero, 'del ' + d.data);
 
   let y = 70;
 
   // ── la banda: si vede prima di qualunque altra cosa ──
-  if (d.autorizzare) {
-    scheda(margin, y, contentW, 11, C.rossoTenue, C.rosso, 2);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); setText(C.rosso);
-    doc.text(safe(d.bandaAutorizzare), pageW / 2, y + 7.2, { align: 'center' });
-    y += 16;
-  }
+  if (d.autorizzare) y = P.banda(y, d.bandaAutorizzare, 'rosso');
 
   // ── cliente e intermediario, affiancati ──
   const colW = (contentW - 6) / 2, hCard = 42;
@@ -24259,32 +24230,14 @@ async function ppPdfBlob(d) {
 
   // ── il disclaimer, in calce ──
   const hDisc = 14 + altezzaRighe(d.disclaimer, 7.5, contentW - 16, 3.6);
-  if (y + hDisc > 272) { doc.addPage(); fascia(26); y = 40; }
+  y = P.spazio(y, hDisc);
   scheda(margin, y, contentW, hDisc, C.bianco, C.bordo, 3);
   scrivi('AVVERTENZE', margin + 8, y + 8, 7, 'bold', C.testo2);
   scrivi(d.disclaimer, margin + 8, y + 14, 7.5, 'normal', C.testo2, contentW - 16, 3.6);
 
-  // ── filigrana: seconda voce del «da autorizzare», non la prima ──
-  if (d.autorizzare && typeof doc.GState === 'function') {
-    const pagine = doc.getNumberOfPages();
-    for (let i = 1; i <= pagine; i++) {
-      doc.setPage(i);
-      doc.setGState(new doc.GState({ opacity: .09 }));
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(32); setText(C.rosso);
-      doc.text('DA AUTORIZZARE', pageW / 2, 175, { align: 'center', angle: 32 });
-      doc.setGState(new doc.GState({ opacity: 1 }));
-    }
-  }
-
-  // ── piede di pagina ──
-  const pagine = doc.getNumberOfPages();
-  for (let i = 1; i <= pagine; i++) {
-    doc.setPage(i);
-    setDraw(C.bordo); doc.setLineWidth(.25); doc.line(margin, 286, pageW - margin, 286);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); setText(C.testo2);
-    doc.text(safe(d.azienda.ragioneSociale + ' · Preventivo personalizzato'), margin, 291);
-    doc.text(safe(d.numero + '  |  Pagina ' + i + ' di ' + pagine), pageW - margin, 291, { align: 'right' });
-  }
+  // ── filigrana e piede: dalle primitive condivise ──
+  if (d.autorizzare) P.filigrana('DA AUTORIZZARE');
+  P.piede(d.azienda.ragioneSociale + ' · Preventivo personalizzato', d.numero);
 
   return doc.output('blob');
 }

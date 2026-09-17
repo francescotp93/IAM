@@ -2941,7 +2941,7 @@ const avvio = async () => {
       /* Meglio un pulsante che si rifiuta e dice perche', di un PDF con dei
          trattini al posto dei nomi: il primo lo risolve il consulente in dieci
          secondi, il secondo arriva al cliente. */
-      const r = await page.evaluate(() => {
+      const r = await page.evaluate(async () => {
         apriPensione();
         PENS.parametri = 'ok'; PENS.avvisi = [];
         document.getElementById('pens-eta').value = 38;
@@ -2952,9 +2952,11 @@ const avvio = async () => {
         PENS.cliente = null; pensRendi(PENS.esito);
         document.getElementById('pens-cons').value = '';
         window.__COLLAUDO.alerts = [];
-        const apri = window.open; let aperta = false;
+        const apri = window.open, scarica = window.ppScaricaBlob, pdf = window.pensPdfBlob; let aperta = false;
         window.open = () => { aperta = true; return null; };
-        try { pensFoglio(); } finally { window.open = apri; }
+        window.ppScaricaBlob = () => { aperta = true; };
+        window.pensPdfBlob = async () => { aperta = true; return { blob: new Blob(['x']), nomeFile: 'x.pdf' }; };
+        try { pensFoglio(); await new Promise(r => setTimeout(r, 60)); } finally { window.open = apri; window.ppScaricaBlob = scarica; window.pensPdfBlob = pdf; }
         return { aperta, avvisi: (window.__COLLAUDO.alerts || []).join(' ') };
       });
       deve(!r.aperta, 'ha aperto il foglio senza cliente e senza consulente');
@@ -2978,10 +2980,12 @@ const avvio = async () => {
           pensCalcola();
           PENS.cliente = { id: '11111111-1111-4111-8111-111111111111', nome: 'Mario Rossi', telefono: '' }; pensRendi(PENS.esito);
           document.getElementById('pens-cons').value = 'Francesco Oddo';
-          const apri = window.open;
+          const apri = window.open, scarica = window.ppScaricaBlob, pdf = window.pensPdfBlob;
           const vecchioFetch = window.fetch;
-          let corpo = null, scritto = '';
+          let corpo = null, scritto = '', scaricato = null;
           window.open = () => ({ document: { write() {}, close() {} } });
+          window.ppScaricaBlob = (b, nome) => { scaricato = nome; };
+          window.pensPdfBlob = async (d) => ({ blob: new Blob(['%PDF-finto']), nomeFile: Pensione.documentoPdf(d).documento.nomeFile });
           window.fetch = async (url, opts) => {
             if (String(url).includes('/analisi-previdenziali')) {
               corpo = JSON.parse(opts.body);
@@ -3001,13 +3005,14 @@ const avvio = async () => {
             /* Si rimette tutto com'era: una finestra finta lasciata in giro
                manderebbe in rosso le prove che vengono dopo, e a quel punto non
                si capisce piu' quale sia il guasto vero. */
-            window.open = apri; window.fetch = vecchioFetch;
+            window.open = apri; window.fetch = vecchioFetch; window.ppScaricaBlob = scarica; window.pensPdfBlob = pdf;
           }
-          return { corpo, testo: scritto };
+          return { corpo, testo: scritto, scaricato };
         };
         return { bene: await giro(true), male: await giro(false) };
       });
       deve(/archiviata/i.test(r.bene.testo), 'il salvataggio riuscito non lo dice: ' + r.bene.testo);
+      deve(/^Analisi-previdenziale-Mario-Rossi-.*\.pdf$/.test(r.bene.scaricato || ''), 'il foglio non e\' uscito come PDF col nome giusto: ' + r.bene.scaricato);
       deve(r.bene.corpo && r.bene.corpo.riga && r.bene.corpo.riga.versione_motore,
         'la scheda mandata a registro non porta la versione delle regole');
       deve(r.bene.corpo.riga.anagrafica_id === '11111111-1111-4111-8111-111111111111',
@@ -3233,6 +3238,56 @@ const avvio = async () => {
       deve(r.tesoreria, 'sopra i 50 non dice Tesoreria, neutro, vantaggio del dipendente');
       deve(r.dopoNo, '«no» non chiude la cascata e la scheda');
       return 'cascata di 5 campi, tabella con 5 voci poi spiegazione, 1.525 €/anno, Tesoreria sopra i 50';
+    });
+
+    await prova('pensione: il PDF ha la carta intestata del personalizzato, e sopra ci finiscono i numeri del foglio', async () => {
+      let disponibile = true;
+      try { await page.addScriptTag({ path: 'node_modules/jspdf/dist/jspdf.umd.min.js' }); } catch (e) { disponibile = false; }
+      if (!disponibile) return 'saltata: manca jspdf in locale (npm i --no-save jspdf@2.5.1)';
+      const r = await page.evaluate(async () => {
+        const Vero = window.jspdf.jsPDF;
+        const testi = [], forme = { cerchi: 0, rett: 0, tondi: 0 };
+        window.jspdf = { jsPDF: function (opts) {
+          const d = new Vero(opts);
+          const t = d.text.bind(d), c = d.circle.bind(d), rr = d.roundedRect.bind(d);
+          d.text = function (v, x, y, o) { testi.push(Array.isArray(v) ? v.join(' ') : String(v)); return t(v, x, y, o); };
+          d.circle = function () { forme.cerchi++; return c.apply(null, arguments); };
+          d.roundedRect = function () { forme.tondi++; return rr.apply(null, arguments); };
+          return d;
+        } };
+        PP_LOGO = ''; PP_AZIENDA = { rs: 'With Us Assicurazioni S.r.l.', sede: 'Via X 1, Roma', piva: '01234567890', rui_sezione: 'A', rui_numero: 'A000123456', tel: '06 1234' };
+        apriPensione(); pensPulisci();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        PENS.cliente = { id: 'a1', nome: 'Mario Rossi', telefono: '3331234567' };
+        document.getElementById('pens-lavoro').value = 'autonomo'; pensLavoroScelto();
+        document.querySelector('#pens-dip button[data-v="si"]').click();
+        document.getElementById('pens-eta').value = 45; document.getElementById('pens-reddito').value = 3500;
+        document.getElementById('pens-versamento').value = 200; document.getElementById('pens-inizio').value = 25;
+        document.getElementById('pens-dip-n').value = 10; document.getElementById('pens-dip-stip').value = 2000;
+        document.getElementById('pens-dip-forma').value = 'societa'; pensDatoreScritto();
+        pensCalcola();
+        document.getElementById('pens-cons').value = 'Francesco Oddo'; document.getElementById('pens-rui').value = 'B000123456';
+        const d = pensDatiFoglio();
+        const r = await pensPdfBlob(d);
+        const inizio = new TextDecoder('latin1').decode(await r.blob.slice(0, 5).arrayBuffer());
+        return { testi, forme, nome: r.nomeFile, inizio, peso: r.blob.size, gap: PENS.esito.gapMensile, annuoDatore: PENS.esito.datore.risparmioAnnuo };
+      });
+      deve(r.inizio === '%PDF-' && r.peso > 1000, 'non e\' un PDF vero: ' + r.inizio + ' ' + r.peso);
+      deve(/^Analisi-previdenziale-Mario-Rossi-/.test(r.nome), 'nome del file: ' + r.nome);
+      /* La carta intestata: i due cerchi della fascia, le schede tondeggianti. */
+      deve(r.forme.cerchi >= 2 && r.forme.tondi >= 4, 'manca la firma grafica (cerchi ' + r.forme.cerchi + ', schede ' + r.forme.tondi + ')');
+      const tutto = r.testi.join(' | ');
+      const servono = ['With Us Assicurazioni S.r.l.', 'ANALISI PREVIDENZIALE', 'CLIENTE', 'Mario Rossi', 'CONSULENTE', 'Francesco Oddo', 'RUI B000123456',
+        'OGGI PORTI A CASA', 'PENSIONE PUBBLICA', 'SE VERSI', 'Fondo di garanzia', 'Il primo anno', 'AVVERTENZE', 'Pagina 1 di'];
+      const mancano = servono.filter(t => !tutto.includes(t));
+      deve(!mancano.length, 'sul PDF non c\'e\': ' + mancano.join(' / '));
+      deve(!/€/.test(tutto) && /EUR/.test(tutto), 'l\'euro non e\' scritto per esteso (jsPDF lo farebbe sparire)');
+      deve(!/<\/?[bp]>/.test(tutto), 'nel PDF sono finiti tag HTML');
+      /* Gli stessi numeri del foglio, non una grafica somigliante. */
+      const gapTesto = Math.round(r.gap).toLocaleString('it-IT', { useGrouping: 'always' }) + ' EUR';
+      deve(tutto.includes(gapTesto), 'il divario ' + gapTesto + ' non e\' sul PDF');
+      deve(tutto.includes('1.525 EUR'), 'il risparmio annuo del datore (1.525 EUR) non e\' sul PDF');
+      return servono.length + ' voci, i due cerchi, ' + gapTesto + ' di divario e 1.525 EUR del datore';
     });
 
     await prova('pensione: la professione si deduce nell\'ordine giusto — «agente di polizia» non e\' un autonomo', async () => {

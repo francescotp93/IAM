@@ -3290,6 +3290,132 @@ const avvio = async () => {
       return servono.length + ' voci, i due cerchi, ' + gapTesto + ' di divario e 1.525 EUR del datore';
     });
 
+    /* ── LA CONSEGNA DEL FOGLIO PENSIONE (17/09/2026) ─────────────────────
+       Stesse porte del personalizzato: il segnalatore no, senza cliente no,
+       coi «da confermare» no. Email dalla casella dell'agenzia col PDF
+       allegato; WhatsApp col file da telefono, col collegamento da computer.
+       Il PDF non si disegna qui: ha gia' le sue prove. */
+    const preparaInvio = (o) => page.evaluate((o) => {
+      window.__SPIA = { mail: [], aperti: [], caricati: [], condivisi: [], avvisi: [], domande: [], archivio: 0 };
+      window.alert = m => window.__SPIA.avvisi.push(String(m));
+      window.prompt = () => '';
+      window.open = u => { window.__SPIA.aperti.push(String(u)); return null; };
+      window.pensPdfBlob = async (d) => ({ blob: new Blob(['%PDF-finto'], { type: 'application/pdf' }), nomeFile: Pensione.documentoPdf(d).documento.nomeFile });
+      window.pensArchivia = async () => { window.__SPIA.archivio++; };
+      payFetch = async (path, body) => { window.__SPIA.mail.push({ path, body }); if (o.mailErrore) throw new Error(o.mailErrore); return { ok: true }; };
+      db.storage = { from: () => ({
+        upload: async (path, blob, op) => { window.__SPIA.caricati.push({ path, op }); return { error: null }; },
+        createSignedUrl: async (path, sec) => ({ data: { signedUrl: 'https://archivio.esempio/' + path + '?token=xyz' }, error: null }) }) };
+      Object.defineProperty(navigator, 'canShare', { value: () => !!o.condivisioneNativa, configurable: true });
+      Object.defineProperty(navigator, 'share', { value: async d => { window.__SPIA.condivisi.push({ file: d.files && d.files[0] && d.files[0].name, testo: d.text }); }, configurable: true });
+      INTERM_CACHE = [
+        { id: 'c1', nome: 'Anna', cognome: 'Bianchi', attivo: true, iam_id: null, rui_numero: 'E000987654', rui_sezione: 'E', rui_data: '2021-05-12', veste: 'Collaboratrice sez. E' },
+        { id: 'c2', nome: 'Collaudo', cognome: 'Withus', attivo: true, iam_id: currentUser.id, rui_numero: 'B000123456', rui_sezione: 'B' },
+      ];
+      PP_AZIENDA = { rs: 'With Us Assicurazioni S.r.l.', rui_numero: 'A1' };
+      apriPensione(); pensPulisci();
+      PENS.parametri = 'ok'; PENS.avvisi = []; PENS.firmaId = null;
+      PENS.cliente = { id: '11111111-1111-4111-8111-111111111111', nome: 'Mario Rossi', telefono: '333 1234567', email: o.senzaEmail ? '' : 'mario.rossi@email.it' };
+      document.getElementById('pens-lavoro').value = o.lavoro || 'dipendente'; pensLavoroScelto();
+      if (o.tfrNo) document.querySelector('#pens-tfr button[data-v="no"]').click();
+      document.getElementById('pens-eta').value = 38; document.getElementById('pens-reddito').value = 1800;
+      document.getElementById('pens-versamento').value = 100; document.getElementById('pens-inizio').value = 25;
+      pensCalcola();
+      if (o.confermati) PENS.esito.daConfermare = [];
+    }, o || {});
+    const spiaInvio = () => page.evaluate(() => window.__SPIA);
+
+    await prova('pensione/invio: chi firma si sceglie fra i collaboratori, ed e\' preimpostato su chi e\' collegato', async () => {
+      await preparaInvio({ confermati: true });
+      const r = await page.evaluate(() => {
+        const sel = document.getElementById('pens-firma-sel');
+        const opzioni = [...sel.options].map(o => o.textContent);
+        const preimpostato = { valore: sel.value, nome: document.getElementById('pens-cons').value, rui: document.getElementById('pens-rui').value };
+        pensFirmaScelta('c1');
+        const altro = { nome: document.getElementById('pens-cons').value, rui: document.getElementById('pens-rui').value, ruolo: document.getElementById('pens-ruolo').value,
+          firmaNelTesto: /Bianchi Anna/.test(document.getElementById('pens-anteprima').value) };
+        return { opzioni, preimpostato, altro };
+      });
+      deve(r.opzioni.length === 3 && r.opzioni.some(o => /Bianchi Anna/.test(o)), 'la tendina non elenca i collaboratori: ' + JSON.stringify(r.opzioni));
+      deve(r.preimpostato.valore === 'c2' && /Withus Collaudo/.test(r.preimpostato.nome) && /B000123456/.test(r.preimpostato.rui), 'non e\' preimpostato su chi e\' collegato: ' + JSON.stringify(r.preimpostato));
+      deve(/Bianchi Anna/.test(r.altro.nome) && /E000987654/.test(r.altro.rui) && /sez\. E/.test(r.altro.ruolo) && r.altro.firmaNelTesto, 'scegliendo un\'altra persona nome, RUI, ruolo e firma del messaggio non seguono: ' + JSON.stringify(r.altro));
+      return 'preimpostato sul collegato (RUI B000123456), cambiabile in Bianchi Anna';
+    });
+
+    await prova('pensione/invio: il tono cambia il testo, e il caso lo decide il risultato', async () => {
+      await preparaInvio({ confermati: true });
+      const r = await page.evaluate(() => {
+        const ta = document.getElementById('pens-anteprima');
+        const ami = ta.value; pensTono('professionale'); const pro = ta.value;
+        /* Il ritocco del consulente sopravvive a un RICALCOLO (la scheda si
+           ridisegna tutta), mentre cambiare tono e' un gesto esplicito: riscrive. */
+        ta.value = 'Testo mio.'; ta.dispatchEvent(new Event('input'));
+        document.getElementById('pens-versamento').value = 150; pensCalcola();
+        const dopoRicalcolo = document.getElementById('pens-anteprima').value;
+        pensTono('amichevole'); const dopoTono = document.getElementById('pens-anteprima').value;
+        return { ami, pro, dopoRicalcolo, dopoTono };
+      });
+      deve(/^Ciao Mario,/.test(r.ami) && /TFR in azienda e TFR nel fondo/.test(r.ami), 'amichevole: non da\' del tu o non parla del TFR al dipendente: ' + r.ami.slice(0, 120));
+      deve(/^Gentile Mario Rossi,/.test(r.pro) && !/\bCiao\b/.test(r.pro), 'professionale: da\' ancora del tu');
+      deve(r.dopoRicalcolo === 'Testo mio.', 'un ricalcolo cancella il testo ritoccato dal consulente: ' + r.dopoRicalcolo.slice(0, 60));
+      deve(/^Ciao Mario,/.test(r.dopoTono) && r.dopoTono !== 'Testo mio.', 'cambiare tono non riscrive il testo: ' + r.dopoTono.slice(0, 80));
+      await preparaInvio({ confermati: true, tfrNo: true });
+      const senza = await page.evaluate(() => document.getElementById('pens-anteprima').value);
+      deve(!/TFR/.test(senza), 'con «TFR no» il messaggio nomina il TFR');
+      return 'tu/Lei, TFR solo a chi ce l\'ha, il ritocco resta';
+    });
+
+    await prova('pensione/invio: l\'email passa dalla posta dell\'agenzia con il PDF allegato, e va a registro', async () => {
+      await preparaInvio({ confermati: true });
+      await page.evaluate(() => pensInviaEmail());
+      const s = await spiaInvio();
+      deve(s.mail.length === 1 && s.mail[0].path === '/mail/send', 'chiamate: ' + JSON.stringify(s.mail.map(m => m.path)));
+      const b = s.mail[0].body;
+      deve(b.to === 'mario.rossi@email.it', 'destinatario: ' + b.to);
+      deve(/pensione in una pagina/i.test(b.subject) && /Mario Rossi/.test(b.subject), 'oggetto: ' + b.subject);
+      deve(b.attachments.length === 1 && /^Analisi-previdenziale-Mario-Rossi-.*\.pdf$/.test(b.attachments[0].name) && b.attachments[0].content.length > 0, 'allegato: ' + JSON.stringify(b.attachments.map(a => a.name)));
+      deve(/Ciao Mario/.test(b.html) && /illustrativo/.test(b.html) && /Withus Collaudo/.test(b.html), 'il corpo non e\' il testo dell\'anteprima firmato');
+      deve(s.archivio === 1, 'l\'analisi mandata non e\' andata a registro');
+      return 'un allegato PDF, oggetto col nome, firma, a registro';
+    });
+
+    await prova('pensione/invio: WhatsApp — il file da telefono, il collegamento firmato da computer, sempre col numero normalizzato', async () => {
+      await preparaInvio({ confermati: true, condivisioneNativa: true });
+      await page.evaluate(() => pensWhatsApp());
+      let s = await spiaInvio();
+      deve(s.condivisi.length === 1 && /\.pdf$/.test(s.condivisi[0].file) && /Ciao Mario/.test(s.condivisi[0].testo), 'da telefono non condivide il PDF col testo: ' + JSON.stringify(s.condivisi));
+      deve(s.caricati.length === 0 && s.aperti.length === 0 && s.archivio === 1, 'da telefono archivia il file o apre wa.me');
+      await preparaInvio({ confermati: true, condivisioneNativa: false });
+      await page.evaluate(() => pensWhatsApp());
+      s = await spiaInvio();
+      deve(s.caricati.length === 1 && s.caricati[0].path === '11111111-1111-4111-8111-111111111111/analisi-previdenziale.pdf' && s.caricati[0].op.upsert === true, 'archivio: ' + JSON.stringify(s.caricati));
+      const url = decodeURIComponent(s.aperti[0] || '');
+      deve(url.startsWith('https://wa.me/393331234567?text='), 'numero: ' + url.slice(0, 40));
+      deve(/archivio\.esempio\/11111111/.test(url) && /valido fino al/.test(url) && /Ciao Mario/.test(url) && /illustrativo/.test(url), 'il messaggio non porta collegamento, scadenza e testo');
+      return 'file da telefono; link firmato, un file per cliente, 39 davanti';
+    });
+
+    await prova('pensione/invio: coi valori da confermare il foglio si scarica ma NON si manda; senza cliente nemmeno; il segnalatore niente', async () => {
+      await preparaInvio({});   /* la tariffa HDI e' ancora segnaposto: daConfermare non e' vuoto */
+      await page.evaluate(async () => { await pensInviaEmail(); await pensWhatsApp(); });
+      let s = await spiaInvio();
+      deve(s.mail.length === 0 && s.aperti.length === 0 && s.condivisi.length === 0 && s.caricati.length === 0, 'ha mandato lo stesso');
+      deve(s.avvisi.length === 2 && /da confermare/i.test(s.avvisi[0]) && /Tariffa HDI/.test(s.avvisi[0]), 'non dice perche\' e quale: ' + JSON.stringify(s.avvisi));
+      await preparaInvio({ confermati: true });
+      await page.evaluate(async () => { PENS.cliente = null; await pensInviaEmail(); });
+      s = await spiaInvio();
+      deve(s.mail.length === 0 && s.avvisi.length === 1 && /cliente/i.test(s.avvisi[0]), 'senza cliente manda lo stesso: ' + JSON.stringify(s.avvisi));
+      await preparaInvio({ confermati: true });
+      await page.evaluate(async () => { const prima = currentUser.profilo; currentUser.profilo = 'segnalatore'; await pensInviaEmail(); await pensWhatsApp(); currentUser.profilo = prima; });
+      s = await spiaInvio();
+      deve(s.mail.length === 0 && s.aperti.length === 0 && s.avvisi.length === 2 && s.avvisi.every(a => /[Ss]egnalatore/.test(a)), 'il segnalatore manda: ' + JSON.stringify(s.avvisi));
+      await preparaInvio({ confermati: true, mailErrore: 'Non hai accesso a questa casella.' });
+      await page.evaluate(() => pensInviaEmail());
+      s = await spiaInvio();
+      deve(s.avvisi.length === 1 && /casella di posta dell'agenzia/i.test(s.avvisi[0]) && /IAM/.test(s.avvisi[0]), 'senza casella mostra un 403: ' + JSON.stringify(s.avvisi));
+      return 'da confermare, senza cliente, segnalatore, senza casella: quattro porte chiuse e spiegate';
+    });
+
     await prova('pensione: la professione si deduce nell\'ordine giusto — «agente di polizia» non e\' un autonomo', async () => {
       /* IL CASO CHE DEVE FALLIRE. Nel primo giro «Agente di polizia» finiva
          fra gli autonomi, perche' nell'elenco «agente» veniva prima di
@@ -3317,34 +3443,6 @@ const avvio = async () => {
       deve(r.filter(c => c.atteso === null).every(c => c.avuto === null),
         'una professione non riconosciuta viene comunque attribuita a un tipo');
       return r.length + ' professioni, nessuna attribuita male';
-    });
-
-    await prova('pensione: il messaggio WhatsApp e\' precompilato e non promette niente', async () => {
-      const r = await page.evaluate(() => {
-        apriPensione();
-        PENS.parametri = 'ok'; PENS.avvisi = [];
-        PENS.cliente = { id: 'a1', nome: 'Mario Rossi', telefono: '3331234567' };
-        document.getElementById('pens-eta').value = 38;
-        document.getElementById('pens-reddito').value = 1800;
-        document.getElementById('pens-versamento').value = 100;
-        document.getElementById('pens-inizio').value = 25;
-        pensCalcola();
-        document.getElementById('pens-cons').value = 'Francesco Oddo';
-        document.getElementById('pens-tel').value = '3331234567';
-        const apri = window.open; let url = null;
-        window.open = (u) => { url = u; return null; };
-        try { pensWhatsApp(); } finally { window.open = apri; }
-        return { url, testo: decodeURIComponent(String(url).split('text=')[1] || ''),
-                 nota: document.getElementById('pens-esito').textContent };
-      });
-      deve(/^https:\/\/wa\.me\/393331234567\?text=/.test(r.url), 'il numero non e\' stato normalizzato col prefisso: ' + String(r.url).slice(0, 60));
-      deve(/Mario/.test(r.testo), 'il messaggio non saluta il cliente per nome');
-      deve(/illustrativo|non . una promessa/i.test(r.testo), 'il messaggio non dice che non e\' una promessa di rendimento');
-      deve(/Francesco Oddo/.test(r.testo), 'il messaggio non e\' firmato');
-      /* WhatsApp non allega file da un collegamento: dirlo evita che il
-         consulente creda di aver mandato il PDF e non l'abbia mandato. */
-      deve(/non permette di allegare/i.test(r.nota), 'la schermata non avverte che il PDF va allegato a mano');
-      return 'messaggio firmato, numero col prefisso, nessuna promessa';
     });
 
     await prova('pensione: i bottoni si vedono — niente bianco su bianco', async () => {

@@ -4048,6 +4048,9 @@ function openVita(){
 var PENS = {
   base: 'netto',          // il reddito indicato e' netto o lordo
   tfrInAzienda: true,     // dipendente: si mostra il confronto TFR? (si chiede, non si presume)
+  tono: 'amichevole',     // il tono dei testi di invio: amichevole | professionale
+  firmaId: null,          // il collaboratore che firma (quote_collaboratori.id); null = chi e' collegato
+  testoAMano: false,      // il consulente ha ritoccato l'anteprima: non la si riscrive piu' da sola
   datore: { haDipendenti: false, soglia: 'meno50', dipendenti: '', stipendio: '', mensilita: 13, forma: 'individuale' },
   mensilitaAMano: false,  // il consulente le ha scelte lui: non le tocchiamo piu'
   esito: null,
@@ -4062,6 +4065,7 @@ function apriPensione() {
      motivo per rifare un giro di rete, e chi ha il telefono in mano se ne
      accorge. */
   if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
+  if (typeof caricaIntermediari === 'function') caricaIntermediari().then(function () { if (PENS.esito) pensRendi(PENS.esito); });
   pensAvvisi();
   pensMensilitaProposta();
   pensCampiExtra();
@@ -4231,6 +4235,7 @@ function pensPulisci() {
   var l = document.getElementById('pens-lavoro'); if (l) l.value = 'dipendente';
   PENS.esito = null; PENS.cliente = null; PENS.mensilitaAMano = false;
   PENS.tfrInAzienda = true;
+  PENS.testoAMano = false;
   PENS.datore = { haDipendenti: false, soglia: 'meno50', dipendenti: '', stipendio: '', mensilita: 13, forma: 'individuale' };
   pensMensilitaProposta();
   pensCampiExtra();
@@ -4293,6 +4298,9 @@ function pensPerc(n, dec) { return ((Number(n) || 0) * 100).toFixed(dec == null 
 function pensRendi(e) {
   var box = document.getElementById('pens-esito');
   if (!box) return;
+  /* Il testo ritoccato dal consulente sopravvive a un ricalcolo: la scheda si
+     ridisegna tutta, e senza questo il ritocco sparirebbe cambiando un numero. */
+  var testoPrima = PENS.testoAMano ? String((document.getElementById('pens-anteprima') || {}).value || '') : '';
   var h = '';
 
   /* LA FASCIA PRUDENZIALE STA IN CIMA. Un avviso in fondo lo legge chi gia'
@@ -4454,29 +4462,48 @@ function pensRendi(e) {
       '</ul></div>';
   }
 
-  /* IL FOGLIO E L'INVIO. */
-  h += '<div class="pv-card"><div class="pv-sec">Il foglio per il cliente</div>' +
+  /* IL FOGLIO E L'INVIO (17/09/2026). Chi firma si sceglie fra i collaboratori
+     — preimpostato su chi e' collegato, modificabile: puo' firmare un altro.
+     Il testo del messaggio lo scrive il motore (Pensione.testiInvio) in base
+     al caso e al tono, e resta modificabile prima di partire. Email dalla
+     casella dell'agenzia con il PDF allegato; WhatsApp con il file da
+     telefono, col collegamento firmato da computer. */
+  var interm = (typeof INTERM_CACHE !== 'undefined' && INTERM_CACHE) || [];
+  var mio = (typeof mioIntermediarioId === 'function') ? mioIntermediarioId() : null;
+  if (PENS.firmaId === null && mio) PENS.firmaId = mio;
+  var fi = pensFirmatario();
+  h += '<div class="pv-card" id="pens-invio"><div class="pv-sec">Il foglio per il cliente, e come glielo mandi</div>' +
     '<div class="aw-grid">' +
     '<div class="aw-field"><label>Cliente (dall\'anagrafica)</label><div id="pens-cli" class="pv-cliente-fisso">' +
       (PENS.cliente && PENS.cliente.id ? esc(PENS.cliente.nome) : '<span style="color:var(--pv-rosso,#c0392b)">nessuno: scegli il cliente in cima alla schermata</span>') + '</div></div>' +
-    '<div class="aw-field"><label>Consulente che firma</label><input id="pens-cons" value="' +
-      esc((typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.nome) || (currentUser && currentUser.name) || '') + '"></div>' +
-    '<div class="aw-field"><label>Ruolo</label><input id="pens-ruolo" value="Consulente previdenziale"></div>' +
-    '<div class="aw-field"><label>Iscrizione RUI</label><input id="pens-rui" value="' +
-      esc((typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.rui) || '') + '"></div>' +
-    '<div class="aw-field"><label>Email</label><input id="pens-mail" value="' + esc((currentUser && currentUser.email) || '') + '"></div>' +
-    '<div class="aw-field"><label>Telefono del cliente</label><input id="pens-tel" value="' +
-      esc((PENS.cliente && PENS.cliente.telefono) || '') + '" placeholder="per WhatsApp — es. 3331234567"></div>' +
+    '<div class="aw-field"><label>Chi firma</label><select id="pens-firma-sel" onchange="pensFirmaScelta(this.value)">' +
+      '<option value=""' + (!PENS.firmaId ? ' selected' : '') + '>' + esc((currentUser && currentUser.name) || 'Chi è collegato') + ' (collegato)</option>' +
+      interm.map(function (c) { return '<option value="' + esc(c.id) + '"' + (PENS.firmaId === c.id ? ' selected' : '') + '>' + esc(((c.cognome || '') + ' ' + (c.nome || '')).trim()) + (c.iam_id && currentUser && c.iam_id === currentUser.id ? ' (tu)' : '') + '</option>'; }).join('') +
+      '</select></div>' +
+    '<div class="aw-field"><label>Nome sul foglio</label><input id="pens-cons" value="' + esc(fi.nome) + '"></div>' +
+    '<div class="aw-field"><label>Ruolo</label><input id="pens-ruolo" value="' + esc(fi.ruolo) + '"></div>' +
+    '<div class="aw-field"><label>Iscrizione RUI</label><input id="pens-rui" value="' + esc(fi.rui) + '"></div>' +
+    '<div class="aw-field"><label>Email del consulente</label><input id="pens-mail" value="' + esc(fi.email) + '"></div>' +
+    '<div class="aw-field"><label>Email del cliente</label><input id="pens-cli-mail" value="' + esc((PENS.cliente && PENS.cliente.email) || '') + '" placeholder="per l\'invio via email"></div>' +
+    '<div class="aw-field"><label>Telefono del cliente</label><input id="pens-tel" value="' + esc((PENS.cliente && PENS.cliente.telefono) || '') + '" placeholder="per WhatsApp — es. 3331234567"></div>' +
     '</div>' +
+    '<div class="aw-grid" style="margin-top:8px"><div class="aw-field"><label>Tono del messaggio</label><div class="pv-nl" id="pens-tono">' +
+      '<button type="button" class="' + (PENS.tono !== 'professionale' ? 'on' : '') + '" onclick="pensTono(\'amichevole\')">Amichevole</button>' +
+      '<button type="button" class="' + (PENS.tono === 'professionale' ? 'on' : '') + '" onclick="pensTono(\'professionale\')">Professionale</button></div></div>' +
+    '<div class="aw-field" style="grid-column:1/-1"><label>Il messaggio, già scritto (puoi correggerlo)</label>' +
+      '<textarea id="pens-anteprima" rows="9" oninput="PENS.testoAMano=true" style="width:100%;font:inherit;font-size:12.5px;line-height:1.45;padding:8px 10px;border:1px solid var(--line);border-radius:10px"></textarea></div></div>' +
     '<div class="pv-azioni">' +
-      '<button class="btn-primary" onclick="pensFoglio()"><i class="ti ti-file-type-pdf"></i> Scarica il foglio in PDF</button>' +
-      '<button class="btn-ghost" onclick="pensWhatsApp()"><i class="ti ti-brand-whatsapp"></i> Messaggio WhatsApp</button>' +
+      '<button class="btn-primary" onclick="pensInviaEmail()"><i class="ti ti-mail"></i> Invia per email</button>' +
+      '<button class="btn-primary" onclick="pensWhatsApp()"><i class="ti ti-brand-whatsapp"></i> Invia su WhatsApp</button>' +
+      '<button class="btn-ghost" onclick="pensFoglio()"><i class="ti ti-file-type-pdf"></i> Scarica il PDF</button>' +
     '</div>' +
-    '<div class="pv-piccolo" style="margin-top:9px">WhatsApp non permette di allegare un file da un collegamento: ' +
-      'stampa prima il foglio in PDF, poi allegalo al messaggio che si apre già scritto.</div>' +
+    '<div class="pv-piccolo" style="margin-top:9px">Da telefono il PDF parte come allegato WhatsApp; da computer si manda un collegamento firmato che scade dopo ' + PP_LINK_GIORNI + ' giorni. ' +
+      (e.daConfermare && e.daConfermare.length ? '<b>Finché ci sono valori da confermare il foglio si può scaricare ma non si manda al cliente.</b>' : '') + '</div>' +
     '<div id="pens-archivio"></div></div>';
 
   box.innerHTML = h;
+  if (testoPrima) { var ta = document.getElementById('pens-anteprima'); if (ta) ta.value = testoPrima; }
+  pensAnteprima();
 }
 
 /* Toccare una proposta rifa' il conto con quel versamento. E' il gesto che
@@ -4495,7 +4522,7 @@ function pensDatiFoglio() {
   var v = function (id) { return (document.getElementById(id) || {}).value || ''; };
   return {
     esito: PENS.esito,
-    cliente: { id: (PENS.cliente && PENS.cliente.id) || null, nome: (PENS.cliente && PENS.cliente.nome) || '', telefono: v('pens-tel') },
+    cliente: { id: (PENS.cliente && PENS.cliente.id) || null, nome: (PENS.cliente && PENS.cliente.nome) || '', telefono: v('pens-tel') || (PENS.cliente && PENS.cliente.telefono) || '', email: v('pens-cli-mail') || (PENS.cliente && PENS.cliente.email) || '' },
     consulente: { nome: v('pens-cons'), ruolo: v('pens-ruolo'), rui: v('pens-rui'), email: v('pens-mail') },
     /* UNA data sola per il foglio e per l'archivio. Prendendola due volte
        dall'orologio, un'analisi stampata a mezzanotte finirebbe a registro col
@@ -4552,21 +4579,126 @@ function pensFoglio() {
   });
 }
 
-function pensWhatsApp() {
-  if (!PENS.esito) { alert('Prima calcola: il messaggio si costruisce sul risultato.'); return; }
+/* ── CHI FIRMA ─────────────────────────────────────────────────────────── */
+function pensFirmatario() {
+  var interm = (typeof INTERM_CACHE !== 'undefined' && INTERM_CACHE) || [];
+  var c = PENS.firmaId ? interm.filter(function (x) { return x.id === PENS.firmaId; })[0] : null;
+  if (c) {
+    return { nome: ((c.cognome || '') + ' ' + (c.nome || '')).trim(), ruolo: c.veste || 'Consulente previdenziale',
+      rui: (typeof ppRuiTesto === 'function' && c.rui_numero) ? ppRuiTesto(c.rui_sezione, c.rui_numero, c.rui_data) : '',
+      email: (currentUser && c.iam_id === currentUser.id) ? (currentUser.email || '') : '' };
+  }
+  return { nome: (typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.nome) || (currentUser && currentUser.name) || '',
+    ruolo: 'Consulente previdenziale', rui: (typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.rui) || '', email: (currentUser && currentUser.email) || '' };
+}
+function pensFirmaScelta(id) {
+  PENS.firmaId = id || null;
+  var fi = pensFirmatario();
+  var set = function (k, v) { var el = document.getElementById(k); if (el) el.value = v; };
+  set('pens-cons', fi.nome); set('pens-ruolo', fi.ruolo); set('pens-rui', fi.rui); set('pens-mail', fi.email);
+  PENS.testoAMano = false; pensAnteprima();
+}
+function pensTono(t) {
+  PENS.tono = t === 'professionale' ? 'professionale' : 'amichevole';
+  var c = document.getElementById('pens-tono');
+  if (c) [].forEach.call(c.querySelectorAll('button'), function (b, i) { b.classList.toggle('on', (i === 0) === (PENS.tono === 'amichevole')); });
+  PENS.testoAMano = false; pensAnteprima();
+}
+/* Il testo lo scrive il motore per il caso di questa analisi; qui si mostra e
+   si lascia correggere. Se il consulente l'ha toccato non si riscrive. */
+function pensTestiInvio(canale, link, scadenza) {
   var d = pensDatiFoglio();
-  var testo = Pensione.messaggioWhatsApp(d);
-  /* Il numero si normalizza qui: WhatsApp vuole il prefisso internazionale
-     senza il piu' e senza spazi. Senza numero si apre lo stesso, e il
-     consulente sceglie il destinatario dalla rubrica. */
-  var n = String(d.cliente.telefono || '').replace(/\D/g, '');
-  /* Nove-undici cifre senza prefisso e' un numero italiano scritto come lo
-     scrive un italiano: si mette il 39. Non solo i cellulari — un fisso
-     senza prefisso apre WhatsApp su un numero che non esiste, e il consulente
-     se ne accorge solo dopo aver scritto il messaggio. */
+  return Pensione.testiInvio({ esito: PENS.esito, tono: PENS.tono, canale: canale, cliente: d.cliente, link: link, scadenza: scadenza,
+    firmatario: { nome: d.consulente.nome, ruolo: d.consulente.ruolo, rui: d.consulente.rui, azienda: (typeof PP_AZIENDA !== 'undefined' && PP_AZIENDA && PP_AZIENDA.rs) || '' } });
+}
+function pensAnteprima() {
+  var ta = document.getElementById('pens-anteprima');
+  if (!ta || !PENS.esito || !window.Pensione) return;
+  if (PENS.testoAMano && ta.value) return;
+  ta.value = pensTestiInvio('email').testo;
+}
+/* Il testo che parte: quello nell'anteprima, se c'e', altrimenti quello del
+   motore. Su WhatsApp da computer il collegamento si aggiunge in coda. */
+function pensTestoDaMandare(canale, link, scadenza) {
+  var ta = document.getElementById('pens-anteprima');
+  var base = (ta && ta.value.trim()) ? ta.value.trim() : pensTestiInvio(canale).testo;
+  if (canale === 'whatsapp' && link) base += '\n\nIl documento: ' + link + (scadenza ? '\n(il collegamento resta valido fino al ' + scadenza + ')' : '');
+  return base;
+}
+
+/* ── LA CONSEGNA ────────────────────────────────────────────────────────────
+   Le porte, nell'ordine: chi non puo' (segnalatore), il foglio che non regge
+   (cliente, firma), quello che non e' confermato (regola di casa n.1: si
+   scarica, non si manda). Poi il PDF, uno solo per tutti i canali. */
+async function pensDaConsegnare() {
+  if (typeof ppVietato === 'function') { var v = ppVietato(); if (v) { alert(v); return null; } }
+  if (!PENS.esito) { alert('Prima calcola: il foglio si costruisce sul risultato.'); return null; }
+  var d = pensDatiFoglio();
+  var problemi = Pensione.problemiDelFoglio(d);
+  if (problemi.length) { alert('Non posso mandare il foglio:\n\n· ' + problemi.join('\n· ')); return null; }
+  var dc = PENS.esito.daConfermare || [];
+  if (dc.length) {
+    alert('Non mando questo foglio al cliente: ci sono ' + dc.length + ' valore/i ancora da confermare.\n\n· ' +
+      dc.map(function (m) { return m.gruppo + ' · ' + m.etichetta; }).join('\n· ') + '\n\nIl PDF puoi comunque scaricarlo, ma va letto per quello che è: una stima.');
+    return null;
+  }
+  var r = await pensPdfBlob(d);
+  return { d: d, blob: r.blob, nomeFile: r.nomeFile };
+}
+
+async function pensInviaEmail() {
+  var pronto = await pensDaConsegnare();
+  if (!pronto) return;
+  var email = String((document.getElementById('pens-cli-mail') || {}).value || '').trim();
+  if (!email) { email = (prompt('Nessuna email registrata per questo cliente.\nA quale indirizzo mando il foglio?', '') || '').trim(); if (!email) return; }
+  var t = pensTestiInvio('email');
+  var testo = pensTestoDaMandare('email');
+  var html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.6;color:#1f2a37">' +
+    testo.split('\n').map(function (riga) { return riga ? '<p style="margin:0 0 4px">' + esc(riga) + '</p>' : '<p style="margin:0;height:8px"></p>'; }).join('') + '</div>';
+  try {
+    await payFetch('/mail/send', { to: email, subject: t.oggetto, html: html, attachments: [{ name: pronto.nomeFile, content: await ppBase64(pronto.blob) }] });
+    try { quotoToast('Foglio inviato a ' + email); } catch (e) {}
+    pensArchivia(pronto.d);
+  } catch (e) {
+    var m = String(e && e.message || e);
+    if (/casella/i.test(m)) alert('Il tuo utente non ha una casella di posta dell\'agenzia assegnata, quindi da qui non può inviare.\n\nSi assegna in IAM, nella scheda utente (campo caselle di posta).');
+    else alert('Invio non riuscito: ' + m);
+  }
+}
+
+async function pensWhatsApp() {
+  var pronto = await pensDaConsegnare();
+  if (!pronto) return;
+  var d = pronto.d;
+  var file = new File([pronto.blob], pronto.nomeFile, { type: 'application/pdf' });
+  if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+    try {
+      await navigator.share({ files: [file], title: 'Analisi previdenziale', text: pensTestoDaMandare('whatsapp') });
+      try { quotoToast('Foglio condiviso'); } catch (e) {}
+      pensArchivia(d);
+      return;
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  var url;
+  try { url = await pensLinkFirmato(pronto.blob, d); } catch (e) { alert(String(e && e.message || e)); return; }
+  var scadenza = new Date(Date.now() + PP_LINK_GIORNI * 86400000).toLocaleDateString('it-IT');
+  var testo = pensTestoDaMandare('whatsapp', url, scadenza);
+  var n = String((document.getElementById('pens-tel') || {}).value || d.cliente.telefono || '').replace(/\D/g, '');
   if (n && n.length >= 9 && n.length <= 11 && n.slice(0, 2) !== '39') n = '39' + n;
-  var url = 'https://wa.me/' + n + '?text=' + encodeURIComponent(testo);
-  window.open(url, '_blank');
+  window.open('https://wa.me/' + n + '?text=' + encodeURIComponent(testo), '_blank');
+  pensArchivia(d);
+}
+
+/* Il PDF in archivio, un file per cliente (si sovrascrive: l'ultima analisi
+   e' quella buona, e non restano in giro copie dei dati di una persona), e
+   un collegamento che scade. */
+async function pensLinkFirmato(blob, d) {
+  var path = d.anagraficaId + '/analisi-previdenziale.pdf';
+  var up = await db.storage.from(PP_BUCKET).upload(path, blob, { contentType: 'application/pdf', upsert: true });
+  if (up.error) throw new Error('Non riesco a mettere il PDF in archivio: ' + (up.error.message || up.error));
+  var r = await db.storage.from(PP_BUCKET).createSignedUrl(path, PP_LINK_GIORNI * 24 * 3600);
+  if (r.error || !r.data || !r.data.signedUrl) throw new Error('Non riesco a creare il collegamento: ' + ((r.error && r.error.message) || 'nessun indirizzo restituito'));
+  return r.data.signedUrl;
 }
 
 /* ── L'ANALISI VA A REGISTRO ──────────────────────────────────────────────

@@ -917,6 +917,39 @@ prova('i numeri di legge del datore arrivano dalla stessa tabella e passano dal 
   return 'applicate come datore.*';
 });
 
+prova('i testi dell\'invio: dodici varianti, tutte con i numeri, nessuna che promette', () => {
+  const casi = {
+    complementare: P.calcola({ ...BASE, lavoro: 'dipendente', tfrInAzienda: false }),
+    dipendente_tfr: P.calcola({ ...BASE, lavoro: 'dipendente' }),
+    datore: P.calcola({ ...BASE, lavoro: 'autonomo', datore: { haDipendenti: true, soglia: 'meno50', dipendenti: 10, stipendioMedioMensile: 2000, forma: 'societa' } }),
+  };
+  let n = 0;
+  for (const [caso, e] of Object.entries(casi)) {
+    deve(P.casoInvio(e) === caso, 'il caso dedotto per ' + caso + ' è ' + P.casoInvio(e));
+    for (const tono of ['amichevole', 'professionale']) for (const canale of ['email', 'whatsapp']) {
+      const t = P.testiInvio({ esito: e, tono, canale, cliente: { nome: 'Mario Rossi' }, firmatario: { nome: 'Francesco Oddo', ruolo: 'Consulente', rui: 'B1', azienda: 'With Us' }, link: canale === 'whatsapp' ? 'https://x/y.pdf' : null, scadenza: '24/09/2026' });
+      n++;
+      deve(t.caso === caso && t.tono === tono && t.canale === canale, 'metadati sbagliati');
+      deve(/illustrativo/.test(t.testo) && /non (una|costituiscono una) promessa/.test(t.testo), caso + '/' + tono + '/' + canale + ': non dice che non è una promessa');
+      deve(!/garantit|sicuramente|rendimento certo/i.test(t.testo), 'promette qualcosa');
+      deve(/Francesco Oddo · Consulente/.test(t.testo) && /RUI B1/.test(t.testo) && /With Us/.test(t.testo), 'la firma non è completa');
+      deve(t.testo.includes(Math.round(e.gapMensile).toLocaleString('it-IT', { useGrouping: 'always' }) + ' €'), 'il divario non è nel testo');
+      if (tono === 'amichevole') deve(/^Ciao Mario,/.test(t.testo) && !/Gentile/.test(t.testo), 'il tono amichevole non dà del tu');
+      else deve(/^Gentile Mario Rossi,/.test(t.testo) && !/\bti\b|\btua\b|\bCiao\b/.test(t.testo), 'il tono professionale dà del tu: ' + t.testo.slice(0, 200));
+      if (canale === 'email') deve(t.oggetto && t.html && /alleg/i.test(t.testo) && /<p/.test(t.html) && !/<script/.test(t.html), 'l\'email non ha oggetto, html e allegato');
+      else deve(!t.oggetto && !t.html && /https:\/\/x\/y\.pdf/.test(t.testo) && /valido fino al 24\/09\/2026/.test(t.testo), 'il WhatsApp non porta il collegamento con la scadenza');
+      if (caso === 'complementare') deve(!/TFR/.test(t.testo), 'complementare: nomina il TFR');
+      if (caso === 'dipendente_tfr') deve(/TFR in azienda e TFR nel fondo/.test(t.testo) && /non (un consiglio|una raccomandazione)/.test(t.testo), 'dipendente: manca il confronto TFR o dice che è un consiglio');
+      if (caso === 'datore') deve(/dator/i.test(t.testo) && /10 dipendenti/.test(t.testo) && /1\.525 €/.test(t.testo) && /costanti/.test(t.testo), 'datore: mancano i numeri o le ipotesi: ' + t.testo);
+    }
+  }
+  deve(n === 12, 'varianti: ' + n);
+  const tes = P.testiInvio({ esito: P.calcola({ ...BASE, lavoro: 'autonomo', datore: { haDipendenti: true, soglia: 'almeno50', dipendenti: 60, stipendioMedioMensile: 2000, forma: 'societa' } }), tono: 'amichevole', canale: 'email', cliente: { nome: 'X' }, firmatario: { nome: 'F' } });
+  deve(/Tesoreria/.test(tes.testo) && /equivalgono/.test(tes.testo) && !/risparmierebbe/.test(tes.testo), 'sopra i 50 il testo promette un risparmio all\'azienda');
+  deve(/^Ciao Mario/.test(P.messaggioWhatsApp({ esito: casi.complementare, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'F' } })), 'il vecchio messaggioWhatsApp non passa dai testi nuovi');
+  return '12 varianti, firma completa, sopra i 50 nessun risparmio promesso';
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

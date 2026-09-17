@@ -170,6 +170,13 @@ mancanza: non c'è un passo di build da tenere in piedi. Un modulo ESM
 server-side non si può collegare a una schermata — è uno dei motivi per cui
 `server/pensione.js` non è mai stato usato da nessuno.
 
+**I testi che escono di casa stanno nel motore.** `Pensione.testiInvio`
+produce dodici varianti (tre casi × due toni × due canali), tutte provate:
+il caso lo decide il risultato (`casoInvio`), non chi scrive; nel caso
+«complementare» il TFR non si nomina; sopra i 50 addetti nessun testo promette
+un risparmio all'azienda. La pagina mostra il testo, lo lascia correggere e
+lo manda: mai una frase composta a mano in `index.html`.
+
 **I PDF hanno una carta intestata sola.** Chi deve produrre un documento con
 l'aspetto With Us non ricopia `ppPdfBlob`: costruisce un documento
 strutturato (intestazione, colonne, blocchi, firma, avvertenze) e lo passa a
@@ -217,7 +224,7 @@ IAM chiede `?page=previdenza`. Rinominare un id rompe il modulo dentro IAM
 | `tariffe/motore/irpef.js` | il conto delle imposte — **spostato** da `previdenza.js` senza cambiare un'operazione (439 righe identiche) |
 | `tariffe/motore/tfr-datore.js` | il TFR visto dal datore di lavoro (17/09/2026): deduzione 6%/4%, esonero Fondo garanzia, contributi minori, rivalutazione, Tesoreria da 50 addetti. Numeri di legge con fonte, copia di riserva della tabella |
 | `tariffe/motore/pdf-withus.js` | la carta intestata dei PDF (17/09/2026): fascia coi due cerchi, schede, intestazione, piede, filigrana, tabelle. Le stesse primitive per il preventivo personalizzato (`ppPdfBlob`) e per il foglio pensione (`Pensione.documentoPdf` → `PdfWithus.disegna`). Si prova in Node con un `doc` finto |
-| `#page-previdenza` in `index.html` | il cliente dall'anagrafica (componente `clp*`, dal 17/09/2026), quattro campi e la risposta sotto, un passo solo |
+| `#page-previdenza` in `index.html` | il cliente dall'anagrafica (componente `clp*`), le domande che dipendono dal lavoro (TFR sì/no, «ha dipendenti?» con la cascata), la risposta sotto, la consegna: chi firma dai collaboratori, tono, anteprima, email e WhatsApp sulle stesse strade del personalizzato (`pens*` riusa `payFetch('/mail/send')`, `PP_BUCKET`, `ppVietato`) |
 | `server/parametriPrevidenziali.js` | serve i numeri di legge dalla tabella; il motore ne tiene una copia di riserva |
 | `server/analisiPrevidenziali.js` | ogni foglio stampato lascia la sua riga a registro |
 

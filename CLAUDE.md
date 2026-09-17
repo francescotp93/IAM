@@ -104,6 +104,8 @@ node ui-test.mjs
 # 2. i motori e il server — un file per argomento
 node server/verifica/pensione-motore.test.mjs
 node server/verifica/irpef.test.mjs
+node server/verifica/tfr-datore.test.mjs
+node server/verifica/analisi-registro.test.mjs
 node server/verifica/tracciabilita.test.mjs
 
 # 3. la scocca a moduli
@@ -205,6 +207,7 @@ IAM chiede `?page=previdenza`. Rinominare un id rompe il modulo dentro IAM
 |---|---|
 | `tariffe/motore/pensione.js` | il calcolo, il foglio per il cliente, la riga d'archivio, il messaggio WhatsApp |
 | `tariffe/motore/irpef.js` | il conto delle imposte — **spostato** da `previdenza.js` senza cambiare un'operazione (439 righe identiche) |
+| `tariffe/motore/tfr-datore.js` | il TFR visto dal datore di lavoro (17/09/2026): deduzione 6%/4%, esonero Fondo garanzia, contributi minori, rivalutazione, Tesoreria da 50 addetti. Numeri di legge con fonte, copia di riserva della tabella |
 | `#page-previdenza` in `index.html` | il cliente dall'anagrafica (componente `clp*`, dal 17/09/2026), quattro campi e la risposta sotto, un passo solo |
 | `server/parametriPrevidenziali.js` | serve i numeri di legge dalla tabella; il motore ne tiene una copia di riserva |
 | `server/analisiPrevidenziali.js` | ogni foglio stampato lascia la sua riga a registro |
@@ -239,6 +242,11 @@ Trovate dalle prove, non dal ragionamento. Se un giorno qualcuno le
 - **Il netto non cresce sempre col lordo.** Ci sono tre gradini fra 5.000 e
   60.000 — i salti del trattamento integrativo — quindi esistono netti che
   nessun lordo produce.
+- **Da 50 addetti in su il TFR non resta in azienda.** Va al Fondo di Tesoreria
+  INPS (L. 296/2006 c. 755), e le misure compensative spettano in entrambi i
+  casi (c. 764): per l'azienda il fondo è **neutro**, il vantaggio è del
+  dipendente. Un ramo datoriale che promette un risparmio sopra i 50 sta
+  vendendo un numero falso. Il motore lo dice da solo (`confronto: 'tesoreria'`).
 - **«Reddito mensile × 12» è sbagliato, e non di poco.** Il reddito ANNUO si
   ricava dalle mensilità, e sull'annuo si calcola l'IRPEF, che è progressiva.
   Tre numeri diversi, per ragioni diverse: **13** il reddito di un dipendente

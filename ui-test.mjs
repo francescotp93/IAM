@@ -3163,6 +3163,78 @@ const avvio = async () => {
       return 'cerca → sceglie (solo persone fisiche); nuova → CF controllato, scheda scritta, agganciata';
     });
 
+    await prova('pensione: «TFR in azienda: no» — il TFR non si nomina piu\', da nessuna parte', async () => {
+      const r = await page.evaluate(() => {
+        apriPensione(); pensPulisci();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-lavoro').value = 'dipendente'; pensLavoroScelto();
+        const toggle = !!document.getElementById('pens-tfr');
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        const conSi = document.getElementById('pens-esito').textContent;
+        document.querySelector('#pens-tfr button[data-v="no"]').click();
+        const conNo = document.getElementById('pens-esito').textContent;
+        const foglio = Pensione.foglioHtml({ esito: PENS.esito, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'X' } }).html;
+        document.getElementById('pens-lavoro').value = 'autonomo'; pensLavoroScelto();
+        const toggleAutonomo = !!document.getElementById('pens-tfr'), domandaDip = !!document.getElementById('pens-dip');
+        return { toggle, conSi: /TFR/.test(conSi), conNo: /TFR/.test(conNo), riscattoNo: /Quando posso prendere prima i miei soldi/.test(conNo), foglio: /TFR/.test(foglio), toggleAutonomo, domandaDip };
+      });
+      deve(r.toggle, 'al dipendente non si chiede se ha il TFR in azienda');
+      deve(r.conSi, 'con «sì» il confronto TFR non c\'e\'');
+      deve(!r.conNo && !r.foglio, 'con «no» il TFR viene nominato lo stesso (schermata o foglio)');
+      deve(r.riscattoNo, 'con «no» e\' sparito anche il blocco sul riscatto, che va a tutti');
+      deve(!r.toggleAutonomo && r.domandaDip, 'all\'autonomo si chiede del TFR invece che dei dipendenti');
+      return 'sì → confronto; no → zero «TFR», riscatto a una colonna';
+    });
+
+    await prova('pensione: autonomo con dipendenti — i tre dati in cascata, poi la tabella e sotto la spiegazione', async () => {
+      const r = await page.evaluate(() => {
+        apriPensione(); pensPulisci();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-lavoro').value = 'autonomo'; pensLavoroScelto();
+        const primaDiSi = ['pens-dip-soglia', 'pens-dip-n', 'pens-dip-stip'].map(id => !!document.getElementById(id));
+        document.querySelector('#pens-dip button[data-v="si"]').click();
+        const dopoSi = ['pens-dip-soglia', 'pens-dip-n', 'pens-dip-stip', 'pens-dip-mens', 'pens-dip-forma'].map(id => !!document.getElementById(id));
+        document.getElementById('pens-eta').value = 45;
+        document.getElementById('pens-reddito').value = 3500;
+        document.getElementById('pens-versamento').value = 200;
+        document.getElementById('pens-inizio').value = 25;
+        document.getElementById('pens-dip-n').value = 10;
+        document.getElementById('pens-dip-stip').value = 2000;
+        document.getElementById('pens-dip-forma').value = 'societa';
+        pensDatoreScritto();
+        pensCalcola();
+        const card = document.getElementById('pens-datore');
+        const html = card ? card.innerHTML : '';
+        const testo = card ? card.textContent : '';
+        const out = { primaDiSi, dopoSi, card: !!card, tabellaPrima: html.indexOf('<table') >= 0 && html.indexOf('<table') < html.indexOf('pv-spiega'),
+          voci: ['Deduzione', 'Fondo di garanzia', 'Contributi minori', 'Rivalutazione', 'Liquidità'].filter(v => testo.includes(v)).length,
+          annuo: /Il primo anno/.test(testo) && /1\.525 €/.test(testo), ventennale: /in 20 anni/.test(testo), ipotesi: /Ipotesi di questo conto/.test(testo) && /costanti/.test(testo),
+          daConfermare: (PENS.esito.daConfermare || []).some(x => /aliquota/i.test(x.etichetta)) };
+        document.getElementById('pens-dip-soglia').value = 'almeno50'; pensDatoreScritto();
+        const t2 = document.getElementById('pens-datore').textContent;
+        out.tesoreria = /Tesoreria/.test(t2) && /Neutro/.test(t2) && /del dipendente/.test(t2);
+        /* «No» chiude la cascata e toglie la scheda. */
+        document.querySelector('#pens-dip button[data-v="no"]').click();
+        out.dopoNo = !document.getElementById('pens-dip-n') && !document.getElementById('pens-datore');
+        return out;
+      });
+      deve(r.primaDiSi.every(x => !x), 'la cascata e\' aperta prima di rispondere «sì»');
+      deve(r.dopoSi.every(x => x), 'dopo «sì» mancano campi della cascata: ' + JSON.stringify(r.dopoSi));
+      deve(r.card, 'la scheda del datore non compare');
+      deve(r.tabellaPrima, 'la spiegazione sta prima della tabella, o manca una delle due');
+      deve(r.voci === 5, 'in tabella mancano voci: ' + r.voci + '/5');
+      deve(r.annuo && r.ventennale, 'annuo e ventennale non sono scritti: il caso a mano da\' 1.525 € il primo anno');
+      deve(r.ipotesi, 'le ipotesi (organico e stipendi costanti) non sono dichiarate');
+      deve(!r.daConfermare, 'con la societa\' l\'aliquota e\' l\'IRES: non deve risultare da confermare');
+      deve(r.tesoreria, 'sopra i 50 non dice Tesoreria, neutro, vantaggio del dipendente');
+      deve(r.dopoNo, '«no» non chiude la cascata e la scheda');
+      return 'cascata di 5 campi, tabella con 5 voci poi spiegazione, 1.525 €/anno, Tesoreria sopra i 50';
+    });
+
     await prova('pensione: la professione si deduce nell\'ordine giusto — «agente di polizia» non e\' un autonomo', async () => {
       /* IL CASO CHE DEVE FALLIRE. Nel primo giro «Agente di polizia» finiva
          fra gli autonomi, perche' nell'elenco «agente» veniva prima di

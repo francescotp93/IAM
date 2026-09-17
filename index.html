@@ -62,7 +62,8 @@
 <script src="tariffe/motore/amtrust.js?v=20260817"></script>
 <script src="tariffe/motore/tutelalegale.js?v=20260817"></script>
 <script src="tariffe/motore/irpef.js?v=20260912"></script>
-<script src="tariffe/motore/pensione.js?v=20260912"></script>
+<script src="tariffe/motore/tfr-datore.js?v=20260917"></script>
+<script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -1391,6 +1392,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
 @media(max-width:900px){.inf-layout,.det-grid{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:repeat(2,1fr)}.tl-grid{grid-template-columns:1fr}.ana-row,.ana-row3{grid-template-columns:1fr}.tk-layout{grid-template-columns:1fr}.perm-list{grid-template-columns:1fr}}
 @media(max-width:560px){.form-row,.provider-form,.tk-field-row{grid-template-columns:1fr}.mod-grid,.vehicle-grid,.stats-grid,.perf-kpis{grid-template-columns:1fr}.main-content{padding:.9rem .9rem 96px}.aw-card{padding:1.4rem 1rem}.modal{padding:1.4rem}}
+.pv-conf.tfr-datore td.num{text-align:right;white-space:nowrap}.pv-conf.tfr-datore tr.totale th,.pv-conf.tfr-datore tr.totale td{background:#eaf7f0;border-top:2px solid var(--pv-verde)}.pv-spiega{font-size:12.5px;line-height:1.55;margin-top:10px}.pv-spiega p{margin:6px 0}
 .pv-cliente-fisso{min-height:38px;display:flex;align-items:center;padding:0 10px;border:1px dashed var(--line);border-radius:10px;font-weight:600;background:#fafbfc}
 .clp-form{padding:10px 12px;cursor:default}
 .clp-res{max-height:420px}
@@ -1776,6 +1778,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
               <option value="autonomo">Lavoratore autonomo</option>
               <option value="professionista">Libero professionista</option>
             </select></div>
+          <!-- Quello che dipende dal tipo di lavoro (17/09/2026): al dipendente
+               «TFR in azienda?», all'autonomo «Ha dipendenti?» e, se sì, i tre
+               dati del ramo datoriale. Lo disegna pensCampiExtra(). -->
+          <div id="pens-extra" style="display:contents"></div>
           <div class="aw-field"><label>Reddito mensile</label><input id="pens-reddito" type="number" min="0" step="50" placeholder="es. 1800"></div>
           <div class="aw-field"><label>Il reddito indicato è</label>
             <div class="pv-nl" id="pens-nl">
@@ -4040,6 +4046,8 @@ function openVita(){
    l'unica cosa che nessuna prova guardava, ed era l'unica che usciva di casa. */
 var PENS = {
   base: 'netto',          // il reddito indicato e' netto o lordo
+  tfrInAzienda: true,     // dipendente: si mostra il confronto TFR? (si chiede, non si presume)
+  datore: { haDipendenti: false, soglia: 'meno50', dipendenti: '', stipendio: '', mensilita: 13, forma: 'individuale' },
   mensilitaAMano: false,  // il consulente le ha scelte lui: non le tocchiamo piu'
   esito: null,
   cliente: null,          // se si arriva dalla scheda anagrafica
@@ -4055,6 +4063,7 @@ function apriPensione() {
   if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
   pensAvvisi();
   pensMensilitaProposta();
+  pensCampiExtra();
   showPage('previdenza');
 }
 
@@ -4134,6 +4143,60 @@ function pensMensilitaProposta() {
 }
 function pensLavoroScelto() {
   pensMensilitaProposta();
+  pensCampiExtra();
+  if (PENS.esito) pensCalcola();
+}
+
+/* ── QUELLO CHE DIPENDE DAL TIPO DI LAVORO ──────────────────────────────
+   Al dipendente si CHIEDE se il TFR è in azienda: con «no» il TFR non si
+   nomina più, da nessuna parte. All'autonomo e al professionista si chiede se
+   ha dipendenti: con «sì» si aprono in cascata la soglia dei 50 (decide le
+   aliquote e se il TFR resta in azienda o va in Tesoreria), il numero e lo
+   stipendio medio, la forma dell'impresa (decide l'aliquota della deduzione).
+   I valori restano in PENS, cosi' cambiare tipo e tornare indietro non li
+   cancella. Le formule stanno in tfr-datore.js: qui si raccolgono numeri. */
+function pensCampiExtra() {
+  var box = document.getElementById('pens-extra'); if (!box) return;
+  var l = (document.getElementById('pens-lavoro') || {}).value || 'dipendente';
+  var D = PENS.datore;
+  var due = function (id, val, si, no) {
+    return '<div class="pv-nl" id="' + id + '">' +
+      '<button type="button" class="' + (val ? 'on' : '') + '" data-v="si" onclick="pensScelta(\'' + id + '\',true)">' + si + '</button>' +
+      '<button type="button" class="' + (!val ? 'on' : '') + '" data-v="no" onclick="pensScelta(\'' + id + '\',false)">' + no + '</button></div>';
+  };
+  var h = '';
+  if (l === 'dipendente') {
+    h += '<div class="aw-field"><label>Ha il TFR in azienda?</label>' + due('pens-tfr', PENS.tfrInAzienda, 'Sì', 'No') + '</div>';
+  } else {
+    h += '<div class="aw-field"><label>Ha dipendenti?</label>' + due('pens-dip', D.haDipendenti, 'Sì', 'No') + '</div>';
+    if (D.haDipendenti) {
+      h += '<div class="aw-field"><label>Quanti addetti ha l\'azienda</label><select id="pens-dip-soglia" onchange="pensDatoreScritto()">' +
+        '<option value="meno50"' + (D.soglia !== 'almeno50' ? ' selected' : '') + '>Meno di 50 — il TFR resta in azienda</option>' +
+        '<option value="almeno50"' + (D.soglia === 'almeno50' ? ' selected' : '') + '>50 o più — il TFR va al Fondo di Tesoreria INPS</option></select></div>';
+      h += '<div class="aw-field"><label>Numero di dipendenti</label><input id="pens-dip-n" type="number" min="1" step="1" placeholder="es. 8" value="' + esc(D.dipendenti) + '" oninput="pensDatoreScritto()"></div>';
+      h += '<div class="aw-field"><label>Stipendio medio mensile lordo</label><input id="pens-dip-stip" type="number" min="0" step="50" placeholder="es. 1900" value="' + esc(D.stipendio) + '" oninput="pensDatoreScritto()"></div>';
+      h += '<div class="aw-field"><label>Mensilità dei dipendenti</label><select id="pens-dip-mens" onchange="pensDatoreScritto()">' +
+        [12, 13, 14].map(function (m) { return '<option value="' + m + '"' + (Number(D.mensilita) === m ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></div>';
+      h += '<div class="aw-field"><label>Forma dell\'impresa</label><select id="pens-dip-forma" onchange="pensDatoreScritto()">' +
+        '<option value="individuale"' + (D.forma !== 'societa' ? ' selected' : '') + '>Ditta individuale / professionista — IRPEF del titolare</option>' +
+        '<option value="societa"' + (D.forma === 'societa' ? ' selected' : '') + '>Società di capitali — IRES</option></select></div>';
+    }
+  }
+  box.innerHTML = h;
+}
+function pensScelta(id, val) {
+  if (id === 'pens-tfr') PENS.tfrInAzienda = !!val;
+  if (id === 'pens-dip') PENS.datore.haDipendenti = !!val;
+  pensCampiExtra();
+  if (PENS.esito) pensCalcola();
+}
+function pensDatoreScritto() {
+  var v = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
+  PENS.datore.soglia = v('pens-dip-soglia') || 'meno50';
+  PENS.datore.dipendenti = v('pens-dip-n');
+  PENS.datore.stipendio = v('pens-dip-stip');
+  PENS.datore.mensilita = Number(v('pens-dip-mens')) || 13;
+  PENS.datore.forma = v('pens-dip-forma') || 'individuale';
   if (PENS.esito) pensCalcola();
 }
 function pensMensilitaScelta() {
@@ -4166,7 +4229,10 @@ function pensPulisci() {
   var c = document.getElementById('pens-inizio-ignoto'); if (c) c.checked = false;
   var l = document.getElementById('pens-lavoro'); if (l) l.value = 'dipendente';
   PENS.esito = null; PENS.cliente = null; PENS.mensilitaAMano = false;
+  PENS.tfrInAzienda = true;
+  PENS.datore = { haDipendenti: false, soglia: 'meno50', dipendenti: '', stipendio: '', mensilita: 13, forma: 'individuale' };
   pensMensilitaProposta();
+  pensCampiExtra();
   var da = document.getElementById('pens-da-cliente'); if (da) da.innerHTML = '';
   var cq = document.getElementById('pens-cliente-q'); if (cq) { cq.value = ''; clpChiudi('pens-cliente-q'); }
   var es = document.getElementById('pens-esito'); if (es) es.innerHTML = '';
@@ -4184,6 +4250,9 @@ function pensLeggi() {
     mensilita: Number(v('pens-mensilita')) || 0,
     versamentoMensile: Number(v('pens-versamento')) || 0,
     etaInizioLavoro: ignoto ? null : (v('pens-inizio') === '' ? null : Number(v('pens-inizio'))),
+    tfrInAzienda: PENS.tfrInAzienda,
+    datore: { haDipendenti: PENS.datore.haDipendenti, soglia: PENS.datore.soglia, dipendenti: Number(PENS.datore.dipendenti) || 0,
+              stipendioMedioMensile: Number(PENS.datore.stipendio) || 0, mensilita: PENS.datore.mensilita, forma: PENS.datore.forma },
   };
 }
 
@@ -4336,7 +4405,18 @@ function pensRendi(e) {
   }
   h += '</div>';
 
-  /* IL CONFRONTO TFR, solo a chi ce l'ha. */
+  /* IL LATO DEL DATORE DI LAVORO: prima la tabella coi numeri, sotto la
+     spiegazione. Tutto dal motore tfr-datore.js. */
+  if (e.datore && e.datore.ok && window.TfrDatore) {
+    h += '<div class="pv-card" id="pens-datore"><div class="pv-sec">Il TFR dei suoi dipendenti: in azienda o nel fondo?</div>' +
+      '<div class="pv-nota" style="margin-top:0">' + esc(e.datore.nota) + '</div>' +
+      TfrDatore.tabellaHtml(e.datore, { classeTabella: 'pv-conf' }) +
+      '<div class="pv-spiega">' + TfrDatore.spiegazioneHtml(e.datore) + '</div></div>';
+  } else if (e.datore && !e.datore.ok) {
+    h += '<div class="pv-avviso" id="pens-datore">Ramo datoriale non calcolato: ' + esc((e.datore.problemi || []).join(' ')) + '</div>';
+  }
+
+  /* IL CONFRONTO TFR, solo a chi ce l'ha, e solo se ha detto di sì. */
   if (e.mostraTfr) {
     h += '<div class="pv-card"><div class="pv-sec">TFR: in azienda o nel fondo?</div>' +
       '<div class="pv-piccolo" style="margin-bottom:9px">Un confronto, non un consiglio: la scelta è del lavoratore e dipende anche da cose che in questo foglio non ci sono.</div>' +
@@ -4353,11 +4433,12 @@ function pensRendi(e) {
      il TFR: e' l'obiezione numero uno di chiunque. Se non la si mette, il
      cliente ci pensa lo stesso — solo senza risposta davanti. */
   var q = Pensione.TFR.quandoLiRiprendo;
+  var colFondo = '<td data-col="Nel fondo pensione"><ul>' + q.fondo.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>';
   h += '<div class="pv-card"><div class="pv-sec">' + esc(q.titolo) + '</div>' +
-    '<table class="pv-conf"><thead><tr><th>Se il TFR resta in azienda</th><th>Nel fondo pensione</th></tr></thead><tbody><tr>' +
-    '<td data-col="Se resta in azienda"><ul>' + q.azienda.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
-    '<td data-col="Nel fondo pensione"><ul>' + q.fondo.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
-    '</tr></tbody></table>' +
+    (e.mostraTfr
+      ? '<table class="pv-conf"><thead><tr><th>Se il TFR resta in azienda</th><th>Nel fondo pensione</th></tr></thead><tbody><tr>' +
+        '<td data-col="Se resta in azienda"><ul>' + q.azienda.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' + colFondo + '</tr></tbody></table>'
+      : '<table class="pv-conf"><thead><tr><th>Nel fondo pensione</th></tr></thead><tbody><tr>' + colFondo + '</tr></tbody></table>') +
     '<div class="pv-piccolo" style="margin-top:8px">' + esc(q.fonte) + '</div>' +
     '<div class="pv-avviso">' + esc(q.daVerificare) + '</div></div>';
 
@@ -4531,6 +4612,7 @@ function pensApplicaCliente(a, arrivoDaScheda) {
   var l = document.getElementById('pens-lavoro'); if (l && r.lavoroDedotto) l.value = r.lavoroDedotto;
   /* Il tipo di lavoro e' appena cambiato: le mensilita' lo seguono. */
   pensMensilitaProposta();
+  pensCampiExtra();
 
   var box = document.getElementById('pens-da-cliente');
   if (box) {

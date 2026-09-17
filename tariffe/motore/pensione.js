@@ -91,6 +91,11 @@ var VERSIONE = 'pensione-2026-09-17';
 var IRPEF = (typeof window !== 'undefined' && window.Irpef) ? window.Irpef
   : (typeof require === 'function' ? (function () { try { return require('./irpef.js'); } catch (e) { return null; } })() : null);
 
+/* Il lato del datore di lavoro (tfr-datore.js): stessa strada. Senza, il ramo
+   datoriale non si calcola e lo dice — non si inventa. */
+var TFR_DATORE = (typeof window !== 'undefined' && window.TfrDatore) ? window.TfrDatore
+  : (typeof require === 'function' ? (function () { try { return require('./tfr-datore.js'); } catch (e) { return null; } })() : null);
+
 var num = function (v) { var n = Number(v); return isFinite(n) ? n : 0; };
 var pos = function (v) { return Math.max(0, num(v)); };
 
@@ -627,6 +632,25 @@ function calcola(dati) {
 
   var fiscale = risparmioFiscale(lordoAnnuo, versamento, L.gestione);
 
+  /* ── IL TFR SI CHIEDE, NON SI PRESUME (17/09/2026). Il dipendente ha il TFR,
+     ma può averlo già destinato altrove o non volerne parlare: «TFR in
+     azienda» sì/no decide se il confronto si mostra. Con «no» il TFR non si
+     nomina mai, e si parla solo di pensione complementare. */
+  var tfrInAzienda = L.haTfr ? !(dati.tfrInAzienda === false || dati.tfrInAzienda === 'no') : false;
+
+  /* ── IL RAMO DATORIALE: solo per chi non ha un TFR suo (autonomo,
+     professionista) e HA dipendenti. Il reddito del titolare è quello del
+     cliente, appena calcolato: serve all'aliquota con cui la deduzione
+     diventa euro. Il conto sta in tfr-datore.js. */
+  var datore = null;
+  var dd = dati.datore;
+  if (!L.haTfr && dd && (dd.haDipendenti === true || dd.haDipendenti === 'si')) {
+    datore = TFR_DATORE
+      ? TFR_DATORE.calcola({ soglia: dd.soglia, dipendenti: dd.dipendenti, stipendioMedioMensile: dd.stipendioMedioMensile,
+          mensilita: dd.mensilita, forma: dd.forma, anni: dd.anni, redditoTitolareAnnuo: lordoAnnuo })
+      : { ok: false, problemi: ['Il motore del TFR datoriale (tfr-datore.js) non è caricato: il ramo datoriale non si può calcolare.'] };
+  }
+
   return {
     versione: VERSIONE,
 
@@ -679,10 +703,13 @@ function calcola(dati) {
     // ── il fisco
     fiscale: fiscale,
 
-    // ── il TFR: solo chi ce l'ha
-    mostraTfr: L.haTfr,
+    // ── il TFR: solo chi ce l'ha, e solo se lo vuole vedere
+    mostraTfr: tfrInAzienda,
+    tfrInAzienda: tfrInAzienda,
+    // ── il lato del datore di lavoro, se ha dipendenti
+    datore: datore,
 
-    daConfermare: daConfermare(),
+    daConfermare: daConfermare().concat(datore && datore.ok ? datore.daConfermare : []),
   };
 }
 
@@ -775,6 +802,12 @@ function numeriDiLegge(par) {
   if (par.requisiti_eta_proiettati && typeof par.requisiti_eta_proiettati === 'object') {
     REQUISITI_PROIETTATI = par.requisiti_eta_proiettati;
     applicati.push('requisiti_eta_proiettati');
+  }
+
+  /* I numeri del lato datore stanno nella stessa tabella: li applica il suo motore. */
+  if (TFR_DATORE && typeof TFR_DATORE.numeriDiLegge === 'function') {
+    var td = TFR_DATORE.numeriDiLegge(par);
+    for (var i = 0; i < td.applicati.length; i++) applicati.push('datore.' + td.applicati[i]);
   }
 
   return { applicati: applicati, ignorati: ignorati };
@@ -993,13 +1026,29 @@ function foglioHtml(d) {
      dei dipendenti. Se non la si scrive, il cliente ci pensa lo stesso — solo
      senza risposta davanti. */
   var q = TFR.quandoLiRiprendo;
+  /* Chi non ha (o non vuole vedere) il TFR trova UNA colonna: il fondo. Il
+     TFR non si nomina: «no» vuol dire no, anche nella colonna accanto. */
   var bloccoRiscatto =
     '<h2>' + esc(q.titolo) + '</h2>' +
-    '<table class="confronto"><tr><th>Se il TFR resta in azienda</th><th>Nel fondo pensione</th></tr><tr>' +
-    '<td><ul>' + q.azienda.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
-    '<td><ul>' + q.fondo.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
-    '</tr></table>' +
+    (e.mostraTfr
+      ? '<table class="confronto"><tr><th>Se il TFR resta in azienda</th><th>Nel fondo pensione</th></tr><tr>' +
+        '<td><ul>' + q.azienda.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
+        '<td><ul>' + q.fondo.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
+        '</tr></table>'
+      : '<table class="confronto"><tr><th>Nel fondo pensione</th></tr><tr>' +
+        '<td><ul>' + q.fondo.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td></tr></table>') +
     '<p class="nota">' + esc(q.fonte) + ' — ' + esc(q.daVerificare) + '</p>';
+
+  /* IL LATO DEL DATORE DI LAVORO: prima la tabella coi numeri, sotto la
+     spiegazione. Tutto dal suo motore. */
+  var bloccoDatore = '';
+  if (e.datore && e.datore.ok && TFR_DATORE) {
+    bloccoDatore =
+      '<h2>Il TFR dei suoi dipendenti: in azienda o nel fondo?</h2>' +
+      '<p class="nota">' + esc(e.datore.nota) + '</p>' +
+      TFR_DATORE.tabellaHtml(e.datore, { classeTabella: 'confronto' }) +
+      '<div class="spiega">' + TFR_DATORE.spiegazioneHtml(e.datore) + '</div>';
+  }
 
   var bloccoMarchi = marchi.length
     ? '<div class="daconfermare"><b>Valori ancora da confermare</b><ul>' +
@@ -1011,6 +1060,7 @@ function foglioHtml(d) {
 '<!doctype html><html lang="it"><head><meta charset="utf-8">' +
 '<title>Pensione · ' + esc(cli.nome) + '</title><style>' +
 '*{box-sizing:border-box}body{font:13px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1f2a37;margin:0;padding:28px 34px;max-width:860px}' +
+'.tfr-datore td.num{text-align:right;white-space:nowrap}.tfr-datore tr.totale th,.tfr-datore tr.totale td{background:#eaf7f0;border-top:2px solid #02984e}.spiega p{margin:6px 0}' +
 'h1{font-size:22px;margin:0 0 2px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:#02984e;margin:26px 0 8px;border-bottom:1px solid #d8e3dc;padding-bottom:5px}' +
 '.testa{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #02984e;padding-bottom:12px;margin-bottom:16px}' +
 '.testa img{height:34px}.sotto{color:#5b6b7c;font-size:12px}' +
@@ -1078,7 +1128,7 @@ fasciaPrudenziale +
 
 '<h2>Quanto ti fa risparmiare di tasse</h2>' + bloccoFiscale +
 
-bloccoTfr + bloccoRiscatto + bloccoMarchi +
+bloccoTfr + bloccoDatore + bloccoRiscatto + bloccoMarchi +
 
 '<div class="firma"><b>' + esc(con.nome) + '</b>' +
   (con.ruolo ? ' · ' + esc(con.ruolo) : '') +
@@ -1124,6 +1174,9 @@ function schedaArchivio(d) {
         etaInizioUsata: e.etaInizioUsata, prudenziale: e.prudenziale, datoIncoerente: e.datoIncoerente,
         dataRiferimento: d.dataRiferimento || null,
         cliente: cli.nome || null, consulente: con.nome || null, rui: con.rui || null,
+        tfrInAzienda: e.tfrInAzienda,
+        datore: e.datore && e.datore.ok ? { soglia: e.datore.soglia, dipendenti: e.datore.dipendenti, stipendioMedioMensile: e.datore.stipendioMedioMensile,
+          mensilita: e.datore.mensilita, forma: e.datore.forma, anni: e.datore.anni } : null,
       },
       obiettivo: { gapMensile: e.gapMensile, gapPercentuale: e.gapPercentuale },
       scelte: { proposte: e.proposte },
@@ -1134,6 +1187,8 @@ function schedaArchivio(d) {
         pensioneNettaMensile: e.pensioneNettaMensile,
         fondo: e.fondo, totaleMensile: e.totaleMensile, gapMensile: e.gapMensile,
         fiscale: e.fiscale,
+        datore: e.datore && e.datore.ok ? { confronto: e.datore.confronto, tfrAnnuo: e.datore.tfrAnnuo, imposta: e.datore.imposta,
+          risparmioAnnuo: e.datore.risparmioAnnuo, ventennale: e.datore.ventennale, versione: e.datore.versione } : null,
       },
       /* I PARAMETRI DI QUEL GIORNO, non solo il risultato. È la parte che non
          si può ricostruire dopo: fra due anni in tabella ci sono altri numeri,
@@ -1141,6 +1196,7 @@ function schedaArchivio(d) {
          cliente ha in mano. */
       parametri_usati: {
         legge: LEGGE, fondo: FONDO, tassiLordi: TASSI_LORDI,
+        datore: TFR_DATORE ? TFR_DATORE.LEGGE : null,
         daConfermare: daConfermare(),
       },
       versione_motore: VERSIONE,

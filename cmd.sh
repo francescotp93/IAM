@@ -1,13 +1,9 @@
-ATTESO=9e387eb
-for i in $(seq 1 40); do
-  H=$(git -C /opt/withus-backend rev-parse --short=7 HEAD 2>/dev/null)
-  [ "$H" = "$ATTESO" ] && grep -q "frame-ancestors" /etc/caddy/withus/iam.caddy 2>/dev/null && break
-  sleep 5
-done
-echo "== HEAD backend: $H (atteso $ATTESO) dopo ~$((i*5)) s"
-echo "== autopull sui siti Caddy:"; journalctl -u withus-autopull --no-pager -n 30 2>/dev/null | grep -i "caddy\|aggiorno" | tail -4
-echo "== header su /nuovo-preventivo/:"; curl -sI https://iam.withusassicurazioni.it/nuovo-preventivo/ | grep -i -E "^HTTP|content-security|x-frame" 
-echo "== header su un motore (deve avere la CSP anche lui, e' nello stesso blocco):"; curl -sI https://iam.withusassicurazioni.it/nuovo-preventivo/tariffe/motore/pensione.js | grep -i -E "^HTTP|content-security"
-echo "== IAM alla radice (nessuna CSP attesa qui):"; curl -sI https://iam.withusassicurazioni.it/ | grep -i -E "^HTTP|content-security|x-frame"
-echo "== api:"; curl -s -o /dev/null -w '%{http_code}\n' https://api.withusassicurazioni.it/health
-echo "== caddy:"; systemctl is-active caddy
+echo "== ora"; date '+%F %T'
+echo "== HEAD: $(git -C /opt/withus-backend rev-parse --short HEAD)"
+echo "== il rientro automatico e' nel file? $(grep -c 'rientroTentato' /opt/withus-backend/scraper/groupama/quote-service.mjs) riferimenti"
+echo "== groupama avviato alle: $(systemctl show -p ActiveEnterTimestamp --value groupama-scraper)"
+echo "== stato"; curl -s -m 12 http://127.0.0.1:4500/loginstate | head -c 200; echo
+echo "== giornale groupama, ultimi 15 minuti"
+journalctl -u groupama-scraper --since '-15min' --no-pager 2>/dev/null | sed 's/.*start-service.sh\[[0-9]*\]: //' | grep -avE 'gracefully|forcefully|<kill>' | tail -10
+echo "== il backend e' andato a prendere il codice?"
+journalctl -u withus-backend --since '-15min' --no-pager 2>/dev/null | grep -aiE 'otp-posta|codice_dalla_posta' | tail -6

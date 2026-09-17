@@ -1,11 +1,16 @@
-id: lav1-pr1-1789629762  exit: 0  2026-09-17 07:23:17
+id: dep166-1789629876  exit: 0  2026-09-17 07:26:26
 ----
-== HEAD backend: 78782aa (atteso 78782aa) dopo ~5 s
-index servito=69c20edd disco=69c20edd OK
-== motore servito ha daAnagrafica:
-2
-== backend:
+== ora
+2026-09-17 07:24:55
+== commit vivo sul VPS
+18cdb43 Il codice si cerca da quando il portale l'ha spedito, e nessuna rinuncia resta muta (#166)
+== il codice nuovo c'e'?
+server/fonti.js:1
+scraper/groupama/quote-service.mjs:3
+== servizi
 active
-200
-== server analisi ha la regola:
-0
+inactive
+== stato groupama
+{"running":false,"step":"loggato","since":1789629916133,"msg":"Sessione attiva","codice_chiesto_il":0}
+== giornale groupama, ultime 15 righe
+-- No entries --

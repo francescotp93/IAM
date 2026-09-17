@@ -1,9 +1,10 @@
 echo "== ora"; date '+%F %T %Z'
-echo "== FERMO GROUPAMA"
-systemctl stop groupama-scraper.service 2>&1
-sleep 3
-echo -n "stato adesso: "; systemctl is-active groupama-scraper.service 2>&1
-echo -n "risponde ancora sulla 4500? "; curl -s --max-time 5 http://127.0.0.1:4500/loginstate || echo "no, e' fermo"
+echo "== quante email ha mandato LA VIGILANZA, e a chi (ultime 2 ore)"
+journalctl -u withus-backend --since "-2 hours" --no-pager -o cat 2>/dev/null | grep -c "email inviata" | sed 's/^/email inviate dalla vigilanza: /'
+journalctl -u withus-backend --since "-2 hours" --no-pager -o short 2>/dev/null | grep "email inviata" | sed -E 's/@[^ ]*/@.../' | tail -20
 echo
-echo "== PERCHE' CHIEDEVA CODICI IN CONTINUAZIONE — giornale dalle 18:20"
-journalctl -u groupama-scraper --since "-70 min" --no-pager -o short 2>/dev/null | grep "\[groupama\]" | tail -40
+echo "== e i giri della vigilanza: quante volte ha visto una caduta"
+journalctl -u withus-backend --since "-2 hours" --no-pager -o cat 2>/dev/null | grep "vigilanza-fonti] giro" | tail -12
+echo
+echo "== adesso che groupama e' fermo, cosa dice la vigilanza"
+journalctl -u withus-backend --since "-3 min" --no-pager -o cat 2>/dev/null | tail -10

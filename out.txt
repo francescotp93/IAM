@@ -1,19 +1,19 @@
-id: pr176-1789655501  exit: 0  2026-09-17 14:32:08
+id: sera-1789671923  exit: 0  2026-09-17 19:06:02
 ----
+== ora
+2026-09-17 19:05:55
+== commit vivo
 f187b56 Passo 3, modulo 3: «Performance» si sposta da QUOTO a IAM › KPI e gare › Produzione (#176)
---- IAM modulo 3:
-6
-withus-one.js?v=20260917c
-1
---- QUOTO:
-2
+== la password e' ancora in qualche messaggio di avvio?
+in nessuno: pulito
+== righe col testo 'password:' nel diario dalle 08:00 di oggi
 0
---- Caddy iam md5:
-48c842f3fd7a8668b98f66167674cdc8  -
-48c842f3fd7a8668b98f66167674cdc8  iam/index.html
---- Caddy scocca md5:
-caa1cc90d8d28ece3633980115b25f32  -
-caa1cc90d8d28ece3633980115b25f32  iam/withus-one.js
---- Caddy nuovo-preventivo md5:
-1a749122414abe4b1f77323312d0da56  -
-1a749122414abe4b1f77323312d0da56  index.html
+== come sta ogni scraper
+moto       active | {"endpoints":["/status","/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela","/lookup?targa=..&nascita=..","/map","/rivalsa","/shot"]}
+allianz    active | {"running":false,"step":"idle","since":0,"msg":""}
+italiana   active | {"ok":true,"url":"https://portale.plurima.net/"}
+hdi        active | {"running":false,"step":"idle","since":1789631451720,"msg":"","esito":null}
+groupama   active | {"running":false,"step":"attesa_otp","since":1789669380134,"msg":"Credenziali OK — inserisci il codice OTP ricevuto via email","codice_chiesto_il":1789669380133}
+axa        active | {"running":false,"step":"pronto","since":1789631482145,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
+== backend
+active

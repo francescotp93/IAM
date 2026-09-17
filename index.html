@@ -3113,8 +3113,9 @@ const MODULES = [
 /* === STATO DI AVVIO ======================================================
    All'apertura non sappiamo ancora se c'e' una sessione: finche' non lo
    sappiamo si mostra il velo neutro #boot-screen, MAI la schermata di accesso.
-   Dentro il riquadro di IAM la sessione arriva dal ponte #at/#rt e ci mette
-   qualche centinaio di millisecondi: e' li' che prima si vedeva il lampo.
+   Dentro il riquadro di IAM la sessione un tempo arrivava dal ponte #at/#rt
+   e ci metteva qualche centinaio di millisecondi: e' li' che si vedeva il
+   lampo. Oggi e' nello storage dell'origine, ma la lettura resta asincrona.
    REGOLA: ogni strada che esce dall'avvio deve passare da chiudiBoot() oppure
    da mostraLogin(), altrimenti si resta sul velo per sempre. */
 function chiudiBoot() {
@@ -3143,9 +3144,11 @@ function bootSalvagente() {
    pagina che giri PRIMA della ripulitura — comprese le librerie di terze parti
    agganciate in <head>. Il refresh token e' una credenziale a lunga vita: li'
    non ci deve stare.
-   Adesso la sessione arriva su un canale diretto fra le due finestre, con
-   l'origine verificata in partenza (targetOrigin) e in arrivo (event.origin),
-   e nell'indirizzo non resta niente. Contratto: INTERFACCIA-QUOTO-IAM.md §2. */
+   Poi la sessione e' passata su un canale diretto fra le due finestre, con
+   l'origine verificata in partenza (targetOrigin) e in arrivo (event.origin).
+   Dal 17/09/2026 (stessa origine, passo 3 modulo 4) sul canale viaggia SOLO la
+   navigazione: la sessione e' nello storage dell'origine, condivisa con la
+   scocca, e non la passa nessuno. Contratto: INTERFACCIA-QUOTO-IAM.md §2. */
 const IAM_ORIGINI = ['https://iam.withusassicurazioni.it'];
 let PONTE_IAM = null;   // origine della scocca, una volta verificata
 
@@ -3154,11 +3157,11 @@ function ponteDaIam(ev) {
       && ev.source === window.parent
       && IAM_ORIGINI.indexOf(ev.origin) !== -1;
 }
-/* Chiede la sessione alla scocca e aspetta. Si insiste ogni 300 ms perche' non
-   si sa chi dei due e' pronto per primo: il riquadro puo' finire di caricare
-   prima che la scocca abbia agganciato il suo ascoltatore. Se entro `ms` non
-   risponde nessuno si prosegue lo stesso: davanti c'e' il velo #boot-screen e,
-   in ultima istanza, bootSalvagente() apre la schermata di accesso. */
+/* Si presenta alla scocca ('quoto-ready') e aspetta la sua risposta, che oggi
+   porta navigazione ed email, non piu' la sessione. Si insiste ogni 300 ms
+   perche' non si sa chi dei due e' pronto per primo: il riquadro puo' finire
+   di caricare prima che la scocca abbia agganciato il suo ascoltatore. Se
+   entro `ms` non risponde nessuno, pazienza: la sessione non dipende da qui. */
 function ponteChiediSessione(ms) {
   return new Promise((resolve) => {
     if (window.self === window.top) return resolve(null);
@@ -3191,21 +3194,14 @@ function ponteAscolta() {
     if (!ponteDaIam(ev)) return;
     const d = ev.data; if (!d || typeof d.w1 !== 'string') return;
     PONTE_IAM = ev.origin;
-    if (d.w1 === 'quoto-session' && d.at && d.rt && db) {
-      /* PRIMA LA SESSIONE, POI SI NAVIGA. `setSession` e' una promessa, e qui
-         non veniva attesa: la scocca manda sessione e pagina nello STESSO
-         messaggio, quindi la pagina si apriva con la sessione non ancora
-         installata. Una schermata che legge da Supabase non se ne accorge — il
-         client accoda — ma l'analisi previdenziale chiama il nostro server con
-         il token in mano, e il token non c'era ancora: 401, «Accesso non
-         autorizzato, token mancante», e il modulo ripiegava sui numeri di
-         riserva. In produzione dentro IAM succedeva SEMPRE.
-         Si naviga comunque se la sessione fallisce: meglio la pagina con
-         l'avviso che una finestra ferma. (05/09/2026) */
-      var vai = function () { if (d.q || d.page || d.prod) ponteVai(d); };
-      db.auth.setSession({ access_token: d.at, refresh_token: d.rt }).then(vai, vai);
-    } else if (d.w1 === 'quoto-nav') {
-      ponteVai(d);
+    if (d.w1 === 'quoto-session' || d.w1 === 'quoto-nav') {
+      /* La sessione NON arriva da qui (modulo 4, 17/09/2026): e' nello storage
+         dell'origine, condiviso con la scocca. Se una scocca vecchia manda
+         ancora at/rt, si ignorano: installarli con setSession scriverebbe una
+         seconda copia sopra quella di IAM, ed e' proprio la doppia copia che
+         faceva ruotare il refresh token da una parte sola. */
+      if (d.at || d.rt) console.warn('Ponte: token nel messaggio ignorati, la sessione e\' quella dell\'origine');
+      if (d.q || d.page || d.prod) ponteVai(d);
     }
   });
 }
@@ -3243,33 +3239,40 @@ async function initDB() {
     return;
   }
   bootSalvagente();
-  // Dentro IAM (iframe della scocca) il preventivatore è OSPITE della
-  // sessione di IAM: non la salva e soprattutto NON la rinnova. Se la rinnovasse,
-  // il refresh token ruoterebbe e IAM resterebbe con quello vecchio: Supabase lo
-  // segna "already used", sospetta un abuso e revoca TUTTA la sessione — è il
-  // motivo per cui il riquadro riproponeva il login (log auth del 29/07/2026).
-  // La scocca ripassa comunque token freschi a ogni apertura del riquadro.
-  // QUOTO aperto a pagina intera (anche con ?from=iam) resta padrone come prima.
+  /* ═══ UNA SESSIONE SOLA, NELLO STORAGE DELL'ORIGINE (17/09/2026, passo 3 modulo 4) ═══
+     Dal 16/09/2026 IAM e il preventivatore stanno sulla STESSA origine
+     (iam.withusassicurazioni.it e /nuovo-preventivo/). Il client Supabase
+     salva la sessione in localStorage sotto una chiave che dipende solo dal
+     progetto: quindi la sessione con cui la persona e' entrata in IAM e' GIA'
+     qui, e nessuno deve passarla — ne' nell'indirizzo, ne' in un messaggio.
+
+     Dentro il riquadro il preventivatore resta OSPITE per il rinnovo: non
+     tiene un suo timer (autoRefreshToken: false), rinnova IAM e questo client
+     rilegge lo storage a ogni getSession(). Se rinnovassero entrambi con due
+     copie separate, il refresh token ruoterebbe da una parte sola e Supabase
+     revocherebbe tutto («already used», log del 29/07/2026): era il motivo
+     del login riproposto. Con UNA copia condivisa quella corsa non esiste, e
+     il client (2.107+) coordina comunque i rinnovi paralleli da solo.
+     A pagina intera (anche con ?from=iam) il preventivatore e' padrone come
+     prima: stessa origine, stesso storage, come due schede dello stesso sito. */
   const ospiteIam = document.documentElement.classList.contains('emb-iam') && window.self !== window.top;
   db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY,
-    ospiteIam ? { auth: { persistSession: false, autoRefreshToken: false } } : undefined);
-  // Ponte IAM → QUOTO: se si arriva da IAM, ricorda la provenienza (per il tasto "Torna a IAM")
-  // e precompila l'email portando il focus sulla password.
+    ospiteIam ? { auth: { autoRefreshToken: false } } : undefined);
+  /* Il canale con la scocca porta SOLO navigazione (page, prod, q) e, per la
+     schermata di accesso se mai comparisse, l'email da precompilare. Non si
+     aspetta nessuno per decidere se c'e' una sessione: quella sta nello storage. */
   ponteAscolta();
-  /* La sessione (e l'email dell'agente) arrivano dal canale. `?email=` resta
-     letta solo per compatibilita' con la scocca non ancora aggiornata: e' un
-     dato personale e non deve piu' stare nell'indirizzo. */
-  const _ponte = await ponteChiediSessione(4000);
+  ponteChiediSessione(4000).then((p) => {
+    try {
+      const _em = p && p.email;
+      if (!_em) return;
+      const _le = document.getElementById('l-email');
+      if (_le && !_le.value) _le.value = _em;
+    } catch (e) {}
+  });
   try {
     const _qp = new URLSearchParams(window.location.search);
     if (_qp.get('from') === 'iam') sessionStorage.setItem('quoto_from_iam', '1');
-    const _em = (_ponte && _ponte.email) || _qp.get('email');
-    if (_em) {
-      const _le = document.getElementById('l-email');
-      if (_le) _le.value = _em;
-      const _lp = document.getElementById('l-pass');
-      if (_lp) setTimeout(() => _lp.focus(), 250);
-    }
   } catch(e) {}
   // Arrivo dal link di recupero password via email
   if (window.location.hash && window.location.hash.includes('type=recovery')) {
@@ -3277,33 +3280,17 @@ async function initDB() {
     db.auth.onAuthStateChange((ev) => { if (ev === 'PASSWORD_RECOVERY') showReset(); });
     return;
   }
-  // Ponte sessione IAM → QUOTO: iam. e quoto. sono due sottodomini diversi e NON
-  // condividono il login del browser. IAM passa i token nell'hash (#at/#rt): qui
-  // ripristiniamo la sessione PRIMA del controllo qui sotto, così l'utente entra
-  // automaticamente senza re-inserire le credenziali. Poi puliamo subito la URL.
-  let _at = (_ponte && _ponte.at) || null;
-  let _rt = (_ponte && _ponte.rt) || null;
-  /* COMPATIBILITA' — hash #at/#rt. Serve in due soli casi:
-     1) la finestra di rilascio in cui QUOTO e' gia' aggiornato e IAM no;
-     2) il salto a pagina intera del collaboratore "solo QUOTO", dove non
-        esiste una finestra padre con cui parlare.
-     Chiuso il caso 1 (IAM in produzione con il canale) e deciso il caso 2,
-     questo blocco va tolto: vedi INTERFACCIA-QUOTO-IAM.md §2. */
+  /* Token nell'indirizzo (#at/#rt): erano il vecchio ponte a pagina intera.
+     Non si usano piu' — la sessione e' quella dell'origine — ma se un vecchio
+     collegamento li porta ancora, si tolgono SUBITO dalla barra, senza
+     leggerli: una credenziale nell'indirizzo finisce in cronologia e
+     segnalibri, e non deve restarci nemmeno un secondo. */
   try {
     const _h = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
-    const _hat = _h.get('at'), _hrt = _h.get('rt');
-    /* La URL si ripulisce SUBITO, prima della chiamata di rete e comunque vada:
-       i token non devono restare nella barra degli indirizzi per tutta la durata
-       del ripristino, ne' finire in un segnalibro o nella cronologia. */
-    if (_hat || _hrt) {
+    if (_h.has('at') || _h.has('rt')) {
       try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_) {}
     }
-    if (!_at && _hat && _hrt) { _at = _hat; _rt = _hrt; }
-  } catch (e) { console.warn('Ponte IAM → QUOTO: hash non leggibile', e); }
-  try {
-    if (_at && _rt) await db.auth.setSession({ access_token: _at, refresh_token: _rt });
-  } catch (e) { console.warn('Ponte IAM → QUOTO: ripristino sessione fallito', e); }
-  if (_ponte) ponteVai(_ponte);
+  } catch (e) {}
   /* Il ramo di fallimento e' QUESTO, ed e' l'unico punto da cui la schermata
      di accesso compare all'avvio: sessione assente o non recuperabile. */
   db.auth.getSession()

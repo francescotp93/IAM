@@ -4097,16 +4097,19 @@ const QUOTO_URL = '/nuovo-preventivo/';
    collaboratore il normale accesso su QUOTO con l'email gia' scritta, oppure
    (b) il biglietto monouso scambiato lato server. Decisione da prendere —
    INTERFACCIA-QUOTO-IAM.md §2.4, "Strada residua". */
+/* Il salto a pagina intera verso il preventivatore (il collaboratore «solo
+   QUOTO», il tasto dopo la transizione). Dal 17/09/2026 (passo 3, modulo 5)
+   la destinazione e' /nuovo-preventivo/ su QUESTA origine: la sessione e' gia'
+   nello stesso localStorage e non c'e' niente da allegare. I token nell'hash
+   (#at/#rt) e l'email nell'indirizzo non ci sono piu': un indirizzo lo leggono
+   cronologia, segnalibri e ogni script della pagina. Se un giorno QUOTO_URL
+   tornasse su un'altra origine, qui si tornerebbe a dover passare qualcosa —
+   e a quel punto la strada giusta e' un biglietto monouso dal server, non un
+   token nell'indirizzo (INTERFACCIA-QUOTO-IAM.md §2.4). */
 async function quotoUrl() {
-  let url = QUOTO_URL + '?from=iam' + (ME?.email ? ('&email=' + encodeURIComponent(ME.email)) : '');
-  try {
-    const { data } = await db.auth.getSession();
-    const s = data && data.session;
-    if (s && s.access_token && s.refresh_token) {
-      url += '#at=' + encodeURIComponent(s.access_token) + '&rt=' + encodeURIComponent(s.refresh_token);
-    }
-  } catch (e) { console.warn('Ponte QUOTO: sessione non disponibile', e); }
-  return url;
+  const stessaOrigine = (() => { try { return new URL(QUOTO_URL, location.href).origin === location.origin; } catch (e) { return false; } })();
+  if (!stessaOrigine) console.warn('Ponte QUOTO: destinazione su un\'altra origine, la sessione non viene passata (§2.4)');
+  return QUOTO_URL + '?from=iam';
 }
 /* Chi può arrivare al preventivatore. Il segnalatore è escluso PRIMA di ogni
    altra considerazione (§2.5): non è una questione di permessi concessi male,
@@ -18074,8 +18077,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: caa1cc90 — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260917c"></script>
+<!-- impronta withus-one.js: de25b98e — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260917d"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

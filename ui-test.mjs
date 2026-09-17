@@ -479,8 +479,11 @@ const avvio = async () => {
       deve(await page.locator('#login-screen').isVisible(), 'login-screen non visibile');
       deve(!(await page.locator('#main-screen').isVisible()), 'main-screen visibile senza sessione');
     });
-    await prova('anonimo: email del ponte precompilata (?email=)', async () => {
-      deve(await page.inputValue('#l-email') === 'prova@withus.it', 'campo email non precompilato');
+    await prova('anonimo: l\'email nell\'indirizzo (?email=) NON si legge piu\'', async () => {
+      /* Era la compatibilita' con la scocca vecchia. Dal 17/09/2026 l'email
+         arriva solo sul canale (INTERFACCIA §2.2): un dato personale
+         nell'indirizzo finisce in cronologia e nei log del server. */
+      deve(await page.inputValue('#l-email') === '', 'l\'email dell\'indirizzo e\' stata letta e precompilata');
     });
     await prova('anonimo: nessun errore JavaScript', async () => {
       deve(errori.length === 0, errori.join(' | '));
@@ -4115,7 +4118,11 @@ const avvio = async () => {
       return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
     });
     const page = await context.newPage();
-    await page.addInitScript(initScript(false));
+    /* Dal 17/09/2026 la sessione e' nello storage dell'origine, condiviso con
+       la scocca: il client finto la trova gia' (initScript(true)), come quello
+       vero la trova nel localStorage. Il messaggio della scocca porta SOLO la
+       pagina da aprire. */
+    await page.addInitScript(initScript(true));
     const errori = [];
     sorvegliaErrori(page, errori);
     await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
@@ -4131,26 +4138,17 @@ const avvio = async () => {
        si aggiunge la sua origine all'elenco DENTRO il riquadro, per la durata
        della prova. Tutto il resto — messaggio, ordine, funzioni — e' quello di
        produzione. */
-    await frame.evaluate(() => {
-      IAM_ORIGINI.push(location.origin);
-      /* IL CLIENT FINTO INSTALLA LA SESSIONE ALL'ISTANTE, quello vero no:
-         `setSession` parla con la rete e risponde qualche decina di
-         millisecondi dopo. Senza questo ritardo la prova passava anche sul
-         codice col guasto — cioè non sorvegliava niente. Con il ritardo
-         riproduce quello che succede in produzione: la pagina si apre mentre
-         la sessione sta ancora arrivando. */
-      const vero = db.auth.setSession.bind(db.auth);
-      db.auth.setSession = (s) => new Promise((ok) => setTimeout(() => ok(vero(s)), 150));
-    });
+    await frame.evaluate(() => { IAM_ORIGINI.push(location.origin); });
     await page.evaluate(() => {
       document.getElementById('q').contentWindow.postMessage(
-        { w1: 'quoto-session', v: 1, at: 'tok-collaudo', rt: 'rtok-collaudo', page: 'previdenza' },
+        { w1: 'quoto-session', v: 1, page: 'previdenza' },
         location.origin);
     });
     await frame.waitForSelector('#page-previdenza.active', { timeout: 12000 }).catch(() => {});
     await page.waitForTimeout(1500);
 
     await prova('scocca: aprendo il modulo pensione la chiamata parte CON il token', async () => {
+      deve(await frame.evaluate(() => window.__COLLAUDO.setSession) === 0, 'il riquadro ha installato una sessione dal messaggio: la sessione e\' quella dell\'origine');
       deve(chiamate.length, 'il modulo non ha nemmeno chiesto i parametri al server');
       const senza = chiamate.filter(c => !/^Bearer .+/.test(c.autorizzazione));
       deve(!senza.length,
@@ -4342,36 +4340,39 @@ const avvio = async () => {
   // Supabase): il preventivatore rinnovava la sessione per conto suo, il
   // refresh token ruotava, IAM restava con quello vecchio → "already used" →
   // Supabase revocava tutta la sessione. Dentro il riquadro deve stare OSPITE.
+  // Dal 17/09/2026 (stessa origine, passo 3 modulo 4) la sessione non viene
+  // passata da nessuno: e' nello storage dell'origine, condiviso con la scocca.
+  // Qui il client finto la trova gia' (initScript(true)) — come in produzione
+  // la trova nel localStorage — e nell'indirizzo non c'e' nessun token.
   {
     const context = await browser.newContext();
     await bloccaRete(context);
     const page = await context.newPage();
-    await page.addInitScript(initScript(false));
+    await page.addInitScript(initScript(true));
     const errori = [];
     sorvegliaErrori(page, errori);
     /* Il parente deve stare sulla STESSA origine del riquadro: la guardia
        anti-incorniciamento (fail-closed) fa entrare solo iam./quoto. o
        same-origin. Su localhost non possiamo essere iam., quindi incorniciamo
-       da una pagina della stessa origine (8077); il riquadro entra con l'hash
-       #at/#rt, la strada di compatibilita' che resta viva quando il canale
-       postMessage non ha un padre iam. a cui parlare. */
+       da una pagina della stessa origine (8077), esattamente com'e' in
+       produzione: iam.withusassicurazioni.it e /nuovo-preventivo/. */
     await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
     await page.evaluate((src) => {
       const f = document.createElement('iframe');
       f.id = 'q'; f.setAttribute('style', 'width:1000px;height:700px;border:0');
       f.src = src;
       document.body.appendChild(f);
-    }, BASE + '/?from=iam&page=storico#at=tok-ponte&rt=rtok-ponte');
+    }, BASE + '/?from=iam&page=storico');
     const frame = await (await page.waitForSelector('#q')).contentFrame();
-    // il canale attende fino a 4s un padre iam. prima di ripiegare sull'hash
     await frame.waitForSelector('#main-screen', { state: 'visible', timeout: 12000 });
     await page.waitForTimeout(400);
 
-    await prova('ospite: dentro il riquadro non si salva né si rinnova la sessione', async () => {
+    await prova('ospite: dentro il riquadro la sessione si legge dallo storage condiviso e non si rinnova', async () => {
       const o = await frame.evaluate(() => window.__COLLAUDO.clientOpts);
       deve(o && o.auth, 'il preventivatore si comporta ancora da padrone della sessione');
-      deve(o.auth.persistSession === false, 'persistSession non disattivato');
+      deve(o.auth.persistSession !== false, 'persistSession disattivato: senza storage la sessione di IAM non si vede, e la si dovrebbe passare');
       deve(o.auth.autoRefreshToken === false, 'autoRefreshToken non disattivato (è la causa del logout)');
+      deve(await frame.evaluate(() => window.__COLLAUDO.setSession) === 0, 'setSession chiamata: qualcuno ha installato una seconda copia della sessione');
     });
     await prova('ospite: l\'app si apre, nessun login riproposto', async () => {
       deve(await frame.locator('#main-screen').isVisible(), 'app non aperta dentro il riquadro');
@@ -4383,9 +4384,9 @@ const avvio = async () => {
       deve(await frame.evaluate(() => document.getElementById('page-storico').classList.contains('active')),
         'la pagina chiesta dalla scocca non si è aperta');
     });
-    await prova('ospite: i token del ponte spariscono dall\'indirizzo', async () => {
-      const h = await frame.evaluate(() => location.hash);
-      deve(!/(^|[#&])(at|rt)=/.test(h), 'i token del ponte sono rimasti nella URL: ' + h);
+    await prova('ospite: nell\'indirizzo del riquadro non ci sono token', async () => {
+      const h = await frame.evaluate(() => location.hash + ' ' + location.search);
+      deve(!/(^|[#&?])(at|rt)=/.test(h), 'ci sono token nella URL del riquadro: ' + h);
     });
     await prova('ospite: il magazzino negato non ferma l\'accesso', async () => {
       // Nel riquadro cross-dominio il browser NEGA sessionStorage: la rete di
@@ -4407,18 +4408,21 @@ const avvio = async () => {
     await context.close();
   }
 
-  /* ── F. ponte sessione IAM → QUOTO (#at/#rt) ────────────────────────────── */
+  /* ── F. un vecchio collegamento con #at/#rt: si butta, non si usa ──────────
+     Dal 17/09/2026 la sessione e' quella dell'origine (modulo 4 e 5 del passo
+     3): un token nell'indirizzo non installa niente. Se un vecchio segnalibro
+     lo porta ancora, sparisce dalla barra e basta. */
   {
     const { context, page, errori } = await nuovaPagina(browser, { sessione: false, url: BASE + '/?from=iam#at=tok-ponte&rt=rtok-ponte' });
     await page.waitForTimeout(900);
 
-    await prova('ponte #at/#rt: la sessione viene ripristinata', async () => {
-      deve(await page.evaluate(() => window.__COLLAUDO.setSession) === 1, 'setSession non chiamato una volta');
+    await prova('hash #at/#rt: NON installa la sessione', async () => {
+      deve(await page.evaluate(() => window.__COLLAUDO.setSession) === 0, 'setSession chiamato: i token nell\'indirizzo sono tornati a valere');
     });
-    await prova('ponte #at/#rt: i token spariscono dall\'indirizzo', async () => {
+    await prova('hash #at/#rt: i token spariscono dall\'indirizzo', async () => {
       deve(await page.evaluate(() => window.location.hash) === '', 'hash ancora presente');
     });
-    await prova('ponte #at/#rt: nessun errore JavaScript', async () => {
+    await prova('hash #at/#rt: nessun errore JavaScript', async () => {
       deve(errori.length === 0, errori.join(' | '));
     });
     await context.close();

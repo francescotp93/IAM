@@ -155,16 +155,25 @@
   }
 
   /* ═══ IL CANALE VERSO IL PREVENTIVATORE ════════════════════════════════
-     La sessione non viaggia piu' nell'indirizzo del riquadro. QUOTO, appena
-     pronto, chiede ('quoto-ready') e la scocca risponde ('quoto-session')
-     direttamente da finestra a finestra, dichiarando a chi sta parlando
-     (targetOrigin) e verificando chi le ha parlato (event.origin).
+     QUOTO, appena pronto, si presenta ('quoto-ready') e la scocca risponde
+     ('quoto-session') direttamente da finestra a finestra, dichiarando a chi
+     sta parlando (targetOrigin) e verificando chi le ha parlato (event.origin).
+     Dal 17/09/2026 la risposta porta navigazione ed email, NON la sessione: e'
+     nello storage dell'origine, condiviso (sessionePerQuoto qui sotto).
      Nell'indirizzo restano solo `from`, `page` e `prod`: nessun token,
      nessuna email, nessun nome di cliente. */
   var QUOTO_ORIGIN = (function () { try { return new URL(QUOTO, location.href).origin; } catch (e) { return QUOTO; } })();
   var ATTESA = null;   // { page, prod, cerca } da consegnare quando QUOTO chiama
 
   function sessionePerQuoto() {
+    /* STESSA ORIGINE, NIENTE TOKEN (17/09/2026, passo 3 modulo 4). Il riquadro
+       carica /nuovo-preventivo/ su questa stessa origine: il client Supabase
+       del preventivatore legge la sessione dallo stesso localStorage di IAM.
+       Passargliela in un messaggio sarebbe una seconda copia della stessa
+       credenziale, ed e' la doppia copia che faceva ruotare il refresh token
+       da una parte sola (log del 29/07/2026). I token si mandano solo se il
+       riquadro fosse su un'altra origine, cosa che in produzione non e' piu'. */
+    if (QUOTO_ORIGIN === location.origin) return Promise.resolve({});
     /* `db` e `ME` in IAM sono dichiarati con `let` in cima allo script della
        pagina: vivono nell'ambito globale ma NON sono proprieta' di `window`.
        Vanno quindi guardati con `typeof`, non con `window.db`. */
@@ -203,7 +212,7 @@
     if (d.w1 !== 'quoto-ready') return;
     sessionePerQuoto().then(function (sess) {
       var msg = { w1: 'quoto-session', v: 1, email: (typeof ME !== 'undefined' && ME && ME.email) || '' };
-      if (sess) { msg.at = sess.at; msg.rt = sess.rt; }
+      if (sess && sess.at && sess.rt) { msg.at = sess.at; msg.rt = sess.rt; }
       if (ATTESA) { msg.page = ATTESA.page; msg.prod = ATTESA.prod; msg.q = ATTESA.cerca; ATTESA = null; }
       inviaAlRiquadro(msg);
       FRAME_PRONTO = true;

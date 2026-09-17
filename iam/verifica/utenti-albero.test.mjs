@@ -99,20 +99,44 @@ e.prova('l\'ingranaggio apre i tre gruppi: sezioni IAM, compagnie su Quoto, atti
   deve(/id="pu-comp-lista" data-compagnie=/.test(f) && /class="pu-comp" id="pu-comp-\$\{slugCompagnia\(c\)\}"/.test(f), 'le compagnie non sono spunte con nome stabile');
   deve(/id="pu-quoto"/.test(f) && /id="pu-iam"/.test(f) && /id="pu-comp-tutte"/.test(f), 'mancano gli interruttori accesso Quoto / accesso IAM / tutte le compagnie');
   deve(/mandaLinkPassword\('\$\{esc\(email\)\}'\)/.test(f), 'il gruppo 3 non manda il collegamento per la password');
-  deve(/apriNuovoUtente\('\$\{esc\(persona\.id\)\}'\)/.test(f), 'per una persona senza account il gruppo 3 non apre la creazione dell\'account su di lei');
-  deve(!/«Nuovo utente» in Collaboratori/.test(f), 'il gruppo 3 rimanda a un tasto che non esiste piu\'');
+  deve(/attivaAccessoPersona\('\$\{esc\(persona\.id\)\}'\)/.test(f) && /id="pu-ruolo-nuovo"/.test(f), 'per una persona senza account il gruppo 3 non attiva l\'accesso con il ruolo scelto');
+  deve(!/apriNuovoUtente|Nuovo utente» in Collaboratori|password temporanea/.test(f), 'il gruppo 3 rimanda ancora alla creazione con password temporanea');
   deve(!/password:\s*['"`]/.test(f), 'nel pannello compare una password scritta');
   return 'tre gruppi, spunte compagnie con id stabile, collegamento password';
 });
 
-e.prova('l\'account creato dal gruppo 3 nasce compilato dalla persona e si aggancia a lei', () => {
-  const apri = ritaglia(src, 'apriNuovoUtente');
-  deve(apri && /function apriNuovoUtente\(personaId\)/.test(apri), 'apriNuovoUtente non riceve la persona');
-  deve(/id="nu-persona" value="\$\{persona \? esc\(persona\.id\) : ''\}"/.test(apri), 'la persona non viaggia nel modulo');
-  deve(/id="nu-email"[^>]*value="\$\{esc\(persona\?\.email/.test(apri) && /id="nu-cogn"[^>]*value="\$\{esc\(persona\?\.cognome/.test(apri), 'email e cognome non arrivano precompilati');
-  const crea = ritaglia(src, 'creaNuovoUtente');
-  deve(/from\('quote_collaboratori'\)\.update\(\{ iam_id: userId \}\)\.eq\('id', personaId\)/.test(crea), 'l\'account nuovo non si aggancia alla persona (iam_id)');
-  return 'nu-persona, campi precompilati, iam_id scritto sul registro';
+await e.provaAsync('«Attiva l\'accesso» chiede conferma e manda al server persona e ruolo: niente password nel browser', async () => {
+  const chiamate = [];
+  const s = stanza(src, ['attivaAccessoPersona'], {
+    altro: {
+      PERSONE_UTENTI: [{ id: 'p2', nome: 'Nuova', cognome: 'Persona', email: 'nuova@x.it' }],
+      mailFetch: async (path, opts) => { chiamate.push({ path, opts }); return { ok: true, email: 'nuova@x.it' }; },
+      renderUtenti: async () => {},
+    },
+  });
+  deve(!s.mancanti.length, 'attivaAccessoPersona non si ritaglia');
+  s.browser.elemento('pu-ruolo-nuovo').value = 'operatore';
+  await s.ctx.attivaAccessoPersona('p2');
+  deve(s.browser.detto.confirm.length === 1 && /nuova@x\.it/.test(s.browser.detto.confirm[0]), 'non chiede conferma dicendo a chi arriva il collegamento');
+  deve(chiamate.length === 1 && chiamate[0].path === '/utenti/attiva' && chiamate[0].opts.method === 'POST', 'non chiama POST /utenti/attiva: ' + JSON.stringify(chiamate));
+  const corpo = JSON.parse(chiamate[0].opts.body);
+  deve(corpo.persona_id === 'p2' && corpo.ruolo === 'operatore' && !('password' in corpo), 'il corpo non porta persona e ruolo, o porta una password: ' + JSON.stringify(corpo));
+  deve(s.browser.detto.alert.length === 1 && /collegamento/.test(s.browser.detto.alert[0]), 'non dice che il collegamento e\' partito');
+  deve(!/nu-pass|creaNuovoUtente\(/.test(src), 'nel file c\'e\' ancora la creazione con password temporanea');
+  return 'conferma → POST {persona_id, ruolo} → avviso';
+});
+
+await e.provaAsync('se il server rifiuta, la persona lo legge e la lista non cambia', async () => {
+  const s = stanza(src, ['attivaAccessoPersona'], {
+    altro: {
+      PERSONE_UTENTI: [{ id: 'p2', nome: 'Nuova', cognome: 'Persona', email: 'nuova@x.it' }],
+      mailFetch: async () => { throw new Error('Solo un amministratore può attivare un accesso.'); },
+      renderUtenti: async () => { throw new Error('non doveva rileggere'); },
+    },
+  });
+  await s.ctx.attivaAccessoPersona('p2');
+  deve(s.browser.detto.alert.length === 1 && /amministratore/.test(s.browser.detto.alert[0]), 'il rifiuto del server non arriva a chi ha premuto: ' + JSON.stringify(s.browser.detto.alert));
+  return 'il messaggio del server arriva intero';
 });
 
 e.prova('il collegamento per la password passa da Supabase e non porta nessuna password nel messaggio', () => {

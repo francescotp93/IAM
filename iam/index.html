@@ -9969,107 +9969,9 @@ async function apriMovimentiUtente(uid, nome) {
     </div>`).join('');
 }
 
-/* Si apre dal gruppo 3 del pannello permessi, per una persona del registro
-   che non ha ancora un account: i campi arrivano gia' compilati dalla persona,
-   e l'account appena creato si aggancia a lei (iam_id). Fino alla consegna
-   dell'invio automatico la password e' temporanea e si comunica a voce. */
-function apriNuovoUtente(personaId) {
-  const persona = personaId ? (PERSONE_UTENTI || []).find(p => p.id === personaId) || null : null;
-  const ruoloOpts = PROFILO?.ruolo === 'admin'
-    ? '<option value="operatore">Operatore</option><option value="collaboratore">Collaboratore</option>'
-    : '<option value="collaboratore">Collaboratore</option>';
-  const html = `
-    <div style="background:rgba(0,0,0,.6);position:fixed;inset:0;z-index:500;display:flex;align-items:flex-end;" id="nu-overlay" onclick="if(event.target.id==='nu-overlay')this.remove()">
-      <div style="background:var(--surf);border-radius:var(--r) var(--r) 0 0;width:100%;padding:20px 16px 32px;">
-        <div style="font-size:15px;font-weight:700;margin-bottom:16px;">Nuovo utente IAM</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <input type="hidden" id="nu-persona" value="${persona ? esc(persona.id) : ''}">
-          <div class="fld"><label>Email</label><input type="email" id="nu-email" placeholder="email@esempio.com" value="${esc(persona?.email || '')}"></div>
-          <div class="fld"><label>Nome</label><input type="text" id="nu-nome" placeholder="Mario" value="${esc(persona?.nome || '')}"></div>
-          <div class="fld"><label>Cognome</label><input type="text" id="nu-cogn" placeholder="Rossi" value="${esc(persona?.cognome || '')}"></div>
-          <div class="fld"><label>Ruolo</label><select id="nu-ruolo">${ruoloOpts}</select></div>
-          <div class="fld"><label>Password temporanea</label><input type="text" id="nu-pass" placeholder="min. 6 caratteri" value="IAM${Math.random().toString(36).slice(2,8).toUpperCase()}"></div>
-          <div class="fld"><label>N. iscrizione RUI <span style="color:var(--txt3);font-weight:400;">(per emissione/rimessa in Quoto)</span></label><input type="text" id="nu-rui" placeholder="A000000000" value="${esc(persona && persona.rui_numero ? (persona.rui_sezione || '') + persona.rui_numero : '')}"></div>
-          <div id="nu-err" style="font-size:12px;color:var(--red);min-height:14px;"></div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="creaNuovoUtente()" style="flex:1;padding:12px;background:var(--acc);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Crea utente</button>
-            <button onclick="document.getElementById('nu-overlay').remove()" style="padding:12px 16px;background:var(--surf2);color:var(--txt);border:.5px solid var(--bord2);border-radius:var(--rs);cursor:pointer;font-family:inherit;">Annulla</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-async function creaNuovoUtente() {
-  const email = document.getElementById('nu-email')?.value.trim();
-  const nome  = document.getElementById('nu-nome')?.value.trim();
-  const cogn  = document.getElementById('nu-cogn')?.value.trim();
-  const ruolo = document.getElementById('nu-ruolo')?.value;
-  const pass  = document.getElementById('nu-pass')?.value.trim();
-  const rui   = document.getElementById('nu-rui')?.value.trim() || null;
-  const personaId = document.getElementById('nu-persona')?.value || null;
-  const err   = document.getElementById('nu-err');
-  if (!email || !pass || pass.length < 6) { if(err) err.textContent='Email e password obbligatorie (min 6 car.)'; return; }
-  if(err) err.textContent = 'Creazione in corso...';
-  try {
-    // Crea utente Auth — con email confirmation attiva riceverà mail di conferma
-    const { data, error } = await db.auth.signUp({
-      email, password: pass,
-      options: { data: { full_name: (nome+' '+cogn).trim() } }
-    });
-    if (error) throw error;
-    const userId = data.user?.id;
-    if (!userId) throw new Error('Utente non creato.');
-
-    // La scheda in iam_utenti la crea la persona stessa al primo ingresso:
-    // l'archivio non permette a un amministratore di crearla per conto d'altri.
-    // Qui ci proviamo lo stesso (se un giorno la regola cambiera', funzionera'
-    // subito) e in ogni caso mettiamo da parte le scelte fatte adesso — ruolo,
-    // accessi, numero RUI — come "invito in sospeso". Vengono applicate da sole
-    // appena la scheda esiste, e nel frattempo restano in vista nel pannello
-    // Utenti. Prima finivano nella memoria di questo browser e venivano
-    // cancellate al primo accesso successivo anche quando non erano state
-    // scritte da nessuna parte: il ruolo scelto all'invito andava perduto in
-    // silenzio e la persona entrava come semplice collaboratore senza che
-    // nessuno lo sapesse.
-    const profiloNuovo = {
-      id: userId, email, nome, cognome: cogn,
-      ruolo: dbRuolo(ruolo), attivo: true, creato_da: ME?.id,
-      accesso_iam: true, accesso_quoto: false, lab_abilitato: false
-    };
-    // Il numero RUI viaggia a parte: oggi l'archivio non ha la casella dove
-    // metterlo su questa scheda (c'e' su iam_team, non su iam_utenti). Resta
-    // segnato nell'invito e si applica da solo quando la casella ci sara'.
-    const { error: e2 } = await db.from('iam_utenti').upsert(profiloNuovo, { onConflict: 'id' });
-
-    if (e2 || rui) aggiungiInvito({ ...profiloNuovo, rui: rui || null, invitato_il: new Date().toISOString() });
-    /* La persona del registro si aggancia all'account appena nato: da qui in
-       avanti la lista utenti la trova per iam_id, non per email. */
-    if (personaId) {
-      const { error: e3 } = await db.from('quote_collaboratori').update({ iam_id: userId }).eq('id', personaId);
-      if (e3) console.warn('aggancio persona↔account:', e3.message || e3);
-    }
-
-    document.getElementById('nu-overlay')?.remove();
-    await renderUtenti();
-    alert(
-      `Invito inviato a ${email}\n\n` +
-      `L'utente riceverà un'email di conferma da Supabase.\n` +
-      `Dopo aver confermato potrà accedere con:\n\n` +
-      ` Email: ${email}\n` +
-      ` Password: ${pass}\n\n` +
-      `Comunica la password in modo sicuro (non via email).\n\n` +
-      (e2
-        ? `La scheda in IAM comparirà al primo ingresso della persona: ruolo e accessi che hai scelto vengono applicati in automatico in quel momento. Fino ad allora l'invito resta indicato qui nel pannello Utenti.`
-        : `Scheda creata: ruolo e accessi sono già impostati.`)
-    );
-  } catch(e) {
-    if(err) err.textContent = e.message?.includes('already registered')
-      ? 'Email già registrata.'
-      : (e.message || 'Errore creazione utente.');
-  }
-}
+/* «Nuovo utente» con la password temporanea non c'e' piu' (17/09/2026): un
+   account nasce dal gruppo 3 del pannello permessi, lo crea il server
+   (/utenti/attiva) e la persona sceglie la password dal collegamento. */
 
 async function toggleSospendi(userId, attivo) {
   const _su = UTENTI_LISTA.find(x => x.id === userId);
@@ -10303,14 +10205,18 @@ async function apriPermessiUtente(userId, nome, personaId){
       <div id="pu-comp-lista" data-compagnie="${esc(JSON.stringify(compagnie))}">${compRows}</div>`);
   const g3 = gruppo(3, 'Attivazione della piattaforma IAM', u
       ? 'Con l\'accesso acceso la persona entra in IAM. Il collegamento per impostare la password arriva alla sua email registrata.'
-      : 'Questa persona non ha ancora un account. Fino alla prossima consegna si crea da qui, con una password temporanea da comunicare a voce; l\'invio automatico del collegamento per impostare la password arriva con la consegna successiva.',
+      : 'Questa persona non ha ancora un account. Con «Attiva l\'accesso» nasce l\'account con il ruolo scelto, la persona si aggancia, e alla sua email parte il collegamento per scegliere la password. Nessuna password passa di mano.',
     u ? `<label class="sw-row" style="cursor:pointer;"><span class="sw-lbl" style="font-weight:700;">Accesso a IAM</span><span class="sw"><input type="checkbox" id="pu-iam" ${u.accesso_iam!==false?'checked':''} ${admin && !isSelf && !isSA?'':'disabled'}><span class="sw-knob"></span></span></label>
       <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
         <button onclick="mandaLinkPassword('${esc(email)}')" class="pu-btn" ${email?'':'disabled'}><i class="ti ti-key"></i> Manda il collegamento per impostare la password</button>
         <span style="font-size:11px;color:var(--txt3);">a ${esc(email || '(email mancante)')}</span></div>`
       : (persona
-        ? `<button onclick="document.getElementById('${id}')?.remove();apriNuovoUtente('${esc(persona.id)}')" class="pu-btn"><i class="ti ti-user-plus"></i> Crea l'account per questa persona</button>`
-        : `<button class="pu-btn" disabled style="opacity:.6;"><i class="ti ti-user-plus"></i> Attiva l'accesso (prossima consegna)</button>`));
+        ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <select id="pu-ruolo-nuovo" style="padding:7px 10px;border:.5px solid var(--bord2);border-radius:8px;background:var(--surf2);color:var(--txt);font-family:inherit;font-size:12.5px;">
+              <option value="collaboratore" selected>Collaboratore</option><option value="operatore">Operatore</option>${admin ? '<option value="admin">Admin</option>' : ''}</select>
+            <button onclick="attivaAccessoPersona('${esc(persona.id)}')" class="pu-btn" ${email ? '' : 'disabled'}><i class="ti ti-user-plus"></i> Attiva l'accesso e manda il collegamento</button>
+            <span style="font-size:11px;color:var(--txt3);">a ${esc(email || '(email mancante: mettila in Collaboratori)')}</span></div>`
+        : `<button class="pu-btn" disabled style="opacity:.6;"><i class="ti ti-user-plus"></i> Nessuna persona da attivare</button>`));
   const html = `<div style="background:rgba(0,0,0,.6);position:fixed;inset:0;z-index:600;display:flex;align-items:flex-end;" id="${id}" onclick="if(event.target.id==='${id}')this.remove()">
     <div style="background:var(--surf);border-radius:var(--r) var(--r) 0 0;width:100%;padding:20px 16px 32px;max-height:90vh;overflow:auto;">
       <div style="font-size:15px;font-weight:700;margin-bottom:2px;"><i class="ti ti-settings" style="color:var(--acc);"></i> ${esc(nome || email)}</div>
@@ -10337,6 +10243,26 @@ async function mandaLinkPassword(email) {
     if (error) throw error;
     alert('Collegamento inviato a ' + email + '. Vale per poche ore.');
   } catch (e) { alert('Invio non riuscito: ' + (e.message || e)); }
+}
+
+/* L'attivazione la fa il server (/utenti/attiva, con la chiave di servizio,
+   che nel browser non c'e' e non ci deve stare): qui si chiede conferma, si
+   mandano persona e ruolo, e si rilegge la lista. La password non passa di
+   qui: la persona la sceglie dal collegamento che riceve. */
+async function attivaAccessoPersona(personaId) {
+  const p = (PERSONE_UTENTI || []).find(x => x.id === personaId);
+  if (!p) { alert('Persona non trovata nel registro.'); return; }
+  const ruolo = document.getElementById('pu-ruolo-nuovo')?.value || 'collaboratore';
+  const email = p.email || '';
+  if (!email) { alert('Questa persona non ha un\'email: mettila in Collaboratori e riprova.'); return; }
+  const chi = [p.cognome, p.nome].filter(Boolean).join(' ') || email;
+  if (!confirm('Attivare l\'accesso a IAM per ' + chi + ' come ' + ruolo + '?\nAlla sua email (' + email + ') arriva il collegamento per scegliere la password.')) return;
+  try {
+    const r = await mailFetch('/utenti/attiva', { method: 'POST', body: JSON.stringify({ persona_id: personaId, ruolo }) });
+    document.getElementById('pu-ov')?.remove();
+    await renderUtenti();
+    alert('Accesso attivato. Il collegamento per scegliere la password è partito verso ' + ((r && r.email) || email) + '.');
+  } catch (e) { alert('Attivazione non riuscita: ' + (e.message || e)); }
 }
 
 /* Dice a voce quello che il profilo fa alle spunte qui sopra. Senza questa

@@ -31,6 +31,7 @@ import { hdiApiRouter } from './hdiApiRoutes.js';
 import { preventiviRouter } from './preventivi.js';
 import { parametriPrevRouter } from './parametriPrevidenziali.js';
 import { analisiPrevRouter } from './analisiPrevidenziali.js';
+import { utentiRouter } from './utenti.js';
 import { registroRichieste } from './registro.js';
 import { registraEsito, esitiRouter } from './esiti.js';
 
@@ -114,6 +115,8 @@ app.use('/hdi-api', requireAuth, hdiApiRouter);
 app.use('/preventivi', requireAuth, preventiviRouter);
 app.use('/parametri-previdenziali', requireAuth, parametriPrevRouter);
 app.use('/analisi-previdenziali', requireAuth, analisiPrevRouter);
+// IAM → Utenti: l'attivazione dell'accesso di una persona del registro (chiave di servizio, mai nel browser)
+app.use('/utenti', requireAuth, utentiRouter);
 /* Il registro degli esiti di quotazione (tabella quote_quotazioni_esiti): le
    righe le scrivono le rotte di quotazione da sole; qui c'e' solo la
    segnalazione dell'operatore — «il premio non torna» — dietro il login. */

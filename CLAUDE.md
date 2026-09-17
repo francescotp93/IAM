@@ -108,6 +108,9 @@ node server/verifica/tfr-datore.test.mjs
 node server/verifica/analisi-registro.test.mjs
 node server/verifica/pdf-withus.test.mjs
 node server/verifica/tracciabilita.test.mjs
+node server/verifica/utenti-in-iam.test.mjs
+node server/verifica/utenti-attiva.test.mjs      # l'attivazione dal server, con archivio e posta finti
+node server/verifica/compagnie-utente.test.mjs   # ritaglia da index.html col banco di IAM
 
 # 3. la scocca a moduli
 node withus-one/verifica/controlla.mjs
@@ -419,6 +422,27 @@ interruttore `disabled` o un catalogo assente non decidono niente. Trappola
 trovata scrivendo la prova: un commento che nomina «Nuovo utente» fa scattare
 una prova sul testo — le prove sul sorgente cercano la **chiamata**
 (`apriNuovoUtente`), non la parola.
+
+**L'attivazione dell'accesso passa dal server (17/09/2026, Lavoro 2 PR 3).**
+`server/utenti.js`, `POST /utenti/attiva {persona_id, ruolo}` dietro
+`requireAuth`: rilegge su `iam_utenti` che chi chiama sia un admin attivo, crea
+l'utenza con la chiave di servizio e una password casuale che **nessuno vede**,
+la riga `iam_utenti`, scrive `iam_id` sulla persona, genera il collegamento
+*recovery* (`/auth/v1/admin/generate_link`) verso la radice di IAM e lo manda
+con Brevo (`sendBrevo` di `notify.js`). Si ferma con 409 se la persona ha già
+un account o se l'email è già di un altro account: **collegare non è creare**,
+e lo decide una persona. Il «Nuovo utente» con la password temporanea in un
+`alert` non c'è più. Il `signUp` rimasto in `iam/index.html` è la registrazione
+autonoma della schermata di accesso, un'altra cosa.
+
+**Le compagnie per utente arrivano in QUOTO.** `currentUser.compagnie` dal
+profilo; `awCompagniaConsentita` nel confronto Motor accanto agli interruttori
+delle Fonti (due cancelli, stesso verso). Regola di prudenza trovata sui dati:
+il catalogo prodotti dice **«HD»** per HDI su sette prodotti, quindi un nome
+che il catalogo non conosce **non si spegne mai**, altrimenti un refuso in una
+tabella toglierebbe una compagnia a un collaboratore in silenzio. Il filtro non
+tocca i moduli a compagnia unica (persona, casa, salute…): lì la compagnia è il
+prodotto, e nasconderlo è un'altra decisione.
 
 Ciò che **non** è cambiato: `index.html` di QUOTO e `iam/index.html` restano
 due documenti, e il preventivatore vive ancora in un riquadro (stessa origine,

@@ -1,24 +1,21 @@
-id: ristop-1789676215  exit: 0  2026-09-17 20:17:21
+id: tienigiu-1789677631  exit: 0  2026-09-17 20:40:58
 ----
 == ora
-2026-09-17 20:17:19 UTC
-== PERCHE' GROUPAMA E' TORNATO SU DOPO CHE L'AVEVO FERMATO
-Restart=always
-Sep 17 19:24:15 vps-d6443a46 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
-Sep 17 19:24:15 vps-d6443a46 start-service.sh[3099796]: 19:24:15 [groupama] SIGTERM: nessuna sessione viva, tengo la copia su disco
-Sep 17 19:24:15 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Sep 17 19:30:41 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
--- e autopull, cosa ha riavviato --
-Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-
-== LO FERMO DI NUOVO e questa volta lo tengo giu'
+2026-09-17 20:40:56 UTC
+== stato prima
+inactive
+== lo blocco perche' non possa piu' essere riacceso da autopull
+Failed to mask unit: File '/etc/systemd/system/groupama-scraper.service' already exists
 stato: inactive
+risponde sulla 4500? no
+
+== controprova: chiedo di riavviarlo, DEVE rifiutare
+stato dopo il tentativo: active
+
+== gli altri scraper restano su?
+moto       active
+allianz    active
+italiana   active
+hdi        active
+axa        active
+backend    active

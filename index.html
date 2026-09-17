@@ -4298,6 +4298,9 @@ function pensPerc(n, dec) { return ((Number(n) || 0) * 100).toFixed(dec == null 
 function pensRendi(e) {
   var box = document.getElementById('pens-esito');
   if (!box) return;
+  /* Il testo ritoccato dal consulente sopravvive a un ricalcolo: la scheda si
+     ridisegna tutta, e senza questo il ritocco sparirebbe cambiando un numero. */
+  var testoPrima = PENS.testoAMano ? String((document.getElementById('pens-anteprima') || {}).value || '') : '';
   var h = '';
 
   /* LA FASCIA PRUDENZIALE STA IN CIMA. Un avviso in fondo lo legge chi gia'
@@ -4499,6 +4502,7 @@ function pensRendi(e) {
     '<div id="pens-archivio"></div></div>';
 
   box.innerHTML = h;
+  if (testoPrima) { var ta = document.getElementById('pens-anteprima'); if (ta) ta.value = testoPrima; }
   pensAnteprima();
 }
 

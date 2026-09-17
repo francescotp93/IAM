@@ -3347,12 +3347,18 @@ const avvio = async () => {
       const r = await page.evaluate(() => {
         const ta = document.getElementById('pens-anteprima');
         const ami = ta.value; pensTono('professionale'); const pro = ta.value;
-        ta.value = 'Testo mio.'; ta.dispatchEvent(new Event('input')); pensTono('amichevole'); const dopo = ta.value;
-        return { ami, pro, dopo };
+        /* Il ritocco del consulente sopravvive a un RICALCOLO (la scheda si
+           ridisegna tutta), mentre cambiare tono e' un gesto esplicito: riscrive. */
+        ta.value = 'Testo mio.'; ta.dispatchEvent(new Event('input'));
+        document.getElementById('pens-versamento').value = 150; pensCalcola();
+        const dopoRicalcolo = document.getElementById('pens-anteprima').value;
+        pensTono('amichevole'); const dopoTono = document.getElementById('pens-anteprima').value;
+        return { ami, pro, dopoRicalcolo, dopoTono };
       });
       deve(/^Ciao Mario,/.test(r.ami) && /TFR in azienda e TFR nel fondo/.test(r.ami), 'amichevole: non da\' del tu o non parla del TFR al dipendente: ' + r.ami.slice(0, 120));
       deve(/^Gentile Mario Rossi,/.test(r.pro) && !/\bCiao\b/.test(r.pro), 'professionale: da\' ancora del tu');
-      deve(r.dopo === 'Testo mio.', 'un testo ritoccato dal consulente viene riscritto cambiando tono');
+      deve(r.dopoRicalcolo === 'Testo mio.', 'un ricalcolo cancella il testo ritoccato dal consulente: ' + r.dopoRicalcolo.slice(0, 60));
+      deve(/^Ciao Mario,/.test(r.dopoTono) && r.dopoTono !== 'Testo mio.', 'cambiare tono non riscrive il testo: ' + r.dopoTono.slice(0, 80));
       await preparaInvio({ confermati: true, tfrNo: true });
       const senza = await page.evaluate(() => document.getElementById('pens-anteprima').value);
       deve(!/TFR/.test(senza), 'con «TFR no» il messaggio nomina il TFR');

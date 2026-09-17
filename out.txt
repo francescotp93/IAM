@@ -1,16 +1,27 @@
-id: pr173b-1789643656  exit: 0  2026-09-17 11:14:47
+id: pr174-1789644497  exit: 0  2026-09-17 11:28:47
 ----
-a04f988 Lavoro 2, PR 2 di 3: «Utenti» ad albero dalle persone del registro, ingranaggio con i tre gruppi di permessi (#173)
-?? bkerr.log
-?? deploy/notifica-telegram.py
-?? ferr.log
-?? scraper/allianz/package-lock.json
-?? scraper/assieasy/package-lock.json
---- iam/index.html funzioni PR 2:
-8
---- utenti-albero:
-1
---- servito da Caddy:
-200 1129262
-b6b561f47ebd665b93dd817e623987f4  -
-b6b561f47ebd665b93dd817e623987f4  iam/index.html
+988e607 Lavoro 2, PR 3 di 3: l'attivazione dell'accesso passa dal server, le compagnie per utente arrivano in QUOTO (#174)
+--- server/utenti.js presente:
+11058 server/utenti.js
+--- backend attivo da:
+Thu 2026-09-17 11:28:10 UTC
+--- POST /utenti/attiva senza token (atteso 401 JSON):
+{"error":"Accesso non autorizzato (token mancante)."} [401]
+--- iam/index.html PR 3:
+4
+0
+--- index.html PR 3:
+2
+--- Caddy iam md5:
+377ce0c63f70e5c0692b817890ba22a7  -
+377ce0c63f70e5c0692b817890ba22a7  iam/index.html
+--- Caddy nuovo-preventivo md5:
+bdf6d84062fe3a5d4b663408c25fdd3f  -
+bdf6d84062fe3a5d4b663408c25fdd3f  index.html
+--- journal backend (ultime 6 righe):
+[vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
+[chiave-ponte] {"evento":"chiave_letta","da":"supabase","impronta":"a0c7d6247288","quando":"2026-09-17T11:28:11.175Z"}
+2026-09-17T11:28:16.483Z OPTIONS /mail/unread 204 4ms u:-
+2026-09-17T11:28:16.621Z GET    /mail/unread 304 1092ms u:a5ab0cd0
+[vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
+2026-09-17T11:28:47.384Z POST   /utenti/attiva 401 7ms u:-

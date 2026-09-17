@@ -25,5 +25,5 @@ VNC_PASS="${VNC_PASS:-hdi2026}"
 pgrep -f "Xvfb :96" >/dev/null || { Xvfb :96 -screen 0 1440x900x24 >/tmp/xvfb-hdi.log 2>&1 & sleep 2; }
 pgrep -f "fluxbox.*:96" >/dev/null || { DISPLAY=:96 fluxbox >/tmp/fluxbox-hdi.log 2>&1 & sleep 1; }
 pgrep -f "x11vnc.*5903" >/dev/null || x11vnc -display :96 -rfbport 5903 -localhost -passwd "$VNC_PASS" -forever -shared -bg -quiet >/tmp/x11vnc-hdi.log 2>&1
-echo "🔑 VNC HDI su 127.0.0.1:5903 (password: $VNC_PASS) — tunnel SSH dal Mac per il primo login"
+echo "🔑 VNC HDI su 127.0.0.1:5903 — tunnel SSH dal Mac per il primo login"
 node quote-service.mjs

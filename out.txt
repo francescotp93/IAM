@@ -1,19 +1,12 @@
-id: csp-frame-1789589130  exit: 0  2026-09-16 20:05:53
+id: acceso-1789627990  exit: 0  2026-09-17 06:53:31
 ----
-== HEAD backend: 9e387eb (atteso 9e387eb) dopo ~10 s
-== autopull sui siti Caddy:
-Sep 16 20:05:48 vps-d6443a46 autopull.sh[3000098]: [autopull] 2026-09-16 20:05:48 aggiorno c42a853 -> 9e387eb
-Sep 16 20:05:51 vps-d6443a46 autopull.sh[3000098]: [autopull] Caddy: siti aggiornati e ricaricati ✅ (iam.caddy )
-== header su /nuovo-preventivo/:
-HTTP/2 200 
-content-security-policy: frame-ancestors 'self'
-x-frame-options: SAMEORIGIN
-== header su un motore (deve avere la CSP anche lui, e' nello stesso blocco):
-HTTP/2 200 
-content-security-policy: frame-ancestors 'self'
-== IAM alla radice (nessuna CSP attesa qui):
-HTTP/2 200 
-== api:
-200
-== caddy:
-active
+== ora
+2026-09-17 06:53:30
+== HEAD: 9e387eb
+== il rientro automatico e' nel file? 0 riferimenti
+== groupama avviato alle: Thu 2026-09-17 06:19:25 UTC
+== stato
+{"running":false,"step":"pronto","since":1789627893345,"msg":"Sessione scaduta: rifai il login da Fonti → Groupama"}
+== giornale groupama, ultimi 15 minuti
+-- No entries --
+== il backend e' andato a prendere il codice?

@@ -579,7 +579,9 @@
            livello (voce «Richieste», qui sopra), e qui restava solo Collaboratori
            — un sotto-menu con una voce sola è un sotto-menu di troppo. Torna una
            voce diretta. */
-        { l: 'Operativa', i: 'i-users', act: 'operativa', go: function(){ vai('operativa'); } },
+        /* Dal 17/09/2026 «Collaboratori», il registro unico delle persone (era
+           «Operativa»). La chiave act resta 'operativa': e' l'id del pannello. */
+        { l: 'Collaboratori', i: 'i-users', act: 'operativa', go: function(){ vai('operativa'); } },
         /* Materiale di consultazione dell'agenzia. Le tre categorie sono un
            sotto-elenco a fisarmonica DENTRO «Utility» (3° livello): un clic su
            Utility le apre, un clic sulla categoria porta il preventivatore già
@@ -624,11 +626,11 @@
        Analisi dei bisogni e Lead sono passate sotto Marketing (IAM.md §10). */
     analisi:     ['Analisi dei bisogni', 'Marketing'],
     carica:      ['Contabilità', 'Contabilità'],
-    team:        ['Collaboratori', 'Operativa'],
+    team:        ['Collaboratori', 'Strumenti'],
     /* La pagina di IAM sotto «Operativa» è una sola: i Collaboratori. Le altre
        tre voci del sotto-menu sono pagine del preventivatore e dichiarano il
        loro titolo da sé. */
-    operativa:   ['Collaboratori', 'Operativa'],
+    operativa:   ['Collaboratori', 'Strumenti'],
     pipeline:    ['Trattative', 'Clienti'],
     workdiary:   ['Diario di lavoro', 'Agenzia'],
     performance: ['KPI e gare', 'Agenzia'],

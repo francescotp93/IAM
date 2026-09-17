@@ -1,12 +1,16 @@
-id: lav2-pr1-1789633645  exit: 0  2026-09-17 08:28:04
+id: pr173-1789643598  exit: 0  2026-09-17 11:13:37
 ----
-== HEAD backend: 7ac257e (atteso 7ac257e) dopo ~30 s
-IAM servito=eec9825c disco=eec9825c OK
-== scocca servita: la voce Collaboratori
-1
-== IAM chiede la scocca nuova:
-withus-one.js?v=20260917b
-== siti:
-200 https://iam.withusassicurazioni.it/
-200 https://iam.withusassicurazioni.it/nuovo-preventivo/
-200 https://api.withusassicurazioni.it/health
+7ac257e Lavoro 2, PR 1 di 3: il registro unico delle persone, e «Operativa» diventa «Collaboratori» (#172)
+?? bkerr.log
+?? deploy/notifica-telegram.py
+?? ferr.log
+?? scraper/allianz/package-lock.json
+?? scraper/assieasy/package-lock.json
+--- iam/index.html funzioni PR 2:
+2
+--- utenti-albero:
+0
+--- servito da Caddy:
+200 1119039
+eec9825cbc73c0acd95417d044b1f6b0  -
+eec9825cbc73c0acd95417d044b1f6b0  iam/index.html

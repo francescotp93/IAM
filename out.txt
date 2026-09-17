@@ -1,19 +1,16 @@
-id: pr177b-1789672713  exit: 0  2026-09-17 19:18:47
+id: stop-grp-1789673031  exit: 0  2026-09-17 19:24:18
 ----
-120c63e Passo 3, moduli 4 e 5: la sessione non si passa più, è quella dell'origine (#177)
---- QUOTO ospite:
-1
-0
---- scocca:
-1
-withus-one.js?v=20260917d
---- quotoUrl:
-1
-0
---- Caddy md5 (iam, scocca, nuovo-preventivo):
-5cefaff8
-5cefaff8
-de25b98e
-de25b98e
-8045a88d
-8045a88d
+== ora
+2026-09-17 19:24:15 UTC
+== FERMO GROUPAMA
+stato adesso: inactive
+risponde ancora sulla 4500? no, e' fermo
+
+== PERCHE' CHIEDEVA CODICI IN CONTINUAZIONE — giornale dalle 18:20
+Sep 17 18:22:55 vps-d6443a46 start-service.sh[3099796]: 18:22:55 [groupama] la sessione Groupama è caduta adesso: era attiva da 632 minuti (è caduta ISA)
+Sep 17 18:22:55 vps-d6443a46 start-service.sh[3099796]: 18:22:55 [groupama] rientro automatico: provo UNA volta a rifare l'accesso — il codice lo prende il backend dalla posta dell'agenzia
+Sep 17 18:22:56 vps-d6443a46 start-service.sh[3099796]: 18:22:56 [groupama] fill user/pass: {"ok":true}
+Sep 17 18:23:00 vps-d6443a46 start-service.sh[3099796]: 18:23:00 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
+Sep 17 18:23:00 vps-d6443a46 start-service.sh[3099796]: 18:23:00 [groupama] rientro automatico → attesa_otp: schermata del codice raggiunta, ora tocca al backend prenderlo dalla posta
+Sep 17 18:34:53 vps-d6443a46 start-service.sh[3099796]: 18:34:53 [groupama] attesa del codice scaduta (10 min): il keep-alive riprende
+Sep 17 19:24:15 vps-d6443a46 start-service.sh[3099796]: 19:24:15 [groupama] SIGTERM: nessuna sessione viva, tengo la copia su disco

@@ -1,19 +1,9 @@
-id: sera-1789671923  exit: 0  2026-09-17 19:06:02
+id: otp-sera-1789672000  exit: 0  2026-09-17 19:07:05
 ----
 == ora
-2026-09-17 19:05:55
-== commit vivo
-f187b56 Passo 3, modulo 3: «Performance» si sposta da QUOTO a IAM › KPI e gare › Produzione (#176)
-== la password e' ancora in qualche messaggio di avvio?
-in nessuno: pulito
-== righe col testo 'password:' nel diario dalle 08:00 di oggi
-0
-== come sta ogni scraper
-moto       active | {"endpoints":["/status","/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela","/lookup?targa=..&nascita=..","/map","/rivalsa","/shot"]}
-allianz    active | {"running":false,"step":"idle","since":0,"msg":""}
-italiana   active | {"ok":true,"url":"https://portale.plurima.net/"}
-hdi        active | {"running":false,"step":"idle","since":1789631451720,"msg":"","esito":null}
-groupama   active | {"running":false,"step":"attesa_otp","since":1789669380134,"msg":"Credenziali OK — inserisci il codice OTP ricevuto via email","codice_chiesto_il":1789669380133}
-axa        active | {"running":false,"step":"pronto","since":1789631482145,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
-== backend
-active
+2026-09-17 19:07:05
+== giornale groupama, dalle 18:00
+
+== backend: righe su groupama / otp-posta / vigilanza, dalle 18:00
+
+== la vigilanza con rientro e' accesa?

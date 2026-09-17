@@ -1,7 +1,5 @@
 echo "== ora"; date '+%F %T'
-echo "== unita' systemd che parlano di groupama/scraper"
-systemctl list-units --type=service --all --no-pager --no-legend 2>/dev/null | grep -iE "groupama|scraper|withus" | awk '{print $1, $3, $4}'
-echo "== chi ascolta su 4500"
-ss -ltnp 2>/dev/null | grep 4500
-echo "== stato groupama adesso"
-curl -s --max-time 8 http://127.0.0.1:4500/loginstate; echo
+echo "== unita' non in stato 'running' (nome per intero)"
+systemctl list-units --type=service --all --no-pager --no-legend 2>/dev/null | sed 's/^[●*] *//' | awk '$4!="running"{print $1, $3, $4}'
+echo "== giornale groupama, ultimi 20 minuti"
+journalctl -u groupama-scraper --since "-20 min" --no-pager -o short 2>/dev/null | tail -12

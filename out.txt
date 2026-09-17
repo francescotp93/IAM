@@ -1,24 +1,24 @@
-id: chimanda2-1789676160  exit: 0  2026-09-17 20:16:19
+id: ristop-1789676215  exit: 0  2026-09-17 20:17:21
 ----
 == ora
-2026-09-17 20:16:15 UTC
-== TUTTO il diario degli ultimi 25 minuti che parla di posta/invii
+2026-09-17 20:17:19 UTC
+== PERCHE' GROUPAMA E' TORNATO SU DOPO CHE L'AVEVO FERMATO
+Restart=always
+Sep 17 19:24:15 vps-d6443a46 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
+Sep 17 19:24:15 vps-d6443a46 start-service.sh[3099796]: 19:24:15 [groupama] SIGTERM: nessuna sessione viva, tengo la copia su disco
+Sep 17 19:24:15 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 19:30:41 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+-- e autopull, cosa ha riavviato --
+Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
 
-== stato dei sei scraper adesso
-moto       active    {"endpoints":["/status","/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela","/lookup?targa=..&nascita=..","/map","/rivalsa","/shot"]}
-allianz    active    {"running":false,"step":"idle","since":0,"msg":""}
-italiana   active    {"ok":true,"url":"https://portale.plurima.net/"}
-hdi        active    {"running":false,"step":"idle","since":1789631451720,"msg":"","esito":null}
-groupama   active    {"running":false,"step":"pronto","since":1789673450723,"msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_chiesto_il":0}
-axa        active    {"running":false,"step":"pronto","since":1789631482145,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
-
-== qualcuno ha chiesto un accesso negli ultimi 25 minuti?
-
-== i timer attivi (qualcosa che gira da solo a ripetizione)
-withus-autopull.service Thu
-notifica-telegram.service Thu
-fwupd-refresh.service Thu
-systemd-tmpfiles-clean.service Fri
-xfs_scrub_all.service Sun
-apport-autoreport.service -
-cmd-runner.service -
+== LO FERMO DI NUOVO e questa volta lo tengo giu'
+stato: inactive

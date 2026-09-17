@@ -970,13 +970,21 @@ http.createServer(async (req, res) => {
     // ATTENZIONE: /loginstate va controllato PRIMA di /login (altrimenti '/loginstate'.startsWith('/login')
     // farebbe ripartire il login ad ogni polling dello stato → restava bloccato su 'start').
     if (u.pathname.startsWith('/loginstate')) {
-      return res.end(JSON.stringify(LOGIN_STATE));
+      /* `codice_chiesto_il` e' il momento in cui il PORTALE ha spedito il
+         codice, che non coincide con «adesso». Serve a chi va a cercarlo nella
+         posta: cercando dall'istante della richiesta si guarda nel futuro di
+         una mail gia' arrivata, e non la si trova mai.
+         Misurato il 17/09/2026: codice spedito alle 06:57:50, «Accedi» premuto
+         alle 07:16:13 — il freno anti-raffica (giustamente) non ne ha chiesto
+         un altro, e la ricerca e' partita da 07:16:13. Diciotto minuti dopo la
+         mail. */
+      return res.end(JSON.stringify({ ...LOGIN_STATE, codice_chiesto_il: OTP_CHIESTO_IL || 0 }));
     }
     // ── LOGIN GUIDATO — match ESATTO del path (altrimenti /logindump cadrebbe in /login) ──
     if (u.pathname === '/accedi') {
       const forza = u.searchParams.get('forza') === '1';
       doAccedi({ forza }); await new Promise(r => setTimeout(r, 400)); const st = LOGIN_STATE; // NON bloccante: il frontend polla /loginstate
-      return res.end(JSON.stringify({ ok: st.step === 'loggato' || st.step === 'attesa_otp', ...st }));
+      return res.end(JSON.stringify({ ok: st.step === 'loggato' || st.step === 'attesa_otp', ...st, codice_chiesto_il: OTP_CHIESTO_IL || 0 }));
     }
     if (u.pathname === '/codice') {
       const codice = (u.searchParams.get('codice') || creds().codice || '').trim();

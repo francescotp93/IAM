@@ -489,7 +489,20 @@ fontiRouter.post('/:id/accedi', async (req, res) => {
      schermo che chiede il codice. Non si aspetta la risposta: il pannello
      intanto polla /loginstate e vedrà «loggato» quando è fatta. */
   if (out.body && /attesa_otp|serve_codice/i.test(String(out.body.step || out.body.stato || ''))) {
-    codiceDallaPosta(req.params.id, partito).catch(() => {});
+    /* DA QUANDO CERCARE. `partito` e' quando abbiamo premuto noi; il codice
+       pero' puo' essere stato spedito PRIMA — succede ogni volta che il freno
+       anti-raffica dello scraper, giustamente, non ne chiede un altro perche'
+       ce n'e' gia' uno in volo. Cercando da `partito` si guarda nel futuro di
+       una mail gia' arrivata.
+       Misurato il 17/09/2026: codice spedito alle 06:57:50, «Accedi» premuto
+       alle 07:16:13, ricerca partita dalle 07:16:13. Non poteva trovarlo.
+       Quando lo scraper dice quando l'ha chiesto, si parte da li' (con un
+       minuto di margine, perche' la mail impiega qualche istante ad arrivare).
+       Resta comunque il limite di freschezza di chi legge la posta: un codice
+       troppo vecchio non si usa, perche' il portale l'ha gia' fatto scadere. */
+    const chiesto = Number(out.body.codice_chiesto_il);
+    const dopo = Number.isFinite(chiesto) && chiesto > 0 ? Math.min(partito, chiesto - 60000) : partito;
+    codiceDallaPosta(req.params.id, dopo).catch(() => {});
   }
   return res.status(out.status === 502 ? 502 : 200).json(out.body);
 });
@@ -515,11 +528,23 @@ export async function codiceDallaPosta(id, dopo) {
     console.log('[otp-posta] ' + id + ': non e\' un portale che manda codici per email, il codice resta da inserire a mano');
     return false;
   }
-  if (otpInCorso.has(id)) return false;                       // già in ascolto: due ricerche insieme sprecherebbero il codice
+  if (otpInCorso.has(id)) {
+    console.log('[otp-posta] ' + id + ': una ricerca e\' gia\' in ascolto, non ne avvio una seconda');
+    return false;                                             // due ricerche insieme sprecherebbero il codice
+  }
   otpInCorso.add(id);
   try {
     const t = await attendiCodice({ fonte: id, dopo, log: (m) => { try { console.log(m); } catch (_) {} } });
-    if (!t) return false;
+    /* ANCHE «NON TROVATO» SI SCRIVE. Era la seconda uscita muta di questa
+       funzione: il 17/09/2026 la ricerca e' partita davvero e non ha trovato
+       niente, e nel giornale non e' rimasta una riga — quindi sembrava, di
+       nuovo, che non fosse mai partita. Un'uscita silenziosa non si puo'
+       nemmeno cercare. */
+    if (!t) {
+      console.log('[otp-posta] ' + id + ': nessun codice utile nella posta (cercato dalle '
+        + new Date(dopo).toLocaleTimeString('it-IT') + ' in poi); resta da inserire a mano');
+      return false;
+    }
     const store = load();
     /* Si salva come fa la rotta a mano, così lo stato del pannello resta
        coerente e il codice non viene poi scartato «per vecchiaia». */

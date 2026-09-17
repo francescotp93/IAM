@@ -159,8 +159,14 @@ await prova('il pannello avvia la ricerca solo quando il portale chiede il codic
      `mittenteAtteso`, con comportamento identico. */
   deve(/from '\.\/otpPosta\.js'/.test(src), 'fonti.js non usa il recupero automatico');
   deve(/attendiCodice/.test(src), 'fonti.js non chiama piu\' l\'attesa del codice');
+  /* La rotta si prende INTERA, fino a quella dopo: contare i caratteri rende
+     la prova rossa a ogni commento aggiunto — è successo il 17/09/2026, quinta
+     volta della stessa famiglia in tre giorni. Quello che si verifica non
+     cambia. */
   const i = src.indexOf("const dove = req.query.forza === '1'");
-  const blocco = src.slice(i, i + 1500);
+  const fine = src.indexOf('fontiRouter.', i + 10);
+  const blocco = i < 0 ? '' : src.slice(i, fine > i ? fine : i + 4000);
+  deve(blocco, 'non trovo più la rotta che avvia il login: prova da riscrivere, non da cancellare');
   deve(/attesa_otp\|serve_codice/.test(blocco), 'la ricerca parte anche quando il portale non ha chiesto nessun codice');
   deve(/codiceDallaPosta\(/.test(blocco), 'non viene avviata la ricerca del codice');
   deve(/const partito = Date\.now\(\)/.test(blocco) && blocco.indexOf('const partito') < blocco.indexOf('proxyScraper'),
@@ -200,6 +206,42 @@ await prova('quando rinuncia, lo scrive', () => {
   const blocco = src.slice(i, i + 320);
   deve(/console\.log\('\[otp-posta\]/.test(blocco),
     'si esce ancora in silenzio: chi legge il giornale non puo\' sapere che il codice non e\' stato nemmeno cercato');
+});
+
+await prova('si cerca DA QUANDO il portale ha spedito il codice, non da quando premo', () => {
+  /* 17/09/2026: codice spedito alle 06:57:50, «Accedi» premuto alle 07:16:13.
+     Il freno anti-raffica dello scraper — giustamente — non ne ha chiesto un
+     altro, e la ricerca e' partita dalle 07:16:13: diciotto minuti DOPO la
+     mail. Cercava nel futuro di una mail gia' arrivata.
+     Succede ogni volta che c'e' gia' un codice in volo, cioe' proprio nei casi
+     in cui il recupero automatico servirebbe di piu'. */
+  const src = fs.readFileSync(path.join(qui, 'fonti.js'), 'utf8');
+  const i = src.indexOf('attesa_otp|serve_codice');
+  const blocco = i < 0 ? '' : src.slice(i, i + 1600);
+  deve(blocco, 'non trovo piu\' il punto in cui parte la ricerca del codice');
+  deve(/codice_chiesto_il/.test(blocco),
+    'si cerca ancora dall\'istante in cui si preme: con un codice gia\' in volo non lo si trova mai');
+  deve(/Math\.min\(partito/.test(blocco),
+    'si rischia di cercare PIU\' AVANTI di quando abbiamo premuto: la finestra deve solo allargarsi indietro');
+  /* E lo scraper deve dirlo davvero, altrimenti il backend guarda un campo che
+     non arriva mai. */
+  const grp = fs.readFileSync(path.join(path.dirname(qui), 'scraper/groupama/quote-service.mjs'), 'utf8');
+  deve(/codice_chiesto_il: OTP_CHIESTO_IL/.test(grp),
+    'lo scraper non dice quando ha chiesto il codice: il backend non ha da dove partire');
+});
+
+await prova('nessuna uscita muta: ogni rinuncia lascia una riga', () => {
+  /* Tre uscite, tre righe. Il 13/09 ne mancava una e sono serviti quattro
+     giorni per capire che il pezzo veniva chiamato; il 17/09 ne mancava una
+     seconda e si e' ripetuto lo stesso equivoco nella stessa giornata. */
+  const src = fs.readFileSync(path.join(qui, 'fonti.js'), 'utf8');
+  const i = src.indexOf('export async function codiceDallaPosta');
+  const f = i < 0 ? '' : src.slice(i, src.indexOf('\n}', i));
+  deve(f, 'non trovo piu\' la lettura della posta');
+  const ritorni = (f.match(/return false;/g) || []).length;
+  const righe = (f.match(/console\.log\('\[otp-posta\]/g) || []).length;
+  deve(righe >= ritorni,
+    'ci sono ' + ritorni + ' rinunce e solo ' + righe + ' righe di giornale: qualcuna esce in silenzio, e un silenzio non si puo\' cercare');
 });
 
 let ko = 0;

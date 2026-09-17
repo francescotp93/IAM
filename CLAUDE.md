@@ -438,9 +438,10 @@ autonoma della schermata di accesso, un'altra cosa.
 **Le compagnie per utente arrivano in QUOTO.** `currentUser.compagnie` dal
 profilo; `awCompagniaConsentita` nel confronto Motor accanto agli interruttori
 delle Fonti (due cancelli, stesso verso). Regola di prudenza trovata sui dati:
-il catalogo prodotti dice **«HD»** per HDI su sette prodotti, quindi un nome
-che il catalogo non conosce **non si spegne mai**, altrimenti un refuso in una
-tabella toglierebbe una compagnia a un collaboratore in silenzio. Il filtro non
+il catalogo prodotti diceva **«HD»** per HDI su sette prodotti (corretto il
+17/09/2026 su richiesta di Francesco, `20260917_catalogo_hd_hdi.sql`), quindi
+un nome che il catalogo non conosce **non si spegne mai**, altrimenti un refuso
+in una tabella toglierebbe una compagnia a un collaboratore in silenzio. Il filtro non
 tocca i moduli a compagnia unica (persona, casa, salute…): lì la compagnia è il
 prodotto, e nasconderlo è un'altra decisione.
 

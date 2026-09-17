@@ -32,7 +32,7 @@ Colonne che fanno parte del contratto (toccarle impatta entrambe le app):
 | `profilo` | text | **IAM** (gruppo 1) | IAM + QUOTO | Il profilo collaboratore (`PROFILI`): in QUOTO decide i moduli e le sezioni (`profiloDi`). |
 | `prodotti` | text[] | **IAM** (gruppo 1) | QUOTO + `server/convenzionati.js`, `server/sign.js` | Prodotti assegnati al dealer. |
 | `moduli` | text[] | **IAM** (`salvaPermessiUtente` li allinea al profilo) | **QUOTO** | Moduli del preventivatore visibili. `null` = li sceglie l'amministratore. |
-| `compagnie` | text[] | **IAM** (gruppo 2, dal 17/09/2026) | **QUOTO** (`currentUser.compagnie`, applicata al confronto Motor da `awCompagniaConsentita`) | Compagnie visibili nel preventivatore, nomi di `quote_prodotti_catalogo.compagnie`. `null` = tutte; l'admin vede tutto; un nome che il catalogo non conosce **non si spegne** (il 17/09/2026 il catalogo diceva «HD» per HDI: finché non è corretto, HDI resta visibile a tutti). Sotto la blindatura di `u_update_self`: l'interessato non se la cambia. |
+| `compagnie` | text[] | **IAM** (gruppo 2, dal 17/09/2026) | **QUOTO** (`currentUser.compagnie`, applicata al confronto Motor da `awCompagniaConsentita`) | Compagnie visibili nel preventivatore, nomi di `quote_prodotti_catalogo.compagnie`. `null` = tutte; l'admin vede tutto; un nome che il catalogo non conosce **non si spegne** (il 17/09/2026 il catalogo diceva «HD» per HDI, corretto lo stesso giorno: ora HDI è governata come le altre). Sotto la blindatura di `u_update_self`: l'interessato non se la cambia. |
 | `rete`, `responsabile` | text, bool | **QUOTO** (punti vendita) | entrambe | Le **sole** colonne che QUOTO scrive (§2.7). |
 
 Dal 17/09/2026 l'account non è la persona: la persona sta in

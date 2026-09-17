@@ -460,6 +460,24 @@ resta `#page-performance` come rimando (`apriPerformanceInIam`, stessa strada di
 Utenti): la porta `?page=performance` deve esistere, altrimenti la scocca apre
 un riquadro vuoto. `APRIBILI` nella scocca ora è `{ utenti, performance }`.
 
+**Moduli 4 e 5 del passo 3 (17/09/2026): la sessione non si passa più.**
+IAM e il riquadro sono la stessa origine dal 16/09, e `QUOTO_URL` di IAM era
+già `/nuovo-preventivo/`: il client Supabase salva la sessione in
+`localStorage` con una chiave che dipende solo dal progetto, quindi la sessione
+di IAM è già quella del preventivatore. Nel riquadro il client è
+`{ auth: { autoRefreshToken: false } }` con `persistSession` acceso (prima era
+`persistSession: false` e riceveva i token dal messaggio): legge lo storage,
+non rinnova, non installa niente. La scocca sulla stessa origine risponde a
+`quoto-ready` senza `at`/`rt`; QUOTO li ignora se una scocca vecchia li manda.
+`quotoUrl()` non allega più `#at/#rt` né l'email: il salto a pagina intera del
+collaboratore «solo QUOTO» (§2.4) si risolve così, senza biglietto monouso.
+Un vecchio collegamento con i token nell'hash viene ripulito senza leggerlo.
+Verificato sul client servito dal CDN (supabase-js 2.116, auth-js 2.116):
+`getSession()` rilegge lo storage a ogni chiamata e dal 2.107 coordina i
+rinnovi paralleli senza lock (`refresh_token_already_used` gestito). Il CDN
+non è raggiungibile dal contenitore (403 dal proxy): il pacchetto si è letto
+installandolo in una cartella di lavoro, non in `node_modules` del repo.
+
 Ciò che **non** è cambiato: `index.html` di QUOTO e `iam/index.html` restano
 due documenti, e il preventivatore vive ancora in un riquadro (stessa origine,
 `/nuovo-preventivo/`). Fonderli in una sola applicazione è il passo 3, da fare a

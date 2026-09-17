@@ -109,15 +109,18 @@ prova('la vecchia schermata di passaggio non parte piu', () => {
   return 'intercettato prima di IAM';
 });
 
-prova('il ponte con il preventivatore porta con se la sessione (sul canale)', () => {
-  /* La sessione non passa piu' nell'indirizzo (quotoUrl/#at/#rt) ma sul canale
-     postMessage: QUOTO chiede 'quoto-ready', la scocca risponde 'quoto-session'
-     con at/rt letti da db.auth.getSession(), verificando prima l'origine. Cosi'
-     i token non restano nell'indirizzo del riquadro. */
-  deve(/sessionePerQuoto/.test(corpo), 'la scocca non prepara la sessione da mandare al riquadro');
-  deve(/w1:\s*'quoto-session'/.test(corpo), 'la scocca non risponde con la sessione sul canale');
+prova('il ponte con il preventivatore NON porta la sessione: stessa origine, stesso storage', () => {
+  /* Prima la sessione passava nell'indirizzo (#at/#rt), poi sul canale
+     postMessage (at/rt dentro 'quoto-session'). Dal 17/09/2026 il riquadro
+     carica /nuovo-preventivo/ sulla stessa origine e legge la sessione dallo
+     stesso localStorage: la scocca risponde 'quoto-session' con navigazione ed
+     email, e i token li manderebbe solo verso un'altra origine. */
+  deve(/sessionePerQuoto/.test(corpo), 'la scocca non ha piu\' il punto in cui decide cosa mandare al riquadro');
+  deve(/w1:\s*'quoto-session'/.test(corpo), 'la scocca non risponde piu\' sul canale');
+  deve(/if \(QUOTO_ORIGIN === location\.origin\) return Promise\.resolve\(\{\}\);/.test(corpo), 'sulla stessa origine la scocca manda ancora i token');
+  deve(/if \(sess && sess\.at && sess\.rt\) \{ msg\.at = sess\.at; msg\.rt = sess\.rt; \}/.test(corpo), 'i token finiscono nel messaggio anche quando non ci sono');
   deve(/from=iam/.test(corpo), 'il riquadro non si apre piu con from=iam');
-  return 'stessa sessione, ma sul canale';
+  return 'stessa origine: niente token nel messaggio';
 });
 
 prova('dentro il riquadro il preventivatore non mostra il suo menu', () => {

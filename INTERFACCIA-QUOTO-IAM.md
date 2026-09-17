@@ -61,18 +61,23 @@ bottone.
 ## 2. Handshake IAM → QUOTO
 
 Il preventivatore si apre **dentro** IAM, in `<iframe id="w1-qframe">`
-(`Agente-sospesi/withus-one.js`). IAM e QUOTO sono **origini diverse**
-(`iam.` e `quoto.`), quindi la sessione va passata esplicitamente.
+(`iam/withus-one.js`). **Dal 16/09/2026 IAM e il riquadro sono la stessa
+origine** (`iam.withusassicurazioni.it` e `/nuovo-preventivo/`): la sessione
+**non si passa più** (§3), sul canale viaggia solo la navigazione.
 
-### 2.1 Come passa la sessione — il canale (strada normale)
+### 2.1 Il canale (strada normale)
 
-La sessione viaggia **da finestra a finestra**, non dentro l'indirizzo.
+Navigazione ed email viaggiano **da finestra a finestra**, non dentro
+l'indirizzo. La sessione non viaggia affatto: sta nello storage dell'origine
+(dal 17/09/2026, passo 3 modulo 4). `at`/`rt` nel passo 2 restano ammessi
+**solo** verso un riquadro su un'altra origine, che in produzione non esiste
+più; QUOTO li ignora quando arrivano dalla propria origine.
 
 | Passo | Chi | Messaggio | `targetOrigin` |
 |---|---|---|---|
 | 1 | QUOTO, appena caricato | `{ w1:'quoto-ready', v:1 }` a `window.parent` | `https://iam.withusassicurazioni.it` |
-| 2 | IAM, in risposta | `{ w1:'quoto-session', v:1, at, rt, email, page, prod, q }` all'iframe | `https://quoto.withusassicurazioni.it` |
-| 3 | IAM, a ogni voce di menu | `{ w1:'quoto-nav', v:1, page, prod, q }` all'iframe | `https://quoto.withusassicurazioni.it` |
+| 2 | IAM, in risposta | `{ w1:'quoto-session', v:1, email, page, prod, q }` all'iframe (niente token: stessa origine) | `https://iam.withusassicurazioni.it` |
+| 3 | IAM, a ogni voce di menu | `{ w1:'quoto-nav', v:1, page, prod, q }` all'iframe | `https://iam.withusassicurazioni.it` |
 | 4 | QUOTO, quando l'utente chiede una schermata che vive solo in IAM | `{ w1:'quoto-apri', v:1, tab }` a `window.parent` | `https://iam.withusassicurazioni.it` |
 
 **Regole non negoziabili del canale**
@@ -88,12 +93,13 @@ La sessione viaggia **da finestra a finestra**, non dentro l'indirizzo.
   come se l'avesse chiesta il menu.
 - Il passo 1 si ripete ogni 300 ms finché non arriva risposta: non si sa chi
   dei due aggancia per primo il proprio ascoltatore.
-- Se entro 4 s non risponde nessuno, QUOTO prosegue da solo: resta il velo
-  `#boot-screen` e dopo 10 s `bootSalvagente()` apre la schermata di accesso.
+- Se entro 4 s non risponde nessuno, QUOTO prosegue da solo: la sessione non
+  dipende dal canale, e se manca davvero `bootSalvagente()` apre la schermata
+  di accesso dopo 10 s.
 
 ### 2.2 Cosa resta nell'indirizzo del riquadro
 
-`https://quoto.withusassicurazioni.it/?from=iam&page=<pagina>&prod=<prodotto>`
+`https://iam.withusassicurazioni.it/nuovo-preventivo/?from=iam&page=<pagina>&prod=<prodotto>`
 
 - `from=iam` → accende la veste dentro IAM (`html.emb-iam`) e il tasto
   «Torna a IAM».
@@ -133,30 +139,28 @@ fotocamera, microfono, posizione e pagamenti.
 `allow-same-origin` insieme, che annullano quasi tutta la protezione; le voci
 utili vanno collaudate una per una (pagamenti, scarico PDF, stampa).
 
-### 2.4 Strada residua — il salto a pagina intera
+### 2.4 Il salto a pagina intera — deciso il 17/09/2026 (passo 3, modulo 5)
 
-`quotoUrl()` (`Agente-sospesi/index.html`) allega ancora i token nell'hash
-`#at/#rt`. Serve a **un caso solo**: il collaboratore con
-`accesso_iam = false` e `accesso_quoto = true`, che salta direttamente su QUOTO
-senza scocca — lì non esiste una finestra padre con cui parlare.
-QUOTO legge ancora l'hash come **compatibilità** (`initDB`), e lo ripulisce
-prima di qualsiasi chiamata di rete.
+`quotoUrl()` (`iam/index.html`) porta a `/nuovo-preventivo/?from=iam`, **sulla
+stessa origine**: la sessione è già nello stesso `localStorage`, e nell'indirizzo
+non c'è né token né email. Serve al collaboratore con `accesso_iam = false` e
+`accesso_quoto = true` e al tasto dopo la transizione: due schede dello stesso
+sito, niente da passare.
 
-Le due uscite possibili, da decidere:
-- **(a)** togliere il ponte per quel caso: il collaboratore fa il normale
-  accesso su QUOTO con l'email già scritta. Costo: una password digitata.
-- **(b)** biglietto monouso: IAM chiede a `withus-backend` un ticket opaco a
-  scadenza breve, QUOTO lo scambia lato server per la sessione. Nell'indirizzo
-  passa un valore che vale una volta sola e pochi secondi.
+Le due uscite che erano sul tavolo, (a) far ridigitare la password e (b) un
+biglietto monouso dal server, non servono più: la stessa origine le rende
+inutili. Se un giorno `QUOTO_URL` tornasse su un'altra origine, la strada
+giusta è la (b), **mai** un token nell'indirizzo.
 
-Finché la scelta non è fatta, l'hash resta **solo** su questa strada.
+QUOTO **non legge più** `#at/#rt`: se un vecchio collegamento li porta, li
+toglie dalla barra senza usarli (`initDB`).
 
-### 2.5 Ordine di rilascio (il ponte cambia su due lati)
+### 2.5 Ordine di rilascio (il ponte cambia su due lati) — completato il 17/09/2026
 
 1. **QUOTO per primo.** Accetta il canale **e** l'hash: funziona sia con la
-   scocca vecchia sia con quella nuova. Nessuna finestra di rottura.
+   scocca vecchia sia con quella nuova. Nessuna finestra di rottura. *(fatto)*
 2. **IAM per secondo.** Smette di mettere token, email e testo cercato
-   nell'indirizzo e passa al canale.
+   nell'indirizzo e passa al canale. *(fatto)*
 3. **Solo dopo**, e solo quando il punto 2.4 è deciso, si toglie da QUOTO il
    blocco di compatibilità hash.
 
@@ -258,14 +262,29 @@ decide niente, la migrazione che blinda `compagnie`).
 registro scritto prima dell'economia, migrazione che non sceglie mai da sola).
 
 ## 3. Sessione condivisa
-Stessa istanza Supabase Auth. **Attenzione:** dopo il passaggio ai domini
-personalizzati IAM e QUOTO stanno su sottodomini diversi
-(`iam.withusassicurazioni.it` e `quoto.withusassicurazioni.it`) → **origin
-diversi**, quindi il browser **non condivide più** il login automaticamente
-(prima funzionava perché erano entrambi su `francescotp93.github.io`).
-La sessione viene quindi "passata" esplicitamente da IAM a QUOTO **sul canale
-postMessage** (vedi sezione 2), non più nell'indirizzo. Non introdurre
-logout/redirect che invalidino la sessione attraversando il confine.
+Stessa istanza Supabase Auth, e **dal 16/09/2026 la stessa origine**:
+`iam.withusassicurazioni.it` per IAM, `/nuovo-preventivo/` per il
+preventivatore, nel riquadro e a pagina intera. Il client Supabase salva la
+sessione in `localStorage` sotto una chiave che dipende solo dal progetto
+(`sb-<ref>-auth-token`): la sessione di IAM è **già** quella del
+preventivatore, e nessuno la passa più (dal 17/09/2026, passo 3 moduli 4 e 5).
+
+Due regole:
+- **Nel riquadro il preventivatore non rinnova** (`autoRefreshToken: false`,
+  `persistSession` acceso): rinnova IAM, e il riquadro rilegge lo storage a
+  ogni `getSession()`. Due copie separate della sessione facevano ruotare il
+  refresh token da una parte sola e Supabase revocava tutto («already used»,
+  log del 29/07/2026): con una copia condivisa quella corsa non esiste.
+- **Un `signOut` da una parte vale per tutte e due**: stesso storage, stessa
+  sessione. Nel riquadro il preventivatore non offre un'uscita (la barra è
+  nascosta dalla scocca); a pagina intera è il comportamento di due schede
+  dello stesso sito. Non introdurre logout/redirect che invalidino la
+  sessione attraversando il confine.
+
+La storia: prima `francescotp93.github.io` (stessa origine, login condiviso),
+poi `iam.` e `quoto.` (origini diverse, token nell'hash e poi sul canale), ora
+di nuovo una sola origine. `quoto.withusassicurazioni.it` resta come strada
+diretta con il suo login: non è più il riquadro.
 
 ---
 

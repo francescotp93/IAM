@@ -1,36 +1,59 @@
-id: fermo-vero-1789677892  exit: 0  2026-09-17 20:45:28
+id: chiscrive-1789678073  exit: 0  2026-09-17 20:48:38
 ----
 == ora
-2026-09-17 20:45:25 UTC
-== 1. metto da parte il file del servizio (si rimette dov'era in un secondo)
-copia di sicurezza: /root/servizi-sospesi/groupama-scraper.service
-file spostato
-
-== 2. CONTROPROVA: provo ad accenderlo, DEVE fallire
-Failed to start groupama-scraper.service: Unit groupama-scraper.service not found.
-stato: inactive
-risponde sulla 4500? NO — e' fermo
-
-== 3. QUANTE VOLTE HA CHIESTO UN CODICE OGGI, e a ogni riavvio
-codici chiesti oggi: 2
-Sep 17 06:19:25 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Sep 17 06:53:37 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Sep 17 06:53:38 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Sep 17 06:57:46 vps-d6443a46 start-service.sh[3088215]: 06:57:46 [groupama] rientro automatico: provo UNA volta a rifare l'accesso — il codice lo prende il backend dalla posta dell'agenzia
-Sep 17 06:57:50 vps-d6443a46 start-service.sh[3088215]: 06:57:50 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-Sep 17 07:25:00 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Sep 17 07:25:01 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Sep 17 07:45:42 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Sep 17 07:50:45 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Sep 17 18:22:55 vps-d6443a46 start-service.sh[3099796]: 18:22:55 [groupama] rientro automatico: provo UNA volta a rifare l'accesso — il codice lo prende il backend dalla posta dell'agenzia
-Sep 17 18:23:00 vps-d6443a46 start-service.sh[3099796]: 18:23:00 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-Sep 17 19:30:41 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Sep 17 20:40:58 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-
-== 4. gli altri restano su
-moto       active
-allianz    active
-italiana   active
-hdi        active
-axa        active
-backend    active
+2026-09-17 20:48:10 UTC
+  2026-09-16 23:32:13  @studiosirio.it
+  2026-09-12 09:04:36  @withusassicurazioni.it
+  2026-09-12 07:09:48  @financial1000.com
+  2026-09-11 11:18:58  @saraagenzie.it
+  2026-09-10 21:14:58  @withusassicurazioni.it
+  2026-09-08 13:38:24  @senzapensione.it
+  2026-09-06 13:58:33  @financial1000.com
+  2026-09-04 06:29:59  @agleasalus.it
+  2026-09-02 15:46:15  @withusassicurazioni.it
+  2026-09-02 15:18:53  @withusassicurazioni.it
+  2026-09-01 12:39:30  @saraagenzie.it
+  2026-08-29 14:08:21  @messaggi.intesasanpaolo.com
+  2026-08-21 11:12:17  @saraagenzie.it
+  2026-08-12 08:22:33  @staff.aruba.it
+  2026-08-11 10:45:50  @saraagenzie.it
+  2026-08-07 16:42:29  @hotmail.it
+  2026-08-03 16:23:55  @saraagenzie.it
+  2026-07-30 10:37:27  @innovasemplice.it
+--- casella @withusassicurazioni.it ---
+  ultimi 13 messaggi, dal piu' recente (ora UTC, solo il dominio di chi scrive):
+  2026-09-07 14:14:30  @fatturazioneelettronica.aruba.it
+  2026-08-17 09:36:44  @gmail.com
+  2026-08-17 09:32:37  @fatturazioneelettronica.aruba.it
+  2026-08-11 07:46:34  @gmail.com
+  2026-08-10 09:30:24  @gmail.com
+  2026-08-07 10:27:37  @gmail.com
+  2026-07-24 07:42:23  @fatturazioneelettronica.aruba.it
+  2026-06-23 21:27:44  @gmail.com
+  2026-06-22 12:43:40  @staff.aruba.it
+  2026-06-21 11:12:00  @staff.aruba.it
+  2026-06-20 07:22:34  @staff.aruba.it
+  2026-06-18 14:34:06  @fatturazioneelettronica.aruba.it
+  2026-06-17 10:54:11  @fatturazioneelettronica.aruba.it
+--- casella @withusassicurazioni.it ---
+  ultimi 20 messaggi, dal piu' recente (ora UTC, solo il dominio di chi scrive):
+  2026-09-17 08:21:02  @fatturazioneelettronica.aruba.it
+  2026-09-14 12:59:42  @withusassicurazioni.it
+  2026-09-09 09:53:47  @gmail.com
+  2026-08-28 10:38:58  @withusassicurazioni.it
+  2026-08-28 10:37:47  @withusassicurazioni.it
+  2026-08-28 10:28:39  @withusassicurazioni.it
+  2026-08-26 10:31:07  @libero.it
+  2026-08-26 10:12:29  @libero.it
+  2026-08-18 13:32:28  @gmail.com
+  2026-08-17 18:06:19  @fatturazioneelettronica.aruba.it
+  2026-08-06 08:43:37  @libero.it
+  2026-08-06 08:39:22  @libero.it
+  2026-07-28 08:48:36  @libero.it
+  2026-07-24 10:41:07  @withusassicurazioni.it
+  2026-07-22 11:46:46  @withusassicurazioni.it
+  2026-07-21 08:36:24  @gmail.com
+  2026-07-14 07:18:17  @fatturazioneelettronica.aruba.it
+  2026-07-08 08:55:13  @withusassicurazioni.it
+  2026-07-08 07:49:16  @virgilio.it
+  2026-07-02 08:24:46  @virgilio.it

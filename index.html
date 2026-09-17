@@ -52,7 +52,6 @@
 <link rel="apple-touch-icon" href="favicon.svg">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <!-- Il calcolo delle tariffe che il backend condivide con questa pagina. Va
      caricato PRIMA del corpo del preventivatore, perche' quello lo chiama.
      Stesso file per browser e server: un premio calcolato qui e uno calcolato
@@ -1487,7 +1486,6 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item active" id="nav-home" onclick="showPage('home')"><i class="ti ti-layout-grid"></i><span>Moduli</span></div>
       <div class="nav-item" id="nav-anag" style="display:none" onclick="apriAnagView('clienti')"><i class="ti ti-address-book"></i><span>Clienti</span></div>
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('utility')"><i class="ti ti-folder"></i><span>Utility</span></div>
-      <div class="nav-item" id="nav-perf" style="display:none" onclick="showPage('performance')"><i class="ti ti-chart-line"></i><span>Performance</span></div>
       <div class="nav-item" id="nav-portafoglio" onclick="showPage('portafoglio')"><i class="ti ti-briefcase"></i><span>Portafoglio</span></div>
       <div class="nav-item" id="nav-scadenzario" onclick="showPage('scadenzario')"><i class="ti ti-calendar-clock"></i><span>Scadenzario</span><span class="nav-badge" id="scad-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-titoli" onclick="showPage('titoli')"><i class="ti ti-receipt"></i><span>Titoli</span><span class="nav-badge" id="tit-badge" style="display:none">0</span></div>
@@ -2985,25 +2983,15 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
     <!-- ── PERFORMANCE ── -->
     <div class="page" id="page-performance">
-      <div class="perf-head">
-        <div>
-          <div class="page-title">Performance</div>
-          <div class="page-sub" id="perf-sub">Preventivi fatti e polizze emesse</div>
-        </div>
-        <div class="perf-filters">
-          <select id="perf-collab" style="display:none" onchange="loadPerformance()"></select>
-          <select id="perf-anno" onchange="loadPerformance()"></select>
-        </div>
-      </div>
-      <div class="perf-kpis">
-        <div class="stat-card"><div class="stat-label">Preventivi (anno)</div><div class="stat-value" id="perf-k-prev">–</div></div>
-        <div class="stat-card"><div class="stat-label">Polizze (anno)</div><div class="stat-value" id="perf-k-pol">–</div></div>
-        <div class="stat-card"><div class="stat-label">Conversione</div><div class="stat-value" id="perf-k-conv">–</div></div>
-        <div class="stat-card"><div class="stat-label">Prodotto top</div><div class="stat-value" id="perf-k-top" style="font-size:18px">–</div></div>
-      </div>
-      <div class="perf-chart-card">
-        <div class="perf-chart-title">Produzione mensile</div>
-        <div id="perf-chart" style="min-height:340px"></div>
+      <div class="page-title">Performance</div>
+      <!-- Dal 17/09/2026 (passo 3, modulo 3) i numeri di produzione — preventivi
+           fatti, polizze emesse, conversione, prodotto piu' quotato, andamento
+           mensile — stanno in IAM → KPI e gare › Produzione. Qui c'era una
+           pagina che dentro IAM nessuno raggiungeva: la barra di QUOTO nel
+           riquadro non si vede (INTERFACCIA-QUOTO-IAM.md §2.7). -->
+      <div class="page-sub" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span>I numeri di <b>produzione</b> (preventivi, polizze, conversione, andamento mensile) stanno in un posto solo: <b>IAM → KPI e gare › Produzione</b>.</span>
+        <button class="btn-add" id="btn-performance-iam" onclick="apriPerformanceInIam()"><i class="ti ti-external-link"></i> Apri KPI in IAM</button>
       </div>
     </div>
 
@@ -3101,7 +3089,6 @@ let TK_LIST = [];
 let TK_FILTER = 'tutti';
 let UTENTI = [];
 let PREV_ID = null;     // id ultimo preventivo salvato (per emissione polizza)
-let perfChart = null;
 let STORICO_CACHE = [];
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 // Sanitizza il testo di ricerca per i filtri PostgREST .or()/.ilike() (virgole, parentesi, %, * rompono la sintassi)
@@ -3557,7 +3544,6 @@ function initMain() {
   loadScadenzario();   // riempie il numero sulla voce di menu senza aprire la pagina
   loadTitoli();        // e quello degli insoluti
   document.getElementById('nav-doc').style.display    = 'flex';
-  document.getElementById('nav-perf').style.display   = 'flex';
   document.getElementById('nav-ticket').style.display = 'flex';
   document.getElementById('nav-sinistri').style.display = 'flex';
   const cf=document.getElementById('chat-fab'); if(cf) cf.style.display='none'; // chat disattivata per ora (richiesta 25/08/2026): per riattivarla rimettere 'flex'
@@ -9810,7 +9796,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',performance:'nav-perf',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
@@ -9839,7 +9825,6 @@ function showPage(name) {
   if (name === 'utility') loadDocumenti();
   if (name === 'reti') loadReti();
   if (name === 'log') loadLog();
-  if (name === 'performance') loadPerformance();
   if (name === 'fonti') loadFonti();
   if (name === 'convenzioni') loadConvenzioni();
   if (name === 'gruppi') loadGruppi();
@@ -17148,73 +17133,7 @@ async function eliminaSinistro(id){
 }
 
 /* ── PERFORMANCE ── */
-function renderPerfChart(prev, pol) {
-  if (typeof ApexCharts === 'undefined') return;
-  const opts = {
-    chart: { type: 'area', height: 360, fontFamily: 'inherit', toolbar: { show: true } },
-    colors: ['#3b5bfd', '#67c98e'],
-    dataLabels: { enabled: false },
-    stroke: { curve: 'smooth', width: 3 },
-    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.02, stops: [0, 90, 100] } },
-    legend: { position: 'top', horizontalAlign: 'center', markers: { width: 12, height: 12, radius: 12 }, fontWeight: 600 },
-    grid: { borderColor: '#eef0f5', strokeDashArray: 4 },
-    xaxis: { categories: ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'], axisBorder: { show: false }, axisTicks: { show: false } },
-    yaxis: { labels: { formatter: v => Math.round(v) } },
-    tooltip: { y: { formatter: v => Math.round(v) } },
-    series: [ { name: 'Preventivi', data: prev }, { name: 'Polizze', data: pol } ]
-  };
-  const el = document.getElementById('perf-chart');
-  if (perfChart) { perfChart.updateOptions({ series: opts.series }); }
-  else { el.innerHTML = ''; perfChart = new ApexCharts(el, opts); perfChart.render(); }
-}
 
-async function loadPerformance() {
-  if (!db) return;
-  const isAdmin = currentUser.role === 'admin';
-  // popola filtro collaboratore (admin) e anni
-  const annoSel = document.getElementById('perf-anno');
-  if (annoSel && !annoSel.options.length) {
-    const y = new Date().getFullYear();
-    annoSel.innerHTML = [y, y-1, y-2].map(a => `<option value="${a}">${a}</option>`).join('');
-  }
-  const collabSel = document.getElementById('perf-collab');
-  if (isAdmin && collabSel) {
-    collabSel.style.display = 'inline-block';
-    if (!collabSel.options.length) {
-      try { const { data } = await db.from('iam_utenti').select('id,nome,email');
-        collabSel.innerHTML = '<option value="">Tutti i collaboratori</option>' + (data||[]).map(u => `<option value="${u.id}">${esc(u.nome||u.email)}</option>`).join('');
-      } catch {}
-    }
-  }
-  const anno = parseInt(annoSel?.value) || new Date().getFullYear();
-  const filtro = isAdmin ? (collabSel?.value || '') : currentUser.id;
-  document.getElementById('perf-sub').textContent = isAdmin ? 'Vista amministratore — preventivi e polizze del team' : 'I tuoi preventivi e le tue polizze';
-  try {
-    let q = db.from('quote_preventivi').select('creato_il,polizza_emessa,polizza_il,prodotto,modulo,creato_da')
-      .gte('creato_il', anno + '-01-01').lt('creato_il', (anno+1) + '-01-01');
-    if (filtro) q = q.eq('creato_da', filtro);
-    const { data, error } = await q;
-    if (error) throw error;
-    const rows = data || [];
-    const prev = Array(12).fill(0), pol = Array(12).fill(0);
-    const perProdotto = {};
-    rows.forEach(r => {
-      const m = new Date(r.creato_il).getMonth();
-      prev[m]++;
-      perProdotto[r.prodotto||r.modulo||'—'] = (perProdotto[r.prodotto||r.modulo||'—']||0)+1;
-      if (r.polizza_emessa) { const pm = r.polizza_il ? new Date(r.polizza_il).getMonth() : m; pol[pm]++; }
-    });
-    const totPrev = prev.reduce((a,b)=>a+b,0), totPol = pol.reduce((a,b)=>a+b,0);
-    document.getElementById('perf-k-prev').textContent = totPrev;
-    document.getElementById('perf-k-pol').textContent  = totPol;
-    document.getElementById('perf-k-conv').textContent = totPrev ? Math.round(totPol/totPrev*100)+'%' : '–';
-    const top = Object.entries(perProdotto).sort((a,b)=>b[1]-a[1])[0];
-    document.getElementById('perf-k-top').textContent  = top ? top[0] : '–';
-    renderPerfChart(prev, pol);
-  } catch (e) {
-    document.getElementById('perf-chart').innerHTML = `<div class="empty-state">Tabella preventivi non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div>`;
-  }
-}
 
 
 
@@ -21101,6 +21020,17 @@ async function caricaUtentiIam() {
 function apriUtentiInIam() {
   if (window.self !== window.top) {
     window.parent.postMessage({ w1: 'quoto-apri', v: 1, tab: 'utenti' }, PONTE_IAM || IAM_ORIGINI[0]);
+    return;
+  }
+  window.location.href = IAM_URL;
+}
+
+/* I KPI di produzione vivono in IAM → KPI e gare › Produzione (17/09/2026,
+   passo 3 modulo 3). Stessa strada di Utenti: nel riquadro si chiede alla
+   scocca con quoto-apri (elenco chiuso), a pagina intera si va a IAM. */
+function apriPerformanceInIam() {
+  if (window.self !== window.top) {
+    window.parent.postMessage({ w1: 'quoto-apri', v: 1, tab: 'performance' }, PONTE_IAM || IAM_ORIGINI[0]);
     return;
   }
   window.location.href = IAM_URL;

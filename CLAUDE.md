@@ -445,6 +445,21 @@ in una tabella toglierebbe una compagnia a un collaboratore in silenzio. Il filt
 tocca i moduli a compagnia unica (persona, casa, salute…): lì la compagnia è il
 prodotto, e nasconderlo è un'altra decisione.
 
+**Modulo 3 del passo 3 (17/09/2026): «Performance» si è spostata.** La pagina
+di QUOTO (preventivi, polizze, conversione, prodotto top, andamento mensile)
+dentro IAM non la raggiungeva nessuno: la barra laterale di QUOTO nel riquadro
+non si vede. Ora è la linguetta **Produzione** di IAM › KPI e gare, letta da
+`quote_preventivi` con `produzioneRiassunto` (pura, provata: la polizza conta
+nel mese dell'emissione se è nello stesso anno, altrimenti nel mese del
+preventivo, così polizze ≤ preventivi e la conversione è una percentuale vera;
+«emessa» vale come nella Produzione e storico, `polizza_emessa` o stato
+`emessa`). Grafico a barre disegnato a mano con due tinte fisse validate col
+verificatore dataviz nei due temi (`--prod-prev` blu, `--acc` verde), legenda e
+tabella dei numeri; IAM non carica ApexCharts, e ora nemmeno QUOTO. In QUOTO
+resta `#page-performance` come rimando (`apriPerformanceInIam`, stessa strada di
+Utenti): la porta `?page=performance` deve esistere, altrimenti la scocca apre
+un riquadro vuoto. `APRIBILI` nella scocca ora è `{ utenti, performance }`.
+
 Ciò che **non** è cambiato: `index.html` di QUOTO e `iam/index.html` restano
 due documenti, e il preventivatore vive ancora in un riquadro (stessa origine,
 `/nuovo-preventivo/`). Fonderli in una sola applicazione è il passo 3, da fare a

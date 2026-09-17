@@ -82,8 +82,8 @@ La sessione viaggia **da finestra a finestra**, non dentro l'indirizzo.
   `event.source` (`window.parent` lato QUOTO, `iframe.contentWindow` lato IAM)
   **prima** di guardare il contenuto del messaggio.
 - Il passo 4 (dal 17/09/2026) porta un nome di scheda, e la scocca lo accetta
-  **solo da un elenco chiuso** (`APRIBILI` in `iam/withus-one.js`, oggi solo
-  `utenti`): il valore ricevuto non arriva mai a `goTab` così com'è. Il
+  **solo da un elenco chiuso** (`APRIBILI` in `iam/withus-one.js`, oggi
+  `utenti` e `performance`): il valore ricevuto non arriva mai a `goTab` così com'è. Il
   cancello di IAM su quella scheda (`RISERVATE`, chi può amministrare) vale
   come se l'avesse chiesta il menu.
 - Il passo 1 si ripete ogni 300 ms finché non arriva risposta: non si sa chi
@@ -246,7 +246,7 @@ solo padrone**; l'altra app al massimo legge, o rimanda.
 | **Punti vendita / reti** | **QUOTO** → Collaboratori e punti vendita | `iam_utenti.rete`, `iam_utenti.responsabile` — le **sole** colonne di `iam_utenti` che QUOTO scrive | IAM non ce l'ha |
 | **Collaboratori / intermediari** | **IAM** → Collaboratori (era «Operativa»). Dal 17/09/2026 `quote_collaboratori` è il **registro unico delle persone**: ogni collaboratore, candidato e utente ha una riga sola; `iam_team` è l'allegato economico agganciato da `collab_id`; l'account è `quote_collaboratori.iam_id` (indici unici su entrambi) | `quote_collaboratori`, `quote_collaboratori_note`, `iam_team` | QUOTO **legge** il registro (`caricaIntermediari`, `INTERM_CACHE`) e tiene ancora la sua scheda finché IAM non ha anche: segno «struttura», documenti, privacy firmata (`iam_firme`). Poi si spegne (passo 3, modulo 2b) |
 | **Produzione e storico** (preventivi) | **QUOTO** | `quote_preventivi` | IAM apre quella di QUOTO nel riquadro. In IAM `storico` è un'altra cosa: lo storico movimenti della contabilità (`sessioni_giornaliere`) |
-| **KPI e gare** | **IAM** | `iam_gare_*`, `iam_kpi_*` | QUOTO ha un grafico `performance` non raggiungibile da IAM: da decidere (modulo 3) |
+| **KPI e gare** | **IAM** → KPI e gare. Dal 17/09/2026 (passo 3, modulo 3) la linguetta **Produzione** porta i numeri che stavano nella pagina «Performance» di QUOTO: preventivi fatti, polizze emesse, conversione, prodotto più quotato, andamento mensile, per anno e per collaboratore (`produzioneRiassunto`, pura). Si toglie a un collaboratore con la spunta `kpi_produzione` come le altre | `iam_gare_*`, `iam_kpi_*`; **legge** `quote_preventivi` | QUOTO tiene solo un rimando (`#page-performance` → `quoto-apri` con `tab: 'performance'`); il grafico e ApexCharts non ci sono più |
 
 La prova `server/verifica/utenti-in-iam.test.mjs` controlla la prima riga e la
 seconda: che QUOTO non abbia più una gestione utenti e che su `iam_utenti`

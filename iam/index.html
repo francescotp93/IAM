@@ -28,6 +28,7 @@
 /* ── TEMA DARK (default) ── */
 body, body.theme-dark {
   --bg:#0A0A0F;--surf:#13131A;--surf2:#1C1C26;--surf3:#252533;
+  --prod-prev:#3b82f6;   /* serie «preventivi» del grafico Produzione (tema scuro) */
   --bord:rgba(255,255,255,.06);--bord2:rgba(255,255,255,.12);
   --txt:#F0F0FF;--txt2:#9090B0;--txt3:#5A5A7A;
   --shd:0 4px 24px rgba(0,0,0,.4);--shd2:0 8px 40px rgba(0,0,0,.6);
@@ -40,6 +41,7 @@ body, body.theme-dark {
 /* ── TEMA LIGHT ── */
 body.theme-light {
   --bg:#F0F2F8;--surf:#FFFFFF;--surf2:#F5F7FF;--surf3:#EEF0F8;
+  --prod-prev:#1d4ed8;   /* serie «preventivi» del grafico Produzione (tema chiaro) */
   --bord:rgba(0,0,0,.06);--bord2:rgba(0,0,0,.12);
   --txt:#0A0A1A;--txt2:#5A5A7A;--txt3:#9090B0;
   --shd:0 4px 24px rgba(0,0,0,.08);--shd2:0 8px 40px rgba(0,0,0,.15);
@@ -2256,6 +2258,7 @@ input[type=file]{display:none;}
 <!-- PERFORMANCE -->
 <div class="panel" id="panel-performance">
   <div class="ptabs" id="perf-tabs">
+    <button class="ptab" id="pt-produzione" onclick="selPerfTab('produzione')">Produzione</button>
     <button class="ptab act" id="pt-gare" onclick="selPerfTab('gare')">Gare Interne</button>
     <button class="ptab" id="pt-consap" onclick="selPerfTab('consap')">CONSAP</button>
     <button class="ptab" id="pt-re" onclick="selPerfTab('re')">RE</button>
@@ -2265,6 +2268,37 @@ input[type=file]{display:none;}
   <!-- Avviso: posizioni rimaste nella memoria di questo browser da una vecchia
        versione. Riempito da mostraResiduiKPI(); vuoto quando non c'e' niente. -->
   <div id="perf-residui" style="padding:0 14px;"></div>
+
+  <!-- PRODUZIONE: preventivi fatti e polizze emesse, per anno e per collaboratore.
+       Era la pagina «Performance» di QUOTO (passo 3, modulo 3, 17/09/2026):
+       dentro IAM nessuno la raggiungeva, perche' la barra di QUOTO nel riquadro
+       non si vede. I dati sono gli stessi, quote_preventivi; i numeri li fa
+       produzioneRiassunto(), che si prova senza browser. -->
+  <div id="pp-produzione" style="display:none;">
+    <div style="padding:0 12px 12px;">
+      <div style="background:var(--surf);border-radius:var(--r);padding:16px;box-shadow:var(--shd);margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:13px;font-weight:700;">Produzione</div>
+            <div id="prod-sub" style="font-size:11px;color:var(--txt3);">Preventivi fatti e polizze emesse, da QUOTO</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <select id="prod-collab" onchange="loadProduzioneKpi()" style="display:none;font-size:12px;padding:4px 8px;border-radius:8px;border:.5px solid var(--bord2);background:var(--surf2);color:var(--txt);font-family:inherit;max-width:180px;"></select>
+            <select id="prod-anno" onchange="loadProduzioneKpi()" style="font-size:12px;padding:4px 8px;border-radius:8px;border:.5px solid var(--bord2);background:var(--surf2);color:var(--txt);font-family:inherit;"></select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+          <div style="background:var(--surf2);border-radius:var(--rs);padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;">Preventivi</div><div id="prod-k-prev" style="font-size:22px;font-weight:800;">—</div></div>
+          <div style="background:var(--surf2);border-radius:var(--rs);padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;">Polizze</div><div id="prod-k-pol" style="font-size:22px;font-weight:800;">—</div></div>
+          <div style="background:var(--surf2);border-radius:var(--rs);padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;">Conversione</div><div id="prod-k-conv" style="font-size:22px;font-weight:800;">—</div></div>
+          <div style="background:var(--surf2);border-radius:var(--rs);padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;">Prodotto più quotato</div><div id="prod-k-top" style="font-size:14px;font-weight:700;line-height:1.3;">—</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Produzione mensile</div>
+        <div id="prod-chart" style="min-height:120px;"><div style="color:var(--txt3);font-size:12px;">Caricamento…</div></div>
+        <div id="prod-nota" style="font-size:11px;color:var(--txt3);margin-top:8px;line-height:1.45;">Polizze: i preventivi dell'anno diventati polizza, nel mese dell'emissione.</div>
+      </div>
+    </div>
+  </div>
 
   <!-- GARE INTERNE -->
   <div id="pp-gare">
@@ -15875,8 +15909,98 @@ function archiviaResiduiKPI() {
   mostraResiduiKPI();
 }
 
+/* ─── PRODUZIONE — era la pagina «Performance» di QUOTO (17/09/2026) ─────────
+   Dentro IAM quella pagina non la raggiungeva nessuno: la barra laterale di
+   QUOTO nel riquadro non si vede. I KPI hanno un padrone solo (INTERFACCIA
+   §2.7), quindi i numeri stanno qui, letti dalla stessa tabella. */
+const PROD_MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+/* Pura: dalle righe di quote_preventivi ai numeri dell'anno. «Emessa» vale
+   come nella Produzione e storico (polizza_emessa, oppure stato 'emessa'); la
+   polizza conta nel mese dell'emissione se e' nello stesso anno, altrimenti
+   nel mese del preventivo, cosi' il totale polizze e' sempre <= preventivi
+   e la conversione resta una percentuale vera. */
+function produzioneRiassunto(rows, anno) {
+  const prev = Array(12).fill(0), pol = Array(12).fill(0), perProdotto = {};
+  (rows || []).forEach(r => {
+    const dc = new Date(r.creato_il);
+    if (isNaN(dc) || dc.getFullYear() !== anno) return;
+    prev[dc.getMonth()]++;
+    const nome = r.prodotto || r.modulo || '—';
+    perProdotto[nome] = (perProdotto[nome] || 0) + 1;
+    const emessa = r.polizza_emessa === true || !!(r.dati && r.dati.stato === 'emessa');
+    if (!emessa) return;
+    const dp = r.polizza_il ? new Date(r.polizza_il) : dc;
+    pol[(isNaN(dp) || dp.getFullYear() !== anno) ? dc.getMonth() : dp.getMonth()]++;
+  });
+  const totPrev = prev.reduce((a, b) => a + b, 0), totPol = pol.reduce((a, b) => a + b, 0);
+  const top = Object.entries(perProdotto).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+  return { prev, pol, totPrev, totPol, conversione: totPrev ? Math.round(totPol / totPrev * 100) : null, top: top ? top[0] : null };
+}
+/* Due serie, due tinte fisse (blu = preventivi, verde della casa = polizze),
+   legenda sempre, un filo di superficie fra le barre, e i numeri anche in
+   tabella per chi non distingue i colori o stampa. */
+function produzioneGrafico(prev, pol) {
+  const max = Math.max(1, ...prev, ...pol);
+  const h = v => Math.max(v > 0 ? 3 : 0, Math.round(v / max * 100));
+  const barre = PROD_MESI.map((m, i) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;" title="${m}: ${prev[i]} preventivi, ${pol[i]} polizze">
+      <div style="display:flex;align-items:flex-end;justify-content:center;gap:2px;height:110px;width:100%;">
+        <div style="width:38%;height:${h(prev[i])}%;background:var(--prod-prev);border-radius:3px 3px 0 0;"></div>
+        <div style="width:38%;height:${h(pol[i])}%;background:var(--acc);border-radius:3px 3px 0 0;"></div>
+      </div>
+      <div style="font-size:9px;color:var(--txt3);">${m}</div></div>`).join('');
+  const legenda = `<div style="display:flex;gap:14px;font-size:11px;color:var(--txt2);margin-top:8px;">
+      <span><i style="display:inline-block;width:10px;height:10px;background:var(--prod-prev);border-radius:2px;vertical-align:-1px;margin-right:4px;"></i>Preventivi</span>
+      <span><i style="display:inline-block;width:10px;height:10px;background:var(--acc);border-radius:2px;vertical-align:-1px;margin-right:4px;"></i>Polizze</span></div>`;
+  const tabella = `<details style="margin-top:8px;"><summary style="font-size:11px;color:var(--txt3);cursor:pointer;">Vedi i numeri</summary>
+      <div style="overflow-x:auto;"><table style="font-size:11px;border-collapse:collapse;margin-top:6px;white-space:nowrap;"><tr><td style="padding:2px 6px;color:var(--txt3);"></td>${PROD_MESI.map(m => `<td style="padding:2px 6px;color:var(--txt3);text-align:right;">${m}</td>`).join('')}</tr>
+      <tr><td style="padding:2px 6px;">Preventivi</td>${prev.map(v => `<td style="padding:2px 6px;text-align:right;">${v}</td>`).join('')}</tr>
+      <tr><td style="padding:2px 6px;">Polizze</td>${pol.map(v => `<td style="padding:2px 6px;text-align:right;">${v}</td>`).join('')}</tr></table></div></details>`;
+  return `<div style="display:flex;gap:3px;align-items:flex-end;">${barre}</div>${legenda}${tabella}`;
+}
+async function loadProduzioneKpi() {
+  const el = document.getElementById('prod-chart');
+  if (!el || !db) return;
+  const admin = PROFILO?.ruolo === 'admin';
+  const annoSel = document.getElementById('prod-anno');
+  if (annoSel && !annoSel.options.length) {
+    const y = new Date().getFullYear();
+    annoSel.innerHTML = [y, y - 1, y - 2].map(a => `<option value="${a}">${a}</option>`).join('');
+  }
+  const collabSel = document.getElementById('prod-collab');
+  if (admin && collabSel) {
+    collabSel.style.display = '';
+    if (!collabSel.options.length) {
+      if (!(UTENTI_LISTA || []).length) await caricaUtenti();
+      collabSel.innerHTML = '<option value="">Tutti i collaboratori</option>'
+        + (UTENTI_LISTA || []).map(u => `<option value="${esc(u.id)}">${esc([u.cognome, u.nome].filter(Boolean).join(' ') || u.email || u.id)}</option>`).join('');
+    }
+  }
+  const anno = parseInt(annoSel?.value) || new Date().getFullYear();
+  /* Chi non e' amministratore vede i suoi: creato_da e' l'account. */
+  const filtro = admin ? ((collabSel && collabSel.value) || '') : ((ME && ME.id) || '');
+  const sub = document.getElementById('prod-sub');
+  if (sub) sub.textContent = admin ? 'Preventivi e polizze del team, da QUOTO' : 'I tuoi preventivi e le tue polizze, da QUOTO';
+  try {
+    let q = db.from('quote_preventivi').select('creato_il,polizza_emessa,polizza_il,prodotto,modulo,creato_da,dati')
+      .gte('creato_il', anno + '-01-01').lt('creato_il', (anno + 1) + '-01-01');
+    if (filtro) q = q.eq('creato_da', filtro);
+    const { data, error } = await q;
+    if (error) throw error;
+    const r = produzioneRiassunto(data || [], anno);
+    const set = (id, v) => { const x = document.getElementById(id); if (x) x.textContent = v; };
+    set('prod-k-prev', String(r.totPrev));
+    set('prod-k-pol', String(r.totPol));
+    set('prod-k-conv', r.conversione === null ? '—' : r.conversione + '%');
+    set('prod-k-top', r.top || '—');
+    el.innerHTML = r.totPrev ? produzioneGrafico(r.prev, r.pol)
+      : '<div style="color:var(--txt3);font-size:12px;padding:12px 0;">Nessun preventivo nel ' + anno + (filtro && admin ? ' per questo collaboratore' : '') + '.</div>';
+  } catch (e) {
+    el.innerHTML = '<div style="color:var(--red);font-size:12px;">Produzione non leggibile: ' + esc(e.message || e) + '</div>';
+  }
+}
+
 function selPerfTab(t) {
-  ['gare','consap','re','tcm'].forEach(x => {
+  ['produzione','gare','consap','re','tcm'].forEach(x => {
     const el = document.getElementById('pp-'+x); if(el) el.style.display = x===t?'block':'none';
     const btn = document.getElementById('pt-'+x); if(btn) btn.classList.toggle('act', x===t);
   });
@@ -15888,11 +16012,13 @@ function selPerfTab(t) {
     const mieFlags = kpiFlagsDi(PROFILO);
     const LOCKED_MSG ='<div style="padding:40px;text-align:center;color:var(--txt3);font-size:13px;"><i class="ti ti-lock" style="font-size:32px;display:block;margin-bottom:12px;opacity:.3;"></i>Sezione non abilitata.<br>Contatta il tuo responsabile.</div>';
 
+    if (t === 'produzione' && mieFlags['kpi_produzione'] === false) { document.getElementById('pp-produzione').innerHTML = LOCKED_MSG; return; }
     if (t === 'tcm'    && mieFlags['kpi_tcm']    === false) { document.getElementById('pp-tcm').innerHTML    = LOCKED_MSG; return; }
     if (t === 're'     && mieFlags['kpi_re']     === false) { document.getElementById('pp-re').innerHTML     = LOCKED_MSG; return; }
     if (t === 'consap' && mieFlags['kpi_consap'] === false) { document.getElementById('pp-consap').innerHTML = LOCKED_MSG; return; }
   }
 
+  if(t==='produzione') loadProduzioneKpi();
   if(t==='gare')   { renderGaraTabs(); selGaraTab(GARA_CUR); }
   if(t==='consap') loadCSFromDB();
   if(t==='re')     loadREFromDB();
@@ -16248,6 +16374,7 @@ async function salvaRinnMese(mese, existId) {
 
 // ─── PANNELLO CONTROLLO KPI ───────────────────────────────────────────────────
 const KPI_FLAGS_LABELS = {
+  kpi_produzione:  'KPI Produzione (preventivi e polizze)',
   kpi_re:          'KPI Rami Elementari',
   kpi_consap:      'KPI CONSAP',
   kpi_tcm:         'KPI TCM (Vita)',
@@ -17947,8 +18074,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: f56a0911 — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260917b"></script>
+<!-- impronta withus-one.js: caa1cc90 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260917c"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

@@ -1,22 +1,22 @@
-id: tentativo-1789628234  exit: 0  2026-09-17 07:00:45
+id: tessera2-1789628630  exit: 0  2026-09-17 07:04:22
 ----
-aspetto il primo giro del keep-alive (atteso 06:57:38)
-== ora
-2026-09-17 07:00:45
-== stato
-{"running":false,"step":"attesa_otp","since":1789628270081,"msg":"Credenziali OK — inserisci il codice OTP ricevuto via email"}
-== giornale groupama dal riavvio
-06:53:35 [groupama] SIGTERM: nessuna sessione viva, tengo la copia su disco
-🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-06:53:43 [groupama] telecomando HTTP su 127.0.0.1:4500
-06:53:44 [groupama] sessione ripresa da auth.json: 19 cookie
-06:53:44 [groupama] la sessione salvata non e' piu' valida: serve un accesso con codice
-06:53:44 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
-06:57:46 [groupama] rientro automatico: provo UNA volta a rifare l'accesso — il codice lo prende il backend dalla posta dell'agenzia
-06:57:46 [groupama] fill user/pass: {"ok":true}
-06:57:50 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-06:57:50 [groupama] rientro automatico → attesa_otp: schermata del codice raggiunta, ora tocca al backend prenderlo dalla posta
-== backend: e' andato a prendere il codice dalla posta?
-Sep 17 06:53:46 vps-d6443a46 node[2951776]: [vigilanza-fonti] giro 205 · controllate 7 · cadute 0 · rientrate 0
-Sep 17 06:58:46 vps-d6443a46 node[2951776]: [vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-Sep 17 06:58:46 vps-d6443a46 node[2951776]: [vigilanza-fonti] giro 206 · controllate 7 · cadute 1 · rientrate 0
+== HEAD backend: 87d3fc8 (atteso 87d3fc8) dopo ~10 s
+== md5 servito vs disco
+/nuovo-preventivo/index.html servito=403ad6ed disco=403ad6ed OK
+/index.html servito=d8e8b13f disco=d8e8b13f OK
+/withus-one.js servito=b74ff96e disco=b74ff96e OK
+== la scocca servita ha quoto-apri:
+2
+== IAM chiede la scocca con la versione nuova:
+withus-one.js?v=20260917a
+== QUOTO servito senza loadUtenti:
+0
+== siti:
+200 https://iam.withusassicurazioni.it/
+200 https://iam.withusassicurazioni.it/nuovo-preventivo/
+200 https://api.withusassicurazioni.it/health
+== backend:
+active
+Sep 17 07:04:21 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 17 07:04:21 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 17 07:04:21 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 9.298s CPU time over 10.337s wall clock time, 80.3M memory peak.

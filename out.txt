@@ -1,17 +1,21 @@
-id: cerchio-1789628712  exit: 0  2026-09-17 07:09:11
+id: grpok-1789629449  exit: 0  2026-09-17 07:17:45
 ----
-aspetto il rilascio e un giro di vigilanza
 == ora
-2026-09-17 07:09:10
-== HEAD: 079636f
-== il riconoscimento del nome c'è? /opt/withus-backend/server/otpPosta.js:2 /opt/withus-backend/server/fonti.js:2 
+2026-09-17 07:17:45
 == stato groupama
-{"running":false,"step":"attesa_otp","since":1789628270081,"msg":"Credenziali OK — inserisci il codice OTP ricevuto via email"}
-== IL PUNTO: righe [otp-posta]
-Sep 17 07:03:46 vps-d6443a46 node[2951776]: [vigilanza-fonti] giro 207 · controllate 7 · cadute 0 · rientrate 0
-Sep 17 07:04:20 vps-d6443a46 node[3089599]: [vigilanza-fonti] memoria ripresa da disco: 10 fonti
-Sep 17 07:04:20 vps-d6443a46 node[3089599]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
-Sep 17 07:04:54 vps-d6443a46 node[3089599]: [vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
-Sep 17 07:05:21 vps-d6443a46 node[3090061]: [vigilanza-fonti] memoria ripresa da disco: 10 fonti
-Sep 17 07:05:21 vps-d6443a46 node[3090061]: [vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
-Sep 17 07:05:54 vps-d6443a46 node[3090061]: [vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
+{"running":false,"step":"loggato","since":1789629427141,"msg":"Login completato ✅"}
+auth.json: 2026-09-17 07:17:07
+== IL PUNTO: il backend ha preso il codice dalla posta?
+== giornale groupama, ultimi 30 minuti
+06:53:43 [groupama] telecomando HTTP su 127.0.0.1:4500
+06:53:44 [groupama] sessione ripresa da auth.json: 19 cookie
+06:53:44 [groupama] la sessione salvata non e' piu' valida: serve un accesso con codice
+06:53:44 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+06:57:46 [groupama] rientro automatico: provo UNA volta a rifare l'accesso — il codice lo prende il backend dalla posta dell'agenzia
+06:57:46 [groupama] fill user/pass: {"ok":true}
+06:57:50 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
+06:57:50 [groupama] rientro automatico → attesa_otp: schermata del codice raggiunta, ora tocca al backend prenderlo dalla posta
+07:09:44 [groupama] attesa del codice scaduta (10 min): il keep-alive riprende
+07:16:13 [groupama] codice gia' chiesto 18 min fa e non ancora usato: NON ne chiedo un altro (freno anti-raffica)
+07:17:04 [groupama] OTP inserito → valore nel campo: "021283" OK
+07:17:07 [groupama] sessione salvata su disco (login riuscito)

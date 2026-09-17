@@ -1,11 +1,50 @@
-id: posta3-1789672388  exit: 0  2026-09-17 19:13:45
+id: posta4-1789672465  exit: 0  2026-09-17 19:15:19
 ----
 == ora
-2026-09-17 19:13:45 UTC
-== come parte il backend
-ExecStart={ path=/usr/bin/node ; argv[]=/usr/bin/node index.js ; ignore_errors=no ; start_time=[Thu 2026-09-17 19:12:40 UTC] ; stop_time=[n/a] ; pid=3185444 ; code=(null) ; status=0/0 }
-WorkingDirectory=/opt/withus-backend/server
-== dove sta mailparser
-/opt/withus-backend/server/node_modules/mailparser
-== e imapflow
-/opt/withus-backend/server/node_modules/imapflow
+2026-09-17 19:14:51 UTC
+== perche' il backend e' ripartito alle 19:12?
+Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+withus-autopull.service: Deactivated successfully.
+Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+withus-autopull.service: Consumed 4.890s CPU time over 5.559s wall clock time, 103M memory peak.
+Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+withus-autopull.service: Deactivated successfully.
+Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+withus-autopull.service: Consumed 5.006s CPU time over 5.592s wall clock time, 103.1M memory peak.
+
+== LA POSTA: e' arrivata una mail di Groupama stasera?
+    21:27:44  (altro mittente)
+    07:42:23  (altro mittente)
+    10:27:37  (altro mittente)
+    09:30:24  (altro mittente)
+    07:46:34  (altro mittente)
+    09:32:37  (altro mittente)
+    09:36:44  (altro mittente)
+    14:14:30  (altro mittente)
+  INBOX: 55 messaggi in tutto
+  ultimi 25 messaggi, ora UTC e se sono di Groupama:
+    08:50:38  (altro mittente)
+    15:09:37  (altro mittente)
+    10:46:47  (altro mittente)
+    10:46:54  (altro mittente)
+    10:48:26  (altro mittente)
+    08:24:46  (altro mittente)
+    07:49:16  (altro mittente)
+    08:55:13  (altro mittente)
+    07:18:17  (altro mittente)
+    08:36:24  (altro mittente)
+    11:46:46  (altro mittente)
+    10:41:07  (altro mittente)
+    08:48:36  (altro mittente)
+    08:39:22  (altro mittente)
+    08:43:37  (altro mittente)
+    18:06:19  (altro mittente)
+    13:32:28  (altro mittente)
+    10:12:29  (altro mittente)
+    10:31:07  (altro mittente)
+    10:28:39  (altro mittente)
+    10:37:47  (altro mittente)
+    10:38:58  (altro mittente)
+    09:53:47  (altro mittente)
+    12:59:42  (altro mittente)
+    08:21:02  (altro mittente)

@@ -233,12 +233,13 @@ solo padrone**; l'altra app al massimo legge, o rimanda.
 |---|---|---|---|
 | **Utenti** (account, ruoli, permessi, accessi) | **IAM** → Utenti | `iam_utenti` | QUOTO **legge** l'elenco (`caricaUtentiIam`, per «assegna a» e per i punti vendita) e rimanda a IAM con `quoto-apri` |
 | **Punti vendita / reti** | **QUOTO** → Collaboratori e punti vendita | `iam_utenti.rete`, `iam_utenti.responsabile` — le **sole** colonne di `iam_utenti` che QUOTO scrive | IAM non ce l'ha |
-| **Collaboratori / intermediari** | **IAM** (deciso il 17/09/2026) | `quote_collaboratori`, `quote_collaboratori_note` | QUOTO tiene ancora la sua scheda finché IAM non ha anche: segno «struttura», documenti, privacy firmata (`iam_firme`), ricerca in `iam_team` per CF. Poi si spegne (passo 3, modulo 2b) |
+| **Collaboratori / intermediari** | **IAM** → Collaboratori (era «Operativa»). Dal 17/09/2026 `quote_collaboratori` è il **registro unico delle persone**: ogni collaboratore, candidato e utente ha una riga sola; `iam_team` è l'allegato economico agganciato da `collab_id`; l'account è `quote_collaboratori.iam_id` (indici unici su entrambi) | `quote_collaboratori`, `quote_collaboratori_note`, `iam_team` | QUOTO **legge** il registro (`caricaIntermediari`, `INTERM_CACHE`) e tiene ancora la sua scheda finché IAM non ha anche: segno «struttura», documenti, privacy firmata (`iam_firme`). Poi si spegne (passo 3, modulo 2b) |
 | **Produzione e storico** (preventivi) | **QUOTO** | `quote_preventivi` | IAM apre quella di QUOTO nel riquadro. In IAM `storico` è un'altra cosa: lo storico movimenti della contabilità (`sessioni_giornaliere`) |
 | **KPI e gare** | **IAM** | `iam_gare_*`, `iam_kpi_*` | QUOTO ha un grafico `performance` non raggiungibile da IAM: da decidere (modulo 3) |
 
 La prova `server/verifica/utenti-in-iam.test.mjs` controlla la prima riga e la
-seconda: che QUOTO non abbia più una gestione utenti e che su `iam_utenti`
+seconda, `iam/verifica/registro-unico.test.mjs` la terza (persone per prime,
+registro scritto prima dell'economia, migrazione che non sceglie mai da sola): che QUOTO non abbia più una gestione utenti e che su `iam_utenti`
 scriva solo `rete` e `responsabile`.
 
 ## 3. Sessione condivisa

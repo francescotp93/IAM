@@ -389,6 +389,21 @@ messaggio `quoto-apri`. La mappa «chi possiede quale schermata» è in
 sono due cose diverse con lo stesso nome. Fondere i due documenti costa 44 nomi
 globali in comune (`db`, `ME`, `initDB`, `onLogin`, …) e 37 `id` uguali.
 
+**Il registro unico delle persone (17/09/2026, Lavoro 2 PR 1).** Prima erano
+tre tabelle quasi scollegate: `quote_collaboratori` (3 righe), `iam_team` (12,
+`collab_id` vuoto su tutte), `iam_utenti` (5, 4 senza scheda). La migrazione
+`supabase/migrations/20260917_registro_unico_collaboratori.sql` ha creato una
+persona per ogni scheda economica e per ogni account (17 persone), agganciando
+per codice fiscale poi per email e **mai quando la corrispondenza non è una**:
+due schede di `iam_team` con la stessa email sono rimaste due persone, da
+guardare a mano. `iam_team` è ora l'**allegato economico** della persona, non
+un registro; la sezione «Collaboratori» (era «Operativa») legge le persone per
+prime, e «Nuovo collaboratore» scrive nel registro prima che in `iam_team`.
+La stessa migrazione ha applicato la blindatura di `iam_utenti` (`u_update_self`
+non lascia più cambiare a un utente permessi, profilo, prodotti, moduli,
+caselle su se stesso): il file `DA-APPROVARE-blindare-iam-utenti.sql` è
+superato da quella migrazione.
+
 Ciò che **non** è cambiato: `index.html` di QUOTO e `iam/index.html` restano
 due documenti, e il preventivatore vive ancora in un riquadro (stessa origine,
 `/nuovo-preventivo/`). Fonderli in una sola applicazione è il passo 3, da fare a

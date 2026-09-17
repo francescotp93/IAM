@@ -1,3 +1,7 @@
+-- APPLICATA il 17/09/2026 dentro supabase/migrations/20260917_registro_unico_collaboratori.sql
+-- (con in piu' le colonne profilo e prodotti). Questo file resta come storia
+-- del ragionamento: NON va rilanciato, la policy in produzione e' quella nuova.
+
 -- ═══════════════════════════════════════════════════════════════════════════════
 --  DA APPROVARE — NON ESEGUITO
 --

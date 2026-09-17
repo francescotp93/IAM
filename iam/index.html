@@ -1317,7 +1317,7 @@ input[type=file]{display:none;}
 <div class="nav">
   <button class="nbtn act" id="nb-carica" onclick="goTab('carica')"><i class="ti ti-calculator"></i><span>Contabilità</span></button>
   <button class="nbtn" id="nb-dashboard" onclick="goTab('dashboard')"><i class="ti ti-layout-dashboard"></i><span>Dashboard</span></button>
-  <button class="nbtn" id="nb-team" onclick="goTab('team')"><i class="ti ti-users"></i><span>Team</span></button>
+  <button class="nbtn" id="nb-team" onclick="goTab('team')"><i class="ti ti-users"></i><span>Collaboratori</span></button>
   <button class="nbtn" id="nb-pipeline" onclick="goTab('pipeline')"><i class="ti ti-timeline"></i><span>Pipeline</span></button>
   <button class="nbtn" id="nb-workdiary" onclick="goTab('workdiary')"><i class="ti ti-notebook"></i><span>Diary</span></button>
   <button class="nbtn" id="nb-performance" onclick="goTab('performance')"><i class="ti ti-chart-line"></i><span>KPI</span></button>
@@ -1716,7 +1716,9 @@ input[type=file]{display:none;}
      troppo, e quella nascosta dentro la pagina la vedeva solo chi già sapeva
      che c'era. -->
 <div class="panel" id="panel-operativa">
-  <!-- §2.6 — Le sezioni di Operativa. «Collaboratori» e' quella di sempre e
+  <!-- Dal 17/09/2026 la sezione si chiama «Collaboratori» (era «Operativa»);
+       l'id del pannello resta per non rompere scorciatoie e prove.
+       §2.6 — Le sezioni. «Collaboratori» e' quella di sempre e
        non cambia; «Candidature» raccoglie chi arriva dal modulo pubblico
        (quoto.withusassicurazioni.it/candidatura.html) e «Black list» chi non
        va piu' ricontattato. Sono tre viste sulla STESSA tabella
@@ -5594,6 +5596,7 @@ function updateBonifNota(idx, note) {
 // ─── TEAM ─────────────────────────────────────────────────────────────────────
 let TEAM = [];
 let TEAM_ID = null;
+let TEAM_PERSONA = null;   // la persona del registro (quote_collaboratori.id) a cui appartiene la scheda aperta
 let TEAM_ANNI = [];
 let TEAM_DOCS = {};
 let TEAM_FATTURE = [];
@@ -5774,6 +5777,7 @@ async function loadTeamDB() {
         storico_collab: c.storico_collab || [],
         fatture:         getFattureMerged(c.id, c.fatture),
         hub_id:         c.hub_id         || null,
+        collab_id:      c.collab_id      || null,   // la persona di questa scheda economica (registro unico, 17/09/2026)
       }));
       saveTeam(); // cache locale
       // Migrazione: porta sul DB le fatture rimaste solo in locale (inserite prima del fix)
@@ -5832,6 +5836,7 @@ async function saveTeamDB(c) {
       storico_collab: c.storico_collab || [],
       fatture:        (c.fatture||[]).map(f => ({...f, file: f.file ? { nome:f.file.nome, tipo:f.file.tipo } : null})),
       hub_id:         c.hub_id         || null,
+      collab_id:      c.collab_id      || null,
       creato_da:    ME?.id     || null,
       aggiornato_il: new Date().toISOString(),
     };
@@ -5949,35 +5954,70 @@ function schedaAnagrafica(attivo) {
    sapere da quale tabella arriva ogni riga. `fatturato` e `dichiarato` restano
    DUE campi distinti e non si sommano mai: il primo e' un numero
    dell'agenzia, il secondo e' quello che la persona ha raccontato di sé. */
+/* DAL 17/09/2026 IL REGISTRO E' UNO: quote_collaboratori. Ogni riga della
+   sezione e' una PERSONA del registro; l'economia (iam_team) e' l'allegato
+   agganciato da collab_id, e se manca la persona si vede lo stesso, con la
+   scheda economica da compilare. Una scheda economica senza persona non
+   dovrebbe piu' esistere dopo la migrazione: se ne compare una, si mostra
+   marcata «senza scheda» invece di sparire. */
+function collabDaPersona(p) {
+  return {
+    id: 'p:' + p.id, collab_id: p.id, senzaEconomia: true,
+    nome: p.nome || '', cogn: p.cognome || '', email: p.email || '', tel: p.telefono || '',
+    ind: '', cf: p.codice_fiscale || '', ddn: '', rui: p.rui_numero || '', tipo: p.veste || 'Collaboratore',
+    piva: '', iban1: '', iban2: '', port: '', note: '', dinizio: '',
+    rami: {}, anni: [], provv: [], docs: {}, compagnie: [], report_volumi: [], port_attuale: 0, retention: 0,
+    gare_collab: [], storico_collab: [], fatture: [], hub_id: null,
+  };
+}
+function economiaDiPersona(p, team) {
+  const perId = team.find(c => c.collab_id && c.collab_id === p.id);
+  if (perId) return perId;
+  const mail = (p.email || '').trim().toLowerCase();
+  return mail ? (team.find(c => !c.collab_id && (c.email || '').trim().toLowerCase() === mail) || null) : null;
+}
 function collabUnificati() {
-  const attivi = (TEAM || []).map(c => {
-    const an = schedaAnagrafica(c);
+  const team = TEAM || [];
+  const usate = new Set();
+  const persone = (COLLAB_LEAD || []).map(p => {
+    if ((p.stato || 'attivo') === 'attivo') {
+      const eco = economiaDiPersona(p, team);
+      if (eco) usate.add(eco.id);
+      const c = eco || collabDaPersona(p);
+      return {
+        tipo: 'attivo', id: c.id, raw: c, anagrafica: p, senzaEconomia: !eco,
+        nome: p.nome || c.nome || '', cogn: p.cognome || c.cogn || '',
+        email: p.email || c.email || '', tel: p.telefono || c.tel || '',
+        citta: p.citta || '', prov: p.provincia || '',
+        profilo: p.profilo || '',
+        compagnie: (c.compagnie || []).map(k => etichettaCompagnia(k)),
+        rami: Object.keys(c.rami || {}).filter(k => c.rami[k]),
+        fatturato: numeroOrNull(c.port_attuale) || numeroOrNull(c.port),
+        dichiarato: null,
+      };
+    }
     return {
-      tipo: 'attivo', id: c.id, raw: c, anagrafica: an,
-      nome: c.nome || '', cogn: c.cogn || '',
-      email: c.email || (an && an.email) || '', tel: c.tel || (an && an.telefono) || '',
-      citta: (an && an.citta) || '', prov: (an && an.provincia) || '',
-      profilo: (an && an.profilo) || '',
-      compagnie: (c.compagnie || []).map(k => etichettaCompagnia(k)),
-      rami: Object.keys(c.rami || {}).filter(k => c.rami[k]),
-      fatturato: numeroOrNull(c.port_attuale) || numeroOrNull(c.port),
-      dichiarato: null,
-    };
-  });
-  const lead = (COLLAB_LEAD || [])
-    .filter(c => (c.stato || 'attivo') !== 'attivo')   // gli attivi li porta iam_team
-    .map(c => ({
-      tipo: (c.stato === 'scartato') ? 'scartato' : 'lead', id: c.id, raw: c, anagrafica: c,
-      nome: c.nome || '', cogn: c.cognome || '',
-      email: c.email || '', tel: c.telefono || '',
-      citta: c.citta || '', prov: c.provincia || '',
-      profilo: c.profilo || '',
-      compagnie: String(c.lavora_con || '').split(/[,;]/).map(s => s.trim()).filter(Boolean),
+      tipo: (p.stato === 'scartato') ? 'scartato' : 'lead', id: p.id, raw: p, anagrafica: p,
+      nome: p.nome || '', cogn: p.cognome || '',
+      email: p.email || '', tel: p.telefono || '',
+      citta: p.citta || '', prov: p.provincia || '',
+      profilo: p.profilo || '',
+      compagnie: String(p.lavora_con || '').split(/[,;]/).map(s => s.trim()).filter(Boolean),
       rami: [],
       fatturato: null,
-      dichiarato: numeroOrNull(c.portafoglio_stimato),
-    }));
-  return attivi.concat(lead);
+      dichiarato: numeroOrNull(p.portafoglio_stimato),
+    };
+  });
+  const orfane = team.filter(c => !usate.has(c.id)).map(c => ({
+    tipo: 'attivo', id: c.id, raw: c, anagrafica: null, senzaScheda: true,
+    nome: c.nome || '', cogn: c.cogn || '', email: c.email || '', tel: c.tel || '',
+    citta: '', prov: '', profilo: '',
+    compagnie: (c.compagnie || []).map(k => etichettaCompagnia(k)),
+    rami: Object.keys(c.rami || {}).filter(k => c.rami[k]),
+    fatturato: numeroOrNull(c.port_attuale) || numeroOrNull(c.port),
+    dichiarato: null,
+  }));
+  return persone.concat(orfane);
 }
 
 /* I menu si riempiono con quello che c'e' davvero in elenco. Un menu che
@@ -6664,13 +6704,13 @@ function renderTeam() {
         <div style="width:52px;height:52px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0;border:2px solid rgba(255,255,255,.2);">${ini}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:16px;font-weight:700;color:#fff;">${c.nome||''} ${c.cogn||''}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;">${c.tipo||'Subagente'}${c.rui?' · RUI '+c.rui:''}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;">${c.tipo||'Subagente'}${c.rui?' · RUI '+c.rui:''}${c.senzaEconomia?' · <span style="color:#e0a33c">scheda economica da compilare</span>':''}</div>
           <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;">${rami.join('')}</div>
           ${compBadges?`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">${compBadges}</div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
           <button onclick="openCollabModal('${c.id}')" style="font-size:11px;padding:4px 10px;background:rgba(255,255,255,.12);color:#fff;border:.5px solid rgba(255,255,255,.2);border-radius:6px;cursor:pointer;font-family:inherit;"><i class="ti ti-pencil"></i> Modifica</button>
-          <button onclick="if(confirm('Eliminare ${c.nome} ${c.cogn}? Operazione non reversibile.')){delTeamDB('${c.id}')}" style="font-size:11px;padding:4px 10px;background:rgba(220,50,50,.25);color:#ff8080;border:.5px solid rgba(220,50,50,.35);border-radius:6px;cursor:pointer;font-family:inherit;"><i class="ti ti-trash"></i> Elimina</button>
+          ${c.senzaEconomia ? '' : `<button onclick="if(confirm('Eliminare ${c.nome} ${c.cogn}? Operazione non reversibile.')){delTeamDB('${c.id}')}" style="font-size:11px;padding:4px 10px;background:rgba(220,50,50,.25);color:#ff8080;border:.5px solid rgba(220,50,50,.35);border-radius:6px;cursor:pointer;font-family:inherit;"><i class="ti ti-trash"></i> Elimina</button>`}
         </div>
       </div>
 
@@ -7768,8 +7808,16 @@ async function controfirmaDoc(id, collabId) {
 
 async function openCollabModal(id) {
   loadTeam();
+  /* «p:<id>» e' una persona del registro senza scheda economica: la scheda
+     nasce al salvataggio, gia' agganciata (collab_id). Un id di iam_team porta
+     con se' la sua persona, se l'ha. */
+  let personaId = null;
+  if (typeof id === 'string' && id.indexOf('p:') === 0) { personaId = id.slice(2); id = null; }
   TEAM_ID = id; TEAM_ANNI = []; TEAM_DOCS = {}; TEAM_FATTURE = []; TEAM_FATTURA_FILE = null;
-  const c = id ? TEAM.find(x=>x.id===id) : null;
+  const eco = id ? TEAM.find(x=>x.id===id) : null;
+  const persona = personaId ? (COLLAB_LEAD || []).find(p => p.id === personaId) : null;
+  TEAM_PERSONA = personaId || (eco && eco.collab_id) || null;
+  const c = eco || (persona ? collabDaPersona(persona) : null);
   await loadHubDB();
   const hubSel = document.getElementById('mc-hub');
   if (hubSel) {
@@ -7777,7 +7825,7 @@ async function openCollabModal(id) {
       HUB_LIST.map(h=>`<option value="${h.id}" ${c?.hub_id==h.id?'selected':''}>${h.nome}</option>`).join('');
   }
   document.getElementById('mc-title').textContent = c ? c.nome+' '+c.cogn : 'Nuovo collaboratore';
-  const delBtn = document.getElementById('mc-del-btn'); if (delBtn) delBtn.style.display = c ? 'inline-flex' : 'none';
+  const delBtn = document.getElementById('mc-del-btn'); if (delBtn) delBtn.style.display = (c && !c.senzaEconomia) ? 'inline-flex' : 'none';
   const sv = (fid,val) => { const el=document.getElementById(fid); if(el) el.value=val||''; };
   if (c) {
     sv('mc-nome',c.nome); sv('mc-cogn',c.cogn); sv('mc-email',c.email); sv('mc-tel',c.tel);
@@ -7828,8 +7876,9 @@ async function eliminaCollaboratore() {
   loadTeam();
   const c = TEAM.find(x => x.id === TEAM_ID);
   const nome = c ? ((c.nome||'')+' '+(c.cogn||'')).trim() : 'questo collaboratore';
-  if (!confirm('Eliminare definitivamente ' + (nome||'questo collaboratore') + '?\nVerranno rimossi anche i suoi dati (fatture, provvigioni, documenti). Operazione non reversibile.')) return;
+  if (!confirm('Eliminare definitivamente ' + (nome||'questo collaboratore') + '?\nVerranno rimossi i suoi dati economici (fatture, provvigioni, documenti) e la persona passa fra i «non proseguiti» del registro. Operazione non reversibile.')) return;
   await delTeamDB(TEAM_ID);
+  if (TEAM_PERSONA && db) { try { await db.from('quote_collaboratori').update({ stato: 'scartato', attivo: false }).eq('id', TEAM_PERSONA); await loadCollabLeadDB(); } catch (e) { console.warn('registro:', e.message || e); } }
   try { const store = loadFattureStore(); delete store[String(TEAM_ID)]; saveFattureStore(store); } catch(e) {}
   closeCollabModal();
   renderTeam();
@@ -8349,10 +8398,44 @@ function saveCollab() {
   if (TEAM_ID) { const ex = TEAM.find(x=>x.id===TEAM_ID); if(ex?.docs) c.docs={...ex.docs}; }
   Object.entries(TEAM_DOCS).forEach(([k,v])=>{ c.docs[k]=v; });
   closeCollabModal();
-  // Salva su Supabase e aggiorna lista
-  saveTeamDB(c).then(() => {
-    loadTeamDB().then(() => { renderTeam(); if (APP.loaded) buildDashboard(); });
-  });
+  /* PRIMA LA PERSONA, POI L'ECONOMIA. Il registro e' quote_collaboratori: nome,
+     cognome, email, telefono, codice fiscale, RUI e veste vanno li' (nuova riga
+     o aggiornamento della sua). La scheda iam_team nasce o si aggiorna gia'
+     agganciata con collab_id. */
+  c.collab_id = TEAM_PERSONA || null;
+  salvaPersonaRegistro(c).then(pid => { if (pid) c.collab_id = pid; return saveTeamDB(c); })
+    .then(() => Promise.all([loadTeamDB(), loadCollabLeadDB()]))
+    .then(() => { renderTeam(); contaSezioni(); if (APP.loaded) buildDashboard(); });
+}
+
+/* La persona nel registro unico. Se la scheda ha gia' la sua persona la si
+   aggiorna; se no la si crea, attiva, con la fonte «iam». Se il registro
+   rifiuta (RLS: solo gli amministratori creano persone) lo si dice e la scheda
+   economica si salva comunque, scollegata: meglio che perdere quel che e'
+   stato scritto, e la mancanza si vede in elenco. */
+async function salvaPersonaRegistro(c) {
+  if (!db) return c.collab_id || null;
+  const persona = {
+    nome: c.nome || null, cognome: c.cogn || null,
+    email: (c.email || '').trim().toLowerCase() || null, telefono: c.tel || null,
+    codice_fiscale: String(c.cf || '').toUpperCase().replace(/[^A-Z0-9]/g, '') || null,
+    rui_numero: c.rui || null, veste: c.tipo || null,
+  };
+  try {
+    if (c.collab_id) {
+      const { error } = await db.from('quote_collaboratori').update(persona).eq('id', c.collab_id);
+      if (error) throw error;
+      return c.collab_id;
+    }
+    const { data, error } = await db.from('quote_collaboratori')
+      .insert(Object.assign({}, persona, { stato: 'attivo', attivo: true, creato_da: ME?.id || null, fonte: 'iam', confermato_il: new Date().toISOString() }))
+      .select('id').single();
+    if (error) throw error;
+    return data ? data.id : null;
+  } catch (e) {
+    alert('La persona non è stata scritta nel registro dei collaboratori: ' + (e.message || e) + '\n\nLa scheda economica si salva comunque, ma resta scollegata: si vedrà in elenco come «senza scheda».');
+    return c.collab_id || null;
+  }
 }
 
 /* addAnno / renderAnni / addFormazFile sono state tolte il 11/09/2026
@@ -17803,8 +17886,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: b74ff96e — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260917a"></script>
+<!-- impronta withus-one.js: f56a0911 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260917b"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

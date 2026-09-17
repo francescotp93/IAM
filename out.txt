@@ -1,22 +1,202 @@
-id: grp-unit-1789630021  exit: 0  2026-09-17 07:27:36
+id: grp-act-1789630077  exit: 0  2026-09-17 07:28:06
 ----
 == ora
-2026-09-17 07:27:35
-== unita' systemd che parlano di groupama/scraper
-allianz-scraper.service active running
-assieasy-scraper.service active running
-axa-scraper.service active running
-● loaded activating
-groupama-scraper.service active running
-hdi-scraper.service active running
-italiana-scraper.service active running
-kube-scraper.service active running
-moto-scraper.service active running
-prima-scraper.service active running
-quotiamo-scraper.service active running
-withus-autopull.service inactive dead
-withus-backend.service active running
-== chi ascolta su 4500
-LISTEN 0      511        127.0.0.1:4500      0.0.0.0:*    users:(("node",pid=3093366,fd=23))                        
-== stato groupama adesso
-{"running":false,"step":"loggato","since":1789629916133,"msg":"Sessione attiva","codice_chiesto_il":0}
+2026-09-17 07:28:06
+== unita' non in stato 'running' (nome per intero)
+apparmor.service active exited
+apport-autoreport.service inactive dead
+apport.service active exited
+apt-daily-upgrade.service inactive dead
+apt-daily.service inactive dead
+auditd.service inactive dead
+blk-availability.service active exited
+cloud-config.service active exited
+cloud-final.service active exited
+cloud-init-hotplugd.service inactive dead
+cloud-init-local.service active exited
+cloud-init-main.service inactive dead
+cloud-init-network.service active exited
+cmd-runner.service activating start
+connman.service inactive dead
+console-screen.service inactive dead
+console-setup.service active exited
+display-manager.service inactive dead
+dm-event.service inactive dead
+dmesg.service inactive dead
+dpkg-db-backup.service inactive dead
+dracut-cmdline.service inactive dead
+dracut-initqueue.service inactive dead
+dracut-mount.service inactive dead
+dracut-pre-mount.service inactive dead
+dracut-pre-pivot.service inactive dead
+dracut-pre-trigger.service inactive dead
+dracut-pre-udev.service inactive dead
+dracut-shutdown-onfailure.service inactive dead
+dracut-shutdown.service active exited
+e2scrub_all.service inactive dead
+e2scrub_reap.service inactive dead
+emergency.service inactive dead
+fcoe.service inactive dead
+finalrd.service active exited
+fstrim.service inactive dead
+fwupd-refresh.service inactive dead
+getty-static.service inactive dead
+grub-common.service inactive dead
+grub-initrd-fallback.service inactive dead
+grub2-common.service inactive dead
+hv_kvp_daemon.service inactive dead
+initrd-cleanup.service inactive dead
+initrd-parse-etc.service inactive dead
+initrd-switch-root.service inactive dead
+initrd-udevadm-cleanup-db.service inactive dead
+iscsi-shutdown.service inactive dead
+iscsid.service inactive dead
+kbd.service inactive dead
+keyboard-setup.service active exited
+kmod-static-nodes.service active exited
+ldconfig.service inactive dead
+leoaccess.service active exited
+logrotate.service inactive dead
+lvm2-activation-early.service inactive dead
+lvm2-lvmpolld.service inactive dead
+lvm2-monitor.service active exited
+man-db.service inactive dead
+mkinitcpio-generate-shutdown-ramfs.service inactive dead
+modprobe@configfs.service inactive dead
+modprobe@dm_mod.service inactive dead
+modprobe@dm_multipath.service inactive dead
+modprobe@drm.service inactive dead
+modprobe@efi_pstore.service inactive dead
+modprobe@fuse.service inactive dead
+modprobe@loop.service inactive dead
+motd-news.service inactive dead
+multipathd-queueing.service active exited
+netplan-configure.service active exited
+netplan-ovs-cleanup.service inactive dead
+networking.service inactive dead
+NetworkManager.service inactive dead
+notifica-telegram.service failed failed
+ntp.service inactive dead
+ntpsec.service inactive dead
+open-iscsi.service inactive dead
+open-vm-tools.service inactive dead
+openntpd.service inactive dead
+ovsdb-server.service inactive dead
+plymouth-halt.service inactive dead
+plymouth-kexec.service inactive dead
+plymouth-poweroff.service inactive dead
+plymouth-quit-wait.service active exited
+plymouth-quit.service active exited
+plymouth-read-write.service active exited
+plymouth-reboot.service inactive dead
+plymouth-start.service inactive dead
+plymouth-switch-root-initramfs.service inactive dead
+plymouth-switch-root.service inactive dead
+pollinate.service inactive dead
+rbdmap.service inactive dead
+rc-local.service inactive dead
+rescue.service inactive dead
+secureboot-db.service inactive dead
+setvtrgb.service active exited
+snapd.apparmor.service active exited
+snapd.autoimport.service inactive dead
+snapd.core-fixup.service inactive dead
+snapd.failure.service inactive dead
+snapd.recovery-chooser-trigger.service inactive dead
+snapd.seeded.service active exited
+snapd.service inactive dead
+snapd.snap-repair.service inactive dead
+snapd.system-shutdown.service inactive dead
+sshd-keygen.service inactive dead
+sshd@sshd-keygen.service inactive dead
+sysstat-collect.service inactive dead
+sysstat-rotate.service inactive dead
+sysstat-summary.service inactive dead
+sysstat.service active exited
+systemd-ask-password-console.service inactive dead
+systemd-ask-password-plymouth.service inactive dead
+systemd-ask-password-wall.service inactive dead
+systemd-battery-check.service inactive dead
+systemd-binfmt.service active exited
+systemd-bsod.service inactive dead
+systemd-confext-initrd.service inactive dead
+systemd-confext.service inactive dead
+systemd-firstboot.service inactive dead
+systemd-fsck-root.service active exited
+systemd-fsck@dev-disk-by\x2dlabel-BOOT.service active exited
+systemd-fsck@dev-disk-by\x2dlabel-UEFI.service active exited
+systemd-halt.service inactive dead
+systemd-hibernate-clear.service inactive dead
+systemd-hibernate-resume.service inactive dead
+systemd-hibernate.service inactive dead
+systemd-hostnamed.service inactive dead
+systemd-hwdb-update.service inactive dead
+systemd-hybrid-sleep.service inactive dead
+systemd-journal-catalog-update.service inactive dead
+systemd-journal-flush.service active exited
+systemd-kexec.service inactive dead
+systemd-machine-id-commit.service inactive dead
+systemd-modules-load.service active exited
+systemd-networkd-persistent-storage.service active exited
+systemd-networkd-wait-online.service active exited
+systemd-pcrmachine.service inactive dead
+systemd-pcrnvdone.service inactive dead
+systemd-pcrphase-initrd.service inactive dead
+systemd-pcrphase-sysinit.service inactive dead
+systemd-pcrphase.service inactive dead
+systemd-pcrproduct.service inactive dead
+systemd-poweroff.service inactive dead
+systemd-pstore.service inactive dead
+systemd-quotacheck-root.service inactive dead
+systemd-quotacheck.service inactive dead
+systemd-random-seed.service active exited
+systemd-reboot.service inactive dead
+systemd-remount-fs.service active exited
+systemd-rfkill.service inactive dead
+systemd-soft-reboot.service inactive dead
+systemd-suspend-then-hibernate.service inactive dead
+systemd-suspend.service inactive dead
+systemd-sysctl.service active exited
+systemd-sysext-initrd.service inactive dead
+systemd-sysext.service inactive dead
+systemd-sysusers.service inactive dead
+systemd-tmpfiles-clean.service inactive dead
+systemd-tmpfiles-setup-dev-early.service active exited
+systemd-tmpfiles-setup-dev.service active exited
+systemd-tmpfiles-setup.service active exited
+systemd-tpm2-setup-early.service inactive dead
+systemd-tpm2-setup.service inactive dead
+systemd-udev-load-credentials.service active exited
+systemd-udev-settle.service inactive dead
+systemd-udev-trigger.service active exited
+systemd-update-done.service inactive dead
+systemd-user-sessions.service active exited
+systemd-vconsole-setup.service inactive dead
+tpm-udev.service inactive dead
+ua-auto-attach.service inactive dead
+ua-reboot-cmds.service inactive dead
+ua-timer.service inactive dead
+ubuntu-advantage-cloud-id-shim.service inactive dead
+ubuntu-advantage.service inactive dead
+ufw.service active exited
+update-notifier-download.service inactive dead
+update-notifier-motd.service inactive dead
+uuidd.service inactive dead
+vgauth.service inactive dead
+withus-autopull.service activating start
+xfs_scrub_all.service inactive dead
+xfs_scrub_all_fail.service inactive dead
+zfs-mount.service inactive dead
+== giornale groupama, ultimi 20 minuti
+Sep 17 07:25:00 vps-d6443a46 start-service.sh[3088215]: [pid=3088227][err] [3088227:3088241:0917/065411.419198:ERROR:google_apis/gcm/engine/registration_request.cc:291] Registration response error message: QUOTA_EXCEEDED
+Sep 17 07:25:00 vps-d6443a46 systemd[1]: groupama-scraper.service: Deactivated successfully.
+Sep 17 07:25:00 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 07:25:00 vps-d6443a46 systemd[1]: groupama-scraper.service: Consumed 35.177s CPU time over 31min 22.880s wall clock time, 428.1M memory peak.
+Sep 17 07:25:00 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 07:25:01 vps-d6443a46 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
+Sep 17 07:25:01 vps-d6443a46 systemd[1]: groupama-scraper.service: Deactivated successfully.
+Sep 17 07:25:01 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 07:25:01 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 07:25:06 vps-d6443a46 start-service.sh[3093292]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+Sep 17 07:25:07 vps-d6443a46 start-service.sh[3093366]: 07:25:07 [groupama] telecomando HTTP su 127.0.0.1:4500
+Sep 17 07:25:16 vps-d6443a46 start-service.sh[3093366]: 07:25:16 [groupama] sessione persistente attiva ✅

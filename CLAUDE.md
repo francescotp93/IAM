@@ -111,6 +111,8 @@ node server/verifica/tracciabilita.test.mjs
 node server/verifica/utenti-in-iam.test.mjs
 node server/verifica/utenti-attiva.test.mjs      # l'attivazione dal server, con archivio e posta finti
 node server/verifica/compagnie-utente.test.mjs   # ritaglia da index.html col banco di IAM
+node server/verifica/sessione-condivisa.test.mjs # la sessione e' quella dell'origine, nessuno la passa
+node server/verifica/fusione-collisioni.test.mjs # i due documenti non si avvicinano nel verso sbagliato
 
 # 3. la scocca a moduli
 node withus-one/verifica/controlla.mjs
@@ -478,7 +480,40 @@ rinnovi paralleli senza lock (`refresh_token_already_used` gestito). Il CDN
 non è raggiungibile dal contenitore (403 dal proxy): il pacchetto si è letto
 installandolo in una cartella di lavoro, non in `node_modules` del repo.
 
+**Modulo 6 del passo 3 (17/09/2026): fondere i due documenti — deciso come NON
+farlo.** Misurato sul codice: QUOTO 1,8 MB (1.673 nomi globali, 52 pagine,
+700 classi CSS), IAM 1,1 MB (853 nomi, 16 pannelli, 438 classi). In comune:
+**43 nomi globali, 29 id, 17 classi**, una sola variabile CSS. Quei 43 nomi
+non sono coincidenze: sono **le stesse schermate scritte due volte** (login,
+reset, MFA, ticket, `loadStorico`, `eliminaCollaboratore`), cioè la stessa
+malattia di Utenti e Performance. Concatenare i due file in un documento da
+2,9 MB non fonde niente: mette in un posto solo due programmi che si pestano i
+nomi. **Non si fa.**
+
+La strada è quella già iniziata in `withus-one/` (`LEGGIMI.md`,
+`CONTRATTO.md`): moduli ES nativi, una pagina per file con le prove accanto,
+niente compilazione, 10 moduli in sola lettura (`scrivania`, `prodotti`,
+`preventivi`, `clienti`, `polizze`, `scadenzario`, `sinistri`, `titoli`,
+`richieste`, `utenti`), 14 file di prova tutti verdi, **non pubblicata**.
+Contro 52 pagine di QUOTO e 16 pannelli di IAM: la parità è lontana, e le
+scritture (emissione, incasso, sinistro, richiesta) non ci sono. Finché non c'è
+parità, **il riquadro è il meccanismo di composizione**, e dopo i moduli 1-5 è
+un riquadro onesto: stessa origine, stessa sessione, navigazione sul canale,
+clic visibili alla scocca.
+
+Quello che si fa nel frattempo, ed è provato
+(`server/verifica/fusione-collisioni.test.mjs`): **le collisioni non crescono.**
+La prova misura i nomi, gli id e le classi in comune e diventa rossa se
+aumentano; la soglia si abbassa quando si toglie un doppione, mai si alza. I
+doppioni rimasti si tolgono uno alla volta come Utenti e Performance:
+Collaboratori di QUOTO (modulo 2b, quando IAM avrà struttura, documenti e
+firma), poi login/MFA/reset nel riquadro (dormienti da quando la sessione è
+condivisa, servono solo a `quoto.` a pagina intera). Ticket **non** è un
+doppione da togliere: la coda è una (`iam_ticket`), le due facce sono volute
+(`ui-test.mjs`, blocco E) e la pagina di QUOTO è l'unica strada del
+collaboratore «solo QUOTO».
+
 Ciò che **non** è cambiato: `index.html` di QUOTO e `iam/index.html` restano
-due documenti, e il preventivatore vive ancora in un riquadro (stessa origine,
-`/nuovo-preventivo/`). Fonderli in una sola applicazione è il passo 3, da fare a
-moduli.
+due documenti, e il preventivatore vive in un riquadro (stessa origine,
+`/nuovo-preventivo/`). Una sola applicazione si raggiunge portando le pagine in
+`withus-one/`, una per file, non concatenando i due monoliti.

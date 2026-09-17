@@ -3346,7 +3346,7 @@ async function onLogin(session) {
   if (!(await mfaLoginGate(user.id))) { doLogout(); return; }
   const profilo = await caricaProfilo(user.id);
   const name = (profilo && profilo.nome) || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Agente');
-  currentUser = { id: user.id, name, email: user.email, role: canonRuolo(profilo && profilo.ruolo), attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null, responsabile: profilo ? !!profilo.responsabile : false, accesso_quoto: profilo ? profilo.accesso_quoto : false, profilo: (profilo && profilo.profilo) || null, prodotti: (profilo && profilo.prodotti) || null };
+  currentUser = { id: user.id, name, email: user.email, role: canonRuolo(profilo && profilo.ruolo), attivo: profilo ? profilo.attivo : true, moduli: profilo ? profilo.moduli : null, rete: profilo ? profilo.rete : null, responsabile: profilo ? !!profilo.responsabile : false, accesso_quoto: profilo ? profilo.accesso_quoto : false, profilo: (profilo && profilo.profilo) || null, prodotti: (profilo && profilo.prodotti) || null, compagnie: (profilo && Array.isArray(profilo.compagnie)) ? profilo.compagnie : null };
   if ((currentUser.email || '').toLowerCase() === SUPER_ADMIN_EMAIL) { currentUser.role = 'admin'; currentUser.superAdmin = true; currentUser.responsabile = true; }
   if (currentUser.attivo === false) { alert('Account sospeso. Contatta un amministratore.'); doLogout(); return; }
   // Accesso a QUOTO consentito solo agli abilitati (o al super admin)
@@ -18228,6 +18228,62 @@ async function caricaMotorAttive() {
 }
 /* Unico giudice: senza mappa la risposta e' NO per tutti (fail-closed). */
 function awFonteAttiva(k) { return !!MOTOR_ATTIVE && MOTOR_ATTIVE[k] !== false; }
+/* ═══ LE COMPAGNIE CHE QUESTA PERSONA PUO' VEDERE (17/09/2026) ═══════════════
+   IAM → Utenti → ingranaggio → gruppo 2 scrive iam_utenti.compagnie: la lista
+   dei nomi del catalogo prodotti che l'utente vede nel preventivatore, oppure
+   null per «tutte». Qui si applica al confronto Motor, l'unico posto in cui le
+   compagnie stanno una accanto all'altra.
+
+   DUE REGOLE, TUTTE E DUE NEL VERSO DELLA PRUDENZA.
+   · Il filtro si applica SOLO ai nomi che il catalogo conosce. Se una riga del
+     confronto porta una compagnia che nel catalogo non c'e' (o c'e' scritta
+     diversa), quella riga resta visibile: un nome storto in una tabella non
+     deve spegnere una compagnia a un collaboratore senza che nessuno se ne
+     accorga. Il 17/09/2026 il catalogo aveva «HD» al posto di «HDI» su sette
+     prodotti: con questa regola HDI resta visibile finche' il nome non viene
+     corretto, poi entra nel filtro da solo.
+   · L'amministratore vede tutto, sempre: se anche lui vedesse a meta', nessuno
+     potrebbe piu' controllare che il confronto sia completo. */
+const AW_NOMI_COMPAGNIE = { italiana: 'Italiana', hdi: 'HDI Assicurazioni', axa: 'AXA', allianz: 'Allianz', '24h': '24H', groupama: 'Groupama', prima: 'Prima' };
+let COMPAGNIE_CATALOGO_QUOTO = null;   // i nomi distinti di quote_prodotti_catalogo.compagnie
+async function caricaCompagnieCatalogo() {
+  if (COMPAGNIE_CATALOGO_QUOTO) return COMPAGNIE_CATALOGO_QUOTO;
+  if (!db) return (COMPAGNIE_CATALOGO_QUOTO = []);
+  try {
+    const { data, error } = await db.from('quote_prodotti_catalogo').select('compagnie');
+    if (error) throw error;
+    const set = new Set();
+    (data || []).forEach(r => (r.compagnie || []).forEach(c => { if (c) set.add(String(c)); }));
+    COMPAGNIE_CATALOGO_QUOTO = [...set];
+  } catch (e) { COMPAGNIE_CATALOGO_QUOTO = []; }
+  return COMPAGNIE_CATALOGO_QUOTO;
+}
+/* «HDI» corrisponde alla riga hdi / «HDI Assicurazioni»; «24H» a 24h. Si
+   confrontano le forme normalizzate: la chiave della riga, oppure la prima
+   parola del nome della riga. */
+function compagniaCorrisponde(nomeCatalogo, key, nomeRiga) {
+  const norm = x => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const c = norm(nomeCatalogo); if (!c) return false;
+  const primaParola = norm(String(nomeRiga || '').split(/[\s·]+/)[0]);
+  return c === norm(key) || c === primaParola || c === norm(nomeRiga);
+}
+function awCompagniaConsentita(key, nomeRiga, utente, catalogo) {
+  const u = utente || (typeof currentUser !== 'undefined' ? currentUser : null);
+  if (!u || u.role === 'admin') return true;
+  const lista = Array.isArray(u.compagnie) ? u.compagnie : null;
+  if (!lista) return true;                                    // null = tutte
+  const nomi = Array.isArray(catalogo) ? catalogo : (COMPAGNIE_CATALOGO_QUOTO || []);
+  const governata = nomi.some(c => compagniaCorrisponde(c, key, nomeRiga));
+  if (!governata) return true;                                 // il catalogo non la conosce: non si spegne
+  return lista.some(c => compagniaCorrisponde(c, key, nomeRiga));
+}
+function awAvvisoCompagnieEscluse(quante) {
+  const rows = document.getElementById('aw-rows'); if (!rows || !quante) return;
+  const vecchio = document.getElementById('aw-avviso-compagnie'); if (vecchio) vecchio.remove();
+  rows.insertAdjacentHTML('afterbegin',
+    '<div id="aw-avviso-compagnie" style="background:#f3f6fb;border:1px solid #d9e2f0;border-left:3px solid #4a6fa5;border-radius:12px;padding:9px 14px;font-size:12.5px;color:#3b5273;display:flex;align-items:center;gap:10px">'
+    + '<i class="ti ti-eye-off"></i><span>' + quante + (quante === 1 ? ' compagnia non è' : ' compagnie non sono') + ' nel tuo profilo: le decide l\'agenzia da IAM → Utenti.</span></div>');
+}
 function awAvvisoInterruttori() {
   const rows = document.getElementById('aw-rows'); if (!rows) return;
   const vecchio = document.getElementById('aw-avviso-fonti'); if (vecchio) vecchio.remove();
@@ -18260,7 +18316,16 @@ async function awMostraPremio() {
   document.getElementById('aw-prep')?.remove();
   if (esito === 'ko') { awBloccoInterruttori(); return; }   // fail-closed: non si quota
   if (esito === 'recente') awAvvisoInterruttori();
-  const attiva = awFonteAttiva;
+  /* Due cancelli nello stesso verso: gli interruttori delle Fonti (l'agenzia
+     ha spento una compagnia per tutti) e le compagnie del profilo (l'agenzia
+     l'ha nascosta a questa persona). Il secondo non si applica all'admin. */
+  await caricaCompagnieCatalogo();
+  let escluse = 0;
+  const attiva = k => {
+    if (!awFonteAttiva(k)) return false;
+    if (awCompagniaConsentita(k, AW_NOMI_COMPAGNIE[k] || k)) return true;
+    escluse++; return false;
+  };
   const idBox = k => (k === 'italiana' ? 'aw-premio-box' : 'aw-premio-box-' + k);
   const spegniBox = k => { const b = document.getElementById(idBox(k)); if (b) b.style.display = 'none'; };
   const accendiBox = k => { const b = document.getElementById(idBox(k)); if (b) b.style.display = ''; };
@@ -18339,6 +18404,7 @@ async function awMostraPremio() {
       })();
     } else spegniBox('prima');
   }
+  awAvvisoCompagnieEscluse(escluse);
 }
 function awPremioCardItaliana(d) {
   if (!d || !d.ok || !d.premio) {

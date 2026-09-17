@@ -35,7 +35,7 @@ import { sorgenteAttuale, sorgenteA, stanza, esiti, deve } from './banco.mjs';
 const NOMI = [
   'invitiInSospeso', 'scriviInviti', 'aggiungiInvito', 'scartaInvito',
   'applicaInvitiInSospeso', 'mostraInvitiInSospeso',
-  'caricaProfilo', 'creaNuovoUtente',
+  'caricaProfilo',
   'canonRuolo', 'dbRuolo', 'normalizzaRuolo', 'applicaSuperAdmin', 'isSuperAdmin',
 ];
 
@@ -78,47 +78,18 @@ const INVITO = {
 function batteria(sorgente, etichetta) {
   const e = esiti(etichetta);
 
-  // ── 1. non si scrive piu' su caselle che non esistono ──────────────────────
-  e.provaAsync("invitare non scrive piu' su una casella che l'archivio non ha", async () => {
-    const s = stanza(sorgente, NOMI, {
-      ME: { id: 'admin-1', email: 'capo@withus.it' },
-      opzioniArchivio: { colonneAmmesse: COLONNE_VERE, regolaInsert: regolaArchivio('mai') },
-      altro: { ...CONTORNO },
-    });
-    deve(!s.mancanti.includes('creaNuovoUtente'), 'creaNuovoUtente non si trova nel file');
-    s.ctx.db.auth = { signUp: async () => ({ data: { user: { id: 'nuovo-1' } }, error: null }) };
-    s.browser.elemento('nu-email').value = 'anna@withus.it';
-    s.browser.elemento('nu-nome').value  = 'Anna';
-    s.browser.elemento('nu-cogn').value  = 'Verdi';
-    s.browser.elemento('nu-ruolo').value = 'operatore';
-    s.browser.elemento('nu-pass').value  = 'IAMABC123';
-    s.browser.elemento('nu-rui').value   = 'A000123456';
-    await s.ctx.creaNuovoUtente();
-
-    const scritture = [...s.archivio.stato.upsert, ...s.archivio.stato.insert];
-    deve(scritture.length > 0, "l'invito non ha provato a scrivere niente");
-    for (const w of scritture) {
-      const ignote = Object.keys(w.riga).filter(k => !COLONNE_VERE.includes(k));
-      deve(ignote.length === 0, `si scrive ancora sulla casella "${ignote[0]}", che su iam_utenti non esiste: l'archivio rifiuta tutta la scheda`);
-    }
-  });
-
-  // ── 2. il ruolo scelto all'invito non si perde ─────────────────────────────
-  e.provaAsync("il ruolo scelto all'invito resta segnato anche se la scheda non si puo' creare", async () => {
-    const s = stanza(sorgente, NOMI, {
-      ME: { id: 'admin-1', email: 'capo@withus.it' },
-      opzioniArchivio: { colonneAmmesse: COLONNE_VERE, regolaInsert: regolaArchivio('mai') },
-      altro: { ...CONTORNO },
-    });
-    s.ctx.db.auth = { signUp: async () => ({ data: { user: { id: 'nuovo-1' } }, error: null }) };
-    s.browser.elemento('nu-email').value = 'anna@withus.it';
-    s.browser.elemento('nu-ruolo').value = 'operatore';
-    s.browser.elemento('nu-pass').value  = 'IAMABC123';
-    await s.ctx.creaNuovoUtente();
-
-    const rimasti = JSON.parse(s.browser.localStorage.getItem('iam_utenti_pendenti') || '[]');
-    deve(rimasti.length === 1, "la scelta fatta all'invito non e' stata messa da parte da nessuna parte");
-    deve(rimasti[0].ruolo === 'operatore', `il ruolo segnato e' "${rimasti[0].ruolo}" invece di "operatore"`);
+  // ── 1. un account non nasce piu' dal browser con una password temporanea ──
+  //   (17/09/2026, Lavoro 2 PR 3: lo crea il server, /utenti/attiva, e la
+  //   persona sceglie la password dal collegamento che riceve). Le prove che
+  //   stavano qui giravano creaNuovoUtente e il campo «Password temporanea»:
+  //   non esistono piu', ed e' giusto cosi'.
+  e.prova("nessuna password temporanea nasce nel browser", () => {
+    deve(!/id="nu-pass"/.test(sorgente), 'c\'e\' ancora il campo «Password temporanea»');
+    deve(!/function creaNuovoUtente\(/.test(sorgente), 'creaNuovoUtente esiste ancora');
+    /* Il signUp della schermata di accesso (chi si registra da solo) e' un'altra
+       cosa e resta: qui si guarda la creazione fatta da un amministratore. */
+    deve(!/nu-overlay|apriNuovoUtente\(/.test(sorgente), 'il pannello «Nuovo utente» dell\'amministratore esiste ancora');
+    deve(/mailFetch\('\/utenti\/attiva'/.test(sorgente), 'l\'attivazione non passa dal server');
   });
 
   // ── 3. l'invito non viene buttato via senza essere stato applicato ─────────

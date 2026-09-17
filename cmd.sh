@@ -1,7 +1,7 @@
-echo "== ora"; date '+%F %T'
-echo "== stato groupama"; curl -s -m 12 http://127.0.0.1:4500/loginstate | head -c 220; echo
-f=/opt/withus-backend/scraper/groupama/auth.json; [ -f "$f" ] && echo "auth.json: $(date -r "$f" '+%F %T')"
-echo "== IL PUNTO: il backend ha preso il codice dalla posta?"
-journalctl -u withus-backend --since '-30min' --no-pager 2>/dev/null | grep -aiE 'otp-posta' | tail -8
-echo "== giornale groupama, ultimi 30 minuti"
-journalctl -u groupama-scraper --since '-30min' --no-pager 2>/dev/null | sed 's/.*start-service.sh\[[0-9]*\]: //' | grep -avE 'gracefully|forcefully|<kill>|systemd' | tail -12
+ATTESO=78782aa
+for i in $(seq 1 40); do H=$(git -C /opt/withus-backend rev-parse --short=7 HEAD 2>/dev/null); [ "$H" = "$ATTESO" ] && break; sleep 5; done
+echo "== HEAD backend: $H (atteso $ATTESO) dopo ~$((i*5)) s"
+a=$(curl -s https://iam.withusassicurazioni.it/nuovo-preventivo/index.html | md5sum | cut -c1-8); b=$(md5sum /opt/withus-backend/index.html | cut -c1-8); echo "index servito=$a disco=$b $([ "$a" = "$b" ] && echo OK || echo DIVERSO)"
+echo "== motore servito ha daAnagrafica:"; curl -s https://iam.withusassicurazioni.it/nuovo-preventivo/tariffe/motore/pensione.js | grep -c "daAnagrafica"
+echo "== backend:"; systemctl is-active withus-backend; curl -s -o /dev/null -w '%{http_code}\n' https://api.withusassicurazioni.it/health
+echo "== server analisi ha la regola:"; grep -c "cliente dell'anagrafica" /opt/withus-backend/server/analisiPrevidenziali.js

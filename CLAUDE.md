@@ -348,6 +348,15 @@ Cosa cambia per chi lavora:
 - `iam/vercel.json` e `iam/INDIRIZZO-UNICO.md` raccontano la strada di prima
   (Vercel faceva solo anteprime): restano finché il progetto Vercel esiste.
 
+**Passo 3, a moduli (dal 16/09/2026).** Tessera 1: `frame-ancestors 'self'`
+nell'header Caddy di `/nuovo-preventivo/`. Tessera 2 (17/09): la gestione
+utenti di QUOTO non c'è più, `iam_utenti` la scrive solo IAM (QUOTO tocca solo
+`rete`/`responsabile`, i punti vendita); il preventivatore rimanda a IAM col
+messaggio `quoto-apri`. La mappa «chi possiede quale schermata» è in
+`INTERFACCIA-QUOTO-IAM.md` §2.7: **«storico» non era una schermata doppia**,
+sono due cose diverse con lo stesso nome. Fondere i due documenti costa 44 nomi
+globali in comune (`db`, `ME`, `initDB`, `onLogin`, …) e 37 `id` uguali.
+
 Ciò che **non** è cambiato: `index.html` di QUOTO e `iam/index.html` restano
 due documenti, e il preventivatore vive ancora in un riquadro (stessa origine,
 `/nuovo-preventivo/`). Fonderli in una sola applicazione è il passo 3, da fare a

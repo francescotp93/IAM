@@ -1491,7 +1491,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-estratto" onclick="showPage('estratto')"><i class="ti ti-file-invoice"></i><span>Estratto conto</span></div>
       <div class="nav-item" id="nav-sinistri" style="display:none" onclick="showPage('sinistri')"><i class="ti ti-alert-triangle"></i><span>Sinistri</span></div>
       <div class="nav-item" id="nav-ticket" style="display:none" onclick="showPage('ticket')"><i class="ti ti-ticket"></i><span>Ticket</span></div>
-      <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Utenti</span></div>
+      <div class="nav-item" id="nav-utenti" style="display:none" onclick="showPage('utenti')"><i class="ti ti-users"></i><span>Collaboratori</span></div>
       <div class="nav-item" id="nav-reti" style="display:none" onclick="showPage('reti')"><i class="ti ti-sitemap"></i><span>Reti</span></div>
       <div class="nav-item" id="nav-log" style="display:none" onclick="showPage('log')"><i class="ti ti-activity"></i><span>Attività</span></div>
       <div class="nav-item" id="nav-gruppi" style="display:none" onclick="showPage('gruppi')"><i class="ti ti-affiliate"></i><span>Gruppi</span></div>
@@ -2790,11 +2790,15 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
     <!-- ── UTENTI ── -->
     <div class="page" id="page-utenti">
-      <div class="page-title">Utenti</div>
-      <div class="page-sub">Gestisci gli accessi al portale: Amministratori e Collaboratori.</div>
-      <div class="users-card">
-        <div class="users-header"><span class="users-title">Account</span><button class="btn-add" onclick="openCreaUtente()"><i class="ti ti-plus"></i> Nuovo utente</button></div>
-        <div id="utenti-list"><div class="empty-state">Caricamento…</div></div>
+      <div class="page-title">Collaboratori e punti vendita</div>
+      <!-- Dal 17/09/2026 gli account, i ruoli e i permessi si gestiscono in un
+           posto solo, IAM → Utenti. Qui c'era una seconda gestione utenti che
+           scriveva iam_utenti con regole sue: due schermate sulla stessa
+           tabella erano la classe di bug piu' frequente del confine
+           (INTERFACCIA-QUOTO-IAM.md §1 e §2.7). -->
+      <div class="page-sub" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span>Gli <b>account, i ruoli e i permessi</b> delle persone si gestiscono in un posto solo: <b>IAM → Utenti</b>.</span>
+        <button class="btn-add" id="btn-utenti-iam" onclick="apriUtentiInIam()"><i class="ti ti-external-link"></i> Apri Utenti in IAM</button>
       </div>
       <div class="users-card" style="margin-top:1.2rem">
         <div class="users-header"><span class="users-title"><i class="ti ti-sitemap"></i> Reti / Punti vendita</span></div>
@@ -3337,18 +3341,20 @@ async function onLogin(session) {
   initMain();
 }
 
-// Carica (o crea) il profilo dell'utente. Il PRIMO utente diventa admin.
+// Carica il profilo dell'utente. NON lo crea: dal 17/09/2026 la scheda in
+// iam_utenti nasce in IAM, al primo ingresso li' (iam/index.html,
+// caricaProfilo), col ruolo piu' basso e senza accessi; accesso_quoto lo
+// accende poi l'amministratore da IAM → Utenti. Qui prima si creava la
+// scheda al volo con accesso_quoto: true — cioe' chiunque avesse un account
+// Auth entrava nel preventivatore senza che nessuno l'avesse abilitato.
+// Chi non ha ancora la scheda vede «non ha accesso al preventivatore»
+// (onLogin) e deve passare da IAM: e' voluto (INTERFACCIA-QUOTO-IAM.md §2.7).
 async function caricaProfilo(userId) {
   if (!db) return null;
   try {
     const { data } = await db.from('iam_utenti').select('*').eq('id', userId).single();
-    if (data) return data;
-    const { count } = await db.from('iam_utenti').select('id', { count: 'exact', head: true });
-    const ruolo = (!count) ? 'admin' : 'collaboratore';
-    const nome = ME?.user_metadata?.full_name || (ME?.email ? ME.email.split('@')[0] : '');
-    const { data: nuovo } = await db.from('iam_utenti')
-      .insert({ id: userId, email: ME?.email, nome, ruolo: dbRuolo(ruolo), attivo: true, accesso_quoto: true, accesso_iam: false }).select().single();
-    return nuovo;
+    if (!data) console.warn('Profilo assente in iam_utenti: la scheda nasce in IAM al primo ingresso.');
+    return data || null;
   } catch (e) { console.warn('Profilo non disponibile (tabella iam_utenti?):', e.message); return null; }
 }
 
@@ -3525,6 +3531,7 @@ function initMain() {
   document.getElementById('sb-name').textContent = currentUser.name;
   document.getElementById('sb-role').textContent = currentUser.superAdmin ? 'Super Admin' : (currentUser.role === 'admin' ? 'Amministratore' : (currentUser.role === 'operatore' ? 'Operatore' : 'Collaboratore'));
   renderModules();
+  caricaUtentiIam(); // l'elenco operatori per «assegna a»: prima usciva vuoto a chi non apriva Utenti
   document.getElementById('nav-anag').style.display   = 'flex';
   document.getElementById('nav-portafoglio').style.display = 'flex';   // CRM Punto 2
   document.getElementById('nav-scadenzario').style.display = 'flex';   // CRM Punto 4
@@ -9567,7 +9574,7 @@ function showPage(name) {
   if (name === 'cauzioni-privati') renderCauzioniPrivati();
   if (name === 'cvtard') renderCvtArd();
   if (name === 'ticket') { fillTicketSezioni(); loadTickets(); }
-  if (name === 'utenti') { loadUtenti(); loadCollaboratori(); }
+  if (name === 'utenti') { caricaUtentiIam().then(loadReti); loadCollaboratori(); }
   if (name === 'anagrafiche') initAnagrafiche();
   if (name === 'utility') loadDocumenti();
   if (name === 'reti') loadReti();
@@ -20738,264 +20745,39 @@ async function delTicket(id) {
   catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
-/* ══════════ UTENTI ══════════ */
-async function loadUtenti() {
-  if (!db) return;
+/* ══════════ UTENTI: si gestiscono in IAM (dal 17/09/2026) ══════════
+   Fino al 17/09/2026 qui c'era una seconda gestione utenti — account, ruoli,
+   permessi, sospensioni, 260 righe — che scriveva iam_utenti con regole
+   diverse da quelle di IAM. Due schermate su una tabella sola: la classe di
+   bug piu' frequente del confine (INTERFACCIA-QUOTO-IAM.md §1, «doppio
+   cancello»). Ora QUOTO l'elenco lo LEGGE soltanto: serve alle assegnazioni
+   delle richieste (operatoriAssegnabili) e ai punti vendita (loadReti). Le
+   sole colonne che QUOTO scrive ancora su iam_utenti sono `rete` e
+   `responsabile`, perche' i punti vendita IAM non li ha (§2.7).
+
+   Un effetto collaterale utile: prima UTENTI si riempiva solo aprendo la
+   pagina Utenti, quindi il menu «assegna a» delle richieste usciva vuoto a
+   chi non c'era passato. Adesso si carica all'accesso, per tutti. */
+async function caricaUtentiIam() {
+  if (!db) return UTENTI;
   try {
-    const { data, error } = await db.from('iam_utenti').select('*').order('creato_il', { ascending: true });
+    const { data, error } = await db.from('iam_utenti')
+      .select('id,nome,cognome,email,ruolo,attivo,rete,responsabile')
+      .order('cognome', { ascending: true });
     if (error) throw error;
-    // I ruoli nel DB sono in formato IAM: convertili nei nomi unificati per la UI
     UTENTI = (data || []).map(u => ({ ...u, ruolo: canonRuolo(u.ruolo) }));
-    renderUtenti();
-    loadReti();
-  } catch (e) {
-    const el = document.getElementById('utenti-list');
-    if (el) el.innerHTML = `<div class="empty-state">Tabella utenti non trovata. Esegui lo script SQL su Supabase.<br><small>${esc(e.message||e)}</small></div>`;
+  } catch (e) { console.warn('[utenti] elenco non caricato:', e.message || e); }
+  return UTENTI;
+}
+/* Per creare, sospendere o cambiare ruolo si va in IAM → Utenti. Dentro il
+   riquadro lo si chiede alla scocca sul canale (quoto-apri, INTERFACCIA §2.1
+   passo 4): mai '*' come destinazione. A pagina intera si va a IAM. */
+function apriUtentiInIam() {
+  if (window.self !== window.top) {
+    window.parent.postMessage({ w1: 'quoto-apri', v: 1, tab: 'utenti' }, PONTE_IAM || IAM_ORIGINI[0]);
+    return;
   }
-}
-
-function renderUtenti() {
-  const el = document.getElementById('utenti-list'); if (!el) return;
-  if (!UTENTI.length) { el.innerHTML = '<div class="empty-state">Nessun utente.</div>'; return; }
-  el.innerHTML = UTENTI.map(u => {
-    const isAdmin = u.ruolo === 'admin';
-    const isOper = u.ruolo === 'operatore';
-    const isSuper = (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL;
-    const ini = (u.nome || u.email || '?').trim().charAt(0).toUpperCase();
-    const me = u.id === currentUser.id;
-    return `<div class="user-row">
-      <div class="user-av">${esc(ini)}</div>
-      <div class="user-meta">
-        <div class="user-name">${esc(u.nome||'—')}${me?' <span style="font-size:11px;color:var(--muted)">(tu)</span>':''}${u.attivo===false?'<span class="badge-susp">sospeso</span>':''}</div>
-        <div class="user-email">${esc(u.email||'')}</div>
-      </div>
-      ${isSuper
-        ? '<span class="badge-admin" style="background:#fdecc8;color:#9a6b00">Super Admin</span>'
-        : `<select class="ruolo-sel" onchange="impostaRuolo('${u.id}',this.value)" title="Ruolo">
-            <option value="collaboratore" ${!isAdmin&&!isOper?'selected':''}>Collaboratore</option>
-            <option value="operatore" ${isOper?'selected':''}>Operatore</option>
-            <option value="admin" ${isAdmin?'selected':''}>Admin</option>
-          </select>`}
-      <div class="user-actions">
-        <button onclick="openModificaUtente('${u.id}')" title="Modifica utente"><i class="ti ti-pencil"></i></button>
-        <button onclick="openPermessi('${u.id}')" title="Permessi preventivatori"><i class="ti ti-adjustments"></i></button>
-        ${!me&&!isSuper?`<button onclick="toggleAttivo('${u.id}',${u.attivo!==false})" title="${u.attivo===false?'Riattiva':'Sospendi'}"><i class="ti ${u.attivo===false?'ti-user-check':'ti-user-off'}"></i></button>`:''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function impostaRuolo(id, nuovo) {
-  const u = UTENTI.find(x => x.id === id);
-  if (u && (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL) { alert('Il Super Admin non può essere declassato.'); loadUtenti(); return; }
-  if (!['admin','operatore','collaboratore'].includes(nuovo)) return;
-  try {
-    await db.from('iam_utenti').update({ ruolo: dbRuolo(nuovo) }).eq('id', id);
-    if (id === currentUser.id) { currentUser.role = nuovo; initMain(); showPage('utenti'); }
-    await loadUtenti();
-  } catch (e) { alert('Errore: ' + (e.message || e)); loadUtenti(); }
-}
-
-async function toggleAttivo(id, attivo) {
-  if (!confirm(`${attivo ? 'Sospendere' : 'Riattivare'} questo utente?`)) return;
-  try { await db.from('iam_utenti').update({ attivo: !attivo }).eq('id', id); await loadUtenti(); }
-  catch (e) { alert('Errore: ' + (e.message || e)); }
-}
-
-// Permessi: quali preventivatori (moduli) può vedere l'utente. null = tutti.
-function openPermessi(userId) {
-  const u = UTENTI.find(x => x.id === userId);
-  const cur = (u && Array.isArray(u.moduli)) ? u.moduli : null; // null = tutti
-  const rows = MODULES.map(m => {
-    const checked = (cur === null || cur.includes(m.key)) ? 'checked' : '';
-    return `<label class="perm-item"><input type="checkbox" value="${m.key}" ${checked}> <i class="ti ${m.icon}" style="color:var(--blue)"></i> ${esc(m.name)}</label>`;
-  }).join('');
-  const html = `
-  <div class="modal-ov" id="perm-overlay" onclick="if(event.target.id==='perm-overlay')this.remove()">
-    <div class="modal" style="width:520px">
-      <div class="modal-title">Permessi preventivatori — ${esc(u?.nome || u?.email || '')}</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:.6rem">Il <b>profilo</b> decide cosa questa persona può fare. Le spunte qui sotto possono solo <b>restringere</b> ancora. <b>Gli Admin vedono sempre tutto.</b></div>
-      <label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:.3rem">Profilo</label>
-      <select id="perm-profilo" style="width:100%;margin-bottom:.9rem">
-        ${Object.entries(PROFILI).map(([k, p]) => `<option value="${k}"${k === (u?.profilo || PROFILO_PREDEFINITO) ? ' selected' : ''}>${esc(p.nome)}</option>`).join('')}
-      </select>
-      <div id="perm-avviso" style="display:none;background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:8px 12px;margin-bottom:.8rem;font-size:12.5px"></div>
-      <div class="perm-list" id="perm-list">${rows}</div>
-      <div class="modal-err" id="perm-err"></div>
-      <div class="modal-actions">
-        <button class="primary" onclick="salvaPermessi('${userId}')">Salva permessi</button>
-        <button class="ghost" onclick="document.getElementById('perm-overlay').remove()">Annulla</button>
-      </div>
-    </div>
-  </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-  permAvvisoProfilo();
-  document.getElementById('perm-profilo')?.addEventListener('change', permAvvisoProfilo);
-}
-
-/* Scegliere «segnalatore» ha una conseguenza normativa, non estetica: quella
-   persona non potra' piu' aprire un preventivo, da nessuna porta. Va detto
-   PRIMA di salvare, non scoperto dopo da chi si trova le porte chiuse. */
-function permAvvisoProfilo() {
-  const sel = document.getElementById('perm-profilo'), box = document.getElementById('perm-avviso');
-  if (!sel || !box) return;
-  const p = PROFILI[sel.value];
-  if (p && !p.quota) {
-    box.style.display = '';
-    box.innerHTML = '<i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> Con questo profilo la persona <b>non potrà preparare preventivi</b>' +
-      (p.soloSegnalazione ? ' e vedrà soltanto la schermata «Segnala un contatto»: non è iscritta al RUI, quindi non può fare intermediazione.' : '.');
-  } else box.style.display = 'none';
-}
-
-async function salvaPermessi(userId) {
-  const checked = Array.from(document.querySelectorAll('#perm-list input:checked')).map(i => i.value);
-  // tutti selezionati → null (= tutti); altrimenti l'elenco
-  const moduli = (checked.length === MODULES.length) ? null : checked;
-  try {
-    const profilo = document.getElementById('perm-profilo')?.value || PROFILO_PREDEFINITO;
-    await db.from('iam_utenti').update({ moduli, profilo }).eq('id', userId);
-    document.getElementById('perm-overlay')?.remove();
-    await loadUtenti();
-    /* Se ho cambiato il profilo a me stesso, la schermata deve aggiornarsi
-       subito: aggiornavo `moduli` e non `profilo`, quindi il menu restava
-       quello di prima fino al prossimo accesso — e chi prova la modifica
-       la crede non funzionante. */
-    if (userId === currentUser.id) { currentUser.moduli = moduli; currentUser.profilo = profilo; renderModules(); }
-  } catch (e) {
-    const err = document.getElementById('perm-err');
-    if (err) err.textContent = (e.message||'').includes('moduli') ? 'Aggiungi la colonna "moduli" (script SQL).' : (e.message || 'Errore.');
-  }
-}
-
-// Modifica utente: nome, rete/sottorete, reset password via email
-// Reti esistenti (per il menu a tendina)
-function distinctReti() { return [...new Set((UTENTI || []).map(u => u.rete).filter(Boolean))].sort(); }
-function reteFieldHTML(prefix, current) {
-  const reti = distinctReti();
-  return `<div class="field"><label>Rete / unità di vendita</label>
-    <select id="${prefix}-rete" onchange="toggleNewRete('${prefix}')">
-      <option value="">— Nessuna —</option>
-      ${reti.map(r => `<option ${r === current ? 'selected' : ''}>${esc(r)}</option>`).join('')}
-      <option value="__new">➕ Nuova rete…</option>
-    </select>
-    <input id="${prefix}-rete-new" placeholder="Nome della nuova rete (es. Unità Marsala)" style="display:none;margin-top:8px">
-  </div>`;
-}
-function toggleNewRete(prefix) {
-  const sel = document.getElementById(prefix + '-rete');
-  const inp = document.getElementById(prefix + '-rete-new');
-  if (inp) inp.style.display = sel.value === '__new' ? 'block' : 'none';
-}
-function getRete(prefix) {
-  const sel = document.getElementById(prefix + '-rete');
-  if (!sel) return null;
-  if (sel.value === '__new') return (document.getElementById(prefix + '-rete-new')?.value || '').trim() || null;
-  return sel.value || null;
-}
-
-function openModificaUtente(userId) {
-  const u = UTENTI.find(x => x.id === userId);
-  if (!u) return;
-  const html = `
-  <div class="modal-ov" id="mu-overlay" onclick="if(event.target.id==='mu-overlay')this.remove()">
-    <div class="modal">
-      <div class="modal-title">Modifica utente</div>
-      <div class="field"><label>Email (non modificabile)</label><input value="${esc(u.email||'')}" disabled style="background:#f4f5f9;color:var(--muted)"></div>
-      <div class="field"><label>Nome</label><input id="mu-nome" value="${esc(u.nome||'')}"></div>
-      ${reteFieldHTML('mu', u.rete)}
-      <label class="inf-check" style="margin:.2rem 0 1rem"><input type="checkbox" id="mu-resp" ${u.responsabile?'checked':''}> <span>Responsabile di rete (vede e modifica i preventivi di tutta l'unità)</span></label>
-      <div class="modal-err" id="mu-err"></div>
-      <div class="modal-actions">
-        <button class="primary" onclick="salvaModificaUtente('${userId}')">Salva modifiche</button>
-        <button class="ghost" onclick="document.getElementById('mu-overlay').remove()">Annulla</button>
-      </div>
-      <div style="border-top:1px solid var(--line);margin-top:1.1rem;padding-top:1rem">
-        <div style="font-size:13px;font-weight:600;margin-bottom:.5rem">Password</div>
-        <button class="ghost" style="width:100%;background:var(--blue-bg);color:var(--blue);justify-content:center" onclick="resetPasswordUtente('${esc(u.email||'')}')"><i class="ti ti-mail"></i> Invia email di reset password</button>
-        <div style="font-size:11px;color:var(--muted);margin-top:.45rem">L'utente riceverà un'email per impostare una nuova password.</div>
-      </div>
-    </div>
-  </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-async function salvaModificaUtente(userId) {
-  const nome = document.getElementById('mu-nome').value.trim();
-  const rete = getRete('mu');
-  const responsabile = !!document.getElementById('mu-resp')?.checked;
-  const err  = document.getElementById('mu-err');
-  try {
-    let { error } = await db.from('iam_utenti').update({ nome, rete: rete, responsabile }).eq('id', userId);
-    if (error && /responsabile/.test(error.message || '')) { ({ error } = await db.from('iam_utenti').update({ nome, rete: rete }).eq('id', userId)); if (!error) alert('Salvato. Per attivare il "Responsabile di rete" esegui in Supabase:\nalter table iam_utenti add column if not exists responsabile boolean default false;'); }
-    if (error) throw error;
-    document.getElementById('mu-overlay')?.remove();
-    await loadUtenti();
-    if (userId === currentUser.id) { currentUser.name = nome; document.getElementById('sb-name').textContent = nome; }
-  } catch (e) {
-    err.textContent = (e.message||'').includes('rete') ? 'Aggiungi la colonna "rete" (script SQL).' : (e.message || 'Errore.');
-  }
-}
-
-async function resetPasswordUtente(email) {
-  if (!email) return;
-  if (!confirm('Inviare a ' + email + ' l\'email per reimpostare la password?')) return;
-  try {
-    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
-    if (error) throw error;
-    alert('✓ Email di reset inviata a ' + email);
-  } catch (e) { alert('Errore: ' + (e.message || e)); }
-}
-
-function openCreaUtente() {
-  const tmpPass = 'QUOTO' + Math.random().toString(36).slice(2, 8).toUpperCase();
-  const html = `
-  <div class="modal-ov" id="nu-overlay" onclick="if(event.target.id==='nu-overlay')this.remove()">
-    <div class="modal">
-      <div class="modal-title">Nuovo utente</div>
-      <div class="field"><label>Email</label><input type="email" id="nu-email" placeholder="email@esempio.com"></div>
-      <div class="field"><label>Nome</label><input type="text" id="nu-nome" placeholder="Mario Rossi"></div>
-      <div class="field"><label>Ruolo (livello permessi)</label><select id="nu-ruolo"><option value="collaboratore">Collaboratore</option><option value="operatore">Operatore (esamina e quota le richieste)</option><option value="admin">Admin</option></select></div>
-      ${reteFieldHTML('nu', '')}
-      <label class="inf-check" style="margin:.2rem 0"><input type="checkbox" id="nu-resp"> <span>Responsabile di rete</span></label>
-      <div class="field"><label>Password temporanea</label><input type="text" id="nu-pass" value="${tmpPass}"></div>
-      <div class="modal-err" id="nu-err"></div>
-      <div class="modal-actions">
-        <button class="primary" onclick="creaUtente()">Crea utente</button>
-        <button class="ghost" onclick="document.getElementById('nu-overlay').remove()">Annulla</button>
-      </div>
-    </div>
-  </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-async function creaUtente() {
-  const email = document.getElementById('nu-email').value.trim();
-  const nome  = document.getElementById('nu-nome').value.trim();
-  const ruolo = document.getElementById('nu-ruolo').value;
-  const rete  = getRete('nu');
-  const pass  = document.getElementById('nu-pass').value.trim();
-  const err   = document.getElementById('nu-err');
-  if (!email || pass.length < 6) { err.textContent = 'Email e password (min 6 caratteri) obbligatorie.'; return; }
-  err.style.color = '#5b6478'; err.textContent = 'Creazione in corso…';
-  try {
-    // Client secondario: crea l'utente senza sloggare l'admin corrente
-    const tmp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data, error } = await tmp.auth.signUp({ email, password: pass, options: { data: { full_name: nome } } });
-    if (error) throw error;
-    const uid = data.user?.id;
-    if (uid) {
-      const payload = { id: uid, email, nome, ruolo: dbRuolo(ruolo), rete, responsabile: !!document.getElementById('nu-resp')?.checked, attivo: true, creato_da: currentUser.id, accesso_quoto: true };
-      let { error: upErr } = await db.from('iam_utenti').upsert(payload, { onConflict: 'id' });
-      if (upErr && /responsabile/.test(upErr.message || '')) { const { responsabile, ...rest } = payload; await db.from('iam_utenti').upsert(rest, { onConflict: 'id' }); }
-    }
-    document.getElementById('nu-overlay')?.remove();
-    logMovimento('Nuovo utente · ' + email + ' (' + ruolo + ')', 'utente');
-    await loadUtenti();
-    alert(`✓ Utente creato.\n\nEmail: ${email}\nPassword: ${pass}\n\nComunica le credenziali in modo sicuro (non via email).`);
-  } catch (e) {
-    err.style.color = '#c0392b';
-    err.textContent = (e.message||'').includes('registered') ? 'Email già registrata.' : (e.message || 'Errore creazione utente.');
-  }
+  window.location.href = IAM_URL;
 }
 
 /* ══════════ COLLABORATORI / INTERMEDIARI (MUP) ══════════ */
@@ -24846,7 +24628,7 @@ async function loadReti() {
     const map = {};
     users.forEach(u => { const r = u.rete || '__nessuna'; (map[r] = map[r] || []).push(u); });
     const reti = Object.keys(map).filter(r => r !== '__nessuna').sort();
-    if (!reti.length && !map['__nessuna']) { el.innerHTML = '<div class="empty-state">Nessuna rete creata. Vai su <b>Utenti</b> e assegna una rete agli utenti.</div>'; return; }
+    if (!reti.length && !map['__nessuna']) { el.innerHTML = '<div class="empty-state">Nessun punto vendita ancora. Creane uno qui sopra e aggiungi i membri.</div>'; return; }
     const membro = m => `<div class="user-row"><div class="user-av">${esc((m.nome||m.email||'?')[0].toUpperCase())}</div><div class="user-meta"><div class="user-name">${esc(m.nome||'—')} ${m.responsabile?'<span class="badge-admin">Responsabile</span>':''}</div><div class="user-email">${esc(m.email||'')}</div></div><span class="${m.ruolo==='admin'?'badge-admin':(m.ruolo==='operatore'?'badge-oper':'badge-collab')}">${m.ruolo==='admin'?'Admin':(m.ruolo==='operatore'?'Operatore':'Collaboratore')}</span></div>`;
     let html = `<div style="margin-bottom:.9rem"><button class="btn-add" onclick="reteNuovo()"><i class="ti ti-plus"></i> Nuovo punto vendita</button></div>` + reti.map(r => {
       const membri = map[r]; const resp = membri.find(m => m.responsabile);
@@ -24927,25 +24709,25 @@ async function reteSetResponsabile(nomeEnc, userId){
     await db.from('iam_utenti').update({responsabile:false}).eq('rete',nome);
     await db.from('iam_utenti').update({responsabile:true}).eq('id',userId);
     logMovimento('Responsabile punto vendita aggiornato · '+nome,'utente');
-    await loadUtenti(); apriRete(nomeEnc);
+    await caricaUtentiIam(); await loadReti(); apriRete(nomeEnc);
   }catch(e){ alert('Errore: '+(e.message||e)+'\n\n(Serve la colonna iam_utenti.responsabile.)'); }
 }
 async function reteRemoveMember(userId, nomeEnc){
   if(!confirm('Rimuovere questo utente dal punto vendita?')) return;
-  try{ await db.from('iam_utenti').update({rete:null,responsabile:false}).eq('id',userId); logMovimento('Membro rimosso da punto vendita','utente'); await loadUtenti(); apriRete(nomeEnc); }
+  try{ await db.from('iam_utenti').update({rete:null,responsabile:false}).eq('id',userId); logMovimento('Membro rimosso da punto vendita','utente'); await caricaUtentiIam(); await loadReti(); apriRete(nomeEnc); }
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
 async function reteAddMember(nomeEnc){
   const nome=decodeURIComponent(nomeEnc);
   const uid=document.getElementById('rete-add-sel')?.value; if(!uid){ alert('Seleziona un utente.'); return; }
-  try{ await db.from('iam_utenti').update({rete:nome}).eq('id',uid); logMovimento('Membro aggiunto a punto vendita · '+nome,'utente'); await loadUtenti(); apriRete(nomeEnc); }
+  try{ await db.from('iam_utenti').update({rete:nome}).eq('id',uid); logMovimento('Membro aggiunto a punto vendita · '+nome,'utente'); await caricaUtentiIam(); await loadReti(); apriRete(nomeEnc); }
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
 async function reteRinomina(nomeEnc){
   const nome=decodeURIComponent(nomeEnc);
   const nuovo=(prompt('Nuovo nome del punto vendita:', nome)||'').trim();
   if(!nuovo||nuovo===nome) return;
-  try{ await db.from('iam_utenti').update({rete:nuovo}).eq('rete',nome); logMovimento('Punto vendita rinominato: '+nome+' → '+nuovo,'utente'); await loadUtenti(); apriRete(encodeURIComponent(nuovo)); }
+  try{ await db.from('iam_utenti').update({rete:nuovo}).eq('rete',nome); logMovimento('Punto vendita rinominato: '+nome+' → '+nuovo,'utente'); await caricaUtentiIam(); await loadReti(); apriRete(encodeURIComponent(nuovo)); }
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
 

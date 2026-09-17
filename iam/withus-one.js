@@ -189,7 +189,18 @@
     if (ev.origin !== QUOTO_ORIGIN) return;
     var fr = document.getElementById('w1-qframe');
     if (!fr || ev.source !== fr.contentWindow) return;
-    var d = ev.data; if (!d || d.w1 !== 'quoto-ready') return;
+    var d = ev.data; if (!d || typeof d.w1 !== 'string') return;
+    /* quoto-apri: il preventivatore chiede alla scocca di aprire una schermata
+       di IAM (dal 17/09/2026 «Utenti» vive solo qui, INTERFACCIA §2.1 passo 4
+       e §2.7). Elenco CHIUSO: un messaggio non puo' far aprire qualunque
+       scheda, e il nome che arriva non passa mai a goTab cosi' com'e'. */
+    if (d.w1 === 'quoto-apri') {
+      var APRIBILI = { utenti: 'utenti' };
+      var t = APRIBILI[String(d.tab || '')];
+      if (t && typeof window.goTab === 'function') window.goTab(t);
+      return;
+    }
+    if (d.w1 !== 'quoto-ready') return;
     sessionePerQuoto().then(function (sess) {
       var msg = { w1: 'quoto-session', v: 1, email: (typeof ME !== 'undefined' && ME && ME.email) || '' };
       if (sess) { msg.at = sess.at; msg.rt = sess.rt; }

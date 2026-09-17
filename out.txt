@@ -1,27 +1,19 @@
-id: pr174-1789644497  exit: 0  2026-09-17 11:28:47
+id: pr176-1789655501  exit: 0  2026-09-17 14:32:08
 ----
-988e607 Lavoro 2, PR 3 di 3: l'attivazione dell'accesso passa dal server, le compagnie per utente arrivano in QUOTO (#174)
---- server/utenti.js presente:
-11058 server/utenti.js
---- backend attivo da:
-Thu 2026-09-17 11:28:10 UTC
---- POST /utenti/attiva senza token (atteso 401 JSON):
-{"error":"Accesso non autorizzato (token mancante)."} [401]
---- iam/index.html PR 3:
-4
-0
---- index.html PR 3:
+f187b56 Passo 3, modulo 3: «Performance» si sposta da QUOTO a IAM › KPI e gare › Produzione (#176)
+--- IAM modulo 3:
+6
+withus-one.js?v=20260917c
+1
+--- QUOTO:
 2
+0
 --- Caddy iam md5:
-377ce0c63f70e5c0692b817890ba22a7  -
-377ce0c63f70e5c0692b817890ba22a7  iam/index.html
+48c842f3fd7a8668b98f66167674cdc8  -
+48c842f3fd7a8668b98f66167674cdc8  iam/index.html
+--- Caddy scocca md5:
+caa1cc90d8d28ece3633980115b25f32  -
+caa1cc90d8d28ece3633980115b25f32  iam/withus-one.js
 --- Caddy nuovo-preventivo md5:
-bdf6d84062fe3a5d4b663408c25fdd3f  -
-bdf6d84062fe3a5d4b663408c25fdd3f  index.html
---- journal backend (ultime 6 righe):
-[vigilanza-fonti] attiva · controllo ogni 5 min · rientro automatico: no (FONTI_AUTOLOGIN=1 per abilitarlo)
-[chiave-ponte] {"evento":"chiave_letta","da":"supabase","impronta":"a0c7d6247288","quando":"2026-09-17T11:28:11.175Z"}
-2026-09-17T11:28:16.483Z OPTIONS /mail/unread 204 4ms u:-
-2026-09-17T11:28:16.621Z GET    /mail/unread 304 1092ms u:a5ab0cd0
-[vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
-2026-09-17T11:28:47.384Z POST   /utenti/attiva 401 7ms u:-
+1a749122414abe4b1f77323312d0da56  -
+1a749122414abe4b1f77323312d0da56  index.html

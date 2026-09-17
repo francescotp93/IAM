@@ -36,6 +36,23 @@ export const MITTENTI_OTP = {
   groupama: /(^|[.@])groupama\.it$|(^|[.@])groupama\.com$/i,
 };
 
+/* L'IDENTIFICATIVO DI UNA FONTE ARRIVA IN DUE FORME, e questo elenco ne conosce
+   una sola. Le fonti predefinite si chiamano `groupama`; quelle configurate a
+   mano dal Pannello Fonti — che sono poi quelle usate davvero — si chiamano
+   `c-groupama`, col prefisso `c-` che vuol dire «custom».
+   Il 17/09/2026 si e' visto cosa costa: il rientro automatico arrivava alla
+   schermata del codice, la vigilanza chiamava la lettura della posta, e quella
+   cercava il mittente di `c-groupama`, non lo trovava e usciva. In SILENZIO,
+   che e' la parte peggiore: nel giornale non restava una riga, e per quattro
+   giorni e' sembrato che il pezzo non venisse mai chiamato. Veniva chiamato
+   ogni volta. */
+export function fonteBase(id) {
+  return String(id == null ? '' : id).trim().toLowerCase().replace(/^c-/, '');
+}
+export function mittenteAtteso(id) {
+  return MITTENTI_OTP[fonteBase(id)] || null;
+}
+
 /* Quanto vale un codice appena arrivato. Oltre questa età non si prende: un
    codice monouso vive poco, e mandarne uno vecchio al portale significa farselo
    rifiutare e bruciare un tentativo. */
@@ -130,7 +147,7 @@ async function cercaInCasella(casella, filtroMittente, dopo, deps) {
    il codice a una persona come faceva prima. */
 export async function attendiCodice({ fonte, dopo, attesaMs = 90000, passoMs = 6000, caselle, log, deps } = {}) {
   const scrivi = log || (() => {});
-  const filtro = MITTENTI_OTP[String(fonte || '').toLowerCase()];
+  const filtro = mittenteAtteso(fonte);
   if (!filtro) { scrivi('[otp-posta] ' + fonte + ': nessun mittente conosciuto, il codice resta da inserire a mano'); return null; }
   let elenco = caselle;
   if (!elenco) {

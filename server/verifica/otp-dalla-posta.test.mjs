@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url';
 const qui = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const O = Object.assign({}, await import('../otpPosta.js').catch(() => ({})));
 const manca = (c) => { throw new Error('server/otpPosta.js non c\'è o non esporta ' + c); };
-for (const f of ['estraiCodice', 'attendiCodice', 'MITTENTI_OTP', '_dimenticaUsati']) if (!O[f]) O[f] = () => manca(f);
+for (const f of ['estraiCodice', 'attendiCodice', 'MITTENTI_OTP', '_dimenticaUsati', 'mittenteAtteso', 'fonteBase']) if (!O[f]) O[f] = () => manca(f);
 
 const esiti = [];
 const prova = async (nome, fn) => { try { esiti.push([true, nome, (await fn()) || '']); } catch (e) { esiti.push([false, nome, e.message]); } };
@@ -153,7 +153,12 @@ await prova('il codice NON finisce nel giornale', async () => {
 // ── 4. L'aggancio nel pannello Fonti ─────────────────────────────────────────
 await prova('il pannello avvia la ricerca solo quando il portale chiede il codice', () => {
   const src = fs.readFileSync(path.join(qui, 'fonti.js'), 'utf8');
-  deve(/import \{ attendiCodice, MITTENTI_OTP \}/.test(src), 'fonti.js non usa il recupero automatico');
+  /* Si controlla CHE fonti.js usi la lettura della posta, non l'elenco esatto
+     dei nomi importati: pretendere la riga alla virgola la rende rossa ogni
+     volta che si aggiunge un aiutante — successo il 17/09/2026 aggiungendo
+     `mittenteAtteso`, con comportamento identico. */
+  deve(/from '\.\/otpPosta\.js'/.test(src), 'fonti.js non usa il recupero automatico');
+  deve(/attendiCodice/.test(src), 'fonti.js non chiama piu\' l\'attesa del codice');
   const i = src.indexOf("const dove = req.query.forza === '1'");
   const blocco = src.slice(i, i + 1500);
   deve(/attesa_otp\|serve_codice/.test(blocco), 'la ricerca parte anche quando il portale non ha chiesto nessun codice');
@@ -168,6 +173,33 @@ await prova('il pannello avvia la ricerca solo quando il portale chiede il codic
 await prova('due ricerche insieme non si rubano il codice a vicenda', () => {
   const src = fs.readFileSync(path.join(qui, 'fonti.js'), 'utf8');
   deve(/otpInCorso/.test(src), 'niente guardia: due accessi ravvicinati cercherebbero lo stesso codice, e uno lo consumerebbe per l\'altro');
+});
+
+await prova('le fonti configurate a mano («c-groupama») vengono riconosciute', () => {
+  /* IL DIFETTO CHE HA TENUTO SPENTO TUTTO PER QUATTRO GIORNI, visto il
+     17/09/2026. Le fonti predefinite si chiamano `groupama`; quelle configurate
+     dal Pannello Fonti — che sono poi quelle usate davvero — si chiamano
+     `c-groupama`. L'elenco dei mittenti conosce solo la prima forma, quindi
+     cercando il mittente di `c-groupama` non trovava niente e si arrendeva.
+     E si arrendeva IN SILENZIO: nel giornale non restava una riga, e sembrava
+     che il pezzo non venisse mai chiamato. Veniva chiamato ogni volta. */
+  deve(O.mittenteAtteso && O.mittenteAtteso('c-groupama'),
+    'una fonte «c-groupama» non trova il suo mittente: la lettura della posta si ferma prima di cominciare');
+  deve(O.mittenteAtteso('groupama'), 'la forma predefinita ha smesso di funzionare');
+  deve(O.mittenteAtteso('c-GROUPAMA'), 'il riconoscimento dipende dalle maiuscole');
+  deve(!O.mittenteAtteso('c-axa'), 'AXA manda il codice sul telefono, non per email: non deve risultare cercabile nella posta');
+  deve(!O.mittenteAtteso(''), 'un identificativo vuoto trova comunque un mittente');
+});
+
+await prova('quando rinuncia, lo scrive', () => {
+  /* Una rinuncia silenziosa e' peggio di un errore: non si puo' nemmeno
+     cercare. Qui si controlla il punto in cui si decide di non cercare. */
+  const src = fs.readFileSync(path.join(qui, 'fonti.js'), 'utf8');
+  const i = src.indexOf('if (!mittenteAtteso(id))');
+  deve(i > -1, 'non trovo piu\' il punto in cui si decide di non cercare nella posta');
+  const blocco = src.slice(i, i + 320);
+  deve(/console\.log\('\[otp-posta\]/.test(blocco),
+    'si esce ancora in silenzio: chi legge il giornale non puo\' sapere che il codice non e\' stato nemmeno cercato');
 });
 
 let ko = 0;

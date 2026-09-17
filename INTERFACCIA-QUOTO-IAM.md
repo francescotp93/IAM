@@ -13,6 +13,7 @@
   `https://francescotp93.github.io/QUOTE/`.
 - **Backend condiviso:** stessa istanza **Supabase** (Auth + tabella
   `iam_utenti`). Sono due codebase separate ma **un solo database**.
+  Chi scrive che cosa: §2.7.
 
 ---
 
@@ -61,6 +62,7 @@ La sessione viaggia **da finestra a finestra**, non dentro l'indirizzo.
 | 1 | QUOTO, appena caricato | `{ w1:'quoto-ready', v:1 }` a `window.parent` | `https://iam.withusassicurazioni.it` |
 | 2 | IAM, in risposta | `{ w1:'quoto-session', v:1, at, rt, email, page, prod, q }` all'iframe | `https://quoto.withusassicurazioni.it` |
 | 3 | IAM, a ogni voce di menu | `{ w1:'quoto-nav', v:1, page, prod, q }` all'iframe | `https://quoto.withusassicurazioni.it` |
+| 4 | QUOTO, quando l'utente chiede una schermata che vive solo in IAM | `{ w1:'quoto-apri', v:1, tab }` a `window.parent` | `https://iam.withusassicurazioni.it` |
 
 **Regole non negoziabili del canale**
 
@@ -68,6 +70,11 @@ La sessione viaggia **da finestra a finestra**, non dentro l'indirizzo.
 - Chi **riceve** verifica `event.origin` contro una lista chiusa **e**
   `event.source` (`window.parent` lato QUOTO, `iframe.contentWindow` lato IAM)
   **prima** di guardare il contenuto del messaggio.
+- Il passo 4 (dal 17/09/2026) porta un nome di scheda, e la scocca lo accetta
+  **solo da un elenco chiuso** (`APRIBILI` in `iam/withus-one.js`, oggi solo
+  `utenti`): il valore ricevuto non arriva mai a `goTab` così com'è. Il
+  cancello di IAM su quella scheda (`RISERVATE`, chi può amministrare) vale
+  come se l'avesse chiesta il menu.
 - Il passo 1 si ripete ogni 300 ms finché non arriva risposta: non si sa chi
   dei due aggancia per primo il proprio ascoltatore.
 - Se entro 4 s non risponde nessuno, QUOTO prosegue da solo: resta il velo
@@ -145,8 +152,8 @@ Finché la scelta non è fatta, l'hash resta **solo** su questa strada.
 Invertire 1 e 2 rompe la produzione: IAM smetterebbe di mandare i token a un
 QUOTO che non sa ancora ascoltare il canale.
 
-> **REGOLA:** i nomi dei messaggi (`quoto-ready`, `quoto-session`, `quoto-nav`),
-> i campi (`w1`, `v`, `at`, `rt`, `email`, `page`, `prod`, `q`), le origini
+> **REGOLA:** i nomi dei messaggi (`quoto-ready`, `quoto-session`, `quoto-nav`,
+> `quoto-apri`), i campi (`w1`, `v`, `at`, `rt`, `email`, `page`, `prod`, `q`, `tab`), le origini
 > ammesse e i parametri rimasti nell'indirizzo (`from`, `page`, `prod`) sono
 > parte del contratto. Si cambiano **solo modificando entrambi i repo**.
 
@@ -216,6 +223,23 @@ cliccabili): Multirischi Impresa → RC Attività e Cyber. Restano tali finché 
 QUOTO `IMPRESA_PRODUCTS` le tiene `active:false`.
 
 ---
+
+### 2.7 Chi possiede quale schermata (dal 17/09/2026)
+
+Le due app avevano schermate doppie sulle stesse tabelle. Ognuna ha ora **un
+solo padrone**; l'altra app al massimo legge, o rimanda.
+
+| Schermata | Padrone | Tabelle scritte | L'altra app |
+|---|---|---|---|
+| **Utenti** (account, ruoli, permessi, accessi) | **IAM** → Utenti | `iam_utenti` | QUOTO **legge** l'elenco (`caricaUtentiIam`, per «assegna a» e per i punti vendita) e rimanda a IAM con `quoto-apri` |
+| **Punti vendita / reti** | **QUOTO** → Collaboratori e punti vendita | `iam_utenti.rete`, `iam_utenti.responsabile` — le **sole** colonne di `iam_utenti` che QUOTO scrive | IAM non ce l'ha |
+| **Collaboratori / intermediari** | **IAM** (deciso il 17/09/2026) | `quote_collaboratori`, `quote_collaboratori_note` | QUOTO tiene ancora la sua scheda finché IAM non ha anche: segno «struttura», documenti, privacy firmata (`iam_firme`), ricerca in `iam_team` per CF. Poi si spegne (passo 3, modulo 2b) |
+| **Produzione e storico** (preventivi) | **QUOTO** | `quote_preventivi` | IAM apre quella di QUOTO nel riquadro. In IAM `storico` è un'altra cosa: lo storico movimenti della contabilità (`sessioni_giornaliere`) |
+| **KPI e gare** | **IAM** | `iam_gare_*`, `iam_kpi_*` | QUOTO ha un grafico `performance` non raggiungibile da IAM: da decidere (modulo 3) |
+
+La prova `server/verifica/utenti-in-iam.test.mjs` controlla la prima riga e la
+seconda: che QUOTO non abbia più una gestione utenti e che su `iam_utenti`
+scriva solo `rete` e `responsabile`.
 
 ## 3. Sessione condivisa
 Stessa istanza Supabase Auth. **Attenzione:** dopo il passaggio ai domini

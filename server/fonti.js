@@ -18,7 +18,7 @@ import { sondaScraper, sondaTutte, invalidaSonda, statoInterruttori } from './fo
 import { montaConnettore } from './connettore.js';
 /* Il codice di accesso che arriva via email lo pesca il backend dalla posta
    dell'agenzia, invece di farlo copiare a mano (server/otpPosta.js). */
-import { attendiCodice, MITTENTI_OTP } from './otpPosta.js';
+import { attendiCodice, MITTENTI_OTP, mittenteAtteso } from './otpPosta.js';
 
 export const fontiRouter = Router();
 
@@ -505,7 +505,16 @@ const otpInCorso = new Set();
    pulsante «Accedi» premuto da una persona: lavorava quando la persona c'era,
    e taceva nell'unico caso per cui era stata scritta. */
 export async function codiceDallaPosta(id, dopo) {
-  if (!MITTENTI_OTP[String(id).toLowerCase()]) return false;   // portale che non manda codici per email
+  /* NON SI ESCE IN SILENZIO. Prima questa riga guardava `MITTENTI_OTP[id]` e
+     tornava indietro senza dire niente: con le fonti configurate a mano, che si
+     chiamano `c-groupama` e non `groupama`, non trovava mai il mittente e
+     taceva. Quattro giorni di «il pezzo non viene mai chiamato» quando invece
+     veniva chiamato e si arrendeva. Chi legge il giornale deve poter vedere
+     anche le rinunce. */
+  if (!mittenteAtteso(id)) {
+    console.log('[otp-posta] ' + id + ': non e\' un portale che manda codici per email, il codice resta da inserire a mano');
+    return false;
+  }
   if (otpInCorso.has(id)) return false;                       // già in ascolto: due ricerche insieme sprecherebbero il codice
   otpInCorso.add(id);
   try {

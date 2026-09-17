@@ -598,6 +598,45 @@ e' finito — ed e' finito verde, il che lo rende invisibile.
 
 ---
 
+### 9-sexies. Il prefisso `c-`, e la rinuncia silenziosa
+
+17/09/2026, e spiega quattro giorni di «non parte mai».
+
+Acceso il rientro automatico su Groupama, il primo tentativo ha funzionato
+subito: `06:57:46 provo UNA volta` → `06:57:50 schermata OTP raggiunta`. La
+vigilanza ha visto la fonte giu' e ha chiamato la lettura della posta. E li' si
+e' fermato tutto, **senza una riga nel giornale**.
+
+Il motivo: le fonti hanno **due nomi**. Quelle predefinite si chiamano
+`groupama`; quelle configurate a mano dal Pannello Fonti — che sono poi quelle
+realmente in uso — si chiamano `c-groupama`. L'elenco dei mittenti conosceva
+solo la prima forma:
+
+```js
+if (!MITTENTI_OTP[String(id).toLowerCase()]) return false;   // e non scriveva niente
+```
+
+Cercava il mittente di `c-groupama`, non lo trovava, e usciva. Ogni volta.
+Anche dal pulsante «Accedi», dal 13/09 in poi.
+
+**Due difetti, e il secondo e' il peggiore.** Il primo e' il prefisso non
+tolto: si ripara con una funzione (`fonteBase`). Il secondo e' che la rinuncia
+non lasciava traccia — e una rinuncia silenziosa non si puo' nemmeno cercare.
+Per quattro giorni la conclusione e' stata «il pezzo non viene mai chiamato»,
+quando veniva chiamato ogni volta e si arrendeva.
+
+**La lezione**: un ramo che dice «questo non mi riguarda» e torna indietro
+deve **dirlo**. Costa una riga di giornale e vale giorni di indagine. E' la
+terza volta in una settimana che un silenzio costa piu' di un errore (vedi §9,
+AXA: il tentativo TOTP che non lasciava traccia).
+
+Corollario per chi cerca: **due nomi per la stessa cosa** sono una trappola
+ricorrente in questo sistema (`store[id]` e `store.__custom[id]`, §lezione 3;
+`QUOTE` e `IAM` per lo stesso repository). Prima di concludere che un pezzo non
+viene chiamato, verificare con quale nome lo si chiama.
+
+---
+
 ### 9-bis. AXA: la copia della sessione non invecchiava, era incompleta
 
 Misurato il 14/09/2026, e vale la pena scriverlo perche' la spiegazione

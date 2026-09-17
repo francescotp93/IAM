@@ -194,6 +194,36 @@ prova('chi non ha la fotografia non è stato toccato inutilmente', () => {
   return conFoto.length + ' su ' + TUTTI.length;
 });
 
+
+// ── 8. Il messaggio di avvio non stampa la password del VNC ──────────────────
+/*  Trovato il 17/09/2026 leggendo il diario del server per un'altra ragione:
+    ogni scraper, a ogni avvio, scriveva la password del suo VNC in chiaro nel
+    giornale di systemd. Il VNC è legato a 127.0.0.1 e da fuori non ci si arriva
+    senza un tunnel SSH — ma una credenziale in un registro resta una credenziale
+    in un registro, e il giornale lo legge chiunque possa entrare sulla macchina.
+    Erano tutti e dieci gli scraper più il modello, che l'avrebbe passata al
+    prossimo.  */
+const avvio = (c) => fs.readFileSync(path.join(qui, '..', c, 'start-service.sh'), 'utf8');
+const CON_MODELLO = TUTTI.concat(['_template']);
+
+for (const c of CON_MODELLO) {
+  prova(c + ': l\'avvio non scrive la password nel diario', () => {
+    const righe = avvio(c).split('\n').filter(r => /^\s*echo\b/.test(r));
+    deve(righe.length > 0, 'non c\'è più nessun messaggio di avvio: da controllare a mano');
+    const colpevoli = righe.filter(r => /VNC_PASS/.test(r));
+    deve(colpevoli.length === 0, 'stampa la password: ' + colpevoli.join(' | '));
+  });
+}
+
+prova('il messaggio di avvio dice ancora dove sta il VNC', () => {
+  /*  Se per togliere la password si cancellasse tutta la riga, chi deve fare un
+      login a mano non saprebbe più su quale porta collegarsi, e la correzione
+      avrebbe rotto una cosa utile per ripararne un'altra.  */
+  const senzaPorta = TUTTI.filter(c => !/^\s*echo\b.*VNC.*127\.0\.0\.1:\d+/m.test(avvio(c)));
+  deve(senzaPorta.length === 0, 'non dicono più su quale porta sta il VNC: ' + senzaPorta.join(', '));
+  return TUTTI.length + ' scraper';
+});
+
 let ko = 0;
 console.log('\nRISERVATEZZA — la fotografia non porta fuori niente');
 for (const [ok, nome, msg] of esiti) {

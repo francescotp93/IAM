@@ -1,23 +1,45 @@
-echo "== ora e fuso del server"; date '+%F %T %Z (%z)'
+echo "== ora"; date '+%F %T %Z'
 echo
-echo "== CONTROPROVA: la finestra di tempo funziona? quante righe in tutto"
-echo -n "tutto il diario, ultimi 70 minuti: "
-journalctl --since "-70 min" --no-pager 2>/dev/null | wc -l
-echo -n "tutto il diario, dalle 08:00 di oggi:  "
-journalctl --since "today 08:00" --no-pager 2>/dev/null | wc -l
-echo -n "  di cui con 'password: ':            "
-journalctl --since "today 08:00" --no-pager 2>/dev/null | grep -c "password: "
+echo "== CONTROPROVA VERA sulla password nel diario (finestra che funziona)"
+echo -n "righe totali nelle ultime 13 ore: "
+journalctl --since "-13 hours" --no-pager 2>/dev/null | wc -l
+echo -n "  di cui con 'password: ':        "
+journalctl --since "-13 hours" --no-pager 2>/dev/null | grep -c "password: "
+echo "  messaggi di avvio VNC nelle ultime 13 ore:"
+journalctl --since "-13 hours" --no-pager 2>/dev/null | grep "VNC" | sed -E 's/.*(VNC[^—]*).*/    \1/' | sort -u | head
 echo
-echo "== groupama, ultimi 70 minuti, SENZA filtri"
-journalctl -u groupama-scraper --since "-70 min" --no-pager -o short 2>/dev/null | wc -l | sed 's/^/righe totali: /'
-journalctl -u groupama-scraper --since "-70 min" --no-pager -o short 2>/dev/null | grep "\[groupama\]" | tail -20
-echo
-echo "== backend, ultimi 70 minuti"
-journalctl -u withus-backend --since "-70 min" --no-pager -o cat 2>/dev/null | wc -l | sed 's/^/righe totali: /'
-journalctl -u withus-backend --since "-70 min" --no-pager -o cat 2>/dev/null | grep -iE "otp|posta|groupama|vigilanza" | tail -20
-echo
-echo "== da dove prende le variabili il backend"
-systemctl show withus-backend -p EnvironmentFiles --no-pager 2>/dev/null
-for f in /etc/withus-backend.env /opt/withus-backend/.env; do
-  [ -f "$f" ] && { echo "--- $f (solo i nomi delle variabili) ---"; grep -oE '^[A-Z_]+' "$f" | sort; }
-done
+echo "== LA POSTA: e' mai arrivata una mail di Groupama stasera?"
+cat > /tmp/sonda-posta.mjs <<'JS'
+import { caselleDisponibili, conImap } from '/opt/withus-backend/server/mail.js';
+import { simpleParser } from 'mailparser';
+const GROUPAMA = /(^|[.@])groupama\.(it|com)$/i;
+const caselle = caselleDisponibili();
+console.log('caselle configurate: ' + caselle.length);
+for (const c of caselle) {
+  try {
+    await conImap(c, async (client) => {
+      const lock = await client.getMailboxLock('INBOX');
+      try {
+        const tot = client.mailbox ? client.mailbox.exists : 0;
+        console.log('  INBOX: ' + tot + ' messaggi in tutto');
+        const da = Math.max(1, tot - 19);
+        const righe = [];
+        for await (const m of client.fetch(da + ':*', { source: true, internalDate: true })) {
+          const q = m.internalDate ? new Date(m.internalDate) : null;
+          const p = await simpleParser(m.source).catch(() => null);
+          const mit = p && p.from && p.from.value && p.from.value[0] ? String(p.from.value[0].address || '') : '';
+          const dom = mit.split('@')[1] || '';
+          const gro = GROUPAMA.test(dom);
+          righe.push('    ' + (q ? q.toISOString().slice(11,19) : '  ?  ') + '  ' + (gro ? '>>> GROUPAMA (' + dom + ')' : '(altro mittente)'));
+        }
+        console.log('  ultimi ' + righe.length + ' messaggi (solo ora e se e\' di Groupama):');
+        for (const r of righe) console.log(r);
+      } finally { lock.release(); }
+    });
+  } catch (e) { console.log('  casella non leggibile: ' + String(e && e.message || e).slice(0,140)); }
+}
+JS
+cd /opt/withus-backend
+set -a; . ./server/.env 2>/dev/null; set +a
+node /tmp/sonda-posta.mjs 2>&1 | tail -35
+rm -f /tmp/sonda-posta.mjs

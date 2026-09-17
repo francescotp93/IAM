@@ -1,17 +1,9 @@
 echo "== ora"; date '+%F %T'
-cd /opt/withus-backend
-echo "== commit vivo"; git log --oneline -1
-echo "== la password e' ancora in qualche messaggio di avvio?"
-grep -l 'password: \$VNC_PASS' scraper/*/start-service.sh 2>/dev/null || echo "in nessuno: pulito"
-echo "== righe col testo 'password:' nel diario dalle 08:00 di oggi"
-journalctl --since "today 08:00" --no-pager 2>/dev/null | grep -c "password: " 
-echo "== come sta ogni scraper"
-for p in moto:4100 allianz:4200 italiana:4300 hdi:4400 groupama:4500 axa:4700; do
-  n=${p%%:*}; k=${p##*:}
-  printf '%-10s ' "$n"
-  systemctl is-active $n-scraper.service 2>/dev/null | tr -d '\n'
-  printf ' | '
-  curl -s --max-time 6 http://127.0.0.1:$k/loginstate || printf '(non risponde)'
-  echo
-done
-echo "== backend"; systemctl is-active withus-backend
+echo "== giornale groupama, dalle 18:00"
+journalctl -u groupama-scraper --since "today 18:00" --no-pager -o short 2>/dev/null | grep -v "ERROR:" | tail -25
+echo
+echo "== backend: righe su groupama / otp-posta / vigilanza, dalle 18:00"
+journalctl -u withus-backend --since "today 18:00" --no-pager -o cat 2>/dev/null | grep -iE "otp-posta|groupama|vigilanza|fermo al codice|codice dalla posta" | tail -30
+echo
+echo "== la vigilanza con rientro e' accesa?"
+systemctl show withus-backend -p Environment --no-pager 2>/dev/null | tr ' ' '\n' | grep -iE "FONTI_|OTP_|POSTA_" | sed -E 's/(PASS|TOKEN|KEY|SECRET)[A-Z_]*=.*/\1***/'

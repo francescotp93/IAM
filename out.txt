@@ -1,45 +1,11 @@
-id: posta2-1789672324  exit: 0  2026-09-17 19:12:36
+id: posta3-1789672388  exit: 0  2026-09-17 19:13:45
 ----
 == ora
-2026-09-17 19:12:35 UTC
-
-== le 16 righe con la password: PRIMA o DOPO il riavvio delle 07:50?
-   (stampo solo l'ora e quale scraper, NON la password)
-2026-09-17T06:19:29  AXA
-2026-09-17T06:19:29  Groupama
-2026-09-17T06:19:29  HDI
-2026-09-17T06:19:29  Italiana
-2026-09-17T06:19:43  Assieasy
-2026-09-17T06:19:44  Kube
-2026-09-17T06:19:44  Prima
-2026-09-17T06:20:57  Allianz
-2026-09-17T06:20:57  su
-2026-09-17T06:20:59  Quotiamo
-2026-09-17T06:24:00  Assieasy
-2026-09-17T06:53:42  Groupama
-2026-09-17T07:16:14  Assieasy
-2026-09-17T07:17:22  Assieasy
-2026-09-17T07:25:06  Groupama
-2026-09-17T07:25:42  Assieasy
-
-== e dopo le 08:00? (deve essere vuoto)
-righe con la password nelle ultime 12 ore: 4
-
-== LA POSTA: e' arrivata una mail di Groupama stasera?
-node:internal/modules/package_json_reader:314
-  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
-        ^
-
-Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'mailparser' imported from /opt/withus-backend/.sonda-posta.mjs
-    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)
-    at packageResolve (node:internal/modules/esm/resolve:768:81)
-    at moduleResolve (node:internal/modules/esm/resolve:855:18)
-    at defaultResolve (node:internal/modules/esm/resolve:985:11)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:747:20)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:724:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:320:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
-  code: 'ERR_MODULE_NOT_FOUND'
-}
-
-Node.js v22.23.1
+2026-09-17 19:13:45 UTC
+== come parte il backend
+ExecStart={ path=/usr/bin/node ; argv[]=/usr/bin/node index.js ; ignore_errors=no ; start_time=[Thu 2026-09-17 19:12:40 UTC] ; stop_time=[n/a] ; pid=3185444 ; code=(null) ; status=0/0 }
+WorkingDirectory=/opt/withus-backend/server
+== dove sta mailparser
+/opt/withus-backend/server/node_modules/mailparser
+== e imapflow
+/opt/withus-backend/server/node_modules/imapflow

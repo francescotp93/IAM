@@ -1,12 +1,11 @@
-id: lav1-pr2-1789630543  exit: 0  2026-09-17 07:36:15
+id: lav1-pr3-1789631140  exit: 0  2026-09-17 07:49:46
 ----
-== HEAD backend: 224a925 (atteso 224a925) dopo ~5 s
+== HEAD backend: 480baa6 (atteso 4bc2bcf) dopo ~200 s
 index servito=6047dc9a disco=6047dc9a OK
-== motore datore servito:
-200
-== backend attivo e parametri serviti (chiavi tfr_*):
+404 pdf-withus.js
+200 tfr-datore.js
+200 pensione.js
+200 irpef.js
+== backend:
 active
-numeri senza token: 401
-Sep 17 07:35:41 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Sep 17 07:35:41 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 17 07:35:41 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 9.200s CPU time over 10.332s wall clock time, 80.2M memory peak.
+health 200

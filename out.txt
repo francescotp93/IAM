@@ -1,24 +1,12 @@
-id: chi-manda-1789673089  exit: 0  2026-09-17 19:25:20
+id: stato-1789676060  exit: 0  2026-09-17 20:14:37
 ----
-== ora
-2026-09-17 19:25:20 UTC
-== quante email ha mandato LA VIGILANZA, e a chi (ultime 2 ore)
-email inviate dalla vigilanza: 1
-Sep 17 18:28:41 vps-d6443a46 node[3152507]: [vigilanza-fonti] email inviata a francesco.oddo199307@...
-
-== e i giri della vigilanza: quante volte ha visto una caduta
-[vigilanza-fonti] giro 49 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 50 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 51 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 52 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 53 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 54 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 55 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 56 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 57 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 2 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 3 · controllate 7 · cadute 0 · rientrate 0
-
-== adesso che groupama e' fermo, cosa dice la vigilanza
-[vigilanza-fonti] giro 3 · controllate 7 · cadute 0 · rientrate 0
+338fec8 Passo 3, modulo 6: fondere i due documenti, deciso come non farlo, e una prova che tiene ferme le collisioni (#178)
+--- servizio backend:
+active
+Thu 2026-09-17 19:30:40 UTC
+--- rotta utenti:
+401
+--- md5 serviti vs repo:
+index.html servito=5cefaff8 repo=5cefaff8 OK
+withus-one.js servito=de25b98e repo=de25b98e OK
+nuovo-preventivo/index.html servito=8045a88d repo=8045a88d OK

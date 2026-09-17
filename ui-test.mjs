@@ -2601,26 +2601,29 @@ const avvio = async () => {
       return 'nessuna confusione col fatturato vero';
     });
 
-    await prova('il profilo si puo\' davvero assegnare (o resta tutto inerte)', async () => {
-      // Senza un posto dove sceglierlo, PROFILI sarebbe codice che non entra mai
-      // in funzione: nessuno potrebbe mai diventare segnalatore.
-      const r = await page.evaluate(() => {
-        UTENTI = [{ id: 'u9', nome: 'Prova', email: 'p@p.it', ruolo: 'collaboratore', moduli: null, profilo: 'completo' }];
-        document.getElementById('perm-overlay')?.remove();
-        openPermessi('u9');
-        const sel = document.getElementById('perm-profilo');
-        const opzioni = [...sel.options].map(o => o.value);
-        sel.value = 'segnalatore'; sel.dispatchEvent(new Event('change'));
-        const avviso = document.getElementById('perm-avviso');
-        const out = { opzioni, scelto: sel.value, avvisoVisibile: avviso.style.display !== 'none', avvisoTesto: avviso.textContent };
-        document.getElementById('perm-overlay').remove();
-        return out;
-      });
-      deve(r.opzioni.includes('segnalatore'), 'il profilo segnalatore non e\' scegliibile');
-      deve(r.opzioni.length === 4, 'in tendina non ci sono i quattro profili');
-      deve(r.avvisoVisibile, 'scegliendo segnalatore non avvisa di niente');
-      deve(/RUI/.test(r.avvisoTesto), 'l\'avviso non dice perche\'');
-      return 'quattro profili, con avviso su chi non puo\' quotare';
+    await prova('il profilo lo assegna IAM: QUOTO riconosce esattamente i profili che IAM puo\' dare', async () => {
+      // Fino al 17/09/2026 qui si apriva il modale permessi di QUOTO. Non c'e'
+      // piu': ruoli e profili si assegnano in IAM → Utenti (INTERFACCIA §2.7,
+      // prova iam/verifica/profili-collaboratore.test.mjs). Quello che resta da
+      // sorvegliare e' che i due elenchi non si scollino: un profilo che IAM
+      // assegna e QUOTO non conosce farebbe entrare qualcuno come «completo».
+      const chiavi = (html) => {
+        const i = html.indexOf('const PROFILI = {'), j = html.indexOf('\n};', i);
+        return [...html.slice(i, j).matchAll(/^\s{2}([a-z_]+):\s*\{/gm)].map(m => m[1]).sort();
+      };
+      const quoto = chiavi(fs.readFileSync('index.html', 'utf8'));
+      const iamHtml = ['./iam/index.html', '/workspace/agente-sospesi/index.html', '../agente-sospesi/index.html']
+        .map(c => { try { return fs.readFileSync(c, 'utf8'); } catch (e) { return null; } }).find(Boolean);
+      deve(iamHtml, 'non trovo iam/index.html');
+      const iam = chiavi(iamHtml);
+      deve(quoto.includes('segnalatore') && iam.includes('segnalatore'), 'il profilo segnalatore manca da una parte');
+      const soloQuoto = quoto.filter(k => !iam.includes(k) && k !== 'completo');
+      const soloIam = iam.filter(k => !quoto.includes(k));
+      deve(!soloIam.length, 'IAM assegna profili che QUOTO non conosce: ' + soloIam.join(', '));
+      deve(!soloQuoto.length, 'QUOTO conosce profili che IAM non puo\' assegnare: ' + soloQuoto.join(', '));
+      deve(typeof await page.evaluate(() => typeof openPermessi) === 'string' && await page.evaluate(() => typeof openPermessi) === 'undefined',
+        'QUOTO ha ancora un modale permessi suo');
+      return quoto.length + ' profili in QUOTO (« completo » = nessun profilo), ' + iam.length + ' assegnabili in IAM, stessi nomi';
     });
 
     /* ── PENSIONE · quattro campi, due minuti ─────────────────────────────

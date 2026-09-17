@@ -1,16 +1,22 @@
-id: dep166-1789629876  exit: 0  2026-09-17 07:26:26
+id: grp-unit-1789630021  exit: 0  2026-09-17 07:27:36
 ----
 == ora
-2026-09-17 07:24:55
-== commit vivo sul VPS
-18cdb43 Il codice si cerca da quando il portale l'ha spedito, e nessuna rinuncia resta muta (#166)
-== il codice nuovo c'e'?
-server/fonti.js:1
-scraper/groupama/quote-service.mjs:3
-== servizi
-active
-inactive
-== stato groupama
+2026-09-17 07:27:35
+== unita' systemd che parlano di groupama/scraper
+allianz-scraper.service active running
+assieasy-scraper.service active running
+axa-scraper.service active running
+● loaded activating
+groupama-scraper.service active running
+hdi-scraper.service active running
+italiana-scraper.service active running
+kube-scraper.service active running
+moto-scraper.service active running
+prima-scraper.service active running
+quotiamo-scraper.service active running
+withus-autopull.service inactive dead
+withus-backend.service active running
+== chi ascolta su 4500
+LISTEN 0      511        127.0.0.1:4500      0.0.0.0:*    users:(("node",pid=3093366,fd=23))                        
+== stato groupama adesso
 {"running":false,"step":"loggato","since":1789629916133,"msg":"Sessione attiva","codice_chiesto_il":0}
-== giornale groupama, ultime 15 righe
--- No entries --

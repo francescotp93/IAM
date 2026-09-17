@@ -1,57 +1,12 @@
-id: tg-1789630149  exit: 0  2026-09-17 07:29:50
+id: lav1-pr2-1789630543  exit: 0  2026-09-17 07:36:15
 ----
-== ora
-2026-09-17 07:29:45
-== scheda del servizio
-Description=Notifica Telegram posta nuova (Giulia)
-FragmentPath=/etc/systemd/system/notifica-telegram.service
-ActiveEnterTimestamp=
-InactiveEnterTimestamp=Thu 2026-09-17 07:22:38 UTC
-Type=oneshot
-Restart=no
-Result=exit-code
-NRestarts=0
-ExecMainStartTimestamp=Thu 2026-09-17 07:22:37 UTC
-ExecMainExitTimestamp=Thu 2026-09-17 07:22:38 UTC
-ExecStart={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /opt/withus-backend/deploy/notifica-telegram.py ; ignore_errors=no ; start_time=[Thu 2026-09-17 07:22:37 UTC] ; stop_time=[Thu 2026-09-17 07:22:38 UTC] ; pid=3092497 ; code=exited ; status=1 }
-== file dell'unita' (senza righe di ambiente)
-[Unit]
-Description=Notifica Telegram posta nuova (Giulia)
-After=network-online.target
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/python3 /opt/withus-backend/deploy/notifica-telegram.py
-== prima e ultima traccia nel diario (tutta la storia disponibile)
-Sep 17 07:22:38 vps-d6443a46 systemd[1]: Failed to start notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
-   ---
-Jul 13 14:42:02 vps-d6443a46 systemd[1]: Starting notifica-telegram.service - Notifica Telegram posta nuova (Giulia)...
-Jul 13 14:42:03 vps-d6443a46 python3[704284]: inviato: 1 email
-Jul 13 14:42:03 vps-d6443a46 systemd[1]: notifica-telegram.service: Deactivated successfully.
-== ultime 25 righe
-Sep 17 07:12:32 vps-d6443a46 systemd[1]: Failed to start notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
-Sep 17 07:22:37 vps-d6443a46 systemd[1]: Starting notifica-telegram.service - Notifica Telegram posta nuova (Giulia)...
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]: Traceback (most recent call last):
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:   File "/opt/withus-backend/deploy/notifica-telegram.py", line 31, in <module>
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:     urllib.request.urlopen('https://api.telegram.org/bot%s/sendMessage'%TG, data=data, timeout=30).read()
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:     ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:   File "/usr/lib/python3.14/urllib/request.py", line 187, in urlopen
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:     return opener.open(url, data, timeout)
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:            ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:   File "/usr/lib/python3.14/urllib/request.py", line 493, in open
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:     response = meth(req, response)
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:   File "/usr/lib/python3.14/urllib/request.py", line 602, in http_response
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:     response = self.parent.error(
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:         'http', request, response, code, msg, hdrs)
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:   File "/usr/lib/python3.14/urllib/request.py", line 531, in error
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:     return self._call_chain(*args)
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:            ~~~~~~~~~~~~~~~~^^^^^^^
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:   File "/usr/lib/python3.14/urllib/request.py", line 464, in _call_chain
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:     result = func(*args)
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:   File "/usr/lib/python3.14/urllib/request.py", line 611, in http_error_default
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]:     raise HTTPError(req.full_url, code, msg, hdrs, fp)
-Sep 17 07:22:38 vps-d6443a46 python3[3092497]: urllib.error.HTTPError: HTTP Error 403: Forbidden
-Sep 17 07:22:38 vps-d6443a46 systemd[1]: notifica-telegram.service: Main process exited, code=exited, status=1/FAILURE
-Sep 17 07:22:38 vps-d6443a46 systemd[1]: notifica-telegram.service: Failed with result 'exit-code'.
-Sep 17 07:22:38 vps-d6443a46 systemd[1]: Failed to start notifica-telegram.service - Notifica Telegram posta nuova (Giulia).
-== quanto indietro arriva il diario
-Sep 17 07:29:50 vps-d6443a46 sshd-session[3094207]: Failed password for root from 109.160.32.45 port 39094 ssh2
+== HEAD backend: 224a925 (atteso 224a925) dopo ~5 s
+index servito=6047dc9a disco=6047dc9a OK
+== motore datore servito:
+200
+== backend attivo e parametri serviti (chiavi tfr_*):
+active
+numeri senza token: 401
+Sep 17 07:35:41 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 17 07:35:41 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 17 07:35:41 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 9.200s CPU time over 10.332s wall clock time, 80.2M memory peak.

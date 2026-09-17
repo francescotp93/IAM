@@ -1,29 +1,36 @@
-id: posta-1789672239  exit: 0  2026-09-17 19:10:58
+id: posta2-1789672324  exit: 0  2026-09-17 19:12:36
 ----
 == ora
-2026-09-17 19:10:57 UTC
+2026-09-17 19:12:35 UTC
 
-== CONTROPROVA VERA sulla password nel diario (finestra che funziona)
-righe totali nelle ultime 13 ore: 28227
-  di cui con 'password: ':        16
-  messaggi di avvio VNC nelle ultime 13 ore:
-    VNC AXA su 127.0.0.1:5906 
-    VNC AXA su 127.0.0.1:5906 (password: axa2026) 
-    VNC Allianz su 127.0.0.1:5901 
-    VNC Allianz su 127.0.0.1:5901 (password: allianz2026) 
-    VNC Assieasy su 127.0.0.1:5907 
-    VNC Assieasy su 127.0.0.1:5907 (password: assieasy2026) 
-    VNC Groupama su 127.0.0.1:5904 
-    VNC Groupama su 127.0.0.1:5904 (password: groupama2026) 
-    VNC HDI su 127.0.0.1:5903 
-    VNC HDI su 127.0.0.1:5903 (password: hdi2026) 
+== le 16 righe con la password: PRIMA o DOPO il riavvio delle 07:50?
+   (stampo solo l'ora e quale scraper, NON la password)
+2026-09-17T06:19:29  AXA
+2026-09-17T06:19:29  Groupama
+2026-09-17T06:19:29  HDI
+2026-09-17T06:19:29  Italiana
+2026-09-17T06:19:43  Assieasy
+2026-09-17T06:19:44  Kube
+2026-09-17T06:19:44  Prima
+2026-09-17T06:20:57  Allianz
+2026-09-17T06:20:57  su
+2026-09-17T06:20:59  Quotiamo
+2026-09-17T06:24:00  Assieasy
+2026-09-17T06:53:42  Groupama
+2026-09-17T07:16:14  Assieasy
+2026-09-17T07:17:22  Assieasy
+2026-09-17T07:25:06  Groupama
+2026-09-17T07:25:42  Assieasy
 
-== LA POSTA: e' mai arrivata una mail di Groupama stasera?
+== e dopo le 08:00? (deve essere vuoto)
+righe con la password nelle ultime 12 ore: 4
+
+== LA POSTA: e' arrivata una mail di Groupama stasera?
 node:internal/modules/package_json_reader:314
   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
         ^
 
-Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'mailparser' imported from /tmp/sonda-posta.mjs
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'mailparser' imported from /opt/withus-backend/.sonda-posta.mjs
     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)
     at packageResolve (node:internal/modules/esm/resolve:768:81)
     at moduleResolve (node:internal/modules/esm/resolve:855:18)

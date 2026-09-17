@@ -1,9 +1,17 @@
-#!/bin/bash
+echo "== ora"; date '+%F %T'
 cd /opt/withus-backend
-for i in $(seq 1 20); do [ "$(git rev-parse --short HEAD)" = "f187b56" ] && break; sleep 10; done
-git log --oneline -1
-echo "--- IAM modulo 3:"; grep -c "pt-produzione\|produzioneRiassunto\|kpi_produzione" iam/index.html; grep -o "withus-one.js?v=[0-9a-z]*" iam/index.html; grep -c "performance: 'performance'" iam/withus-one.js
-echo "--- QUOTO:"; grep -c "apriPerformanceInIam" index.html; grep -c "apexcharts\|loadPerformance" index.html
-echo "--- Caddy iam md5:"; curl -s https://iam.withusassicurazioni.it/index.html | md5sum; md5sum iam/index.html
-echo "--- Caddy scocca md5:"; curl -s "https://iam.withusassicurazioni.it/withus-one.js?v=20260917c" | md5sum; md5sum iam/withus-one.js
-echo "--- Caddy nuovo-preventivo md5:"; curl -s https://iam.withusassicurazioni.it/nuovo-preventivo/index.html | md5sum; md5sum index.html
+echo "== commit vivo"; git log --oneline -1
+echo "== la password e' ancora in qualche messaggio di avvio?"
+grep -l 'password: \$VNC_PASS' scraper/*/start-service.sh 2>/dev/null || echo "in nessuno: pulito"
+echo "== righe col testo 'password:' nel diario dalle 08:00 di oggi"
+journalctl --since "today 08:00" --no-pager 2>/dev/null | grep -c "password: " 
+echo "== come sta ogni scraper"
+for p in moto:4100 allianz:4200 italiana:4300 hdi:4400 groupama:4500 axa:4700; do
+  n=${p%%:*}; k=${p##*:}
+  printf '%-10s ' "$n"
+  systemctl is-active $n-scraper.service 2>/dev/null | tr -d '\n'
+  printf ' | '
+  curl -s --max-time 6 http://127.0.0.1:$k/loginstate || printf '(non risponde)'
+  echo
+done
+echo "== backend"; systemctl is-active withus-backend

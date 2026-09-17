@@ -1317,6 +1317,92 @@ function schedaArchivio(d) {
   };
 }
 
+/* ══ I TESTI DELL'INVIO ══════════════════════════════════════════════════
+   Email e WhatsApp, due toni, tre casi: dodici testi, tutti qui, tutti
+   provati senza browser. Il caso lo decide il risultato, non chi scrive:
+   · «datore»: autonomo o professionista con dipendenti (esito.datore);
+   · «dipendente_tfr»: dipendente che ha detto sì al TFR in azienda;
+   · «complementare»: tutti gli altri — e qui il TFR NON si nomina mai.
+   Nessun testo promette un rendimento: sono proiezioni illustrative, e lo
+   dicono. La firma e' del consulente scelto, che puo' non essere chi scrive. */
+function casoInvio(e) {
+  e = e || {};
+  if (e.datore && e.datore.ok) return 'datore';
+  if (e.mostraTfr) return 'dipendente_tfr';
+  return 'complementare';
+}
+function testiInvio(o) {
+  o = o || {};
+  var e = o.esito || {};
+  var caso = o.caso || casoInvio(e);
+  var amichevole = o.tono !== 'professionale';
+  var email = o.canale === 'email';
+  var cli = o.cliente || {}, fi = o.firmatario || {};
+  var nomeIntero = String(cli.nome || '').trim();
+  var nomeBreve = nomeIntero.split(/\s+/)[0] || '';
+  var r = [];
+
+  r.push(amichevole ? (nomeBreve ? 'Ciao ' + nomeBreve + ',' : 'Ciao,') : (nomeIntero ? 'Gentile ' + nomeIntero + ',' : 'Gentile Cliente,'));
+  r.push(amichevole ? 'ecco il riepilogo di cui parlavamo.' : 'come concordato, le trasmetto il riepilogo della nostra analisi.');
+  r.push('');
+
+  var az = (e.proposte || []).filter(function (p) { return p.azzera && !p.fuoriPortata; })[0];
+  var parziale = (e.proposte || []).filter(function (p) { return !p.azzera; }).pop();
+  if (e.gapMensile > 0) {
+    r.push(amichevole
+      ? 'Con la sola pensione pubblica, quando smetterai di lavorare ti mancherebbero circa ' + euro(e.gapMensile) + ' al mese rispetto a quello che porti a casa oggi.'
+      : 'Con la sola pensione pubblica, al pensionamento le mancherebbero circa ' + euro(e.gapMensile) + ' al mese rispetto al reddito netto attuale.');
+    if (az) r.push((amichevole ? 'Con ' : 'Con un versamento di ') + euro(az.versamentoMensile) + ' al mese in un fondo pensione quel divario si chiude.');
+    else if (parziale) r.push('Con ' + euro(parziale.versamentoMensile) + ' al mese se ne copre già il ' + perc(parziale.coperturaGap) + '.');
+  } else {
+    r.push(amichevole ? 'Con quello che stai già versando il divario è coperto.' : 'Con i versamenti attuali il divario risulta coperto.');
+  }
+  if (e.fiscale && e.fiscale.disponibile && e.fiscale.risparmioAnnuo > 0) {
+    r.push((amichevole ? 'In più recuperi circa ' : 'A ciò si aggiunge un risparmio fiscale di circa ') + euro(e.fiscale.risparmioAnnuo) + ' l\'anno' + (amichevole ? ' di tasse sul versato.' : ' sui versamenti dedotti.'));
+  }
+
+  if (caso === 'dipendente_tfr') {
+    r.push('');
+    r.push(amichevole
+      ? 'Nel foglio trovi anche il confronto fra TFR in azienda e TFR nel fondo, voce per voce: è un confronto, non un consiglio — la scelta è tua.'
+      : 'Nel documento trova anche il confronto fra TFR in azienda e TFR nel fondo pensione, voce per voce. È un confronto, non una raccomandazione: la scelta resta sua.');
+  } else if (caso === 'datore' && e.datore) {
+    var dt = e.datore;
+    r.push('');
+    if (dt.confronto === 'azienda') {
+      r.push(amichevole
+        ? 'C\'è anche la parte da datore di lavoro: destinando al fondo il TFR dei tuoi ' + dt.dipendenti + ' dipendenti, l\'azienda risparmierebbe circa ' + euro(dt.risparmioAnnuo) + ' il primo anno, ' + euro(dt.ventennale.totale) + ' in ' + dt.anni + ' anni tra deduzione, contributi e rivalutazione non pagata.'
+        : 'Il documento include il lato datoriale: destinando al fondo il TFR dei ' + dt.dipendenti + ' dipendenti, l\'azienda otterrebbe un vantaggio stimato di ' + euro(dt.risparmioAnnuo) + ' il primo anno e di ' + euro(dt.ventennale.totale) + ' in ' + dt.anni + ' anni, fra deduzione aggiuntiva, minori contributi e rivalutazione non dovuta.');
+      r.push(amichevole ? 'Il conto tiene organico e stipendi costanti: lo trovi scritto nel foglio.' : 'La stima assume organico e retribuzioni costanti, come indicato nel documento.');
+    } else {
+      r.push(amichevole
+        ? 'Sul lato azienda: con ' + dt.dipendenti + ' dipendenti il TFR va comunque alla Tesoreria INPS, quindi per l\'azienda fondo o Tesoreria si equivalgono. Il vantaggio del fondo, lì, è dei tuoi dipendenti.'
+        : 'Quanto al lato aziendale: con ' + dt.dipendenti + ' dipendenti il TFR non conferito confluisce in ogni caso al Fondo di Tesoreria INPS, e per l\'azienda le due destinazioni si equivalgono. Il beneficio del fondo pensione ricade sui dipendenti.');
+    }
+  }
+
+  r.push('');
+  if (email) r.push(amichevole ? 'Ti allego il foglio con tutti i numeri.' : 'In allegato trova il documento completo.');
+  else if (o.link) r.push((amichevole ? 'Il foglio con tutti i numeri: ' : 'Il documento completo: ') + o.link + (o.scadenza ? '\n(il collegamento resta valido fino al ' + o.scadenza + ')' : ''));
+  else r.push(amichevole ? 'Ti allego il foglio con tutti i numeri.' : 'Le allego il documento completo.');
+  if (e.prudenziale) r.push(amichevole ? 'È una stima prudenziale: manca l\'anno in cui hai cominciato a lavorare, dimmelo e la rifaccio.' : 'Si tratta di una stima prudenziale: l\'anno di inizio dell\'attività lavorativa non è stato indicato.');
+  r.push(amichevole ? 'Sono proiezioni a scopo illustrativo, non una promessa di rendimento.' : 'Si tratta di proiezioni a scopo illustrativo: non costituiscono una promessa di rendimento.');
+  r.push('');
+  r.push(amichevole ? 'A presto,' : 'Cordiali saluti,');
+  var firma = [fi.nome, fi.ruolo].filter(Boolean).join(' · ');
+  if (firma) r.push(firma);
+  if (fi.rui) r.push('RUI ' + fi.rui);
+  if (fi.azienda) r.push(fi.azienda);
+
+  var testo = r.join('\n');
+  var oggetto = email ? ((amichevole ? 'La tua pensione in una pagina' : 'Analisi previdenziale') + (nomeIntero ? ' · ' + nomeIntero : '')) : null;
+  var html = email
+    ? '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.6;color:#1f2a37">' +
+      testo.split('\n').map(function (riga) { return riga ? '<p style="margin:0 0 4px">' + esc(riga) + '</p>' : '<p style="margin:0;height:8px"></p>'; }).join('') + '</div>'
+    : null;
+  return { caso: caso, tono: amichevole ? 'amichevole' : 'professionale', canale: email ? 'email' : 'whatsapp', oggetto: oggetto, testo: testo, html: html };
+}
+
 /* ══ IL MESSAGGIO WHATSAPP ═══════════════════════════════════════════════
    Precompilato, corto, e senza numeri che non si possono spiegare in due
    righe. Il foglio arriva allegato: qui dentro ci va il motivo per aprirlo.
@@ -1324,30 +1410,7 @@ function schedaArchivio(d) {
    servizio che non è nostro. */
 function messaggioWhatsApp(d) {
   d = d || {};
-  var e = d.esito || {};
-  var cli = (d.cliente && d.cliente.nome) ? String(d.cliente.nome).trim().split(/\s+/)[0] : '';
-  var con = (d.consulente && d.consulente.nome) ? String(d.consulente.nome).trim() : '';
-  var r = [];
-  r.push((cli ? 'Ciao ' + cli + ', ' : 'Ciao, ') + 'ecco il riepilogo di cui parlavamo.');
-  r.push('');
-  if (e.gapMensile > 0) {
-    r.push('Con la sola pensione pubblica, alla tua età di pensionamento ti mancherebbero circa ' +
-      euro(e.gapMensile) + ' al mese rispetto a quello che porti a casa oggi.');
-    var az = (e.proposte || []).filter(function (p) { return p.azzera && !p.fuoriPortata; })[0];
-    var parziale = (e.proposte || []).filter(function (p) { return !p.azzera; }).pop();
-    if (az) r.push('Con ' + euro(az.versamentoMensile) + ' al mese in un fondo pensione quel divario si chiude.');
-    else if (parziale) r.push('Con ' + euro(parziale.versamentoMensile) + ' al mese se ne copre già il ' + perc(parziale.coperturaGap) + '.');
-  } else {
-    r.push('Con quello che stai già versando il divario è coperto.');
-  }
-  if (e.fiscale && e.fiscale.disponibile && e.fiscale.risparmioAnnuo > 0) {
-    r.push('In più recuperi circa ' + euro(e.fiscale.risparmioAnnuo) + ' l\'anno di tasse sul versato.');
-  }
-  r.push('');
-  r.push('Ti allego il foglio con i numeri' + (e.prudenziale ? ' (è una stima prudenziale: manca l\'anno di inizio lavoro)' : '') + '.');
-  r.push('Sono una proiezione a scopo illustrativo, non una promessa di rendimento.');
-  if (con) { r.push(''); r.push(con); }
-  return r.join('\n');
+  return testiInvio({ esito: d.esito, tono: 'amichevole', canale: 'whatsapp', cliente: d.cliente, firmatario: { nome: d.consulente && d.consulente.nome } }).testo;
 }
 
 var API = {
@@ -1382,6 +1445,8 @@ var API = {
   problemiDelFoglio: problemiDelFoglio,
   schedaArchivio: schedaArchivio,
   messaggioWhatsApp: messaggioWhatsApp,
+  casoInvio: casoInvio,
+  testiInvio: testiInvio,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = API;

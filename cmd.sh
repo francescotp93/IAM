@@ -1,17 +1,6 @@
-echo "== ora"; date '+%F %T'
-sleep 120
-cd /opt/withus-backend
-echo "== commit vivo"; git log --oneline -1
-echo "== la password e' ancora nel messaggio di avvio?"
-grep -l 'password: \$VNC_PASS' scraper/*/start-service.sh 2>/dev/null || echo "in nessuno: pulito"
-echo "== come sta ogni scraper"
-for p in moto:4100 allianz:4200 italiana:4300 hdi:4400 groupama:4500 axa:4700; do
-  n=${p%%:*}; k=${p##*:}
-  printf '%-10s ' "$n"
-  systemctl is-active $n-scraper.service 2>/dev/null | tr -d '\n'
-  printf ' | '
-  curl -s --max-time 6 http://127.0.0.1:$k/loginstate || echo -n '(non risponde)'
-  echo
-done
-echo "== la password compare ancora nel diario dopo il riavvio?"
-journalctl --since "-4 min" --no-pager 2>/dev/null | grep -c "password:" | sed 's/^/righe con "password:" negli ultimi 4 minuti: /'
+ATTESO=4bc2bcf
+for i in $(seq 1 40); do H=$(git -C /opt/withus-backend rev-parse --short=7 HEAD 2>/dev/null); [ "$H" = "$ATTESO" ] && break; sleep 5; done
+echo "== HEAD backend: $H (atteso $ATTESO) dopo ~$((i*5)) s"
+a=$(curl -s https://iam.withusassicurazioni.it/nuovo-preventivo/index.html | md5sum | cut -c1-8); b=$(md5sum /opt/withus-backend/index.html | cut -c1-8); echo "index servito=$a disco=$b $([ "$a" = "$b" ] && echo OK || echo DIVERSO)"
+for f in pdf-withus tfr-datore pensione irpef; do printf '%s %s\n' "$(curl -s -o /dev/null -w '%{http_code}' https://iam.withusassicurazioni.it/nuovo-preventivo/tariffe/motore/$f.js)" "$f.js"; done
+echo "== backend:"; systemctl is-active withus-backend; curl -s -o /dev/null -w 'health %{http_code}\n' https://api.withusassicurazioni.it/health

@@ -1,18 +1,33 @@
-id: tienigiu-1789677631  exit: 0  2026-09-17 20:40:58
+id: fermo-vero-1789677892  exit: 0  2026-09-17 20:45:28
 ----
 == ora
-2026-09-17 20:40:56 UTC
-== stato prima
-inactive
-== lo blocco perche' non possa piu' essere riacceso da autopull
-Failed to mask unit: File '/etc/systemd/system/groupama-scraper.service' already exists
+2026-09-17 20:45:25 UTC
+== 1. metto da parte il file del servizio (si rimette dov'era in un secondo)
+copia di sicurezza: /root/servizi-sospesi/groupama-scraper.service
+file spostato
+
+== 2. CONTROPROVA: provo ad accenderlo, DEVE fallire
+Failed to start groupama-scraper.service: Unit groupama-scraper.service not found.
 stato: inactive
-risponde sulla 4500? no
+risponde sulla 4500? NO — e' fermo
 
-== controprova: chiedo di riavviarlo, DEVE rifiutare
-stato dopo il tentativo: active
+== 3. QUANTE VOLTE HA CHIESTO UN CODICE OGGI, e a ogni riavvio
+codici chiesti oggi: 2
+Sep 17 06:19:25 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 06:53:37 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 06:53:38 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 06:57:46 vps-d6443a46 start-service.sh[3088215]: 06:57:46 [groupama] rientro automatico: provo UNA volta a rifare l'accesso — il codice lo prende il backend dalla posta dell'agenzia
+Sep 17 06:57:50 vps-d6443a46 start-service.sh[3088215]: 06:57:50 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
+Sep 17 07:25:00 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 07:25:01 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 07:45:42 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 07:50:45 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 18:22:55 vps-d6443a46 start-service.sh[3099796]: 18:22:55 [groupama] rientro automatico: provo UNA volta a rifare l'accesso — il codice lo prende il backend dalla posta dell'agenzia
+Sep 17 18:23:00 vps-d6443a46 start-service.sh[3099796]: 18:23:00 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
+Sep 17 19:30:41 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 17 20:40:58 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
 
-== gli altri scraper restano su?
+== 4. gli altri restano su
 moto       active
 allianz    active
 italiana   active

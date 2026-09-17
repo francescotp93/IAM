@@ -859,6 +859,64 @@ prova('la professione si deduce nell\'ordine giusto: «agente di polizia» non �
   return casi.length + ' professioni, nessuna attribuita male';
 });
 
+prova('«TFR in azienda: no» → il TFR non si nomina MAI, né in schermata né sul foglio', () => {
+  const e = P.calcola({ ...BASE, lavoro: 'dipendente', tfrInAzienda: false });
+  deve(e.mostraTfr === false && e.tfrInAzienda === false, 'il confronto TFR resta acceso');
+  const f = P.foglioHtml({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(f.ok, (f.problemi || []).join('; '));
+  deve(!/TFR/.test(f.html), 'il foglio nomina il TFR a chi ha detto no');
+  deve(/Quando posso prendere prima i miei soldi/.test(f.html) && /48 mesi/.test(f.html), 'il blocco sul riscatto è sparito: va a tutti, con la sola colonna del fondo');
+  const si = P.calcola({ ...BASE, lavoro: 'dipendente' });
+  deve(si.mostraTfr === true, 'senza indicazione il dipendente non vede più il TFR: il valore di partenza è sì');
+  const aut = P.calcola({ ...BASE, lavoro: 'autonomo', tfrInAzienda: true });
+  deve(aut.mostraTfr === false, 'un autonomo con tfrInAzienda=true vede un TFR che non ha');
+  return 'no → zero «TFR» sul foglio; riscatto a una colonna; autonomo mai';
+});
+
+prova('il ramo datoriale: autonomo con dipendenti → il conto del datore entra nel risultato, nel foglio e nell\'archivio', () => {
+  const e = P.calcola({ ...BASE, lavoro: 'autonomo', datore: { haDipendenti: true, soglia: 'meno50', dipendenti: 10, stipendioMedioMensile: 2000, mensilita: 13, forma: 'societa' } });
+  deve(e.datore && e.datore.ok, 'il datore non è calcolato: ' + JSON.stringify(e.datore && e.datore.problemi));
+  deve(e.datore.risparmioAnnuo > 1500 && e.datore.ventennale.totale > e.datore.risparmioAnnuo * 20, 'i numeri del datore non tornano');
+  const f = P.foglioHtml({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(f.ok, (f.problemi || []).join('; '));
+  const i = f.html.indexOf('Il TFR dei suoi dipendenti'), t = f.html.indexOf('<table class="confronto tfr-datore">', i), sp = f.html.indexOf('<div class="spiega">', i);
+  deve(i > 0 && t > i && sp > t, 'sul foglio manca il blocco datore, o la spiegazione sta prima della tabella');
+  deve(/Liquidità/.test(f.html) && /Fondo di garanzia/.test(f.html) && /Ipotesi di questo conto/.test(f.html), 'il blocco datore non porta voci e ipotesi');
+  const a = P.schedaArchivio({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' }, anagraficaId: 'a1' });
+  deve(a.ok && a.riga.dati.datore && a.riga.dati.datore.dipendenti === 10 && a.riga.risultato.datore.risparmioAnnuo === e.datore.risparmioAnnuo, 'l\'archivio non porta il ramo datoriale');
+  deve(a.riga.parametri_usati.datore && a.riga.parametri_usati.datore.deduzioneMeno50, 'l\'archivio non porta i numeri di legge del datore');
+  return 'risparmio annuo ' + e.datore.risparmioAnnuo + ' €, blocco sul foglio, riga d\'archivio completa';
+});
+
+prova('il ramo datoriale usa l\'IRPEF marginale DEL CLIENTE per la ditta individuale, e non si accende a un dipendente', () => {
+  const e = P.calcola({ ...BASE, lavoro: 'professionista', datore: { haDipendenti: true, soglia: 'meno50', dipendenti: 3, stipendioMedioMensile: 1800, forma: 'individuale' } });
+  deve(e.datore && e.datore.ok && e.datore.imposta.tipo === 'IRPEF', 'non usa l\'IRPEF del titolare: ' + JSON.stringify(e.datore && e.datore.imposta));
+  deve(e.datore.imposta.fonte.indexOf(Math.round(e.lordoAnnuo).toLocaleString('it-IT').slice(0, 2)) >= 0, 'il reddito del titolare non è quello del cliente');
+  const dip = P.calcola({ ...BASE, lavoro: 'dipendente', datore: { haDipendenti: true, soglia: 'meno50', dipendenti: 3, stipendioMedioMensile: 1800 } });
+  deve(dip.datore === null, 'un dipendente si è ritrovato un ramo datoriale');
+  const no = P.calcola({ ...BASE, lavoro: 'autonomo', datore: { haDipendenti: false, dipendenti: 3, stipendioMedioMensile: 1800 } });
+  deve(no.datore === null, '«non ha dipendenti» e il ramo si accende lo stesso');
+  const manca = P.calcola({ ...BASE, lavoro: 'autonomo', datore: { haDipendenti: true } });
+  deve(manca.datore && !manca.datore.ok && manca.datore.problemi.length === 2, 'con dati mancanti non dice cosa manca');
+  const f = P.foglioHtml({ esito: manca, cliente: { id: 'a1', nome: 'X Y' }, consulente: { nome: 'Z W' } });
+  deve(!/Il TFR dei suoi dipendenti/.test(f.html), 'il foglio stampa un blocco datore senza numeri');
+  return 'IRPEF del cliente; mai al dipendente; senza dati si dice';
+});
+
+prova('da 50 addetti in su il foglio dice che il confronto è con la Tesoreria e che il vantaggio è del dipendente', () => {
+  const e = P.calcola({ ...BASE, lavoro: 'autonomo', datore: { haDipendenti: true, soglia: 'almeno50', dipendenti: 70, stipendioMedioMensile: 2100, forma: 'societa' } });
+  deve(e.datore.confronto === 'tesoreria' && e.datore.risparmioAnnuo === 0, 'sopra i 50 promette un risparmio');
+  const f = P.foglioHtml({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(/Tesoreria/.test(f.html) && /del dipendente/.test(f.html), 'il foglio non dice Tesoreria e a chi va il vantaggio');
+  return 'Tesoreria, neutro, detto sul foglio';
+});
+
+prova('i numeri di legge del datore arrivano dalla stessa tabella e passano dal motore pensione', () => {
+  const r = P.numeriDiLegge({ tfr_datore_oneri_impropri: 0.0028, ires: 0.24, __fonti: { ires: 'Art. 77 TUIR' }, __daConfermare: {} });
+  deve(r.applicati.includes('datore.riduzioneOneriImpropri') && r.applicati.includes('datore.ires'), 'le chiavi del datore non passano: ' + r.applicati.join(','));
+  return 'applicate come datore.*';
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

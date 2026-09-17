@@ -68,7 +68,7 @@ export function avvisiSuiParametri(schede, chiaviUsate, oggi = new Date()) {
 }
 
 // Le chiavi che il motore del browser sa usare. Le altre restano in tabella.
-export const CHIAVI_USATE = ['coefficienti_trasformazione', 'aliquote_computo', 'tetto_deducibilita', 'tassazione_prestazione', 'tassazione_rendimenti', 'inflazione_attesa', 'crescita_reale_reddito', 'crescita_reale_pil', 'coefficiente_decadimento', 'requisiti_eta_proiettati', 'imposta_sostitutiva_tfr', 'coefficiente_rendita_fondo', 'tipo_prodotto'];
+export const CHIAVI_USATE = ['coefficienti_trasformazione', 'aliquote_computo', 'tetto_deducibilita', 'tassazione_prestazione', 'tassazione_rendimenti', 'inflazione_attesa', 'crescita_reale_reddito', 'crescita_reale_pil', 'coefficiente_decadimento', 'requisiti_eta_proiettati', 'imposta_sostitutiva_tfr', 'coefficiente_rendita_fondo', 'tipo_prodotto', 'tfr_datore_deduzione', 'tfr_datore_esonero_garanzia', 'tfr_datore_oneri_impropri', 'tfr_rivalutazione', 'tfr_divisore', 'tfr_soglia_tesoreria', 'ires'];
 
 /* La tabella dei coefficienti nella forma che il motore si aspetta
    (`{ biennio, daVerificare, perEta }`), con dentro gli avvisi. Le chiavi di
@@ -130,6 +130,16 @@ parametriPrevRouter.get('/numeri', async (req, res) => {
            di prodotto. Non sono numeri di legge, ma stanno nella stessa tabella
            perche' e' li' che si tengono fonte e data — e perche' finche' non
            arriva la Nota informativa del prodotto vero vanno marcati. */
+        /* Il lato del datore di lavoro (17/09/2026): che cosa cambia per
+           l'azienda se il TFR dei dipendenti va al fondo. Numeri di legge con
+           la loro fonte; il motore tfr-datore.js ne tiene la riserva. */
+        tfr_datore_deduzione: valori.tfr_datore_deduzione ?? null,
+        tfr_datore_esonero_garanzia: valori.tfr_datore_esonero_garanzia ?? null,
+        tfr_datore_oneri_impropri: valori.tfr_datore_oneri_impropri ?? null,
+        tfr_rivalutazione: valori.tfr_rivalutazione ?? null,
+        tfr_divisore: valori.tfr_divisore ?? null,
+        tfr_soglia_tesoreria: valori.tfr_soglia_tesoreria ?? null,
+        ires: valori.ires ?? null,
         coefficiente_rendita_fondo: valori.coefficiente_rendita_fondo ?? null,
         tipo_prodotto: valori.tipo_prodotto ?? null,
         __fonti: fonti,

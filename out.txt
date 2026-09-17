@@ -1,41 +1,38 @@
-id: ricontrollo-1789672084  exit: 0  2026-09-17 19:08:15
+id: posta-1789672239  exit: 0  2026-09-17 19:10:58
 ----
-== ora e fuso del server
-2026-09-17 19:08:15 UTC (+0000)
+== ora
+2026-09-17 19:10:57 UTC
 
-== CONTROPROVA: la finestra di tempo funziona? quante righe in tutto
-tutto il diario, ultimi 70 minuti: 1465
-tutto il diario, dalle 08:00 di oggi:  0
-  di cui con 'password: ':            0
+== CONTROPROVA VERA sulla password nel diario (finestra che funziona)
+righe totali nelle ultime 13 ore: 28227
+  di cui con 'password: ':        16
+  messaggi di avvio VNC nelle ultime 13 ore:
+    VNC AXA su 127.0.0.1:5906 
+    VNC AXA su 127.0.0.1:5906 (password: axa2026) 
+    VNC Allianz su 127.0.0.1:5901 
+    VNC Allianz su 127.0.0.1:5901 (password: allianz2026) 
+    VNC Assieasy su 127.0.0.1:5907 
+    VNC Assieasy su 127.0.0.1:5907 (password: assieasy2026) 
+    VNC Groupama su 127.0.0.1:5904 
+    VNC Groupama su 127.0.0.1:5904 (password: groupama2026) 
+    VNC HDI su 127.0.0.1:5903 
+    VNC HDI su 127.0.0.1:5903 (password: hdi2026) 
 
-== groupama, ultimi 70 minuti, SENZA filtri
-righe totali: 6
-Sep 17 18:22:55 vps-d6443a46 start-service.sh[3099796]: 18:22:55 [groupama] la sessione Groupama è caduta adesso: era attiva da 632 minuti (è caduta ISA)
-Sep 17 18:22:55 vps-d6443a46 start-service.sh[3099796]: 18:22:55 [groupama] rientro automatico: provo UNA volta a rifare l'accesso — il codice lo prende il backend dalla posta dell'agenzia
-Sep 17 18:22:56 vps-d6443a46 start-service.sh[3099796]: 18:22:56 [groupama] fill user/pass: {"ok":true}
-Sep 17 18:23:00 vps-d6443a46 start-service.sh[3099796]: 18:23:00 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-Sep 17 18:23:00 vps-d6443a46 start-service.sh[3099796]: 18:23:00 [groupama] rientro automatico → attesa_otp: schermata del codice raggiunta, ora tocca al backend prenderlo dalla posta
-Sep 17 18:34:53 vps-d6443a46 start-service.sh[3099796]: 18:34:53 [groupama] attesa del codice scaduta (10 min): il keep-alive riprende
+== LA POSTA: e' mai arrivata una mail di Groupama stasera?
+node:internal/modules/package_json_reader:314
+  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+        ^
 
-== backend, ultimi 70 minuti
-righe totali: 30
-[vigilanza-fonti] giro 43 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 44 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 45 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 46 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 47 · controllate 7 · cadute 0 · rientrate 0
-[otp-posta] nessun codice di c-groupama nella posta dopo 90s e 13 controlli: lo inserisca una persona
-[otp-posta] c-groupama: nessun codice utile nella posta (cercato dalle 18:20:00 in poi); resta da inserire a mano
-[vigilanza-fonti] email inviata a francesco.oddo199307@gmail.com
-[vigilanza-fonti] giro 48 · controllate 7 · cadute 1 · rientrate 0
-[vigilanza-fonti] giro 49 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 50 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 51 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 52 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 53 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 54 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 55 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 56 · controllate 7 · cadute 0 · rientrate 0
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'mailparser' imported from /tmp/sonda-posta.mjs
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)
+    at packageResolve (node:internal/modules/esm/resolve:768:81)
+    at moduleResolve (node:internal/modules/esm/resolve:855:18)
+    at defaultResolve (node:internal/modules/esm/resolve:985:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:747:20)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:724:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:320:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
 
-== da dove prende le variabili il backend
-EnvironmentFiles=/opt/withus-backend/server/.env (ignore_errors=no)
+Node.js v22.23.1

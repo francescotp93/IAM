@@ -28,6 +28,17 @@ Colonne che fanno parte del contratto (toccarle impatta entrambe le app):
 | `accesso_quoto` | bool | IAM + QUOTO | **QUOTO** | Permette/blocca il login dentro l'app QUOTO. |
 | `accesso_iam` | bool | QUOTO (insert nuovo utente) | IAM | Accesso lato IAM. |
 | `attivo` | bool | IAM + QUOTO | entrambe | Account sospeso se `false`. |
+| `permessi` | jsonb | **IAM** (Utenti › ingranaggio, gruppo 1) | IAM | Le spunte di sezione che correggono il ruolo. QUOTO non le legge. |
+| `profilo` | text | **IAM** (gruppo 1) | IAM + QUOTO | Il profilo collaboratore (`PROFILI`): in QUOTO decide i moduli e le sezioni (`profiloDi`). |
+| `prodotti` | text[] | **IAM** (gruppo 1) | QUOTO + `server/convenzionati.js`, `server/sign.js` | Prodotti assegnati al dealer. |
+| `moduli` | text[] | **IAM** (`salvaPermessiUtente` li allinea al profilo) | **QUOTO** | Moduli del preventivatore visibili. `null` = li sceglie l'amministratore. |
+| `compagnie` | text[] | **IAM** (gruppo 2, dal 17/09/2026) | **QUOTO** (dalla PR 3 del Lavoro 2: oggi non la legge ancora) | Compagnie visibili nel preventivatore, nomi di `quote_prodotti_catalogo.compagnie`. `null` = tutte. Sotto la blindatura di `u_update_self`: l'interessato non se la cambia. |
+| `rete`, `responsabile` | text, bool | **QUOTO** (punti vendita) | entrambe | Le **sole** colonne che QUOTO scrive (§2.7). |
+
+Dal 17/09/2026 l'account non è la persona: la persona sta in
+`quote_collaboratori` (registro unico, §2.7) e l'account la raggiunge da
+`quote_collaboratori.iam_id`. La lista **Utenti** di IAM parte dalle persone,
+non dagli account; un account senza persona si vede marcato «senza scheda».
 
 ### ⚠️ DOPPIO CANCELLO — il punto più fragile
 L'accesso a Quoto è gestito da **due colonne diverse**:
@@ -231,16 +242,20 @@ solo padrone**; l'altra app al massimo legge, o rimanda.
 
 | Schermata | Padrone | Tabelle scritte | L'altra app |
 |---|---|---|---|
-| **Utenti** (account, ruoli, permessi, accessi) | **IAM** → Utenti | `iam_utenti` | QUOTO **legge** l'elenco (`caricaUtentiIam`, per «assegna a» e per i punti vendita) e rimanda a IAM con `quoto-apri` |
+| **Utenti** (account, ruoli, permessi, accessi) | **IAM** → Utenti. Dal 17/09/2026 è un albero «Lista utenti» con una riga per **persona** del registro (nome, RUI, stato ATTIVO/INATTIVO/SOSPESO) e un ingranaggio che apre **tre gruppi**: 1 che cosa vede in IAM (ruolo, profilo, prodotti, spunte), 2 compagnie visibili su Quoto (`compagnie`, `accesso_quoto`), 3 attivazione IAM (`accesso_iam`, collegamento «imposta la password» via `resetPasswordForEmail`, mai una password nel messaggio). Una persona inserita in Collaboratori compare da sola, INATTIVA finché non ha un account | `iam_utenti`, `quote_collaboratori.iam_id` (all'atto della creazione dell'account) | QUOTO **legge** l'elenco (`caricaUtentiIam`, per «assegna a» e per i punti vendita) e rimanda a IAM con `quoto-apri` |
 | **Punti vendita / reti** | **QUOTO** → Collaboratori e punti vendita | `iam_utenti.rete`, `iam_utenti.responsabile` — le **sole** colonne di `iam_utenti` che QUOTO scrive | IAM non ce l'ha |
 | **Collaboratori / intermediari** | **IAM** → Collaboratori (era «Operativa»). Dal 17/09/2026 `quote_collaboratori` è il **registro unico delle persone**: ogni collaboratore, candidato e utente ha una riga sola; `iam_team` è l'allegato economico agganciato da `collab_id`; l'account è `quote_collaboratori.iam_id` (indici unici su entrambi) | `quote_collaboratori`, `quote_collaboratori_note`, `iam_team` | QUOTO **legge** il registro (`caricaIntermediari`, `INTERM_CACHE`) e tiene ancora la sua scheda finché IAM non ha anche: segno «struttura», documenti, privacy firmata (`iam_firme`). Poi si spegne (passo 3, modulo 2b) |
 | **Produzione e storico** (preventivi) | **QUOTO** | `quote_preventivi` | IAM apre quella di QUOTO nel riquadro. In IAM `storico` è un'altra cosa: lo storico movimenti della contabilità (`sessioni_giornaliere`) |
 | **KPI e gare** | **IAM** | `iam_gare_*`, `iam_kpi_*` | QUOTO ha un grafico `performance` non raggiungibile da IAM: da decidere (modulo 3) |
 
 La prova `server/verifica/utenti-in-iam.test.mjs` controlla la prima riga e la
-seconda, `iam/verifica/registro-unico.test.mjs` la terza (persone per prime,
-registro scritto prima dell'economia, migrazione che non sceglie mai da sola): che QUOTO non abbia più una gestione utenti e che su `iam_utenti`
-scriva solo `rete` e `responsabile`.
+seconda: che QUOTO non abbia più una gestione utenti e che su `iam_utenti`
+scriva solo `rete` e `responsabile`. `iam/verifica/utenti-albero.test.mjs`
+controlla la lista dalle persone e i tre gruppi (compagnie salvate solo se il
+catalogo era in pagina, «tutte» = `null`, un interruttore disabilitato non
+decide niente, la migrazione che blinda `compagnie`).
+`iam/verifica/registro-unico.test.mjs` controlla la terza (persone per prime,
+registro scritto prima dell'economia, migrazione che non sceglie mai da sola).
 
 ## 3. Sessione condivisa
 Stessa istanza Supabase Auth. **Attenzione:** dopo il passaggio ai domini

@@ -1194,6 +1194,8 @@ input[type=file]{display:none;}
   #panel-analisi .ab-punt{grid-column:1/-1;text-align:left;display:flex;align-items:baseline;gap:7px}
   #panel-analisi .ab-q-az{flex-wrap:wrap}
 }
+.pu-btn{font-size:11.5px;padding:6px 10px;background:var(--surf3);color:var(--txt2);border:none;border-radius:8px;cursor:pointer;font-family:inherit}
+#utenti-albero summary::-webkit-details-marker{display:none}#utenti-albero[open] .ut-chev{transform:rotate(90deg)}.ut-chev{transition:transform .15s}
 </style>
 <link rel="stylesheet" href="withus-pictograms.css?v=20260804">
 <!-- impronta withus-one.css: 9d3672a1 — se cambia, cambia anche il ?v= qui sotto -->
@@ -1957,15 +1959,25 @@ input[type=file]{display:none;}
 <!-- UTENTI -->
 <div class="panel" id="panel-utenti" style="overflow-y:auto;">
   <!-- Sezione Gestione Utenti -->
+  <!-- UTENTI AD ALBERO (17/09/2026, Lavoro 2 PR 2). La lista si legge dal
+       registro unico delle persone (quote_collaboratori): chi e' in
+       «Collaboratori» compare qui da solo, e senza un account e' inattivo.
+       Una riga: nome e numero RUI; l'ingranaggio apre i permessi in tre
+       gruppi. Le persone nuove si creano in Collaboratori, non qui. -->
   <div id="utenti-lista-section">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px;">
-      <div class="slbl" style="padding:0;">Gestione utenti</div>
+      <div class="slbl" style="padding:0;">Utenti</div>
       <div id="utenti-btn-wrap"></div>
     </div>
-    <!-- Inviti a cui manca ancora qualcosa: riempito da mostraInvitiInSospeso(),
-         vuoto quando non c'e' niente in sospeso. -->
     <div id="utenti-inviti" style="padding:0 16px;"></div>
-    <div class="card" style="padding:12px;"><div id="utenti-list"><div style="color:var(--txt3);font-size:13px;padding:8px;">Caricamento...</div></div></div>
+    <details class="card" id="utenti-albero" open style="padding:12px;">
+      <summary style="cursor:pointer;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;list-style:none;">
+        <i class="ti ti-chevron-right ut-chev"></i> Lista utenti <span id="utenti-conta" style="font-weight:500;color:var(--txt3);"></span>
+        <input type="search" id="utenti-cerca" placeholder="nome o RUI" oninput="renderUtenti()" onclick="event.preventDefault();event.stopPropagation()"
+               style="margin-left:auto;padding:6px 10px;border:.5px solid var(--bord2);border-radius:16px;background:var(--surf2);font-size:12px;font-family:inherit;color:var(--txt);max-width:180px;">
+      </summary>
+      <div id="utenti-list" style="margin-top:10px;"><div style="color:var(--txt3);font-size:13px;padding:8px;">Caricamento...</div></div>
+    </details>
   </div>
   <!-- Pannello Controllo KPI (solo admin) -->
   <div id="kpi-ctrl-section" style="display:none;margin-top:16px;">
@@ -9713,61 +9725,87 @@ async function caricaUtenti() {
   }
 }
 
+/* Le persone del registro, per la lista utenti. */
+let PERSONE_UTENTI = [];
+async function caricaPersoneUtenti() {
+  if (!db) { PERSONE_UTENTI = []; return; }
+  try {
+    const { data, error } = await db.from('quote_collaboratori')
+      .select('id,nome,cognome,email,rui_sezione,rui_numero,stato,attivo,iam_id,profilo,veste')
+      .order('cognome');
+    if (error) throw error;
+    PERSONE_UTENTI = data || [];
+  } catch (e) { console.warn('caricaPersoneUtenti:', e.message || e); PERSONE_UTENTI = []; }
+}
+/* «RUI E n. 12345» oppure «non iscritto»: il numero sta sulla persona. */
+function ruiPersona(p) {
+  if (!p || !p.rui_numero) return '';
+  return 'RUI ' + (p.rui_sezione ? p.rui_sezione + ' ' : '') + 'n. ' + p.rui_numero;
+}
+/* Le righe della lista: ogni persona attiva del registro (o con un account),
+   piu' gli account che non hanno ancora una persona, cosi' nessuno sparisce. */
+function righeUtenti(persone, utenti) {
+  const perId = new Map((utenti || []).map(u => [u.id, u]));
+  const usati = new Set();
+  const righe = (persone || [])
+    .filter(p => (p.stato || 'attivo') === 'attivo' || p.iam_id)
+    .map(p => {
+      let u = p.iam_id ? perId.get(p.iam_id) : null;
+      if (!u && p.email) u = (utenti || []).find(x => (x.email || '').toLowerCase() === String(p.email).toLowerCase() && !usati.has(x.id)) || null;
+      if (u) usati.add(u.id);
+      return { persona: p, utente: u || null, nome: [p.cognome, p.nome].filter(Boolean).join(' ') || p.email || '—', rui: ruiPersona(p), email: p.email || (u && u.email) || '' };
+    });
+  (utenti || []).filter(u => !usati.has(u.id)).forEach(u => righe.push({ persona: null, utente: u, nome: [u.cognome, u.nome].filter(Boolean).join(' ') || u.email || '—', rui: '', email: u.email || '', senzaScheda: true }));
+  return righe.sort((a, b) => a.nome.localeCompare(b.nome));
+}
+function statoAccesso(r) {
+  const u = r.utente;
+  if (!u) return { testo: 'INATTIVO', bg: 'var(--surf3)', col: 'var(--txt3)', titolo: 'Nessun account: senza permessi resta inattivo' };
+  if (u.attivo === false) return { testo: 'SOSPESO', bg: 'var(--red-bg)', col: 'var(--red-txt)', titolo: 'Account sospeso' };
+  if (u.accesso_iam === false && u.accesso_quoto !== true) return { testo: 'INATTIVO', bg: 'var(--surf3)', col: 'var(--txt3)', titolo: 'Account senza accessi' };
+  return { testo: 'ATTIVO', bg: 'var(--grn-bg)', col: 'var(--grn-txt)', titolo: 'Puo\' entrare' };
+}
+
 async function renderUtenti() {
   await caricaUtenti();
+  await caricaPersoneUtenti();
   mostraInvitiInSospeso();
   const el = document.getElementById('utenti-list');
   if (!el) return;
   const perm = permessiEffettivi(PROFILO);
-
-  // Aggiorna solo il pulsante "+ Nuovo utente" nell'header statico
+  /* Niente «Nuovo utente»: le persone nascono in Collaboratori. */
   const btnWrap = document.getElementById('utenti-btn-wrap');
-  if (btnWrap) {
-    btnWrap.innerHTML = perm.utenti
-      ? `<button onclick="apriNuovoUtente()" style="display:flex;align-items:center;gap:5px;padding:7px 14px;background:var(--acc);color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;"><i class="ti ti-plus" style="font-size:13px;"></i> Nuovo utente</button>`
-      : '';
-  }
+  if (btnWrap) btnWrap.innerHTML = perm.utenti
+    ? '<span style="font-size:11.5px;color:var(--txt3);">Le persone si aggiungono in <b>Collaboratori</b>; qui si danno i permessi.</span>' : '';
 
-  // Aggiorna solo la lista utenti
-  el.innerHTML = UTENTI_LISTA.map(u => {
-    const ruoloApp = canonRuolo(u.ruolo);
-    const r = RUOLI[ruoloApp] || RUOLI.collaboratore;
-    const isSelf = u.id === ME?.id;
-    const isSA = (u.email||'').toLowerCase() === SUPER_ADMIN_EMAIL;
-    const canEdit = PROFILO?.ruolo === 'admin' || (PROFILO?.ruolo === 'operatore' && ruoloApp === 'collaboratore');
-    const quotoOn = u.accesso_quoto === true;
-    const iamOn   = u.accesso_iam !== false;
-    return `<div style="background:var(--surf);border-radius:var(--r);padding:14px;margin-bottom:10px;box-shadow:var(--shd);display:flex;align-items:center;gap:12px;">
-      <div style="width:40px;height:40px;border-radius:50%;background:${r.bg};color:${r.color};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">${esc((u.nome||u.email||'?')[0]).toUpperCase()}</div>
+  const q = String((document.getElementById('utenti-cerca') || {}).value || '').trim().toLowerCase();
+  const tutte = righeUtenti(PERSONE_UTENTI, UTENTI_LISTA);
+  const righe = tutte.filter(r => !q || (r.nome + ' ' + r.rui + ' ' + r.email).toLowerCase().includes(q));
+  const conta = document.getElementById('utenti-conta');
+  if (conta) conta.textContent = '(' + tutte.length + (q ? ', ' + righe.length + ' trovati' : '') + ')';
+
+  const puoIngranaggio = PROFILO?.ruolo === 'admin' || PROFILO?.ruolo === 'operatore';
+  el.innerHTML = righe.length ? righe.map(r => {
+    const u = r.utente;
+    const ruoloApp = u ? canonRuolo(u.ruolo) : null;
+    const ru = ruoloApp ? (RUOLI[ruoloApp] || RUOLI.collaboratore) : null;
+    const isSelf = u && u.id === ME?.id;
+    const st = statoAccesso(r);
+    const idArg = u ? `'${u.id}'` : 'null';
+    const personaArg = r.persona ? `'${r.persona.id}'` : 'null';
+    return `<div class="ut-riga" style="display:flex;align-items:center;gap:10px;padding:9px 6px;border-top:.5px solid var(--bord2);">
+      <div style="width:32px;height:32px;border-radius:50%;background:${ru ? ru.bg : 'var(--surf3)'};color:${ru ? ru.color : 'var(--txt3)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">${esc((r.nome || '?')[0].toUpperCase())}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;">${esc(u.nome||'')} ${esc(u.cognome||'')} ${isSelf?'<span style="font-size:10px;color:var(--txt3);">(tu)</span>':''}</div>
-        <div style="font-size:11px;color:var(--txt2);">${esc(u.email||'')}</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
-          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${r.bg};color:${r.color};">${r.label}</span>
-          ${!u.attivo?'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--red-bg);color:var(--red-txt);">SOSPESO</span>':''}
-        </div>
+        <div style="font-size:13px;font-weight:600;">${esc(r.nome)} ${isSelf ? '<span style="font-size:10px;color:var(--txt3);">(tu)</span>' : ''}</div>
+        <div style="font-size:11px;color:var(--txt2);">${r.rui ? esc(r.rui) : '<span style="color:var(--txt3);">RUI non registrato</span>'}${r.senzaScheda ? ' · <span style="color:#e0a33c">account senza scheda in Collaboratori</span>' : ''}</div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
-        ${(canEdit || isSelf) && (!isSA || isSelf) ? `
-        <button onclick="apriDatiUtente('${u.id}')" title="Nome, cognome ed email di accesso" style="font-size:11px;padding:4px 10px;background:var(--surf3);color:var(--txt2);border:none;border-radius:6px;cursor:pointer;font-family:inherit;"><i class="ti ti-id"></i> Dati</button>` : ''}
-        ${canEdit && !isSelf && !isSA ? `
-        <button onclick="toggleSospendi('${u.id}',${u.attivo})" style="font-size:11px;padding:4px 10px;background:${u.attivo?'var(--amb-bg)':'var(--grn-bg)'};color:${u.attivo?'var(--amb-txt)':'var(--grn-txt)'};border:none;border-radius:6px;cursor:pointer;font-family:inherit;">${u.attivo?'Sospendi':'Riattiva'}</button>` : ''}
-        ${(PROFILO?.ruolo==='admin' && !isSelf && !isSA) ? `<select class="ruolo-sel" onchange="setRuolo('${u.id}', this.value)" title="Ruolo utente">
-          <option value="admin" ${ruoloApp==='admin'?'selected':''}>Admin</option>
-          <option value="operatore" ${ruoloApp==='operatore'?'selected':''}>Operatore</option>
-          <option value="collaboratore" ${ruoloApp==='collaboratore'?'selected':''}>Collaboratore</option>
-        </select>` : ''}
-        ${(PROFILO?.ruolo==='admin' && !isSelf && !isSA) ? `<label class="sw-row" title="Accesso a IAM">IAM <span class="sw"><input type="checkbox" ${iamOn?'checked':''} onchange="toggleIamAccess('${u.id}',${iamOn})"><span class="sl"></span></span></label>` : ''}
-        ${canEdit && !isSA ? `<label class="sw-row" title="Accesso all'area preventivi">Preventivi <span class="sw"><input type="checkbox" ${quotoOn?'checked':''} onchange="toggleQuotoAccess('${u.id}',${quotoOn})"><span class="sl"></span></span></label>` : ''}
-        ${canEdit && !isSA ? `<label class="sw-row" title="Accesso a Marketing (dashboard, campagne, lead)">Marketing <span class="sw"><input type="checkbox" ${u.lab_abilitato?'checked':''} onchange="toggleLabAbilitato('${u.id}',${!!u.lab_abilitato})"><span class="sl"></span></span></label>` : ''}
-        ${(PROFILO?.ruolo==='admin' && !isSA) ? `<button onclick="setRui('${u.id}')" title="N. iscrizione RUI (usato da Quoto per la rimessa)" style="font-size:11px;padding:4px 10px;background:var(--surf3);color:var(--txt2);border:none;border-radius:6px;cursor:pointer;font-family:inherit;">RUI ${u.rui?esc(u.rui):'—'}</button>` : ''}
-        ${(PROFILO?.ruolo==='admin' && !isSA) ? `<button onclick="apriPermessiMail('${u.id}','${esc(((u.nome||'')+' '+(u.cognome||'')).trim())}')" title="Caselle email che questo utente può vedere" style="font-size:11px;padding:4px 10px;background:var(--surf3);color:var(--txt2);border:none;border-radius:6px;cursor:pointer;font-family:inherit;"><i class="ti ti-mail"></i> Posta</button>` : ''}
-        ${(PROFILO?.ruolo==='admin' && !isSA) ? `<button onclick="apriModalitaPagamento('${u.id}','${esc(((u.nome||'')+' '+(u.cognome||'')).trim())}')" title="Modalità di pagamento consentite per questo collaboratore" style="font-size:11px;padding:4px 10px;background:var(--surf3);color:var(--txt2);border:none;border-radius:6px;cursor:pointer;font-family:inherit;"><i class="ti ti-credit-card"></i> Pagamenti</button>` : ''}
-        ${(PROFILO?.ruolo==='admin' && !isSelf && !isSA) ? `<button onclick="apriPermessiUtente('${u.id}','${esc(((u.nome||'')+' '+(u.cognome||'')).trim())}')" title="Permessi su ogni sezione di IAM" style="font-size:11px;padding:4px 10px;background:rgba(var(--acc-rgb),.12);color:var(--acc);border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;"><i class="ti ti-adjustments"></i> Permessi</button>` : ''}
-        ${(isSuperAdmin() || PROFILO?.ruolo==='admin') ? `<button onclick="apriMovimentiUtente('${u.id}','${esc(((u.nome||'')+' '+(u.cognome||'')).trim()||u.email||'utente')}')" title="Trattative/movimenti di questo utente" style="font-size:11px;padding:4px 10px;background:rgba(var(--acc-rgb),.12);color:var(--acc);border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;"><i class="ti ti-timeline-event-text"></i> Movimenti</button>` : ''}
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        ${ru ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${ru.bg};color:${ru.color};">${ru.label}</span>` : ''}
+        <span title="${esc(st.titolo)}" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${st.bg};color:${st.col};">${st.testo}</span>
+        ${puoIngranaggio ? `<button class="ut-ingranaggio" onclick="apriPermessiUtente(${idArg}, '${esc(r.nome)}', ${personaArg})" title="Permessi: cosa vede in IAM, compagnie su Quoto, attivazione" style="width:32px;height:32px;border-radius:50%;background:var(--surf3);border:none;color:var(--txt2);cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="ti ti-settings"></i></button>` : ''}
       </div>
     </div>`;
-  }).join('');
+  }).join('') : '<div style="color:var(--txt3);font-size:13px;padding:8px;">Nessuna persona' + (q ? ' con «' + esc(q) + '»' : ' nel registro') + '.</div>';
 }
 
 /* ─── I DATI DI UN UTENTE — nome, cognome, email ───────────────────────────────
@@ -9931,7 +9969,12 @@ async function apriMovimentiUtente(uid, nome) {
     </div>`).join('');
 }
 
-function apriNuovoUtente() {
+/* Si apre dal gruppo 3 del pannello permessi, per una persona del registro
+   che non ha ancora un account: i campi arrivano gia' compilati dalla persona,
+   e l'account appena creato si aggancia a lei (iam_id). Fino alla consegna
+   dell'invio automatico la password e' temporanea e si comunica a voce. */
+function apriNuovoUtente(personaId) {
+  const persona = personaId ? (PERSONE_UTENTI || []).find(p => p.id === personaId) || null : null;
   const ruoloOpts = PROFILO?.ruolo === 'admin'
     ? '<option value="operatore">Operatore</option><option value="collaboratore">Collaboratore</option>'
     : '<option value="collaboratore">Collaboratore</option>';
@@ -9940,12 +9983,13 @@ function apriNuovoUtente() {
       <div style="background:var(--surf);border-radius:var(--r) var(--r) 0 0;width:100%;padding:20px 16px 32px;">
         <div style="font-size:15px;font-weight:700;margin-bottom:16px;">Nuovo utente IAM</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
-          <div class="fld"><label>Email</label><input type="email" id="nu-email" placeholder="email@esempio.com"></div>
-          <div class="fld"><label>Nome</label><input type="text" id="nu-nome" placeholder="Mario"></div>
-          <div class="fld"><label>Cognome</label><input type="text" id="nu-cogn" placeholder="Rossi"></div>
+          <input type="hidden" id="nu-persona" value="${persona ? esc(persona.id) : ''}">
+          <div class="fld"><label>Email</label><input type="email" id="nu-email" placeholder="email@esempio.com" value="${esc(persona?.email || '')}"></div>
+          <div class="fld"><label>Nome</label><input type="text" id="nu-nome" placeholder="Mario" value="${esc(persona?.nome || '')}"></div>
+          <div class="fld"><label>Cognome</label><input type="text" id="nu-cogn" placeholder="Rossi" value="${esc(persona?.cognome || '')}"></div>
           <div class="fld"><label>Ruolo</label><select id="nu-ruolo">${ruoloOpts}</select></div>
           <div class="fld"><label>Password temporanea</label><input type="text" id="nu-pass" placeholder="min. 6 caratteri" value="IAM${Math.random().toString(36).slice(2,8).toUpperCase()}"></div>
-          <div class="fld"><label>N. iscrizione RUI <span style="color:var(--txt3);font-weight:400;">(per emissione/rimessa in Quoto)</span></label><input type="text" id="nu-rui" placeholder="A000000000"></div>
+          <div class="fld"><label>N. iscrizione RUI <span style="color:var(--txt3);font-weight:400;">(per emissione/rimessa in Quoto)</span></label><input type="text" id="nu-rui" placeholder="A000000000" value="${esc(persona && persona.rui_numero ? (persona.rui_sezione || '') + persona.rui_numero : '')}"></div>
           <div id="nu-err" style="font-size:12px;color:var(--red);min-height:14px;"></div>
           <div style="display:flex;gap:8px;">
             <button onclick="creaNuovoUtente()" style="flex:1;padding:12px;background:var(--acc);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Crea utente</button>
@@ -9964,6 +10008,7 @@ async function creaNuovoUtente() {
   const ruolo = document.getElementById('nu-ruolo')?.value;
   const pass  = document.getElementById('nu-pass')?.value.trim();
   const rui   = document.getElementById('nu-rui')?.value.trim() || null;
+  const personaId = document.getElementById('nu-persona')?.value || null;
   const err   = document.getElementById('nu-err');
   if (!email || !pass || pass.length < 6) { if(err) err.textContent='Email e password obbligatorie (min 6 car.)'; return; }
   if(err) err.textContent = 'Creazione in corso...';
@@ -9999,6 +10044,12 @@ async function creaNuovoUtente() {
     const { error: e2 } = await db.from('iam_utenti').upsert(profiloNuovo, { onConflict: 'id' });
 
     if (e2 || rui) aggiungiInvito({ ...profiloNuovo, rui: rui || null, invitato_il: new Date().toISOString() });
+    /* La persona del registro si aggancia all'account appena nato: da qui in
+       avanti la lista utenti la trova per iam_id, non per email. */
+    if (personaId) {
+      const { error: e3 } = await db.from('quote_collaboratori').update({ iam_id: userId }).eq('id', personaId);
+      if (e3) console.warn('aggancio persona↔account:', e3.message || e3);
+    }
 
     document.getElementById('nu-overlay')?.remove();
     await renderUtenti();
@@ -10172,50 +10223,120 @@ async function salvaModalitaPagamento(userId){
   } catch(e) { alert('Errore: ' + (e.message || e) + '\\n(Se manca la colonna modalita_pagamento, esegui prima la riga SQL su Supabase.)'); }
 }
 
-// ── Pannello permessi per singolo utente (override del ruolo, sezione per sezione) ──
-async function apriPermessiUtente(userId, nome){
-  let u = (UTENTI_LISTA||[]).find(x=>x.id===userId);
-  if(!u){ try{ const {data}=await db.from('iam_utenti').select('ruolo,attivo,permessi,profilo,prodotti').eq('id',userId).single(); u=data; }catch(e){} }
+// ── Pannello permessi (17/09/2026): tre gruppi, come chiede il brief ─────────
+//   1. che cosa vede dentro IAM (ruolo, profilo, prodotti, spunte di sezione,
+//      account abilitato; e le impostazioni che stavano sparse in bottoni:
+//      dati, posta, pagamenti, movimenti);
+//   2. le compagnie visibili su Quoto (iam_utenti.compagnie; null = tutte) e
+//      l'accesso al preventivatore;
+//   3. l'attivazione della piattaforma IAM: accesso, e il collegamento per
+//      impostare la password. Chi non ha ancora un account lo vede scritto:
+//      la creazione dell'account con l'invio automatico arriva con la PR 3.
+let COMPAGNIE_CATALOGO = null;
+async function compagnieCatalogo() {
+  if (COMPAGNIE_CATALOGO) return COMPAGNIE_CATALOGO;
+  try {
+    const { data, error } = await db.from('quote_prodotti_catalogo').select('compagnie');
+    if (error) throw error;
+    const set = new Set();
+    (data || []).forEach(r => (r.compagnie || []).forEach(c => { if (c) set.add(String(c)); }));
+    COMPAGNIE_CATALOGO = [...set].sort((a, b) => a.localeCompare(b));
+  } catch (e) { console.warn('compagnieCatalogo:', e.message || e); COMPAGNIE_CATALOGO = []; }
+  return COMPAGNIE_CATALOGO;
+}
+function slugCompagnia(n) { return String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, '_'); }
+
+async function apriPermessiUtente(userId, nome, personaId){
+  const persona = personaId ? (PERSONE_UTENTI || []).find(p => p.id === personaId) : null;
+  let u = userId ? (UTENTI_LISTA||[]).find(x=>x.id===userId) : null;
+  if(userId && !u){ try{ const {data}=await db.from('iam_utenti').select('*').eq('id',userId).single(); u=data; }catch(e){} }
+  const compagnie = await compagnieCatalogo();
   const ruolo = canonRuolo(u?.ruolo); const attivo = (u?.attivo!==false);
   let ov = u?.permessi; if(ov && typeof ov==='string'){ try{ ov=JSON.parse(ov); }catch(e){ ov=null; } }
   const base = PERMESSI[ruolo] || PERMESSI.collaboratore;
   const eff = Object.assign({}, base, (ov&&typeof ov==='object')?ov:{});
-  const profAtt = (u && u.profilo) || '';
+  const profAtt = (u && u.profilo) || (persona && persona.profilo) || '';
   const prodAtt = Array.isArray(u && u.prodotti) ? u.prodotti.join(', ') : '';
+  const compAtt = Array.isArray(u && u.compagnie) ? u.compagnie : null;   // null = tutte
+  const email = (u && u.email) || (persona && persona.email) || '';
+  const isSelf = u && u.id === ME?.id;
+  const isSA = (email || '').toLowerCase() === SUPER_ADMIN_EMAIL;
+  const admin = PROFILO?.ruolo === 'admin';
   const id='pu-ov'; document.getElementById(id)?.remove();
+  const gruppo = (n, titolo, sotto, corpo) => `<div style="border:.5px solid var(--bord);border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;"><span style="width:20px;height:20px;border-radius:50%;background:var(--acc);color:#fff;font-size:11px;display:inline-flex;align-items:center;justify-content:center;">${n}</span>${titolo}</div>
+      ${sotto ? `<div style="font-size:11.5px;color:var(--txt3);margin:4px 0 10px 28px;line-height:1.45;">${sotto}</div>` : ''}
+      ${corpo}</div>`;
   const rows = Object.keys(PERMESSI_LABELS).map(k=>{
     const def = !!base[k];
-    return `<label class="sw-row" style="cursor:pointer;"><span class="sw-lbl">${esc(PERMESSI_LABELS[k])} <span style="font-size:10px;color:var(--txt3);font-weight:400;">(ruolo: ${def?'sì':'no'})</span></span><span class="sw"><input type="checkbox" class="pu-c" data-k="${k}" ${eff[k]?'checked':''}><span class="sl"></span></span></label>`;
+    return `<label class="sw-row" style="cursor:pointer;"><span class="sw-lbl">${esc(PERMESSI_LABELS[k])} <span style="font-size:10px;color:var(--txt3);font-weight:400;">(ruolo: ${def?'sì':'no'})</span></span><span class="sw"><input type="checkbox" class="pu-c" data-k="${k}" ${eff[k]?'checked':''} ${u?'':'disabled'}><span class="sw-knob"></span></span></label>`;
   }).join('');
+  const nomeAttr = esc(nome || email);
+  const bottoni = u ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">
+        <button onclick="apriDatiUtente('${u.id}')" class="pu-btn">Dati</button>
+        ${admin && !isSA ? `<button onclick="apriPermessiMail('${u.id}','${nomeAttr}')" class="pu-btn">Posta</button>` : ''}
+        ${admin && !isSA ? `<button onclick="apriModalitaPagamento('${u.id}','${nomeAttr}')" class="pu-btn">Pagamenti</button>` : ''}
+        ${admin ? `<button onclick="apriMovimentiUtente('${u.id}','${nomeAttr}')" class="pu-btn">Movimenti</button>` : ''}
+        ${admin && !isSelf && !isSA ? `<button onclick="toggleSospendi('${u.id}',${attivo});document.getElementById('${id}')?.remove()" class="pu-btn" style="color:${attivo?'var(--amb-txt)':'var(--grn-txt)'}">${attivo?'Sospendi':'Riattiva'}</button>` : ''}
+      </div>` : '';
+  const g1 = gruppo(1, 'Che cosa vede dentro IAM', u ? 'Il ruolo dà i permessi di partenza, il profilo li stringe, le spunte li correggono una per una.' : 'Senza account i permessi non si applicano a niente: si assegnano dopo l\'attivazione (gruppo 3).',
+    `${u && admin && !isSelf && !isSA ? `<div class="fld"><label>Ruolo</label><select id="pu-ruolo">
+          <option value="admin" ${ruolo==='admin'?'selected':''}>Admin</option>
+          <option value="operatore" ${ruolo==='operatore'?'selected':''}>Operatore</option>
+          <option value="collaboratore" ${ruolo==='collaboratore'?'selected':''}>Collaboratore</option></select></div>` : ''}
+      <div class="fld" style="margin-top:8px;"><label>Profilo collaboratore</label>
+        <select id="pu-profilo" onchange="anteprimaProfilo()" ${u?'':'disabled'}>
+          <option value="" ${!profAtt?'selected':''}>— nessuno (valgono i permessi del ruolo) —</option>
+          ${Object.keys(PROFILI).map(k=>`<option value="${k}" ${profAtt===k?'selected':''}>${esc(PROFILI[k].label)}</option>`).join('')}
+        </select></div>
+      <div class="fld" style="margin-top:8px;"><label>Prodotti assegnati <span style="font-weight:400;color:var(--txt3);">(separati da virgola — servono al dealer)</span></label>
+        <input id="pu-prodotti" value="${esc(prodAtt)}" placeholder="es. rc_moto, garanzia_estesa" ${u?'':'disabled'}></div>
+      <div id="pu-prof-nota" style="font-size:11.5px;color:var(--txt3);margin:8px 0;line-height:1.5;"></div>
+      <label class="sw-row" style="cursor:pointer;border-top:1px solid var(--bord);padding-top:10px;margin-top:6px;"><span class="sw-lbl" style="font-weight:700;">Account abilitato</span><span class="sw"><input type="checkbox" id="pu-attivo" ${attivo?'checked':''} ${u?'':'disabled'}><span class="sw-knob"></span></span></label>
+      ${rows}${bottoni}`);
+  const compRows = compagnie.length
+    ? compagnie.map(c => `<label class="sw-row" style="cursor:pointer;"><span class="sw-lbl">${esc(c)}</span><span class="sw"><input type="checkbox" class="pu-comp" id="pu-comp-${slugCompagnia(c)}" value="${esc(c)}" ${(!compAtt || compAtt.includes(c))?'checked':''} ${u?'':'disabled'} onchange="document.getElementById('pu-comp-tutte').checked=false"><span class="sw-knob"></span></span></label>`).join('')
+    : '<div style="font-size:12px;color:var(--txt3);">Il catalogo delle compagnie non risponde: le compagnie si scelgono quando torna.</div>';
+  const g2 = gruppo(2, 'Compagnie visibili su Quoto', 'Con «tutte» spento, nel preventivatore l\'utente vede solo le compagnie spuntate. I nomi sono quelli del catalogo prodotti.',
+    `<label class="sw-row" style="cursor:pointer;border-bottom:1px solid var(--bord);padding-bottom:8px;margin-bottom:6px;"><span class="sw-lbl" style="font-weight:700;">Accesso al preventivatore</span><span class="sw"><input type="checkbox" id="pu-quoto" ${u && u.accesso_quoto===true?'checked':''} ${u && !isSA?'':'disabled'}><span class="sw-knob"></span></span></label>
+      <label class="sw-row" style="cursor:pointer;"><span class="sw-lbl" style="font-weight:700;">Tutte le compagnie</span><span class="sw"><input type="checkbox" id="pu-comp-tutte" ${compAtt?'':'checked'} ${u?'':'disabled'} onchange="document.querySelectorAll('.pu-comp').forEach(c=>{c.checked=this.checked})"><span class="sw-knob"></span></span></label>
+      <div id="pu-comp-lista" data-compagnie="${esc(JSON.stringify(compagnie))}">${compRows}</div>`);
+  const g3 = gruppo(3, 'Attivazione della piattaforma IAM', u
+      ? 'Con l\'accesso acceso la persona entra in IAM. Il collegamento per impostare la password arriva alla sua email registrata.'
+      : 'Questa persona non ha ancora un account. Fino alla prossima consegna si crea da qui, con una password temporanea da comunicare a voce; l\'invio automatico del collegamento per impostare la password arriva con la consegna successiva.',
+    u ? `<label class="sw-row" style="cursor:pointer;"><span class="sw-lbl" style="font-weight:700;">Accesso a IAM</span><span class="sw"><input type="checkbox" id="pu-iam" ${u.accesso_iam!==false?'checked':''} ${admin && !isSelf && !isSA?'':'disabled'}><span class="sw-knob"></span></span></label>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <button onclick="mandaLinkPassword('${esc(email)}')" class="pu-btn" ${email?'':'disabled'}><i class="ti ti-key"></i> Manda il collegamento per impostare la password</button>
+        <span style="font-size:11px;color:var(--txt3);">a ${esc(email || '(email mancante)')}</span></div>`
+      : (persona
+        ? `<button onclick="document.getElementById('${id}')?.remove();apriNuovoUtente('${esc(persona.id)}')" class="pu-btn"><i class="ti ti-user-plus"></i> Crea l'account per questa persona</button>`
+        : `<button class="pu-btn" disabled style="opacity:.6;"><i class="ti ti-user-plus"></i> Attiva l'accesso (prossima consegna)</button>`));
   const html = `<div style="background:rgba(0,0,0,.6);position:fixed;inset:0;z-index:600;display:flex;align-items:flex-end;" id="${id}" onclick="if(event.target.id==='${id}')this.remove()">
-    <div style="background:var(--surf);border-radius:var(--r) var(--r) 0 0;width:100%;padding:20px 16px 32px;max-height:85vh;overflow:auto;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:4px;"><i class="ti ti-adjustments" style="color:var(--acc);"></i> Permessi — ${esc(nome)}</div>
-      <div style="font-size:12px;color:var(--txt3);margin-bottom:12px;">Ruolo: <b>${esc((RUOLI[ruolo]||{}).label||ruolo)}</b>. Abilita/disabilita l'utente e ogni sezione di IAM. Le modifiche qui hanno priorità sul ruolo.</div>
-      <label class="sw-row" style="cursor:pointer;border-bottom:1px solid var(--bord);padding-bottom:10px;margin-bottom:6px;"><span class="sw-lbl" style="font-weight:700;">Account abilitato (può accedere)</span><span class="sw"><input type="checkbox" id="pu-attivo" ${attivo?'checked':''}><span class="sl"></span></span></label>
-
-      <!-- §2.4 — Il profilo sta SOPRA le spunte, non accanto, perché è lui ad
-           avere l'ultima parola: stringe quello che ruolo e spunte concedono. -->
-      <div style="border-bottom:1px solid var(--bord);padding-bottom:12px;margin-bottom:10px;">
-        <div class="fld"><label>Profilo collaboratore</label>
-          <select id="pu-profilo" onchange="anteprimaProfilo()">
-            <option value="" ${!profAtt?'selected':''}>— nessuno (valgono i permessi del ruolo) —</option>
-            ${Object.keys(PROFILI).map(k=>`<option value="${k}" ${profAtt===k?'selected':''}>${esc(PROFILI[k].label)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="fld" style="margin-top:8px;"><label>Prodotti assegnati <span style="font-weight:400;color:var(--txt3);">(separati da virgola — servono al dealer, che ne ha solo alcuni)</span></label>
-          <input id="pu-prodotti" value="${esc(prodAtt)}" placeholder="es. rc_moto, garanzia_estesa">
-        </div>
-        <div id="pu-prof-nota" style="font-size:11.5px;color:var(--txt3);margin-top:8px;line-height:1.5;"></div>
-      </div>
-      ${rows}
-      <div style="display:flex;gap:8px;margin-top:16px;">
-        <button onclick="salvaPermessiUtente('${userId}')" style="flex:1;padding:12px;background:var(--acc);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Salva</button>
-        <button onclick="resetPermessiUtente('${userId}')" title="Torna ai permessi del ruolo" style="padding:12px 12px;background:var(--surf2);color:var(--txt);border:.5px solid var(--bord2);border-radius:var(--rs);cursor:pointer;font-family:inherit;">Reset ruolo</button>
+    <div style="background:var(--surf);border-radius:var(--r) var(--r) 0 0;width:100%;padding:20px 16px 32px;max-height:90vh;overflow:auto;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:2px;"><i class="ti ti-settings" style="color:var(--acc);"></i> ${esc(nome || email)}</div>
+      <div style="font-size:12px;color:var(--txt3);margin-bottom:12px;">${persona ? esc(ruiPersona(persona) || 'RUI non registrato') + ' · ' : ''}${u ? 'Ruolo: <b>' + esc((RUOLI[ruolo]||{}).label||ruolo) + '</b>' : 'nessun account'}${email ? ' · ' + esc(email) : ''}</div>
+      ${g1}${g2}${g3}
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        ${u ? `<button onclick="salvaPermessiUtente('${u.id}')" style="flex:1;padding:12px;background:var(--acc);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Salva</button>
+        <button onclick="resetPermessiUtente('${u.id}')" title="Torna ai permessi del ruolo" style="padding:12px 12px;background:var(--surf2);color:var(--txt);border:.5px solid var(--bord2);border-radius:var(--rs);cursor:pointer;font-family:inherit;">Reset ruolo</button>` : ''}
         <button onclick="document.getElementById('${id}').remove()" style="padding:12px 12px;background:var(--surf2);color:var(--txt);border:.5px solid var(--bord2);border-radius:var(--rs);cursor:pointer;font-family:inherit;">Chiudi</button>
       </div>
     </div></div>`;
   document.body.insertAdjacentHTML('beforeend', html);
   anteprimaProfilo();
+}
+
+/* Il collegamento per impostare la password, alla mail registrata. Passa da
+   Supabase: e' lo stesso canale del «password dimenticata» della schermata di
+   accesso, non finisce nessuna password nel messaggio. */
+async function mandaLinkPassword(email) {
+  if (!email) { alert('Questa persona non ha un\'email registrata.'); return; }
+  if (!confirm('Mandare a ' + email + ' il collegamento per impostare la password?')) return;
+  try {
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/' });
+    if (error) throw error;
+    alert('Collegamento inviato a ' + email + '. Vale per poche ore.');
+  } catch (e) { alert('Invio non riuscito: ' + (e.message || e)); }
 }
 
 /* Dice a voce quello che il profilo fa alle spunte qui sopra. Senza questa
@@ -10253,6 +10374,20 @@ async function salvaPermessiUtente(userId){
      fonte, così il divieto non dipende dal fatto che qualcuno si ricordi di
      togliere la spunta «accesso QUOTO» in un altro pannello. */
   const patch = { permessi, attivo, profilo, prodotti: prodotti.length ? prodotti : null };
+  /* I tre gruppi del pannello (17/09/2026). Si legge solo quello che il
+     pannello ha davvero mostrato: un interruttore che non c'e' non decide
+     niente, e le compagnie si toccano solo se il catalogo era in pagina. */
+  const sw = (id) => { const el = document.getElementById(id); return (el && typeof el.checked === 'boolean' && !el.disabled) ? el.checked : undefined; };
+  if (sw('pu-quoto') !== undefined) patch.accesso_quoto = sw('pu-quoto');
+  if (sw('pu-iam') !== undefined) patch.accesso_iam = sw('pu-iam');
+  const ruoloEl = document.getElementById('pu-ruolo');
+  if (ruoloEl && ruoloEl.value && ['admin', 'operatore', 'collaboratore'].includes(ruoloEl.value)) patch.ruolo = dbRuolo(ruoloEl.value);
+  const marker = document.getElementById('pu-comp-lista');
+  const nomiCompagnie = (() => { try { return marker && marker.dataset && marker.dataset.compagnie ? JSON.parse(marker.dataset.compagnie) : null; } catch (e) { return null; } })();
+  if (Array.isArray(nomiCompagnie)) {
+    if (sw('pu-comp-tutte') === true) patch.compagnie = null;
+    else patch.compagnie = nomiCompagnie.filter(c => sw('pu-comp-' + slugCompagnia(c)) === true);
+  }
   /* I moduli del preventivatore si allineano al profilo qui, alla fonte: così
      il permesso arriva dove il preventivatore lo legge davvero, e non resta una
      spunta di IAM che dall'altra parte non produce niente. `null` vuol dire

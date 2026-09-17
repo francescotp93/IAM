@@ -404,6 +404,22 @@ non lascia più cambiare a un utente permessi, profilo, prodotti, moduli,
 caselle su se stesso): il file `DA-APPROVARE-blindare-iam-utenti.sql` è
 superato da quella migrazione.
 
+**«Utenti» ad albero (17/09/2026, Lavoro 2 PR 2).** La lista utenti di IAM
+parte dalle persone del registro, non dagli account (`righeUtenti`): una riga
+per persona con nome e RUI, stato ATTIVO/INATTIVO/SOSPESO (`statoAccesso`),
+ingranaggio che apre i **tre gruppi** (`apriPermessiUtente`): sezioni IAM,
+compagnie visibili su Quoto (`iam_utenti.compagnie`, `null` = tutte, nomi dal
+catalogo prodotti, migrazione `20260917_utenti_compagnie.sql` che la mette
+sotto la blindatura), attivazione IAM con il collegamento «imposta la password»
+(`resetPasswordForEmail`, mai una password nel messaggio). Il tasto «Nuovo
+utente» non sta più nell'elenco: per una persona senza account lo apre il
+gruppo 3, precompilato, e l'account nato si aggancia alla persona (`iam_id`).
+`salvaPermessiUtente` legge solo quello che il pannello ha mostrato: un
+interruttore `disabled` o un catalogo assente non decidono niente. Trappola
+trovata scrivendo la prova: un commento che nomina «Nuovo utente» fa scattare
+una prova sul testo — le prove sul sorgente cercano la **chiamata**
+(`apriNuovoUtente`), non la parola.
+
 Ciò che **non** è cambiato: `index.html` di QUOTO e `iam/index.html` restano
 due documenti, e il preventivatore vive ancora in un riquadro (stessa origine,
 `/nuovo-preventivo/`). Fonderli in una sola applicazione è il passo 3, da fare a

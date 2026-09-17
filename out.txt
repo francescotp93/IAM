@@ -1,12 +1,12 @@
-id: lav1-pr4-1789631822  exit: 0  2026-09-17 07:57:44
+id: lav2-pr1-1789633645  exit: 0  2026-09-17 08:28:04
 ----
-== HEAD backend: 8e8626e (atteso 8e8626e) dopo ~20 s
-index servito=f3d4f38d disco=f3d4f38d OK
-== testiInvio nel motore servito:
+== HEAD backend: 7ac257e (atteso 7ac257e) dopo ~30 s
+IAM servito=eec9825c disco=eec9825c OK
+== scocca servita: la voce Collaboratori
 1
-== backend:
-active
-health 200
+== IAM chiede la scocca nuova:
+withus-one.js?v=20260917b
 == siti:
 200 https://iam.withusassicurazioni.it/
 200 https://iam.withusassicurazioni.it/nuovo-preventivo/
+200 https://api.withusassicurazioni.it/health

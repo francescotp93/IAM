@@ -1,16 +1,16 @@
-id: pr173-1789643598  exit: 0  2026-09-17 11:13:37
+id: pr173b-1789643656  exit: 0  2026-09-17 11:14:47
 ----
-7ac257e Lavoro 2, PR 1 di 3: il registro unico delle persone, e «Operativa» diventa «Collaboratori» (#172)
+a04f988 Lavoro 2, PR 2 di 3: «Utenti» ad albero dalle persone del registro, ingranaggio con i tre gruppi di permessi (#173)
 ?? bkerr.log
 ?? deploy/notifica-telegram.py
 ?? ferr.log
 ?? scraper/allianz/package-lock.json
 ?? scraper/assieasy/package-lock.json
 --- iam/index.html funzioni PR 2:
-2
+8
 --- utenti-albero:
-0
+1
 --- servito da Caddy:
-200 1119039
-eec9825cbc73c0acd95417d044b1f6b0  -
-eec9825cbc73c0acd95417d044b1f6b0  iam/index.html
+200 1129262
+b6b561f47ebd665b93dd817e623987f4  -
+b6b561f47ebd665b93dd817e623987f4  iam/index.html

@@ -205,9 +205,17 @@ IAM chiede `?page=previdenza`. Rinominare un id rompe il modulo dentro IAM
 |---|---|
 | `tariffe/motore/pensione.js` | il calcolo, il foglio per il cliente, la riga d'archivio, il messaggio WhatsApp |
 | `tariffe/motore/irpef.js` | il conto delle imposte — **spostato** da `previdenza.js` senza cambiare un'operazione (439 righe identiche) |
-| `#page-previdenza` in `index.html` | quattro campi e la risposta sotto, un passo solo |
+| `#page-previdenza` in `index.html` | il cliente dall'anagrafica (componente `clp*`, dal 17/09/2026), quattro campi e la risposta sotto, un passo solo |
 | `server/parametriPrevidenziali.js` | serve i numeri di legge dalla tabella; il motore ne tiene una copia di riserva |
 | `server/analisiPrevidenziali.js` | ogni foglio stampato lascia la sua riga a registro |
+
+**Il cliente viene dall'anagrafica (17/09/2026).** Niente nominativi volanti: il
+foglio e la riga d'archivio si rifiutano senza `cliente.id` / `anagrafica_id`,
+e il server lo pretende (`server/verifica/analisi-registro.test.mjs`). Il
+componente «scegli un cliente» è `clpCerca`/`clpInstalla` in `index.html`, uno
+per tutta la casa: lo stesso autocomplete era copiato venti volte nei wizard, e
+si portano qui un modulo alla volta. Registro su `window.__CLP_REG`, non in un
+`var`: il modulo pensione lo chiama 17.000 righe prima del blocco.
 
 Le due cose da non rompere:
 

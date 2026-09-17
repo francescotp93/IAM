@@ -2949,7 +2949,7 @@ const avvio = async () => {
         document.getElementById('pens-versamento').value = 100;
         document.getElementById('pens-inizio').value = 25;
         pensCalcola();
-        document.getElementById('pens-cli').value = '';
+        PENS.cliente = null; pensRendi(PENS.esito);
         document.getElementById('pens-cons').value = '';
         window.__COLLAUDO.alerts = [];
         const apri = window.open; let aperta = false;
@@ -2960,7 +2960,10 @@ const avvio = async () => {
       deve(!r.aperta, 'ha aperto il foglio senza cliente e senza consulente');
       deve(/cliente/i.test(r.avvisi) && /consulente|firma/i.test(r.avvisi),
         'non dice cosa manca: ' + r.avvisi.slice(0, 120));
-      return 'si rifiuta, e dice cosa manca';
+      /* E il cliente NON si scrive a mano: dal 17/09/2026 si sceglie dall'anagrafica. */
+      const libero = await page.evaluate(() => { const e = document.getElementById('pens-cli'); return e ? e.tagName : null; });
+      deve(libero && libero !== 'INPUT', 'il cliente del foglio e\' ancora un campo di testo libero');
+      return 'si rifiuta, e dice cosa manca; niente nominativi volanti';
     });
 
     await prova('pensione: il foglio stampato va a registro, e se non ci va lo dice', async () => {
@@ -2973,7 +2976,7 @@ const avvio = async () => {
           document.getElementById('pens-versamento').value = 100;
           document.getElementById('pens-inizio').value = 25;
           pensCalcola();
-          document.getElementById('pens-cli').value = 'Mario Rossi';
+          PENS.cliente = { id: '11111111-1111-4111-8111-111111111111', nome: 'Mario Rossi', telefono: '' }; pensRendi(PENS.esito);
           document.getElementById('pens-cons').value = 'Francesco Oddo';
           const apri = window.open;
           const vecchioFetch = window.fetch;
@@ -3007,6 +3010,8 @@ const avvio = async () => {
       deve(/archiviata/i.test(r.bene.testo), 'il salvataggio riuscito non lo dice: ' + r.bene.testo);
       deve(r.bene.corpo && r.bene.corpo.riga && r.bene.corpo.riga.versione_motore,
         'la scheda mandata a registro non porta la versione delle regole');
+      deve(r.bene.corpo.riga.anagrafica_id === '11111111-1111-4111-8111-111111111111',
+        'la riga a registro non porta l\'anagrafica del cliente: ' + r.bene.corpo.riga.anagrafica_id);
       deve(r.bene.corpo.riga.parametri_usati && r.bene.corpo.riga.parametri_usati.legge,
         'la scheda non porta i parametri di quel giorno: fra un anno non si rifa\' il conto');
       deve(!r.bene.corpo.riga.creato_da, 'il browser si intesta la riga da solo: deve dirlo il token');
@@ -3091,6 +3096,73 @@ const avvio = async () => {
       return 'eta\' ' + r.eta + ', «Idraulico» → autonomo, dichiarato come dedotto';
     });
 
+    await prova('pensione: il cliente si sceglie dall\'anagrafica, o si censisce li\' — niente nominativi volanti', async () => {
+      /* Dal 17/09/2026 l'analisi parte da una persona in archivio. Il campo in
+         cima cerca nel portafoglio; se la persona non c'e', la scheda nuova si
+         compila nella stessa tendina e nasce in quote_anagrafiche con cognome,
+         nome e un codice fiscale valido. Un nome e basta non si accetta. */
+      const r = await page.evaluate(async () => {
+        const attendi = (ms) => new Promise(r => setTimeout(r, ms));
+        apriPensione(); pensPulisci();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [
+          { id: 'a1', tipo: 'fisica', nominativo: 'ROSSI MARIO', nome: 'Mario', cognome: 'Rossi', codice_fiscale: 'RSSMRA86D10H501I',
+            data_nascita: '1986-04-10', professione: 'Impiegato', cellulare: '3331234567', comune: 'Roma' },
+          { id: 'g1', tipo: 'giuridica', nominativo: 'ROSSI SRL', partita_iva: '12345678901' },
+        ], error: null };
+        const q = document.getElementById('pens-cliente-q');
+        q.value = 'ross'; clpCerca(q);
+        await attendi(450);
+        const box = q.closest('.geo-wrap').querySelector('.clp-res');
+        const righe = [...box.querySelectorAll('.geo-item')].map(x => x.textContent.trim());
+        const visibile = box.classList.contains('show');
+        box.querySelector('.geo-item').click();
+        const scelto = { cliente: PENS.cliente, eta: document.getElementById('pens-eta').value,
+          lavoro: document.getElementById('pens-lavoro').value, nota: document.getElementById('pens-da-cliente').textContent,
+          campo: q.value, chiuso: !box.classList.contains('show') };
+
+        /* La persona nuova. */
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        const prima = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').length;
+        q.value = 'Bianchi Laura'; clpCerca(q);
+        await attendi(450);
+        const nessuno = [...box.querySelectorAll('.geo-item')].map(x => x.textContent.trim());
+        box.querySelector('.clp-nuovo').click();
+        const form = { cognome: document.getElementById('clp-cognome').value, nome: document.getElementById('clp-nome').value };
+        document.getElementById('clp-cf').value = 'BNCLRA90A41F205X';   /* carattere di controllo sbagliato */
+        await clpSalvaNuovo();
+        const rifiuto = document.getElementById('clp-errore').textContent;
+        const dopoRifiuto = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').length;
+        document.getElementById('clp-cf').value = 'BNCLRA90A41F205I';
+        document.getElementById('clp-nascita').value = '1990-01-01';
+        document.getElementById('clp-professione').value = 'Avvocato';
+        window.__COLLAUDO.risposte['quote_anagrafiche:single'] = { data: { id: '22222222-2222-4222-8222-222222222222' }, error: null };
+        await clpSalvaNuovo();
+        await attendi(50);
+        delete window.__COLLAUDO.risposte['quote_anagrafiche:single'];
+        const ins = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').slice(prima);
+        return { righe, visibile, scelto, nessuno, form, rifiuto, dopoRifiuto: dopoRifiuto - prima, ins,
+          nuovo: { cliente: PENS.cliente, lavoro: document.getElementById('pens-lavoro').value, eta: document.getElementById('pens-eta').value } };
+      });
+      deve(r.visibile && r.righe.length === 2, 'la tendina non mostra la persona fisica e la riga «censisci»: ' + JSON.stringify(r.righe));
+      deve(/ROSSI MARIO/.test(r.righe[0]) && !r.righe.some(x => /ROSSI SRL/.test(x)), 'una societa\' compare fra le persone su cui calcolare una pensione');
+      deve(/Censisci/.test(r.righe[1]), 'manca la strada per la persona nuova');
+      deve(r.scelto.cliente && r.scelto.cliente.id === 'a1' && r.scelto.cliente.nome === 'Mario Rossi', 'il cliente scelto non e\' agganciato: ' + JSON.stringify(r.scelto.cliente));
+      deve(Number(r.scelto.eta) >= 40 && r.scelto.lavoro === 'dipendente', 'eta\' e lavoro non ripresi dalla scheda: ' + r.scelto.eta + ' ' + r.scelto.lavoro);
+      deve(/dedotto/.test(r.scelto.nota) && r.scelto.chiuso && /ROSSI MARIO/.test(r.scelto.campo), 'dopo la scelta la tendina resta aperta o il campo non dice chi');
+      deve(r.nessuno.length === 2 && /Nessun cliente/.test(r.nessuno[0]) && /Censisci/.test(r.nessuno[1]), 'con zero risultati non offre di censire: ' + JSON.stringify(r.nessuno));
+      deve(r.form.cognome === 'Bianchi' && r.form.nome === 'Laura', 'cognome e nome non proposti dal testo cercato: ' + JSON.stringify(r.form));
+      deve(/codice fiscale|controllo|valido/i.test(r.rifiuto) && r.dopoRifiuto === 0, 'un codice fiscale sbagliato e\' stato salvato, o rifiutato senza dirlo: ' + r.rifiuto);
+      deve(r.ins.length === 1, 'la scheda nuova non e\' stata scritta una volta sola: ' + r.ins.length);
+      const p = r.ins[0].payload;
+      deve(p.tipo === 'fisica' && p.cognome === 'Bianchi' && p.nome === 'Laura' && p.nominativo === 'BIANCHI LAURA' && p.codice_fiscale === 'BNCLRA90A41F205I' && p.data_nascita === '1990-01-01',
+        'la scheda nuova non porta i dati compilati: ' + JSON.stringify(p));
+      deve(r.nuovo.cliente && r.nuovo.cliente.id === '22222222-2222-4222-8222-222222222222' && r.nuovo.cliente.nome === 'Laura Bianchi',
+        'la persona appena censita non e\' il cliente dell\'analisi: ' + JSON.stringify(r.nuovo.cliente));
+      deve(r.nuovo.lavoro === 'professionista' && Number(r.nuovo.eta) >= 36, 'dalla scheda nuova non si sono ripresi eta\' e lavoro');
+      return 'cerca → sceglie (solo persone fisiche); nuova → CF controllato, scheda scritta, agganciata';
+    });
+
     await prova('pensione: la professione si deduce nell\'ordine giusto — «agente di polizia» non e\' un autonomo', async () => {
       /* IL CASO CHE DEVE FALLIRE. Nel primo giro «Agente di polizia» finiva
          fra gli autonomi, perche' nell'elenco «agente» veniva prima di
@@ -3124,13 +3196,12 @@ const avvio = async () => {
       const r = await page.evaluate(() => {
         apriPensione();
         PENS.parametri = 'ok'; PENS.avvisi = [];
-        PENS.cliente = { id: null, nome: 'Mario Rossi', telefono: '3331234567' };
+        PENS.cliente = { id: 'a1', nome: 'Mario Rossi', telefono: '3331234567' };
         document.getElementById('pens-eta').value = 38;
         document.getElementById('pens-reddito').value = 1800;
         document.getElementById('pens-versamento').value = 100;
         document.getElementById('pens-inizio').value = 25;
         pensCalcola();
-        document.getElementById('pens-cli').value = 'Mario Rossi';
         document.getElementById('pens-cons').value = 'Francesco Oddo';
         document.getElementById('pens-tel').value = '3331234567';
         const apri = window.open; let url = null;

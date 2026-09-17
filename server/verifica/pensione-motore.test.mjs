@@ -623,21 +623,21 @@ prova('il foglio spiega su quale divario si misurano le proposte', () => {
      documento firmato distrugge la fiducia in tutto il resto della pagina. */
   const e = P.calcola({ ...BASE, versamentoMensile: 100 });
   deve(e.gapSenzaFondoMensile > e.gapMensile, 'il caso scelto non ha un fondo che riduce il divario');
-  const f = P.foglioHtml({ esito: e, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  const f = P.foglioHtml({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
   deve(f.ok, (f.problemi || []).join('; '));
   deve(/al posto/.test(f.html), 'il foglio non dice che le proposte sostituiscono il versamento attuale');
   deve(f.html.includes(String(Math.round(e.gapSenzaFondoMensile))),
     'il foglio non riporta il divario su cui sono calcolate le percentuali');
   /* E quando non c'è nessun versamento in corso, la nota non serve e non c'è. */
   const senza = P.foglioHtml({ esito: P.calcola({ ...BASE, versamentoMensile: 0 }),
-    cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+    cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
   deve(!/al posto/.test(senza.html), 'la nota compare anche a chi non versa niente: è rumore');
   return 'nota presente con versamento in corso, assente senza';
 });
 
 prova('il foglio porta il disclaimer, i valori da confermare e chi firma', () => {
   const e = P.calcola({ ...BASE, etaInizioLavoro: null });
-  const f = P.foglioHtml({ esito: e, cliente: { nome: 'Mario Rossi' },
+  const f = P.foglioHtml({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' },
     consulente: { nome: 'Francesco Oddo', rui: 'B000123456' }, dataRiferimento: '12/09/2026' });
   deve(f.ok, (f.problemi || []).join('; '));
   deve(/STIMA PRUDENZIALE/.test(f.html), 'lo scenario prudenziale non è marcato sul foglio');
@@ -656,7 +656,7 @@ prova('gli importi sul foglio hanno il punto delle migliaia, sempre', () => {
   /* Senza `useGrouping: "always"` Intl smette di raggruppare sotto le cinque
      cifre, e sullo stesso foglio compaiono «1800 €» e «57.477 €». */
   const e = P.calcola(BASE);
-  const f = P.foglioHtml({ esito: e, cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } });
+  const f = P.foglioHtml({ esito: e, cliente: { id: 'a1', nome: 'X Y' }, consulente: { nome: 'Z W' } });
   deve(/1\.800 €/.test(f.html), 'il reddito di 1.800 € è scritto senza il punto delle migliaia');
   deve(!/[^.\d]1800 €/.test(f.html), 'compare un importo a quattro cifre senza separatore');
   return 'migliaia raggruppate anche sotto le cinque cifre';
@@ -672,7 +672,7 @@ prova('si dice SEMPRE di quale prodotto HDI sono i numeri', () => {
   deve(/5007/.test(P.FONDO.prodotto.alternativa), 'l\'alternativa non cita il numero di albo COVIP del PIP');
   const nelleMarcature = P.daConfermare().some(x => /Prodotto di riferimento/.test(x.etichetta));
   deve(nelleMarcature, 'il prodotto di riferimento non arriva nella lista che finisce sul foglio');
-  const f = P.foglioHtml({ esito: P.calcola(BASE), cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } });
+  const f = P.foglioHtml({ esito: P.calcola(BASE), cliente: { id: 'a1', nome: 'X Y' }, consulente: { nome: 'Z W' } });
   deve(/Tariffa di riferimento/.test(f.html), 'il foglio non dice di quale tariffa sono i numeri');
   deve(/COVIP n\. 5007/.test(f.html), 'il foglio non nomina il PIP come alternativa');
   return P.FONDO.prodotto.etichetta;
@@ -787,15 +787,76 @@ prova('il foglio e l\'archivio dicono su quante mensilità è stato fatto il con
      smette di fidarsi di tutta la pagina, non solo di quella riga. E fra un
      anno, davanti al foglio, senza le mensilità l'analisi non si rifà uguale. */
   const e = P.calcola({ ...BASE, lavoro: 'dipendente' });
-  const f = P.foglioHtml({ esito: e, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  const f = P.foglioHtml({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
   deve(f.ok, (f.problemi || []).join('; '));
   deve(/13 mensilità/.test(f.html), 'il foglio non dice su quante mensilità è calcolato il reddito');
   deve(/13 rate/.test(f.html) && /rendita del fondo in 12/.test(f.html),
     'il foglio non distingue le rate della pensione da quelle della rendita');
-  const a = P.schedaArchivio({ esito: e, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  const a = P.schedaArchivio({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' }, anagraficaId: 'a1' });
   deve(a.riga.dati.mensilita === 13 && a.riga.dati.mensilitaPensione === 13 && a.riga.dati.mensilitaRendita === 12,
     'la riga d\'archivio non porta le mensilità: fra un anno il conto non si rifà uguale');
   return 'foglio e archivio dichiarano 13 / 13 / 12';
+});
+
+prova('NIENTE NOMINATIVI VOLANTI: il foglio si intesta a una scheda dell\'anagrafica, o non esce', () => {
+  /* Dal 17/09/2026 ogni analisi è agganciata a un'anagrafica. Un nome scritto
+     a mano produce un foglio che fra un anno non si sa di chi sia. */
+  const e = P.calcola(BASE);
+  const senzaId = P.problemiDelFoglio({ esito: e, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(senzaId.some(x => /anagrafica/i.test(x)), 'un cliente senza scheda passa: ' + senzaId.join(' | '));
+  const f = P.foglioHtml({ esito: e, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(!f.ok, 'il foglio è uscito con un nominativo volante');
+  const conId = P.problemiDelFoglio({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(!conId.length, 'con la scheda agganciata il foglio si rifiuta ancora: ' + conId.join(' | '));
+  return 'senza scheda si rifiuta e dice perché; con la scheda esce';
+});
+
+prova('l\'archivio rifiuta un\'analisi senza anagrafica: una riga senza cliente non serve a nessuno', () => {
+  const e = P.calcola(BASE);
+  const senza = P.schedaArchivio({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(!senza.ok && senza.problemi.some(x => /anagrafica/i.test(x)), 'senza anagraficaId la riga passa');
+  const con = P.schedaArchivio({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' }, anagraficaId: 'a1' });
+  deve(con.ok && con.riga.anagrafica_id === 'a1', 'la riga non porta l\'anagrafica');
+  deve(con.riga.versione_motore === 'pensione-2026-09-17', 'la versione del motore non è quella di oggi: ' + con.riga.versione_motore);
+  return 'anagrafica_id obbligatorio, versione 2026-09-17';
+});
+
+prova('dalla scheda cliente: età dalla nascita, lavoro DEDOTTO e dichiarato tale, nome leggibile', () => {
+  const a = { id: 'a1', tipo: 'fisica', nominativo: 'ROSSI MARIO', nome: 'Mario', cognome: 'Rossi',
+              data_nascita: '1986-04-10', professione: 'Idraulico', cellulare: '3331234567', email: 'm@r.it' };
+  const r = P.daAnagrafica(a, '2026-09-17');
+  deve(r.ok, r.motivo);
+  deve(r.eta === 40, 'età sbagliata: ' + r.eta);
+  deve(r.lavoroDedotto === 'autonomo', 'un idraulico non è autonomo: ' + r.lavoroDedotto);
+  deve(r.cliente.id === 'a1' && r.cliente.nome === 'Mario Rossi', 'il nome non è «Nome Cognome»: ' + r.cliente.nome);
+  deve(r.cliente.telefono === '3331234567' && r.cliente.email === 'm@r.it', 'recapiti non ripresi');
+  const testi = r.note.map(n => n.testo).join(' | ');
+  deve(/dedotto/.test(testi) && /controllalo/.test(testi), 'non dice che il lavoro è dedotto e da controllare: ' + testi);
+  deve(r.daChiedere.some(x => /cominciato a lavorare/.test(x)), 'non dice qual è la domanda nuova');
+  /* Solo il nominativo: il ripiego resta com'è scritto in archivio. */
+  deve(P.nomeCliente({ nominativo: 'ROSSI MARIO' }) === 'ROSSI MARIO', 'il ripiego sul nominativo non funziona');
+  return 'età 40, «Idraulico» → autonomo, «Mario Rossi»';
+});
+
+prova('dalla scheda cliente: ciò che manca si DICE, non si indovina; una società si rifiuta', () => {
+  const r = P.daAnagrafica({ id: 'a2', tipo: 'fisica', nominativo: 'BIANCHI LAURA' }, '2026-09-17');
+  deve(r.ok && r.eta === null && r.lavoroDedotto === null, 'senza dati ha inventato qualcosa');
+  const tipi = r.note.map(n => n.tipo);
+  deve(tipi.includes('eta-manca') && tipi.includes('lavoro-manca'), 'non dice cosa manca: ' + tipi.join(','));
+  const ig = P.daAnagrafica({ id: 'a3', tipo: 'fisica', nominativo: 'X', professione: 'Astronauta' }, '2026-09-17');
+  deve(ig.note.some(n => n.tipo === 'lavoro-ignoto'), 'una professione sconosciuta non è dichiarata tale');
+  const soc = P.daAnagrafica({ id: 'a4', tipo: 'giuridica', ragione_sociale: 'ACME SRL' });
+  deve(!soc.ok && /persona fisica/.test(soc.motivo), 'una società è passata');
+  deve(!P.daAnagrafica(null).ok && !P.daAnagrafica({}).ok, 'una scheda senza id è passata');
+  return 'mancanze dichiarate, società rifiutata';
+});
+
+prova('la professione si deduce nell\'ordine giusto: «agente di polizia» non è un autonomo', () => {
+  const casi = [['Agente di polizia', 'dipendente'], ['Agente immobiliare', 'autonomo'], ['Impiegato amministrativo', 'dipendente'],
+    ['Commerciante', 'autonomo'], ['Avvocato', 'professionista'], ['Medico di base', 'professionista'], ['Infermiere', 'dipendente'],
+    ['Vigile del fuoco', 'dipendente'], ['Titolare di bar', 'autonomo'], ['Idraulico', 'autonomo'], ['', null], ['Astronauta', null]];
+  for (const [p, atteso] of casi) deve(P.lavoroDaProfessione(p) === atteso, '«' + (p || '(vuoto)') + '» → ' + P.lavoroDaProfessione(p) + ' invece di ' + atteso);
+  return casi.length + ' professioni, nessuna attribuita male';
 });
 
 /* ── esecuzione ──────────────────────────────────────────────────────────── */

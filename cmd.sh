@@ -1,14 +1,19 @@
-# Verifica che la chiave sia VALIDA, non solo presente. Niente valori in chiaro.
-set -u
-ENVF=/opt/withus-backend/server/.env
-echo "== la chiave decodifica a 32 byte? (solo il conteggio) =="
-awk -F'ARCHIVIO_CHIAVE=' '/^ARCHIVIO_CHIAVE=/{print $2}' "$ENVF" | tr -d '\r\n' | base64 -d 2>/dev/null | wc -c
-echo "(atteso: 32)"
+echo "== ora"; date '+%F %T %Z'
+echo "== GROUPAMA: e' ancora sospeso da me?"
+ls -1 /root/servizi-sospesi/ 2>/dev/null
+echo -n "unita' presente in /etc/systemd/system? "; [ -f /etc/systemd/system/groupama-scraper.service ] && echo "SI (qualcuno l'ha rimessa)" || echo "no, ancora sospesa"
+echo -n "risponde sulla 4500? "; curl -s --max-time 5 http://127.0.0.1:4500/loginstate || echo "no, fermo"
 echo
-echo "== il backend l'ha accettata? (se no, lo dice nel registro all'avvio) =="
-journalctl -u withus-backend --since "-5 min" --no-pager 2>/dev/null | grep -i "archivio" | tail -5 || echo "(niente sull'archivio nel registro: nessun rifiuto)"
+echo "== gli altri scraper e il backend"
+for n in moto allianz italiana hdi axa; do printf '%-10s %s\n' "$n" "$(systemctl is-active $n-scraper.service 2>/dev/null)"; done
+printf '%-10s %s\n' "backend" "$(systemctl is-active withus-backend 2>/dev/null)"
 echo
-echo "== prova vera: una richiesta senza sessione deve dire 401, non 503 =="
-echo -n "apri senza sessione: "
-curl -s -o /dev/null -w "%{http_code}\n" --max-time 8 http://127.0.0.1:3000/archivio/apri/11111111-1111-4111-8111-111111111111
-echo "(401 = la rotta c'e' e la chiave e' a posto; 503 = chiave rifiutata)"
+echo "== stato di chi e' su"
+for p in allianz:4200 hdi:4400 axa:4700; do n=${p%%:*}; k=${p##*:}; printf '%-10s ' "$n"; curl -s --max-time 5 http://127.0.0.1:$k/loginstate | head -c 160; echo; done
+echo
+echo "== richieste di codice nelle ultime 24 ore, su TUTTI gli scraper"
+journalctl --since "-24 hours" --no-pager 2>/dev/null | grep -cE "schermata OTP raggiunta" | sed 's/^/codici chiesti: /'
+echo "== email mandate dal sistema nelle ultime 24 ore"
+journalctl --since "-24 hours" --no-pager 2>/dev/null | grep -c "email inviata" | sed 's/^/email della vigilanza: /'
+echo
+echo "== commit vivo"; cd /opt/withus-backend && git log --oneline -1

@@ -1,12 +1,17 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
 --  L'ARCHIVIO DEI DOCUMENTI SI CHIUDE (18/09/2026)
 --
---  ESEGUITA. Prima il 18/09/2026, quando la sola riga `public = false` è stata
---  rimessa indietro perché la chiusura era arrivata PRIMA del codice che sa
---  firmare gli indirizzi; poi di nuovo, per intero, lo stesso giorno, dopo il
---  merge della PR #179 e dopo aver verificato che il codice fosse davvero
---  pubblicato (impronta di index.html servito da quoto.withusassicurazioni.it
---  uguale a quella di main).
+--  ESEGUITA, al terzo tentativo, il 18/09/2026. Vale la pena sapere perché i
+--  primi due sono stati rimessi indietro, perché è la stessa lezione:
+--    1º — la chiusura è arrivata PRIMA che il codice che firma gli indirizzi
+--         fosse su `main`: la produzione serve `main`, e i documenti non si
+--         aprivano;
+--    2º — il codice era pubblicato, ma i browser avevano ancora in cache la
+--         pagina del rilascio prima, che non sa firmare. «Pubblicato» non
+--         vuol dire «è quello che la gente sta usando».
+--    3º — dopo gli header di cache (PR #181) e il contrassegno di versione
+--         del riquadro (PR #182), con la conferma che chi lavora vedeva le
+--         schermate nuove. Questa è rimasta.
 --
 --  Controllo 4 fatto e misurato: un vecchio indirizzo pubblico, senza
 --  credenziali, rispondeva 200 col PDF e adesso risponde 400 «Bucket not

@@ -599,11 +599,15 @@ veri.**
 
 ## 12. L'archivio dei documenti (18/09/2026)
 
-> **STATO: APERTO, in attesa che le cache dei browser si svuotino.**
-> L'archivio è stato chiuso e poi **riaperto una seconda volta**, e la ragione
-> è la cosa più utile di tutto questo capitolo: vedi *«La lezione del
-> 18/09/2026»* qui sotto. Si richiude quando chi lavora ha ricaricato la
-> pagina almeno una volta dopo il rilascio degli header di cache.
+> **STATO: CHIUSO** (18/09/2026, a fine giornata). Per leggere un documento
+> serve un indirizzo firmato, e per farselo firmare serve un account.
+> Verificato dall'esterno senza credenziali: un vecchio indirizzo pubblico
+> risponde `400`, «Bucket not found».
+>
+> Ci sono voluti tre tentativi, e la storia sta qui sotto perché è più utile
+> del risultato: la prima volta la chiusura è arrivata prima del codice, la
+> seconda prima che le cache dei browser si svuotassero. Ha funzionato quando
+> il codice era pubblicato **e** chi lavora aveva ricaricato almeno una volta.
 >
 > La riga è sempre la stessa, nei due versi:
 > `update storage.buckets set public = false where id = 'documenti';`
@@ -667,9 +671,11 @@ Perché non un numero annotato come per `withus-one.js`: quel file cambia di
 rado, `index.html` di QUOTO cambia quasi a ogni lavoro, e una prova che
 diventa rossa tutte le volte si impara ad aggirarla.
 
-Finché la correzione non è pubblicata e le pagine vecchie non sono state
-ricaricate, l'archivio resta aperto: chiuderlo adesso vorrebbe dire rompere i
-documenti a chi ha ancora la pagina di prima.
+**Come è finita.** Pubblicati gli header e il contrassegno del riquadro,
+Francesco ha ricaricato una volta e ha visto le due sotto-linguette: la prova
+che la pagina in uso era quella nuova. Solo allora l'archivio è stato chiuso,
+ed è rimasto chiuso. L'ordine giusto, per la prossima volta: **codice
+pubblicato → qualcuno ricarica e conferma di vedere il nuovo → si chiude**.
 
 Fino al 18/09/2026 il contenitore `documenti` di Supabase Storage era
 **pubblico in lettura**: chi aveva l'indirizzo di un file lo apriva senza avere
@@ -794,15 +800,15 @@ niente è il guasto numero uno (§1), e vale anche per il codice appena scritto.
 
 ### Cosa resta aperto
 
-- **I tre controlli sul campo**, che si fanno solo usando l'applicazione e che
-  al 18/09/2026 non sono ancora stati fatti: caricare un allegato su una
+- **I due controlli sul campo che restano**: caricare un allegato su una
   fattura da IAM e riaprirlo; caricare un documento d'identità dalla scheda
-  cliente su QUOTO e riaprirlo; aprire un documento caricato PRIMA della
-  chiusura (l'indirizzo pubblico è ancora scritto nel database, e il codice ne
-  deve ricavare il percorso e firmarlo). Sono i controlli 1, 2 e 3 elencati in
-  `supabase/migrations/20260918_archivio_documenti_chiuso.sql`; il quarto —
-  che un vecchio indirizzo pubblico non risponda più — è fatto e misurato qui
-  sopra.
+  cliente su QUOTO e riaprirlo. Sono i controlli 1 e 2 di
+  `supabase/migrations/20260918_archivio_documenti_chiuso.sql`. Il terzo —
+  aprire un documento caricato PRIMA della chiusura, il cui indirizzo pubblico
+  è ancora scritto nel database — è stato fatto ad archivio aperto e ha
+  funzionato; va rifatto ora che è chiuso, perché è lì che si vede se la firma
+  ricava bene il percorso dagli indirizzi vecchi. Il quarto è fatto e misurato
+  qui sopra.
 - **La cache della rete di distribuzione.** Un file già richiesto resta servito
   dalla cache fino a un'ora (`cache-control: max-age=3600`): nell'ora dopo la
   chiusura un documento può ancora aprirsi da un indirizzo pubblico. Non è la

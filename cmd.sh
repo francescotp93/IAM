@@ -1,42 +1,14 @@
-# ─────────────────────────────────────────────────────────────────────────────
-#  ARCHIVIO CIFRATO — configurazione. LA CHIAVE NON VIENE MAI STAMPATA.
-#  L'output di questo comando finisce su un ramo del repository: qualunque cosa
-#  scritta qui dentro resta nella storia di git per sempre. Per questo si
-#  stampano solo esiti (si'/no), mai il valore della chiave.
-#  Idempotente: se la chiave c'e' gia', NON si rigenera — rigenerarla renderebbe
-#  illeggibili i documenti gia' cifrati.
-# ─────────────────────────────────────────────────────────────────────────────
+# Verifica che la chiave sia VALIDA, non solo presente. Niente valori in chiaro.
 set -u
 ENVF=/opt/withus-backend/server/.env
-DIR=/var/lib/withus/archivio
-
-echo "== 1. chiave =="
-if grep -q '^ARCHIVIO_CHIAVE=' "$ENVF" 2>/dev/null; then
-  echo "gia' configurata: NON la tocco (rigenerarla renderebbe illeggibile quello che c'e')"
-else
-  umask 077
-  printf '\n# Archivio documenti cifrato sul VPS (18/09/2026) — vedi deploy/ARCHIVIO-CIFRATO.md\n' >> "$ENVF"
-  printf 'ARCHIVIO_CHIAVE=%s\n' "$(openssl rand -base64 32)" >> "$ENVF"
-  printf 'ARCHIVIO_DIR=%s\n' "$DIR" >> "$ENVF"
-  echo "generata e scritta in server/.env (non stampata)"
-fi
-grep -q '^ARCHIVIO_DIR=' "$ENVF" 2>/dev/null || printf 'ARCHIVIO_DIR=%s\n' "$DIR" >> "$ENVF"
-chown withus "$ENVF" 2>/dev/null; chmod 600 "$ENVF" 2>/dev/null
-echo "permessi di .env: $(stat -c '%a %U' "$ENVF" 2>/dev/null)"
-echo "la chiave e' lunga 44 caratteri? $(awk -F= '/^ARCHIVIO_CHIAVE=/{print (length($2)==44) ? "si" : "NO ("length($2)")"}' "$ENVF")"
-
+echo "== la chiave decodifica a 32 byte? (solo il conteggio) =="
+awk -F'ARCHIVIO_CHIAVE=' '/^ARCHIVIO_CHIAVE=/{print $2}' "$ENVF" | tr -d '\r\n' | base64 -d 2>/dev/null | wc -c
+echo "(atteso: 32)"
 echo
-echo "== 2. cartella dell'archivio =="
-mkdir -p "$DIR" && chown -R withus "$DIR" && chmod 700 "$DIR"
-echo "$(stat -c '%a %U %n' "$DIR" 2>/dev/null)"
-case "$DIR" in /opt/withus-backend*) echo "ATTENZIONE: sta dentro la radice servita dal sito!";; *) echo "fuori dalla radice servita dal sito: ok";; esac
-
+echo "== il backend l'ha accettata? (se no, lo dice nel registro all'avvio) =="
+journalctl -u withus-backend --since "-5 min" --no-pager 2>/dev/null | grep -i "archivio" | tail -5 || echo "(niente sull'archivio nel registro: nessun rifiuto)"
 echo
-echo "== 3. riavvio =="
-systemctl restart withus-backend && sleep 3 && systemctl is-active withus-backend
-
-echo
-echo "== 4. esito =="
-curl -s --max-time 8 http://127.0.0.1:3000/diag | grep -o '"archivio":[a-z]*'
-echo "la chiave NON compare in questo output, ed e' voluto."
-echo "per la copia offline, da leggere TU sul server:  sudo grep ARCHIVIO_CHIAVE $ENVF"
+echo "== prova vera: una richiesta senza sessione deve dire 401, non 503 =="
+echo -n "apri senza sessione: "
+curl -s -o /dev/null -w "%{http_code}\n" --max-time 8 http://127.0.0.1:3000/archivio/apri/11111111-1111-4111-8111-111111111111
+echo "(401 = la rotta c'e' e la chiave e' a posto; 503 = chiave rifiutata)"

@@ -1237,3 +1237,30 @@ più a distinguerle.
 > schermata, non l'archivio dei movimenti: perché «chi ha creato questa
 > anagrafica, questa pratica, questo pagamento» abbia una risposta sola e per
 > tutti, `quote_log` va esteso con l'id della riga toccata. È un lavoro a sé.
+
+### I tipi di titolo che non sappiamo tradurre (18/09/2026, sul portafoglio completo)
+
+Sul file completo di Prima l'anteprima ha dichiarato **quattro** tipi di titolo
+non importati: `PS`, `ARM`, `ANN`, `RI`. Il lettore ne traduce **tre**: `PN`
+(premio nuovo — copre nuovo affare, rinnovo e sostituzione), `QZ` (quietanza,
+la rata successiva), `AP` (appendice).
+
+**Non si traducono a occhio, ed è la regola §8.1 applicata a dei soldi.** Un
+titolo è una riga di contabilità: `ANN`/`ANU` con un importo negativo *ha
+l'aria* di uno storno, ma «ha l'aria» non è un dato, e un importo scritto per
+somiglianza diventa un numero che nessuno rimette più in discussione.
+
+Quello che si è fatto invece è renderli **decidibili**:
+
+- ogni rata non tradotta arriva nel piano (`titoli.ignoti`) con **polizza,
+  cliente, data, importo, provvigione, stato e il nome che le dà la
+  compagnia** (`TIPO_TITOLO_COMPAGNIA`, che è metà dell'indizio);
+- l'anteprima le elenca sotto «Rate che restano fuori»;
+- **un avviso solo**, non uno per codice: quattro riquadri che dicono la stessa
+  cosa con una sigla diversa si leggono come quattro guasti, e la cosa da fare
+  è una sola.
+
+Aggiungere un codice è **una riga** in `TIPO_TITOLO`, e c'è una prova che lo
+dimostra girando davvero il motore con la riga aggiunta e poi togliendola.
+Prima di aggiungerla serve sapere che cosa quel codice significa per la
+compagnia — non dal repository, da chi il flusso lo manda.

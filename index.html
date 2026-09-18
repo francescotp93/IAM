@@ -16839,6 +16839,19 @@ function fluMostra() {
             : '<span style="color:#c0392b">senza email: non si può abbinare a nessuno</span>'}${c.rui ? ' · RUI ' + esc(c.rui) : ''}</div></div>
         <div class="pdoc-r-a">${c.polizze ? `<span class="tk-badge st-lav">${c.polizze} titol${c.polizze === 1 ? 'o' : 'i'}</span>` : ''}
           ${c.provvigioni ? `<b>${pfEuro(c.provvigioni)}</b>` : '<span class="cl-sub">nessuna provvigione nel periodo</span>'}</div></div>`).join('')}` : ''}
+    ${(p.titoli.ignoti || []).length ? `<div class="flu-sez">Rate che restano fuori — ${p.titoli.ignoti.length}</div>
+      <div class="cl-sub" style="margin-bottom:8px">Il loro tipo non è nessuno dei tre che sappiamo tradurre, e un titolo è una riga di soldi:
+        tradurne uno a occhio vuol dire mettere in contabilità un importo che nessuno ha dichiarato.
+        Restano fuori <b>coi loro numeri sotto gli occhi</b> — è guardandoli che si decide che cosa sono.</div>
+      ${p.titoli.ignoti.map(x => `<div class="pdoc-r"><div class="pdoc-r-l">
+          <b>${esc(x.cliente || '—')}</b><span class="pdoc-opt">${esc(x.numero_polizza || '')}</span>
+          <div class="cl-sub" style="flex-basis:100%">tipo <b>${esc(x.tipo_share || '—')}</b>${
+            x.tipo_compagnia ? ' (per la compagnia: ' + esc(x.tipo_compagnia) + ')' : ''} · ${
+            x.data ? new Date(x.data).toLocaleDateString('it-IT') : 'senza data'}${
+            x.stato ? ' · stato ' + esc(x.stato) : ''}${
+            x.pagato_il ? ' · pagato il ' + new Date(x.pagato_il).toLocaleDateString('it-IT') : ' · non risulta pagato'}</div></div>
+        <div class="pdoc-r-a">${x.provvigione != null ? `<span class="tk-badge st-lav">${pfEuro(x.provvigione)} di provvigioni</span>` : ''}
+          <b>${x.importo != null ? pfEuro(x.importo) : '—'}</b></div></div>`).join('')}` : ''}
     ${(p.avvisi.length || p.polizze.senzaCliente.length || p.titoli.senzaPolizza.length) ? `
       <div class="flu-sez">Da sapere prima di confermare</div>
       ${p.avvisi.map(a => `<div class="pdoc-esito ${a.g === 'grave' ? 'ko' : ''}"><i class="ti ti-alert-triangle"></i> ${esc(a.t)}</div>`).join('')}

@@ -7388,6 +7388,25 @@ const avvio = async () => {
       return 'una dedotta, una dalla compagnia, un avviso al posto di un numero inventato';
     });
 
+    await prova('flusso: le rate che restano fuori si vedono coi loro numeri, non solo contate', async () => {
+      /* Sul portafoglio completo di Prima compaiono quattro tipi di titolo che
+         il lettore non sa tradurre. Contarli non basta a decidere che cosa
+         sono: servono polizza, cliente, data, importo e provvigione, e il nome
+         che gli dà la compagnia. Senza quei numeri l'unica risposta possibile
+         resta «boh», e quattro righe di soldi restano fuori per sempre. */
+      const html = await scegli([]);
+      deve(/Rate che restano fuori/.test(html), 'la sezione delle rate non tradotte non c\'è');
+      deve(/47,50/.test(html), 'l\'importo della rata di tipo PS non si vede');
+      deve(/ROSSI MARIO/.test(html) && /NP-0001/.test(html), 'non si vede su quale polizza e di chi');
+      deve(/PSO/.test(html) && /ANU/.test(html), 'il nome che dà la compagnia al titolo non si vede: è metà dell\'indizio');
+      /* UN avviso, non uno per codice: quattro riquadri identici si leggono
+         come quattro guasti, e la cosa da fare è una sola. */
+      const quanti = (html.match(/non entra(?:no)? in contabilità/g) || []).length;
+      deve(quanti === 1, 'avvisi sui titoli non tradotti: ' + quanti + ' (ne basta 1)');
+      deve(/«PS»/.test(html) && /«ARM»/.test(html) && /«ANN»/.test(html) && /«RI»/.test(html), 'l\'avviso non elenca i quattro codici');
+      return '4 rate fuori, coi numeri, e un avviso solo';
+    });
+
     await prova('flusso: confermando scrive clienti, polizze e rate, ognuno con la sua provenienza', async () => {
       await scegli([]);
       const r = await page.evaluate(async () => {

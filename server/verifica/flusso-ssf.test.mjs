@@ -451,6 +451,67 @@ prova('i mesi si contano sull\'anniversario, non sui giorni', () => {
   return '31/08 + 6 mesi = 28/02 (29/02 se bisestile)';
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   LE RATE CHE RESTANO FUORI SI VEDONO, COI LORO NUMERI (18/09/2026)
+
+   Sul portafoglio completo compaiono quattro tipi di titolo che questo lettore
+   non sa tradurre: `PS`, `ARM`, `ANN`, `RI`. Un titolo e' una riga di soldi, e
+   tradurne uno a occhio vuol dire mettere in contabilita' un importo che
+   nessuno ha dichiarato. Restano fuori — ma restare fuori in silenzio, o
+   ridotti a un conteggio, vuol dire che nessuno potra' mai decidere che cosa
+   sono. Servono i numeri.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+prova('le rate di tipo ignoto non entrano, ma portano con se\' tutto quello che serve a riconoscerle', () => {
+  const ig = P.titoli.ignoti;
+  deve(ig.length === 4, 'rate di tipo ignoto: ' + ig.length + ' (attese 4: PS, ARM, ANN, RI)');
+  /* Nessuna di loro e' finita in contabilita'. */
+  deve(!A.titoli.some(t => ['T3', 'T5', 'T6', 'T7'].includes(t._fonte_id)), 'una rata di tipo ignoto e\' entrata in contabilita\'');
+  const ps = ig.find(x => x.tipo_share === 'PS');
+  deve(ps.importo === 47.5, 'l\'importo non arriva: ' + ps.importo);
+  deve(ps.provvigione === 4.75, 'la provvigione non arriva: ' + ps.provvigione);
+  deve(ps.numero_polizza === 'NP-0001' && ps.cliente === 'ROSSI MARIO', 'non si sa su quale polizza e di chi: ' + ps.numero_polizza + ' / ' + ps.cliente);
+  deve(ps.data === '2026-09-20', 'la data non arriva: ' + ps.data);
+  /* Il nome che le da' la compagnia e' meta' dell'indizio: `ANN`/`ANU` con un
+     importo NEGATIVO ha tutta l'aria di uno storno, ma «ha l'aria» non basta
+     per scriverlo in contabilita'. Il dato si mostra, la decisione e' di una
+     persona. */
+  const ann = ig.find(x => x.tipo_share === 'ANN');
+  deve(ann.tipo_compagnia === 'ANU', 'il nome della compagnia si perde: ' + ann.tipo_compagnia);
+  deve(ann.importo === -110, 'il segno dell\'importo si perde: ' + ann.importo);
+  return '4 fuori, tutte con polizza, cliente, data, importo e provvigione';
+});
+
+prova('un avviso solo per tutte, coi codici e le quantita\'', () => {
+  /* Quattro riquadri che dicono la stessa cosa con una sigla diversa si
+     leggono come quattro guasti, e la cosa da fare e' una sola. */
+  const suTitoli = A.avvisi.filter(a => /non entra/.test(a.t));
+  deve(suTitoli.length === 1, 'avvisi sui titoli ignoti: ' + suTitoli.length + ' (ne basta 1)');
+  const t = suTitoli[0].t;
+  ['PS', 'ARM', 'ANN', 'RI'].forEach(k => deve(t.includes('«' + k + '»'), 'l\'avviso non nomina il codice ' + k + ': ' + t));
+  deve(/×1/.test(t), 'l\'avviso non dice quanti sono per codice: ' + t);
+  /* E deve dire che cosa fare, non solo che c'e' un problema. */
+  deve(/dimmi che cosa sono/.test(t), 'l\'avviso non dice come si risolve: ' + t);
+  return '1 avviso, 4 codici, con le quantita\' e la via d\'uscita';
+});
+
+prova('aggiungere un tipo e\' una riga sola, e quel tipo entra davvero', () => {
+  /* La controprova del contrario: finche' un codice non c'e' nella tabella
+     resta fuori; appena c'e', entra come tutti gli altri. Se questa prova
+     fallisse, vorrebbe dire che la tabella non e' il punto in cui si decide,
+     e che il codice andrebbe cercato altrove. */
+  deve(!F.TIPO_TITOLO.PS, 'PS e\' gia\' tradotto: questa prova non misura piu\' niente');
+  F.TIPO_TITOLO.PS = 'appendice';
+  try {
+    const dopo = F.analizza(RACCOLTA.record);
+    const entrata = dopo.titoli.find(t => t._fonte_id === 'T5');
+    deve(entrata && entrata.tipo === 'appendice', 'aggiunto alla tabella, il tipo non entra lo stesso');
+    deve(entrata.importo_lordo === 47.5 && entrata.provvigione === 4.75, 'entra con numeri diversi da quelli del file');
+    deve(!dopo.titoliIgnoti.some(x => x.tipo_share === 'PS'), 'resta anche fra gli ignoti');
+  } finally { delete F.TIPO_TITOLO.PS; }
+  return 'PS fuori senza la riga, dentro con la riga';
+});
+
 console.log('\n══ FLUSSO DI PORTAFOGLIO (SSF) ══');
 let ko = 0, salt = 0;
 for (const e of esiti) {

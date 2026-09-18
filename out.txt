@@ -1,18 +1,11 @@
-id: arch-1789757466  exit: 0  2026-09-18 18:51:38
+id: ver-1789757522  exit: 0  2026-09-18 18:52:10
 ----
-== 1. chiave ==
-generata e scritta in server/.env (non stampata)
-permessi di .env: 600 withus
-la chiave e' lunga 44 caratteri? NO (43)
+== la chiave decodifica a 32 byte? (solo il conteggio) ==
+32
+(atteso: 32)
 
-== 2. cartella dell'archivio ==
-700 withus /var/lib/withus/archivio
-fuori dalla radice servita dal sito: ok
+== il backend l'ha accettata? (se no, lo dice nel registro all'avvio) ==
 
-== 3. riavvio ==
-active
-
-== 4. esito ==
-"archivio":true
-la chiave NON compare in questo output, ed e' voluto.
-per la copia offline, da leggere TU sul server:  sudo grep ARCHIVIO_CHIAVE /opt/withus-backend/server/.env
+== prova vera: una richiesta senza sessione deve dire 401, non 503 ==
+apri senza sessione: 401
+(401 = la rotta c'e' e la chiave e' a posto; 503 = chiave rifiutata)

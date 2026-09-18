@@ -91,7 +91,7 @@ iam.withusassicurazioni.it {
 	# backend con l'indirizzo assoluto api.withusassicurazioni.it (PAY_API):
 	# queste righe servono a poterlo chiamare anche con percorsi relativi,
 	# dallo stesso indirizzo, senza CORS.
-	@servizi path /api/* /auth/* /backup/* /catalogo/* /crm/* /diag/* /firma-collab/* /fonti /fonti/* /health /l/* /lead/* /login/* /mail/* /marketing/* /moto/* /notify/* /pay/* /preventivi/* /products/* /public/* /scrape/* /shop/* /sign/* /user/*
+	@servizi path /api/* /archivio/* /auth/* /backup/* /catalogo/* /crm/* /diag/* /firma-collab/* /fonti /fonti/* /health /l/* /lead/* /login/* /mail/* /marketing/* /moto/* /notify/* /pay/* /preventivi/* /products/* /public/* /scrape/* /shop/* /sign/* /user/*
 	handle @servizi {
 		reverse_proxy localhost:3000
 	}

@@ -3512,6 +3512,12 @@ function archPercorso(v) {
 function archSuoIndirizzo(v) {
   const s = String(v || '').trim();
   if (!s) return false;
+  /* I documenti dell'archivio cifrato sul VPS (18/09/2026) si riconoscono dal
+     riferimento «vps:<id>». Sono roba nostra quanto gli altri: vanno
+     intercettati dalla rete di sicurezza, altrimenti un link con quel valore
+     verrebbe navigato come se fosse un indirizzo del sito e mostrerebbe una
+     pagina che non esiste. */
+  if (/^vps:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) return true;
   if (/\/storage\/v1\/object\/(public|sign)\/documenti\//.test(s)) return true;
   if (/^(https?:|javascript:|mailto:|tel:|#|data:|blob:)/i.test(s)) return false;
   return ARCH_PREFISSI.test(s);
@@ -3533,6 +3539,14 @@ async function archFirma(v, secondi) {
 /* La finestra si apre PRIMA della firma: aprendola dopo, il browser la blocca
    perché non arriva più da un clic. */
 async function archApri(v) {
+  /* DUE ARCHIVI, DUE STRADE (18/09/2026). I documenti nuovi stanno sul VPS,
+     cifrati: si chiedono al backend con la propria sessione, e il server li
+     decifra in memoria solo dopo aver controllato che quella sessione possa
+     vederli. I documenti di prima stanno su Supabase e si aprono come sempre.
+     Il valore salvato dice da solo quale delle due strade prendere: chi
+     riscrivesse questo controllo altrove si ritroverebbe due regole. */
+  const rifVps = /^vps:([0-9a-f-]{36})$/i.exec(String(v || '').trim());
+  if (rifVps) return archApriVps(rifVps[1]);
   const path = archPercorso(v);
   if (!path) {
     if (/^https?:\/\//i.test(String(v || ''))) { window.open(String(v), '_blank', 'noopener'); return; }
@@ -3547,6 +3561,56 @@ async function archApri(v) {
     return;
   }
   if (w) w.location.href = url; else window.open(url, '_blank', 'noopener');
+}
+
+/* Un documento dell'archivio cifrato. Il browser non può mettere
+   l'autorizzazione dentro un `href`, quindi il file si chiede con `fetch` e si
+   apre da un indirizzo temporaneo creato in memoria. La finestra si apre PRIMA
+   della richiesta, come per i firmati: aprirla dopo vorrebbe dire aprirla
+   fuori dal clic, e il browser la blocca come finestra a comparsa (§12.3). */
+async function archApriVps(id) {
+  const w = window.open('', '_blank');
+  try {
+    const tok = await mailToken();
+    const r = await fetch(MAIL_API + '/archivio/apri/' + encodeURIComponent(id), {
+      headers: { Authorization: 'Bearer ' + (tok || '') },
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.error || ('Errore ' + r.status));
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    if (w) w.location.href = url; else window.open(url, '_blank', 'noopener');
+    /* L'indirizzo temporaneo si libera dopo un minuto: tenerlo vivo per tutta
+       la sessione vuol dire tenere in memoria ogni documento aperto. */
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 60000);
+  } catch (e) {
+    if (w) w.close();
+    alert('Non riesco ad aprire il documento: ' + (e.message || e));
+  }
+}
+
+/* Carica un documento nell'archivio cifrato del VPS. Torna il riferimento da
+   salvare («vps:<id>»), che al posto di un indirizzo non apre niente da solo:
+   per aprirlo serve la propria sessione, ogni volta. */
+async function archCaricaVps(file, dove) {
+  const q = new URLSearchParams({
+    nome: file.name || 'documento',
+    tipo: file.type || 'application/octet-stream',
+    entita: (dove && dove.entita) || '',
+    entita_id: (dove && dove.entita_id) || '',
+  });
+  if (dove && dove.categoria) q.set('categoria', dove.categoria);
+  const tok = await mailToken();
+  const r = await fetch(MAIL_API + '/archivio/carica?' + q.toString(), {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + (tok || ''), 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('Errore ' + r.status));
+  return d.riferimento;
 }
 
 /* Il disinnesco e la rete, come in QUOTO: l'indirizzo morto non deve restare

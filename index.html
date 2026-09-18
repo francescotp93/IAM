@@ -2476,6 +2476,19 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-title">Portafoglio polizze</div>
       <div class="page-sub">Ogni polizza avanza su quattro fronti indipendenti: pagamento, perfezionamento, rendicontazione, copertura</div>
 
+      <!-- ── LA PORTA DELL'IMPORTAZIONE STA ANCHE QUI (18/09/2026) ──────────
+           La voce «Importa» c'è nella barra in alto, ma quella barra ha
+           ventuno voci e scorre: una voce nuova, in mezzo alle altre, non la
+           trova chi non sa già che c'è. Chi vuole caricare il portafoglio
+           apre il Portafoglio — è lì che guarda, ed è lì che dev'esserci la
+           porta. Non è un doppione: è la stessa pagina, raggiunta da dove la
+           si cerca. Il tasto lo vede lo staff, come la voce di menu. -->
+      <div id="pf-importa" style="display:none;margin:-4px 0 14px">
+        <button class="rin-az" onclick="showPage('importa-flusso')"><i class="ti ti-file-import"></i>
+          Importa il portafoglio dalla compagnia</button>
+        <span class="cl-sub" style="margin-left:8px">l'archivio che manda la compagnia, con l'anteprima prima di scrivere</span>
+      </div>
+
       <div class="pf-top">
         <div class="pf-filters">
           <div class="pf-f"><label>Stato pagamento</label>
@@ -3254,6 +3267,14 @@ async function archFirma(v, secondi) {
 
 /* Apre un documento dell'archivio in una scheda nuova. */
 async function archApri(v) {
+  /* DUE ARCHIVI, DUE STRADE (18/09/2026). I documenti nuovi stanno sul VPS,
+     cifrati: si chiedono al backend con la propria sessione, e il server li
+     decifra in memoria solo dopo aver controllato che quella sessione possa
+     vederli. I documenti di prima stanno su Supabase e si aprono come sempre.
+     Il valore salvato dice da solo quale delle due strade prendere: chi
+     riscrivesse questo controllo altrove si ritroverebbe due regole. */
+  const rifVps = /^vps:([0-9a-f-]{36})$/i.exec(String(v || '').trim());
+  if (rifVps) return archApriVps(rifVps[1]);
   const path = archPercorso(v);
   if (!path) {
     /* Non è un documento del nostro archivio (un indirizzo esterno salvato a
@@ -3270,6 +3291,56 @@ async function archApri(v) {
     return;
   }
   if (w) w.location.href = url; else window.open(url, '_blank', 'noopener');
+}
+
+/* Un documento dell'archivio cifrato. Il browser non può mettere
+   l'autorizzazione dentro un `href`, quindi il file si chiede con `fetch` e si
+   apre da un indirizzo temporaneo creato in memoria. La finestra si apre PRIMA
+   della richiesta, come per i firmati: aprirla dopo vorrebbe dire aprirla
+   fuori dal clic, e il browser la blocca come finestra a comparsa (§12.3). */
+async function archApriVps(id) {
+  const w = window.open('', '_blank');
+  try {
+    const tok = (typeof payToken === 'function') ? await payToken() : token;
+    const r = await fetch(PAY_API + '/archivio/apri/' + encodeURIComponent(id), {
+      headers: { Authorization: 'Bearer ' + (tok || '') },
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.error || ('Errore ' + r.status));
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    if (w) w.location.href = url; else window.open(url, '_blank', 'noopener');
+    /* L'indirizzo temporaneo si libera dopo un minuto: tenerlo vivo per tutta
+       la sessione vuol dire tenere in memoria ogni documento aperto. */
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 60000);
+  } catch (e) {
+    if (w) w.close();
+    alert('Non riesco ad aprire il documento: ' + (e.message || e));
+  }
+}
+
+/* Carica un documento nell'archivio cifrato del VPS. Torna il riferimento da
+   salvare («vps:<id>»), che al posto di un indirizzo non apre niente da solo:
+   per aprirlo serve la propria sessione, ogni volta. */
+async function archCaricaVps(file, dove) {
+  const q = new URLSearchParams({
+    nome: file.name || 'documento',
+    tipo: file.type || 'application/octet-stream',
+    entita: (dove && dove.entita) || '',
+    entita_id: (dove && dove.entita_id) || '',
+  });
+  if (dove && dove.categoria) q.set('categoria', dove.categoria);
+  const tok = (typeof payToken === 'function') ? await payToken() : token;
+  const r = await fetch(PAY_API + '/archivio/carica?' + q.toString(), {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + (tok || ''), 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('Errore ' + r.status));
+  return d.riferimento;
 }
 
 /* LA RETE DI SICUREZZA. I punti che mostrano un documento sono decine, sparsi
@@ -3304,6 +3375,12 @@ const ARCH_PREFISSI = new RegExp('^(' + ARCH_CARTELLE.join('|') + ')/');
 function archSuoIndirizzo(v) {
   const s = String(v || '').trim();
   if (!s) return false;
+  /* I documenti dell'archivio cifrato sul VPS (18/09/2026) si riconoscono dal
+     riferimento «vps:<id>». Sono roba nostra quanto gli altri: vanno
+     intercettati dalla rete di sicurezza, altrimenti un link con quel valore
+     verrebbe navigato come se fosse un indirizzo del sito e mostrerebbe una
+     pagina che non esiste. */
+  if (/^vps:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) return true;
   if (/\/storage\/v1\/object\/(public|sign)\/documenti\//.test(s)) return true;
   if (/^(https?:|javascript:|mailto:|tel:|#|data:|blob:)/i.test(s)) return false;
   return ARCH_PREFISSI.test(s);
@@ -3860,6 +3937,8 @@ function initMain() {
      protezione del database (iam_is_staff su quote_importazioni). Mostrarla a
      tutti vorrebbe dire una porta che si apre su un errore di permessi. */
   const navImp=document.getElementById('nav-import'); if(navImp) navImp.style.display = isStaff() ? 'flex' : 'none';
+  /* La stessa porta dentro il Portafoglio, dove la gente la cerca davvero. */
+  const pfImp=document.getElementById('pf-importa'); if(pfImp) pfImp.style.display = isStaff() ? 'block' : 'none';
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
   document.getElementById('nav-reti').style.display   = 'none'; // Reti ora dentro Utenti
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
@@ -15750,13 +15829,15 @@ async function pdocCarica(polizzaId, categoria, file) {
   if (bd) bd.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="pdoc-attesa">Carico il documento…</div>');
   const entita = pdocEntita(polizzaId);
   try {
-    const nome = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    /* Cartelle diverse per cose diverse: `pratiche/` è dichiarata in
-       ARCH_CARTELLE, altrimenti la rete di sicurezza non riconoscerebbe il
-       percorso e il documento non si aprirebbe più (§12, difetto 2). */
-    const url = await archCarica(
-      (entita === 'pratica' ? 'pratiche/' : 'polizze/') + polizzaId + '_' + categoria + '_' + Date.now() + '_' + nome,
-      file, file.type || 'application/pdf');
+    /* DA OGGI IL FASCICOLO SCRIVE SUL VPS, CIFRATO (18/09/2026).
+       Il documento non va più nel contenitore di Supabase: sale al backend,
+       che lo cifra prima di posarlo sul disco. Quello che si salva qui è un
+       riferimento («vps:<id>»), che da solo non apre niente: per aprirlo
+       serve la propria sessione, ogni volta.
+       I documenti caricati PRIMA di oggi restano dove sono e continuano ad
+       aprirsi come sempre — `archApri` riconosce le due strade dal valore
+       salvato. Nessuna migrazione, nessuna rottura. */
+    const url = await archCaricaVps(file, { entita, entita_id: polizzaId, categoria });
     const rec = {
       entita, entita_id: polizzaId, categoria, nome: file.name, url,
       firmato: false,
@@ -15767,7 +15848,8 @@ async function pdocCarica(polizzaId, categoria, file) {
     if (error) throw error;
     try { logMovimento('Documento caricato · ' + categoria, 'documento', ''); } catch (e) {}
   } catch (e) {
-    alert('Caricamento non riuscito: ' + (e.message || e) + '\n\n(Serve il contenitore "documenti" su Supabase Storage.)');
+    alert('Caricamento non riuscito: ' + (e.message || e)
+      + '\n\n(I documenti del fascicolo salgono sull\'archivio cifrato del VPS: se il messaggio parla di ARCHIVIO_CHIAVE, la chiave non è configurata sul server.)');
   }
   document.getElementById('pdoc-attesa')?.remove();
   await pdocRidisegna(polizzaId);

@@ -1028,3 +1028,103 @@ resterà verde per sempre.
 - **REC042 e il catalogo prodotti** si leggono ma non si scrivono da nessuna
   parte: il primo è il dettaglio garanzia per garanzia di ogni rata, il secondo
   è il catalogo della compagnia, che non è il nostro catalogo di quotazione.
+
+---
+
+## 15. L'archivio dei documenti sul VPS, cifrato (18/09/2026)
+
+Primo passo: **solo caricamento e apertura**. I documenti già su Supabase non
+si migrano, il backup verso Mega non c'è, le regole del fascicolo non si
+toccano. Due strade in parallelo, e nessuna rottura.
+
+| pezzo | dove |
+|---|---|
+| cifratura, percorsi, le due rotte | `server/archivioVps.js` |
+| prove, con le sette del brief | `server/verifica/archivio-vps.test.mjs` — 11 |
+| i metadati e il permesso | `supabase/migrations/20260918_archivio_vps.sql` (applicata) |
+| nel browser | `archCaricaVps` / `archApriVps` in `index.html` e `iam/index.html` |
+| la rotta al backend | `/archivio/*` in `deploy/caddy/iam.caddy` |
+| **come si genera la chiave e dove va la copia** | `deploy/ARCHIVIO-CIFRATO.md` |
+
+### La chiave, prima di tutto il resto
+
+**Senza la chiave i documenti non si aprono più. Mai più, da nessuno.** Sta
+nell'ambiente del backend (`ARCHIVIO_CHIAVE`), una copia sta offline, e non sta
+né nel repository né nel database né nei log.
+
+E **non c'è un ripiego**. In `server/fonti.js` una chiave assente viene derivata
+dal nome della macchina, e lì va bene: peggio di una chiave debole c'è una
+password in chiaro. Qui no — un ripiego silenzioso vorrebbe dire scrivere carte
+d'identità con una chiave che si ricostruisce leggendo il codice, e nessuno se
+ne accorgerebbe. Senza chiave il modulo si spegne, risponde `503` e dice che
+cosa manca.
+
+### Com'è fatto un file sul disco
+
+```
+WUS1 | IV (12) | TAG (16) | cifrato        AES-256-GCM
+```
+
+IV nuovo per ogni file (riusarlo con la stessa chiave rende inutile GCM), tag
+accanto al cifrato, sigla in testa per riconoscere il formato il giorno in cui
+cambierà. Permessi `600`: cifrato **e** leggibile solo dall'utente del servizio.
+
+### Il permesso non è scritto nel server
+
+La rotta di apertura rilegge i metadati **con il token di chi sta chiedendo**:
+se le politiche del database non gli fanno vedere la riga, non c'è niente da
+decifrare. La chiave di servizio, che scavalca le politiche, in quella strada
+non entra apposta. Così la regola di visibilità resta **una sola** e sta dove
+stanno già tutte le altre — riscriverla nel server vorrebbe dire averne due, e
+quella che sbaglia sarebbe quella che nessuno guarda.
+`iam_archivio.arch_select` ricalca `pdoc_select` di `quote_pratica_documenti`.
+
+E «non esiste» e «non è tuo» danno **la stessa risposta**: dire «esiste ma non
+puoi» racconta a un estraneo che quel documento c'è.
+
+### Tre cose da sapere prima di toccarlo
+
+1. **La cartella sta fuori da `/opt/withus-backend`**, che Caddy serve come
+   sito: un file lì dentro sarebbe scaricabile da un indirizzo, cifrato ma
+   scaricabile da chiunque. Il backend lo controlla e si rifiuta di partire
+   (`radiceConsentita`), e il controllo guarda il percorso **com'è arrivato**:
+   `path.resolve` rende assoluto qualunque cosa, quindi «archivio» passerebbe
+   finendo in un posto che dipende da come è stato avviato il servizio.
+2. **Il nome del file che arriva dal browser non diventa mai un percorso.** Sul
+   disco c'è solo l'id; il nome originale vive nei metadati.
+3. **`/archivio/*` deve stare fra i percorsi di servizio di Caddy**, altrimenti
+   su `iam.` la richiesta cade sul `handle` finale e il documento risponde con
+   la pagina di IAM. C'è la prova in `deploy/dominio-unico.test.mjs`.
+
+### Una controprova che non era una controprova
+
+Per provare che il tag GCM serve davvero, il primo tentativo è stato avvolgere
+`setAuthTag` in un `try/catch`: le prove sono restate **tutte verdi**, e
+sembrava che la prova non sorvegliasse niente. Non era così: `setAuthTag` non
+solleva, il controllo avviene dentro `final()`. Quel guasto non era un guasto.
+
+La controprova vera è sostituire GCM con una cifratura **senza
+autenticazione** (`aes-256-ctr`), che è quello che verrebbe da fare
+«semplificando». Allora sì: diventano rosse tutte e due le prove che esistono
+per questo — il byte manomesso che si apre lo stesso, e la chiave sbagliata che
+restituisce spazzatura invece di fermarsi. *Una controprova che non fa diventare
+rossa nessuna prova, prima di accusare la prova, va guardata bene: può essere
+che il guasto non fosse un guasto.*
+
+### Una prova che sorvegliava il posto giusto e il mondo di ieri
+
+`archivio.test.mjs` pretendeva che `archCarica` fosse chiamata in **almeno due
+punti**: era il numero misurato quando i caricamenti su Supabase erano due
+(l'identità in anagrafica e il documento del fascicolo). Spostato il fascicolo
+sul VPS, quel numero è calato e la prova è diventata rossa — giustamente, perché
+non poteva sapere che il lavoro si era spostato invece di sparire. Si è
+aggiornata la **regola**, non il numero: adesso pretende che ognuno dei due
+caricatori sia chiamato da qualcuno, che è quello che voleva dire fin
+dall'inizio (§1).
+
+### Dove si arriva alla schermata
+
+La voce «Importa» è nella barra in alto, ma quella barra ha **ventuno voci e
+scorre**: Francesco non l'ha trovata, e aveva ragione a cercarla nel
+Portafoglio. La stessa porta adesso è anche lì, in cima alla pagina. Non è un
+doppione: è la stessa pagina raggiunta da dove la si cerca.

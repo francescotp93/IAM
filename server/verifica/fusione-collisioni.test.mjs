@@ -51,7 +51,14 @@ const SOGLIA = { globali: 43, id: 29, classi: 17 };
        divergono»), che qui si controlla che esista ancora.
    ─────────────────────────────────────────────────────────────────────── */
 const GEMELLI = ['ARCH_BUCKET', 'ARCH_CARTELLE', 'ARCH_PREFISSI', 'ARCH_SCADENZA',
-  'archApri', 'archDisinnesca', 'archFirma', 'archPercorso', 'archSuoIndirizzo'];
+  'archApri', 'archDisinnesca', 'archFirma', 'archPercorso', 'archSuoIndirizzo',
+  /* 18/09/2026: l'archivio cifrato sul VPS. Stessa ragione degli altri — un
+     documento si apre e si carica da tutti e due i documenti, e finche' sono
+     due la stessa manciata di funzioni deve stare in tutti e due. Le due
+     copie chiamano il backend con i nomi di casa loro (PAY_API/payToken in
+     QUOTO, MAIL_API/mailToken in IAM): non e' una copia incollata, e' la
+     stessa cosa scritta dove serve. */
+  'archApriVps', 'archCaricaVps'];
 
 const gQ = globali(scripts(Q)), gI = globali(scripts(I));
 const iQ = id(Q), iI = id(I);

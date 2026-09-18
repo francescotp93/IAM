@@ -161,6 +161,35 @@ prova('l\'autopull ricarica i siti versionati solo se validano, e rimette quelli
   deve(autopull.indexOf("grep -q '^deploy/caddy/'") < autopull.indexOf('Script di primo impianto'), 'il blocco va prima degli script d\'impianto, dove CHANGED e\' ancora quello del giro');
 });
 
+prova('le pagine non restano in cache: una copia vecchia è un\'applicazione vecchia', () => {
+  /* QUOTO e IAM sono due `index.html` da un paio di megabyte: tutto il
+     programma sta lì. Senza dire niente sulla cache, il browser applica la sua
+     euristica e si tiene la pagina per ore — e chi ce l'ha in memoria continua
+     a usare il codice del rilascio prima senza saperlo.
+     Il 18/09/2026 è costato un'ora: dopo il rilascio della gestione
+     documentale le schermate nuove non comparivano e i documenti non si
+     aprivano, perché la pagina in cache non aveva la parte che firma gli
+     indirizzi. Il VPS serviva il codice giusto; era il browser a non
+     chiederlo. Questa prova esiste perché non succeda al prossimo rilascio. */
+  const blocchi = [
+    ['il riquadro /nuovo-preventivo/', caddy.slice(caddy.indexOf('handle_path /nuovo-preventivo/*'), caddy.indexOf('# ── 2.'))],
+    ['IAM alla radice',                caddy.slice(caddy.indexOf('# ── 3.'))],
+  ];
+  for (const [dove, blocco] of blocchi) {
+    deve(/@\w+ path \*\.html \//.test(blocco), dove + ': nessuna regola che riconosca le pagine');
+    deve(/header @\w+ Cache-Control "no-cache"/.test(blocco), dove + ': le pagine non dicono al browser di ricontrollare');
+  }
+  /* `no-cache` e non `no-store`: la pagina si tiene, ma si chiede conferma.
+     Con l'etichetta che Caddy manda da sé la risposta è un 304 vuoto, non due
+     megabyte a ogni apertura. */
+  deve(!/Cache-Control "no-store"/.test(caddy), 'no-store farebbe riscaricare due megabyte a ogni apertura');
+  /* E NON deve valere per i motori di tariffa e le immagini: quelli hanno la
+     versione nell'indirizzo e restano in cache come prima. */
+  deve(!/header Cache-Control "no-cache"\s*$/m.test(caddy.replace(/header @\w+ Cache-Control "no-cache"/g, '')),
+    'la regola vale per tutto, non solo per le pagine: i motori di tariffa si riscaricherebbero ogni volta');
+  return 'due siti, solo le pagine';
+});
+
 // ── esecuzione ───────────────────────────────────────────────────────────────
 let ko = 0;
 console.log('\nDOMINIO UNICO — il pacchetto Caddy');

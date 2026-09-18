@@ -597,15 +597,57 @@ veri.**
 
 ---
 
-## 12. L'archivio dei documenti è chiuso (18/09/2026)
+## 12. L'archivio dei documenti (18/09/2026)
 
-> **STATO: CHIUSO.** La PR #179 è stata fusa, il codice è pubblicato (impronta
-> di `index.html` servito da `quoto.withusassicurazioni.it` uguale a quella di
-> `main`, 15 secondi dopo il merge) e subito dopo è stata eseguita la riga che
-> mancava: `update storage.buckets set public = false where id = 'documenti'`.
+> **STATO: APERTO, in attesa che le cache dei browser si svuotino.**
+> L'archivio è stato chiuso e poi **riaperto una seconda volta**, e la ragione
+> è la cosa più utile di tutto questo capitolo: vedi *«La lezione del
+> 18/09/2026»* qui sotto. Si richiude quando chi lavora ha ricaricato la
+> pagina almeno una volta dopo il rilascio degli header di cache.
 >
-> Se qualcosa non va, si riapre in una riga:
-> `update storage.buckets set public = true where id = 'documenti';`
+> La riga è sempre la stessa, nei due versi:
+> `update storage.buckets set public = false where id = 'documenti';`
+> `update storage.buckets set public = true  where id = 'documenti';`
+
+### La lezione del 18/09/2026: il codice giusto non è quello che gira
+
+Chiuso l'archivio, Francesco ha aperto un documento caricato prima e si è
+visto `{"statusCode":"404","error":"Bucket not found"}`. E, dettaglio che ha
+risolto il caso, **non vedeva nemmeno le schermate nuove**.
+
+Il sospetto ovvio era un punto scoperto dalla rete di sicurezza. Era falso, e
+le misure lo hanno detto in fretta:
+
+| controllo | esito |
+|---|---|
+| il clic sul link vero del pannello, col codice di `main` | intercettato e firmato |
+| `index.html` su `quoto.` (GitHub Pages) | impronta uguale a `main` |
+| `/opt/withus-backend` sul VPS (canale comandi) | commit `d15e71d`, funzioni `arch*` presenti |
+
+Il codice giusto era ovunque. **A non averlo era il browser**, che teneva in
+cache un `index.html` da 1,8 MB del rilascio prima: niente fascicolo nuovo,
+niente rete che firma gli indirizzi, e quindi il link vecchio navigato di
+peso su un contenitore ormai chiuso.
+
+Due cose da portarsi via:
+
+1. **«È pubblicato» non vuol dire «è quello che la gente sta usando».**
+   Verificare l'impronta sul server è necessario e non basta: fra il server e
+   chi lavora c'è una cache che può essere vecchia di ore.
+2. **Un rilascio che cambia il modo di aprire i documenti va fatto in due
+   tempi**: prima il codice, poi — quando le cache si sono svuotate — la
+   chiusura. Averli fatti a quindici minuti di distanza è stato l'errore.
+
+Il rimedio è negli header, non nelle istruzioni a voce: `deploy/caddy/iam.caddy`
+manda `Cache-Control: no-cache` sulle **pagine** dei due siti (non sui motori
+di tariffa, che hanno la versione nell'indirizzo). `no-cache` non vuol dire
+«non tenerla»: vuol dire «chiedi conferma prima di usarla», e con l'etichetta
+che Caddy manda da sé la risposta è quasi sempre un 304 vuoto. La prova sta in
+`deploy/dominio-unico.test.mjs`.
+
+Finché la correzione non è pubblicata e le pagine vecchie non sono state
+ricaricate, l'archivio resta aperto: chiuderlo adesso vorrebbe dire rompere i
+documenti a chi ha ancora la pagina di prima.
 
 Fino al 18/09/2026 il contenitore `documenti` di Supabase Storage era
 **pubblico in lettura**: chi aveva l'indirizzo di un file lo apriva senza avere
@@ -619,8 +661,11 @@ collaboratori, documenti di sinistri — anche di persone che non sono clienti
 
 | quando | risposta |
 |---|---|
-| prima della chiusura | `200`, con il PDF |
-| dopo | `400` — «Bucket not found» |
+| ad archivio aperto | `200`, con il PDF |
+| ad archivio chiuso | `400` — «Bucket not found» |
+
+La chiusura fa quello che dice: il problema del 18/09 non è stata lei, ma
+quando è arrivata rispetto alle cache dei browser.
 
 Restano pubblici, ed è voluto, solo `note-informative` (documenti
 precontrattuali, che devono leggere tutti) e `offerte` (immagini di

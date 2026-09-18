@@ -6,6 +6,7 @@ import { Router } from 'express';
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
 import { MITTENTE_NOME } from './mittente.js';
+import { firmaDocumento, SCADENZA } from './archivio.js';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
 const APP_URL = process.env.QUOTO_URL || 'https://quoto.withusassicurazioni.it';
 
@@ -89,10 +90,19 @@ notifyRouter.post('/', async (req, res) => {
     } else if (event === 'emessa_cliente') {
       to = await clienteEmail();
       subject = 'La tua polizza è stata emessa — ' + prodotto;
-      const polUrl = datiP.polizza_url || '';
+      /* IL COLLEGAMENTO ALLA POLIZZA SI FIRMA QUI (18/09/2026). Prima era
+         l'indirizzo pubblico del contenitore: restava valido per sempre, e
+         un'email inoltrata per sbaglio regalava la polizza di un cliente a
+         chiunque. Adesso vale trenta giorni, e il testo lo dice — un
+         collegamento che muore in silenzio fa tornare il cliente arrabbiato,
+         uno che dichiara la sua scadenza lo fa tornare informato.
+         Se la firma non riesce non si salta l'email: si manda senza il
+         collegamento, con la frase che c'era già per quel caso. */
+      const polUrl = await firmaDocumento(datiP.polizza_url || '', SCADENZA.al_cliente);
       html = wrap('Polizza emessa',
         `<p>Gentile ${esc(cliente)},<br>la tua polizza <b>${esc(prodotto)}</b> è stata emessa. Grazie per aver scelto With Us Assicurazioni.</p>${riga}
-         ${polUrl ? `<div style="margin-top:14px"><a href="${esc(polUrl)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:11px 22px;border-radius:10px;font-weight:700">Scarica la tua polizza</a></div>` : '<p style="color:#6b7488;font-size:13px">Riceverai a breve la documentazione di polizza.</p>'}`);
+         ${polUrl ? `<div style="margin-top:14px"><a href="${esc(polUrl)}" style="display:inline-block;background:#3b5bfd;color:#fff;text-decoration:none;padding:11px 22px;border-radius:10px;font-weight:700">Scarica la tua polizza</a></div>
+         <p style="color:#6b7488;font-size:12.5px;margin-top:10px">Il collegamento resta valido 30 giorni. Dopo, la copia della polizza è sempre disponibile in agenzia.</p>` : '<p style="color:#6b7488;font-size:13px">Riceverai a breve la documentazione di polizza.</p>'}`);
     } else if (event === 'preventivo_cliente') {
       // Invio del preventivo direttamente al cliente. Destinatario: email cliente;
       // se assente, si usa il `to` passato dal frontend. Corpo: HTML del preventivo

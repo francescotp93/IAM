@@ -517,3 +517,228 @@ Ciò che **non** è cambiato: `index.html` di QUOTO e `iam/index.html` restano
 due documenti, e il preventivatore vive in un riquadro (stessa origine,
 `/nuovo-preventivo/`). Una sola applicazione si raggiunge portando le pagine in
 `withus-one/`, una per file, non concatenando i due monoliti.
+
+---
+
+## 11. La gestione documentale (Lavoro 3, 18/09/2026)
+
+**Dove vive.** Nella radice (QUOTO), non in `iam/`. Il brief diceva «in IAM»,
+ma il pannello «Posizioni del cliente» e il portafoglio polizze stanno in
+`index.html` alla radice: IAM li mostra nel riquadro `/nuovo-preventivo/`.
+È il caso di §9 — *un brief che parla di «IAM» può riguardare tutti e due i
+repository: prima si cerca dove vive la cosa, poi si tocca.*
+
+| pezzo | dove |
+|---|---|
+| tutte le regole (quali documenti servono, scadenze, eredità, congelamento) | `tariffe/motore/fascicolo.js` |
+| le prove delle regole, in Node | `server/verifica/fascicolo.test.mjs` — 18 |
+| i due contenitori nella scheda cliente | `fdoc*` in `index.html` |
+| il fascicolo di pratica | `pdoc*` in `index.html`, aperto dal Portafoglio e dalla scheda cliente |
+| i due contatori di agenzia e le regole per compagnia | `cdoc*`, pagina `#page-controllo-documenti` |
+| le tabelle | `supabase/migrations/20260918_documentale_compagnie.sql` |
+| le prove nella pagina | blocco «documentale/fascicolo/controllo documenti» in `ui-test.mjs` |
+
+**Le quattro regole che non si toccano senza rifare i conti.**
+
+1. **I documenti d'identità del cliente stanno sull'anagrafica, la pratica li
+   eredita.** `quote_anagrafiche.documenti` (jsonb: `tipo`, `numero`, `url`,
+   `data`, `scadenza`). Se ci sono, non si ricaricano una volta per polizza.
+   Uno **scaduto** non vale come presente: il fascicolo dice «scaduto» e manda
+   in anagrafica, perché rinnovare un documento e caricarne uno mancante sono
+   due lavori diversi.
+2. **I documenti di terzi restano nella pratica e non entrano mai in
+   anagrafica.** Identità del familiare convivente, libretto del veicolo da cui
+   arriva la classe: sono persone che non sono in portafoglio (GDPR), e
+   metterle in anagrafica sporcherebbe il portafoglio di nominativi che non
+   sono clienti. Nel motore lo dicono `fonte` e `terzo`; nessun tipo di terzi è
+   nemmeno regolabile da una compagnia, altrimenti la regola si aggirerebbe dal
+   pannello.
+3. **La patente non è un documento d'identità.** Sta nel fascicolo di polizza:
+   serve alle pratiche auto, non a identificare il cliente. In anagrafica ci
+   sono due soli tipi, carta d'identità e passaporto, tutti e due con numero e
+   **scadenza obbligatoria** — un documento d'identità senza data non si può
+   dire valido, e accettarlo riempirebbe l'archivio di documenti su cui il
+   contatore delle scadenze non ha niente da dire.
+4. **I requisiti si congelano alla creazione del fascicolo.**
+   `quote_polizze.dati.fascicolo` tiene operazione, compagnia e l'elenco
+   completo dei requisiti con la data. Se si rileggessero sempre «da vive», il
+   giorno in cui una compagnia aggiunge un documento **tutte le pratiche già
+   chiuse diventerebbero incomplete** e l'elenco dei fascicoli da completare
+   smetterebbe di voler dire qualcosa. Cambiare una regola vale per le pratiche
+   nuove; per rifare una pratica vecchia c'è «Rifai il fascicolo», che lo dice.
+
+**Le regole per compagnia si sommano, non sostituiscono.** `quote_compagnie`
+(con gli **alias**: sulle polizze è scritto «HDI Assicurazioni», nel catalogo
+prodotti «HDI» — senza alias una polizza non ritroverebbe le sue regole) e
+`quote_regole_documenti` (compagnia → tipo documento → obbligatorio). Requisiti
+= quelli dell'operazione **più** quelli della compagnia; un documento chiesto
+da entrambe si conta una volta sola, e vince il più severo. La prima regola
+vera in tabella: **Prima → patente obbligatoria**, comunicata il 18/09/2026.
+Una regola che nomina un tipo che il motore non conosce non si applica e **si
+vede** (in rosso, «tipo sconosciuto»): sparire in silenzio vorrebbe dire che un
+refuso toglie un requisito e non se ne accorge nessuno.
+
+**I due contatori restano due** (`#page-controllo-documenti`, voce «Documenti»).
+Documenti in scadenza o scaduti = clienti da richiamare; fascicoli incompleti =
+documenti che un operatore non ha caricato. Un numero solo sembra più semplice
+e non si può lavorare: non si saprebbe a chi telefonare. Chi ha già rinnovato
+non compare: nel contatore entra solo la versione **attiva** di ogni tipo (la
+più recente non scaduta), e le precedenti restano nello storico, che non si
+cancella — serve a rileggere una pratica vecchia col documento valido allora.
+
+**Cose sapute e non fatte, da fare prima di andare in produzione con documenti
+veri.**
+
+- Il contenitore `documenti` è ancora **pubblico**: il codice per chiuderlo è
+  pronto e provato, la chiusura si fa dopo il rilascio. Vedi **§12**.
+- Il fascicolo guidato copre solo l'**RC Auto**: fuori da lì mostra i documenti
+  di base e lo dice, senza inventare operazioni.
+- L'esportazione verso un archivio esterno (Mega) resta fuori, come da brief.
+
+---
+
+## 12. L'archivio dei documenti: il codice è pronto, la chiusura aspetta il rilascio (18/09/2026)
+
+> **STATO AL 18/09/2026: l'archivio è APERTO, e la chiusura è l'ultimo passo.**
+> Il codice che firma gli indirizzi è qui e provato; la chiusura è stata
+> eseguita, poi **riaperta** perché era arrivata prima del codice: la
+> produzione serve `main`, e con l'archivio chiuso e il codice vecchio in
+> pagina i documenti non si aprivano.
+> **Da fare appena questo lavoro è su `main` e pubblicato**, in quest'ordine:
+> 1. `update storage.buckets set public = false where id = 'documenti';`
+> 2. i quattro controlli elencati in
+>    `supabase/migrations/20260918_archivio_documenti_chiuso.sql`.
+>
+> Il resto di quella migrazione è **già attivo** e non dipende dal codice
+> nuovo: tetto di 25 MB, sovrascrivere e cancellare solo il proprio file o da
+> amministratore, regola di lettura per chi ha un account.
+
+Il contenitore `documenti` di Supabase Storage è **pubblico in lettura**: chi
+ha l'indirizzo di un file lo apre senza avere un account, per sempre. E gli
+indirizzi non sono segreti, si costruiscono con l'orario in millisecondi e il
+nome del file. Dentro ci sono carte d'identità, libretti, patenti, contabili di
+bonifico, polizze firmate, fatture dei collaboratori, documenti di sinistri —
+anche di persone che non sono clienti (il familiare convivente di una Bersani).
+
+**Misurato, non supposto:** il 18/09/2026 un `curl` senza alcuna credenziale su
+un documento in archivio risponde `200` con il PDF. Con l'archivio chiuso, per
+il tempo in cui lo è stato, rispondeva `400`. È la prova che la chiusura fa
+quello che dice, ed è il controllo da rifare dopo il rilascio.
+
+Il quadro completo, con le tre strade e il costo di ognuna, era già scritto in
+`iam/sql/DA-APPROVARE-archivio-documenti.sql` (30/08/2026), dove la chiusura era
+«la strada B, da programmare». Questo lavoro è quella strada.
+
+### Com'è fatto adesso
+
+| pezzo | dove |
+|---|---|
+| firma e apertura nella pagina | blocco `arch*` in `index.html` (`archPercorso`, `archFirma`, `archApri`, `archCarica`, `archLink`) |
+| firma lato server | `server/archivio.js` (`percorsoArchivio`, `firmaDocumento`, `caricaDocumento`) |
+| la chiusura vera | `supabase/migrations/20260918_archivio_documenti_chiuso.sql` |
+| prove | `server/verifica/archivio.test.mjs` (9) + blocco «archivio» in `ui-test.mjs` (4) |
+
+Quattro cose da sapere prima di toccarlo.
+
+1. **Si salva il percorso, non l'indirizzo.** Ventidue punti di caricamento
+   scrivevano `getPublicUrl(...)` dentro le schede: ogni riga scritta metteva in
+   archivio un indirizzo che funzionava per chiunque, per sempre. Adesso si
+   salva `clienti/<id>/<file>`, che da solo non apre niente.
+2. **Gli indirizzi vecchi non si riscrivono, si leggono.** Trentatré fra colonne
+   e chiavi jsonb contengono ancora `…/object/public/documenti/<percorso>`
+   (`quote_anagrafiche.documenti` e `doc_identita_url`, `quote_documenti.url`,
+   `quote_preventivi.dati.proposta_url`, `.polizza_url`,
+   `.pagamento.bonifico_url`, `.messaggi[].doc_url`, `.documenti.*`,
+   `quote_pratica_documenti.url`, `quote_sinistri.documenti[].url`,
+   `iam_firme.doc_url`). `archPercorso` ne ricava il percorso e lo firma.
+   Un aggiornamento di massa su quattro tabelle avrebbe risolto lo stesso
+   problema lasciando indietro ogni riga scritta nel frattempo.
+3. **La finestra si apre PRIMA della firma.** Firmare è una chiamata di rete: se
+   la finestra si apre dopo, il browser la blocca come popup. C'è una prova che
+   guarda l'ordine — e alla prima stesura quella prova era rotta, perché cercava
+   la prima occorrenza di `window.open` invece di quella che aspetta il
+   documento, e restava verde anche con l'ordine invertito. L'ha trovata la
+   controprova, non il ragionamento.
+4. **C'è una rete di sicurezza, ed è la parte che conta.** I punti che mostrano
+   un documento sono decine, ognuno scrive il suo `<a href>` a mano, e basta
+   dimenticarne uno perché quel documento non si apra più. Un ascoltatore sui
+   clic (in cattura, su `document`) intercetta qualunque link che punti
+   all'archivio — percorso o vecchio indirizzo pubblico — e lo firma. Vale anche
+   per il codice che verrà scritto domani copiando il vicino.
+
+### Quello che si romperà, di proposito, il giorno della chiusura
+
+**I collegamenti pubblici già spediti smetteranno di funzionare.** Un cliente
+che riapre una vecchia email «Scarica la tua polizza» troverà un errore. Non
+c'è modo di evitarlo tenendo chiuso l'archivio. Da oggi quell'email porta un collegamento
+**firmato che vale 30 giorni e lo dice nel testo** (`server/notify.js`): un
+collegamento che muore in silenzio fa tornare il cliente arrabbiato, uno che
+dichiara la sua scadenza lo fa tornare informato.
+
+Due scadenze diverse, perché sono due cose diverse: **5 minuti** per aprire un
+file dal gestionale, **30 giorni** per un documento allegato a un'email
+(`SCADENZA` in `server/archivio.js`).
+
+### Chi firma per chi non ha un account
+
+Il collaboratore che apre la pagina di firma e il cliente che riceve l'email non
+sono collegati a Supabase: il loro browser non può chiedere un indirizzo
+firmato. Lo chiede il server, che ha la chiave di servizio
+(`server/firmaCollab.js`, `server/notify.js`). Lo shop (`server/shop.js`)
+restituisce il percorso invece dell'indirizzo pubblico, e in `server/sign.js` è
+sparita `uploadDoc`, che fabbricava indirizzi pubblici e non la chiamava
+nessuno.
+
+### Sette difetti trovati rileggendo il proprio diff (18/09/2026)
+
+La PR non ha CI, quindi l'unica revisione è quella che si fa a mano. Rileggendo
+il diff con `/code-review` sono saltati fuori sette difetti che **nessuna delle
+prove aveva preso**, perché guardavano i casi che chi le ha scritte aveva in
+mente. Adesso ognuno ha la sua, e la sua controprova.
+
+| difetto | cosa faceva |
+|---|---|
+| il contatore leggeva `quote_polizze` senza `visibleUserIds` | un collaboratore vedeva le pratiche di **tutta l'agenzia**, con nome del cliente e di chi le aveva fatte |
+| `ARCH_PREFISSI` elencava i nomi delle **funzioni** (`pet`, `fv`, `sal`…) invece delle cartelle (`animali/`, `fotovoltaico/`…) | per quei moduli la rete di sicurezza non scattava |
+| `salvaDocumento` salvava nella radice del contenitore, senza cartella | la rete non riconosceva il documento, il link navigava come indirizzo del sito |
+| `pdocCarica` chiamava `M.campi('rcauto', null)`, la firma **vecchia** | il tipo documento non si trovava mai: ogni documento finiva segnato «non obbligatorio» |
+| `apriAnagrafica` risolveva solo da `ANAG_CACHE` | «Anagrafica non trovata» su un cliente che esiste, arrivando dal fascicolo |
+| l'avviso «solo RC Auto» scritto e subito sovrascritto | non lo vedeva nessuno |
+| il contatore in errore mostrava `0` e non riprovava | due zeri rassicuranti su un archivio mai letto |
+
+E due attrezzi che non chiamava nessuno (`archLink`, `caricaDocumento`) sono
+stati tolti: in questo repository il codice che arriva e non viene collegato a
+niente è il guasto numero uno (§1), e vale anche per il codice appena scritto.
+
+**Due trappole delle prove sul sorgente**, trovate correggendole:
+
+1. **I commenti mentono alle prove.** Un commento che *nomina* il difetto
+   («qui prima c'era `M.campi`…») fa scattare la prova che cerca quella
+   stringa, e dichiara rotto un codice corretto. Si cerca la chiamata, non la
+   parola — la stessa trappola già scritta in §10.
+2. **Togliere i commenti con una regex globale cancella codice vero.** Un
+   «via tutto quello che sta fra `/*` e `*/`» su `index.html` si mangia
+   **451.714 caratteri e 5.270 righe**: quelle due sequenze compaiono dentro
+   le espressioni regolari e dentro il CSS, e la ricerca accoppia pezzi che
+   non sono commenti. Una prova che gira su metà file dichiara pulito quello
+   che non ha letto. In `archivio.test.mjs` si tolgono solo i commenti che
+   cominciano a inizio riga.
+
+### Cosa resta aperto
+
+- **La chiusura, che è il punto di tutto.** Una riga, e i quattro controlli
+  del file di migrazione. Finché non si fa, tutto il resto di questo capitolo
+  è una porta nuova su una stanza che resta aperta.
+- **La cache della rete di distribuzione.** Un file già richiesto resta servito
+  dalla cache fino a un'ora (`cache-control: max-age=3600`). Verificato il
+  18/09/2026 mentre l'archivio era chiuso: stesso indirizzo `200` dalla cache,
+  `400` con un parametro diverso. Il giorno della chiusura vera, aspettare
+  un'ora prima di dire che è chiuso.
+- **I percorsi restano indovinabili** (`rcvp/<millisecondi>_<nome>`). Con
+  l'archivio chiuso non basta più indovinarli, ma la cartella casuale che già
+  usano gli allegati delle fatture (`fatture/<id>/<codice casuale>_<nome>`) è
+  la strada giusta per i prossimi caricamenti.
+- **`note-informative` e `offerte` restano pubblici**, ed è voluto: i primi sono
+  documenti precontrattuali che devono leggere tutti, i secondi immagini di
+  marketing. Nessuno dei due contiene dati di clienti.
+

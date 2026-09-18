@@ -64,6 +64,7 @@
 <script src="tariffe/motore/tfr-datore.js?v=20260917"></script>
 <script src="tariffe/motore/pdf-withus.js?v=20260917"></script>
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
+<script src="tariffe/motore/fascicolo.js?v=20260918"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -880,6 +881,40 @@ button{font-family:inherit}
 .pdoc-sez{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;
   color:var(--muted);margin:16px 0 4px}
 .pdoc-ft{padding-top:12px}
+/* Lavoro 3 — la scelta dell'operazione e i due contenitori della scheda cliente */
+.pdoc-op{padding:10px 0 12px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.pdoc-op-t{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.pdoc-op-b{display:flex;gap:8px;flex-wrap:wrap}
+.pdoc-opb{flex:1;min-width:170px;text-align:left;padding:9px 11px;border:1px solid var(--line);border-radius:9px;
+  background:#fbfcff;cursor:pointer;font-family:inherit;color:var(--ink)}
+.pdoc-opb:hover{border-color:var(--blue-soft)}
+.pdoc-opb.on{border-color:var(--blue);background:var(--blue-bg)}
+.pdoc-opb b{display:block;font-size:12.5px}
+.pdoc-opb span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.fdoc-sub{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.fdoc-subb{padding:7px 13px;border:1px solid var(--line);border-radius:9px;background:#fbfcff;
+  cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.fdoc-subb:hover{border-color:var(--blue-soft)}
+.fdoc-subb.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+.fdoc-data{font-size:15px;color:var(--ink)}
+.fdoc-storico{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#f8f9fc}
+.fdoc-storico summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)}
+.fdoc-storico .sc-docrow{margin-top:8px}
+.sc-docrow.storico{opacity:.72}
+.pdoc-crea{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.pdoc-crea label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:600;color:var(--muted)}
+.pdoc-crea select{padding:8px 10px;font-size:13px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);font-family:inherit;min-width:190px}
+.pdoc-antep{margin-top:10px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#fbfcff;font-size:12.5px}
+.cdoc-conta{display:flex;gap:12px;flex-wrap:wrap}
+.cdoc-card{flex:1;min-width:230px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:#fbfcff;cursor:pointer}
+.cdoc-card:hover{border-color:var(--blue-soft)}
+.cdoc-n{font-size:30px;font-weight:700;color:var(--blue);line-height:1}
+.cdoc-l{font-size:13px;font-weight:600;margin-top:4px}
+.cdoc-d{font-size:11.5px;color:var(--muted);margin-top:2px}
+.rdoc-c{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fbfcff}
+.rdoc-hd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.rdoc-r{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.sc-docrow .sc-dic.scad{background:#fde8e8;color:#c0392b}
 .pdoc-attesa{padding:8px 10px;background:var(--blue-bg);border-radius:4px;font-size:12px;
   color:#016b38;margin-bottom:10px}
 .pv-flow{display:flex;flex-wrap:wrap;gap:8px;margin:1rem 0 .4rem;padding-top:.9rem;border-top:1px solid var(--line)}
@@ -1488,6 +1523,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-doc" style="display:none" onclick="showPage('utility')"><i class="ti ti-folder"></i><span>Utility</span></div>
       <div class="nav-item" id="nav-portafoglio" onclick="showPage('portafoglio')"><i class="ti ti-briefcase"></i><span>Portafoglio</span></div>
       <div class="nav-item" id="nav-scadenzario" onclick="showPage('scadenzario')"><i class="ti ti-calendar-clock"></i><span>Scadenzario</span><span class="nav-badge" id="scad-badge" style="display:none">0</span></div>
+      <div class="nav-item" id="nav-cdoc" onclick="showPage('controllo-documenti')"><i class="ti ti-file-search"></i><span>Documenti</span><span class="nav-badge" id="cdoc-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-titoli" onclick="showPage('titoli')"><i class="ti ti-receipt"></i><span>Titoli</span><span class="nav-badge" id="tit-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-emiss" onclick="showPage('emissioni')"><i class="ti ti-file-certificate"></i><span>Emissioni</span><span class="nav-badge" id="emiss-badge" style="display:none">0</span></div>
@@ -2489,6 +2525,84 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="pf-totali" id="pf-totali"></div>
     </div>
 
+    <!-- ── CONTROLLO DOCUMENTI (Lavoro 3 §3.7-3.8, 18/09/2026) ──────────────
+         DUE CONTATORI, NON UNO. Un numero solo («documenti da sistemare»)
+         sembra piu' semplice e non si puo' lavorare: i due elenchi si
+         risolvono in modo diverso — il primo chiedendo un documento nuovo al
+         cliente, il secondo recuperando un documento che un operatore non ha
+         caricato. Sommarli vuol dire non sapere a chi telefonare.
+         La terza linguetta e' il pannello delle regole per compagnia: quando
+         una compagnia cambia i requisiti si cambia qui, non nel codice.
+         ─────────────────────────────────────────────────────────────────── -->
+    <div class="page" id="page-controllo-documenti">
+      <div class="page-title">Controllo documenti</div>
+      <div class="page-sub">Documenti dei clienti in scadenza · fascicoli di pratica incompleti · che cosa chiede ogni compagnia</div>
+
+      <div class="cdoc-conta">
+        <div class="cdoc-card" onclick="cdocTab('scad')">
+          <div class="cdoc-n" id="cdoc-n-scad">…</div>
+          <div class="cdoc-l">Documenti in scadenza o scaduti</div>
+          <div class="cdoc-d" id="cdoc-d-scad">clienti da richiamare per un documento nuovo</div>
+        </div>
+        <div class="cdoc-card" onclick="cdocTab('fasc')">
+          <div class="cdoc-n" id="cdoc-n-fasc">…</div>
+          <div class="cdoc-l">Fascicoli incompleti</div>
+          <div class="cdoc-d" id="cdoc-d-fasc">pratiche a cui manca un documento obbligatorio</div>
+        </div>
+      </div>
+
+      <div class="fdoc-sub" style="margin-top:14px">
+        <button class="fdoc-subb active" data-c="scad" onclick="cdocTab('scad')"><i class="ti ti-id"></i> Scadenze documenti</button>
+        <button class="fdoc-subb" data-c="fasc" onclick="cdocTab('fasc')"><i class="ti ti-folders"></i> Fascicoli incompleti</button>
+        <button class="fdoc-subb" data-c="reg" onclick="cdocTab('reg')"><i class="ti ti-list-check"></i> Regole per compagnia</button>
+      </div>
+
+      <div id="cdoc-scad">
+        <div class="pf-filters" style="margin-bottom:10px">
+          <div class="pf-f"><label>Stato</label>
+            <select id="cdoc-f-stato" onchange="cdocRenderScadenze()">
+              <option value="">Scaduti e in scadenza</option>
+              <option value="scaduto">Solo scaduti</option>
+              <option value="in_scadenza">Solo in scadenza</option>
+            </select></div>
+          <div class="pf-f"><label>Cliente</label>
+            <input id="cdoc-f-cliente" type="text" placeholder="nome o ragione sociale" oninput="cdocRenderScadenze()"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="storico-table">
+            <thead><tr><th>Cliente</th><th>Documento</th><th>Numero</th><th>Scadenza</th><th>Stato</th></tr></thead>
+            <tbody id="cdoc-scad-body"><tr><td colspan="5"><div class="empty-state">Carico…</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="cdoc-fasc" style="display:none">
+        <div class="pf-filters" style="margin-bottom:10px">
+          <div class="pf-f"><label>Compagnia</label>
+            <select id="cdoc-f-comp" onchange="cdocRenderFascicoli()"><option value="">Tutte</option></select></div>
+          <div class="pf-f"><label>Operatore</label>
+            <select id="cdoc-f-oper" onchange="cdocRenderFascicoli()"><option value="">Tutti</option></select></div>
+          <div class="pf-f"><label>Cliente</label>
+            <input id="cdoc-f-fcli" type="text" placeholder="nome o ragione sociale" oninput="cdocRenderFascicoli()"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="storico-table">
+            <thead><tr><th>Effetto</th><th>Cliente</th><th>Prodotto</th><th>Compagnia</th><th>Operatore</th><th>Che cosa manca</th></tr></thead>
+            <tbody id="cdoc-fasc-body"><tr><td colspan="6"><div class="empty-state">Carico…</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="cdoc-reg" style="display:none">
+        <div class="page-sub" style="margin:0 0 12px">
+          I requisiti si sommano a quelli del tipo di operazione, non li sostituiscono. Una regola
+          cambiata oggi vale per le pratiche nuove: quelle gia' create tengono i requisiti congelati
+          il giorno in cui sono nate.
+        </div>
+        <div id="cdoc-reg-corpo"><div class="empty-state">Carico le compagnie…</div></div>
+      </div>
+    </div>
+
     <!-- ── CAMPAGNE (Blocco D) ────────────────────────────────────────────
          Il marketing era un guscio: due tasti e una tabella vuota. Qui le
          campagne si fanno dal gestionale, sulle liste già segmentate che
@@ -3042,6 +3156,149 @@ const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
 
 let db = null;
+
+/* ═══ L'ARCHIVIO DEI DOCUMENTI SI APRE FIRMATO (18/09/2026) ══════════════════
+   Il contenitore `documenti` era PUBBLICO: chiunque indovinasse l'indirizzo di
+   un file ne leggeva il contenuto — carte d'identità, libretti, quietanze —
+   senza avere un account. Dal 18/09/2026 è chiuso, e ogni apertura passa da un
+   indirizzo FIRMATO che scade.
+
+   Tre cose da sapere prima di toccare questo blocco.
+
+   1) GLI INDIRIZZI VECCHI RESTANO NEL DATABASE. Trentatré fra colonne e chiavi
+      jsonb (`quote_anagrafiche.documenti`, `doc_identita_url`,
+      `quote_documenti.url`, `quote_preventivi.dati.proposta_url`,
+      `dati.documenti.doc0`, `dati.pagamento.bonificoProof`, …) contengono
+      ancora indirizzi della forma `…/object/public/documenti/<percorso>`.
+      Non si riscrivono: si LEGGONO. `archPercorso` ricava il percorso sia da
+      un indirizzo vecchio sia da un percorso nudo, che è quello che si salva
+      da oggi in avanti. Riscrivere i dati sarebbe stato un aggiornamento di
+      massa su quattro tabelle per risolvere un problema che si risolve in
+      lettura, e avrebbe lasciato indietro ogni riga scritta nel frattempo.
+
+   2) LA FINESTRA SI APRE PRIMA DELLA FIRMA. Firmare è una chiamata di rete:
+      se si aprisse la finestra dopo, il browser la bloccherebbe come popup,
+      perché non sarebbe più figlia del clic. Si apre subito una scheda vuota e
+      le si dà l'indirizzo quando arriva. È lo stesso rimedio già in uso nella
+      scocca di IAM per gli allegati delle fatture.
+
+   3) UN INDIRIZZO FIRMATO NON SI MANDA A NESSUNO. Scade, e un documento che
+      scade in una casella di posta è una figuraccia col cliente. Quello che
+      esce di casa passa dalle strade che hanno già la loro: il collegamento
+      firmato del preventivo personalizzato (`PP_BUCKET`, giorni) o la rotta
+      del server con il suo token (`/sign/privacy/doc`).
+   ═══════════════════════════════════════════════════════════════════════════ */
+const ARCH_BUCKET = 'documenti';
+const ARCH_SCADENZA = 300;        // 5 minuti: il tempo di aprire il file, non di conservarlo
+
+/* Da quello che è salvato al percorso dentro il contenitore.
+   Accetta: un percorso nudo («clienti/abc/123_ci.pdf»), un indirizzo pubblico
+   vecchio, un indirizzo già firmato (che contiene `/object/sign/`). */
+function archPercorso(v) {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  const m = s.match(/\/storage\/v1\/object\/(?:public|sign)\/documenti\/([^?#]+)/);
+  if (m) { try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; } }
+  if (/^https?:\/\//i.test(s)) return '';   // un indirizzo di un altro contenitore o di un altro sito: non è nostro
+  return s.replace(/^\/+/, '');
+}
+
+/* L'indirizzo firmato, o '' se non si può firmare. Non solleva: chi chiama
+   deve poter dire «non riesco ad aprirlo» senza far morire la schermata. */
+async function archFirma(v, secondi) {
+  const path = archPercorso(v);
+  if (!path || !db) return '';
+  try {
+    const { data, error } = await db.storage.from(ARCH_BUCKET)
+      .createSignedUrl(path, secondi || ARCH_SCADENZA);
+    if (error) throw error;
+    return (data && data.signedUrl) || '';
+  } catch (e) {
+    console.warn('archivio: non riesco a firmare «' + path + '»:', e.message || e);
+    return '';
+  }
+}
+
+/* Apre un documento dell'archivio in una scheda nuova. */
+async function archApri(v) {
+  const path = archPercorso(v);
+  if (!path) {
+    /* Non è un documento del nostro archivio (un indirizzo esterno salvato a
+       mano, per esempio): si apre com'è, invece di non fare niente. */
+    if (/^https?:\/\//i.test(String(v || ''))) { window.open(String(v), '_blank', 'noopener'); return; }
+    alert('Questo documento non ha un indirizzo valido.');
+    return;
+  }
+  const w = window.open('', '_blank');
+  const url = await archFirma(path);
+  if (!url) {
+    if (w) w.close();
+    alert('Non riesco ad aprire il documento: potrebbe essere stato tolto dall\'archivio, oppure non hai i permessi per vederlo.');
+    return;
+  }
+  if (w) w.location.href = url; else window.open(url, '_blank', 'noopener');
+}
+
+/* LA RETE DI SICUREZZA. I punti che mostrano un documento sono decine, sparsi
+   in venti procedure diverse, e ognuno scrive il suo `<a href>` a mano. Averli
+   convertiti uno per uno non basta a dormirci sopra: basta che ne resti uno,
+   o che qualcuno domani ne scriva un altro copiando il vicino, e quel
+   documento non si apre più — oppure, peggio, prova ad aprirsi come indirizzo
+   del sito e mostra una pagina che non c'è.
+
+   Qui si intercetta il clic PRIMA che il browser navighi: se l'indirizzo è
+   dell'archivio (un percorso dentro il contenitore, o un vecchio indirizzo
+   pubblico rimasto nel database), si firma e si apre firmato. Vale anche per
+   il codice che verrà scritto dopo, ed è il motivo per cui questa rete esiste
+   invece di fidarsi della conversione a mano.
+
+   `getAttribute('href')` e non `a.href`: il browser trasforma un percorso in
+   un indirizzo assoluto del sito, e il percorso vero non si vedrebbe più. */
+/* LE CARTELLE VERE DELL'ARCHIVIO. Alla prima stesura qui c'erano i nomi delle
+   FUNZIONI che caricano (`pet`, `fv`, `sal`, `sv`, `vg`, `cauz`) invece dei
+   nomi delle cartelle (`animali/`, `fotovoltaico/`, `salute/`…): per quei
+   moduli la rete non scattava, e il percorso navigava come indirizzo del sito
+   mostrando una pagina che non esiste. Sono anche le cartelle che il server
+   scrive (`shop/`) e quelle della scocca di IAM (`fatture/`, `collab/`).
+   La prova `archivio.test.mjs` confronta questo elenco con i percorsi che il
+   codice usa davvero: aggiungendo un modulo con una cartella nuova diventa
+   rossa, che è l'unico modo perché questo elenco non invecchi in silenzio. */
+const ARCH_CARTELLE = ['animali', 'bonifici', 'cauzioni', 'clienti', 'collab', 'cvt-fi',
+  'fatture', 'fotovoltaico', 'infcirc', 'messaggi', 'polizze', 'preventivi', 'rcrd',
+  'rcvp', 'salute', 'saravintage', 'shop', 'sinistri', 'tutelalegale', 'utility', 'viaggio'];
+const ARCH_PREFISSI = new RegExp('^(' + ARCH_CARTELLE.join('|') + ')/');
+
+function archSuoIndirizzo(v) {
+  const s = String(v || '').trim();
+  if (!s) return false;
+  if (/\/storage\/v1\/object\/(public|sign)\/documenti\//.test(s)) return true;
+  if (/^(https?:|javascript:|mailto:|tel:|#|data:|blob:)/i.test(s)) return false;
+  return ARCH_PREFISSI.test(s);
+}
+
+document.addEventListener('click', function (ev) {
+  const a = ev.target && ev.target.closest && ev.target.closest('a[href]');
+  if (!a) return;
+  const grezzo = a.getAttribute('href');
+  if (!archSuoIndirizzo(grezzo)) return;
+  ev.preventDefault();
+  archApri(grezzo);
+}, true);
+
+/* Carica un file nell'archivio e restituisce il PERCORSO, non un indirizzo.
+   È la metà che conta della chiusura del contenitore: finché si salvava
+   `getPublicUrl(...)`, ogni riga scritta metteva in archivio un indirizzo che
+   funzionava per chiunque, per sempre. Il percorso invece non apre niente da
+   solo: va firmato, e la firma la può chiedere solo chi ha un account. */
+async function archCarica(path, file, contentType) {
+  const up = await db.storage.from(ARCH_BUCKET).upload(path, file, {
+    contentType: contentType || (file && file.type) || 'application/octet-stream'
+  });
+  if (up.error) throw up.error;
+  return path;
+}
+
+
 let ME = null;           // utente Supabase grezzo
 let token = null;        // access token Supabase (chiamate API best-effort)
 let currentUser = null;
@@ -3772,6 +4029,10 @@ const PAGINE_DA_AVVIARE = {
      pagina senza leggere i numeri di legge dalla tabella, e il primo calcolo
      uscirebbe con la copia di riserva senza che nessuno lo sappia. */
   previdenza:   () => apriPensione(),
+  /* Lavoro 3: la pagina del controllo documenti si riempie da codice. Senza
+     porta, «?page=controllo-documenti» dalla scocca aprirebbe un riquadro
+     vuoto (prova: pagine-dalla-scocca.test.mjs). */
+  'controllo-documenti': () => { showPage('controllo-documenti'); },
 };
 
 /* Apre una pagina chiesta dalla scocca, passando dalla sua porta se ne ha una.
@@ -5129,7 +5390,7 @@ async function rcvpUploadDoc(input,key){
   try{
     const path='rcvp/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     RCVP_DATA.documenti=RCVP_DATA.documenti||{}; RCVP_DATA.documenti[key]=url;
     if(key===docIdentitaKey(RCVP_DOCS)) saveAnagDocIdentita(RCVP_DATA.contraente?.clienteId||RCVP_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -5476,7 +5737,7 @@ async function rcvpRDuploadBonifico(input){
   try{
     const path='bonifici/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    RD_STATE.bonificoProof=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    RD_STATE.bonificoProof=path;
     if(st){ st.innerHTML='<i class="ti ti-check"></i> Allegato'; st.style.color='#1c8a52'; }
   }catch(e){ if(st){ st.textContent='Errore upload'; st.style.color='#c0392b'; } }
 }
@@ -5755,7 +6016,7 @@ async function infcUploadDoc(input,key){
   try{
     const path='infcirc/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     INFC_DATA.documenti=INFC_DATA.documenti||{}; INFC_DATA.documenti[key]=url;
     if(key===docIdentitaKey(INFC_DOCS)) saveAnagDocIdentita(INFC_DATA.contraente?.clienteId||INFC_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -6065,7 +6326,7 @@ async function petUploadDoc(input,key){
   try{
     const path='animali/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     PET_DATA.documenti=PET_DATA.documenti||{}; PET_DATA.documenti[key]=url;
     if(key===docIdentitaKey(PET_DOCS)) saveAnagDocIdentita(PET_DATA.contraente?.clienteId||PET_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -6264,7 +6525,7 @@ async function fvUploadDoc(input,key){
   try{
     const path='fotovoltaico/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     FV_DATA.documenti=FV_DATA.documenti||{}; FV_DATA.documenti[key]=url;
     if(key===docIdentitaKey(FV_DOCS)) saveAnagDocIdentita(FV_DATA.contraente?.clienteId||FV_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -6526,7 +6787,7 @@ async function rcrdUploadDoc(input,key){
   try{
     const path='rcrd/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     RCRD_DATA.documenti=RCRD_DATA.documenti||{}; RCRD_DATA.documenti[key]=url;
     if(key===docIdentitaKey(RCRD_DOCS)) saveAnagDocIdentita(RCRD_DATA.contraente?.clienteId||RCRD_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -6819,7 +7080,7 @@ async function tlUploadDoc(input,key){
   try{
     const path='tutelalegale/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     TL_DATA.documenti=TL_DATA.documenti||{}; TL_DATA.documenti[key]=url;
     if(key===docIdentitaKey(TL_DOCS)) saveAnagDocIdentita(TL_DATA.contraente?.clienteId||TL_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -7036,7 +7297,7 @@ async function svUploadDoc(input,key){
   try{
     const path='saravintage/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     SV_DATA.documenti=SV_DATA.documenti||{}; SV_DATA.documenti[key]=url;
     if(key===docIdentitaKey(SV_DOCS)) saveAnagDocIdentita(SV_DATA.contraente?.clienteId||SV_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -7328,7 +7589,7 @@ async function vgUploadDoc(input,key){
   try{
     const path='viaggio/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     VG_DATA.documenti=VG_DATA.documenti||{}; VG_DATA.documenti[key]=url;
     if(key===docIdentitaKey(VG_DOCS)) saveAnagDocIdentita(VG_DATA.contraente?.clienteId||VG_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -7474,7 +7735,7 @@ async function salUploadDoc(input,key){
   try{
     const path='salute/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    SAL_DATA.documenti=SAL_DATA.documenti||{}; SAL_DATA.documenti[key]=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    SAL_DATA.documenti=SAL_DATA.documenti||{}; SAL_DATA.documenti[key]=path;
     if(key===docIdentitaKey(SAL_DOCS)) saveAnagDocIdentita(SAL_DATA.contraente?.clienteId||SAL_DATA.clienteId, SAL_DATA.documenti[key], file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(SAL_DATA.documenti[key])}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='Caricato';
@@ -8489,7 +8750,7 @@ async function fiUploadDoc(input,key){
   try{
     const path='cvt-fi/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     FI_DATA.documenti=FI_DATA.documenti||{}; FI_DATA.documenti[key]=url;
     if(key===docIdentitaKey(FI_DOCS_EM)) saveAnagDocIdentita(FI_DATA.contraente?.clienteId||FI_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -8500,7 +8761,7 @@ async function fiUploadAltro(input){
   const files=[...input.files]; if(!files.length) return;
   const status=document.getElementById('fi-altro-status'); status.textContent='Caricamento…'; status.style.color='';
   FI_DATA.documenti=FI_DATA.documenti||{}; FI_DATA.documenti.altro=FI_DATA.documenti.altro||[];
-  try{ for(const file of files){ const path='cvt-fi/'+Date.now()+'_altro_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'); const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error; FI_DATA.documenti.altro.push(db.storage.from('documenti').getPublicUrl(path).data.publicUrl); }
+  try{ for(const file of files){ const path='cvt-fi/'+Date.now()+'_altro_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'); const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error; FI_DATA.documenti.altro.push(path); }
     document.getElementById('fi-altro-list').innerHTML=FI_DATA.documenti.altro.map((u,i)=>`<a href="${esc(u)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Allegato ${i+1}</a>`).join('');
     status.textContent='✓ '+FI_DATA.documenti.altro.length+' allegati';
   }catch(e){ status.textContent='Errore upload. '+(e.message||''); status.style.color='#c0392b'; }
@@ -9783,10 +10044,11 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario','controllo-documenti':'nav-cdoc',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
+  if (name === 'controllo-documenti') cdocCarica();  // Lavoro 3 §3.8
   if (name === 'scadenzario') loadScadenzario();   // CRM Punto 4
   if (name === 'titoli') loadTitoli();             // Blocco A
   if (name === 'campagne') loadMarketing();        // Blocco D
@@ -14036,8 +14298,12 @@ function pfExportExcel() {
 }
 
 /* CRM Punto 3 — quanti documenti obbligatori mancano, polizza per polizza.
-   Una interrogazione sola per tutto l'elenco: il numero si deve vedere senza
-   aprire nulla, altrimenti nessuno lo guarda. */
+   Due interrogazioni per tutto l'elenco, non due per riga: il numero si deve
+   vedere senza aprire nulla, altrimenti nessuno lo guarda.
+   Dal 18/09/2026 servono ANCHE le anagrafiche: il documento d'identità del
+   cliente sta lì e la pratica lo eredita (Lavoro 3). Contarlo mancante
+   perché non è nella pratica direbbe a tutti di ricaricarlo una volta per
+   polizza — cioè di rifare il disordine da cui si viene. */
 async function pfContaMancanti() {
   const ids = PF_ROWS.map(p => p.id).filter(Boolean);
   if (!ids.length) return;
@@ -14047,7 +14313,19 @@ async function pfContaMancanti() {
     if (error) throw error;
     const perPolizza = {};
     (data || []).forEach(d => { (perPolizza[d.entita_id] = perPolizza[d.entita_id] || []).push(d); });
-    PF_ROWS.forEach(p => { p.__mancanti = pdocMancanti(perPolizza[p.id] || []); });
+
+    const clienti = [...new Set(PF_ROWS.map(p => p.cliente_id).filter(Boolean))];
+    const perCliente = {};
+    if (clienti.length) {
+      try {
+        const { data: an } = await db.from('quote_anagrafiche')
+          .select('id,documenti,doc_identita_url,doc_identita_nome').in('id', clienti);
+        (an || []).forEach(a => { perCliente[a.id] = a; });
+      } catch (e) { console.warn('anagrafiche del portafoglio non disponibili:', e.message || e); }
+    }
+    PF_ROWS.forEach(p => {
+      p.__mancanti = pdocMancanti(p, perPolizza[p.id] || [], perCliente[p.cliente_id] || null);
+    });
   } catch (e) {
     console.warn('conteggio documenti non disponibile:', e.message || e);
   }
@@ -14059,7 +14337,7 @@ async function loadPortafoglio() {
   body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr>';
   try {
     let q = db.from('quote_polizze')
-      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,data_scadenza,frazionamento,tacito_rinnovo,premio_annuo,premio_rata,stato_pagamento,perfezionata,rendicontata,copertura_dal,copertura_al,creato_nome,creato_da,creato_il,preventivo_id')
+      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,data_scadenza,frazionamento,tacito_rinnovo,premio_annuo,premio_rata,stato_pagamento,perfezionata,rendicontata,copertura_dal,copertura_al,creato_nome,creato_da,creato_il,preventivo_id,dati')
       .order('data_effetto', { ascending: false }).limit(1000);
     const ids = await visibleUserIds();
     if (ids) q = q.in('creato_da', ids);
@@ -14857,38 +15135,30 @@ function titBadge() {
    un interruttore da girare a mano si dimentica sempre.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ⚠ DA CONFERMARE CON FRANCESCO. Questi sono i requisiti standard, ricavati da
-   ciò che l'applicazione già tratta oggi (privacy_firma e doc_identita_url
-   sull'anagrafica, polizza_url sul preventivo). Cambiare questo elenco cambia
-   QUANDO una polizza si considera perfezionata: è una regola aziendale, non
-   una scelta tecnica. */
-const PDOC_REQUISITI = [
-  { cat: 'polizza_firmata',    l: 'Polizza firmata',                serveFirma: true,  obbl: true },
-  { cat: 'privacy',            l: 'Informativa privacy',            serveFirma: true,  obbl: true },
-  { cat: 'documento_identita', l: "Documento d'identità",           serveFirma: false, obbl: true },
-  { cat: 'presa_visione',      l: 'Dichiarazione di presa visione', serveFirma: true,  obbl: false }
-];
-
-/* Lo stato di un requisito: mancante → caricato → firmato.
-   "caricato" non è "a posto" quando serve la firma: è il caso che di solito
-   sfugge, perché il file c'è e sembra tutto fatto. */
-function pdocStato(req, docs) {
-  const d = (docs || []).filter(x => x.categoria === req.cat && x.url);
-  if (!d.length) return { stato: 'mancante', doc: null };
-  const firmato = d.find(x => x.firmato);
-  if (req.serveFirma && !firmato) return { stato: 'caricato', doc: d[0] };
-  return { stato: 'firmato', doc: firmato || d[0] };
+/* CHI DECIDE QUALI DOCUMENTI SERVONO (Lavoro 3, 18/09/2026).
+   Non questa pagina: tariffe/motore/fascicolo.js. Qui c'era un elenco di
+   quattro requisiti uguali per tutti i rami; le regole vere (operazione
+   scelta, alternative, eredità dall'anagrafica, scadenze, documenti di terzi)
+   sono un calcolo, e un calcolo scritto in index.html non si può provare
+   senza aprire un browser. La schermata raccoglie i file e mostra la
+   risposta. */
+function pdocMotore() {
+  return (typeof window !== 'undefined' && window.Fascicolo) ? window.Fascicolo : null;
 }
 
-function pdocMancanti(docs) {
-  return PDOC_REQUISITI.filter(r => r.obbl && pdocStato(r, docs).stato !== 'firmato').length;
+/* Quanti obbligatori mancano. `anag` è l'anagrafica del cliente: senza,
+   il documento d'identità ereditato risulterebbe sempre mancante. */
+function pdocMancanti(polizza, docs, anag) {
+  const M = pdocMotore();
+  if (!M) return 0;
+  return M.mancanti(polizza, docs, anag);
 }
 
 /* Il perfezionamento è una CONSEGUENZA dei documenti, non un dato a parte.
    Si ricalcola a ogni modifica e si scrive sulla polizza solo se è cambiato,
    così il portafoglio lo legge senza rifare il conto per ogni riga. */
-async function pdocRicalcola(polizzaId, docs) {
-  const perfezionata = pdocMancanti(docs) === 0;
+async function pdocRicalcola(polizzaId, polizza, docs, anag) {
+  const perfezionata = pdocMancanti(polizza, docs, anag) === 0;
   try {
     const { data } = await db.from('quote_polizze').select('perfezionata').eq('id', polizzaId).maybeSingle();
     if (data && data.perfezionata === perfezionata) return perfezionata;
@@ -14904,14 +15174,46 @@ async function pdocLeggi(polizzaId) {
   return data || [];
 }
 
+/* La polizza con i suoi `dati`: lì dentro sta l'operazione scelta per il
+   fascicolo. Il portafoglio non li carica (sono un jsonb che pesa su ogni
+   riga), quindi il fascicolo se li rilegge da sé all'apertura. */
+async function pdocPolizza(polizzaId) {
+  const { data, error } = await db.from('quote_polizze')
+    .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,data_scadenza,dati')
+    .eq('id', polizzaId).maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+/* L'anagrafica del cliente serve al fascicolo per l'eredità: il documento
+   d'identità sta lì, non nella pratica. Se il cliente non è collegato si
+   restituisce null, e il motore dirà «mancante» — che è la verità. */
+async function pdocAnagrafica(clienteId) {
+  if (!clienteId) return null;
+  const inCache = (ANAG_CACHE || []).find(x => x.id === clienteId);
+  if (inCache && (inCache.documenti !== undefined || inCache.doc_identita_url !== undefined)) return inCache;
+  try {
+    const { data } = await db.from('quote_anagrafiche')
+      .select('id,nominativo,documenti,doc_identita_url,doc_identita_nome').eq('id', clienteId).maybeSingle();
+    return data || null;
+  } catch (e) { console.warn('anagrafica del cliente non disponibile:', e.message || e); return null; }
+}
+
+/* Lo stato del fascicolo aperto: polizza, anagrafica e documenti insieme.
+   Sta in una variabile sola perché le tre cose si guardano sempre insieme —
+   un documento d'identità «presente» dipende dall'anagrafica, e i campi da
+   riempire dipendono dall'operazione scritta sulla polizza. */
+let PDOC_APERTO = null;
+
 async function pdocApri(polizzaId) {
   document.getElementById('pdoc-ov')?.remove();
+  PDOC_RIFAI = null;
   const pol = (PF_ROWS || []).find(p => p.id === polizzaId) || {};
   document.body.insertAdjacentHTML('beforeend',
     `<div id="pdoc-ov" class="pdoc-ov" onclick="if(event.target.id==='pdoc-ov')this.remove()">
       <div class="pdoc-box">
         <div class="pdoc-hd">
-          <div><b>Documenti della pratica</b>
+          <div><b>Fascicolo della pratica</b>
             <div class="pdoc-sub">${esc(pol.cliente || '')}${pol.prodotto ? ' · ' + esc(pol.prodotto) : ''}</div></div>
           <button class="pdoc-x" onclick="document.getElementById('pdoc-ov').remove()"><i class="ti ti-x"></i></button>
         </div>
@@ -14920,32 +15222,203 @@ async function pdocApri(polizzaId) {
   await pdocRidisegna(polizzaId);
 }
 
+/* L'operazione decide quali campi compaiono, quindi si sceglie per prima e si
+   scrive sulla polizza: un fascicolo aperto domani deve sapere che pratica è.
+   Si può cambiare, e i documenti già caricati restano dove sono — quelli che
+   l'operazione nuova non prevede più si vedono in fondo, sotto «Altri». */
+/* ══ LE COMPAGNIE E LE LORO REGOLE (Lavoro 3 §3.7) ═════════════════════════
+   Si leggono una volta per sessione: sono poche righe e servono a ogni
+   fascicolo che si apre. Se le tabelle non ci sono ancora, il fascicolo
+   continua a funzionare con i soli requisiti dell'operazione — una regola
+   che manca non deve spegnere lo strumento. */
+let COMPAGNIE_REGOLE = null;
+
+async function pdocCompagnie() {
+  if (COMPAGNIE_REGOLE) return COMPAGNIE_REGOLE;
+  const out = { compagnie: [], regole: {} };
+  try {
+    const { data: c, error } = await db.from('quote_compagnie')
+      .select('id,nome,alias,attiva,ordine').order('nome');
+    if (error) throw error;
+    out.compagnie = (c || []).filter(x => x.attiva !== false);
+    const { data: r } = await db.from('quote_regole_documenti')
+      .select('id,compagnia_id,documento,obbligatorio,ramo,attiva,note');
+    (r || []).forEach(x => { if (x.attiva !== false) (out.regole[x.compagnia_id] = out.regole[x.compagnia_id] || []).push(x); });
+  } catch (e) {
+    console.warn('regole documentali non disponibili:', e.message || e);
+  }
+  COMPAGNIE_REGOLE = out;
+  return out;
+}
+
+/* Dal nome scritto sulla polizza alla compagnia in anagrafica: sulle polizze
+   è testo libero («HDI Assicurazioni»), in anagrafica è il nome del catalogo
+   («HDI»). Gli alias servono a questo. Senza, il fascicolo direbbe «nessuna
+   regola» con la faccia seria. */
+function pdocCompagniaDaNome(nome, elenco) {
+  const n = String(nome || '').trim().toLowerCase();
+  if (!n) return null;
+  const lista = elenco || (COMPAGNIE_REGOLE && COMPAGNIE_REGOLE.compagnie) || [];
+  return lista.find(c => String(c.nome).toLowerCase() === n)
+      || lista.find(c => (c.alias || []).some(a => String(a).toLowerCase() === n))
+      || null;
+}
+
+/* Le regole che valgono per un ramo: quelle del ramo e quelle scritte per
+   tutti ('*'). */
+function pdocRegoleDi(compagniaId, ramo) {
+  const tutte = ((COMPAGNIE_REGOLE && COMPAGNIE_REGOLE.regole) || {})[compagniaId] || [];
+  return tutte.filter(r => !r.ramo || r.ramo === '*' || r.ramo === ramo);
+}
+
+/* LA CREAZIONE DEL FASCICOLO. Qui i requisiti si risolvono UNA VOLTA e si
+   scrivono sulla pratica: da qui in poi quella pratica ha le sue regole, e
+   cambiare la regola della compagnia non tocca il passato (§3.7). */
+async function pdocCreaFascicolo(polizzaId) {
+  const M = pdocMotore();
+  const st = PDOC_APERTO && PDOC_APERTO.id === polizzaId ? PDOC_APERTO : null;
+  if (!M || !st) return;
+  const op = document.getElementById('pdoc-op')?.value || '';
+  const compId = document.getElementById('pdoc-comp')?.value || '';
+  if (!op) { alert('Scegli il tipo di operazione: i documenti da raccogliere dipendono da quello.'); return; }
+  const elenco = (COMPAGNIE_REGOLE && COMPAGNIE_REGOLE.compagnie) || [];
+  const comp = elenco.find(c => c.id === compId) || null;
+  const regole = comp ? pdocRegoleDi(comp.id, M.ramo(st.polizza)) : [];
+  const congelato = M.congela(st.polizza, op, comp, regole);
+  const dati = Object.assign({}, st.polizza.dati || {});
+  dati.fascicolo = congelato;
+  try {
+    const { error } = await db.from('quote_polizze').update({ dati }).eq('id', polizzaId);
+    if (error) throw error;
+    st.polizza.dati = dati;
+    PDOC_RIFAI = null;
+    try { logMovimento('Fascicolo creato · ' + op + (comp ? ' · ' + comp.nome : ''), 'documento', st.polizza.cliente || ''); } catch (e) {}
+  } catch (e) { alert('Non riesco a salvare il fascicolo: ' + (e.message || e)); return; }
+  await pdocRidisegna(polizzaId);
+}
+
+/* Rifare il fascicolo serve a correggere un errore (operazione sbagliata,
+   compagnia sbagliata). Si dice a voce alta che i requisiti verranno
+   riletti con le regole di OGGI: è l'unico momento in cui una pratica
+   vecchia cambia requisiti, e deve essere una scelta di chi lavora, non un
+   effetto collaterale di una modifica al pannello delle regole. */
+async function pdocRifaiFascicolo(polizzaId) {
+  if (!confirm('Rifare il fascicolo rilegge le regole della compagnia COME SONO OGGI: i requisiti di questa pratica possono cambiare. I documenti gia\' caricati restano. Procedo?')) return;
+  const st = PDOC_APERTO && PDOC_APERTO.id === polizzaId ? PDOC_APERTO : null;
+  if (st && st.polizza && st.polizza.dati && st.polizza.dati.fascicolo) {
+    st.polizza = Object.assign({}, st.polizza, { dati: Object.assign({}, st.polizza.dati, { fascicolo: null }) });
+  }
+  PDOC_RIFAI = polizzaId;
+  await pdocRidisegna(polizzaId);
+}
+let PDOC_RIFAI = null;
+
 async function pdocRidisegna(polizzaId) {
   const bd = document.getElementById('pdoc-bd');
   if (!bd) return;
-  let docs = [];
-  try { docs = await pdocLeggi(polizzaId); }
-  catch (e) { bd.innerHTML = `<div class="empty-state">Documentale non disponibile.<br><small>${esc(e.message || e)}</small></div>`; return; }
+  const M = pdocMotore();
+  if (!M) { bd.innerHTML = '<div class="empty-state">Il motore del fascicolo non è caricato.</div>'; return; }
+
+  let docs = [], polizza = null, anag = null;
+  try {
+    polizza = await pdocPolizza(polizzaId) || (PF_ROWS || []).find(p => p.id === polizzaId) || { id: polizzaId };
+    docs = await pdocLeggi(polizzaId);
+    anag = await pdocAnagrafica(polizza.cliente_id);
+  } catch (e) { bd.innerHTML = `<div class="empty-state">Documentale non disponibile.<br><small>${esc(e.message || e)}</small></div>`; return; }
+  /* Se si sta rifacendo il fascicolo, i requisiti congelati si mettono da
+     parte per questa passata: il riassunto deve tornare a chiedere
+     operazione e compagnia. Sul database non è ancora cambiato niente. */
+  if (PDOC_RIFAI === polizzaId) {
+    polizza = Object.assign({}, polizza, { dati: Object.assign({}, polizza.dati || {}, { fascicolo: null }) });
+  }
+  PDOC_APERTO = { id: polizzaId, polizza, anag, docs };
+  await pdocCompagnie();
+
+  const r = M.riassunto(polizza, docs, anag);
+
+  /* LA CREAZIONE DEL FASCICOLO. Finché operazione e compagnia non ci sono, i
+     campi non si sanno: mostrare un elenco generico insegnerebbe a caricare
+     «qualcosa», che è esattamente l'archivio libero da cui si viene.
+     La compagnia si propone da quella scritta sulla polizza (per nome o per
+     alias): quasi sempre è giusta, e proporla evita di sceglierla a mano
+     ogni volta — ma resta modificabile, perché a volte la polizza porta un
+     nome scritto a mano che non è nessuna compagnia in anagrafica. */
+  if (!r.congelato) {
+    const elenco = (COMPAGNIE_REGOLE && COMPAGNIE_REGOLE.compagnie) || [];
+    const proposta = pdocCompagniaDaNome(polizza.compagnia, elenco);
+    const opzioniComp = '<option value="">— nessuna regola di compagnia —</option>' +
+      elenco.map(c => `<option value="${esc(c.id)}"${proposta && proposta.id === c.id ? ' selected' : ''}>${esc(c.nome)}</option>`).join('');
+    const opzioniOp = '<option value="">— scegli —</option>' +
+      r.operazioni.map(o => `<option value="${esc(o.id)}">${esc(o.l)}</option>`).join('');
+    bd.innerHTML = `
+      <div class="pdoc-op">
+        <div class="pdoc-op-t">Come nasce il fascicolo</div>
+        <div class="pdoc-crea">
+          <label>Tipo di operazione
+            <select id="pdoc-op" onchange="pdocAnteprima('${esc(polizzaId)}')">${opzioniOp}</select></label>
+          <label>Compagnia
+            <select id="pdoc-comp" onchange="pdocAnteprima('${esc(polizzaId)}')">${opzioniComp}</select></label>
+          <button class="btn-emetti" onclick="pdocCreaFascicolo('${esc(polizzaId)}')"><i class="ti ti-folder-plus"></i> Crea il fascicolo</button>
+        </div>
+        ${r.operazioni.map(o => `<div class="cl-sub" style="margin-top:4px"><b>${esc(o.l)}</b> — ${esc(o.d || '')}</div>`).join('')}
+        <div id="pdoc-anteprima"></div>
+      </div>
+      <div class="pdoc-esito ko"><i class="ti ti-arrow-up"></i>
+        ${r.operazioni.length
+          ? 'Scegli operazione e compagnia: i documenti da raccogliere dipendono da quelli, e restano congelati su questa pratica.'
+          : 'Questo ramo non ha ancora un fascicolo guidato: per ora solo RC Auto.'}</div>`;
+    if (r.operazioni.length) { pdocAnteprima(polizzaId); return; }
+    /* Fuori dall'RC Auto non c'è niente da scegliere: si va avanti e si
+       mostrano i campi di base, con un avviso che lo dice. L'avviso NON si
+       scrive qui: la riga finale riscrive tutto `bd`, e scritto qui non lo
+       vedeva nessuno. Si tiene da parte e si concatena in fondo. */
+  }
+  const avvisoRamo = (!r.congelato && !r.operazioni.length)
+    ? `<div class="pdoc-esito ko"><i class="ti ti-info-circle"></i>
+        Fascicolo guidato disponibile per ora solo sull'RC Auto. Qui restano i documenti di base.</div>`
+    : '';
+
+  const scelta = r.congelato ? `<div class="pdoc-op">
+      <div class="pdoc-op-t">Fascicolo creato${r.congelatoIl ? ' il ' + new Date(r.congelatoIl).toLocaleDateString('it-IT') : ''}</div>
+      <div class="cl-sub">${esc((M.operazione(r.ramo, r.operazione) || {}).l || r.operazione || '—')}${r.compagnia ? ' · ' + esc(r.compagnia) : ' · nessuna regola di compagnia'}
+        — i requisiti sono quelli di quel giorno: cambiare oggi la regola della compagnia non tocca questa pratica.</div>
+      <div style="margin-top:8px"><button class="rin-az" onclick="pdocRifaiFascicolo('${esc(polizzaId)}')"><i class="ti ti-refresh"></i> Rifai il fascicolo</button></div>
+    </div>` : '';
 
   /* Il rosso è per ciò che blocca il perfezionamento. Un facoltativo che manca
-     non blocca niente: segnarlo in rosso insegnerebbe a ignorare il rosso. */
-  const etichetta = (stato, obbl) => {
-    if (stato === 'firmato') return ['Firmato', 'st-risolto'];
-    if (stato === 'caricato') return ['Caricato, da firmare', 'st-aperto'];
-    return obbl ? ['Mancante', 'st-scad'] : ['Non acquisito', 'st-lav'];
+     non blocca niente: segnarlo in rosso insegnerebbe a ignorare il rosso.
+     Un'alternativa già soddisfatta dall'altra («stato di famiglia» quando c'è
+     l'autocertificazione) non è mancante: è non necessaria. */
+  const etichetta = (c) => {
+    if (c.stato === 'firmato') return ['Firmato', 'st-risolto'];
+    if (c.stato === 'ereditato') {
+      const s = c.scadenzaDoc || {};
+      if (s.stato === 'in_scadenza') return ['Dall\'anagrafica · scade fra ' + s.giorni + ' gg', 'st-aperto'];
+      return ['Dall\'anagrafica', 'st-risolto'];
+    }
+    if (c.stato === 'scaduto') return ['Scaduto in anagrafica', 'st-scad'];
+    if (c.stato === 'caricato') return ['Caricato, da firmare', 'st-aperto'];
+    if (c.gruppo && c.gruppoOk) return ['Non necessario', 'st-lav'];
+    return c.obbl ? ['Mancante', 'st-scad'] : ['Non acquisito', 'st-lav'];
   };
-  const righe = PDOC_REQUISITI.map(r => {
-    const s = pdocStato(r, docs);
-    const e = etichetta(s.stato, r.obbl);
-    return `<div class="pdoc-r">
+  const righe = r.campi.map(c => {
+    const e = etichetta(c);
+    const note = [];
+    if (c.terzo) note.push('documento di terzi: resta nella pratica');
+    if (c.d) note.push(c.d);
+    const azione = c.fonte === 'anagrafica'
+      ? `<button class="rin-az" onclick="pdocApriAnagrafica('${esc((polizza.cliente_id) || '')}')"><i class="ti ti-user-up"></i> ${c.doc ? 'Aggiorna in anagrafica' : 'Carica in anagrafica'}</button>`
+      : `<button class="rin-az" onclick="pdocScegli('${esc(polizzaId)}','${esc(c.cat)}')"><i class="ti ti-upload"></i> ${c.doc ? 'Sostituisci' : 'Carica'}</button>`;
+    return `<div class="pdoc-r" data-cat="${esc(c.cat)}">
       <div class="pdoc-r-l">
         <span class="tk-badge ${e[1]}">${e[0]}</span>
-        <b>${esc(r.l)}</b>${r.obbl ? '' : '<span class="pdoc-opt">facoltativo</span>'}
+        <b>${esc(c.l)}</b>${c.obbl ? '' : '<span class="pdoc-opt">facoltativo</span>'}
+        ${note.length ? `<div class="cl-sub" style="flex-basis:100%">${esc(note.join(' · '))}</div>` : ''}
       </div>
       <div class="pdoc-r-a">
-        ${s.doc && s.doc.url ? `<a class="rin-az" href="${esc(s.doc.url)}" target="_blank" rel="noopener"><i class="ti ti-eye"></i> Apri</a>` : ''}
-        ${(s.stato === 'caricato') ? `<button class="rin-az" onclick="pdocFirma('${s.doc.id}','${polizzaId}')"><i class="ti ti-signature"></i> Segna firmato</button>` : ''}
-        <button class="rin-az" onclick="pdocScegli('${polizzaId}','${r.cat}')"><i class="ti ti-upload"></i> ${s.doc ? 'Sostituisci' : 'Carica'}</button>
+        ${c.doc && c.doc.url ? `<a class="rin-az" href="${esc(c.doc.url)}" target="_blank" rel="noopener"><i class="ti ti-eye"></i> Apri</a>` : ''}
+        ${(c.stato === 'caricato') ? `<button class="rin-az" onclick="pdocFirma('${esc(c.doc.id)}','${esc(polizzaId)}')"><i class="ti ti-signature"></i> Segna firmato</button>` : ''}
+        ${azione}
       </div></div>`;
   }).join('');
 
@@ -14956,26 +15429,48 @@ async function pdocRidisegna(polizzaId) {
   quiet.forEach(d => { const a = d.anno || new Date(d.creato_il).getFullYear(); (perAnno[a] = perAnno[a] || []).push(d); });
   const anni = Object.keys(perAnno).sort().reverse();
 
-  const mancanti = pdocMancanti(docs);
-  bd.innerHTML =
+  /* I documenti che l'operazione di oggi non prevede non si cancellano e non
+     si nascondono: una pratica cambiata di operazione deve mostrare tutto
+     quello che ha in archivio, altrimenti sembra perso. */
+  const previste = r.campi.map(c => c.cat).concat(['quietanza']);
+  const altri = docs.filter(d => d.url && previste.indexOf(d.categoria) < 0);
+
+  const mancanti = r.mancanti;
+  bd.innerHTML = scelta + avvisoRamo +
     `<div class="pdoc-esito ${mancanti ? 'ko' : 'ok'}">
        ${mancanti
         ? `<i class="ti ti-alert-triangle"></i> <b>${mancanti}</b> document${mancanti === 1 ? 'o' : 'i'} obbligator${mancanti === 1 ? 'io' : 'i'} da completare: la polizza non è perfezionata`
         : '<i class="ti ti-circle-check"></i> Tutti i documenti obbligatori sono a posto: polizza perfezionata'}
      </div>`
     + righe
+    + (altri.length ? `<div class="pdoc-sez">Altri documenti in archivio</div>` + altri.map(d =>
+        `<div class="pdoc-r"><div class="pdoc-r-l"><b>${esc(d.nome || d.categoria)}</b>
+          <span class="pdoc-opt">${esc(d.categoria)}</span></div>
+         <div class="pdoc-r-a"><a class="rin-az" href="${esc(d.url)}" target="_blank" rel="noopener"><i class="ti ti-eye"></i> Apri</a></div></div>`).join('') : '')
     + (anni.length ? `<div class="pdoc-sez">Quietanze</div>` + anni.map(a =>
         `<div class="pdoc-r"><div class="pdoc-r-l"><b>${esc(a)}</b>
           <span class="pdoc-opt">${perAnno[a].length} document${perAnno[a].length === 1 ? 'o' : 'i'}</span></div>
          <div class="pdoc-r-a">${perAnno[a].map((d, i) =>
             `<a class="rin-az" href="${esc(d.url)}" target="_blank" rel="noopener" title="${esc(d.nome || 'quietanza')}"><i class="ti ti-file"></i> Apri${perAnno[a].length > 1 ? ' ' + (i + 1) : ''}</a>`).join('')}</div></div>`).join('') : '')
     + `<div class="pdoc-ft">
-        <button class="rin-az" onclick="pdocScegli('${polizzaId}','quietanza')"><i class="ti ti-upload"></i> Carica una quietanza</button>
+        <button class="rin-az" onclick="pdocScegli('${esc(polizzaId)}','quietanza')"><i class="ti ti-upload"></i> Carica una quietanza</button>
        </div>`;
 
-  await pdocRicalcola(polizzaId, docs);
+  await pdocRicalcola(polizzaId, polizza, docs, anag);
   const p = (PF_ROWS || []).find(x => x.id === polizzaId);
   if (p) { p.perfezionata = mancanti === 0; p.__mancanti = mancanti; if (typeof pfRender === 'function') pfRender(); }
+}
+
+/* Il documento d'identità del cliente NON si carica da qui: sta in anagrafica
+   e la pratica lo eredita. Il bottone porta dove si carica davvero, invece di
+   fare una seconda copia dentro la pratica. */
+function pdocApriAnagrafica(clienteId) {
+  if (!clienteId) { alert('Questa polizza non è collegata a un cliente in anagrafica: collegalo prima dalla scheda cliente.'); return; }
+  document.getElementById('pdoc-ov')?.remove();
+  if (typeof apriAnagrafica === 'function') {
+    apriAnagrafica(clienteId);
+    setTimeout(() => { if (typeof clTab === 'function') { clTab('doc'); fdocSub('cli'); } }, 350);
+  }
 }
 
 /* Un solo campo file nascosto, riusato: aprire una finestra di sistema per
@@ -14995,17 +15490,30 @@ function pdocScegli(polizzaId, categoria) {
 
 async function pdocCarica(polizzaId, categoria, file) {
   const bd = document.getElementById('pdoc-bd');
+  const M = pdocMotore();
+  /* Un documento del cliente non finisce mai nella pratica, e uno di terzi non
+     finisce mai in anagrafica: qui si sbaglierebbe una volta sola e resterebbe
+     sbagliato per sempre, perché nessuno ricontrolla dove è finito un file. */
+  /* `definizione` è la funzione giusta: dà la scheda del tipo documento dal
+     catalogo del motore. Qui prima c'era `M.campi('rcauto', null)`, che è la
+     firma VECCHIA (la nuova vuole la polizza, non il ramo) concatenata alle
+     chiavi di PER_OPERAZIONE, che dalla Parte 2 sono stringhe e non schede:
+     il campo non si trovava mai, e ogni documento dell'operazione finiva in
+     archivio segnato «non obbligatorio». */
+  const campo = M ? M.definizione(categoria) : null;
+  if (campo && M.destinazione(campo) === 'anagrafica') {
+    pdocApriAnagrafica(PDOC_APERTO && PDOC_APERTO.polizza ? PDOC_APERTO.polizza.cliente_id : null);
+    return;
+  }
   if (bd) bd.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="pdoc-attesa">Carico il documento…</div>');
   try {
     const nome = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = 'polizze/' + polizzaId + '_' + categoria + '_' + Date.now() + '_' + nome;
-    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
-    if (up.error) throw new Error(up.error.message);
-    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url = await archCarica('polizze/' + polizzaId + '_' + categoria + '_' + Date.now() + '_' + nome,
+      file, file.type || 'application/pdf');
     const rec = {
       entita: 'polizza', entita_id: polizzaId, categoria, nome: file.name, url,
       firmato: false,
-      obbligatorio: !!(PDOC_REQUISITI.find(r => r.cat === categoria) || {}).obbl,
+      obbligatorio: !!(campo && campo.obbl),
       anno: categoria === 'quietanza' ? new Date().getFullYear() : null
     };
     const { error } = await db.from('quote_pratica_documenti').insert(rec);
@@ -15024,6 +15532,431 @@ async function pdocFirma(docId, polizzaId) {
     if (error) throw error;
   } catch (e) { alert('Non riuscito: ' + (e.message || e)); }
   await pdocRidisegna(polizzaId);
+}
+
+/* ═══ LAVORO 3 — I DUE CONTENITORI NELLA SCHEDA CLIENTE (18/09/2026) ══════════
+   La linguetta «Documenti» della scheda cliente si sdoppia:
+   · Documenti cliente  — anagrafici (carta d'identità, patente…), con la loro
+     data di scadenza e il rosso quando è passata. Stanno sull'anagrafica:
+     le pratiche li ereditano, non si ricaricano una volta per polizza.
+   · Documenti polizza  — un fascicolo per pratica, che si apre dalla polizza.
+   Il caricamento avviene QUI, senza passare da «Modifica cliente»: chiedere di
+   entrare in un modulo di modifica per allegare una carta d'identità è il
+   motivo per cui i documenti restavano sul computer di chi li riceveva.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let FDOC_CLIENTE = null;   // { id, recs }
+let FDOC_SUB = 'cli';      // 'cli' | 'pol'
+
+function fdocInstalla(clienteId, recs) {
+  FDOC_CLIENTE = { id: clienteId, recs: recs || [] };
+  FDOC_SUB = 'cli';
+  const pane = document.getElementById('cl-doc');
+  if (!pane) return;
+  pane.innerHTML = `
+    <div class="fdoc-sub">
+      <button class="fdoc-subb active" data-s="cli" onclick="fdocSub('cli')"><i class="ti ti-id"></i> Documenti cliente</button>
+      <button class="fdoc-subb" data-s="pol" onclick="fdocSub('pol')"><i class="ti ti-folders"></i> Documenti polizza</button>
+    </div>
+    <div id="fdoc-cli"><div class="cl-empty">Carico…</div></div>
+    <div id="fdoc-pol" style="display:none"><div class="cl-empty">Carico…</div></div>`;
+  fdocRenderCliente();
+  fdocRenderPolizze();
+}
+
+function fdocSub(s) {
+  FDOC_SUB = s;
+  ['cli', 'pol'].forEach(k => { const e = document.getElementById('fdoc-' + k); if (e) e.style.display = k === s ? 'block' : 'none'; });
+  /* Solo le linguette DI QUESTO pannello: la pagina «Controllo documenti» usa
+     le stesse classi, e un selettore su tutto il documento le spegnerebbe
+     mentre si sta guardando una scheda cliente. */
+  document.querySelectorAll('#cl-doc .fdoc-subb').forEach(b => b.classList.toggle('active', b.dataset.s === s));
+}
+
+/* ── Documenti cliente (anagrafica) ──────────────────────────────────────── */
+function fdocRenderCliente() {
+  const el = document.getElementById('fdoc-cli');
+  if (!el || !FDOC_CLIENTE) return;
+  const M = pdocMotore();
+  if (!M) { el.innerHTML = '<div class="cl-empty">Il motore del fascicolo non è caricato.</div>'; return; }
+  const id = FDOC_CLIENTE.id;
+  const anag = (ANAG_CACHE || []).find(x => x.id === id) || {};
+  const docs = M.documentiCliente(anag);
+
+  const badge = (s) => {
+    if (s.stato === 'scaduto') return `<span class="tk-badge st-scad">Scaduto da ${Math.abs(s.giorni)} gg</span>`;
+    if (s.stato === 'in_scadenza') return `<span class="tk-badge st-aperto">Scade fra ${s.giorni} gg</span>`;
+    if (s.stato === 'valido') return `<span class="tk-badge st-risolto">Valido</span>`;
+    return `<span class="tk-badge st-lav">Senza scadenza</span>`;
+  };
+  const riga = (d) => `<div class="sc-docrow${d.attivo ? '' : ' storico'}">
+      <div class="sc-dic${d.stato.stato === 'scaduto' ? ' scad' : ''}"><i class="ti ${d.tipo.identita ? 'ti-id' : 'ti-file-text'}"></i></div>
+      <div class="sc-dt"><b>${esc(d.etichetta)}</b>${d.attivo ? '' : '<span class="pdoc-opt">storico</span>'}
+        <div class="cl-sub">${esc([d.numero ? 'n. ' + d.numero : '', d.descr,
+          d.scadenza ? 'scade il ' + new Date(d.scadenza).toLocaleDateString('it-IT') : '',
+          d.data ? 'caricato il ' + new Date(d.data).toLocaleDateString('it-IT') : ''].filter(Boolean).join(' · '))}</div></div>
+      ${badge(d.stato)}
+      <a class="rin-az" href="${esc(d.url)}" target="_blank" rel="noopener"><i class="ti ti-eye"></i> Apri</a>
+    </div>`;
+
+  const attivi = docs.filter(d => d.attivo);
+  const storico = docs.filter(d => !d.attivo);
+  const scaduti = attivi.filter(d => d.stato.stato === 'scaduto').length;
+  const tipi = M.TIPI_CLIENTE.map(t => `<option value="${esc(t.id)}">${esc(t.l)}</option>`).join('');
+  el.innerHTML =
+    (scaduti ? `<div class="pdoc-esito ko" style="margin-bottom:10px"><i class="ti ti-alert-triangle"></i>
+        <b>${scaduti}</b> document${scaduti === 1 ? 'o scaduto' : 'i scaduti'}: vanno rinnovati, le pratiche li ereditano da qui.</div>` : '')
+    + (attivi.length ? attivi.map(riga).join('')
+      : '<div class="cl-empty">Nessun documento d\'identità. Le pratiche lo ereditano da qui: caricandolo una volta non si ricarica per ogni polizza.</div>')
+    /* LO STORICO NON SI CANCELLA (§3.5). Una carta d'identità rinnovata non
+       fa sparire quella di prima: serve a rileggere una pratica vecchia con
+       il documento che era valido allora. Per questo qui non c'è un tasto
+       «elimina»: c'è un elenco che si apre. */
+    + (storico.length ? `<details class="fdoc-storico"><summary>Storico · ${storico.length} version${storico.length === 1 ? 'e' : 'i'} precedent${storico.length === 1 ? 'e' : 'i'}</summary>
+        ${storico.map(riga).join('')}</details>` : '')
+    + `<div class="cl-docs-up" style="margin-top:10px">
+        <select id="fdoc-tipo">${tipi}</select>
+        <input id="fdoc-numero" placeholder="Numero documento">
+        <input id="fdoc-scad" type="date" title="Data di scadenza (obbligatoria)">
+        <label class="cauz-doc-up"><i class="ti ti-upload"></i> Carica<input type="file" id="fdoc-file" accept="application/pdf,image/*" hidden onchange="fdocCaricaCliente()"></label>
+        <span class="cauz-doc-status" id="fdoc-status"></span>
+      </div>
+      <div class="cl-sub" style="margin-top:6px">La patente non sta qui: appartiene al fascicolo della polizza, non all'anagrafica.</div>`;
+}
+
+async function fdocCaricaCliente() {
+  if (!FDOC_CLIENTE) return;
+  const id = FDOC_CLIENTE.id;
+  const M = pdocMotore();
+  const a = (ANAG_CACHE || []).find(x => x.id === id) || {};
+  const tipo = document.getElementById('fdoc-tipo')?.value || '';
+  const numero = (document.getElementById('fdoc-numero')?.value || '').trim();
+  const scad = (document.getElementById('fdoc-scad')?.value || '').trim();
+  const campo = document.getElementById('fdoc-file');
+  const file = campo?.files[0];
+  if (!file) return;
+  const status = document.getElementById('fdoc-status');
+  /* LA SCADENZA È OBBLIGATORIA (§3.5). Un documento d'identità senza data non
+     si può dire valido: accettarlo vorrebbe dire riempire l'archivio di
+     documenti su cui il contatore delle scadenze non ha niente da dire, che è
+     il modo di non accorgersi di niente. */
+  if (!scad) {
+    if (status) { status.textContent = 'Serve la data di scadenza: senza, il documento non si può dire valido.'; status.style.color = '#c0392b'; }
+    if (campo) campo.value = '';
+    return;
+  }
+  if (status) { status.textContent = 'Caricamento…'; status.style.color = ''; }
+  try {
+    const url = await archCarica(
+      'clienti/' + id + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_'), file);
+    const docs = Array.isArray(a.documenti) ? a.documenti.slice() : [];
+    const t = M ? M.tipoCliente(tipo) : { id: tipo, l: tipo };
+    docs.push({ tipo: t.id, numero, url, nome: file.name, data: new Date().toISOString(), scadenza: scad });
+    const { error } = await db.from('quote_anagrafiche').update({ documenti: docs }).eq('id', id);
+    if (error) throw error;
+    a.documenti = docs;
+    fdocRenderCliente();
+    if (status) status.textContent = '✓ Caricato';
+    try { logMovimento('Documento cliente caricato · ' + (t.l || t.id), 'cliente', a.nominativo || ''); } catch (e) {}
+  } catch (e) {
+    if (status) { status.textContent = 'Caricamento non riuscito: ' + (e.message || e); status.style.color = '#c0392b'; }
+  }
+}
+
+/* ── Documenti polizza: l'elenco delle pratiche, poi il fascicolo ────────── */
+async function fdocRenderPolizze() {
+  const el = document.getElementById('fdoc-pol');
+  if (!el || !FDOC_CLIENTE) return;
+  const id = FDOC_CLIENTE.id;
+  let pol = [];
+  try {
+    const { data, error } = await db.from('quote_polizze')
+      .select('id,numero,numero_polizza,modulo,prodotto,compagnia,data_effetto,data_scadenza,cliente,cliente_id,perfezionata,dati')
+      .eq('cliente_id', id).order('data_effetto', { ascending: false });
+    if (error) throw error;
+    pol = data || [];
+  } catch (e) {
+    el.innerHTML = `<div class="cl-empty">Elenco polizze non disponibile.<br><small>${esc(e.message || e)}</small></div>`;
+    return;
+  }
+  if (!pol.length) {
+    el.innerHTML = '<div class="cl-empty">Nessuna polizza registrata per questo cliente: il fascicolo si apre da una polizza.</div>';
+    return;
+  }
+  /* LA DATA DI POLIZZA IN EVIDENZA, poi il numero: chi cerca il fascicolo di
+     una pratica passata la ricorda per quando, non per il numero. */
+  el.innerHTML = pol.map(p => {
+    const eff = p.data_effetto ? new Date(p.data_effetto).toLocaleDateString('it-IT') : '—';
+    const scad = p.data_scadenza ? new Date(p.data_scadenza).toLocaleDateString('it-IT') : 'scadenza da confermare';
+    const stato = p.perfezionata
+      ? '<span class="tk-badge st-risolto">Fascicolo completo</span>'
+      : '<span class="tk-badge st-scad">Fascicolo da completare</span>';
+    return `<div class="cl-row" onclick="fdocApriFascicolo('${esc(p.id)}')">
+      <div style="flex:1">
+        <b class="fdoc-data">${esc(eff)}</b>
+        <div class="cl-sub">${esc(pfNumero(p))}${p.prodotto ? ' · ' + esc(p.prodotto) : ''}${p.compagnia ? ' · ' + esc(p.compagnia) : ''} · fino al ${esc(scad)}</div>
+      </div>
+      <div style="text-align:right">${stato}
+        <div style="margin-top:5px"><button class="rin-az" onclick="event.stopPropagation();fdocApriFascicolo('${esc(p.id)}')"><i class="ti ti-folder"></i> Apri il fascicolo</button></div></div>
+    </div>`;
+  }).join('');
+}
+
+/* Il fascicolo è lo stesso del Portafoglio: una schermata sola, aperta da due
+   strade. Duplicarla vorrebbe dire due posti dove correggere la stessa cosa. */
+function fdocApriFascicolo(polizzaId) { pdocApri(polizzaId); }
+
+/* Prima di creare il fascicolo si vede che cosa si sta per congelare: una
+   scelta che decide i requisiti per sempre non si fa alla cieca. */
+function pdocAnteprima(polizzaId) {
+  const M = pdocMotore();
+  const el = document.getElementById('pdoc-anteprima');
+  const st = PDOC_APERTO && PDOC_APERTO.id === polizzaId ? PDOC_APERTO : null;
+  if (!M || !el || !st) return;
+  const op = document.getElementById('pdoc-op')?.value || '';
+  const compId = document.getElementById('pdoc-comp')?.value || '';
+  if (!op) { el.innerHTML = ''; return; }
+  const elenco = (COMPAGNIE_REGOLE && COMPAGNIE_REGOLE.compagnie) || [];
+  const comp = elenco.find(c => c.id === compId) || null;
+  const regole = comp ? pdocRegoleDi(comp.id, M.ramo(st.polizza)) : [];
+  const req = M.requisiti(M.ramo(st.polizza), op, regole);
+  const daCompagnia = req.filter(x => /compagnia/.test(x.da || ''));
+  el.innerHTML = `<div class="pdoc-antep">
+      <b>${req.filter(x => x.obbl).length} documenti obbligatori</b>${daCompagnia.length
+        ? `, di cui ${daCompagnia.length} chiest${daCompagnia.length === 1 ? 'o' : 'i'} da ${esc(comp ? comp.nome : 'la compagnia')}: ${daCompagnia.map(x => esc(x.l)).join(', ')}`
+        : (comp ? ` — ${esc(comp.nome)} non aggiunge requisiti` : '')}
+      ${req.ignorate && req.ignorate.length
+        ? `<div class="cl-sub" style="color:#c0392b">Regole non applicate perché il tipo documento non esiste: ${esc(req.ignorate.join(', '))}</div>` : ''}
+    </div>`;
+}
+
+/* ═══ LAVORO 3 §3.8 — IL CONTROLLO DOCUMENTI DI AGENZIA ═══════════════════════
+   Due contatori distinti, e una terza linguetta per le regole. I conti li fa
+   il motore (`scadenzeClienti`, `fascicoliIncompleti`): qui si leggono le
+   righe e si disegnano.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let CDOC = { scadenze: null, fascicoli: null, caricato: false };
+
+function cdocTab(t) {
+  ['scad', 'fasc', 'reg'].forEach(k => { const e = document.getElementById('cdoc-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
+  document.querySelectorAll('#page-controllo-documenti .fdoc-subb').forEach(b => b.classList.toggle('active', b.dataset.c === t));
+  if (t === 'reg') cdocRenderRegole();
+}
+
+async function cdocCarica(forza) {
+  const M = pdocMotore();
+  if (!db || !M) return;
+  if (CDOC.caricato && !forza) return;
+  /* `caricato` si segna alla FINE, e solo se è andata: segnarlo prima voleva
+     dire che dopo un errore di rete la pagina non riprovava più, e restava a
+     mostrare gli zeri di una lettura mai riuscita. */
+  const errori = [];
+  const corpoS = document.getElementById('cdoc-scad-body');
+  const corpoF = document.getElementById('cdoc-fasc-body');
+  if (corpoS) corpoS.innerHTML = '<tr><td colspan="5"><div class="empty-state">Carico…</div></td></tr>';
+  if (corpoF) corpoF.innerHTML = '<tr><td colspan="6"><div class="empty-state">Carico…</div></td></tr>';
+
+  /* Le anagrafiche: solo quello che serve al conto. Chiedere tutta la scheda
+     di ogni cliente per guardare una data di scadenza vuol dire portarsi in
+     pagina i dati personali di tutto il portafoglio senza motivo. */
+  let anagrafiche = [];
+  try {
+    const { data, error } = await db.from('quote_anagrafiche')
+      .select('id,nominativo,documenti,doc_identita_url,doc_identita_nome');
+    if (error) throw error;
+    anagrafiche = data || [];
+  } catch (e) { errori.push('anagrafiche: ' + (e.message || e)); }
+  CDOC.scadenze = M.scadenzeClienti(anagrafiche);
+
+  let polizze = [];
+  try {
+    /* LO STESSO CANCELLO DEL PORTAFOGLIO. Senza `visibleUserIds` questa pagina
+       mostrerebbe a un collaboratore le pratiche di tutta l'agenzia, con nome
+       del cliente e nome di chi le ha fatte: un cruscotto di controllo non è
+       una scorciatoia per vedere il portafoglio degli altri. Per lo staff la
+       funzione torna `null`, e allora si vede tutto: è il comportamento di
+       ogni altro elenco di questa applicazione. */
+    let q = db.from('quote_polizze')
+      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,creato_nome,creato_da,dati')
+      .neq('stato_pagamento', 'annullata').order('data_effetto', { ascending: false });
+    const ids = await visibleUserIds();
+    if (ids) q = q.in('creato_da', ids);
+    const { data, error } = await q;
+    if (error) throw error;
+    polizze = data || [];
+  } catch (e) { errori.push('polizze: ' + (e.message || e)); }
+
+  const perCliente = {};
+  anagrafiche.forEach(a => { perCliente[a.id] = a; });
+  const perPolizza = {};
+  const ids = polizze.map(p => p.id);
+  if (ids.length) {
+    try {
+      const { data } = await db.from('quote_pratica_documenti')
+        .select('entita_id,categoria,url,firmato').eq('entita', 'polizza').in('entita_id', ids);
+      (data || []).forEach(d => { (perPolizza[d.entita_id] = perPolizza[d.entita_id] || []).push(d); });
+    } catch (e) { errori.push('documenti di pratica: ' + (e.message || e)); }
+  }
+  CDOC.fascicoli = M.fascicoliIncompleti(polizze, perPolizza, perCliente);
+
+  /* Se una delle letture non è riuscita, i due numeri sarebbero falsi: uno
+     zero rassicurante su un archivio che non è stato letto. Meglio dirlo e
+     lasciare che si riprovi. */
+  if (errori.length) {
+    const avviso = `<tr><td colspan="6"><div class="empty-state">Non riesco a leggere i dati: ${esc(errori.join(' · '))}<br>
+      <button class="rin-az" style="margin-top:8px" onclick="cdocCarica(true)"><i class="ti ti-refresh"></i> Riprova</button></div></td></tr>`;
+    if (corpoS) corpoS.innerHTML = avviso;
+    if (corpoF) corpoF.innerHTML = avviso;
+    ['cdoc-n-scad', 'cdoc-n-fasc'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = '—'; });
+    const b = document.getElementById('cdoc-badge'); if (b) b.style.display = 'none';
+    return;
+  }
+  CDOC.caricato = true;
+
+  const nS = document.getElementById('cdoc-n-scad');
+  const dS = document.getElementById('cdoc-d-scad');
+  if (nS) nS.textContent = CDOC.scadenze.righe.length;
+  if (dS) dS.textContent = CDOC.scadenze.scaduti + ' scadut' + (CDOC.scadenze.scaduti === 1 ? 'o' : 'i')
+    + ' · ' + CDOC.scadenze.inScadenza + ' in scadenza entro ' + M.PREAVVISO_GIORNI + ' giorni';
+  const nF = document.getElementById('cdoc-n-fasc');
+  if (nF) nF.textContent = CDOC.fascicoli.pratiche;
+  const badge = document.getElementById('cdoc-badge');
+  if (badge) {
+    const tot = CDOC.scadenze.righe.length + CDOC.fascicoli.pratiche;
+    badge.textContent = tot;
+    badge.style.display = tot ? '' : 'none';
+  }
+
+  cdocRiempiFiltri();
+  cdocRenderScadenze();
+  cdocRenderFascicoli();
+}
+
+function cdocRiempiFiltri() {
+  const righe = (CDOC.fascicoli && CDOC.fascicoli.righe) || [];
+  [['cdoc-f-comp', 'compagnia', 'Tutte'], ['cdoc-f-oper', 'operatore', 'Tutti']].forEach(([id, campo, tutti]) => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const scelto = sel.value;
+    const valori = [...new Set(righe.map(r => r[campo]).filter(Boolean))].sort();
+    sel.innerHTML = `<option value="">${tutti}</option>` +
+      valori.map(v => `<option value="${esc(v)}"${v === scelto ? ' selected' : ''}>${esc(v)}</option>`).join('');
+  });
+}
+
+function cdocRenderScadenze() {
+  const body = document.getElementById('cdoc-scad-body');
+  if (!body || !CDOC.scadenze) return;
+  const stato = document.getElementById('cdoc-f-stato')?.value || '';
+  const cli = (document.getElementById('cdoc-f-cliente')?.value || '').trim().toLowerCase();
+  const righe = CDOC.scadenze.righe.filter(r =>
+    (!stato || r.stato === stato) && (!cli || String(r.nominativo).toLowerCase().includes(cli)));
+  if (!righe.length) {
+    body.innerHTML = `<tr><td colspan="5"><div class="empty-state">${CDOC.scadenze.righe.length
+      ? 'Nessun documento con questi filtri.'
+      : 'Nessun documento d\'identità in scadenza o scaduto. Qui compaiono i clienti da richiamare.'}</div></td></tr>`;
+    return;
+  }
+  body.innerHTML = righe.map(r => `<tr style="cursor:pointer" onclick="apriAnagrafica('${esc(r.cliente_id)}')">
+      <td><strong>${esc(r.nominativo || '—')}</strong></td>
+      <td>${esc(r.documento)}</td>
+      <td style="font-size:12px">${esc(r.numero || '—')}</td>
+      <td style="font-size:12px">${r.scadenza ? new Date(r.scadenza).toLocaleDateString('it-IT') : '—'}</td>
+      <td>${r.stato === 'scaduto'
+        ? `<span class="tk-badge st-scad">Scaduto da ${Math.abs(r.giorni)} gg</span>`
+        : `<span class="tk-badge st-aperto">Scade fra ${r.giorni} gg</span>`}</td>
+    </tr>`).join('');
+}
+
+function cdocRenderFascicoli() {
+  const body = document.getElementById('cdoc-fasc-body');
+  if (!body || !CDOC.fascicoli) return;
+  const comp = document.getElementById('cdoc-f-comp')?.value || '';
+  const oper = document.getElementById('cdoc-f-oper')?.value || '';
+  const cli = (document.getElementById('cdoc-f-fcli')?.value || '').trim().toLowerCase();
+  const righe = CDOC.fascicoli.righe.filter(r =>
+    (!comp || r.compagnia === comp) && (!oper || r.operatore === oper) &&
+    (!cli || String(r.cliente).toLowerCase().includes(cli)));
+  if (!righe.length) {
+    body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${CDOC.fascicoli.righe.length
+      ? 'Nessuna pratica con questi filtri.'
+      : 'Nessun fascicolo incompleto.'}</div></td></tr>`;
+    return;
+  }
+  body.innerHTML = righe.map(r => `<tr style="cursor:pointer" onclick="pdocApri('${esc(r.polizza_id)}')">
+      <td style="font-size:12px">${r.data_effetto ? new Date(r.data_effetto).toLocaleDateString('it-IT') : '—'}</td>
+      <td><strong>${esc(r.cliente || '—')}</strong></td>
+      <td>${esc(r.prodotto || '—')}</td>
+      <td>${esc(r.compagnia || '—')}</td>
+      <td style="font-size:12px">${esc(r.operatore || '—')}</td>
+      <td><span class="tk-badge st-scad">${r.mancanti}</span>
+        <div class="cl-sub">${r.serveOperazione
+          ? 'fascicolo mai creato: manca la scelta di operazione e compagnia'
+          : esc(r.cheCosaManca.join(' · '))}</div></td>
+    </tr>`).join('');
+}
+
+/* ── Le regole per compagnia, modificabili da qui (§3.7) ─────────────────── */
+async function cdocRenderRegole() {
+  const el = document.getElementById('cdoc-reg-corpo');
+  if (!el) return;
+  const M = pdocMotore();
+  if (!M) { el.innerHTML = '<div class="empty-state">Il motore del fascicolo non è caricato.</div>'; return; }
+  COMPAGNIE_REGOLE = null;                 // si rileggono: qui si vengono a cambiare
+  const { compagnie, regole } = await pdocCompagnie();
+  if (!compagnie.length) {
+    el.innerHTML = `<div class="empty-state">Nessuna compagnia in anagrafica.<br>
+      <small>Serve la migrazione supabase/migrations/20260918_documentale_compagnie.sql.</small></div>`;
+    return;
+  }
+  const modificabile = (typeof isStaff === 'function') ? isStaff() : false;
+  const tipi = M.tipiRegolabili();
+  el.innerHTML = compagnie.map(c => {
+    const mie = (regole[c.id] || []).slice().sort((a, b) => a.documento.localeCompare(b.documento));
+    return `<div class="rdoc-c">
+      <div class="rdoc-hd"><b>${esc(c.nome)}</b>${(c.alias || []).length
+        ? `<span class="pdoc-opt">anche: ${esc((c.alias || []).join(', '))}</span>` : ''}</div>
+      ${mie.length ? mie.map(r => {
+        const d = M.definizione(r.documento);
+        return `<div class="rdoc-r">
+          <div><b>${esc(d ? d.l : r.documento)}</b>${d ? '' : '<span class="tk-badge st-scad">tipo sconosciuto: la regola non si applica</span>'}
+            <div class="cl-sub">${r.obbligatorio ? 'obbligatorio' : 'facoltativo'} · ${r.ramo === '*' ? 'tutti i rami' : esc(r.ramo)}${r.note ? ' · ' + esc(r.note) : ''}</div></div>
+          ${modificabile ? `<button class="cl-doc-del" title="Togli la regola" onclick="cdocTogliRegola('${esc(r.id)}')">✕</button>` : ''}
+        </div>`;
+      }).join('') : '<div class="cl-empty">Nessun requisito oltre a quelli del tipo di operazione.</div>'}
+      ${modificabile ? `<div class="cl-docs-up" style="margin-top:8px">
+        <select id="rdoc-t-${esc(c.id)}">${tipi.map(t => `<option value="${esc(t.cat)}">${esc(t.l)}</option>`).join('')}</select>
+        <select id="rdoc-o-${esc(c.id)}"><option value="1">obbligatorio</option><option value="0">facoltativo</option></select>
+        <select id="rdoc-r-${esc(c.id)}"><option value="rcauto">solo RC Auto</option><option value="*">tutti i rami</option></select>
+        <button class="rin-az" onclick="cdocAggiungiRegola('${esc(c.id)}')"><i class="ti ti-plus"></i> Aggiungi</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function cdocAggiungiRegola(compagniaId) {
+  const documento = document.getElementById('rdoc-t-' + compagniaId)?.value;
+  const obbligatorio = document.getElementById('rdoc-o-' + compagniaId)?.value === '1';
+  const ramo = document.getElementById('rdoc-r-' + compagniaId)?.value || '*';
+  if (!documento) return;
+  try {
+    const { error } = await db.from('quote_regole_documenti')
+      .insert({ compagnia_id: compagniaId, documento, obbligatorio, ramo });
+    if (error) throw error;
+    try { logMovimento('Regola documentale aggiunta · ' + documento, 'documento', ''); } catch (e) {}
+  } catch (e) { alert('Non riesco a salvare la regola: ' + (e.message || e)); return; }
+  await cdocRenderRegole();
+}
+
+async function cdocTogliRegola(id) {
+  /* Togliere una regola non tocca le pratiche già create: i loro requisiti
+     sono congelati. Vale per quelle nuove — ed è giusto dirlo qui, perché
+     chi la toglie si aspetta l'opposto. */
+  if (!confirm('Togliere questa regola? Vale per le pratiche NUOVE: quelle già create tengono i requisiti congelati il giorno in cui sono nate.')) return;
+  try {
+    const { error } = await db.from('quote_regole_documenti').delete().eq('id', id);
+    if (error) throw error;
+  } catch (e) { alert('Non riesco a togliere la regola: ' + (e.message || e)); return; }
+  await cdocRenderRegole();
 }
 
 /* ═══ CRM PUNTO 4 — scadenzario e rinnovi ════════════════════════════════════
@@ -15440,13 +16373,20 @@ function apriPreventivo(id) {
   precontrattualeDocs(r.prodotto, r.modulo).forEach(dd => allegati.push({ nome: dd.nome, url: dd.url, sub: 'Precontrattuale', icon: 'ti-file-description' }));
   // MUP del collaboratore (disponibile dopo l'avvio della firma)
   if (d.firma && d.firma.token) allegati.push({ nome: 'Modulo Unico Precontrattuale (MUP)', url: PAY_API + '/sign/mup?id=' + r.id + '&t=' + encodeURIComponent(d.firma.token), sub: 'Precontrattuale', icon: 'ti-file-description' });
-  // altri eventuali campi *_url presenti nei dati (escludendo quelli già gestiti)
+  /* Altri campi `*_url` nei dati, che nessuno ha previsto uno per uno.
+     Fino al 18/09/2026 questo ciclo chiedeva `^https?://`, perché un allegato
+     era per forza un indirizzo pubblico. Ora quello che si salva è un PERCORSO
+     dentro l'archivio, e con la vecchia condizione questi allegati sarebbero
+     spariti dalla scheda senza un errore, senza un riquadro vuoto, senza
+     niente: la linguetta avrebbe detto «Nessun allegato presente» su un
+     preventivo che ne ha tre. Si accettano tutti e due, perché nell'archivio
+     convivono le righe di prima e quelle di adesso. */
   const urlGiaInseriti = new Set(allegati.map(a => a.url));
   Object.entries(d).forEach(([k, v]) => {
-    if (typeof v === 'string' && /_url$/.test(k) && /^https?:\/\//i.test(v) && !urlGiaInseriti.has(v)) {
-      allegati.push({ nome: pvPrettyLabel(k.replace(/_url$/, '')), url: v, sub: 'Allegato', icon: 'ti-paperclip' });
-      urlGiaInseriti.add(v);
-    }
+    if (typeof v !== 'string' || !v || !/_url$/.test(k) || urlGiaInseriti.has(v)) return;
+    if (!/^https?:\/\//i.test(v) && !archPercorso(v)) return;
+    allegati.push({ nome: pvPrettyLabel(k.replace(/_url$/, '')), url: v, sub: 'Allegato', icon: 'ti-paperclip' });
+    urlGiaInseriti.add(v);
   });
   const allegatiListHtml = allegati.length
     ? allegati.map(a => `<div class="pv-all-item"><i class="ti ${a.icon}"></i><div class="pv-all-meta"><div class="pv-all-name">${esc(a.nome)}</div><div class="pv-all-sub">${esc(a.sub || '')}</div></div><a href="${esc(a.url)}" target="_blank" class="pv-all-open"><i class="ti ti-external-link"></i> Apri</a></div>`).join('')
@@ -15829,7 +16769,7 @@ async function pvCaricaPolizza(id, input) {
     const path = 'preventivi/' + id + '_polizza_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
     if (up.error) throw new Error(up.error.message + ' — verifica che esista il bucket "documenti" su Supabase Storage.');
-    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url = path;
     const dati = { ...(r.dati || {}), polizza_url: url };
     const { error } = await db.from('quote_preventivi').update({ dati }).eq('id', id);
     if (error) throw error;
@@ -15850,7 +16790,7 @@ async function pvUploadField(kind, id) {
     const path = 'preventivi/' + id + '_' + kind + '_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
     if (up.error) throw new Error('Upload ' + kind + ' fallito (' + up.error.message + '). Crea il bucket "documenti" su Supabase Storage oppure usa il link.');
-    return db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    return path;
   }
   const link = (document.getElementById('pv-' + kind + '-url')?.value || '').trim();
   return link || null;
@@ -16238,7 +17178,7 @@ async function pvInviaMsg(id) {
       const path = 'messaggi/' + id + '_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/octet-stream' });
       if (up.error) throw up.error;
-      msg.doc_url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl; msg.doc_nome = file.name;
+      msg.doc_url = path; msg.doc_nome = file.name;
     }
     dati.messaggi.push(msg);
     const { error } = await db.from('quote_preventivi').update({ dati }).eq('id', id);
@@ -16416,7 +17356,7 @@ async function paypUploadBonifico(input){
   try{
     const path='bonifici/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    PAYP.bonificoProof=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    PAYP.bonificoProof=path;
     if(st){ st.innerHTML='<i class="ti ti-check"></i> Allegato'; st.style.color='#1c8a52'; }
   }catch(e){ if(st){ st.textContent='Errore upload'; st.style.color='#c0392b'; } }
 }
@@ -16877,7 +17817,7 @@ async function sinUploadFiles(inputId, prefix){
       const path='sinistri/'+prefix+'_'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
       const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'});
       if(up.error) throw new Error('Upload allegato fallito ('+up.error.message+'). Crea il bucket "documenti".');
-      out.push({ nome:file.name, url:db.storage.from('documenti').getPublicUrl(path).data.publicUrl });
+      out.push({ nome:file.name, url:path });
     }
   }
   return out;
@@ -20274,7 +21214,7 @@ async function czUploadAltro(input){
       const path = 'cauzioni/'+tipoSlug+'/'+Date.now()+'_altro_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
       const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type||'application/pdf' });
       if(up.error) throw up.error;
-      CAUZ_DATA.documenti.altro.push(db.storage.from('documenti').getPublicUrl(path).data.publicUrl);
+      CAUZ_DATA.documenti.altro.push(path);
     }
     document.getElementById('cauz-altro-list').innerHTML = CAUZ_DATA.documenti.altro.map((u,i)=>`<a href="${esc(u)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Allegato ${i+1}</a>`).join('');
     status.textContent = '✓ '+CAUZ_DATA.documenti.altro.length+' allegati caricati';
@@ -20290,7 +21230,7 @@ async function czUploadDoc(input, key){
     const path = 'cauzioni/'+tipoSlug+'/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type||'application/pdf' });
     if(up.error) throw up.error;
-    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url = path;
     CAUZ_DATA.documenti = CAUZ_DATA.documenti || {}; CAUZ_DATA.documenti[key] = url;
     cont.querySelector('.cauz-doc-link-wrap').innerHTML = `<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Visualizza</a>`;
     cont.querySelector('.cauz-doc-up').innerHTML = '<i class="ti ti-upload"></i> Sostituisci<input type="file" accept="application/pdf,image/*" onchange="czUploadDoc(this,\''+key+'\')" hidden>';
@@ -22178,8 +23118,18 @@ async function applyGeo(i) {
 }
 
 /* ── Scheda cliente · DETTAGLIO (read-only, due colonne) ── */
-function apriAnagrafica(id) {
-  const a = (ANAG_CACHE || []).find(x => x.id === id);
+async function apriAnagrafica(id) {
+  let a = (ANAG_CACHE || []).find(x => x.id === id);
+  /* ANAG_CACHE la riempie solo `cercaAnagrafica`, cioè la schermata Clienti.
+     Da quando si arriva qui anche dal fascicolo di una pratica e dal
+     contatore delle scadenze (18/09/2026), l'id può non esserci: prima
+     rispondeva «Anagrafica non trovata» su un cliente che esiste. */
+  if (!a) {
+    try {
+      const { data } = await db.from('quote_anagrafiche').select('*').eq('id', id).maybeSingle();
+      if (data) { a = data; ANAG_CACHE = (ANAG_CACHE || []).concat([data]); }
+    } catch (e) { console.warn('anagrafica non leggibile:', e.message || e); }
+  }
   if (!a) { alert('Anagrafica non trovata.'); return; }
   const isG = a.tipo === 'giuridica';
   const val = v => (v != null && String(v).trim() !== '')
@@ -22673,15 +23623,15 @@ function aprModificaAnag(id) {
       <div class="ana-row3"><div class="ana-f"><label>Telefono</label>${inp('e-tel', a.telefono)}</div><div class="ana-f"><label>Cellulare</label>${inp('e-cel', a.cellulare)}</div><div class="ana-f"><label>Email</label>${inp('e-email', a.email)}</div></div>
       <div class="ana-f full"><label>PEC</label>${inp('e-pec', a.pec)}</div>
       <div class="ana-f full"><label>Intermediario di riferimento <span style="color:var(--muted);font-weight:400">(collaboratore)</span></label><select id="e-intermediario"><option value="">— nessuno —</option></select></div>
+      <!-- Lavoro 3 (18/09/2026): i documenti NON si caricano piu' da qui.
+           Stanno nella scheda cliente, linguetta Documenti > Documenti cliente,
+           dove hanno la loro data di scadenza e si vedono accanto ai fascicoli
+           delle polizze. Due posti per caricare lo stesso documento volevano
+           dire due formati diversi nella stessa colonna: uno con la scadenza e
+           uno senza. -->
       <div class="cl-linked">
         <div class="cl-linked-head"><span><i class="ti ti-paperclip"></i> Documenti del cliente</span></div>
-        <div id="cl-docs-list" class="cauz-doc-list" style="margin-bottom:.7rem"></div>
-        <div class="cl-docs-up">
-          <select id="cl-doc-tipo">${['Documento d\'identità','Codice fiscale / Tessera sanitaria','Libretto di circolazione','Polizza','Visura camerale','Bilancio','Dichiarazione dei redditi','Altro'].map(o=>`<option>${esc(o)}</option>`).join('')}</select>
-          <input id="cl-doc-descr" placeholder="Descrizione (facoltativa)">
-          <label class="cauz-doc-up"><i class="ti ti-upload"></i> Carica<input type="file" id="cl-doc-file" accept="application/pdf,image/*" hidden onchange="clienteDocUpload('${a.id}')"></label>
-          <span class="cauz-doc-status" id="cl-docs-status"></span>
-        </div>
+        <div class="cl-empty">I documenti si caricano dalla scheda cliente, linguetta <b>Documenti</b>: li' hanno la loro scadenza e le pratiche li ereditano.</div>
       </div>
       <div class="modal-actions">
         <button class="primary" onclick="aggiornaAnagrafica('${a.id}')">Salva modifiche</button>
@@ -22691,52 +23641,9 @@ function aprModificaAnag(id) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
-  renderClienteDocs(a.id);
   caricaIntermediari().then(() => popolaSelectInterm('e-intermediario', a.intermediario_id));
 }
 
-function renderClienteDocs(id){
-  const a = (ANAG_CACHE||[]).find(x=>x.id===id) || {};
-  const el = document.getElementById('cl-docs-list'); if(!el) return;
-  const docs = Array.isArray(a.documenti) ? a.documenti : [];
-  el.innerHTML = docs.length ? docs.map((d,i)=>`<div class="cauz-doc-row">
-    <div class="cauz-doc-name"><i class="ti ti-file-text"></i> ${esc(d.tipo||'Documento')}${d.descr?' · '+esc(d.descr):''}</div>
-    <div class="cauz-doc-right"><a href="${esc(d.url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a><button type="button" class="cl-doc-del" onclick="clienteDocDelete('${id}',${i})" title="Elimina">✕</button></div>
-  </div>`).join('') : '<div class="cl-empty">Nessun documento caricato. Carica documento d\'identità, libretto, polizze, ecc.</div>';
-}
-async function clienteDocUpload(id){
-  const a = (ANAG_CACHE||[]).find(x=>x.id===id) || {};
-  const tipo = document.getElementById('cl-doc-tipo')?.value || 'Documento';
-  const descr = (document.getElementById('cl-doc-descr')?.value||'').trim();
-  const file = document.getElementById('cl-doc-file')?.files[0];
-  if(!file) return;
-  const status = document.getElementById('cl-docs-status'); if(status){ status.textContent='Caricamento…'; status.style.color=''; }
-  try{
-    const path = 'clienti/'+id+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type||'application/octet-stream' });
-    if(up.error) throw up.error;
-    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
-    const docs = Array.isArray(a.documenti) ? a.documenti.slice() : [];
-    docs.push({ tipo, descr, url, data: new Date().toISOString() });
-    const { error } = await db.from('quote_anagrafiche').update({ documenti: docs }).eq('id', id);
-    if(error) throw error;
-    a.documenti = docs;
-    const di=document.getElementById('cl-doc-descr'); if(di) di.value='';
-    renderClienteDocs(id);
-    if(status) status.textContent='✓ Caricato';
-    logMovimento('Documento cliente caricato · '+tipo, 'cliente', a.nominativo||'');
-  }catch(e){
-    if(status){ status.textContent = /documenti/.test(e.message||'') ? 'Esegui in Supabase: alter table quote_anagrafiche add column if not exists documenti jsonb default \'[]\'::jsonb;' : ('Errore upload (crea il bucket "documenti"). '+(e.message||'')); status.style.color='#c0392b'; }
-  }
-}
-async function clienteDocDelete(id, idx){
-  if(!confirm('Eliminare questo documento?')) return;
-  const a = (ANAG_CACHE||[]).find(x=>x.id===id) || {};
-  const docs = Array.isArray(a.documenti) ? a.documenti.slice() : [];
-  docs.splice(idx,1);
-  try{ await db.from('quote_anagrafiche').update({ documenti: docs }).eq('id', id); a.documenti=docs; renderClienteDocs(id); }
-  catch(e){ alert('Errore: '+(e.message||e)); }
-}
 
 /* ═══ BLOCCO C — LA CRONOLOGIA DEL CLIENTE ═══════════════════════════════════
    Quattro elenchi separati non sono una storia. Qui tutto ciò che riguarda un
@@ -23259,40 +24166,13 @@ async function caricaCollegati(id, nominativo) {
     : '<div class="cl-empty">Nessun preventivo per questo cliente.</div>');
   if (cnt) cnt.textContent = tutte.length + ' preventivi · ' + (polReali.length || polizze.length) + ' polizze';
 
-  // ── DOCUMENTI ──
-  const docCard = (icon, title, sub, url, cert) => {
-    const ic = `<div class="sc-dic${cert ? ' cert' : ''}"><i class="ti ${icon}"></i></div>`;
-    const body = `${ic}<div class="sc-dt"><b>${esc(title)}</b>${sub ? `<div class="cl-sub">${esc(sub)}</div>` : ''}</div>`;
-    return url
-      ? `<a class="sc-docrow" href="${esc(url)}" target="_blank">${body}<i class="ti ti-external-link" style="color:var(--blue)"></i></a>`
-      : `<div class="sc-docrow">${body}</div>`;
-  };
-  const docs = [];
-  // Carta d'identità del cliente (anagrafica)
-  const anag = (ANAG_CACHE || []).find(x => x.id === id) || {};
-  if (anag.doc_identita_url) docs.push(docCard('ti-id', 'Carta d\'identità', anag.doc_identita_nome || '', anag.doc_identita_url));
-  // Privacy firmata (a livello cliente)
-  if (anag.privacy_firma && anag.privacy_firma.stato === 'firmata') {
-    const pf = anag.privacy_firma;
-    const dPf = pf.firmato_il ? new Date(pf.firmato_il).toLocaleDateString('it-IT') : '';
-    const purl = pf.doc_url || (pf.token ? (PAY_API + '/sign/privacy/doc?id=' + encodeURIComponent(id) + '&t=' + encodeURIComponent(pf.token)) : '');
-    docs.push(docCard('ti-shield-check', 'Informativa Privacy firmata', dPf ? 'Firmata il ' + dPf : 'Firmata', purl, true));
-  }
-  (Array.isArray(anag.documenti) ? anag.documenti : []).forEach(dd => {
-    docs.push(docCard('ti-file-text', dd.tipo || 'Documento', [dd.descr, dd.data ? new Date(dd.data).toLocaleDateString('it-IT') : ''].filter(Boolean).join(' · '), dd.url));
-  });
-  // Documenti dei preventivi/polizze + documenti firmati
-  recs.forEach(r => {
-    const d = r.dati || {};
-    const prod = r.prodotto || r.modulo || '';
-    if (d.proposta_url) docs.push(docCard('ti-file-description', 'Proposta · ' + prod, '', d.proposta_url));
-    if (d.polizza_url) docs.push(docCard('ti-file-invoice', 'Polizza · ' + prod, '', d.polizza_url));
-    if (d.firma && d.firma.stato === 'firmata') {
-      const dataFirma = d.firma.firmato_il ? new Date(d.firma.firmato_il).toLocaleDateString('it-IT') : '';
-      docs.push(docCard('ti-writing-sign', 'Documento firmato (privacy/proposta) · ' + prod, dataFirma ? 'Firmato il ' + dataFirma : 'Firmato', d.firma.doc_url || '', true));
-    }
-  });
-  document.getElementById('cl-doc').innerHTML = docs.length ? docs.join('') : '<div class="cl-empty">Nessun documento.</div>';
+  /* ── DOCUMENTI (Lavoro 3, 18/09/2026) ────────────────────────────────────
+     Due contenitori distinti, non un archivio unico: i documenti anagrafici
+     del cliente (che scadono) e i fascicoli delle singole pratiche. Il
+     caricamento avviene QUI, senza passare da «Modifica cliente»: era il
+     motivo per cui i documenti finivano sul Mac dell'agenzia invece che in
+     archivio. Tutto il resto sta in fdoc* più sotto. */
+  fdocInstalla(id, recs);
 
   // ── SINISTRI (dichiarati nella situazione dei preventivi) ──
   const sin = [];
@@ -24859,10 +25739,13 @@ async function salvaDocumento() {
   err.style.color = '#5b6478'; err.textContent = 'Salvataggio…';
   try {
     if (file) {
-      const path = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      /* Una cartella, non la radice del contenitore: la rete di sicurezza
+         riconosce un documento dell'archivio dal suo prefisso, e un file
+         nudo («172_modulo.pdf») navigherebbe come indirizzo del sito. */
+      const path = 'utility/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
       if (up.error) throw new Error('Upload PDF fallito (' + up.error.message + '). Crea il bucket "documenti" su Supabase Storage, oppure usa il link.');
-      url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+      url = path;
     }
     // prodotto è NOT NULL a database: per un link senza prodotto mando stringa vuota.
     const rec = { prodotto: prod, compagnia: compagnia || null, descrizione: descr, url, categoria: cat, creato_da: currentUser.id };

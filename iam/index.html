@@ -5738,8 +5738,13 @@ async function apriAllegatoFattura(fileRef) {
       const { data, error } = await db.storage.from('documenti').createSignedUrl(fileRef.path, 300);
       if (!error && data && data.signedUrl) url = data.signedUrl;
     } catch(e) { console.warn('apriAllegatoFattura:', e); }
-    if (!url) { try { url = db.storage.from('documenti').getPublicUrl(fileRef.path)?.data?.publicUrl || ''; } catch(e) {} }
+    /* Niente ripiego sull'indirizzo pubblico. Dal 18/09/2026 il contenitore
+       «documenti» e' chiuso: quel ripiego produrrebbe un indirizzo che risponde
+       400, cioe' una finestra bianca invece di un errore che si capisce. */
     if (url) { if (w) w.location.href = url; else window.open(url, '_blank'); return true; }
+    try { w?.close(); } catch(e) {}
+    alert('Non riesco ad aprire l\'allegato: potrebbe essere stato tolto dall\'archivio, oppure non hai i permessi per vederlo.');
+    return false;
   }
   if (fileRef.data) {
     w?.document.write(`<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><iframe src="${fileRef.data}" style="width:100%;height:100vh;border:0;background:#fff;"></iframe></body>`);
@@ -7038,7 +7043,12 @@ async function inviaFirmaCollab(collabId) {
       const path = 'collab/' + collabId + '_' + Date.now() + '_' + safeName;
       const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
       if (up.error) throw up.error;
-      docUrl = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+      /* Si manda il PERCORSO, non un indirizzo pubblico. Il documento da
+         firmare lo compone il server (server/firmaCollab.js), che ha la chiave
+         di servizio e firma l'indirizzo quando il collaboratore apre la
+         pagina: cosi' il collegamento vale per quella apertura e non resta
+         valido per sempre in una casella di posta. */
+      docUrl = path;
     } catch (e) {
       console.error('upload PDF firma:', e);
       fcMsg('Errore nel caricamento del PDF: ' + (e.message||e), 'var(--red,#c0392b)');

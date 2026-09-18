@@ -250,6 +250,7 @@ solo padrone**; l'altra app al massimo legge, o rimanda.
 | **Punti vendita / reti** | **QUOTO** → Collaboratori e punti vendita | `iam_utenti.rete`, `iam_utenti.responsabile` — le **sole** colonne di `iam_utenti` che QUOTO scrive | IAM non ce l'ha |
 | **Collaboratori / intermediari** | **IAM** → Collaboratori (era «Operativa»). Dal 17/09/2026 `quote_collaboratori` è il **registro unico delle persone**: ogni collaboratore, candidato e utente ha una riga sola; `iam_team` è l'allegato economico agganciato da `collab_id`; l'account è `quote_collaboratori.iam_id` (indici unici su entrambi) | `quote_collaboratori`, `quote_collaboratori_note`, `iam_team` | QUOTO **legge** il registro (`caricaIntermediari`, `INTERM_CACHE`) e tiene ancora la sua scheda finché IAM non ha anche: segno «struttura», documenti, privacy firmata (`iam_firme`). Poi si spegne (passo 3, modulo 2b) |
 | **Produzione e storico** (preventivi) | **QUOTO** | `quote_preventivi` | IAM apre quella di QUOTO nel riquadro. In IAM `storico` è un'altra cosa: lo storico movimenti della contabilità (`sessioni_giornaliere`) |
+| **Documenti di clienti e pratiche** | **QUOTO** → scheda cliente (linguetta Documenti, sdoppiata in «Documenti cliente» e «Documenti polizza») e pagina **Controllo documenti**. Dal 18/09/2026 (Lavoro 3): i documenti d'identità stanno sull'anagrafica e le pratiche li ereditano, quelli di terzi restano nella pratica (GDPR), i requisiti si congelano sul fascicolo alla creazione. Le regole per compagnia si cambiano da schermata, non nel codice | `quote_anagrafiche.documenti`, `quote_pratica_documenti`, `quote_polizze.dati.fascicolo`, `quote_compagnie`, `quote_regole_documenti` | IAM lo apre nel riquadro; la pagina ha la sua porta, quindi `?page=controllo-documenti` dalla scocca funziona |
 | **KPI e gare** | **IAM** → KPI e gare. Dal 17/09/2026 (passo 3, modulo 3) la linguetta **Produzione** porta i numeri che stavano nella pagina «Performance» di QUOTO: preventivi fatti, polizze emesse, conversione, prodotto più quotato, andamento mensile, per anno e per collaboratore (`produzioneRiassunto`, pura). Si toglie a un collaboratore con la spunta `kpi_produzione` come le altre | `iam_gare_*`, `iam_kpi_*`; **legge** `quote_preventivi` | QUOTO tiene solo un rimando (`#page-performance` → `quoto-apri` con `tab: 'performance'`); il grafico e ApexCharts non ci sono più |
 
 La prova `server/verifica/utenti-in-iam.test.mjs` controlla la prima riga e la
@@ -260,6 +261,9 @@ catalogo era in pagina, «tutte» = `null`, un interruttore disabilitato non
 decide niente, la migrazione che blinda `compagnie`).
 `iam/verifica/registro-unico.test.mjs` controlla la terza (persone per prime,
 registro scritto prima dell'economia, migrazione che non sceglie mai da sola).
+Le regole del documentale stanno nel motore `tariffe/motore/fascicolo.js` e si
+provano in `server/verifica/fascicolo.test.mjs`; che la schermata le chiami
+davvero lo controlla `ui-test.mjs` (blocco «documentale»).
 
 ## 3. Sessione condivisa
 Stessa istanza Supabase Auth, e **dal 16/09/2026 la stessa origine**:

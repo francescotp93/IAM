@@ -3794,52 +3794,81 @@ const avvio = async () => {
       deve(/titGenera\(/.test(blocco), 'l\'emissione non genera le rate della polizza');
     });
 
-    /* ── CRM Punto 3: documentale di pratica e checklist ─────────────────── */
-    // La regola aziendale è fissata QUI, di proposito: cambiare l'elenco dei
-    // requisiti cambia quando una polizza si considera perfezionata, quindi il
-    // collaudo deve fermare la modifica e obbligare a una scelta consapevole.
-    const REQ_ATTESI = [
+    /* ── CRM Punto 3: documentale di pratica e checklist ───────────────────
+       Dal 18/09/2026 (Lavoro 3) le REGOLE non stanno più qui dentro: stanno
+       in tariffe/motore/fascicolo.js, con le loro prove in
+       server/verifica/fascicolo.test.mjs. Queste prove restano, e guardano
+       l'altra metà: che la schermata chiami davvero il motore e mostri quello
+       che dice. Una regola provata in Node e non collegata alla pagina è
+       esattamente il guasto di §1 di CLAUDE.md. */
+    const REQ_BASE = [
       { cat: 'polizza_firmata',    obbl: true,  serveFirma: true },
       { cat: 'privacy',            obbl: true,  serveFirma: true },
       { cat: 'documento_identita', obbl: true,  serveFirma: false },
       { cat: 'presa_visione',      obbl: false, serveFirma: true }
     ];
-    const OBBLIGATORI = REQ_ATTESI.filter(r => r.obbl);
+    const OBBLIGATORI = REQ_BASE.filter(r => r.obbl);
+    /* Una pratica RC Auto col fascicolo già creato: serve a quasi tutte le
+       prove qui sotto, perché senza operazione scelta il fascicolo non mostra
+       campi — ed è voluto. */
+    const CONGELATA = {
+      id: 'p1', modulo: 'rca', prodotto: 'RC Auto', cliente: 'ROSSI MARIO', cliente_id: 'cli-1',
+      compagnia: 'Prima', perfezionata: false,
+      dati: { fascicolo: {
+        operazione: 'rinnovo_altra_compagnia', ramo: 'rcauto', compagnia: 'Prima',
+        congelato_il: '2026-09-18T09:00:00Z',
+        requisiti: [
+          { cat: 'polizza_firmata',    l: 'Polizza firmata',                  fonte: 'pratica',    serveFirma: true,  obbl: true,  da: 'base' },
+          { cat: 'privacy',            l: 'Informativa privacy',              fonte: 'pratica',    serveFirma: true,  obbl: true,  da: 'base' },
+          { cat: 'documento_identita', l: "Documento d'identità del cliente", fonte: 'anagrafica', serveFirma: false, obbl: true,  da: 'base' },
+          { cat: 'presa_visione',      l: 'Dichiarazione di presa visione',   fonte: 'pratica',    serveFirma: true,  obbl: false, da: 'base' }
+        ] } }
+    };
+    const CI_BUONA = { id: 'cli-1', nominativo: 'ROSSI MARIO',
+      documenti: [{ tipo: 'carta_identita', numero: 'CI1', url: 'http://x/ci.pdf', data: '2026-01-01', scadenza: '2036-01-01' }] };
 
     await prova('documenti: i requisiti sono quelli decisi, non altri', async () => {
       const h = fs.readFileSync('index.html', 'utf8');
-      const blocco = (h.match(/const PDOC_REQUISITI = \[[\s\S]*?\];/) || [''])[0];
-      deve(blocco, 'l\'elenco dei requisiti non si trova');
-      for (const r of REQ_ATTESI) {
-        const riga = new RegExp("cat: '" + r.cat + "'[^\\n]*serveFirma: " + r.serveFirma + "[^\\n]*obbl: " + r.obbl);
-        deve(riga.test(blocco), 'requisito cambiato o mancante: ' + r.cat);
+      deve(!/const PDOC_REQUISITI = \[/.test(h),
+        'l\'elenco dei requisiti è tornato dentro index.html: lì non si può provare senza un browser');
+      const r = await page.evaluate(() => {
+        const F = window.Fascicolo;
+        const base = F.requisiti('rcauto', null);
+        return { base: base.map(x => ({ cat: x.cat, obbl: x.obbl, serveFirma: x.serveFirma })),
+                 conOperazione: F.requisiti('rcauto', 'rinnovo_altra_compagnia').map(x => x.cat) };
+      });
+      for (const atteso of REQ_BASE) {
+        const trovato = r.base.find(x => x.cat === atteso.cat);
+        deve(trovato, 'requisito di base mancante: ' + atteso.cat);
+        deve(trovato.obbl === atteso.obbl && trovato.serveFirma === atteso.serveFirma,
+          'requisito cambiato: ' + atteso.cat + ' → ' + JSON.stringify(trovato));
       }
-      const quanti = (blocco.match(/cat: '/g) || []).length;
-      deve(quanti === REQ_ATTESI.length, 'requisiti nel codice: ' + quanti + ', attesi ' + REQ_ATTESI.length);
-      deve(/DA CONFERMARE CON FRANCESCO/.test(h), 'manca l\'avviso che è una regola aziendale da confermare');
-      return REQ_ATTESI.length + ' requisiti, ' + OBBLIGATORI.length + ' obbligatori';
+      deve(r.base.length === REQ_BASE.length, 'requisiti di base: ' + r.base.length + ', attesi ' + REQ_BASE.length);
+      deve(r.conOperazione.includes('libretto_veicolo'), 'l\'operazione non aggiunge i suoi documenti');
+      return REQ_BASE.length + ' di base, ' + OBBLIGATORI.length + ' obbligatori, più quelli dell\'operazione';
     });
 
     await prova('documenti: un requisito che manca si vede comunque', async () => {
       // È il senso della checklist: la cartella allegati mostra ciò che c'è,
       // la checklist mostra ciò che NON c'è.
-      const n = await page.evaluate(() => window.pdocMancanti([]));
+      const n = await page.evaluate((pol) => window.pdocMancanti(pol, [], null), CONGELATA);
       deve(n === OBBLIGATORI.length,
         'con zero documenti dovrebbero mancare tutti gli obbligatori (' + OBBLIGATORI.length + '): ' + n);
     });
 
     await prova('documenti: caricato non è firmato (il caso che sfugge)', async () => {
-      const conFirma = REQ_ATTESI.find(r => r.serveFirma && r.obbl);
-      const senzaFirma = REQ_ATTESI.find(r => !r.serveFirma);
-      const s = await page.evaluate(([cf, sf]) => ({
-        vuoto:       window.pdocStato(cf, []).stato,
-        caricato:    window.pdocStato(cf, [{ categoria: cf.cat, url: 'x', firmato: false }]).stato,
-        firmato:     window.pdocStato(cf, [{ categoria: cf.cat, url: 'x', firmato: true }]).stato,
-        // dove la firma non serve, il solo caricamento basta
-        bastaCarico: window.pdocStato(sf, [{ categoria: sf.cat, url: 'x', firmato: false }]).stato,
-        // un requisito senza file non conta, anche se la riga esiste
-        rigaVuota:   window.pdocStato(cf, [{ categoria: cf.cat, url: null, firmato: true }]).stato
-      }), [conFirma, senzaFirma]);
+      const conFirma = { cat: 'polizza_firmata', fonte: 'pratica', serveFirma: true };
+      const senzaFirma = { cat: 'libretto_veicolo', fonte: 'pratica', serveFirma: false };
+      const s = await page.evaluate(([cf, sf]) => {
+        const F = window.Fascicolo;
+        return {
+          vuoto:       F.stato(cf, []).stato,
+          caricato:    F.stato(cf, [{ categoria: cf.cat, url: 'x', firmato: false }]).stato,
+          firmato:     F.stato(cf, [{ categoria: cf.cat, url: 'x', firmato: true }]).stato,
+          bastaCarico: F.stato(sf, [{ categoria: sf.cat, url: 'x', firmato: false }]).stato,
+          rigaVuota:   F.stato(cf, [{ categoria: cf.cat, url: null, firmato: true }]).stato
+        };
+      }, [conFirma, senzaFirma]);
       deve(s.vuoto === 'mancante', 'senza documento: ' + s.vuoto);
       deve(s.caricato === 'caricato', 'caricato ma non firmato dovrebbe restare "caricato": ' + s.caricato);
       deve(s.firmato === 'firmato', 'firmato: ' + s.firmato);
@@ -3849,49 +3878,60 @@ const avvio = async () => {
     });
 
     await prova('documenti: il perfezionamento è calcolato, non messo a mano', async () => {
-      const r = await page.evaluate(async (obbl) => {
-        const completi = obbl.map(x => ({ categoria: x.cat, url: 'x', firmato: true }));
-        const parziali = completi.slice(0, obbl.length - 1);
+      const r = await page.evaluate(async (o) => {
+        const completi = [{ categoria: 'polizza_firmata', url: 'x', firmato: true },
+                          { categoria: 'privacy', url: 'x', firmato: true }];
         window.__COLLAUDO.db = [];
         window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: false }, error: null };
-        const conTutti = await window.pdocRicalcola('pol-1', completi);
-        const scritture = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'update');
-        return { conTutti, conParziali: window.pdocMancanti(parziali), scritture: scritture.length,
-                 valore: scritture[0] && scritture[0].payload.perfezionata };
-      }, OBBLIGATORI);
+        /* L'identità arriva dall'anagrafica: è il terzo obbligatorio, e senza
+           anagrafica la polizza NON è perfezionata. */
+        const conTutti = await window.pdocRicalcola('p1', o.pol, completi, o.anag);
+        const scritture = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_polizze' && x.operazione === 'update');
+        return { conTutti,
+                 senzaAnagrafica: window.pdocMancanti(o.pol, completi, null),
+                 conParziali: window.pdocMancanti(o.pol, completi.slice(0, 1), o.anag),
+                 scritture: scritture.length, valore: scritture[0] && scritture[0].payload.perfezionata };
+      }, { pol: CONGELATA, anag: CI_BUONA });
       deve(r.conTutti === true, 'con tutti i documenti la polizza deve risultare perfezionata');
+      deve(r.senzaAnagrafica === 1, 'senza il documento in anagrafica dovrebbe mancarne 1: ' + r.senzaAnagrafica);
       deve(r.conParziali === 1, 'togliendo un obbligatorio deve mancarne 1: ' + r.conParziali);
       deve(r.scritture === 1, 'il flag non è stato scritto sulla polizza: ' + r.scritture);
       deve(r.valore === true, 'valore scritto sbagliato: ' + r.valore);
+      return 'il documento d\'identità conta anche se sta in anagrafica';
     });
 
     await prova('documenti: non riscrive il flag se non è cambiato', async () => {
       // Una scrittura inutile a ogni apertura è rumore sul database e nella
       // traccia delle modifiche.
-      const n = await page.evaluate(async (obbl) => {
+      const n = await page.evaluate(async (o) => {
         window.__COLLAUDO.db = [];
         window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: true }, error: null };
-        const completi = obbl.map(x => ({ categoria: x.cat, url: 'x', firmato: true }));
-        await window.pdocRicalcola('pol-1', completi);
-        return window.__COLLAUDO.db.filter(o => o.tabella === 'quote_polizze' && o.operazione === 'update').length;
-      }, OBBLIGATORI);
+        const completi = [{ categoria: 'polizza_firmata', url: 'x', firmato: true },
+                          { categoria: 'privacy', url: 'x', firmato: true }];
+        await window.pdocRicalcola('p1', o.pol, completi, o.anag);
+        return window.__COLLAUDO.db.filter(x => x.tabella === 'quote_polizze' && x.operazione === 'update').length;
+      }, { pol: CONGELATA, anag: CI_BUONA });
       deve(n === 0, 'ha riscritto il flag pur essendo già giusto');
     });
 
     await prova('documenti: il riquadro elenca i requisiti e dice cosa manca', async () => {
-      const r = await page.evaluate(async () => {
+      const r = await page.evaluate(async (pol) => {
         window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [
           { id: 'd1', categoria: 'polizza_firmata', url: 'http://x/p.pdf', firmato: true, entita_id: 'p1' },
           { id: 'd2', categoria: 'privacy', url: 'http://x/pr.pdf', firmato: false, entita_id: 'p1' },
           { id: 'd3', categoria: 'quietanza', url: 'http://x/q.pdf', firmato: false, anno: 2026, entita_id: 'p1' }
         ], error: null };
-        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: false }, error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: pol, error: null };
+        window.__COLLAUDO.risposte['quote_anagrafiche:single'] = { data: null, error: null };
+        window.__COLLAUDO.risposte['quote_compagnie:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_regole_documenti:lista'] = { data: [], error: null };
+        COMPAGNIE_REGOLE = null;
         await window.pdocApri('p1');
         const bd = document.getElementById('pdoc-bd');
         return { testo: bd.textContent.replace(/\s+/g, ' '),
                  righe: bd.querySelectorAll('.pdoc-r').length,
                  esito: bd.querySelector('.pdoc-esito').className };
-      });
+      }, CONGELATA);
       deve(/Polizza firmata/.test(r.testo) && /Informativa privacy/.test(r.testo)
         && /Documento d'identità/.test(r.testo), 'la checklist non elenca i requisiti');
       deve(/Mancante/.test(r.testo), 'non segnala i mancanti');
@@ -3922,24 +3962,29 @@ const avvio = async () => {
     });
 
     await prova('documenti: con tutto a posto lo dice, e chiude', async () => {
-      const r = await page.evaluate(async (obbl) => {
-        const completi = obbl
-          .map((x, i) => ({ id: 'k' + i, categoria: x.cat, url: 'http://x/f.pdf', firmato: true, entita_id: 'p1' }));
-        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: completi, error: null };
-        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { perfezionata: false }, error: null };
+      const r = await page.evaluate(async (o) => {
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [
+          { id: 'k0', categoria: 'polizza_firmata', url: 'http://x/f.pdf', firmato: true, entita_id: 'p1' },
+          { id: 'k1', categoria: 'privacy', url: 'http://x/f.pdf', firmato: true, entita_id: 'p1' }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: o.pol, error: null };
+        window.__COLLAUDO.risposte['quote_anagrafiche:single'] = { data: o.anag, error: null };
         await window.pdocRidisegna('p1');
         const bd = document.getElementById('pdoc-bd');
         const out = { testo: bd.textContent.replace(/\s+/g, ' '), esito: bd.querySelector('.pdoc-esito').className };
         document.getElementById('pdoc-ov')?.remove();
         return out;
-      }, OBBLIGATORI);
+      }, { pol: CONGELATA, anag: CI_BUONA });
       deve(/polizza perfezionata/.test(r.testo), 'non dichiara il perfezionamento: ' + r.testo.slice(0, 120));
       deve(/ok/.test(r.esito) && !/ko/.test(r.esito), 'esito non positivo: ' + r.esito);
+      deve(/Dall'anagrafica/.test(r.testo), 'il documento d\'identità non risulta ereditato dall\'anagrafica');
+      return 'due caricati più uno ereditato';
     });
 
     await prova('documenti: il portafoglio mostra quanti mancano senza aprire', async () => {
       const t = await page.evaluate(async () => {
         window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
         await window.loadPortafoglio();
         return document.getElementById('pf-body').textContent.replace(/\s+/g, ' ');
       });
@@ -6363,6 +6408,472 @@ const avvio = async () => {
 
     await prova('personalizzati: nessun errore JavaScript in tutto il blocco', async () => {
       deve(erroriPpg.length === 0, erroriPpg.slice(0, 3).join(' | '));
+    });
+
+    await context.close();
+  }
+
+  /* ══ LAVORO 3 — LA GESTIONE DOCUMENTALE (18/09/2026) ═══════════════════════
+     Due contenitori nella scheda cliente, il fascicolo guidato, le regole per
+     compagnia e i due contatori. Le REGOLE stanno nel motore e hanno le loro
+     prove in server/verifica/fascicolo.test.mjs: qui si controlla che la
+     schermata le chiami davvero e mostri quello che dicono — cioè la cosa che
+     in questo repository si rompe piu' spesso (§1 di CLAUDE.md: codice che
+     arriva e non viene collegato a niente).
+     ═══════════════════════════════════════════════════════════════════════ */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const erroriDoc = [];
+    page.on('pageerror', e => erroriDoc.push(e.message));
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    await prova('documentale: il motore del fascicolo è caricato dalla pagina, non solo dal disco', async () => {
+      const r = await page.evaluate(() => ({
+        c: typeof window.Fascicolo,
+        v: window.Fascicolo && window.Fascicolo.VERSIONE,
+        tipi: window.Fascicolo && window.Fascicolo.TIPI_CLIENTE.map(t => t.id)
+      }));
+      deve(r.c === 'object', 'window.Fascicolo non esiste: lo <script src> non c\'è o non si carica');
+      deve(/^fascicolo-/.test(r.v || ''), 'versione del motore: ' + r.v);
+      deve(r.tipi.join(',') === 'carta_identita,passaporto', 'i tipi anagrafici sono ' + r.tipi.join(','));
+      return r.v;
+    });
+
+    const apriScheda = async (anag) => page.evaluate((anag) => {
+      document.getElementById('anag-overlay')?.remove();
+      ANAG_CACHE = [Object.assign({ id: 'cli-1', nominativo: 'ROSSI MARIO', tipo: 'fisica' }, anag || {})];
+      apriAnagrafica('cli-1');
+    }, anag);
+
+    await prova('documentale: la linguetta Documenti si sdoppia in «cliente» e «polizza»', async () => {
+      await apriScheda();
+      await page.waitForTimeout(400);
+      const r = await page.evaluate(() => {
+        clTab('doc');
+        const b = [...document.querySelectorAll('#cl-doc .fdoc-subb')].map(x => ({ s: x.dataset.s, l: x.textContent.trim() }));
+        return { b, cli: !!document.getElementById('fdoc-cli'), pol: !!document.getElementById('fdoc-pol'),
+                 visCli: document.getElementById('fdoc-cli') && getComputedStyle(document.getElementById('fdoc-cli')).display };
+      });
+      deve(r.cli && r.pol, 'mancano i due contenitori: cliente=' + r.cli + ' polizza=' + r.pol);
+      deve(r.b.length === 2, 'sotto-linguette trovate: ' + r.b.map(x => x.l).join(' | '));
+      deve(/Documenti cliente/.test(r.b[0].l) && /Documenti polizza/.test(r.b[1].l), 'si chiamano ' + r.b.map(x => x.l).join(' | '));
+      deve(r.visCli !== 'none', 'si apre su un riquadro nascosto');
+      return 'due contenitori distinti';
+    });
+
+    await prova('documentale: il caricamento sta nel pannello, non più in «Modifica cliente»', async () => {
+      await apriScheda();
+      await page.waitForTimeout(400);
+      const r = await page.evaluate(() => {
+        clTab('doc');
+        const nelPannello = !!document.getElementById('fdoc-file');
+        aprModificaAnag('cli-1');
+        return { nelPannello, nelModulo: !!document.getElementById('cl-doc-file'),
+                 vecchia: typeof window.clienteDocUpload };
+      });
+      deve(r.nelPannello, 'nel pannello non c\'è il campo di caricamento');
+      deve(!r.nelModulo, 'il caricamento è rimasto anche in «Modifica cliente»: due posti, due formati nella stessa colonna');
+      deve(r.vecchia === 'undefined', 'la vecchia funzione di caricamento è ancora lì');
+      return 'un posto solo';
+    });
+
+    await prova('documentale: un documento scaduto si vede rosso, e quello rinnovato lo mette nello storico', async () => {
+      await apriScheda({ documenti: [
+        { tipo: 'carta_identita', numero: 'VECCHIA', url: 'u1', data: '2016-01-01', scadenza: '2024-01-01' },
+        { tipo: 'carta_identita', numero: 'NUOVA', url: 'u2', data: '2026-01-01', scadenza: '2036-01-01' }
+      ] });
+      await page.waitForTimeout(400);
+      const r = await page.evaluate(() => {
+        clTab('doc');
+        const cli = document.getElementById('fdoc-cli');
+        return { html: cli.innerHTML, storico: !!cli.querySelector('.fdoc-storico'),
+                 righeSopra: cli.querySelectorAll(':scope > .sc-docrow').length };
+      });
+      deve(r.righeSopra === 1, 'in evidenza ci sono ' + r.righeSopra + ' documenti invece di 1 (l\'attivo)');
+      deve(r.storico, 'la versione precedente non è finita nello storico');
+      deve(/NUOVA/.test(r.html) && /VECCHIA/.test(r.html), 'lo storico ha perso la versione vecchia');
+      deve(/Valido/.test(r.html), 'il documento buono non è segnato valido');
+      return 'attivo in evidenza, precedente nello storico';
+    });
+
+    await prova('documentale: senza data di scadenza il documento non si carica', async () => {
+      await apriScheda();
+      await page.waitForTimeout(400);
+      const r = await page.evaluate(async () => {
+        clTab('doc');
+        window.__COLLAUDO.db = [];
+        const inp = document.getElementById('fdoc-file');
+        const dt = new DataTransfer();
+        dt.items.add(new File(['x'], 'ci.pdf', { type: 'application/pdf' }));
+        inp.files = dt.files;
+        document.getElementById('fdoc-scad').value = '';
+        await fdocCaricaCliente();
+        return { avviso: document.getElementById('fdoc-status').textContent,
+                 scritture: window.__COLLAUDO.db.filter(x => x.tabella === 'quote_anagrafiche').length };
+      });
+      deve(r.scritture === 0, 'un documento senza scadenza è finito in archivio lo stesso');
+      deve(/scadenza/i.test(r.avviso), 'non dice perché non l\'ha caricato: «' + r.avviso + '»');
+      return 'la scadenza è obbligatoria e lo dice';
+    });
+
+    await prova('documentale: «Documenti polizza» mostra la data in evidenza e il numero', async () => {
+      await apriScheda();
+      await page.waitForTimeout(300);
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
+          { id: 'pol-1', numero: 7, numero_polizza: 'ABC-123', modulo: 'rca', prodotto: 'RC Auto',
+            compagnia: 'Prima', data_effetto: '2026-03-04', data_scadenza: '2027-03-04',
+            cliente_id: 'cli-1', perfezionata: false, dati: {} }
+        ], error: null };
+        clTab('doc');
+        fdocSub('pol');
+        await fdocRenderPolizze();
+        const el = document.getElementById('fdoc-pol');
+        return { html: el.innerHTML, data: el.querySelector('.fdoc-data')?.textContent || '' };
+      });
+      deve(r.data === '04/03/2026', 'la data di polizza in evidenza è «' + r.data + '»');
+      deve(/ABC-123/.test(r.html), 'il numero di polizza non compare');
+      deve(/Fascicolo da completare/.test(r.html), 'non si vede se il fascicolo è a posto');
+      return 'data in evidenza, poi il numero';
+    });
+
+    /* ── IL FASCICOLO GUIDATO ────────────────────────────────────────────── */
+    const apriFascicolo = async (polizza, docs, anag, compagnie, regole) => page.evaluate(async (o) => {
+      window.__COLLAUDO.risposte['quote_polizze:single'] = { data: o.polizza, error: null };
+      window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: o.docs || [], error: null };
+      window.__COLLAUDO.risposte['quote_anagrafiche:single'] = { data: o.anag || null, error: null };
+      window.__COLLAUDO.risposte['quote_compagnie:lista'] = { data: o.compagnie || [], error: null };
+      window.__COLLAUDO.risposte['quote_regole_documenti:lista'] = { data: o.regole || [], error: null };
+      COMPAGNIE_REGOLE = null;
+      ANAG_CACHE = [];
+      window.__COLLAUDO.db = [];
+      await pdocApri(o.polizza.id);
+      return document.getElementById('pdoc-bd').innerHTML;
+    }, { polizza, docs, anag, compagnie, regole });
+
+    const POLIZZA = { id: 'pol-1', numero: 7, numero_polizza: 'ABC-123', modulo: 'rca', prodotto: 'RC Auto',
+                      compagnia: 'Prima Assicurazioni', cliente: 'ROSSI MARIO', cliente_id: 'cli-1',
+                      data_effetto: '2026-03-04', dati: {} };
+    const COMPAGNIE = [{ id: 'c-prima', nome: 'Prima', alias: ['Prima Assicurazioni'], attiva: true },
+                       { id: 'c-hdi', nome: 'HDI', alias: ['HDI Assicurazioni'], attiva: true }];
+    const REGOLE = [{ id: 'r1', compagnia_id: 'c-prima', documento: 'patente', obbligatorio: true, ramo: 'rcauto', attiva: true }];
+    const CI = { id: 'cli-1', nominativo: 'ROSSI MARIO',
+                 documenti: [{ tipo: 'carta_identita', numero: 'CI1', url: 'u', data: '2026-01-01', scadenza: '2036-01-01' }] };
+
+    await prova('fascicolo: senza operazione non si mostrano campi, si chiede come nasce la pratica', async () => {
+      const html = await apriFascicolo(POLIZZA, [], CI, COMPAGNIE, REGOLE);
+      deve(/Come nasce il fascicolo/.test(html), 'non chiede operazione e compagnia');
+      deve(!!(await page.$('#pdoc-op')) && !!(await page.$('#pdoc-comp')), 'mancano le due scelte');
+      deve(!/Libretto del veicolo/.test(html), 'mostra già i campi senza sapere che operazione è');
+      /* La compagnia scritta sulla polizza («Prima Assicurazioni») deve
+         ritrovare la riga in anagrafica («Prima») passando dall'alias. */
+      const scelta = await page.evaluate(() => document.getElementById('pdoc-comp').value);
+      deve(scelta === 'c-prima', 'la compagnia proposta è «' + scelta + '»: l\'alias non viene usato');
+      return 'due scelte, compagnia proposta dall\'alias';
+    });
+
+    await prova('fascicolo: l\'anteprima dice quanti documenti chiede la compagnia, prima di congelare', async () => {
+      await apriFascicolo(POLIZZA, [], CI, COMPAGNIE, REGOLE);
+      const r = await page.evaluate(() => {
+        document.getElementById('pdoc-op').value = 'rinnovo_altra_compagnia';
+        pdocAnteprima('pol-1');
+        const conPrima = document.getElementById('pdoc-anteprima').textContent;
+        document.getElementById('pdoc-comp').value = 'c-hdi';
+        pdocAnteprima('pol-1');
+        return { conPrima, conHdi: document.getElementById('pdoc-anteprima').textContent };
+      });
+      deve(/Patente/.test(r.conPrima), 'con Prima non annuncia la patente: «' + r.conPrima.trim() + '»');
+      deve(!/Patente/.test(r.conHdi), 'con HDI chiede la patente lo stesso: «' + r.conHdi.trim() + '»');
+      deve(/4 documenti obbligatori/.test(r.conHdi), 'il conto senza regole è sbagliato: «' + r.conHdi.trim() + '»');
+      return 'Prima 5, HDI 4';
+    });
+
+    await prova('fascicolo: alla creazione i requisiti si congelano sulla pratica', async () => {
+      await apriFascicolo(POLIZZA, [], CI, COMPAGNIE, REGOLE);
+      const r = await page.evaluate(async () => {
+        document.getElementById('pdoc-op').value = 'rinnovo_altra_compagnia';
+        window.__COLLAUDO.db = [];
+        await pdocCreaFascicolo('pol-1');
+        const scritte = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_polizze' && x.operazione === 'update');
+        return { scritte: scritte.length, payload: scritte[0] && scritte[0].payload };
+      });
+      deve(r.scritte === 1, 'scritture sulla polizza: ' + r.scritte);
+      const f = r.payload && r.payload.dati && r.payload.dati.fascicolo;
+      deve(f, 'il fascicolo non è stato scritto su dati: ' + JSON.stringify(r.payload));
+      deve(f.operazione === 'rinnovo_altra_compagnia', 'operazione congelata: ' + f.operazione);
+      deve(f.compagnia === 'Prima', 'compagnia congelata: ' + f.compagnia);
+      deve(Array.isArray(f.requisiti) && f.requisiti.some(x => x.cat === 'patente'), 'i requisiti congelati non contengono la patente');
+      deve(f.congelato_il, 'non si sa quando è stato congelato');
+      return f.requisiti.length + ' requisiti scritti sulla pratica';
+    });
+
+    await prova('fascicolo: una pratica congelata NON cambia quando cambia la regola della compagnia', async () => {
+      const congelata = JSON.parse(JSON.stringify(POLIZZA));
+      congelata.dati = { fascicolo: {
+        operazione: 'rinnovo_altra_compagnia', ramo: 'rcauto', compagnia_id: 'c-prima', compagnia: 'Prima',
+        congelato_il: '2026-09-18T09:00:00Z',
+        requisiti: [
+          { cat: 'polizza_firmata', l: 'Polizza firmata', fonte: 'pratica', serveFirma: true, obbl: true, da: 'base' },
+          { cat: 'privacy', l: 'Informativa privacy', fonte: 'pratica', serveFirma: true, obbl: true, da: 'base' },
+          { cat: 'documento_identita', l: "Documento d'identità del cliente", fonte: 'anagrafica', serveFirma: false, obbl: true, da: 'base' },
+          { cat: 'libretto_veicolo', l: 'Libretto del veicolo', fonte: 'pratica', serveFirma: false, obbl: true, da: 'operazione' }
+        ] } };
+      const docs = [
+        { id: 'd1', categoria: 'polizza_firmata', url: 'u', firmato: true },
+        { id: 'd2', categoria: 'privacy', url: 'u', firmato: true },
+        { id: 'd3', categoria: 'libretto_veicolo', url: 'u', firmato: false }
+      ];
+      /* La regola di oggi chiede anche la patente. La pratica di ieri no. */
+      const html = await apriFascicolo(congelata, docs, CI, COMPAGNIE, REGOLE);
+      deve(/polizza perfezionata/.test(html), 'la regola nuova ha reso incompleta una pratica già creata');
+      deve(!/Patente del cliente/.test(html), 'la pratica congelata ha ereditato un requisito nato dopo');
+      deve(/Fascicolo creato/.test(html) && /18\/09\/2026/.test(html), 'non dice che i requisiti sono congelati e da quando');
+      return 'i requisiti di ieri restano quelli di ieri';
+    });
+
+    await prova('fascicolo: l\'identità del cliente si eredita, e non si carica nella pratica', async () => {
+      const congelata = JSON.parse(JSON.stringify(POLIZZA));
+      congelata.dati = { fascicolo: { operazione: 'bersani_diverso', ramo: 'rcauto', compagnia: 'Prima',
+        congelato_il: '2026-09-18T09:00:00Z',
+        requisiti: [
+          { cat: 'documento_identita', l: "Documento d'identità del cliente", fonte: 'anagrafica', serveFirma: false, obbl: true, da: 'base' },
+          { cat: 'doc_identita_familiare', l: "Documento d'identità del familiare convivente", fonte: 'pratica', serveFirma: false, obbl: true, terzo: true, da: 'operazione' }
+        ] } };
+      const html = await apriFascicolo(congelata, [], CI, COMPAGNIE, REGOLE);
+      deve(/Dall'anagrafica/.test(html), 'il documento del cliente non risulta ereditato: ' + html.slice(0, 200));
+      deve(/Carica in anagrafica|Aggiorna in anagrafica/.test(html), 'il bottone porta a caricarlo nella pratica');
+      deve(/documento di terzi/.test(html), 'non dice che il documento del familiare resta nella pratica');
+      /* E il caricatore rispetta la destinazione: un file scelto per il
+         documento d'identità del cliente NON deve finire nella pratica. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        await pdocCarica('pol-1', 'documento_identita', new File(['x'], 'ci.pdf', { type: 'application/pdf' }));
+        return window.__COLLAUDO.db.filter(x => x.tabella === 'quote_pratica_documenti').length;
+      });
+      deve(r === 0, 'il documento d\'identità del cliente è stato scritto nella pratica');
+      return 'eredità dall\'anagrafica, terzi nella pratica';
+    });
+
+    await prova('fascicolo: le alternative non sono «mancanti» quando l\'altra c\'è', async () => {
+      const congelata = JSON.parse(JSON.stringify(POLIZZA));
+      congelata.dati = { fascicolo: { operazione: 'bersani_diverso', ramo: 'rcauto', compagnia: 'Prima',
+        congelato_il: '2026-09-18T09:00:00Z',
+        requisiti: [
+          { cat: 'stato_famiglia', l: 'Stato di famiglia', fonte: 'pratica', serveFirma: false, obbl: true, gruppo: 'famiglia', da: 'operazione' },
+          { cat: 'autocert_stato_famiglia', l: 'Autocertificazione dello stato di famiglia', fonte: 'pratica', serveFirma: false, obbl: true, gruppo: 'famiglia', da: 'operazione' }
+        ] } };
+      const html = await apriFascicolo(congelata, [{ id: 'd9', categoria: 'autocert_stato_famiglia', url: 'u' }], CI, COMPAGNIE, REGOLE);
+      deve(/Non necessario/.test(html), 'l\'alternativa non scelta è segnata mancante, in rosso');
+      deve(/polizza perfezionata/.test(html), 'con una delle due il fascicolo risulta incompleto');
+      return 'una delle due basta, e l\'altra non è un rosso';
+    });
+
+    /* ── I DUE CONTATORI E LE REGOLE ─────────────────────────────────────── */
+    await prova('controllo documenti: i due contatori restano due, e contano cose diverse', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [
+          { id: 'a1', nominativo: 'ROSSI MARIO', documenti: [{ tipo: 'carta_identita', numero: 'X1', url: 'u', data: '2016-01-01', scadenza: '2024-05-01' }] },
+          { id: 'a2', nominativo: 'VERDI LUIGI', documenti: [{ tipo: 'carta_identita', url: 'u', data: '2024-01-01', scadenza: '2034-01-01' }] }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
+          { id: 'p1', cliente: 'VERDI LUIGI', cliente_id: 'a2', modulo: 'rca', prodotto: 'RC Auto',
+            compagnia: 'Prima', creato_nome: 'Anna Bianchi', data_effetto: '2026-03-01', dati: {} },
+          { id: 'p2', cliente: 'NERI PAOLO', cliente_id: 'a3', modulo: 'rca', prodotto: 'RC Auto',
+            compagnia: 'HDI', creato_nome: 'Mario Neri', data_effetto: '2026-04-01', dati: {} }
+        ], error: null };
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [], error: null };
+        showPage('controllo-documenti');
+        await cdocCarica(true);
+        return {
+          scad: document.getElementById('cdoc-n-scad').textContent,
+          fasc: document.getElementById('cdoc-n-fasc').textContent,
+          dettaglio: document.getElementById('cdoc-d-scad').textContent,
+          righeScad: document.getElementById('cdoc-scad-body').textContent,
+          righeFasc: document.getElementById('cdoc-fasc-body').textContent
+        };
+      });
+      deve(r.scad === '1', 'clienti con documenti in scadenza: ' + r.scad);
+      deve(r.fasc === '2', 'fascicoli incompleti: ' + r.fasc);
+      deve(/ROSSI MARIO/.test(r.righeScad) && !/VERDI/.test(r.righeScad), 'l\'elenco scadenze è sbagliato');
+      deve(/VERDI LUIGI/.test(r.righeFasc), 'la pratica incompleta non compare');
+      deve(/mai creato/.test(r.righeFasc), 'non dice che quel fascicolo non è mai stato creato');
+      deve(/scadut/.test(r.dettaglio), 'il sottotitolo non distingue scaduti da in scadenza');
+      return '1 e 1, per ragioni diverse';
+    });
+
+    await prova('controllo documenti: gli elenchi si filtrano per compagnia, operatore e cliente', async () => {
+      const r = await page.evaluate(() => {
+        const opzioni = id => [...document.getElementById(id).options].map(o => o.value);
+        document.getElementById('cdoc-f-comp').value = 'HDI';
+        cdocRenderFascicoli();
+        const conHdi = document.getElementById('cdoc-fasc-body').textContent;
+        const hdiScelta = document.getElementById('cdoc-f-comp').value;
+        document.getElementById('cdoc-f-comp').value = 'Prima';
+        cdocRenderFascicoli();
+        const conPrima = document.getElementById('cdoc-fasc-body').textContent;
+        document.getElementById('cdoc-f-comp').value = '';
+        document.getElementById('cdoc-f-stato').value = 'in_scadenza';
+        cdocRenderScadenze();
+        return { hdiScelta, comp: opzioni('cdoc-f-comp'), oper: opzioni('cdoc-f-oper'), conHdi, conPrima,
+                 soloInScadenza: document.getElementById('cdoc-scad-body').textContent };
+      });
+      deve(r.comp.includes('Prima') && r.oper.includes('Anna Bianchi'), 'i filtri non si riempiono dai dati: ' + r.comp.join(',') + ' / ' + r.oper.join(','));
+      deve(r.hdiScelta === 'HDI', 'la tendina non conosce HDI: il filtro non si stava provando. opzioni: ' + r.comp.join(','));
+      deve(/NERI PAOLO/.test(r.conHdi) && !/VERDI LUIGI/.test(r.conHdi), 'il filtro compagnia non filtra');
+      deve(/VERDI LUIGI/.test(r.conPrima), 'il filtro compagnia nasconde anche quello che dovrebbe mostrare');
+      deve(/Nessun documento/.test(r.soloInScadenza), 'il filtro stato non filtra: uno scaduto compare fra gli «in scadenza»');
+      return 'tre filtri, tutti veri';
+    });
+
+    await prova('controllo documenti: le regole di una compagnia si cambiano da qui, senza toccare il codice', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_compagnie:lista'] = { data: [
+          { id: 'c-prima', nome: 'Prima', alias: ['Prima Assicurazioni'], attiva: true }], error: null };
+        window.__COLLAUDO.risposte['quote_regole_documenti:lista'] = { data: [
+          { id: 'r1', compagnia_id: 'c-prima', documento: 'patente', obbligatorio: true, ramo: 'rcauto', attiva: true },
+          { id: 'r2', compagnia_id: 'c-prima', documento: 'certificato_lunare', obbligatorio: true, ramo: '*', attiva: true }
+        ], error: null };
+        cdocTab('reg');
+        await cdocRenderRegole();
+        const html = document.getElementById('cdoc-reg-corpo').innerHTML;
+        window.__COLLAUDO.db = [];
+        document.getElementById('rdoc-t-c-prima').value = 'libretto_veicolo';
+        await cdocAggiungiRegola('c-prima');
+        const scritte = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_regole_documenti');
+        return { html, scritte: scritte.map(x => x.payload) };
+      });
+      deve(/Patente del cliente/.test(r.html), 'la regola di Prima non si vede col suo nome per esteso');
+      deve(/Prima Assicurazioni/.test(r.html), 'gli alias non si vedono: non si capisce perché una polizza trovi questa compagnia');
+      /* Una regola che nomina un tipo che il motore non conosce non deve
+         sparire: va mostrata come inapplicabile, altrimenti un refuso toglie
+         un requisito e nessuno se ne accorge. */
+      deve(/tipo sconosciuto/.test(r.html), 'una regola con un tipo inesistente sparisce in silenzio');
+      deve(r.scritte.length === 1 && r.scritte[0].documento === 'libretto_veicolo', 'la regola nuova non viene salvata: ' + JSON.stringify(r.scritte));
+      deve(r.scritte[0].compagnia_id === 'c-prima' && r.scritte[0].ramo === 'rcauto', 'la regola nasce storta: ' + JSON.stringify(r.scritte[0]));
+      return 'si leggono, si aggiungono, gli errori si vedono';
+    });
+
+    await prova('controllo documenti: la pagina ha la sua porta, altrimenti la scocca apre un riquadro vuoto', async () => {
+      const r = await page.evaluate(() => ({
+        pagina: !!document.getElementById('page-controllo-documenti'),
+        porta: typeof PAGINE_DA_AVVIARE['controllo-documenti'] === 'function',
+        nav: !!document.getElementById('nav-cdoc')
+      }));
+      deve(r.pagina, 'la pagina non esiste');
+      deve(r.porta, 'manca la riga in PAGINE_DA_AVVIARE: ?page=controllo-documenti aprirebbe un riquadro vuoto');
+      deve(r.nav, 'non c\'è la voce di menu');
+      return 'pagina, porta e voce di menu';
+    });
+
+    /* ── L'ARCHIVIO CHIUSO (18/09/2026) ──────────────────────────────────
+       Il contenitore «documenti» non è più pubblico. Qui si guarda che la
+       pagina apra i documenti FIRMANDOLI, e che continui a farlo con gli
+       indirizzi vecchi rimasti nel database. */
+    await prova('archivio: aprire un documento chiede un indirizzo firmato, e apre quello', async () => {
+      const r = await page.evaluate(async () => {
+        const spia = { firmati: [], aperti: [] };
+        const vecchio = db.storage.from;
+        db.storage.from = (b) => ({
+          createSignedUrl: async (path, sec) => { spia.firmati.push({ b, path, sec }); return { data: { signedUrl: 'https://firmato/' + path + '?token=k' }, error: null }; },
+          upload: async () => ({ error: null })
+        });
+        const finestra = { location: { href: '' }, close() { spia.chiusa = true; } };
+        const apri = window.open;
+        window.open = () => { spia.aperti.push('finestra'); return finestra; };
+        await archApri('https://ekjxrnsfqxnfxzrthdcf.supabase.co/storage/v1/object/public/documenti/clienti/a/1_ci.pdf');
+        const dopoVecchio = { ...finestra.location };
+        await archApri('polizze/pol-1_patente_9_x.pdf');
+        db.storage.from = vecchio; window.open = apri;
+        return { spia, dopoVecchio, dopoNuovo: finestra.location.href };
+      });
+      deve(r.spia.firmati.length === 2, 'firme chieste: ' + r.spia.firmati.length + ' (attese 2)');
+      deve(r.spia.firmati[0].b === 'documenti', 'ha firmato sul contenitore «' + r.spia.firmati[0].b + '»');
+      deve(r.spia.firmati[0].path === 'clienti/a/1_ci.pdf', 'da un vecchio indirizzo pubblico ha ricavato «' + r.spia.firmati[0].path + '»');
+      deve(r.spia.firmati[1].path === 'polizze/pol-1_patente_9_x.pdf', 'da un percorso ha ricavato «' + r.spia.firmati[1].path + '»');
+      deve(/^https:\/\/firmato\//.test(r.dopoNuovo), 'la finestra non è finita sull\'indirizzo firmato: ' + r.dopoNuovo);
+      deve(r.spia.aperti.length === 2, 'non apre una finestra per ogni documento');
+      return 'vecchi e nuovi, tutti firmati';
+    });
+
+    await prova('archivio: se la firma non riesce lo dice, e non lascia una finestra bianca', async () => {
+      const r = await page.evaluate(async () => {
+        const avvisi = []; const chiusure = [];
+        const vecchio = db.storage.from; const apri = window.open; const alrt = window.alert;
+        db.storage.from = () => ({ createSignedUrl: async () => ({ data: null, error: { message: 'Object not found' } }) });
+        window.open = () => ({ location: { href: '' }, close() { chiusure.push(1); } });
+        window.alert = (m) => avvisi.push(String(m));
+        await archApri('clienti/a/sparito.pdf');
+        db.storage.from = vecchio; window.open = apri; window.alert = alrt;
+        return { avvisi, chiusure: chiusure.length };
+      });
+      deve(r.chiusure === 1, 'la finestra vuota è rimasta aperta');
+      deve(r.avvisi.length === 1 && /permessi|archivio/i.test(r.avvisi[0]), 'non spiega perché non si apre: ' + JSON.stringify(r.avvisi));
+      return 'finestra chiusa, motivo detto';
+    });
+
+    await prova('archivio: un clic su un link d\'archivio non naviga mai, viene firmato', async () => {
+      const r = await page.evaluate(async () => {
+        const spia = { firmati: [] };
+        const vecchio = db.storage.from; const apri = window.open;
+        db.storage.from = () => ({ createSignedUrl: async (p) => { spia.firmati.push(p); return { data: { signedUrl: 'https://firmato/' + p }, error: null }; } });
+        window.open = () => ({ location: {}, close() {} });
+        const box = document.createElement('div');
+        box.innerHTML = `<a id="t-arch" href="clienti/a/1_ci.pdf" target="_blank">doc</a>
+                         <a id="t-pub" href="https://ekjxrnsfqxnfxzrthdcf.supabase.co/storage/v1/object/public/documenti/rcvp/2_x.pdf" target="_blank">vecchio</a>
+                         <a id="t-fuori" href="https://quoto.withusassicurazioni.it/docs/dip.pdf" target="_blank">esterno</a>`;
+        document.body.appendChild(box);
+        const esito = {};
+        for (const id of ['t-arch', 't-pub', 't-fuori']) {
+          const ev = new MouseEvent('click', { bubbles: true, cancelable: true });
+          document.getElementById(id).dispatchEvent(ev);
+          esito[id] = ev.defaultPrevented;
+        }
+        await new Promise(r => setTimeout(r, 50));
+        box.remove(); db.storage.from = vecchio; window.open = apri;
+        return { esito, firmati: spia.firmati };
+      });
+      deve(r.esito['t-arch'], 'un percorso d\'archivio naviga come indirizzo del sito: mostrerebbe una pagina che non c\'è');
+      deve(r.esito['t-pub'], 'un vecchio indirizzo pubblico non viene intercettato');
+      deve(!r.esito['t-fuori'], 'un documento precontrattuale esterno viene intercettato: si aprirebbe un errore');
+      deve(r.firmati.length === 2, 'firme chieste dai clic: ' + r.firmati.length + ' (attese 2)');
+      return 'due intercettati, uno lasciato passare';
+    });
+
+    await prova('archivio: il documento d\'identità del cliente si carica come percorso', async () => {
+      const r = await page.evaluate(async () => {
+        document.getElementById('anag-overlay')?.remove();
+        ANAG_CACHE = [{ id: 'cli-1', nominativo: 'ROSSI MARIO', tipo: 'fisica', documenti: [] }];
+        apriAnagrafica('cli-1');
+        await new Promise(r => setTimeout(r, 300));
+        clTab('doc');
+        const vecchio = db.storage.from;
+        db.storage.from = () => ({ upload: async () => ({ error: null }),
+                                   createSignedUrl: async () => ({ data: { signedUrl: 'x' }, error: null }) });
+        window.__COLLAUDO.db = [];
+        const inp = document.getElementById('fdoc-file');
+        const dt = new DataTransfer();
+        dt.items.add(new File(['x'], 'ci.pdf', { type: 'application/pdf' }));
+        inp.files = dt.files;
+        document.getElementById('fdoc-scad').value = '2036-01-01';
+        document.getElementById('fdoc-numero').value = 'AX123';
+        await fdocCaricaCliente();
+        db.storage.from = vecchio;
+        const scritte = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_anagrafiche' && x.operazione === 'update');
+        return { scritte: scritte.length, doc: scritte[0] && scritte[0].payload.documenti[0] };
+      });
+      deve(r.scritte === 1, 'scritture in anagrafica: ' + r.scritte);
+      deve(r.doc, 'non ha salvato niente');
+      deve(!/^https?:/i.test(r.doc.url), 'ha salvato un indirizzo invece di un percorso: ' + r.doc.url);
+      deve(/^clienti\/cli-1\//.test(r.doc.url), 'il percorso non è quello atteso: ' + r.doc.url);
+      deve(r.doc.numero === 'AX123' && r.doc.scadenza === '2036-01-01', 'numero o scadenza persi: ' + JSON.stringify(r.doc));
+      return r.doc.url;
+    });
+
+    await prova('documentale: nessun errore JavaScript in tutto il blocco', async () => {
+      deve(erroriDoc.length === 0, erroriDoc.slice(0, 3).join(' | '));
     });
 
     await context.close();

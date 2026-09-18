@@ -12,6 +12,10 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 /* La logica provabile sta a parte, senza express: vedi firmeDati.js. */
 import { chiFirma, controllaPog, documentoMio, pogPrecedente } from './firmeDati.js';
+/* L'archivio è chiuso dal 18/09/2026: il documento di riferimento non ha più
+   un indirizzo pubblico, e si firma qui — il collaboratore che firma non è
+   collegato a Supabase, il suo browser non potrebbe chiedere la firma. */
+import { firmaDocumento, SCADENZA } from './archivio.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const SELF_URL = (process.env.SELF_URL || 'https://api.withusassicurazioni.it').replace(/\/$/, '');
@@ -183,7 +187,7 @@ function genGenericHtml(c, firma) {
       <div><div class="t"><b>WITH US SOCIETA' COOPERATIVA</b> — RUI A000747484</div><div class="t">Attestazione di firma elettronica del documento</div></div></div>
     <h1>${esc(titolo)}</h1>
     <p class="small">Documento sottoscritto tra <b>With Us Soc. Coop.</b> e il collaboratore <b>${esc(nome)}</b>${c.rui ? ' (RUI ' + esc(c.rui) + ')' : ''}.</p>
-    ${firma.doc_url ? `<div class="src">📄 Documento di riferimento: <a href="${esc(firma.doc_url)}" target="_blank">apri il file</a></div>` : ''}
+    ${firma.doc_link ? `<div class="src">📄 Documento di riferimento: <a href="${esc(firma.doc_link)}" target="_blank">apri il file</a></div>` : ''}
     <p class="small">Le parti dichiarano di aver letto e accettato il contenuto del documento sopra indicato, che si sottoscrive mediante firma elettronica con codice OTP.</p>
     <div class="signs">
       ${sig('Il Collaboratore', nome, oggiC, firma.ip_collab)}
@@ -284,7 +288,11 @@ publicFirmaCollab.get('/info', async (req, res) => {
     if (!f) return res.status(404).json({ error: 'non trovato' });
     if (!req.query.t || f.token !== req.query.t) return res.status(403).json({ error: 'link non valido' });
     const c = await getCollab(f.team_id) || {};
-    res.json({ ok: true, stato: f.stato, titolo: tipoLabel(f.tipo, f.titolo), nome: ((c.cogn || '') + ' ' + (c.nome || '')).trim(), docUrl: f.doc_url || '', firmato_collab_il: f.firmato_collab_il });
+    /* `doc_url` in tabella è un PERCORSO dell'archivio (o, per le firme di
+       prima del 18/09/2026, un vecchio indirizzo pubblico): tutte e due si
+       firmano allo stesso modo. Quello che esce di qui è sempre firmato. */
+    const docLink = await firmaDocumento(f.doc_url || '', SCADENZA.al_cliente);
+    res.json({ ok: true, stato: f.stato, titolo: tipoLabel(f.tipo, f.titolo), nome: ((c.cogn || '') + ' ' + (c.nome || '')).trim(), docUrl: docLink, firmato_collab_il: f.firmato_collab_il });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -295,6 +303,7 @@ publicFirmaCollab.get('/doc', async (req, res) => {
     if (!f) return res.status(404).send('non trovato');
     if (!req.query.t || f.token !== req.query.t) return res.status(403).send('link non valido');
     const c = await getCollab(f.team_id) || {};
+    f.doc_link = await firmaDocumento(f.doc_url || '', SCADENZA.al_cliente);
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.send(genDocHtml(c, f));
   } catch (e) { res.status(500).send('Errore: ' + e.message); }
@@ -387,6 +396,7 @@ firmaCollabRouter.get('/mio/doc', async (req, res) => {
     const no = documentoMio(f, req.user && req.user.id);
     if (no) return res.status(404).send('non trovato');
     const c = await getCollab(f.team_id) || {};
+    f.doc_link = await firmaDocumento(f.doc_url || '', SCADENZA.dentro_casa);
     res.set('Content-Type', 'text/html; charset=utf-8');
     /* Un documento firmato non si mette in cache condivisa. */
     res.set('Cache-Control', 'private, no-store');

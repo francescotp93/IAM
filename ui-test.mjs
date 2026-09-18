@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { chromium } from 'playwright';
 import fs from 'fs';
+import path from 'path';
 
 const BASE = 'http://127.0.0.1:8077';
 
@@ -7043,6 +7044,187 @@ const avvio = async () => {
 
     await prova('documentale: nessun errore JavaScript in tutto il blocco', async () => {
       deve(erroriDoc.length === 0, erroriDoc.slice(0, 3).join(' | '));
+    });
+
+    await context.close();
+  }
+
+  /* ══ IMPORTA IL PORTAFOGLIO DALLA COMPAGNIA (18/09/2026) ═══════════════════
+     Le regole di lettura del flusso hanno le loro prove in Node
+     (`server/verifica/flusso-ssf.test.mjs`, sul campione sintetico). Qui si
+     controlla la cosa che in questo repository si rompe più spesso: che la
+     schermata chiami davvero il motore, e che scriva quello che ha promesso
+     nell'anteprima — né una riga di più.
+     ═══════════════════════════════════════════════════════════════════════ */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const erroriFlu = [];
+    page.on('pageerror', e => erroriFlu.push(e.message));
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    /* Il campione è lo stesso delle prove in Node: dati inventati, con dentro
+       tutti i casi. Si passano alla pagina come testo e si ricostruiscono lì
+       dei File veri, come se fossero stati scelti a mano. */
+    const CAMPIONI = path.join(process.cwd(), 'server', 'verifica', 'campioni', 'ssf');
+    const campione = {};
+    for (const f of fs.readdirSync(CAMPIONI)) {
+      if (f.endsWith('.csv')) campione[f] = fs.readFileSync(path.join(CAMPIONI, f), 'utf8');
+    }
+
+    const scegli = async (esistenti) => page.evaluate(async (o) => {
+      window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: o.esistenti || [], error: null };
+      window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [], error: null };
+      window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+      window.__COLLAUDO.risposte['quote_anagrafiche:single'] = { data: { id: 'cli-nuovo' }, error: null };
+      window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { id: 'pol-nuova' }, error: null };
+      window.__COLLAUDO.db = [];
+      window.__CAMPIONE = o.campione;   // lo riusa la prova del secondo caricamento
+      const files = Object.keys(o.campione).map(n => new File([o.campione[n]], n, { type: 'text/csv' }));
+      await fluScelto(files);
+      return document.getElementById('flu-esito').innerHTML;
+    }, { campione, esistenti });
+
+    await prova('flusso: il motore è caricato dalla pagina, non solo dal disco', async () => {
+      /* CLAUDE.md §1: il guasto numero uno di questo repository è il codice
+         che arriva su main e non lo chiama nessuno. */
+      const r = await page.evaluate(() => ({
+        c: typeof window.FlussoSSF,
+        v: window.FlussoSSF && window.FlussoSSF.VERSIONE,
+        rec: window.FlussoSSF && Object.keys(window.FlussoSSF.RECORD).length
+      }));
+      deve(r.c === 'object', 'window.FlussoSSF non esiste: lo <script src> non c\'è o non si carica');
+      deve(/^flusso-ssf-/.test(r.v || ''), 'versione del motore: ' + r.v);
+      deve(r.rec === 9, 'i tipi di record sono ' + r.rec);
+      return r.v;
+    });
+
+    await prova('flusso: la pagina ha la sua porta e la voce di menu si vede solo allo staff', async () => {
+      const r = await page.evaluate(() => ({
+        pagina: !!document.getElementById('page-importa-flusso'),
+        porta: typeof PAGINE_DA_AVVIARE['importa-flusso'] === 'function',
+        voce: !!document.getElementById('nav-import'),
+        /* La voce si accende dentro `onLogin`, e la regola dev'essere quella
+           del database: `iam_is_staff` su quote_importazioni. Una voce che si
+           vede a tutti è una porta che si apre su un errore di permessi. */
+        soloStaff: /navImp[\s\S]{0,120}isStaff\(\)/.test(document.documentElement.innerHTML)
+      }));
+      deve(r.pagina, 'manca #page-importa-flusso');
+      deve(r.porta, 'senza porta, «?page=importa-flusso» dalla scocca apre un riquadro vuoto');
+      deve(r.voce, 'manca la voce di menu');
+      deve(r.soloStaff, 'la voce non è legata a isStaff(): la vedrebbe anche chi non può scrivere');
+      return 'pagina, porta e voce riservata';
+    });
+
+    await prova('flusso: l\'anteprima mostra il piano e NON scrive niente', async () => {
+      /* È la regola di questa schermata: un\'importazione che scrive prima di
+         farsi vedere è una cosa che si subisce. */
+      const html = await scegli([]);
+      const scritture = await page.evaluate(() => window.__COLLAUDO.db.filter(x => x.operazione === 'insert'));
+      deve(scritture.length === 0, 'l\'anteprima ha già scritto ' + scritture.length + ' righe');
+      deve(/COMPAGNIA_DI_PROVA/.test(html), 'non dice quale compagnia ha mandato il flusso');
+      deve(/Clienti nuovi/.test(html) && /Polizze nuove/.test(html), 'mancano i conti del piano');
+      /* Le offerte di rinnovo non sono polizze e devono comparire per quello
+         che sono: clienti da chiamare entro una data. */
+      deve(/Offerte di rinnovo/.test(html), 'le offerte di rinnovo non si vedono');
+      deve(/entro il 15\/02\/2027/.test(html), 'non dice entro quando si paga il rinnovo');
+      deve(/NP-0006/.test(html), 'non dice quale polizza resta fuori per il contraente mancante');
+      return 'piano a schermo, 0 scritture';
+    });
+
+    await prova('flusso: confermando scrive clienti, polizze e rate, ognuno con la sua provenienza', async () => {
+      await scegli([]);
+      const r = await page.evaluate(async () => {
+        window.confirm = () => true;
+        window.__COLLAUDO.db = [];
+        await fluConferma();
+        const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
+        return {
+          ordine: ins.map(x => x.tabella),
+          anag: ins.filter(x => x.tabella === 'quote_anagrafiche').map(x => x.payload),
+          pol: ins.filter(x => x.tabella === 'quote_polizze').map(x => x.payload),
+          tit: ins.filter(x => x.tabella === 'quote_titoli').map(x => x.payload),
+          reg: ins.filter(x => x.tabella === 'quote_importazioni').map(x => x.payload),
+          esito: document.getElementById('flu-esito').innerHTML
+        };
+      });
+      /* L'ordine non è estetica: la polizza vuole `cliente_id` e la rata vuole
+         `polizza_id`. Scritti al contrario, non si agganciano a niente. */
+      const primo = r.ordine.indexOf('quote_anagrafiche');
+      const pol = r.ordine.indexOf('quote_polizze');
+      const tit = r.ordine.indexOf('quote_titoli');
+      deve(primo >= 0 && primo < pol && pol < tit, 'l\'ordine di scrittura è ' + r.ordine.join(' → '));
+      deve(r.anag.length === 3, 'anagrafiche scritte: ' + r.anag.length + ' (attese 3: il doppione dentro il flusso non fa una scheda in più)');
+      deve(r.anag.every(a => a.fonte === 'ssf' && a.fonte_id), 'un\'anagrafica senza provenienza: ' + JSON.stringify(r.anag[0]));
+      deve(r.pol.length === 5, 'polizze scritte: ' + r.pol.length + ' (attese 5: l\'offerta e quella senza contraente restano fuori)');
+      deve(r.pol.every(p => p.fonte === 'ssf' && p.fonte_id), 'una polizza senza chiave di provenienza: al prossimo caricamento diventa un doppione');
+      deve(r.pol.every(p => p.cliente_id), 'una polizza senza cliente_id');
+      const semestrale = r.pol.find(p => p.numero_polizza === 'NP-0002');
+      deve(semestrale.premio_rata === 110 && semestrale.premio_annuo === null, 'la semestrale scrive annuo ' + semestrale.premio_annuo + ': il portafoglio risulterebbe dimezzato');
+      deve(r.tit.length === 2, 'rate scritte: ' + r.tit.length);
+      deve(r.tit.every(t => t.polizza_id && t.fonte_id), 'una rata senza polizza o senza provenienza');
+      /* Il verbale si scrive alla fine, coi numeri veri. */
+      deve(r.reg.length === 1, 'righe di registro: ' + r.reg.length);
+      deve(r.reg[0].conteggi.polizze_scritte === 5 && r.reg[0].emittente === 'COMPAGNIA_DI_PROVA', 'il registro non dice che cosa è stato scritto: ' + JSON.stringify(r.reg[0].conteggi));
+      deve(/Fatto/.test(r.esito), 'non dice com\'è andata');
+      return '3 clienti, 5 polizze, 2 rate, 1 riga di registro';
+    });
+
+    await prova('flusso: il cliente che c\'è già non viene riscritto', async () => {
+      /* La regola che comanda su tutte. Il flusso porta i dati come li ha
+         scritti il cliente sul sito della compagnia; la scheda in agenzia
+         l'ha sistemata qualcuno a mano. */
+      await scegli([{ id: 'gia-nostro', codice_fiscale: 'RSSMRA80A01H501U' }]);
+      const r = await page.evaluate(async () => {
+        const html = document.getElementById('flu-esito').innerHTML;
+        window.confirm = () => true;
+        window.__COLLAUDO.db = [];
+        await fluConferma();
+        const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
+        return {
+          html,
+          anag: ins.filter(x => x.tabella === 'quote_anagrafiche').map(x => x.payload),
+          pol: ins.filter(x => x.tabella === 'quote_polizze').map(x => x.payload),
+          agg: window.__COLLAUDO.db.filter(x => x.tabella === 'quote_anagrafiche' && x.operazione === 'update').length
+        };
+      });
+      deve(/non si toccano/.test(r.html), 'l\'anteprima non dice che i clienti esistenti restano come sono');
+      deve(!r.anag.some(a => a.codice_fiscale === 'RSSMRA80A01H501U'), 'il cliente che c\'è già è stato riscritto');
+      deve(r.agg === 0, 'la scheda del cliente esistente è stata aggiornata: il lavoro fatto a mano si perde');
+      deve(r.anag.length === 2, 'anagrafiche scritte: ' + r.anag.length + ' (attese 2, la terza c\'era già)');
+      /* E le sue polizze si agganciano alla scheda che c'era. */
+      const sue = r.pol.filter(p => p.cliente_id === 'gia-nostro');
+      deve(sue.length === 2, 'polizze agganciate alla scheda esistente: ' + sue.length + ' (attese 2)');
+      return '1 riconosciuto, 0 sovrascritti, 2 polizze agganciate';
+    });
+
+    await prova('flusso: ricaricare lo stesso file non duplica niente', async () => {
+      /* Il flusso arriva tutte le notti e i giorni si sovrappongono: senza
+         questo, ogni notte raddoppierebbe il portafoglio. */
+      const html = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [
+          { id: 'c1', codice_fiscale: 'RSSMRA80A01H501U' }, { id: 'c2', codice_fiscale: 'VRDLGU75B02H501X' },
+          { id: 'c3', partita_iva: '12345678901' }], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
+          { id: 'p1', fonte_id: 'P1' }, { id: 'p2', fonte_id: 'P2' }, { id: 'p3', fonte_id: 'P3' },
+          { id: 'p4', fonte_id: 'P4' }, { id: 'p7', fonte_id: 'P7' }], error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [{ id: 't1', fonte_id: 'T1' }, { id: 't2', fonte_id: 'T2' }], error: null };
+        const testi = window.__CAMPIONE;
+        const files = Object.keys(testi).map(n => new File([testi[n]], n, { type: 'text/csv' }));
+        window.__COLLAUDO.db = [];
+        await fluScelto(files);
+        return document.getElementById('flu-esito').innerHTML;
+      });
+      deve(/niente di nuovo da scrivere/.test(html), 'al secondo caricamento propone di riscrivere: ' + html.slice(0, 300));
+      const scritture = await page.evaluate(() => window.__COLLAUDO.db.filter(x => x.operazione === 'insert').length);
+      deve(scritture === 0, 'il secondo caricamento ha scritto ' + scritture + ' righe');
+      return 'secondo giro: niente da fare, 0 scritture';
+    });
+
+    await prova('flusso: nessun errore JavaScript in tutto il blocco', async () => {
+      deve(erroriFlu.length === 0, erroriFlu.slice(0, 3).join(' | '));
     });
 
     await context.close();

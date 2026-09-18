@@ -65,6 +65,7 @@
 <script src="tariffe/motore/pdf-withus.js?v=20260917"></script>
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
+<script src="tariffe/motore/flusso-ssf.js?v=20260918"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -898,6 +899,11 @@ button{font-family:inherit}
 .fdoc-subb.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
 .fdoc-data{font-size:15px;color:var(--ink)}
 .fdoc-nuova{margin-bottom:12px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:#fbfcff}
+.flu-scelta{padding:16px;border:1px dashed var(--line);border-radius:12px;background:#fbfcff;text-align:center}
+.flu-file{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;background:var(--blue);color:#fff;font-weight:600;cursor:pointer}
+.flu-file:hover{filter:brightness(1.05)}
+.flu-sez{font-size:13px;font-weight:700;margin:16px 0 6px;color:var(--ink)}
+.flu-testata{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fbfcff}
 .fdoc-storico{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#f8f9fc}
 .fdoc-storico summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)}
 .fdoc-storico .sc-docrow{margin-top:8px}
@@ -1525,6 +1531,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-portafoglio" onclick="showPage('portafoglio')"><i class="ti ti-briefcase"></i><span>Portafoglio</span></div>
       <div class="nav-item" id="nav-scadenzario" onclick="showPage('scadenzario')"><i class="ti ti-calendar-clock"></i><span>Scadenzario</span><span class="nav-badge" id="scad-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-cdoc" onclick="showPage('controllo-documenti')"><i class="ti ti-file-search"></i><span>Documenti</span><span class="nav-badge" id="cdoc-badge" style="display:none">0</span></div>
+      <div class="nav-item" id="nav-import" style="display:none" onclick="showPage('importa-flusso')"><i class="ti ti-file-import"></i><span>Importa</span></div>
       <div class="nav-item" id="nav-titoli" onclick="showPage('titoli')"><i class="ti ti-receipt"></i><span>Titoli</span><span class="nav-badge" id="tit-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-stor" onclick="showPage('storico')"><i class="ti ti-history"></i><span>Storico</span><span class="nav-badge" id="stor-badge" style="display:none">0</span></div>
       <div class="nav-item" id="nav-emiss" onclick="showPage('emissioni')"><i class="ti ti-file-certificate"></i><span>Emissioni</span><span class="nav-badge" id="emiss-badge" style="display:none">0</span></div>
@@ -2602,6 +2609,31 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         </div>
         <div id="cdoc-reg-corpo"><div class="empty-state">Carico le compagnie…</div></div>
       </div>
+    </div>
+
+    <!-- ── IMPORTA IL PORTAFOGLIO DALLA COMPAGNIA (18/09/2026) ──────────────
+         Le compagnie mandano ogni notte un archivio col portafoglio
+         (tracciato Standard Share File). Le regole di lettura stanno tutte in
+         `tariffe/motore/flusso-ssf.js`: qui si sceglie il file, si GUARDA che
+         cosa succederebbe, e solo dopo si scrive. L'anteprima non e' una
+         gentilezza: un'importazione che scrive prima di farsi vedere e' una
+         cosa che si subisce. ──────────────────────────────────────────── -->
+    <div class="page" id="page-importa-flusso">
+      <div class="page-title">Importa portafoglio</div>
+      <div class="page-sub">L'archivio che manda la compagnia · anteprima prima di scrivere · i clienti che ci sono già non si toccano</div>
+
+      <div class="flu-scelta">
+        <label class="flu-file">
+          <i class="ti ti-upload"></i> Scegli l'archivio della compagnia
+          <input type="file" id="flu-file" accept=".zip,.csv" multiple hidden onchange="fluScelto(this.files)">
+        </label>
+        <div class="cl-sub">Lo <b>.zip</b> così com'è, oppure i file <b>REC…csv</b> estratti. Niente viene scritto finché non lo dici tu.</div>
+      </div>
+
+      <div id="flu-esito"></div>
+
+      <div class="flu-sez" style="margin-top:18px">Caricamenti fatti</div>
+      <div id="flu-registro"><div class="empty-state">—</div></div>
     </div>
 
     <!-- ── CAMPAGNE (Blocco D) ────────────────────────────────────────────
@@ -3823,6 +3855,11 @@ function initMain() {
   document.getElementById('nav-ticket').style.display = 'flex';
   document.getElementById('nav-sinistri').style.display = 'flex';
   const cf=document.getElementById('chat-fab'); if(cf) cf.style.display='none'; // chat disattivata per ora (richiesta 25/08/2026): per riattivarla rimettere 'flex'
+  /* Caricare il flusso di una compagnia scrive anagrafiche, polizze e rate di
+     tutta l'agenzia in un colpo solo: la voce la vede lo staff, come dice la
+     protezione del database (iam_is_staff su quote_importazioni). Mostrarla a
+     tutti vorrebbe dire una porta che si apre su un errore di permessi. */
+  const navImp=document.getElementById('nav-import'); if(navImp) navImp.style.display = isStaff() ? 'flex' : 'none';
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
   document.getElementById('nav-reti').style.display   = 'none'; // Reti ora dentro Utenti
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
@@ -4065,6 +4102,10 @@ const PAGINE_DA_AVVIARE = {
      porta, «?page=controllo-documenti» dalla scocca aprirebbe un riquadro
      vuoto (prova: pagine-dalla-scocca.test.mjs). */
   'controllo-documenti': () => { showPage('controllo-documenti'); },
+  /* Anche questa si riempie da codice: il registro dei caricamenti lo scrive
+     `fluRegistro`, e senza porta «?page=importa-flusso» aprirebbe un riquadro
+     vuoto (prova: pagine-dalla-scocca.test.mjs). */
+  'importa-flusso': () => { showPage('importa-flusso'); },
 };
 
 /* Apre una pagina chiesta dalla scocca, passando dalla sua porta se ne ha una.
@@ -10076,11 +10117,12 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario','controllo-documenti':'nav-cdoc',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario','controllo-documenti':'nav-cdoc','importa-flusso':'nav-import',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
   if (name === 'controllo-documenti') cdocCarica();  // Lavoro 3 §3.8
+  if (name === 'importa-flusso') fluRegistro();      // il registro dei caricamenti
   if (name === 'scadenzario') loadScadenzario();   // CRM Punto 4
   if (name === 'titoli') loadTitoli();             // Blocco A
   if (name === 'campagne') loadMarketing();        // Blocco D
@@ -16288,6 +16330,294 @@ async function cdocTogliRegola(id) {
     if (error) throw error;
   } catch (e) { alert('Non riesco a togliere la regola: ' + (e.message || e)); return; }
   await cdocRenderRegole();
+}
+
+/* ═══ IMPORTA IL PORTAFOGLIO DALLA COMPAGNIA (18/09/2026) ════════════════════
+   Le regole di lettura del flusso NON stanno qui: stanno in
+   `tariffe/motore/flusso-ssf.js`, che si prova in Node senza aprire un
+   browser. Qui si fanno tre cose, in quest'ordine e mai in un altro:
+     1. si legge il file e si costruisce il PIANO;
+     2. si mostra il piano e si aspetta;
+     3. si scrive, e si lascia una riga nel registro.
+
+   Il punto 2 è la ragione di tutto il resto. Un'importazione che scrive
+   prima di farsi vedere è una cosa che si subisce: quando ci si accorge che
+   ha creato quattrocento anagrafiche doppie, sono già lì.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let FLU_PIANO = null;   // il piano visto a schermo, in attesa di conferma
+let FLU_NOMI = '';      // i file da cui è nato, per il registro
+
+function fluMotore() {
+  return (typeof window !== 'undefined' && window.FlussoSSF) ? window.FlussoSSF : null;
+}
+
+/* Dai file scelti alla mappa { nome: testo }. Lo zip si apre col motore, che
+   non si porta dietro nessuna libreria; i CSV sciolti si leggono e basta, ed
+   è la via d'uscita quando un browser non sa scompattare. */
+async function fluLeggiFile(files) {
+  const M = fluMotore();
+  const out = {};
+  for (const f of Array.from(files || [])) {
+    if (/\.zip$/i.test(f.name)) {
+      const dentro = await M.apriZip(await f.arrayBuffer());
+      Object.keys(dentro).forEach(n => { out[n] = dentro[n]; });
+    } else {
+      out[f.name] = await f.text();
+    }
+  }
+  return out;
+}
+
+async function fluScelto(files) {
+  const box = document.getElementById('flu-esito');
+  const M = fluMotore();
+  if (!box) return;
+  if (!M) { box.innerHTML = '<div class="empty-state">Il motore del flusso non è caricato.</div>'; return; }
+  if (!files || !files.length) return;
+  FLU_PIANO = null;
+  FLU_NOMI = Array.from(files).map(f => f.name).join(', ');
+  box.innerHTML = '<div class="pdoc-attesa">Leggo l\'archivio…</div>';
+
+  let mappa;
+  try { mappa = await fluLeggiFile(files); }
+  catch (e) { box.innerHTML = `<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> ${esc(e.message || e)}</div>`; return; }
+
+  const raccolta = M.raccogli(mappa);
+  if (!raccolta.trovati) {
+    box.innerHTML = `<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i>
+      In questo archivio non c'è nessun file del flusso (si chiamano <b>REC000…REC101</b>).
+      ${raccolta.ignorati.length ? '<div class="cl-sub">Trovati invece: ' + esc(raccolta.ignorati.slice(0, 6).join(', ')) + '</div>' : ''}</div>`;
+    return;
+  }
+
+  const analisi = M.analizza(raccolta.record);
+  let esistenti;
+  try { esistenti = await fluEsistenti(analisi); }
+  catch (e) { box.innerHTML = `<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> Non riesco a leggere che cosa c'è già: ${esc(e.message || e)}</div>`; return; }
+
+  FLU_PIANO = M.piano(analisi, esistenti);
+  FLU_PIANO._ignorati = raccolta.ignorati;
+  fluMostra();
+}
+
+/* Che cosa il gestionale ha già. Si chiede SOLO quello che serve a
+   riconoscere: i codici fiscali e le chiavi di provenienza. Tirarsi in
+   pagina tutte le anagrafiche per confrontare due colonne vorrebbe dire
+   portarsi dietro i dati personali di tutto il portafoglio per niente. */
+async function fluEsistenti(analisi) {
+  const cf = [...new Set((analisi.clienti || []).map(c => c.codice_fiscale).filter(Boolean))];
+  const piva = [...new Set((analisi.clienti || []).map(c => c.partita_iva).filter(Boolean))];
+  const polKey = (analisi.polizze || []).map(p => p._fonte_id).filter(Boolean);
+  const titKey = (analisi.titoli || []).map(t => t._fonte_id).filter(Boolean);
+  const out = { clientiPerCf: {}, clientiPerPiva: {}, polizzePerFonte: {}, titoliPerFonte: {} };
+
+  /* A blocchi: un `in` con duemila codici dentro non passa, e il portafoglio
+     completo di codici ne ha molti di più di duemila. */
+  const aBlocchi = async (lista, fn) => {
+    for (let i = 0; i < lista.length; i += 200) await fn(lista.slice(i, i + 200));
+  };
+  await aBlocchi(cf, async (blocco) => {
+    const { data, error } = await db.from('quote_anagrafiche').select('id,codice_fiscale').in('codice_fiscale', blocco);
+    if (error) throw error;
+    (data || []).forEach(a => { if (a.codice_fiscale) out.clientiPerCf[String(a.codice_fiscale).trim().toUpperCase()] = a.id; });
+  });
+  await aBlocchi(piva, async (blocco) => {
+    const { data, error } = await db.from('quote_anagrafiche').select('id,partita_iva').in('partita_iva', blocco);
+    if (error) throw error;
+    (data || []).forEach(a => { if (a.partita_iva) out.clientiPerPiva[String(a.partita_iva).trim()] = a.id; });
+  });
+  await aBlocchi(polKey, async (blocco) => {
+    const { data, error } = await db.from('quote_polizze').select('id,fonte_id').eq('fonte', 'ssf').in('fonte_id', blocco);
+    if (error) throw error;
+    (data || []).forEach(p => { out.polizzePerFonte[p.fonte_id] = p.id; });
+  });
+  await aBlocchi(titKey, async (blocco) => {
+    const { data, error } = await db.from('quote_titoli').select('id,fonte_id').eq('fonte', 'ssf').in('fonte_id', blocco);
+    if (error) throw error;
+    (data || []).forEach(t => { out.titoliPerFonte[t.fonte_id] = t.id; });
+  });
+  return out;
+}
+
+function fluMostra() {
+  const box = document.getElementById('flu-esito');
+  const p = FLU_PIANO;
+  if (!box || !p) return;
+  const t = p.testata || {};
+  const card = (n, l, d, cl) => `<div class="cdoc-card${cl ? ' ' + cl : ''}" style="cursor:default">
+      <div class="cdoc-n">${n}</div><div class="cdoc-l">${l}</div><div class="cdoc-d">${d}</div></div>`;
+
+  box.innerHTML = `
+    <div class="flu-testata">
+      <b>${esc(t.emittente || 'compagnia non dichiarata')}</b>
+      <span class="pdoc-opt">${esc(t.versione || 'tracciato non dichiarato')}</span>
+      <div class="cl-sub">${t.dal ? 'movimenti dal ' + new Date(t.dal).toLocaleDateString('it-IT') + ' al ' + new Date(t.al).toLocaleDateString('it-IT') : 'periodo non dichiarato'}${
+        t.intermediario ? ' · agenzia ' + esc(t.intermediario) : ''}</div>
+    </div>
+    <div class="cdoc-conta" style="margin-top:12px">
+      ${card(p.clienti.nuovi.length, 'Clienti nuovi', 'entrano in anagrafica')}
+      ${card(p.clienti.gia.length, 'Clienti già in anagrafica', 'non si toccano: si aggancia la polizza')}
+      ${card(p.polizze.nuove.length, 'Polizze nuove', 'entrano in portafoglio')}
+      ${card(p.titoli.nuovi.length, 'Rate nuove', 'con le provvigioni')}
+    </div>
+    ${p.polizze.gia.length ? `<div class="pdoc-esito ok" style="margin-top:12px"><i class="ti ti-circle-check"></i>
+      <b>${p.polizze.gia.length}</b> polizz${p.polizze.gia.length === 1 ? 'a' : 'e'} già importat${p.polizze.gia.length === 1 ? 'a' : 'e'}: non si riscrivono. Lo stesso file si può ricaricare senza far danni.</div>` : ''}
+    ${p.offerte.length ? `<div class="flu-sez">Offerte di rinnovo da incassare — ${p.offerte.length}</div>
+      <div class="cl-sub" style="margin-bottom:8px">Non sono polizze e non entrano in portafoglio: sono rinnovi emessi e non ancora pagati.
+        La data è il termine per pagare, non la scadenza del contratto. Sono i clienti da chiamare.</div>
+      ${p.offerte.map(o => `<div class="pdoc-r"><div class="pdoc-r-l">
+          <b>${esc(o.cliente || '—')}</b><span class="pdoc-opt">${esc(o.numero_polizza || '')}</span>
+          <div class="cl-sub" style="flex-basis:100%">decorre il ${o.effetto ? new Date(o.effetto).toLocaleDateString('it-IT') : '—'}${
+            o.sostituisce ? ' · rinnova la ' + esc(o.sostituisce) : ''}</div></div>
+        <div class="pdoc-r-a"><span class="tk-badge st-aperto">entro il ${o.entro ? new Date(o.entro).toLocaleDateString('it-IT') : '—'}</span>
+          <b>${pfEuro(o.premio)}</b></div></div>`).join('')}` : ''}
+    ${(p.avvisi.length || p.polizze.senzaCliente.length || p.titoli.senzaPolizza.length) ? `
+      <div class="flu-sez">Da sapere prima di confermare</div>
+      ${p.avvisi.map(a => `<div class="pdoc-esito ${a.g === 'grave' ? 'ko' : ''}"><i class="ti ti-alert-triangle"></i> ${esc(a.t)}</div>`).join('')}
+      ${p.titoli.senzaPolizza.length ? `<div class="pdoc-esito"><i class="ti ti-alert-triangle"></i>
+        ${p.titoli.senzaPolizza.length} rate si riferiscono a una polizza che non è in questo flusso: restano fuori.</div>` : ''}` : ''}
+    <div class="pdoc-ft" style="margin-top:16px">
+      ${p.niente
+        ? '<div class="pdoc-esito ok"><i class="ti ti-circle-check"></i> Non c\'è niente di nuovo da scrivere: questo flusso è già tutto dentro.</div>'
+        : `<button class="btn-emetti" onclick="fluConferma()"><i class="ti ti-database-import"></i>
+             Scrivi ${p.clienti.nuovi.length} client${p.clienti.nuovi.length === 1 ? 'e' : 'i'}, ${p.polizze.nuove.length} polizz${p.polizze.nuove.length === 1 ? 'a' : 'e'} e ${p.titoli.nuovi.length} rat${p.titoli.nuovi.length === 1 ? 'a' : 'e'}</button>`}
+    </div>`;
+}
+
+/* La scrittura. Tre passaggi, in ordine, perché ognuno ha bisogno degli id
+   del precedente: i clienti, poi le polizze (che vogliono `cliente_id`), poi
+   le rate (che vogliono `polizza_id`). Se si ferma in mezzo, quello che è
+   stato scritto resta e il caricamento si rifà: la chiave di provenienza fa
+   sì che il secondo giro salti quello che c'è già. */
+async function fluConferma() {
+  const p = FLU_PIANO;
+  const box = document.getElementById('flu-esito');
+  if (!p || !box) return;
+  if (!confirm('Scrivo in archivio ' + p.clienti.nuovi.length + ' clienti, ' + p.polizze.nuove.length
+    + ' polizze e ' + p.titoli.nuovi.length + ' rate.\n\nI clienti che ci sono già NON vengono toccati. Procedo?')) return;
+  box.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="flu-attesa">Scrivo…</div>');
+  const idPerChiave = Object.assign({}, p.clienti.idPerChiave);
+  const fatti = { clienti: 0, polizze: 0, titoli: 0 };
+  const mio = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : null;
+
+  try {
+    /* 1. I clienti nuovi. `fonte`/`fonte_id` dicono da dove arrivano; il
+       riconoscimento resta il codice fiscale. */
+    for (const c of p.clienti.nuovi) {
+      const rec = {
+        tipo: c.tipo, nominativo: c.nominativo, cognome: c.cognome, nome: c.nome,
+        ragione_sociale: c.ragione_sociale, codice_fiscale: c.codice_fiscale, partita_iva: c.partita_iva,
+        indirizzo: c.indirizzo, cap: c.cap, comune: c.comune, provincia: c.provincia,
+        cellulare: c.cellulare, telefono: c.telefono, email: c.email, data_nascita: c.data_nascita,
+        fonte: 'ssf', fonte_id: c._chiave
+      };
+      const { data, error } = await db.from('quote_anagrafiche').insert(rec).select('id').single();
+      if (error) throw error;
+      idPerChiave[c._chiave] = data.id;
+      /* Le altre chiavi della stessa persona dentro questo flusso puntano
+         alla scheda appena creata, non a una seconda. */
+      p.clienti.nuovi.forEach(x => { if (x._duplicatoDi === c._chiave) idPerChiave[x._chiave] = data.id; });
+      (p.clienti.gia || []).forEach(x => { if (!idPerChiave[x._chiave] && x.codice_fiscale && x.codice_fiscale === c.codice_fiscale) idPerChiave[x._chiave] = data.id; });
+      fatti.clienti++;
+    }
+
+    /* 2. Le polizze. */
+    const idPolizza = {};
+    for (const x of p.polizze.nuove) {
+      const cliente_id = idPerChiave[x._cliente];
+      if (!cliente_id) continue;   // il contraente non c'è: già dichiarato nell'anteprima
+      const rec = {
+        cliente_id: cliente_id, cliente: x.cliente,
+        numero_polizza: x.numero_polizza, compagnia: x.compagnia, prodotto: x.prodotto, modulo: x.modulo,
+        data_effetto: x.data_effetto, data_scadenza: x.data_scadenza,
+        copertura_dal: x.copertura_dal, copertura_al: x.copertura_al,
+        frazionamento: x.frazionamento, tacito_rinnovo: x.tacito_rinnovo,
+        premio_annuo: x.premio_annuo, premio_rata: x.premio_rata,
+        stato_pagamento: x.stato_pagamento, dati: x.dati,
+        fonte: 'ssf', fonte_id: x._fonte_id, creato_nome: mio
+      };
+      const { data, error } = await db.from('quote_polizze').insert(rec).select('id').single();
+      if (error) throw error;
+      idPolizza[x._fonte_id] = data.id;
+      fatti.polizze++;
+    }
+    (p.polizze.gia || []).forEach(x => { if (x._id) idPolizza[x._fonte_id] = x._id; });
+
+    /* 3. Le rate. */
+    for (const t of p.titoli.nuovi) {
+      const polizza_id = idPolizza[t._polizza];
+      if (!polizza_id) continue;
+      const rec = {
+        polizza_id: polizza_id, tipo: t.tipo,
+        data_decorrenza: t.data_decorrenza, data_scadenza: t.data_scadenza,
+        importo_lordo: t.importo_lordo, provvigione: t.provvigione,
+        stato: t.stato, mezzo_pagamento: t.mezzo_pagamento, incassato_il: t.incassato_il,
+        fonte: 'ssf', fonte_id: t._fonte_id
+      };
+      const { error } = await db.from('quote_titoli').insert(rec);
+      if (error) throw error;
+      fatti.titoli++;
+    }
+
+    /* 4. Il verbale. Si scrive alla fine e con i numeri VERI, non con quelli
+       del piano: se qualcosa si è fermato per strada, il registro deve dire
+       quello che è successo, non quello che doveva succedere. */
+    await db.from('quote_importazioni').insert({
+      fonte: 'ssf', emittente: p.testata.emittente, intermediario: p.testata.intermediario,
+      versione: p.testata.versione, periodo_dal: p.testata.dal, periodo_al: p.testata.al,
+      file_nome: FLU_NOMI,
+      conteggi: {
+        clienti_scritti: fatti.clienti, clienti_gia: p.clienti.gia.length,
+        polizze_scritte: fatti.polizze, polizze_gia: p.polizze.gia.length,
+        titoli_scritti: fatti.titoli, titoli_gia: p.titoli.gia.length,
+        offerte: p.offerte.length, polizze_senza_cliente: p.polizze.senzaCliente.length
+      },
+      avvisi: p.avvisi, creato_nome: mio
+    });
+  } catch (e) {
+    document.getElementById('flu-attesa')?.remove();
+    box.insertAdjacentHTML('afterbegin', `<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i>
+      Il caricamento si è fermato: ${esc(e.message || e)}<br>
+      <small>Quello che era già stato scritto resta (${fatti.clienti} clienti, ${fatti.polizze} polizze, ${fatti.titoli} rate).
+      Si può ricaricare lo stesso file: quello che c'è già non viene riscritto.</small></div>`);
+    return;
+  }
+
+  document.getElementById('flu-attesa')?.remove();
+  try { logMovimento('Portafoglio importato · ' + (p.testata.emittente || ''), 'documento', ''); } catch (e) {}
+  FLU_PIANO = null;
+  box.innerHTML = `<div class="pdoc-esito ok"><i class="ti ti-circle-check"></i>
+      Fatto: <b>${fatti.clienti}</b> client${fatti.clienti === 1 ? 'e' : 'i'}, <b>${fatti.polizze}</b> polizz${fatti.polizze === 1 ? 'a' : 'e'} e <b>${fatti.titoli}</b> rat${fatti.titoli === 1 ? 'a' : 'e'} in archivio.</div>`;
+  if (typeof loadPortafoglio === 'function') loadPortafoglio();
+  await fluRegistro();
+}
+
+/* Il registro dei caricamenti: serve il giorno in cui un numero non torna. */
+async function fluRegistro() {
+  const el = document.getElementById('flu-registro');
+  if (!el) return;
+  let righe = [];
+  try {
+    const { data, error } = await db.from('quote_importazioni')
+      .select('*').order('creato_il', { ascending: false }).limit(20);
+    if (error) throw error;
+    righe = data || [];
+  } catch (e) {
+    el.innerHTML = `<div class="empty-state">Registro non disponibile.<br><small>${esc(e.message || e)}</small></div>`;
+    return;
+  }
+  if (!righe.length) { el.innerHTML = '<div class="empty-state">Nessun flusso caricato finora.</div>'; return; }
+  el.innerHTML = righe.map(r => {
+    const c = r.conteggi || {};
+    return `<div class="pdoc-r"><div class="pdoc-r-l">
+        <b>${esc(r.emittente || '—')}</b>
+        <span class="pdoc-opt">${new Date(r.creato_il).toLocaleString('it-IT')}</span>
+        <div class="cl-sub" style="flex-basis:100%">${esc(r.creato_nome || '')}${r.periodo_dal
+          ? ' · movimenti dal ' + new Date(r.periodo_dal).toLocaleDateString('it-IT') + ' al ' + new Date(r.periodo_al).toLocaleDateString('it-IT') : ''}</div></div>
+      <div class="pdoc-r-a"><span class="tk-badge st-risolto">${c.clienti_scritti || 0} clienti</span>
+        <span class="tk-badge st-risolto">${c.polizze_scritte || 0} polizze</span>
+        <span class="tk-badge st-risolto">${c.titoli_scritti || 0} rate</span></div></div>`;
+  }).join('');
 }
 
 /* ═══ CRM PUNTO 4 — scadenzario e rinnovi ════════════════════════════════════

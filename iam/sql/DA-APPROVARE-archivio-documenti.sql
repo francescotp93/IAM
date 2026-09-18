@@ -1,5 +1,24 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
---  DA APPROVARE — NON ESEGUITO
+--  FATTO IL 18/09/2026 — QUESTO FILE È STORIA, NON UNA COSA DA FARE
+--
+--  Francesco ha dato il via libera e la strada scelta è stata la B, la chiusura
+--  vera: non solo le regole di scrittura che questo file proponeva, ma anche
+--  il magazzino chiuso in lettura e i link firmati ovunque.
+--  Quello che è stato eseguito sta in
+--      supabase/migrations/20260918_archivio_documenti_chiuso.sql
+--  e comprende tutto ciò che qui sotto era la proposta «C» (proprietario per
+--  sovrascrivere e cancellare, tetto di 25 MB), più i due pezzi che qui erano
+--  rimandati: `public = false` e la regola di lettura per chi ha un account.
+--  Il codice che firma gli indirizzi è in `server/archivio.js` e nel blocco
+--  `arch*` di index.html; le prove in `server/verifica/archivio.test.mjs`.
+--  La mappa di tutto il lavoro è in CLAUDE.md §12.
+--
+--  Il testo originale resta sotto, perché è l'analisi da cui è nata la
+--  decisione: dice quanto costava non fare niente, e perché.
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  (TESTO ORIGINALE DEL 30/08/2026) DA APPROVARE — NON ESEGUITO
 --
 --  Questo file NON e' stato lanciato sull'archivio. Cambia le regole di accesso
 --  ai documenti in produzione: lo esegue Francesco, o Leo dopo il suo via libera

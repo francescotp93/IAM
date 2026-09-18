@@ -166,7 +166,14 @@ shopRouter.post('/upload', async (req, res) => {
       method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': contentType || 'application/octet-stream', 'x-upsert': 'true' }, body: buf,
     });
     if (!r.ok) throw new Error('Upload: ' + (await r.text()).slice(0, 150));
-    res.json({ ok: true, url: `${SUPABASE_URL}/storage/v1/object/public/documenti/${path}`, nome: safe });
+    /* Si restituisce il PERCORSO, non un indirizzo pubblico (18/09/2026:
+       l'archivio è chiuso). Chi carica qui è un cliente dallo shop, che il
+       documento lo ha già; chi lo dovrà leggere è l'agenzia, dal gestionale,
+       dove l'indirizzo si firma al momento del clic. Il campo si chiama
+       ancora `url` perché è quello che la pagina dello shop si aspetta, e
+       cambiarlo vorrebbe dire cambiare anche landing.html senza guadagnarci
+       niente: quello che conta è che il valore non apra più niente da solo. */
+    res.json({ ok: true, url: path, nome: safe });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

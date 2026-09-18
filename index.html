@@ -3156,6 +3156,145 @@ const SUPABASE_URL = 'https://ekjxrnsfqxnfxzrthdcf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVranhybnNmcXhuZnh6cnRoZGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzU4NjcsImV4cCI6MjA5NTAxMTg2N30.2OF2COAcLgM22xbmtqLWXgaDcVLtNh3AuX5MQ4_L02I';
 
 let db = null;
+
+/* ═══ L'ARCHIVIO DEI DOCUMENTI SI APRE FIRMATO (18/09/2026) ══════════════════
+   Il contenitore `documenti` era PUBBLICO: chiunque indovinasse l'indirizzo di
+   un file ne leggeva il contenuto — carte d'identità, libretti, quietanze —
+   senza avere un account. Dal 18/09/2026 è chiuso, e ogni apertura passa da un
+   indirizzo FIRMATO che scade.
+
+   Tre cose da sapere prima di toccare questo blocco.
+
+   1) GLI INDIRIZZI VECCHI RESTANO NEL DATABASE. Trentatré fra colonne e chiavi
+      jsonb (`quote_anagrafiche.documenti`, `doc_identita_url`,
+      `quote_documenti.url`, `quote_preventivi.dati.proposta_url`,
+      `dati.documenti.doc0`, `dati.pagamento.bonificoProof`, …) contengono
+      ancora indirizzi della forma `…/object/public/documenti/<percorso>`.
+      Non si riscrivono: si LEGGONO. `archPercorso` ricava il percorso sia da
+      un indirizzo vecchio sia da un percorso nudo, che è quello che si salva
+      da oggi in avanti. Riscrivere i dati sarebbe stato un aggiornamento di
+      massa su quattro tabelle per risolvere un problema che si risolve in
+      lettura, e avrebbe lasciato indietro ogni riga scritta nel frattempo.
+
+   2) LA FINESTRA SI APRE PRIMA DELLA FIRMA. Firmare è una chiamata di rete:
+      se si aprisse la finestra dopo, il browser la bloccherebbe come popup,
+      perché non sarebbe più figlia del clic. Si apre subito una scheda vuota e
+      le si dà l'indirizzo quando arriva. È lo stesso rimedio già in uso nella
+      scocca di IAM per gli allegati delle fatture.
+
+   3) UN INDIRIZZO FIRMATO NON SI MANDA A NESSUNO. Scade, e un documento che
+      scade in una casella di posta è una figuraccia col cliente. Quello che
+      esce di casa passa dalle strade che hanno già la loro: il collegamento
+      firmato del preventivo personalizzato (`PP_BUCKET`, giorni) o la rotta
+      del server con il suo token (`/sign/privacy/doc`).
+   ═══════════════════════════════════════════════════════════════════════════ */
+const ARCH_BUCKET = 'documenti';
+const ARCH_SCADENZA = 300;        // 5 minuti: il tempo di aprire il file, non di conservarlo
+
+/* Da quello che è salvato al percorso dentro il contenitore.
+   Accetta: un percorso nudo («clienti/abc/123_ci.pdf»), un indirizzo pubblico
+   vecchio, un indirizzo già firmato (che contiene `/object/sign/`). */
+function archPercorso(v) {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  const m = s.match(/\/storage\/v1\/object\/(?:public|sign)\/documenti\/([^?#]+)/);
+  if (m) { try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; } }
+  if (/^https?:\/\//i.test(s)) return '';   // un indirizzo di un altro contenitore o di un altro sito: non è nostro
+  return s.replace(/^\/+/, '');
+}
+
+/* L'indirizzo firmato, o '' se non si può firmare. Non solleva: chi chiama
+   deve poter dire «non riesco ad aprirlo» senza far morire la schermata. */
+async function archFirma(v, secondi) {
+  const path = archPercorso(v);
+  if (!path || !db) return '';
+  try {
+    const { data, error } = await db.storage.from(ARCH_BUCKET)
+      .createSignedUrl(path, secondi || ARCH_SCADENZA);
+    if (error) throw error;
+    return (data && data.signedUrl) || '';
+  } catch (e) {
+    console.warn('archivio: non riesco a firmare «' + path + '»:', e.message || e);
+    return '';
+  }
+}
+
+/* Apre un documento dell'archivio in una scheda nuova. */
+async function archApri(v) {
+  const path = archPercorso(v);
+  if (!path) {
+    /* Non è un documento del nostro archivio (un indirizzo esterno salvato a
+       mano, per esempio): si apre com'è, invece di non fare niente. */
+    if (/^https?:\/\//i.test(String(v || ''))) { window.open(String(v), '_blank', 'noopener'); return; }
+    alert('Questo documento non ha un indirizzo valido.');
+    return;
+  }
+  const w = window.open('', '_blank');
+  const url = await archFirma(path);
+  if (!url) {
+    if (w) w.close();
+    alert('Non riesco ad aprire il documento: potrebbe essere stato tolto dall\'archivio, oppure non hai i permessi per vederlo.');
+    return;
+  }
+  if (w) w.location.href = url; else window.open(url, '_blank', 'noopener');
+}
+
+/* LA RETE DI SICUREZZA. I punti che mostrano un documento sono decine, sparsi
+   in venti procedure diverse, e ognuno scrive il suo `<a href>` a mano. Averli
+   convertiti uno per uno non basta a dormirci sopra: basta che ne resti uno,
+   o che qualcuno domani ne scriva un altro copiando il vicino, e quel
+   documento non si apre più — oppure, peggio, prova ad aprirsi come indirizzo
+   del sito e mostra una pagina che non c'è.
+
+   Qui si intercetta il clic PRIMA che il browser navighi: se l'indirizzo è
+   dell'archivio (un percorso dentro il contenitore, o un vecchio indirizzo
+   pubblico rimasto nel database), si firma e si apre firmato. Vale anche per
+   il codice che verrà scritto dopo, ed è il motivo per cui questa rete esiste
+   invece di fidarsi della conversione a mano.
+
+   `getAttribute('href')` e non `a.href`: il browser trasforma un percorso in
+   un indirizzo assoluto del sito, e il percorso vero non si vedrebbe più. */
+const ARCH_PREFISSI = /^(clienti|polizze|preventivi|messaggi|bonifici|shop|rcvp|infcirc|tutelalegale|cvt-fi|cauz|sal|pet|fv|rcrd|tl|sv|vg|fi)\//;
+
+function archSuoIndirizzo(v) {
+  const s = String(v || '').trim();
+  if (!s) return false;
+  if (/\/storage\/v1\/object\/(public|sign)\/documenti\//.test(s)) return true;
+  if (/^(https?:|javascript:|mailto:|tel:|#|data:|blob:)/i.test(s)) return false;
+  return ARCH_PREFISSI.test(s);
+}
+
+document.addEventListener('click', function (ev) {
+  const a = ev.target && ev.target.closest && ev.target.closest('a[href]');
+  if (!a) return;
+  const grezzo = a.getAttribute('href');
+  if (!archSuoIndirizzo(grezzo)) return;
+  ev.preventDefault();
+  archApri(grezzo);
+}, true);
+
+/* Carica un file nell'archivio e restituisce il PERCORSO, non un indirizzo.
+   È la metà che conta della chiusura del contenitore: finché si salvava
+   `getPublicUrl(...)`, ogni riga scritta metteva in archivio un indirizzo che
+   funzionava per chiunque, per sempre. Il percorso invece non apre niente da
+   solo: va firmato, e la firma la può chiedere solo chi ha un account. */
+async function archCarica(path, file, contentType) {
+  const up = await db.storage.from(ARCH_BUCKET).upload(path, file, {
+    contentType: contentType || (file && file.type) || 'application/octet-stream'
+  });
+  if (up.error) throw up.error;
+  return path;
+}
+
+/* Il link da mettere in una schermata. Non è un `href` vero: l'indirizzo non
+   esiste finché non si clicca, ed è giusto così — un `href` firmato dentro la
+   pagina sarebbe copiabile e resterebbe valido per cinque minuti in qualunque
+   posto lo si incolli. */
+function archLink(v, testo, classe) {
+  const p = String(v || '').replace(/'/g, '&#39;');
+  return `<a class="${classe || 'rin-az'}" href="javascript:void(0)" onclick="archApri('${esc(p)}')">${testo || '<i class="ti ti-eye"></i> Apri'}</a>`;
+}
+
 let ME = null;           // utente Supabase grezzo
 let token = null;        // access token Supabase (chiamate API best-effort)
 let currentUser = null;
@@ -5247,7 +5386,7 @@ async function rcvpUploadDoc(input,key){
   try{
     const path='rcvp/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     RCVP_DATA.documenti=RCVP_DATA.documenti||{}; RCVP_DATA.documenti[key]=url;
     if(key===docIdentitaKey(RCVP_DOCS)) saveAnagDocIdentita(RCVP_DATA.contraente?.clienteId||RCVP_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -5594,7 +5733,7 @@ async function rcvpRDuploadBonifico(input){
   try{
     const path='bonifici/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    RD_STATE.bonificoProof=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    RD_STATE.bonificoProof=path;
     if(st){ st.innerHTML='<i class="ti ti-check"></i> Allegato'; st.style.color='#1c8a52'; }
   }catch(e){ if(st){ st.textContent='Errore upload'; st.style.color='#c0392b'; } }
 }
@@ -5873,7 +6012,7 @@ async function infcUploadDoc(input,key){
   try{
     const path='infcirc/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     INFC_DATA.documenti=INFC_DATA.documenti||{}; INFC_DATA.documenti[key]=url;
     if(key===docIdentitaKey(INFC_DOCS)) saveAnagDocIdentita(INFC_DATA.contraente?.clienteId||INFC_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -6183,7 +6322,7 @@ async function petUploadDoc(input,key){
   try{
     const path='animali/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     PET_DATA.documenti=PET_DATA.documenti||{}; PET_DATA.documenti[key]=url;
     if(key===docIdentitaKey(PET_DOCS)) saveAnagDocIdentita(PET_DATA.contraente?.clienteId||PET_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -6382,7 +6521,7 @@ async function fvUploadDoc(input,key){
   try{
     const path='fotovoltaico/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     FV_DATA.documenti=FV_DATA.documenti||{}; FV_DATA.documenti[key]=url;
     if(key===docIdentitaKey(FV_DOCS)) saveAnagDocIdentita(FV_DATA.contraente?.clienteId||FV_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -6644,7 +6783,7 @@ async function rcrdUploadDoc(input,key){
   try{
     const path='rcrd/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     RCRD_DATA.documenti=RCRD_DATA.documenti||{}; RCRD_DATA.documenti[key]=url;
     if(key===docIdentitaKey(RCRD_DOCS)) saveAnagDocIdentita(RCRD_DATA.contraente?.clienteId||RCRD_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -6937,7 +7076,7 @@ async function tlUploadDoc(input,key){
   try{
     const path='tutelalegale/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     TL_DATA.documenti=TL_DATA.documenti||{}; TL_DATA.documenti[key]=url;
     if(key===docIdentitaKey(TL_DOCS)) saveAnagDocIdentita(TL_DATA.contraente?.clienteId||TL_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -7154,7 +7293,7 @@ async function svUploadDoc(input,key){
   try{
     const path='saravintage/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     SV_DATA.documenti=SV_DATA.documenti||{}; SV_DATA.documenti[key]=url;
     if(key===docIdentitaKey(SV_DOCS)) saveAnagDocIdentita(SV_DATA.contraente?.clienteId||SV_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -7446,7 +7585,7 @@ async function vgUploadDoc(input,key){
   try{
     const path='viaggio/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     VG_DATA.documenti=VG_DATA.documenti||{}; VG_DATA.documenti[key]=url;
     if(key===docIdentitaKey(VG_DOCS)) saveAnagDocIdentita(VG_DATA.contraente?.clienteId||VG_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -7592,7 +7731,7 @@ async function salUploadDoc(input,key){
   try{
     const path='salute/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    SAL_DATA.documenti=SAL_DATA.documenti||{}; SAL_DATA.documenti[key]=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    SAL_DATA.documenti=SAL_DATA.documenti||{}; SAL_DATA.documenti[key]=path;
     if(key===docIdentitaKey(SAL_DOCS)) saveAnagDocIdentita(SAL_DATA.contraente?.clienteId||SAL_DATA.clienteId, SAL_DATA.documenti[key], file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(SAL_DATA.documenti[key])}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
     status.textContent='Caricato';
@@ -8607,7 +8746,7 @@ async function fiUploadDoc(input,key){
   try{
     const path='cvt-fi/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    const url=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url=path;
     FI_DATA.documenti=FI_DATA.documenti||{}; FI_DATA.documenti[key]=url;
     if(key===docIdentitaKey(FI_DOCS_EM)) saveAnagDocIdentita(FI_DATA.contraente?.clienteId||FI_DATA.clienteId, url, file.name);
     cont.querySelector('.cauz-doc-link-wrap').innerHTML=`<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-eye"></i> Anteprima</a>`;
@@ -8618,7 +8757,7 @@ async function fiUploadAltro(input){
   const files=[...input.files]; if(!files.length) return;
   const status=document.getElementById('fi-altro-status'); status.textContent='Caricamento…'; status.style.color='';
   FI_DATA.documenti=FI_DATA.documenti||{}; FI_DATA.documenti.altro=FI_DATA.documenti.altro||[];
-  try{ for(const file of files){ const path='cvt-fi/'+Date.now()+'_altro_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'); const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error; FI_DATA.documenti.altro.push(db.storage.from('documenti').getPublicUrl(path).data.publicUrl); }
+  try{ for(const file of files){ const path='cvt-fi/'+Date.now()+'_altro_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'); const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error; FI_DATA.documenti.altro.push(path); }
     document.getElementById('fi-altro-list').innerHTML=FI_DATA.documenti.altro.map((u,i)=>`<a href="${esc(u)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Allegato ${i+1}</a>`).join('');
     status.textContent='✓ '+FI_DATA.documenti.altro.length+' allegati';
   }catch(e){ status.textContent='Errore upload. '+(e.message||''); status.style.color='#c0392b'; }
@@ -15364,7 +15503,7 @@ async function pdocCarica(polizzaId, categoria, file) {
     const path = 'polizze/' + polizzaId + '_' + categoria + '_' + Date.now() + '_' + nome;
     const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
     if (up.error) throw new Error(up.error.message);
-    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url = path;
     const rec = {
       entita: 'polizza', entita_id: polizzaId, categoria, nome: file.name, url,
       firmato: false,
@@ -15504,7 +15643,7 @@ async function fdocCaricaCliente() {
     const path = 'clienti/' + id + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/octet-stream' });
     if (up.error) throw up.error;
-    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url = path;
     const docs = Array.isArray(a.documenti) ? a.documenti.slice() : [];
     const t = M ? M.tipoCliente(tipo) : { id: tipo, l: tipo };
     docs.push({ tipo: t.id, numero, url, nome: file.name, data: new Date().toISOString(), scadenza: scad });
@@ -16204,13 +16343,20 @@ function apriPreventivo(id) {
   precontrattualeDocs(r.prodotto, r.modulo).forEach(dd => allegati.push({ nome: dd.nome, url: dd.url, sub: 'Precontrattuale', icon: 'ti-file-description' }));
   // MUP del collaboratore (disponibile dopo l'avvio della firma)
   if (d.firma && d.firma.token) allegati.push({ nome: 'Modulo Unico Precontrattuale (MUP)', url: PAY_API + '/sign/mup?id=' + r.id + '&t=' + encodeURIComponent(d.firma.token), sub: 'Precontrattuale', icon: 'ti-file-description' });
-  // altri eventuali campi *_url presenti nei dati (escludendo quelli già gestiti)
+  /* Altri campi `*_url` nei dati, che nessuno ha previsto uno per uno.
+     Fino al 18/09/2026 questo ciclo chiedeva `^https?://`, perché un allegato
+     era per forza un indirizzo pubblico. Ora quello che si salva è un PERCORSO
+     dentro l'archivio, e con la vecchia condizione questi allegati sarebbero
+     spariti dalla scheda senza un errore, senza un riquadro vuoto, senza
+     niente: la linguetta avrebbe detto «Nessun allegato presente» su un
+     preventivo che ne ha tre. Si accettano tutti e due, perché nell'archivio
+     convivono le righe di prima e quelle di adesso. */
   const urlGiaInseriti = new Set(allegati.map(a => a.url));
   Object.entries(d).forEach(([k, v]) => {
-    if (typeof v === 'string' && /_url$/.test(k) && /^https?:\/\//i.test(v) && !urlGiaInseriti.has(v)) {
-      allegati.push({ nome: pvPrettyLabel(k.replace(/_url$/, '')), url: v, sub: 'Allegato', icon: 'ti-paperclip' });
-      urlGiaInseriti.add(v);
-    }
+    if (typeof v !== 'string' || !v || !/_url$/.test(k) || urlGiaInseriti.has(v)) return;
+    if (!/^https?:\/\//i.test(v) && !archPercorso(v)) return;
+    allegati.push({ nome: pvPrettyLabel(k.replace(/_url$/, '')), url: v, sub: 'Allegato', icon: 'ti-paperclip' });
+    urlGiaInseriti.add(v);
   });
   const allegatiListHtml = allegati.length
     ? allegati.map(a => `<div class="pv-all-item"><i class="ti ${a.icon}"></i><div class="pv-all-meta"><div class="pv-all-name">${esc(a.nome)}</div><div class="pv-all-sub">${esc(a.sub || '')}</div></div><a href="${esc(a.url)}" target="_blank" class="pv-all-open"><i class="ti ti-external-link"></i> Apri</a></div>`).join('')
@@ -16593,7 +16739,7 @@ async function pvCaricaPolizza(id, input) {
     const path = 'preventivi/' + id + '_polizza_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
     if (up.error) throw new Error(up.error.message + ' — verifica che esista il bucket "documenti" su Supabase Storage.');
-    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url = path;
     const dati = { ...(r.dati || {}), polizza_url: url };
     const { error } = await db.from('quote_preventivi').update({ dati }).eq('id', id);
     if (error) throw error;
@@ -16614,7 +16760,7 @@ async function pvUploadField(kind, id) {
     const path = 'preventivi/' + id + '_' + kind + '_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
     if (up.error) throw new Error('Upload ' + kind + ' fallito (' + up.error.message + '). Crea il bucket "documenti" su Supabase Storage oppure usa il link.');
-    return db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    return path;
   }
   const link = (document.getElementById('pv-' + kind + '-url')?.value || '').trim();
   return link || null;
@@ -17002,7 +17148,7 @@ async function pvInviaMsg(id) {
       const path = 'messaggi/' + id + '_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/octet-stream' });
       if (up.error) throw up.error;
-      msg.doc_url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl; msg.doc_nome = file.name;
+      msg.doc_url = path; msg.doc_nome = file.name;
     }
     dati.messaggi.push(msg);
     const { error } = await db.from('quote_preventivi').update({ dati }).eq('id', id);
@@ -17180,7 +17326,7 @@ async function paypUploadBonifico(input){
   try{
     const path='bonifici/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'}); if(up.error) throw up.error;
-    PAYP.bonificoProof=db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    PAYP.bonificoProof=path;
     if(st){ st.innerHTML='<i class="ti ti-check"></i> Allegato'; st.style.color='#1c8a52'; }
   }catch(e){ if(st){ st.textContent='Errore upload'; st.style.color='#c0392b'; } }
 }
@@ -17641,7 +17787,7 @@ async function sinUploadFiles(inputId, prefix){
       const path='sinistri/'+prefix+'_'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
       const up=await db.storage.from('documenti').upload(path,file,{contentType:file.type||'application/octet-stream'});
       if(up.error) throw new Error('Upload allegato fallito ('+up.error.message+'). Crea il bucket "documenti".');
-      out.push({ nome:file.name, url:db.storage.from('documenti').getPublicUrl(path).data.publicUrl });
+      out.push({ nome:file.name, url:path });
     }
   }
   return out;
@@ -21038,7 +21184,7 @@ async function czUploadAltro(input){
       const path = 'cauzioni/'+tipoSlug+'/'+Date.now()+'_altro_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
       const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type||'application/pdf' });
       if(up.error) throw up.error;
-      CAUZ_DATA.documenti.altro.push(db.storage.from('documenti').getPublicUrl(path).data.publicUrl);
+      CAUZ_DATA.documenti.altro.push(path);
     }
     document.getElementById('cauz-altro-list').innerHTML = CAUZ_DATA.documenti.altro.map((u,i)=>`<a href="${esc(u)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Allegato ${i+1}</a>`).join('');
     status.textContent = '✓ '+CAUZ_DATA.documenti.altro.length+' allegati caricati';
@@ -21054,7 +21200,7 @@ async function czUploadDoc(input, key){
     const path = 'cauzioni/'+tipoSlug+'/'+Date.now()+'_'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type||'application/pdf' });
     if(up.error) throw up.error;
-    const url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+    const url = path;
     CAUZ_DATA.documenti = CAUZ_DATA.documenti || {}; CAUZ_DATA.documenti[key] = url;
     cont.querySelector('.cauz-doc-link-wrap').innerHTML = `<a href="${esc(url)}" target="_blank" class="cauz-doc-view"><i class="ti ti-file-text"></i> Visualizza</a>`;
     cont.querySelector('.cauz-doc-up').innerHTML = '<i class="ti ti-upload"></i> Sostituisci<input type="file" accept="application/pdf,image/*" onchange="czUploadDoc(this,\''+key+'\')" hidden>';
@@ -25556,7 +25702,7 @@ async function salvaDocumento() {
       const path = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
       if (up.error) throw new Error('Upload PDF fallito (' + up.error.message + '). Crea il bucket "documenti" su Supabase Storage, oppure usa il link.');
-      url = db.storage.from('documenti').getPublicUrl(path).data.publicUrl;
+      url = path;
     }
     // prodotto è NOT NULL a database: per un link senza prodotto mando stringa vuota.
     const rec = { prodotto: prod, compagnia: compagnia || null, descrizione: descr, url, categoria: cat, creato_da: currentUser.id };

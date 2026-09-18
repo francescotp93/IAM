@@ -312,17 +312,13 @@ function anagCliente(a, f) {
   };
 }
 
-// Carica un documento (HTML/PDF) su Supabase Storage e ritorna l'URL pubblico
-async function uploadDoc(path, content, contentType) {
-  const key = srvKey();
-  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/documenti/${path}`, {
-    method: 'POST',
-    headers: { apikey: key, Authorization: 'Bearer ' + key, 'content-type': contentType, 'x-upsert': 'true' },
-    body: content,
-  });
-  if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error('Storage: ' + (t || r.status)); }
-  return `${SUPABASE_URL}/storage/v1/object/public/documenti/${path}`;
-}
+/* Qui c'era `uploadDoc`, che caricava un documento e ne restituiva l'indirizzo
+   PUBBLICO. Non la chiamava nessuno — il documento privacy firmato lo serve la
+   rotta `/sign/privacy/doc` col suo token, non l'archivio — ed era l'ultimo
+   pezzo di server capace di fabbricare un indirizzo pubblico del contenitore
+   `documenti`, chiuso il 18/09/2026. Tolta: chi dovesse caricare qualcosa
+   nell'archivio usa `caricaDocumento` di server/archivio.js, che restituisce il
+   percorso e non un indirizzo. */
 function siNo(v) { return v ? 'SÌ' : 'NO'; }
 // Documento privacy (Mod. PR01) compilato e firmato — copia digitale stile PDF
 function genPrivacyDocHtml(c, cons, firma) {

@@ -589,16 +589,101 @@ cancella — serve a rileggere una pratica vecchia col documento valido allora.
 **Cose sapute e non fatte, da fare prima di andare in produzione con documenti
 veri.**
 
-- Il contenitore `documenti` di Supabase Storage è **pubblico** e le sue
-  politiche non chiedono niente a nessuno (`bucket_id = 'documenti'`, e basta).
-  Chi indovina l'indirizzo di un file legge la carta d'identità di un cliente.
-  Vale già oggi per tutto quello che l'applicazione ci carica da mesi, quindi
-  non è un guasto introdotto qui, ma **questo lavoro ci porta dentro molti più
-  documenti d'identità**: prima di usarlo sul serio il contenitore va chiuso e
-  gli indirizzi vanno firmati (`createSignedUrl`), come già si fa per
-  `richieste`, `firme` e `preventivi`. È una migrazione a sé, perché tocca ogni
-  `getPublicUrl` del file.
+- ~~Il contenitore `documenti` è pubblico.~~ **Chiuso il 18/09/2026, vedi §12.**
 - Il fascicolo guidato copre solo l'**RC Auto**: fuori da lì mostra i documenti
   di base e lo dice, senza inventare operazioni.
 - L'esportazione verso un archivio esterno (Mega) resta fuori, come da brief.
+
+---
+
+## 12. L'archivio chiuso (18/09/2026)
+
+Il contenitore `documenti` di Supabase Storage era **pubblico in lettura**: chi
+aveva l'indirizzo di un file lo apriva senza avere un account, per sempre. E gli
+indirizzi non sono segreti, si costruiscono con l'orario in millisecondi e il
+nome del file. Dentro ci sono carte d'identità, libretti, patenti, contabili di
+bonifico, polizze firmate, fatture dei collaboratori, documenti di sinistri —
+anche di persone che non sono clienti (il familiare convivente di una Bersani).
+
+**Misurato, non supposto:** il 18/09/2026, prima della chiusura, un `curl` senza
+alcuna credenziale su un documento in archivio rispondeva `200` con il PDF.
+Dopo, risponde `400`.
+
+Il quadro completo, con le tre strade e il costo di ognuna, era già scritto in
+`iam/sql/DA-APPROVARE-archivio-documenti.sql` (30/08/2026), dove la chiusura era
+«la strada B, da programmare». Questo lavoro è quella strada.
+
+### Com'è fatto adesso
+
+| pezzo | dove |
+|---|---|
+| firma e apertura nella pagina | blocco `arch*` in `index.html` (`archPercorso`, `archFirma`, `archApri`, `archCarica`, `archLink`) |
+| firma lato server | `server/archivio.js` (`percorsoArchivio`, `firmaDocumento`, `caricaDocumento`) |
+| la chiusura vera | `supabase/migrations/20260918_archivio_documenti_chiuso.sql` |
+| prove | `server/verifica/archivio.test.mjs` (9) + blocco «archivio» in `ui-test.mjs` (4) |
+
+Quattro cose da sapere prima di toccarlo.
+
+1. **Si salva il percorso, non l'indirizzo.** Ventidue punti di caricamento
+   scrivevano `getPublicUrl(...)` dentro le schede: ogni riga scritta metteva in
+   archivio un indirizzo che funzionava per chiunque, per sempre. Adesso si
+   salva `clienti/<id>/<file>`, che da solo non apre niente.
+2. **Gli indirizzi vecchi non si riscrivono, si leggono.** Trentatré fra colonne
+   e chiavi jsonb contengono ancora `…/object/public/documenti/<percorso>`
+   (`quote_anagrafiche.documenti` e `doc_identita_url`, `quote_documenti.url`,
+   `quote_preventivi.dati.proposta_url`, `.polizza_url`,
+   `.pagamento.bonifico_url`, `.messaggi[].doc_url`, `.documenti.*`,
+   `quote_pratica_documenti.url`, `quote_sinistri.documenti[].url`,
+   `iam_firme.doc_url`). `archPercorso` ne ricava il percorso e lo firma.
+   Un aggiornamento di massa su quattro tabelle avrebbe risolto lo stesso
+   problema lasciando indietro ogni riga scritta nel frattempo.
+3. **La finestra si apre PRIMA della firma.** Firmare è una chiamata di rete: se
+   la finestra si apre dopo, il browser la blocca come popup. C'è una prova che
+   guarda l'ordine — e alla prima stesura quella prova era rotta, perché cercava
+   la prima occorrenza di `window.open` invece di quella che aspetta il
+   documento, e restava verde anche con l'ordine invertito. L'ha trovata la
+   controprova, non il ragionamento.
+4. **C'è una rete di sicurezza, ed è la parte che conta.** I punti che mostrano
+   un documento sono decine, ognuno scrive il suo `<a href>` a mano, e basta
+   dimenticarne uno perché quel documento non si apra più. Un ascoltatore sui
+   clic (in cattura, su `document`) intercetta qualunque link che punti
+   all'archivio — percorso o vecchio indirizzo pubblico — e lo firma. Vale anche
+   per il codice che verrà scritto domani copiando il vicino.
+
+### Quello che si è rotto, di proposito
+
+**I collegamenti pubblici già spediti non funzionano più.** Un cliente che
+riapre una vecchia email «Scarica la tua polizza» trova un errore. Non c'è modo
+di evitarlo tenendo chiuso l'archivio. Da oggi quell'email porta un collegamento
+**firmato che vale 30 giorni e lo dice nel testo** (`server/notify.js`): un
+collegamento che muore in silenzio fa tornare il cliente arrabbiato, uno che
+dichiara la sua scadenza lo fa tornare informato.
+
+Due scadenze diverse, perché sono due cose diverse: **5 minuti** per aprire un
+file dal gestionale, **30 giorni** per un documento allegato a un'email
+(`SCADENZA` in `server/archivio.js`).
+
+### Chi firma per chi non ha un account
+
+Il collaboratore che apre la pagina di firma e il cliente che riceve l'email non
+sono collegati a Supabase: il loro browser non può chiedere un indirizzo
+firmato. Lo chiede il server, che ha la chiave di servizio
+(`server/firmaCollab.js`, `server/notify.js`). Lo shop (`server/shop.js`)
+restituisce il percorso invece dell'indirizzo pubblico, e in `server/sign.js` è
+sparita `uploadDoc`, che fabbricava indirizzi pubblici e non la chiamava
+nessuno.
+
+### Cosa resta aperto
+
+- **La cache della rete di distribuzione.** Un file già richiesto resta servito
+  dalla cache fino a un'ora (`cache-control: max-age=3600`). Verificato il
+  18/09/2026: stesso indirizzo `200` dalla cache, `400` con un parametro
+  diverso. Passata l'ora, chiuso davvero.
+- **I percorsi restano indovinabili** (`rcvp/<millisecondi>_<nome>`). Con
+  l'archivio chiuso non basta più indovinarli, ma la cartella casuale che già
+  usano gli allegati delle fatture (`fatture/<id>/<codice casuale>_<nome>`) è
+  la strada giusta per i prossimi caricamenti.
+- **`note-informative` e `offerte` restano pubblici**, ed è voluto: i primi sono
+  documenti precontrattuali che devono leggere tutti, i secondi immagini di
+  marketing. Nessuno dei due contiene dati di clienti.
 

@@ -6768,6 +6768,110 @@ const avvio = async () => {
       return 'pagina, porta e voce di menu';
     });
 
+    /* ── L'ARCHIVIO CHIUSO (18/09/2026) ──────────────────────────────────
+       Il contenitore «documenti» non è più pubblico. Qui si guarda che la
+       pagina apra i documenti FIRMANDOLI, e che continui a farlo con gli
+       indirizzi vecchi rimasti nel database. */
+    await prova('archivio: aprire un documento chiede un indirizzo firmato, e apre quello', async () => {
+      const r = await page.evaluate(async () => {
+        const spia = { firmati: [], aperti: [] };
+        const vecchio = db.storage.from;
+        db.storage.from = (b) => ({
+          createSignedUrl: async (path, sec) => { spia.firmati.push({ b, path, sec }); return { data: { signedUrl: 'https://firmato/' + path + '?token=k' }, error: null }; },
+          upload: async () => ({ error: null })
+        });
+        const finestra = { location: { href: '' }, close() { spia.chiusa = true; } };
+        const apri = window.open;
+        window.open = () => { spia.aperti.push('finestra'); return finestra; };
+        await archApri('https://ekjxrnsfqxnfxzrthdcf.supabase.co/storage/v1/object/public/documenti/clienti/a/1_ci.pdf');
+        const dopoVecchio = { ...finestra.location };
+        await archApri('polizze/pol-1_patente_9_x.pdf');
+        db.storage.from = vecchio; window.open = apri;
+        return { spia, dopoVecchio, dopoNuovo: finestra.location.href };
+      });
+      deve(r.spia.firmati.length === 2, 'firme chieste: ' + r.spia.firmati.length + ' (attese 2)');
+      deve(r.spia.firmati[0].b === 'documenti', 'ha firmato sul contenitore «' + r.spia.firmati[0].b + '»');
+      deve(r.spia.firmati[0].path === 'clienti/a/1_ci.pdf', 'da un vecchio indirizzo pubblico ha ricavato «' + r.spia.firmati[0].path + '»');
+      deve(r.spia.firmati[1].path === 'polizze/pol-1_patente_9_x.pdf', 'da un percorso ha ricavato «' + r.spia.firmati[1].path + '»');
+      deve(/^https:\/\/firmato\//.test(r.dopoNuovo), 'la finestra non è finita sull\'indirizzo firmato: ' + r.dopoNuovo);
+      deve(r.spia.aperti.length === 2, 'non apre una finestra per ogni documento');
+      return 'vecchi e nuovi, tutti firmati';
+    });
+
+    await prova('archivio: se la firma non riesce lo dice, e non lascia una finestra bianca', async () => {
+      const r = await page.evaluate(async () => {
+        const avvisi = []; const chiusure = [];
+        const vecchio = db.storage.from; const apri = window.open; const alrt = window.alert;
+        db.storage.from = () => ({ createSignedUrl: async () => ({ data: null, error: { message: 'Object not found' } }) });
+        window.open = () => ({ location: { href: '' }, close() { chiusure.push(1); } });
+        window.alert = (m) => avvisi.push(String(m));
+        await archApri('clienti/a/sparito.pdf');
+        db.storage.from = vecchio; window.open = apri; window.alert = alrt;
+        return { avvisi, chiusure: chiusure.length };
+      });
+      deve(r.chiusure === 1, 'la finestra vuota è rimasta aperta');
+      deve(r.avvisi.length === 1 && /permessi|archivio/i.test(r.avvisi[0]), 'non spiega perché non si apre: ' + JSON.stringify(r.avvisi));
+      return 'finestra chiusa, motivo detto';
+    });
+
+    await prova('archivio: un clic su un link d\'archivio non naviga mai, viene firmato', async () => {
+      const r = await page.evaluate(async () => {
+        const spia = { firmati: [] };
+        const vecchio = db.storage.from; const apri = window.open;
+        db.storage.from = () => ({ createSignedUrl: async (p) => { spia.firmati.push(p); return { data: { signedUrl: 'https://firmato/' + p }, error: null }; } });
+        window.open = () => ({ location: {}, close() {} });
+        const box = document.createElement('div');
+        box.innerHTML = `<a id="t-arch" href="clienti/a/1_ci.pdf" target="_blank">doc</a>
+                         <a id="t-pub" href="https://ekjxrnsfqxnfxzrthdcf.supabase.co/storage/v1/object/public/documenti/rcvp/2_x.pdf" target="_blank">vecchio</a>
+                         <a id="t-fuori" href="https://quoto.withusassicurazioni.it/docs/dip.pdf" target="_blank">esterno</a>`;
+        document.body.appendChild(box);
+        const esito = {};
+        for (const id of ['t-arch', 't-pub', 't-fuori']) {
+          const ev = new MouseEvent('click', { bubbles: true, cancelable: true });
+          document.getElementById(id).dispatchEvent(ev);
+          esito[id] = ev.defaultPrevented;
+        }
+        await new Promise(r => setTimeout(r, 50));
+        box.remove(); db.storage.from = vecchio; window.open = apri;
+        return { esito, firmati: spia.firmati };
+      });
+      deve(r.esito['t-arch'], 'un percorso d\'archivio naviga come indirizzo del sito: mostrerebbe una pagina che non c\'è');
+      deve(r.esito['t-pub'], 'un vecchio indirizzo pubblico non viene intercettato');
+      deve(!r.esito['t-fuori'], 'un documento precontrattuale esterno viene intercettato: si aprirebbe un errore');
+      deve(r.firmati.length === 2, 'firme chieste dai clic: ' + r.firmati.length + ' (attese 2)');
+      return 'due intercettati, uno lasciato passare';
+    });
+
+    await prova('archivio: il documento d\'identità del cliente si carica come percorso', async () => {
+      const r = await page.evaluate(async () => {
+        document.getElementById('anag-overlay')?.remove();
+        ANAG_CACHE = [{ id: 'cli-1', nominativo: 'ROSSI MARIO', tipo: 'fisica', documenti: [] }];
+        apriAnagrafica('cli-1');
+        await new Promise(r => setTimeout(r, 300));
+        clTab('doc');
+        const vecchio = db.storage.from;
+        db.storage.from = () => ({ upload: async () => ({ error: null }),
+                                   createSignedUrl: async () => ({ data: { signedUrl: 'x' }, error: null }) });
+        window.__COLLAUDO.db = [];
+        const inp = document.getElementById('fdoc-file');
+        const dt = new DataTransfer();
+        dt.items.add(new File(['x'], 'ci.pdf', { type: 'application/pdf' }));
+        inp.files = dt.files;
+        document.getElementById('fdoc-scad').value = '2036-01-01';
+        document.getElementById('fdoc-numero').value = 'AX123';
+        await fdocCaricaCliente();
+        db.storage.from = vecchio;
+        const scritte = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_anagrafiche' && x.operazione === 'update');
+        return { scritte: scritte.length, doc: scritte[0] && scritte[0].payload.documenti[0] };
+      });
+      deve(r.scritte === 1, 'scritture in anagrafica: ' + r.scritte);
+      deve(r.doc, 'non ha salvato niente');
+      deve(!/^https?:/i.test(r.doc.url), 'ha salvato un indirizzo invece di un percorso: ' + r.doc.url);
+      deve(/^clienti\/cli-1\//.test(r.doc.url), 'il percorso non è quello atteso: ' + r.doc.url);
+      deve(r.doc.numero === 'AX123' && r.doc.scadenza === '2036-01-01', 'numero o scadenza persi: ' + JSON.stringify(r.doc));
+      return r.doc.url;
+    });
+
     await prova('documentale: nessun errore JavaScript in tutto il blocco', async () => {
       deve(erroriDoc.length === 0, erroriDoc.slice(0, 3).join(' | '));
     });

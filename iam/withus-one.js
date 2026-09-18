@@ -221,6 +221,48 @@
     });
   });
 
+  /* ═══ IL CONTRASSEGNO DI VERSIONE DEL RIQUADRO (18/09/2026) ══════════════
+     Il 14 settembre 2026 il menu nuovo non si vedeva: il file era cambiato,
+     il `?v=` scritto a mano no, e il browser aveva in cache QUELL'indirizzo
+     (`iam/verifica/versione-scocca.test.mjs` racconta tutta la storia). Il
+     18 settembre è successo di nuovo, un piano più sotto: il riquadro chiede
+     `/nuovo-preventivo/?from=iam`, un indirizzo che non cambia MAI, e il
+     browser ha continuato a servire il preventivatore del rilascio prima —
+     senza le schermate nuove e senza la parte che firma gli indirizzi dei
+     documenti. Ricaricare IAM non bastava: un `iframe` è un documento a sé.
+
+     Qui il contrassegno non si scrive a mano: si CHIEDE al server. Una
+     richiesta `HEAD` legge l'etichetta del preventivatore (l'`ETag` che
+     Caddy calcola dal contenuto) e la si aggiunge all'indirizzo. Quando
+     QUOTO cambia, l'etichetta cambia, l'indirizzo cambia, e il browser
+     scarica la versione nuova; quando non cambia, l'indirizzo resta identico
+     e la cache continua a fare il suo lavoro.
+
+     Perché non un numero annotato come per `withus-one.js`: quel file cambia
+     di rado, `index.html` di QUOTO cambia quasi a ogni lavoro. Una prova che
+     diventa rossa tutte le volte si impara ad aggirarla, e allora non
+     sorveglia più niente.
+
+     Se la richiesta non riesce — rete lenta, server che non risponde — si
+     carica senza contrassegno: meglio un riquadro che forse è vecchio di un
+     riquadro che non si apre. */
+  var VERSIONI = {};
+  function versioneQuoto(sotto) {
+    var chiave = sotto || '';
+    if (VERSIONI[chiave] !== undefined) return Promise.resolve(VERSIONI[chiave]);
+    if (typeof fetch !== 'function') { VERSIONI[chiave] = ''; return Promise.resolve(''); }
+    return fetch(QUOTO + chiave, { method: 'HEAD', cache: 'no-store' })
+      .then(function (r) {
+        var t = (r.headers.get('etag') || r.headers.get('last-modified') || '').replace(/[^A-Za-z0-9]/g, '');
+        /* Si tiene l'inizio, non la coda: un'etichetta tagliata in testa
+           perde la parte che la distingue prima. Ventiquattro caratteri
+           bastano a non confondere due rilasci e tengono corto l'indirizzo. */
+        VERSIONI[chiave] = t ? t.slice(0, 24) : '';
+        return VERSIONI[chiave];
+      })
+      .catch(function () { VERSIONI[chiave] = ''; return ''; });
+  }
+
   function caricaFrame(fr, page, cerca, prod, sotto) {
     var load = document.getElementById('w1-qload');
     if (load) load.style.display = '';
@@ -239,7 +281,12 @@
     if (page) base += '&page=' + encodeURIComponent(page);
     if (prod) base += '&prod=' + encodeURIComponent(prod);
     ATTESA = { page: page, prod: prod, cerca: cerca };
-    fr.src = base;
+    /* Il contrassegno arriva dal server, quindi l'indirizzo si compone un
+       istante dopo: il riquadro ha già il suo «Carico…», e nessuno vede
+       niente di diverso. */
+    versioneQuoto(sotto || '').then(function (v) {
+      fr.src = base + (v ? '&v=' + encodeURIComponent(v) : '');
+    });
   }
 
   /* opz = { titolo: ['Titolo','Area'], cerca: 'testo', base: 'lab/', menu: 'marketing' }

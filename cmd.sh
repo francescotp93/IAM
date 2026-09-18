@@ -1,12 +1,11 @@
-echo "== il VPS ha preso la correzione? =="
-echo -n "commit: "; git -C /opt/withus-backend log --oneline -1 2>&1
-echo -n "no-cache nel file del repo:   "; grep -c 'Cache-Control "no-cache"' /opt/withus-backend/deploy/caddy/iam.caddy 2>&1
-echo -n "no-cache nel sito in esecuzione: "; grep -c 'Cache-Control "no-cache"' /etc/caddy/withus/iam.caddy 2>&1
+echo "== header veri, chiedendo al dominio dall'esterno del server =="
+for u in "https://iam.withusassicurazioni.it/" "https://iam.withusassicurazioni.it/nuovo-preventivo/" "https://iam.withusassicurazioni.it/nuovo-preventivo/tariffe/motore/fascicolo.js"; do
+  echo "-- $u"
+  curl -sS -o /dev/null -D - --max-time 20 "$u" 2>&1 | grep -iE "^(HTTP/|cache-control|etag|content-type)" | sed 's/^/   /'
+done
 echo
-echo "== gli header che il browser riceve davvero =="
-echo "-- IAM alla radice:"
-curl -sS -o /dev/null -D - https://127.0.0.1/ -H 'Host: iam.withusassicurazioni.it' --resolve 'iam.withusassicurazioni.it:443:127.0.0.1' -k 2>&1 | grep -iE "^(HTTP|cache-control|etag)" 
-echo "-- il riquadro /nuovo-preventivo/:"
-curl -sS -o /dev/null -D - https://127.0.0.1/nuovo-preventivo/ -H 'Host: iam.withusassicurazioni.it' --resolve 'iam.withusassicurazioni.it:443:127.0.0.1' -k 2>&1 | grep -iE "^(HTTP|cache-control|etag)"
-echo "-- un motore di tariffa (deve restare in cache):"
-curl -sS -o /dev/null -D - "https://127.0.0.1/nuovo-preventivo/tariffe/motore/fascicolo.js" -H 'Host: iam.withusassicurazioni.it' --resolve 'iam.withusassicurazioni.it:443:127.0.0.1' -k 2>&1 | grep -iE "^(HTTP|cache-control|etag)"
+echo "== e la pagina servita contiene il codice nuovo? =="
+echo -n "   archSuoIndirizzo nella pagina del riquadro: "
+curl -sS --max-time 30 "https://iam.withusassicurazioni.it/nuovo-preventivo/" 2>&1 | grep -c "archSuoIndirizzo"
+echo -n "   fdocRenderCliente (il tab Documenti nuovo):  "
+curl -sS --max-time 30 "https://iam.withusassicurazioni.it/nuovo-preventivo/" 2>&1 | grep -c "fdocRenderCliente"

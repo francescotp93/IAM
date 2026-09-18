@@ -1,59 +1,29 @@
-id: chiscrive-1789678073  exit: 0  2026-09-17 20:48:38
+id: diag-1789744186  exit: 0  2026-09-18 15:09:56
 ----
-== ora
-2026-09-17 20:48:10 UTC
-  2026-09-16 23:32:13  @studiosirio.it
-  2026-09-12 09:04:36  @withusassicurazioni.it
-  2026-09-12 07:09:48  @financial1000.com
-  2026-09-11 11:18:58  @saraagenzie.it
-  2026-09-10 21:14:58  @withusassicurazioni.it
-  2026-09-08 13:38:24  @senzapensione.it
-  2026-09-06 13:58:33  @financial1000.com
-  2026-09-04 06:29:59  @agleasalus.it
-  2026-09-02 15:46:15  @withusassicurazioni.it
-  2026-09-02 15:18:53  @withusassicurazioni.it
-  2026-09-01 12:39:30  @saraagenzie.it
-  2026-08-29 14:08:21  @messaggi.intesasanpaolo.com
-  2026-08-21 11:12:17  @saraagenzie.it
-  2026-08-12 08:22:33  @staff.aruba.it
-  2026-08-11 10:45:50  @saraagenzie.it
-  2026-08-07 16:42:29  @hotmail.it
-  2026-08-03 16:23:55  @saraagenzie.it
-  2026-07-30 10:37:27  @innovasemplice.it
---- casella @withusassicurazioni.it ---
-  ultimi 13 messaggi, dal piu' recente (ora UTC, solo il dominio di chi scrive):
-  2026-09-07 14:14:30  @fatturazioneelettronica.aruba.it
-  2026-08-17 09:36:44  @gmail.com
-  2026-08-17 09:32:37  @fatturazioneelettronica.aruba.it
-  2026-08-11 07:46:34  @gmail.com
-  2026-08-10 09:30:24  @gmail.com
-  2026-08-07 10:27:37  @gmail.com
-  2026-07-24 07:42:23  @fatturazioneelettronica.aruba.it
-  2026-06-23 21:27:44  @gmail.com
-  2026-06-22 12:43:40  @staff.aruba.it
-  2026-06-21 11:12:00  @staff.aruba.it
-  2026-06-20 07:22:34  @staff.aruba.it
-  2026-06-18 14:34:06  @fatturazioneelettronica.aruba.it
-  2026-06-17 10:54:11  @fatturazioneelettronica.aruba.it
---- casella @withusassicurazioni.it ---
-  ultimi 20 messaggi, dal piu' recente (ora UTC, solo il dominio di chi scrive):
-  2026-09-17 08:21:02  @fatturazioneelettronica.aruba.it
-  2026-09-14 12:59:42  @withusassicurazioni.it
-  2026-09-09 09:53:47  @gmail.com
-  2026-08-28 10:38:58  @withusassicurazioni.it
-  2026-08-28 10:37:47  @withusassicurazioni.it
-  2026-08-28 10:28:39  @withusassicurazioni.it
-  2026-08-26 10:31:07  @libero.it
-  2026-08-26 10:12:29  @libero.it
-  2026-08-18 13:32:28  @gmail.com
-  2026-08-17 18:06:19  @fatturazioneelettronica.aruba.it
-  2026-08-06 08:43:37  @libero.it
-  2026-08-06 08:39:22  @libero.it
-  2026-07-28 08:48:36  @libero.it
-  2026-07-24 10:41:07  @withusassicurazioni.it
-  2026-07-22 11:46:46  @withusassicurazioni.it
-  2026-07-21 08:36:24  @gmail.com
-  2026-07-14 07:18:17  @fatturazioneelettronica.aruba.it
-  2026-07-08 08:55:13  @withusassicurazioni.it
-  2026-07-08 07:49:16  @virgilio.it
-  2026-07-02 08:24:46  @virgilio.it
+== che codice serve il VPS ==
+commit di /opt/withus-backend: d15e71d L'archivio è chiuso: i documenti dicono lo stato vero (#180)
+md5 di index.html servito sotto /nuovo-preventivo/: d9dcbcbae5bdbb919f02d449ab56dc66
+md5 di iam/index.html: cddf85d606fb465cf49e0094e71d6baf
+
+== il codice nuovo c'e'? ==
+archSuoIndirizzo in index.html: 2
+ARCH_CARTELLE in index.html:    2
+motore fascicolo.js presente:   1
+
+== autopull ==
+active
+Sep 18 15:05:26 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 18 15:05:26 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 4.933s CPU time over 5.459s wall clock time, 104M memory peak.
+Sep 18 15:06:31 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Sep 18 15:06:36 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 18 15:06:36 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 18 15:06:36 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 5.173s CPU time over 5.645s wall clock time, 104M memory peak.
+Sep 18 15:07:41 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Sep 18 15:07:46 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 18 15:07:46 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 18 15:07:46 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 4.840s CPU time over 5.257s wall clock time, 103.9M memory peak.
+Sep 18 15:08:45 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Sep 18 15:08:50 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 18 15:08:50 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 18 15:08:50 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 4.966s CPU time over 5.453s wall clock time, 104.6M memory peak.
+Sep 18 15:09:51 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...

@@ -517,3 +517,88 @@ Ciò che **non** è cambiato: `index.html` di QUOTO e `iam/index.html` restano
 due documenti, e il preventivatore vive in un riquadro (stessa origine,
 `/nuovo-preventivo/`). Una sola applicazione si raggiunge portando le pagine in
 `withus-one/`, una per file, non concatenando i due monoliti.
+
+---
+
+## 11. La gestione documentale (Lavoro 3, 18/09/2026)
+
+**Dove vive.** Nella radice (QUOTO), non in `iam/`. Il brief diceva «in IAM»,
+ma il pannello «Posizioni del cliente» e il portafoglio polizze stanno in
+`index.html` alla radice: IAM li mostra nel riquadro `/nuovo-preventivo/`.
+È il caso di §9 — *un brief che parla di «IAM» può riguardare tutti e due i
+repository: prima si cerca dove vive la cosa, poi si tocca.*
+
+| pezzo | dove |
+|---|---|
+| tutte le regole (quali documenti servono, scadenze, eredità, congelamento) | `tariffe/motore/fascicolo.js` |
+| le prove delle regole, in Node | `server/verifica/fascicolo.test.mjs` — 18 |
+| i due contenitori nella scheda cliente | `fdoc*` in `index.html` |
+| il fascicolo di pratica | `pdoc*` in `index.html`, aperto dal Portafoglio e dalla scheda cliente |
+| i due contatori di agenzia e le regole per compagnia | `cdoc*`, pagina `#page-controllo-documenti` |
+| le tabelle | `supabase/migrations/20260918_documentale_compagnie.sql` |
+| le prove nella pagina | blocco «documentale/fascicolo/controllo documenti» in `ui-test.mjs` |
+
+**Le quattro regole che non si toccano senza rifare i conti.**
+
+1. **I documenti d'identità del cliente stanno sull'anagrafica, la pratica li
+   eredita.** `quote_anagrafiche.documenti` (jsonb: `tipo`, `numero`, `url`,
+   `data`, `scadenza`). Se ci sono, non si ricaricano una volta per polizza.
+   Uno **scaduto** non vale come presente: il fascicolo dice «scaduto» e manda
+   in anagrafica, perché rinnovare un documento e caricarne uno mancante sono
+   due lavori diversi.
+2. **I documenti di terzi restano nella pratica e non entrano mai in
+   anagrafica.** Identità del familiare convivente, libretto del veicolo da cui
+   arriva la classe: sono persone che non sono in portafoglio (GDPR), e
+   metterle in anagrafica sporcherebbe il portafoglio di nominativi che non
+   sono clienti. Nel motore lo dicono `fonte` e `terzo`; nessun tipo di terzi è
+   nemmeno regolabile da una compagnia, altrimenti la regola si aggirerebbe dal
+   pannello.
+3. **La patente non è un documento d'identità.** Sta nel fascicolo di polizza:
+   serve alle pratiche auto, non a identificare il cliente. In anagrafica ci
+   sono due soli tipi, carta d'identità e passaporto, tutti e due con numero e
+   **scadenza obbligatoria** — un documento d'identità senza data non si può
+   dire valido, e accettarlo riempirebbe l'archivio di documenti su cui il
+   contatore delle scadenze non ha niente da dire.
+4. **I requisiti si congelano alla creazione del fascicolo.**
+   `quote_polizze.dati.fascicolo` tiene operazione, compagnia e l'elenco
+   completo dei requisiti con la data. Se si rileggessero sempre «da vive», il
+   giorno in cui una compagnia aggiunge un documento **tutte le pratiche già
+   chiuse diventerebbero incomplete** e l'elenco dei fascicoli da completare
+   smetterebbe di voler dire qualcosa. Cambiare una regola vale per le pratiche
+   nuove; per rifare una pratica vecchia c'è «Rifai il fascicolo», che lo dice.
+
+**Le regole per compagnia si sommano, non sostituiscono.** `quote_compagnie`
+(con gli **alias**: sulle polizze è scritto «HDI Assicurazioni», nel catalogo
+prodotti «HDI» — senza alias una polizza non ritroverebbe le sue regole) e
+`quote_regole_documenti` (compagnia → tipo documento → obbligatorio). Requisiti
+= quelli dell'operazione **più** quelli della compagnia; un documento chiesto
+da entrambe si conta una volta sola, e vince il più severo. La prima regola
+vera in tabella: **Prima → patente obbligatoria**, comunicata il 18/09/2026.
+Una regola che nomina un tipo che il motore non conosce non si applica e **si
+vede** (in rosso, «tipo sconosciuto»): sparire in silenzio vorrebbe dire che un
+refuso toglie un requisito e non se ne accorge nessuno.
+
+**I due contatori restano due** (`#page-controllo-documenti`, voce «Documenti»).
+Documenti in scadenza o scaduti = clienti da richiamare; fascicoli incompleti =
+documenti che un operatore non ha caricato. Un numero solo sembra più semplice
+e non si può lavorare: non si saprebbe a chi telefonare. Chi ha già rinnovato
+non compare: nel contatore entra solo la versione **attiva** di ogni tipo (la
+più recente non scaduta), e le precedenti restano nello storico, che non si
+cancella — serve a rileggere una pratica vecchia col documento valido allora.
+
+**Cose sapute e non fatte, da fare prima di andare in produzione con documenti
+veri.**
+
+- Il contenitore `documenti` di Supabase Storage è **pubblico** e le sue
+  politiche non chiedono niente a nessuno (`bucket_id = 'documenti'`, e basta).
+  Chi indovina l'indirizzo di un file legge la carta d'identità di un cliente.
+  Vale già oggi per tutto quello che l'applicazione ci carica da mesi, quindi
+  non è un guasto introdotto qui, ma **questo lavoro ci porta dentro molti più
+  documenti d'identità**: prima di usarlo sul serio il contenitore va chiuso e
+  gli indirizzi vanno firmati (`createSignedUrl`), come già si fa per
+  `richieste`, `firme` e `preventivi`. È una migrazione a sé, perché tocca ogni
+  `getPublicUrl` del file.
+- Il fascicolo guidato copre solo l'**RC Auto**: fuori da lì mostra i documenti
+  di base e lo dice, senza inventare operazioni.
+- L'esportazione verso un archivio esterno (Mega) resta fuori, come da brief.
+

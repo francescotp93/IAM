@@ -1,17 +1,19 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
 --  L'ARCHIVIO DEI DOCUMENTI SI CHIUDE (18/09/2026)
 --
---  ⚠ QUANDO ESEGUIRLO. Questa migrazione è stata eseguita il 18/09/2026 e poi
---  la sola riga `public = false` è stata rimessa indietro, perché la chiusura
---  era arrivata PRIMA del codice che sa firmare gli indirizzi: la produzione
---  serve `main`, e il codice stava su un ramo. Con l'archivio chiuso e il
---  codice vecchio in pagina, i documenti non si aprivano.
---  Il resto di questo file è già attivo (tetto, regole di scrittura, regola di
---  lettura). Per chiudere davvero, appena il lavoro è su `main` e pubblicato:
+--  ESEGUITA. Prima il 18/09/2026, quando la sola riga `public = false` è stata
+--  rimessa indietro perché la chiusura era arrivata PRIMA del codice che sa
+--  firmare gli indirizzi; poi di nuovo, per intero, lo stesso giorno, dopo il
+--  merge della PR #179 e dopo aver verificato che il codice fosse davvero
+--  pubblicato (impronta di index.html servito da quoto.withusassicurazioni.it
+--  uguale a quella di main).
 --
---      update storage.buckets set public = false where id = 'documenti';
+--  Controllo 4 fatto e misurato: un vecchio indirizzo pubblico, senza
+--  credenziali, rispondeva 200 col PDF e adesso risponde 400 «Bucket not
+--  found». I controlli 1, 2 e 3 si fanno usando l'applicazione.
 --
---  e poi i quattro controlli qui sotto. Niente altro da rifare.
+--  Per riaprire, se serve:
+--      update storage.buckets set public = true where id = 'documenti';
 --
 --  `documenti` è il magazzino dove finiscono i file di tutta la piattaforma:
 --  carte d'identità, libretti, patenti, contabili di bonifico, polizze firmate,

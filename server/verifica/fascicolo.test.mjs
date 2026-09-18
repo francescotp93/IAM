@@ -328,6 +328,101 @@ prova('§3.8 · il contatore dei fascicoli è un\'altra cosa, e dice compagnia e
   return '1 fascicolo incompleto, filtrabile per compagnia e operatore';
 });
 
+/* ══ IL FASCICOLO PRIMA DELLA POLIZZA (18/09/2026) ═══════════════════════════
+   I documenti si raccolgono mentre la polizza non c'è ancora. Le regole che
+   contano non sono quelle della raccolta — sono le stesse di sempre, ed è il
+   punto — ma quelle del COLLEGAMENTO: il giorno in cui la polizza arriva, i
+   requisiti congelati passano su di lei senza cambiare data, e i documenti
+   la seguono. Sbagliare lì vuol dire riscrivere i requisiti di una pratica o
+   spostare i documenti di un cliente nel fascicolo di un altro. */
+
+const PRAT = {
+  id: 'pr-1', cliente_id: 'a1', cliente: 'ROSSI MARIO', modulo: 'rca', prodotto: 'RC Auto',
+  descrizione: 'AB123CD', data_prevista: '2026-10-01',
+  dati: { fascicolo: F.congela(POL, 'bersani_stesso', { id: 'c1', nome: 'Prima' }, [{ documento: 'patente' }], '2026-09-01T09:00:00.000Z') }
+};
+
+prova('una pratica senza polizza si lavora con le stesse regole: il motore non sa che non è una polizza', () => {
+  /* Se servisse una seconda versione delle regole per le pratiche, prima o
+     poi le due direbbero cose diverse. Le colonne di quote_pratiche si
+     chiamano come quelle di quote_polizze proprio per questo. */
+  const r = F.riassunto(PRAT, [], CI_VALIDA, OGGI);
+  deve(r.congelato, 'i requisiti della pratica non risultano congelati');
+  deve(r.ramo === 'rcauto', 'il ramo di una pratica non si riconosce: ' + r.ramo);
+  deve(cat(r, 'patente'), 'la regola della compagnia non è arrivata sulla pratica');
+  deve(cat(r, 'documento_identita').stato === 'ereditato', 'la pratica non eredita l\'identità dall\'anagrafica');
+  return r.mancanti + ' documenti mancanti, requisiti congelati il 01/09';
+});
+
+prova('il contatore di agenzia conta anche le pratiche senza polizza, e dice quali sono', () => {
+  /* Un fascicolo che non compare nel contatore è un fascicolo che nessuno va
+     a completare: è il motivo per cui il contatore esiste. */
+  const righe = [
+    { id: 'p1', entita: 'polizza', cliente: 'VERDI LUIGI', cliente_id: 'a3', modulo: 'rca', data_effetto: '2026-04-01',
+      dati: { fascicolo: F.congela(POL, 'rinnovo_altra_compagnia', null, []) } },
+    { ...PRAT, entita: 'pratica' }
+  ];
+  const f = F.fascicoliIncompleti(righe, {}, { a1: CI_VALIDA, a3: CI_VALIDA }, OGGI);
+  deve(f.pratiche === 2, 'fascicoli incompleti ' + f.pratiche + ' (attesi 2)');
+  deve(f.polizze === 1 && f.senzaPolizza === 1, 'non si distinguono: ' + f.polizze + ' / ' + f.senzaPolizza);
+  const pr = f.righe.find(r => r.entita === 'pratica');
+  deve(pr, 'la pratica non compare nel contatore');
+  /* `polizza_id` su una pratica sarebbe una bugia comoda da leggere: la
+     schermata aprirebbe un fascicolo di polizza che non esiste. */
+  deve(pr.polizza_id === null, 'una pratica porta un polizza_id: ' + pr.polizza_id);
+  deve(pr.id === 'pr-1', 'la riga non porta l\'id della pratica');
+  deve(pr.data_effetto === '2026-10-01' && pr.prevista, 'la decorrenza prevista non è dichiarata come prevista');
+  deve(pr.descrizione === 'AB123CD', 'si perde il riferimento che distingue due pratiche dello stesso cliente');
+  return '2 incompleti: 1 polizza, 1 pratica senza polizza';
+});
+
+prova('il collegamento passa i requisiti COM\'ERANO, non come sono oggi', () => {
+  const pol = { id: 'p9', cliente_id: 'a1', modulo: 'rca', prodotto: 'RC Auto', dati: {} };
+  const c = F.collegabile(PRAT, pol);
+  deve(c.ok, 'non si collega: ' + c.motivo);
+  deve(c.fascicolo.congelato_il === '2026-09-01T09:00:00.000Z',
+    'la data del congelamento è cambiata nel collegamento: ' + c.fascicolo.congelato_il);
+  deve(c.fascicolo.operazione === 'bersani_stesso', 'l\'operazione non passa alla polizza');
+  /* La polizza collegata deve chiedere esattamente quello che chiedeva la
+     pratica: se i requisiti si rileggessero oggi, una regola cambiata nel
+     frattempo renderebbe incompleta una pratica che era finita. */
+  const dopo = F.riassunto({ ...pol, dati: { fascicolo: c.fascicolo } }, [], CI_VALIDA, OGGI);
+  const prima = F.riassunto(PRAT, [], CI_VALIDA, OGGI);
+  deve(dopo.campi.length === prima.campi.length, 'la polizza chiede un numero diverso di documenti');
+  return 'requisiti e data invariati: ' + dopo.campi.length + ' contenitori';
+});
+
+prova('quattro casi in cui NON si collega, e ognuno dice perché', () => {
+  const base = { id: 'p9', cliente_id: 'a1', modulo: 'rca', dati: {} };
+  const senzaFasc = { ...PRAT, dati: {} };
+  deve(!F.collegabile(senzaFasc, base).ok, 'si collega una pratica senza fascicolo');
+  /* Cliente diverso: spostare i documenti vorrebbe dire mettere la carta
+     d'identità di uno nel fascicolo di un altro. */
+  deve(!F.collegabile(PRAT, { ...base, cliente_id: 'a2' }).ok, 'si collega alla polizza di un altro cliente');
+  /* Ramo diverso: i requisiti congelati non sarebbero i suoi. */
+  deve(!F.collegabile(PRAT, { ...base, modulo: 'persona', prodotto: 'Infortuni' }).ok, 'si collega a un ramo diverso');
+  /* Una polizza che ha già il SUO fascicolo non si sovrascrive. */
+  const altrui = { ...base, dati: { fascicolo: F.congela(POL, 'rinnovo_altra_compagnia', null, [], '2026-08-01T00:00:00.000Z') } };
+  deve(!F.collegabile(PRAT, altrui).ok, 'si sovrascrive il fascicolo già congelato sulla polizza');
+  deve(/già il suo fascicolo/.test(F.collegabile(PRAT, altrui).motivo), 'il motivo non dice che cosa si perderebbe');
+  return '4 rifiuti, ognuno col suo motivo';
+});
+
+prova('un collegamento interrotto a metà si riprende, e non si scambia per quello di un\'altra pratica', () => {
+  /* I tre passi (requisiti sulla polizza, documenti spostati, pratica
+     segnata) non sono una transazione: la rete può cadere in mezzo. Se il
+     secondo tentativo dicesse «questa polizza ha già un fascicolo», i
+     documenti resterebbero sulla pratica per sempre. */
+  const f = PRAT.dati.fascicolo;
+  const aMeta = { id: 'p9', cliente_id: 'a1', modulo: 'rca', dati: { fascicolo: f } };
+  deve(F.collegabile(PRAT, aMeta).ok, 'il collegamento interrotto non si riprende');
+  /* Ma il fascicolo di un'ALTRA pratica, congelato in un altro momento, resta
+     una cosa da non sovrascrivere. */
+  const altra = { ...aMeta, dati: { fascicolo: { ...f, congelato_il: '2026-07-01T00:00:00.000Z' } } };
+  deve(!F.collegabile(PRAT, altra).ok, 'si sovrascrive il fascicolo di un\'altra pratica');
+  return 'si riprende il proprio, non quello di un altro';
+});
+
 console.log('\n══ FASCICOLO DI PRATICA ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

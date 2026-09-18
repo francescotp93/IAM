@@ -439,22 +439,82 @@
     };
   }
 
-  function fascicoliIncompleti(polizze, docsPerPolizza, anagPerCliente, oggi) {
+  /* Il contatore dei fascicoli incompleti guarda DUE cose che si lavorano
+     allo stesso modo: le polizze in portafoglio e le pratiche aperte prima
+     che la polizza esista. Un fascicolo di pratica che non comparisse qui
+     sarebbe un fascicolo che nessuno va a completare — cioè il motivo per
+     cui il contatore esiste.
+
+     Chi chiama passa righe già marcate con `entita` ('polizza' o 'pratica');
+     senza marcatura si assume 'polizza', che è com'era prima. La riga che
+     esce porta `entita` e `id`: la schermata apre l'uno o l'altro fascicolo
+     senza indovinare. `polizza_id` resta per le polizze e vale null per le
+     pratiche: una pratica non ha un id di polizza, e scrivercelo sarebbe una
+     bugia comoda da leggere. */
+  function fascicoliIncompleti(righeEntita, docsPerEntita, anagPerCliente, oggi) {
     var righe = [];
-    (polizze || []).forEach(function (p) {
-      var r = riassunto(p, (docsPerPolizza || {})[p.id] || [], (anagPerCliente || {})[p.cliente_id] || null, { oggi: oggi });
+    (righeEntita || []).forEach(function (p) {
+      var r = riassunto(p, (docsPerEntita || {})[p.id] || [], (anagPerCliente || {})[p.cliente_id] || null, { oggi: oggi });
       if (r.completo) return;
+      var entita = p.entita === 'pratica' ? 'pratica' : 'polizza';
       righe.push({
-        polizza_id: p.id, cliente: p.cliente || '', cliente_id: p.cliente_id || null,
+        entita: entita, id: p.id,
+        polizza_id: entita === 'polizza' ? p.id : null,
+        cliente: p.cliente || '', cliente_id: p.cliente_id || null,
         compagnia: r.compagnia || p.compagnia || '', operatore: p.creato_nome || '',
         creato_da: p.creato_da || null, prodotto: p.prodotto || p.modulo || '',
-        data_effetto: p.data_effetto || null,
+        /* Una pratica non ha una data di effetto: ha una decorrenza prevista.
+           Sono due cose diverse e la colonna è una sola, quindi la riga dice
+           anche quale delle due sta mostrando. */
+        data_effetto: p.data_effetto || p.data_prevista || null,
+        prevista: !p.data_effetto && !!p.data_prevista,
+        descrizione: p.descrizione || '',
         mancanti: r.mancanti, cheCosaManca: r.cheCosaManca,
         serveOperazione: r.serveOperazione
       });
     });
     righe.sort(function (x, y) { return y.mancanti - x.mancanti; });
-    return { righe: righe, pratiche: righe.length };
+    return {
+      righe: righe, pratiche: righe.length,
+      polizze: righe.filter(function (r) { return r.entita === 'polizza'; }).length,
+      senzaPolizza: righe.filter(function (r) { return r.entita === 'pratica'; }).length
+    };
+  }
+
+  /* ══ QUANDO LA POLIZZA ARRIVA ══════════════════════════════════════════════
+     La pratica le si attacca e i documenti smettono di stare per conto loro.
+     Non è un'operazione da fare alla leggera: porta sulla polizza i requisiti
+     congelati il giorno in cui la pratica è nata. Quattro casi in cui NON si
+     collega, e si dice perché — collegare lo stesso vorrebbe dire scrivere
+     sulla polizza un elenco di requisiti che non sono i suoi. */
+  function collegabile(pratica, polizza) {
+    if (!pratica || !polizza) return { ok: false, motivo: 'Manca la pratica o la polizza.' };
+    var f = (pratica.dati && pratica.dati.fascicolo) || null;
+    if (!f || !Array.isArray(f.requisiti) || !f.requisiti.length) {
+      return { ok: false, motivo: 'La pratica non ha ancora un fascicolo: prima si sceglie l\'operazione.' };
+    }
+    var g = (polizza.dati && polizza.dati.fascicolo) || null;
+    if (g && Array.isArray(g.requisiti) && g.requisiti.length) {
+      /* A meno che non sia PROPRIO QUESTO fascicolo: un collegamento
+         interrotto a metà (i requisiti copiati, i documenti non ancora
+         spostati) deve poter essere ripreso. Senza questa riga il secondo
+         tentativo direbbe «la polizza ha già un fascicolo» e i documenti
+         resterebbero sulla pratica per sempre. */
+      if (!(g.congelato_il && g.congelato_il === f.congelato_il && g.operazione === f.operazione)) {
+        return { ok: false, motivo: 'Questa polizza ha già il suo fascicolo: collegarla cancellerebbe i requisiti congelati su di essa.' };
+      }
+    }
+    if (pratica.cliente_id && polizza.cliente_id && pratica.cliente_id !== polizza.cliente_id) {
+      return { ok: false, motivo: 'La pratica e la polizza sono intestate a due clienti diversi.' };
+    }
+    var rp = f.ramo || ramo(pratica);
+    if (rp !== ramo(polizza)) {
+      return { ok: false, motivo: 'La pratica è di un altro ramo (' + rp + ') rispetto alla polizza (' + ramo(polizza) + '): i requisiti congelati non sarebbero i suoi.' };
+    }
+    /* Si passa COM'È, `congelato_il` compreso: i requisiti sono quelli del
+       giorno in cui la pratica è nata, non di oggi. Rimetterci la data di
+       oggi vorrebbe dire dire che sono stati riletti, e non è vero. */
+    return { ok: true, fascicolo: f };
   }
 
   var API = {
@@ -466,7 +526,8 @@
     requisiti: requisiti, congela: congela, campi: campi,
     scadenza: scadenza, documentiCliente: documentiCliente, identitaCliente: identitaCliente,
     stato: stato, riassunto: riassunto, mancanti: mancanti, destinazione: destinazione,
-    scadenzeClienti: scadenzeClienti, fascicoliIncompleti: fascicoliIncompleti
+    scadenzeClienti: scadenzeClienti, fascicoliIncompleti: fascicoliIncompleti,
+    collegabile: collegabile
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.Fascicolo = API;

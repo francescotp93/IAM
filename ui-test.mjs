@@ -94,15 +94,24 @@ function initScript(conSessione) {
         b.single = function () { singolo = true; return b; };
         b.maybeSingle = b.single;
 
+        /* La riga del registro si annota quando parte insert/update, ma i
+           filtri arrivano DOPO (update, e poi eq): annotarli subito
+           vuol dire annotarli sempre vuoti, e una prova che li guarda direbbe
+           «nessun filtro» qualunque cosa faccia il codice. Si tiene il
+           riferimento alla riga e i filtri si ricopiano quando la richiesta
+           parte davvero. */
+        var riga = null;
         function annota() {
-          window.__COLLAUDO.db.push({
+          riga = {
             tabella: tabella, operazione: operazione,
             payload: JSON.parse(JSON.stringify(payload || null)),
             filtri: JSON.parse(JSON.stringify(filtri))
-          });
+          };
+          window.__COLLAUDO.db.push(riga);
         }
 
         b.then = function (ok, ko) {
+          if (riga) riga.filtri = JSON.parse(JSON.stringify(filtri));
           var chiave = tabella + ':' + (singolo ? 'single' : 'lista');
           var su_misura = window.__COLLAUDO.risposte[chiave];
           if (su_misura !== undefined) {
@@ -6671,6 +6680,156 @@ const avvio = async () => {
       return 'una delle due basta, e l\'altra non è un rosso';
     });
 
+    /* ── IL FASCICOLO PRIMA DELLA POLIZZA (18/09/2026) ───────────────────── */
+    await prova('pratica: il fascicolo si apre anche quando la polizza non è caricata', async () => {
+      /* Era il punto morto: senza una riga in portafoglio non c'era nessun
+         posto dove mettere i documenti, e finivano sul computer di chi li
+         riceveva — l'archivio sparso da cui si viene. */
+      await apriScheda();
+      await page.waitForTimeout(300);
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_pratiche:lista'] = { data: [], error: null };
+        clTab('doc'); fdocSub('pol');
+        await fdocRenderPolizze();
+        const senzaPolizze = document.getElementById('fdoc-pol').innerHTML;
+        fdocNuovaPratica();
+        const campi = ['fprat-ramo', 'fprat-descr', 'fprat-data'].map(id => !!document.getElementById(id));
+        /* E anche quando le polizze ci sono: una pratica nuova non aspetta
+           che il cliente non ne abbia nessuna. */
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
+          { id: 'pol-1', numero: 7, numero_polizza: 'ABC-123', modulo: 'rca', prodotto: 'RC Auto',
+            cliente_id: 'cli-1', data_effetto: '2026-03-04', perfezionata: true, dati: {} }], error: null };
+        await fdocRenderPolizze();
+        return { senzaPolizze, campi, conPolizze: document.getElementById('fdoc-pol').innerHTML };
+      });
+      deve(/fdocNuovaPratica/.test(r.senzaPolizze), 'senza polizze non si offre di aprire un fascicolo');
+      deve(!/il fascicolo si apre da una polizza\.</.test(r.senzaPolizze), 'dice ancora che il fascicolo si apre solo da una polizza');
+      deve(r.campi.every(Boolean), 'il modulo della pratica non ha i suoi campi: ' + r.campi.join(','));
+      deve(/fdocNuovaPratica/.test(r.conPolizze), 'col cliente che ha già polizze il tasto sparisce');
+      deve(/ABC-123/.test(r.conPolizze), 'le polizze non si vedono più');
+      return 'si apre con e senza polizze in portafoglio';
+    });
+
+    await prova('pratica: nasce dal cliente in anagrafica, e la decorrenza non si inventa', async () => {
+      const r = await page.evaluate(async () => {
+        ANAG_CACHE = [{ id: 'cli-1', nominativo: 'ROSSI MARIO', tipo: 'fisica' }];
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_pratiche:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_pratiche:single'] = { data: {
+          id: 'pr-1', cliente: 'ROSSI MARIO', cliente_id: 'cli-1', modulo: 'rca', prodotto: 'RC Auto',
+          descrizione: 'AB123CD', data_prevista: null, stato: 'aperta', dati: {} }, error: null };
+        window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [], error: null };
+        clTab('doc'); fdocSub('pol');
+        await fdocRenderPolizze();
+        fdocNuovaPratica();
+        document.getElementById('fprat-descr').value = 'AB123CD';
+        window.__COLLAUDO.db = [];
+        await fdocCreaPratica();
+        const ins = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_pratiche' && x.operazione === 'insert');
+        return { payload: ins[0] && ins[0].payload, quante: ins.length,
+                 aperto: !!document.getElementById('pdoc-ov'),
+                 corpo: document.getElementById('pdoc-bd')?.innerHTML || '',
+                 testa: document.querySelector('#pdoc-ov .pdoc-hd')?.textContent || '' };
+      });
+      deve(r.quante === 1, 'pratiche scritte: ' + r.quante);
+      deve(r.payload.cliente_id === 'cli-1', 'la pratica non è agganciata all\'anagrafica: ' + JSON.stringify(r.payload));
+      deve(r.payload.cliente === 'ROSSI MARIO', 'il nominativo non viene dall\'anagrafica: ' + r.payload.cliente);
+      deve(r.payload.descrizione === 'AB123CD', 'il riferimento che distingue due pratiche non si salva');
+      /* Regola di casa §8.1: quello che non si sa resta vuoto. Una decorrenza
+         messa a caso diventerebbe una data su cui qualcuno fa conto. */
+      deve(r.payload.data_prevista === null, 'la decorrenza vuota diventa una data: ' + r.payload.data_prevista);
+      deve(r.aperto, 'la pratica nasce e il fascicolo non si apre: resterebbe una riga che nessuno completa');
+      deve(/polizza non ancora caricata/.test(r.testa), 'la testata non dice che la polizza non c\'è: ' + r.testa.trim().slice(0, 80));
+      /* Operazione e compagnia si scelgono NEL fascicolo, dove è scritto che
+         congelano i requisiti: chiederle anche qui vorrebbe dire due posti
+         dove sbagliarle. */
+      deve(/Come nasce il fascicolo/.test(r.corpo), 'il fascicolo della pratica non chiede operazione e compagnia');
+      return 'cliente dall\'anagrafica, decorrenza vuota, fascicolo aperto';
+    });
+
+    const PRATICA_CONGELATA = {
+      id: 'pr-1', cliente: 'ROSSI MARIO', cliente_id: 'cli-1', modulo: 'rca', prodotto: 'RC Auto',
+      descrizione: 'AB123CD', data_prevista: '2026-10-01', stato: 'aperta', polizza_id: null,
+      dati: { fascicolo: {
+        operazione: 'rinnovo_altra_compagnia', ramo: 'rcauto', compagnia_id: 'c-prima', compagnia: 'Prima',
+        congelato_il: '2026-09-18T09:00:00Z',
+        requisiti: [
+          { cat: 'polizza_firmata', l: 'Polizza firmata', fonte: 'pratica', serveFirma: true, obbl: true, da: 'base' },
+          { cat: 'libretto_veicolo', l: 'Libretto del veicolo', fonte: 'pratica', obbl: true, da: 'operazione' }
+        ] } }
+    };
+
+    const apriPratica = async (pratica, docs) => page.evaluate(async (o) => {
+      window.__COLLAUDO.risposte['quote_pratiche:single'] = { data: o.pratica, error: null };
+      window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: o.docs || [], error: null };
+      window.__COLLAUDO.risposte['quote_anagrafiche:single'] = { data: { id: 'cli-1', nominativo: 'ROSSI MARIO' }, error: null };
+      ANAG_CACHE = [];
+      window.__COLLAUDO.db = [];
+      await pdocApriPratica(o.pratica.id, 'ROSSI MARIO · AB123CD');
+      return document.getElementById('pdoc-bd').innerHTML;
+    }, { pratica, docs });
+
+    await prova('pratica: i documenti stanno sulla pratica, nella sua cartella, e non si parla di perfezionamento', async () => {
+      const html = await apriPratica(PRATICA_CONGELATA, []);
+      deve(/Pratica in lavorazione/.test(html), 'il fascicolo non dice che è una pratica');
+      /* Il perfezionamento è uno dei quattro stati della POLIZZA: dirlo di
+         una pratica vorrebbe dire promettere uno stato che non esiste. */
+      deve(!/perfezionat/.test(html), 'una pratica risulta «perfezionata»: ' + html.slice(0, 200));
+      deve(/la pratica non è completa/.test(html), 'non dice che cosa manca a una pratica');
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        await pdocCarica('pr-1', 'libretto_veicolo', new File(['x'], 'libretto.pdf', { type: 'application/pdf' }));
+        const ins = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_pratica_documenti' && x.operazione === 'insert');
+        return { payload: ins[0] && ins[0].payload, quante: ins.length,
+                 rete: typeof ARCH_PREFISSI !== 'undefined' && ARCH_PREFISSI.test('pratiche/pr-1_x.pdf') };
+      });
+      deve(r.quante === 1, 'documenti scritti: ' + r.quante);
+      deve(r.payload.entita === 'pratica', 'il documento finisce su un\'altra entità: ' + r.payload.entita);
+      deve(r.payload.entita_id === 'pr-1', 'il documento non è agganciato alla pratica');
+      deve(/^pratiche\//.test(r.payload.url), 'il documento va in un\'altra cartella: ' + r.payload.url);
+      /* Se `pratiche/` non è dichiarata in ARCH_CARTELLE, la rete di sicurezza
+         non riconosce il percorso e il documento non si riapre più (§12). */
+      deve(r.rete, 'la cartella pratiche/ non è nella rete di sicurezza dell\'archivio');
+      return 'entita=pratica, cartella pratiche/, riconosciuta dalla rete';
+    });
+
+    await prova('pratica: collegando la polizza i requisiti passano com\'erano e i documenti la seguono', async () => {
+      await apriPratica(PRATICA_CONGELATA, [{ id: 'd1', categoria: 'libretto_veicolo', url: 'pratiche/pr-1_x.pdf' }]);
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
+          { id: 'pol-9', numero: 9, numero_polizza: 'XY-9', cliente: 'ROSSI MARIO', cliente_id: 'cli-1',
+            modulo: 'rca', prodotto: 'RC Auto', compagnia: 'Prima', data_effetto: '2026-10-01', dati: {} },
+          { id: 'pol-8', numero: 8, numero_polizza: 'CASA-8', cliente: 'ROSSI MARIO', cliente_id: 'cli-1',
+            modulo: 'casa', prodotto: 'Casa', compagnia: 'HDI', data_effetto: '2026-02-01', dati: {} }
+        ], error: null };
+        await pdocCollega('pr-1');
+        const scelta = document.getElementById('pcol-ov').innerHTML;
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: {
+          id: 'pol-9', cliente: 'ROSSI MARIO', cliente_id: 'cli-1', modulo: 'rca', prodotto: 'RC Auto', dati: {} }, error: null };
+        window.__COLLAUDO.db = [];
+        await pdocCollegaA('pr-1', 'pol-9');
+        return { scelta, scritte: window.__COLLAUDO.db.filter(x => x.operazione === 'update'),
+                 alerts: window.__COLLAUDO.alerts || [] };
+      });
+      /* La polizza di un altro ramo si vede ma non si collega: i requisiti
+         congelati di una pratica auto non sono quelli di una polizza casa. */
+      deve(/CASA-8/.test(r.scelta), 'la polizza dell\'altro ramo sparisce senza spiegazione');
+      deve(/altro ramo/.test(r.scelta), 'non dice perché quella polizza non si può collegare');
+      deve(!r.alerts.length, 'il collegamento si è fermato: ' + r.alerts.join(' | '));
+      const tab = r.scritte.map(x => x.tabella).join(',');
+      deve(tab === 'quote_polizze,quote_pratica_documenti,quote_pratiche', 'i tre passi sono ' + tab);
+      const f = r.scritte[0].payload.dati.fascicolo;
+      deve(f && f.congelato_il === '2026-09-18T09:00:00Z', 'i requisiti passano con la data di oggi: ' + (f && f.congelato_il));
+      deve(f.requisiti.length === 2, 'i requisiti congelati non passano interi: ' + f.requisiti.length);
+      const spost = r.scritte[1];
+      deve(spost.payload.entita === 'polizza' && spost.payload.entita_id === 'pol-9', 'i documenti non seguono la polizza: ' + JSON.stringify(spost.payload));
+      deve(spost.filtri.entita === 'pratica' && spost.filtri.entita_id === 'pr-1', 'si spostano i documenti sbagliati: ' + JSON.stringify(spost.filtri));
+      deve(r.scritte[2].payload.stato === 'collegata' && r.scritte[2].payload.polizza_id === 'pol-9',
+        'la pratica resta aperta e ricomparirebbe nel contatore: ' + JSON.stringify(r.scritte[2].payload));
+      return 'requisiti com\'erano, documenti spostati, pratica chiusa';
+    });
+
     /* ── I DUE CONTATORI E LE REGOLE ─────────────────────────────────────── */
     await prova('controllo documenti: i due contatori restano due, e contano cose diverse', async () => {
       const r = await page.evaluate(async () => {
@@ -6685,23 +6844,33 @@ const avvio = async () => {
             compagnia: 'HDI', creato_nome: 'Mario Neri', data_effetto: '2026-04-01', dati: {} }
         ], error: null };
         window.__COLLAUDO.risposte['quote_pratica_documenti:lista'] = { data: [], error: null };
+        /* Una pratica aperta senza polizza conta come le altre: è il caso in
+           cui è più facile dimenticarsi di un documento, perché non c'è una
+           riga in portafoglio a ricordarlo. */
+        window.__COLLAUDO.risposte['quote_pratiche:lista'] = { data: [
+          { id: 'pr-1', cliente: 'GIALLI ANNA', cliente_id: 'a4', modulo: 'rca', descrizione: 'AB123CD',
+            data_prevista: '2026-10-01', creato_nome: 'Anna Bianchi', dati: {} }
+        ], error: null };
         showPage('controllo-documenti');
         await cdocCarica(true);
         return {
           scad: document.getElementById('cdoc-n-scad').textContent,
           fasc: document.getElementById('cdoc-n-fasc').textContent,
+          dettaglioFasc: document.getElementById('cdoc-d-fasc').textContent,
           dettaglio: document.getElementById('cdoc-d-scad').textContent,
           righeScad: document.getElementById('cdoc-scad-body').textContent,
           righeFasc: document.getElementById('cdoc-fasc-body').textContent
         };
       });
       deve(r.scad === '1', 'clienti con documenti in scadenza: ' + r.scad);
-      deve(r.fasc === '2', 'fascicoli incompleti: ' + r.fasc);
+      deve(r.fasc === '3', 'fascicoli incompleti: ' + r.fasc + ' (attesi 3: due polizze e una pratica senza polizza)');
+      deve(/GIALLI ANNA/.test(r.righeFasc), 'la pratica senza polizza non compare nel contatore');
+      deve(/senza polizza/.test(r.dettaglioFasc), 'il sottotitolo non distingue le pratiche dalle polizze: ' + r.dettaglioFasc);
       deve(/ROSSI MARIO/.test(r.righeScad) && !/VERDI/.test(r.righeScad), 'l\'elenco scadenze è sbagliato');
       deve(/VERDI LUIGI/.test(r.righeFasc), 'la pratica incompleta non compare');
       deve(/mai creato/.test(r.righeFasc), 'non dice che quel fascicolo non è mai stato creato');
       deve(/scadut/.test(r.dettaglio), 'il sottotitolo non distingue scaduti da in scadenza');
-      return '1 e 1, per ragioni diverse';
+      return '1 cliente da richiamare, 3 fascicoli (2 polizze + 1 pratica)';
     });
 
     await prova('controllo documenti: gli elenchi si filtrano per compagnia, operatore e cliente', async () => {

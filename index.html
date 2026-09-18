@@ -898,6 +898,7 @@ button{font-family:inherit}
 .fdoc-subb:hover{border-color:var(--blue-soft)}
 .fdoc-subb.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
 .fdoc-data{font-size:15px;color:var(--ink)}
+.pf-mezzo{font-size:12.5px;font-weight:600}
 .fdoc-nuova{margin-bottom:12px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:#fbfcff}
 .flu-scelta{padding:16px;border:1px dashed var(--line);border-radius:12px;background:#fbfcff;text-align:center}
 .flu-file{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;background:var(--blue);color:#fff;font-weight:600;cursor:pointer}
@@ -2519,26 +2520,17 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
       </div>
 
-      <!-- I quattro pallini sono sempre nello stesso ordine: la legenda lo
-           dichiara col numero, così non serve indovinare quale è quale. -->
-      <div class="pf-legenda">
-        <span class="pf-lt">I quattro pallini:</span>
-        <span><b class="pf-n">1</b> Pagamento</span>
-        <span><b class="pf-n">2</b> Perfezionamento</span>
-        <span><b class="pf-n">3</b> Rendicontazione</span>
-        <span><b class="pf-n">4</b> Copertura</span>
-        <span class="pf-lsep"></span>
-        <span class="pf-lt">Colori:</span>
-        <span><i class="sem sem-ok"></i> fatto</span>
-        <span><i class="sem sem-att"></i> in attesa</span>
-        <span><i class="sem sem-no"></i> da fare / mancante</span>
-      </div>
-
+      <!-- I QUATTRO PALLINI NON CI SONO PIÙ (18/09/2026, richiesta di Francesco:
+           «leviamo anche nelle polizze i pallini di stato per ora, che tanto
+           non ci servono a nulla»). Non sono stati cancellati: gli stati
+           vivono nel database e `pfSemafori` li disegna ancora nella scheda
+           del cliente. Qui la colonna è tornata a una cosa che si guarda e si
+           corregge tutti i giorni — come paga il cliente. -->
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr>
             <th>Polizza</th><th>Cliente</th><th>Prodotto</th>
-            <th>Effetto → Scadenza</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th>
+            <th>Effetto → Scadenza</th><th class="soldi">Premio</th><th>Pagamento</th><th>Operatore</th>
           </tr></thead>
           <tbody id="pf-body"><tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr></tbody>
         </table>
@@ -14371,6 +14363,228 @@ function pfNumero(p) {
   return p.numero_polizza || ('PL-' + new Date(p.data_effetto || p.creato_il || Date.now()).getFullYear() + '-' + String(p.numero || 0).padStart(4, '0'));
 }
 
+/* ══ I TRE PANNELLI DELLA RIGA DI PORTAFOGLIO (18/09/2026) ═════════════════
+   Una finestra sola, riempita in tre modi diversi: il dettaglio della polizza,
+   il pagamento, e (dal fascicolo) i documenti. Tre finestre scritte da zero
+   sarebbero tre posti dove correggere la stessa cornice.
+
+   CHI E QUANDO, SEMPRE. In fondo a ogni pannello c'è chi ha creato la riga e
+   quando, e — per quello che si corregge da qui — chi ha fatto l'ultima
+   modifica. Non è un vezzo: «questo pagamento chi l'ha cambiato?» è una
+   domanda che arriva sempre, e arriva mesi dopo. */
+function polPannello(titolo, sottotitolo, corpo) {
+  document.getElementById('pol-ov')?.remove();
+  document.body.insertAdjacentHTML('beforeend',
+    `<div id="pol-ov" class="pdoc-ov" onclick="if(event.target.id==='pol-ov')this.remove()">
+      <div class="pdoc-box">
+        <div class="pdoc-hd">
+          <div><b>${titolo}</b><div class="pdoc-sub">${sottotitolo || ''}</div></div>
+          <button class="pdoc-x" onclick="document.getElementById('pol-ov').remove()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="pdoc-bd" id="pol-bd">${corpo}</div>
+      </div></div>`);
+}
+
+const polData = (v) => v ? new Date(v).toLocaleDateString('it-IT') : '—';
+const polQuando = (v) => v ? new Date(v).toLocaleString('it-IT') : '—';
+
+/* La riga «chi e quando», in fondo a ogni pannello. */
+function polFirma(p) {
+  const s = (p.dati && p.dati.modifiche) || [];
+  const ultima = s.length ? s[s.length - 1] : null;
+  return `<div class="pol-firma">
+    <div>Creata da <b>${esc(p.creato_nome || '—')}</b> il ${polQuando(p.creato_il)}</div>
+    ${p.fonte === 'ssf' ? `<div>Arrivata dal flusso della compagnia${p.dati && p.dati.ssf && p.dati.ssf.collaboratore
+        ? ' · collaboratore ' + esc(p.dati.ssf.collaboratore) + (p.dati.ssf.collaboratore_email ? ' (' + esc(p.dati.ssf.collaboratore_email) + ')' : '') : ''}</div>` : ''}
+    ${ultima ? `<div>Ultima modifica: <b>${esc(ultima.chi || '—')}</b> il ${polQuando(ultima.quando)} — ${esc(ultima.cosa || '')}</div>` : ''}
+  </div>`;
+}
+
+/* Rilegge la polizza intera: il portafoglio non carica `dati` (è un jsonb che
+   pesa su ogni riga), e garanzie e veicolo stanno lì dentro. */
+async function polLeggi(id) {
+  const { data, error } = await db.from('quote_polizze').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function polDettaglio(id) {
+  polPannello('Polizza', 'Carico…', '<div class="empty-state">Carico…</div>');
+  let p;
+  try { p = await polLeggi(id); } catch (e) {
+    document.getElementById('pol-bd').innerHTML = `<div class="empty-state">Non riesco a leggere la polizza.<br><small>${esc(e.message || e)}</small></div>`;
+    return;
+  }
+  if (!p) { document.getElementById('pol-bd').innerHTML = '<div class="empty-state">Polizza non trovata.</div>'; return; }
+  const ssf = (p.dati && p.dati.ssf) || {};
+  const gar = ssf.garanzie || [];
+  const v = ssf.veicolo;
+
+  const riga = (et, val) => `<div class="pol-r"><span>${et}</span><b>${val}</b></div>`;
+  document.getElementById('pol-ov').querySelector('.pdoc-sub').textContent =
+    (p.cliente || '') + (p.prodotto ? ' · ' + p.prodotto : '');
+  document.getElementById('pol-bd').innerHTML = `
+    <div class="pol-griglia">
+      ${riga('Numero di compagnia', esc(p.numero_polizza || '—'))}
+      ${riga('Compagnia', esc(p.compagnia || '—') + (ssf.compagnia_rischio ? ' <span class="pdoc-opt">rischio: ' + esc(ssf.compagnia_rischio) + '</span>' : ''))}
+      ${riga('Prodotto', esc(p.prodotto || p.modulo || '—'))}
+      ${riga('Effetto → scadenza', polData(p.data_effetto) + ' → ' + (p.data_scadenza ? polData(p.data_scadenza) : '<span class="tk-badge st-aperto">da confermare</span>'))}
+      ${riga('Coperta fino al', ssf.scadenza_incassato ? polData(ssf.scadenza_incassato) : (p.copertura_al ? polData(p.copertura_al) : '—'))}
+      ${riga('Frazionamento', esc(p.frazionamento || '—') + (p.tacito_rinnovo ? ' · tacito rinnovo' : ' · senza tacito rinnovo'))}
+      ${riga('Premio', (p.premio_annuo != null ? 'annuo ' + pfEuro(p.premio_annuo) : '<span class="cl-sub">annuo da confermare</span>')
+          + (p.premio_rata != null ? ' · rata ' + pfEuro(p.premio_rata) : ''))}
+    </div>
+
+    <div class="flu-sez">Garanzie — ${gar.length || 'nessuna nel flusso'}</div>
+    ${gar.length ? `<table class="storico-table"><thead><tr><th>Garanzia</th><th class="soldi">Netto</th><th class="soldi">Tasse</th><th class="soldi">Lordo</th></tr></thead><tbody>
+      ${gar.map(g => `<tr><td>${esc(g.descrizione || g.codice || '—')}</td>
+        <td class="soldi">${g.netto != null ? pfEuro(g.netto) : '—'}</td>
+        <td class="soldi">${g.tasse != null ? pfEuro(g.tasse) : '—'}</td>
+        <td class="soldi"><b>${g.lordo != null ? pfEuro(g.lordo) : '—'}</b></td></tr>`).join('')}
+      <tr><td><b>Totale</b></td><td></td><td></td><td class="soldi"><b>${pfEuro(gar.reduce((t, g) => t + (g.lordo || 0), 0))}</b></td></tr>
+      </tbody></table>` : '<div class="cl-sub">Le garanzie arrivano dal flusso della compagnia: su una polizza inserita a mano non ci sono.</div>'}
+
+    ${v && (v.targa || v.classe) ? `<div class="flu-sez">Veicolo</div>
+      <div class="pol-griglia">
+        ${riga('Targa', esc(v.targa || '—'))}
+        ${riga('Classe di merito', esc(v.classe || '—'))}
+        ${riga('Settore', esc(v.settore || '—'))}
+      </div>` : ''}
+
+    <div class="pdoc-ft">
+      <button class="rin-az" onclick="polPagamento('${esc(p.id)}')"><i class="ti ti-cash"></i> Pagamento</button>
+      <button class="rin-az" onclick="document.getElementById('pol-ov').remove();pdocApri('${esc(p.id)}')"><i class="ti ti-folder"></i> Documenti</button>
+    </div>
+    ${polFirma(p)}`;
+}
+
+/* ══ IL PAGAMENTO ═════════════════════════════════════════════════════════
+   Quello che si guarda quando si clicca sul premio: come paga, a che punto
+   sta, e le rate. Ed è il posto dove si corregge — con la firma di chi ha
+   corretto, che resta scritta sulla polizza. */
+async function polPagamento(id) {
+  polPannello('Pagamento', 'Carico…', '<div class="empty-state">Carico…</div>');
+  let p, rate = [];
+  try {
+    p = await polLeggi(id);
+    const { data } = await db.from('quote_titoli').select('*').eq('polizza_id', id).order('data_decorrenza');
+    rate = data || [];
+  } catch (e) {
+    document.getElementById('pol-bd').innerHTML = `<div class="empty-state">Non riesco a leggere il pagamento.<br><small>${esc(e.message || e)}</small></div>`;
+    return;
+  }
+  if (!p) { document.getElementById('pol-bd').innerHTML = '<div class="empty-state">Polizza non trovata.</div>'; return; }
+  document.getElementById('pol-ov').querySelector('.pdoc-sub').textContent =
+    (p.cliente || '') + (p.numero_polizza ? ' · ' + p.numero_polizza : '');
+
+  const statoOpz = Object.keys(PF_PAG).map(k => `<option value="${k}"${p.stato_pagamento === k ? ' selected' : ''}>${PF_PAG[k][0]}</option>`).join('');
+  const mezzoOpz = '<option value="">— da indicare —</option>' +
+    PF_MEZZI.map(m => `<option value="${m.id}"${p.mezzo_pagamento === m.id ? ' selected' : ''}>${esc(m.l)}</option>`).join('');
+  const incassate = rate.filter(r => r.stato === 'incassato');
+  const provv = rate.reduce((t, r) => t + (Number(r.provvigione) || 0), 0);
+
+  document.getElementById('pol-bd').innerHTML = `
+    <div class="pol-griglia">
+      <div class="pf-f"><label>Come paga</label>
+        <select id="pol-mezzo" onchange="polSalvaPagamento('${esc(p.id)}')">${mezzoOpz}</select></div>
+      <div class="pf-f"><label>Stato del pagamento</label>
+        <select id="pol-stato" onchange="polSalvaPagamento('${esc(p.id)}')">${statoOpz}</select></div>
+    </div>
+    <div class="cl-sub" style="margin-top:6px">Si salva da solo, e resta scritto chi l'ha cambiato.</div>
+
+    <div class="flu-sez">Rate — ${rate.length || 'nessuna'}${provv ? ' · ' + pfEuro(provv) + ' di provvigioni' : ''}</div>
+    ${rate.length ? `<table class="storico-table"><thead><tr><th>Decorrenza</th><th>Tipo</th><th class="soldi">Importo</th><th class="soldi">Provvigione</th><th>Stato</th></tr></thead><tbody>
+      ${rate.map(r => `<tr>
+        <td style="font-size:12px">${polData(r.data_decorrenza)}
+          ${r.note ? `<div class="cl-sub" style="max-width:220px">${esc(r.note)}</div>` : ''}</td>
+        <td style="font-size:12px">${esc(r.tipo || '—')}</td>
+        <td class="soldi">${pfEuro(r.importo_lordo)}</td>
+        <td class="soldi">${r.provvigione != null ? pfEuro(r.provvigione) : '—'}</td>
+        <td>${r.stato === 'incassato'
+            ? `<span class="tk-badge st-risolto">incassata${r.incassato_il ? ' il ' + polData(r.incassato_il) : ''}</span>`
+            : `<span class="tk-badge st-aperto">${esc(r.stato || '—')}</span>`}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="cl-sub" style="margin-top:6px">${incassate.length} incassate su ${rate.length}.</div>`
+      : '<div class="cl-sub">Nessuna rata registrata. Le rate arrivano dal flusso della compagnia, o si aggiungono dalla pagina Titoli.</div>'}
+
+    <div class="pdoc-ft">
+      <button class="rin-az" onclick="polDettaglio('${esc(p.id)}')"><i class="ti ti-file-invoice"></i> Dettaglio della polizza</button>
+    </div>
+    ${polFirma(p)}`;
+}
+
+/* Salva, e scrive CHI e QUANDO sulla polizza stessa. Il registro generale
+   (`quote_log`) resta, ma lì non c'è l'id della riga toccata: per rispondere a
+   «chi ha cambiato QUESTO pagamento» la traccia deve stare sulla polizza. */
+async function polSalvaPagamento(id) {
+  const mezzo = document.getElementById('pol-mezzo')?.value || null;
+  const stato = document.getElementById('pol-stato')?.value || null;
+  let p;
+  try { p = await polLeggi(id); } catch (e) { alert('Non riesco a rileggere la polizza: ' + (e.message || e)); return; }
+  const cambi = [];
+  if ((p.mezzo_pagamento || null) !== (mezzo || null)) cambi.push('mezzo di pagamento: ' + (pfMezzoNome(mezzo) || 'tolto'));
+  if (p.stato_pagamento !== stato) cambi.push('stato: ' + ((PF_PAG[stato] || [stato])[0]));
+  if (!cambi.length) return;
+  const chi = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : null;
+  const dati = Object.assign({}, p.dati || {});
+  dati.modifiche = (dati.modifiche || []).concat([{ chi, quando: new Date().toISOString(), cosa: cambi.join(' · ') }]);
+  try {
+    const { error } = await db.from('quote_polizze')
+      .update({ mezzo_pagamento: mezzo || null, stato_pagamento: stato, dati }).eq('id', id);
+    if (error) throw error;
+    const r = (PF_ROWS || []).find(x => x.id === id);
+    if (r) { r.mezzo_pagamento = mezzo || null; r.stato_pagamento = stato; }
+    if (typeof pfRender === 'function') pfRender();
+    try { logMovimento('Pagamento modificato · ' + cambi.join(' · '), 'polizza', p.cliente || ''); } catch (e) {}
+    await polPagamento(id);
+  } catch (e) { alert('Non riesco a salvare: ' + (e.message || e)); }
+}
+
+/* ══ COME PAGA IL CLIENTE ═════════════════════════════════════════════════
+   Il vocabolario è quello del motore del flusso: una lista sola, così quello
+   che arriva dalla compagnia e quello che si sceglie a mano sono la stessa
+   cosa. Se il motore non è caricato si usa una copia di riserva — la tendina
+   deve funzionare anche quando il flusso non c'entra niente. */
+const PF_MEZZI = (typeof window !== 'undefined' && window.FlussoSSF && window.FlussoSSF.MEZZI) || [
+  { id: 'carta_credito', l: 'Carta di credito' }, { id: 'bonifico', l: 'Bonifico' },
+  { id: 'contante', l: 'Contante' }, { id: 'assegno', l: 'Assegno' }, { id: 'pos', l: 'POS' },
+  { id: 'paypal', l: 'PayPal' }, { id: 'prepagata', l: 'Carta prepagata' },
+  { id: 'domiciliazione', l: 'Domiciliazione (SDD)' }, { id: 'altro', l: 'Altro' }];
+const pfMezzoNome = (id) => (PF_MEZZI.find(m => m.id === id) || {}).l || null;
+
+function pfMezzo(p) {
+  const nome = pfMezzoNome(p.mezzo_pagamento);
+  /* Quello che non si sa non si indovina: «da indicare» è un invito a
+     scriverlo, non un buco. */
+  return `<span class="pf-mezzo">${nome ? esc(nome) : '<span class="cl-sub">da indicare</span>'}</span>
+    <a href="#" onclick="event.preventDefault();event.stopPropagation();pfCambiaMezzo('${esc(p.id)}')"
+       style="display:block;font-size:10.5px;color:var(--blue);text-decoration:underline;margin-top:2px">${nome ? 'modifica' : 'indica'}</a>`;
+}
+
+/* La modifica. Scrive la colonna e lascia una riga nel registro: chi cambia
+   come paga un cliente sta toccando la contabilità, e fra sei mesi «chi è
+   stato» deve avere una risposta. */
+async function pfCambiaMezzo(id) {
+  const p = (PF_ROWS || []).find(x => x.id === id);
+  if (!p) return;
+  const scelte = PF_MEZZI.map((m, i) => (i + 1) + ') ' + m.l).join('\n');
+  const attuale = pfMezzoNome(p.mezzo_pagamento);
+  const r = prompt('Come paga ' + (p.cliente || 'il cliente') + '?\n\n' + scelte
+    + '\n\nScrivi il numero, oppure 0 per lasciare vuoto.'
+    + (attuale ? '\n\nAdesso: ' + attuale : ''), '');
+  if (r === null) return;
+  const n = parseInt(String(r).trim(), 10);
+  if (isNaN(n) || n < 0 || n > PF_MEZZI.length) { alert('Non ho capito: serve un numero da 0 a ' + PF_MEZZI.length + '.'); return; }
+  const mezzo = n === 0 ? null : PF_MEZZI[n - 1].id;
+  try {
+    const { error } = await db.from('quote_polizze').update({ mezzo_pagamento: mezzo }).eq('id', id);
+    if (error) throw error;
+    p.mezzo_pagamento = mezzo;
+    try { logMovimento('Mezzo di pagamento: ' + (pfMezzoNome(mezzo) || 'tolto') + ' · polizza ' + pfNumero(p), 'polizza', p.cliente || ''); } catch (e) {}
+    pfRender();
+  } catch (e) { alert('Non riesco a salvare: ' + (e.message || e)); }
+}
+
 function pfRender() {
   const body = document.getElementById('pf-body');
   if (!body) return;
@@ -14391,20 +14605,37 @@ function pfRender() {
     const g = p.data_scadenza ? Math.ceil((new Date(p.data_scadenza) - new Date()) / 86400000) : null;
     const avviso = (g != null && g <= 60)
       ? ` <span class="tk-badge ${g < 0 ? 'st-scad' : 'st-aperto'}">${g < 0 ? 'scaduta' : g + 'gg'}</span>` : '';
-    return `<tr${p.preventivo_id ? ` style="cursor:pointer" onclick="apriPreventivo('${p.preventivo_id}')" title="Apri la pratica"` : ''}>
-      <td><strong style="font-family:ui-monospace,monospace;font-size:12px">${esc(pfNumero(p))}</strong>
+    /* TRE CLIC, TRE POSTI DIVERSI (18/09/2026, richiesta di Francesco).
+       Prima tutta la riga apriva il preventivo — quando c'era. Ma su una
+       polizza importata dalla compagnia il preventivo non esiste, e la riga
+       non faceva niente: si guardavano quei dati senza poterli aprire.
+       Adesso ogni cosa porta dove ci si aspetta:
+         il numero  → la polizza: garanzie, veicolo, date, provenienza
+         il cliente → la sua anagrafica
+         il premio  → il pagamento, e lì si corregge
+       I tre `stopPropagation` ci vogliono: senza, il clic arriverebbe anche
+       alla riga e si aprirebbero due cose insieme. */
+    return `<tr${p.preventivo_id ? ` style="cursor:pointer" onclick="apriPreventivo('${p.preventivo_id}')" title="Apri la pratica che l'ha generata"` : ''}>
+      <td><a href="#" onclick="event.preventDefault();event.stopPropagation();polDettaglio('${p.id}')"
+             title="Garanzie, veicolo, date e provenienza"
+             style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--blue);text-decoration:underline">${esc(pfNumero(p))}</a>
         ${p.numero_polizza
           ? `<div style="font-size:10.5px;color:var(--muted);margin-top:2px;font-family:ui-monospace,monospace">${esc(p.numero_polizza)}
               <a href="#" onclick="event.preventDefault();event.stopPropagation();polNumero('${p.id}')" style="color:var(--blue);text-decoration:underline;font-family:inherit">correggi</a></div>`
           : `<a href="#" onclick="event.preventDefault();event.stopPropagation();polNumero('${p.id}')" style="display:inline-block;font-size:10.5px;color:var(--blue);text-decoration:underline;margin-top:2px">numero di compagnia da inserire</a>`}</td>
-      <td><strong>${esc(p.cliente || '—')}</strong></td>
+      <td>${p.cliente_id
+          ? `<a href="#" onclick="event.preventDefault();event.stopPropagation();apriAnagrafica('${esc(p.cliente_id)}')"
+               title="Apri l'anagrafica del cliente" style="font-weight:700;color:var(--ink);text-decoration:underline">${esc(p.cliente || '—')}</a>`
+          : `<strong>${esc(p.cliente || '—')}</strong><div class="cl-sub">non collegata a un'anagrafica</div>`}</td>
       <td><i class="ti ${ICON[p.modulo] || 'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(p.prodotto || p.modulo || '—')}
         ${p.compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.compagnia)}</div>` : ''}</td>
       <td style="font-size:12px">${pfData(p.data_effetto)} → ${scad}${avviso}</td>
-      <td><strong style="color:var(--blue)">${pfEuro(p.premio_annuo)}</strong>
+      <td><a href="#" onclick="event.preventDefault();event.stopPropagation();polPagamento('${p.id}')"
+             title="Il pagamento: rate, mezzo, stato — e si corregge"
+             style="color:var(--blue);font-weight:700;text-decoration:underline">${pfEuro(p.premio_annuo)}</a>
         ${p.frazionamento && String(p.frazionamento).toLowerCase() !== 'annuale'
           ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.frazionamento)} · ${pfEuro(p.premio_rata)}</div>` : ''}</td>
-      <td>${pfSemafori(p)}</td>
+      <td>${pfMezzo(p)}</td>
       <td style="font-size:13px">${esc(p.creato_nome || '—')}
         <div style="margin-top:5px"><button class="rin-az" onclick="event.stopPropagation();pdocApri('${p.id}')" title="Documenti della pratica e cosa manca per perfezionarla">
           <i class="ti ti-folder"></i> Documenti${p.__mancanti ? ` <span class="tk-badge st-scad">${p.__mancanti}</span>` : ''}</button></div></td>
@@ -14433,6 +14664,7 @@ function pfExportExcel() {
       <td>${esc(p.frazionamento || '')}</td>
       <td class="soldi">${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
       <td>${(PF_PAG[p.stato_pagamento] || [''])[0]}</td>
+      <td>${esc(pfMezzoNome(p.mezzo_pagamento) || '')}</td>
       <td>${p.perfezionata ? 'sì' : 'no'}</td><td>${p.rendicontata ? 'sì' : 'no'}</td>
       <td>${esc(cop[1].replace('Copertura: ', ''))}</td>
       <td>${esc(p.creato_nome || '')}</td></tr>`;
@@ -14440,7 +14672,7 @@ function pfExportExcel() {
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
     + '<head><meta charset="utf-8"><style>table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;font:12px sans-serif}th{background:#f6f8fa;font-weight:700}</style></head><body>'
     + '<table><thead><tr><th>Polizza</th><th>Cliente</th><th>Prodotto</th><th>Compagnia</th><th>Effetto</th>'
-    + '<th>Scadenza</th><th>Frazionamento</th><th>Premio annuo</th><th>Pagamento</th><th>Perfezionata</th>'
+    + '<th>Scadenza</th><th>Frazionamento</th><th>Premio annuo</th><th>Stato pagamento</th><th>Mezzo di pagamento</th><th>Perfezionata</th>'
     + '<th>Rendicontata</th><th>Copertura</th><th>Operatore</th></tr></thead><tbody>' + righe + '</tbody></table></body></html>';
   const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
   const url = URL.createObjectURL(blob);
@@ -16563,6 +16795,31 @@ function fluMostra() {
     </div>
     ${p.polizze.gia.length ? `<div class="pdoc-esito ok" style="margin-top:12px"><i class="ti ti-circle-check"></i>
       <b>${p.polizze.gia.length}</b> polizz${p.polizze.gia.length === 1 ? 'a' : 'e'} già importat${p.polizze.gia.length === 1 ? 'a' : 'e'}: non si riscrivono. Lo stesso file si può ricaricare senza far danni.</div>` : ''}
+    ${(p.titoli.daIncassare || []).length ? (() => {
+      /* Le rate che dopo il caricamento restano da incassare. Sono due cose
+         diverse messe vicine apposta: quelle che manda la compagnia (già
+         emesse) e quelle che deduciamo noi dal frazionamento, perché la
+         compagnia non le ha mandate. Chi guarda ha il diritto di sapere quale
+         è quale PRIMA di scrivere: un numero dedotto e uno ricevuto non hanno
+         lo stesso peso, e confonderli è il modo più rapido di non fidarsi più
+         di nessuno dei due. */
+      const nomi = {};
+      [].concat(p.polizze.nuove, p.polizze.gia).forEach(x => { nomi[x._fonte_id] = x; });
+      const ded = (p.titoli.dedotti || []).length;
+      return `<div class="flu-sez">Rate da incassare — ${p.titoli.daIncassare.length}${ded ? ` · ${ded} dedott${ded === 1 ? 'a' : 'e'} dal frazionamento` : ''}</div>
+      <div class="cl-sub" style="margin-bottom:8px">${ded
+        ? 'Le rate <b>dedotte</b> la compagnia non le ha mandate: le ricaviamo dal frazionamento, con l\'importo della rata precedente, e restano segnate come tali anche in contabilità. Dove il pezzo scoperto è più corto di una rata non deduciamo niente: lo trovi qui sotto, fra le cose da sapere.'
+        : 'Rate già emesse dalla compagnia e non ancora pagate.'}</div>
+      ${p.titoli.daIncassare.map(x => { const pol = nomi[x._polizza] || {};
+        return `<div class="pdoc-r"><div class="pdoc-r-l">
+          <b>${esc(pol.cliente || '—')}</b><span class="pdoc-opt">${esc(pol.numero_polizza || '')}</span>
+          <div class="cl-sub" style="flex-basis:100%">decorre il ${x.data_decorrenza ? new Date(x.data_decorrenza).toLocaleDateString('it-IT') : '—'}${
+            pol.frazionamento ? ' · ' + esc(pol.frazionamento) : ''}</div></div>
+        <div class="pdoc-r-a">${x._generato
+            ? '<span class="tk-badge st-lav">dedotta dal frazionamento</span>'
+            : '<span class="tk-badge st-aperto">emessa dalla compagnia</span>'}
+          <b>${pfEuro(x.importo_lordo)}</b></div></div>`; }).join('')}`;
+    })() : ''}
     ${p.offerte.length ? `<div class="flu-sez">Offerte di rinnovo da incassare — ${p.offerte.length}</div>
       <div class="cl-sub" style="margin-bottom:8px">Non sono polizze e non entrano in portafoglio: sono rinnovi emessi e non ancora pagati.
         La data è il termine per pagare, non la scadenza del contratto. Sono i clienti da chiamare.</div>
@@ -16572,6 +16829,16 @@ function fluMostra() {
             o.sostituisce ? ' · rinnova la ' + esc(o.sostituisce) : ''}</div></div>
         <div class="pdoc-r-a"><span class="tk-badge st-aperto">entro il ${o.entro ? new Date(o.entro).toLocaleDateString('it-IT') : '—'}</span>
           <b>${pfEuro(o.premio)}</b></div></div>`).join('')}` : ''}
+    ${p.collaboratori.length ? `<div class="flu-sez">Chi ha prodotto — ${p.collaboratori.length} collaboratori · ${pfEuro(p.provvigioni)} di provvigioni</div>
+      <div class="cl-sub" style="margin-bottom:8px">L'email è il ponte: i codici della compagnia («U25337») non li conosce nessuno.
+        Qui non si crea e non si aggancia niente — chi abbinare a chi lo decidi tu.</div>
+      ${p.collaboratori.map(c => `<div class="pdoc-r"><div class="pdoc-r-l">
+          <b>${esc(c.nome || c.codice)}</b><span class="pdoc-opt">${esc(c.codice)}</span>
+          <div class="cl-sub" style="flex-basis:100%">${c.email
+            ? esc(c.email) + (c.riconosciuto ? ' · <b>già in agenzia</b>' : ' · non corrisponde a nessuna persona in agenzia')
+            : '<span style="color:#c0392b">senza email: non si può abbinare a nessuno</span>'}${c.rui ? ' · RUI ' + esc(c.rui) : ''}</div></div>
+        <div class="pdoc-r-a">${c.polizze ? `<span class="tk-badge st-lav">${c.polizze} titol${c.polizze === 1 ? 'o' : 'i'}</span>` : ''}
+          ${c.provvigioni ? `<b>${pfEuro(c.provvigioni)}</b>` : '<span class="cl-sub">nessuna provvigione nel periodo</span>'}</div></div>`).join('')}` : ''}
     ${(p.avvisi.length || p.polizze.senzaCliente.length || p.titoli.senzaPolizza.length) ? `
       <div class="flu-sez">Da sapere prima di confermare</div>
       ${p.avvisi.map(a => `<div class="pdoc-esito ${a.g === 'grave' ? 'ko' : ''}"><i class="ti ti-alert-triangle"></i> ${esc(a.t)}</div>`).join('')}
@@ -16599,7 +16866,7 @@ async function fluConferma() {
     + ' polizze e ' + p.titoli.nuovi.length + ' rate.\n\nI clienti che ci sono già NON vengono toccati. Procedo?')) return;
   box.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="flu-attesa">Scrivo…</div>');
   const idPerChiave = Object.assign({}, p.clienti.idPerChiave);
-  const fatti = { clienti: 0, polizze: 0, titoli: 0 };
+  const fatti = { clienti: 0, polizze: 0, titoli: 0, dedotte: 0 };
   const mio = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : null;
 
   try {
@@ -16634,6 +16901,7 @@ async function fluConferma() {
         data_effetto: x.data_effetto, data_scadenza: x.data_scadenza,
         copertura_dal: x.copertura_dal, copertura_al: x.copertura_al,
         frazionamento: x.frazionamento, tacito_rinnovo: x.tacito_rinnovo,
+        mezzo_pagamento: x.mezzo_pagamento,
         premio_annuo: x.premio_annuo, premio_rata: x.premio_rata,
         stato_pagamento: x.stato_pagamento, dati: x.dati,
         fonte: 'ssf', fonte_id: x._fonte_id, creato_nome: mio
@@ -16654,11 +16922,16 @@ async function fluConferma() {
         data_decorrenza: t.data_decorrenza, data_scadenza: t.data_scadenza,
         importo_lordo: t.importo_lordo, provvigione: t.provvigione,
         stato: t.stato, mezzo_pagamento: t.mezzo_pagamento, incassato_il: t.incassato_il,
+        /* La nota c'è solo sulle rate dedotte, e dice in chiaro che la
+           compagnia non le ha mandate: una riga di contabilità che non si
+           distingue da quelle vere è una riga di cui non ci si può fidare. */
+        note: t.note || null,
         fonte: 'ssf', fonte_id: t._fonte_id
       };
       const { error } = await db.from('quote_titoli').insert(rec);
       if (error) throw error;
       fatti.titoli++;
+      if (t._generato) fatti.dedotte++;
     }
 
     /* 4. Il verbale. Si scrive alla fine e con i numeri VERI, non con quelli
@@ -16672,9 +16945,12 @@ async function fluConferma() {
         clienti_scritti: fatti.clienti, clienti_gia: p.clienti.gia.length,
         polizze_scritte: fatti.polizze, polizze_gia: p.polizze.gia.length,
         titoli_scritti: fatti.titoli, titoli_gia: p.titoli.gia.length,
+        /* Quante di quelle rate le ha mandate la compagnia e quante le abbiamo
+           dedotte noi: il verbale deve poterlo dire anche fra sei mesi. */
+        titoli_dedotti: fatti.dedotte,
         offerte: p.offerte.length, polizze_senza_cliente: p.polizze.senzaCliente.length
       },
-      avvisi: p.avvisi, creato_nome: mio
+      avvisi: p.avvisi, collaboratori: p.collaboratori, creato_nome: mio
     });
   } catch (e) {
     document.getElementById('flu-attesa')?.remove();

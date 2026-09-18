@@ -1128,3 +1128,112 @@ La voce «Importa» è nella barra in alto, ma quella barra ha **ventuno voci e
 scorre**: Francesco non l'ha trovata, e aveva ragione a cercarla nel
 Portafoglio. La stessa porta adesso è anche lì, in cima alla pagina. Non è un
 doppione: è la stessa pagina raggiunta da dove la si cerca.
+
+---
+
+## 16. Quello che il flusso portava e si buttava, e la riga di portafoglio che si apre (18/09/2026)
+
+Sei richieste di Francesco in fila, tutte sullo stesso pezzo: il portafoglio
+arrivato dalla compagnia e quello che ci si fa sopra tutti i giorni.
+
+| pezzo | dove |
+|---|---|
+| email dei collaboratori, dettaglio garanzie e provvigioni (REC042), mezzo di pagamento | `tariffe/motore/flusso-ssf.js` |
+| la rata che resta da incassare | `rataDaIncassare` nello stesso file |
+| le colonne nuove e il vocabolario dei mezzi allargato | `supabase/migrations/20260918_mezzo_pagamento_e_collaboratori.sql` |
+| i tre pannelli della riga | `pol*` in `index.html` (`polDettaglio`, `polPagamento`, `polSalvaPagamento`) |
+| prove | `server/verifica/flusso-ssf.test.mjs` (25) e i blocchi «portafoglio», «polizza» e «flusso» di `ui-test.mjs` |
+
+### La rata che nessuno vedeva
+
+La compagnia manda la rata successiva **solo quando l'ha già emessa**: sul file
+vero del 17/09 succede **due volte su venticinque**. Per le altre quella rata
+esiste lo stesso — il cliente la deve — e non la vedeva nessuno.
+
+Il flusso però lo dice, in date invece che a parole: `FRAZIONAMENTO_SHARE` dice
+in quante rate è divisa l'annualità, `SCADENZA_INCASSATO` fin dove è pagata,
+`SCADENZA_EFFETTIVA` fin dove corre il contratto. Se la prima viene prima della
+seconda, fra le due c'è un pezzo scoperto, e il suo inizio è la decorrenza della
+rata successiva. È la stessa cosa che il brief chiamava «polizza appena emessa
+con la rata successiva semestrale» — su una semestrale emessa oggi il flusso
+dice «pagata per sei mesi, coperta per dodici» — detta in un modo che continua a
+valere anche fra otto mesi, quando quella polizza non sarà più nuova.
+
+**Due cose che non si fanno, ed è la metà del lavoro.**
+
+1. **Non si inventa un importo.** `premio_rata` vale per una rata INTERA. Dove
+   il pezzo scoperto è più corto — sul file vero capita con una polizza
+   allineata a una scadenza diversa, pagata al 17/12/2026 e in corsa fino al
+   07/03/2027 — quel troncone non lo quantifica nessuno. Si dichiara in un
+   avviso e si lascia a mano. Scriverci dentro il semestre pieno metterebbe in
+   contabilità un credito che non esiste.
+2. **Non si duplica quello che la compagnia ha già mandato.** Se fra i titoli
+   c'è già uno che decorre da quella data, la regola sta zitta.
+
+La rata dedotta **si riconosce**: `fonte_id` finisce con `:RATA:<data>` — stabile,
+quindi ricaricare lo stesso file non la raddoppia — e la nota dice in chiaro che
+la compagnia non l'ha mandata. Anteprima e verbale contano le due cose separate
+(`titoli.dedotti`, `conteggi.titoli_dedotti`). *Una riga di contabilità che non
+si distingue da quelle vere è una riga di cui non ci si può fidare.*
+
+### Gli altri tre dati che il file portava e si buttavano
+
+- **L'email dei collaboratori** (REC010). È l'unico campo che corrisponde a
+  qualcosa che abbiamo già: i codici della compagnia (`U25337`) non li conosce
+  nessuno. Sul file vero **17 collaboratori su 17 ce l'hanno**. Si conserva e si
+  mostra chi è già in agenzia e chi no — **non si aggancia e non si crea niente**
+  (§10: agganciare a occhio rifarebbe i doppioni appena tolti).
+- **Il dettaglio garanzia per garanzia delle provvigioni** (REC042). Sul file
+  vero la somma delle provvigioni di garanzia fa **esattamente** il totale del
+  titolo su 18 titoli su 18: è un dato che quadra, e dice su *quale* garanzia si
+  guadagna. Le provvigioni di un collaboratore si contano dai titoli, **saltando
+  quelli di polizze che non sono in portafoglio**: sono offerte di rinnovo non
+  pagate, e attribuirle direbbe a qualcuno che ha guadagnato una cosa che il
+  cliente non ha ancora pagato.
+- **Il mezzo di pagamento.** Il vocabolario ne ammetteva cinque e tutto il resto
+  finiva a NULL: sul file vero **15 polizze su 25**. Adesso sono nove (PayPal,
+  prepagata, `altro`) e sulla polizza c'è una colonna sua, perché «questo cliente
+  come paga?» è una domanda che si fa e una risposta che si corregge. Una lista
+  multipla (`APPLEPAY/CREDITCARD/…`) vuol dire che la compagnia **non sa** quale
+  sia stato usato: `altro` è la verità, prendere il primo sarebbe inventare.
+
+### La riga di portafoglio si apre in tre posti
+
+Prima tutta la riga apriva il preventivo — *quando c'era*. Su una polizza
+arrivata dalla compagnia il preventivo non esiste, e la riga non faceva niente:
+si guardavano quei dati senza poterli aprire.
+
+| clic | dove porta |
+|---|---|
+| il numero | `polDettaglio`: garanzie, veicolo, date, premio, chi porta il rischio |
+| il cliente | la sua anagrafica — e se non c'è un `cliente_id` **non è un collegamento**, e dice perché |
+| il premio | `polPagamento`: rate, mezzo, stato, e lì si corregge |
+
+I tre `stopPropagation` ci vogliono: senza, il clic arriva anche alla riga e si
+aprono due cose insieme.
+
+**I quattro pallini di stato non ci sono più** (richiesta di Francesco: «tanto
+non ci servono a nulla»). Non sono stati cancellati: gli stati vivono nel
+database e `pfSemafori` li disegna ancora nella scheda del cliente. Al loro
+posto, nel portafoglio, c'è come paga il cliente. La prova che contava quattro
+pallini per riga non era sbagliata: era **il mondo di ieri**. Si è aggiornata la
+regola, non il numero — come per `archCarica` (§15).
+
+### Chi ha fatto che cosa, e quando
+
+Richiesta esplicita: «aggiungi sempre nella schermata di dettaglio l'utente che
+ha effettuato la modifica, con data e ora». Il primo pezzo è fatto: ogni
+pannello chiude con **chi ha creato la riga e quando**, da dove arriva (flusso
+della compagnia, con codice ed email del collaboratore) e **l'ultima modifica**,
+con chi e che cosa. Una correzione che non cambia niente non scrive niente: il
+salvataggio parte da un `onchange`, che scatta anche rimettendo il valore di
+prima, e una storia piena di modifiche che non hanno modificato nulla non serve
+più a distinguerle.
+
+> **Quello che manca, ed è il pezzo grosso.** `quote_log` ha `entita` (il tipo)
+> e `dettaglio` (testo libero), ma **non ha `entita_id`**: alla domanda «chi ha
+> toccato QUESTA polizza» il registro generale non sa rispondere, e per questo
+> la traccia sta dentro `quote_polizze.dati.modifiche`. È un rimedio per una
+> schermata, non l'archivio dei movimenti: perché «chi ha creato questa
+> anagrafica, questa pratica, questo pagamento» abbia una risposta sola e per
+> tutti, `quote_log` va esteso con l'id della riga toccata. È un lavoro a sé.

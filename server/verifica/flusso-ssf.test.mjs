@@ -39,6 +39,10 @@ for (const f of fs.readdirSync(CAMPIONI)) {
 const RACCOLTA = F.raccogli(mappa);
 const A = F.analizza(RACCOLTA.record);
 const cerca = (n) => A.polizze.find(p => p.numero_polizza === n);
+/* Il piano su un gestionale vuoto: e' quello che si vedrebbe caricando questo
+   flusso la prima volta. Le prove che parlano di «quante rate da incassare»
+   guardano qui, perche' e' quello che si vede nell'anteprima. */
+const P = F.piano(A, {});
 
 prova('i nove file si riconoscono dal nome, e quello che non si riconosce si dichiara', () => {
   deve(RACCOLTA.trovati >= 8, 'record riconosciuti: ' + RACCOLTA.trovati);
@@ -155,12 +159,16 @@ prova('date, importi e vocabolari: quello che non si sa tradurre resta vuoto', (
   const casa = cerca('NP-0007');
   deve(casa.modulo === 'beni', 'il ramo HOME finisce in: ' + casa.modulo);
   deve(cerca('NP-0001').modulo === 'rca', 'il ramo MOTOR non diventa rca');
-  /* PayPal non è nessuna delle cinque voci che il gestionale conosce
-     (`quote_titoli.mezzo_pagamento` ha un vincolo di valore): forzarlo a
-     «carta di credito» sporcherebbe i conti. */
+  /* Il 18/09/2026 il vocabolario si è allargato: PayPal, le prepagate e i
+     pagamenti «da fuori» adesso hanno un nome, perché una rata incassata
+     senza mezzo di pagamento è un buco in contabilità. La REGOLA non è
+     cambiata — quello che non si sa tradurre resta vuoto — è cambiato che
+     cosa sappiamo tradurre, e l'esempio si sposta su un codice che davvero
+     non conosciamo. Il codice della compagnia si conserva sempre accanto. */
   const t = A.titoli.find(x => x._fonte_id === 'T2');
-  deve(t.mezzo_pagamento === null, 'PayPal è stato tradotto in ' + t.mezzo_pagamento);
+  deve(t.mezzo_pagamento === 'paypal', 'PayPal non viene riconosciuto: ' + t.mezzo_pagamento);
   deve(t._ssf.mezzo === 'PAYPAL', 'il mezzo vero della compagnia si perde');
+  deve(F.mezzoDa('UN_MEZZO_CHE_NON_ESISTE') === null, 'un mezzo sconosciuto viene tradotto lo stesso');
   return 'date ISO, importi col punto, vocabolari senza invenzioni';
 });
 
@@ -281,6 +289,167 @@ await (async () => {
    tracciato. Se non c'è, si dice «saltata» e si va avanti — un rosso per un
    file assente sarebbe un rosso per la strada, non per il contenuto. */
 const VERO = process.env.FLUSSO_VERO;
+
+/* ══ QUELLO CHE SI BUTTAVA E ADESSO SERVE (18/09/2026) ═══════════════════════
+   Tre dati che il file portava e che finivano nel cestino: l'email dei
+   collaboratori, il dettaglio garanzia per garanzia con le provvigioni, e il
+   mezzo di pagamento fuori dai cinque che il gestionale conosceva. */
+
+prova('l\'email del collaboratore arriva, ed e\' l\'unico ponte verso le persone in agenzia', () => {
+  /* I codici della compagnia («U25337») non li conosce nessuno: senza email
+     quei collaboratori restano numeri che non si possono abbinare a una
+     persona. Sul file vero l'email c'e' su 17 su 17. */
+  const c = A.collaboratori.find(x => x.codice === 'U90001');
+  deve(c, 'il collaboratore non c\'e\' nell\'elenco');
+  deve(c.email === 'collab1@esempio.test', 'email: ' + c.email);
+  deve(c.nome === 'STUDIO DI PROVA S.R.L.', 'il trattino iniziale resta nel nome: ' + c.nome);
+  /* Chi compare solo fra i produttori (REC101) entra lo stesso: e' un
+     collaboratore che in questo periodo non ha prodotto. */
+  const solo101 = A.collaboratori.find(x => x.codice === 'U90003');
+  deve(solo101, 'un collaboratore presente solo in REC101 sparisce');
+  deve(solo101.polizze === 0 && solo101.provvigioni === 0, 'a chi non ha prodotto vengono attribuiti numeri');
+  return A.collaboratori.length + ' collaboratori, ' + A.collaboratori.filter(x => x.email).length + ' con email';
+});
+
+prova('si sa chi ha prodotto che cosa, e non si aggancia nessuno da solo', () => {
+  const c = A.collaboratori.find(x => x.codice === 'U90001');
+  deve(c.polizze === 2, 'titoli attribuiti: ' + c.polizze + ' (attesi 2)');
+  deve(Math.abs(c.provvigioni - 41) < 0.01, 'provvigioni: ' + c.provvigioni + ' (attese 41,00)');
+  /* Il piano dice se quell'email e' gia' una persona in agenzia, ma non crea
+     e non aggancia niente: il registro unico delle persone e' un'altra cosa,
+     e agganciare a occhio su un'email fa i doppioni che quel lavoro ha tolto. */
+  const p = F.piano(A, { collaboratoriPerEmail: { 'collab1@esempio.test': 'persona-1' } });
+  const r = p.collaboratori.find(x => x.codice === 'U90001');
+  deve(r.riconosciuto === true && r.persona_id === 'persona-1', 'chi c\'e\' gia\' non viene riconosciuto');
+  const sconosciuto = p.collaboratori.find(x => x.codice === 'U90002');
+  deve(sconosciuto.riconosciuto === false && sconosciuto.persona_id === null, 'a chi non c\'e\' viene inventata una persona');
+  deve(Math.abs(p.provvigioni - 41) < 0.01, 'provvigioni del flusso: ' + p.provvigioni);
+  return '2 titoli e 41,00 a U90001; 1 riconosciuto, 1 no, 0 creati';
+});
+
+prova('il dettaglio garanzia per garanzia resta attaccato alla rata', () => {
+  /* Sul file vero la somma delle provvigioni di garanzia fa ESATTAMENTE il
+     totale del titolo, su 18 titoli su 18: e' un dato che quadra, e dice su
+     quale garanzia si guadagna — che e' un'altra cosa dal guadagno sulla
+     polizza. */
+  const t = A.titoli.find(x => x._fonte_id === 'T1');
+  deve(t._ssf.garanzie.length === 2, 'garanzie sulla rata: ' + t._ssf.garanzie.length);
+  const somma = t._ssf.garanzie.reduce((s, g) => s + (g.provvigioni || 0), 0);
+  deve(Math.abs(somma - t.provvigione) < 0.01, 'le garanzie sommano ' + somma + ' e la rata dice ' + t.provvigione);
+  const rca = t._ssf.garanzie.find(g => g.codice === 'RCA');
+  deve(rca && rca.provvigioni === 25, 'la provvigione della RCA: ' + (rca && rca.provvigioni));
+  return '2 garanzie che sommano alla provvigione della rata';
+});
+
+prova('il mezzo di pagamento non resta vuoto, e quello che non si sa non si inventa', () => {
+  /* Prima il gestionale conosceva cinque mezzi e tutto il resto finiva a
+     NULL: una rata incassata senza mezzo e' un buco in contabilita'. */
+  deve(F.mezzoDa('CREDITCARD') === 'carta_credito', 'carta di credito: ' + F.mezzoDa('CREDITCARD'));
+  deve(F.mezzoDa('PAYPAL') === 'paypal', 'PayPal: ' + F.mezzoDa('PAYPAL'));
+  deve(F.mezzoDa('PREPAID') === 'prepagata', 'prepagata: ' + F.mezzoDa('PREPAID'));
+  /* Una lista di modi possibili vuol dire che la compagnia NON sa quale sia
+     stato usato: «altro» e' la verita', prendere il primo della lista sarebbe
+     inventare. */
+  deve(F.mezzoDa('APPLEPAY/CREDITCARD/GOOGLEPAY/PAYPAL/PREPAID') === 'altro', 'lista multipla: ' + F.mezzoDa('APPLEPAY/CREDITCARD/GOOGLEPAY'));
+  deve(F.mezzoDa('BITCOIN') === null, 'un codice sconosciuto diventa qualcosa: ' + F.mezzoDa('BITCOIN'));
+  deve(F.mezzoDa('') === null, 'un campo vuoto diventa qualcosa');
+  /* E la polizza lo porta in una colonna sua, perche' e' una cosa che si
+     guarda e si corregge, non un dettaglio sepolto dentro `dati`. */
+  const p = cerca('NP-0002');
+  deve(p.mezzo_pagamento === 'paypal', 'sulla polizza: ' + p.mezzo_pagamento);
+  deve(cerca('NP-0007').mezzo_pagamento === 'bonifico', 'bonifico non riconosciuto');
+  /* Il vocabolario e' uno solo: quello che traduce il flusso e' quello che
+     riempie la tendina con cui si corregge. */
+  deve(F.MEZZI.length === 9 && F.MEZZI.every(m => m.id && m.l), 'il vocabolario dei mezzi e\' incompleto');
+  return '9 mezzi, i codici ignoti restano vuoti';
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA RATA CHE RESTA DA INCASSARE (18/09/2026)
+
+   Su una polizza frazionata la compagnia manda la rata successiva SOLO quando
+   l'ha gia' emessa. Sul file vero succede due volte su venticinque; per tutte
+   le altre quella rata esiste, il cliente la deve, e nessuno la vede. Il
+   flusso lo dice in date: pagata fino al X, in corsa fino al Y.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+prova('una rata scoperta si deduce dal frazionamento, con l\'importo della rata precedente', () => {
+  /* NP-0008: semestrale, pagata fino al 01/01/2027, in corsa fino al
+     01/07/2027. Un semestre esatto scoperto, e nessun titolo nel flusso. */
+  const dedotte = P.titoli.dedotti;
+  deve(dedotte.length === 1, 'rate dedotte: ' + dedotte.length + ' (attesa 1, su NP-0008)');
+  const t = dedotte[0];
+  deve(t.data_decorrenza === '2027-01-01', 'decorre dal ' + t.data_decorrenza + ' invece che dal giorno in cui finisce l\'incassato');
+  deve(t.importo_lordo === 145, 'importo: ' + t.importo_lordo + ' (la rata precedente vale 145,00)');
+  deve(t.stato === 'aperto', 'stato: ' + t.stato + ' — una rata dedotta non e\' mai incassata');
+  deve(t.provvigione === null, 'alla rata dedotta viene attribuita una provvigione: ' + t.provvigione);
+  /* Si deve riconoscere a occhio che non l'ha mandata la compagnia: una riga
+     di contabilita' indistinguibile da quelle vere e' una riga di cui non ci
+     si puo' fidare. */
+  deve(/dedotta/i.test(t.note || ''), 'la nota non dice che l\'abbiamo dedotta noi: ' + t.note);
+  deve(/:RATA:/.test(t._fonte_id), 'la provenienza non si distingue: ' + t._fonte_id);
+  return 'NP-0008 → rata 01/01/2027 da 145,00, aperta e dichiarata';
+});
+
+prova('quello che la compagnia ha gia\' mandato non si duplica', () => {
+  /* NP-0002 e' semestrale come NP-0008, ma la sua seconda rata (T2, SE,
+     16/03/2027) sta gia' nel flusso: la regola deve stare zitta. */
+  const sue = A.titoli.filter(t => t._polizza === 'P2');
+  deve(sue.length === 1, 'rate su NP-0002: ' + sue.length + ' — la seconda e\' stata duplicata');
+  deve(sue[0]._fonte_id === 'T2' && !sue[0]._generato, 'la rata di NP-0002 non e\' piu\' quella della compagnia');
+  /* E il conto di chi guarda: due rate da incassare in tutto — quella che
+     manda la compagnia e quella che deduciamo noi. */
+  deve(P.titoli.daIncassare.length === 2, 'rate da incassare: ' + P.titoli.daIncassare.length + ' (attese 2)');
+  return 'NP-0002 resta con la sua rata sola; 2 da incassare in tutto';
+});
+
+prova('un pezzo scoperto piu\' corto di una rata non diventa un importo inventato', () => {
+  /* NP-0009 (ed e' il caso VERO del file di Prima, BLP156705551): pagata fino
+     al 17/12/2026, in corsa fino al 07/03/2027. Fra le due date ci sono meno
+     di sei mesi: quanto vale quel troncone non lo dice nessuno, e scriverci
+     dentro il semestre pieno metterebbe in contabilita' un credito falso. */
+  const dedotta = P.titoli.dedotti.find(t => /^P9:/.test(t._fonte_id));
+  deve(!dedotta, 'e\' stata dedotta una rata su NP-0009, con un importo che il flusso non dice');
+  const avviso = A.avvisi.find(x => /NP-0009/.test(x.t));
+  deve(avviso, 'il pezzo scoperto sparisce in silenzio: nessun avviso su NP-0009');
+  deve(/a mano/.test(avviso.t), 'l\'avviso non dice che cosa deve fare chi legge: ' + avviso.t);
+  return 'NP-0009 → nessun numero inventato, un avviso che lo dice';
+});
+
+prova('le regole di prudenza: niente rata dedotta dove non ne esiste una', () => {
+  const base = { _fonte_id: 'X', numero_polizza: 'X', premio_rata: 100, data_scadenza: '2027-07-01',
+                 stato_pagamento: 'pagato', dati: { ssf: { rate_anno: 2, scadenza_incassato: '2027-01-01' } } };
+  const con = o => { const p = JSON.parse(JSON.stringify(base)); for (const k in o) p[k] = o[k]; return p; };
+  deve(F.rataDaIncassare(con({}), []).titolo, 'il caso normale non produce piu\' niente');
+  /* Annuale: la rata successiva e' il rinnovo, che e' un'altra cosa e arriva
+     col flusso di allora. */
+  const annuale = con({}); annuale.dati.ssf.rate_anno = 1;
+  deve(F.rataDaIncassare(annuale, []) === null, 'su una polizza annuale viene dedotta una rata');
+  /* Un'offerta di rinnovo non e' una polizza (regola 3), e una polizza
+     annullata non deve piu' niente (regola 4). */
+  deve(F.rataDaIncassare(con({ _offerta: true }), []) === null, 'un\'offerta produce una rata da incassare');
+  deve(F.rataDaIncassare(con({ stato_pagamento: 'annullata' }), []) === null, 'a una polizza annullata si chiede ancora la rata');
+  /* Pagata fino alla scadenza: non c\'e\' niente di scoperto. */
+  const saldata = con({}); saldata.dati.ssf.scadenza_incassato = '2027-07-01';
+  deve(F.rataDaIncassare(saldata, []) === null, 'su una polizza saldata viene dedotta una rata');
+  /* Senza importo di rata non si scrive un numero: si avvisa. */
+  const senzaImporto = F.rataDaIncassare(con({ premio_rata: null }), []);
+  deve(senzaImporto && senzaImporto.avviso && !senzaImporto.titolo, 'senza importo di rata viene scritto un titolo lo stesso');
+  return '6 casi: 1 rata, 4 silenzi, 1 avviso';
+});
+
+prova('i mesi si contano sull\'anniversario, non sui giorni', () => {
+  /* 31/08 + un semestre e\' il 28 febbraio, non il 3 marzo: `setMonth` da
+     solo trabocca nel mese dopo, e una rata che decorre dal 3 marzo invece
+     che dal 28 febbraio e\' una rata sbagliata di tre giorni su ogni
+     scadenzario. */
+  deve(F.aggiungiMesi('2026-08-31', 6) === '2027-02-28', '31/08 + 6 mesi: ' + F.aggiungiMesi('2026-08-31', 6));
+  deve(F.aggiungiMesi('2027-08-31', 6) === '2028-02-29', 'l\'anno bisestile: ' + F.aggiungiMesi('2027-08-31', 6));
+  deve(F.aggiungiMesi('2026-09-16', 6) === '2027-03-16', 'il caso normale: ' + F.aggiungiMesi('2026-09-16', 6));
+  deve(F.aggiungiMesi('2026-12-01', 1) === '2027-01-01', 'il cambio d\'anno: ' + F.aggiungiMesi('2026-12-01', 1));
+  deve(F.aggiungiMesi('', 6) === null, 'una data vuota produce una data');
+  return '31/08 + 6 mesi = 28/02 (29/02 se bisestile)';
+});
 
 console.log('\n══ FLUSSO DI PORTAFOGLIO (SSF) ══');
 let ko = 0, salt = 0;

@@ -651,6 +651,18 @@
            strumento dell'agenzia. L'icona posta nella fascia resta dov'è, è una
            scorciatoia (IAM.md §11.1). */
         { l: 'Posta', i: 'i-mail', mirror: 'nb-posta', go: function () { tryCall('openPosta'); setActive('posta'); } },
+        /* «Importa portafoglio» (18/09/2026, chiesta da Francesco). L'archivio
+           che manda la compagnia — anagrafiche, polizze, rate — si carica dal
+           preventivatore, e la voce sta QUI perché è uno strumento
+           dell'agenzia, non un preventivo: si fa una volta al giorno e tocca
+           il portafoglio di tutti.
+           La pagina era raggiungibile solo dalla barra in alto di QUOTO, che
+           dentro il riquadro ha ventuno voci e scorre: Francesco non l'ha
+           trovata, ed è lo stesso motivo per cui «Performance» è stata
+           spostata (CLAUDE.md §10). Chi non è staff non ci arriva comunque:
+           la pagina si protegge da sé (`fluPuo`), non basta nascondere la
+           voce. */
+        { l: 'Importa portafoglio', i: 'i-fold', go: Q('importa-flusso') },
         /* «Banca dati ANIA» e «AssiEasy» sono andate in Utility › Link utili
            (IAM.md §13.2): erano due link, e i link stanno lì. Le righe vivono in
            quote_documenti con categoria='link'. */
@@ -740,6 +752,7 @@
     'anagrafiche:senza-email':    ['Clienti senza email', 'Clienti'],
     'anagrafiche:senza-consenso': ['Clienti senza consenso marketing', 'Clienti'],
     utility:     ['Utility', 'Strumenti'],
+    'importa-flusso': ['Importa portafoglio', 'Strumenti'],
     'utility:nota':      ['Note informative', 'Strumenti'],
     'utility:documento': ['Documenti utili', 'Strumenti'],
     'utility:link':      ['Link utili', 'Strumenti'],

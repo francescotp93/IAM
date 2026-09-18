@@ -16450,10 +16450,29 @@ async function fluLeggiFile(files) {
   return out;
 }
 
+/* CHI PUÒ IMPORTARE. Nascondere la voce di menu non è proteggere la pagina:
+   `showPage('importa-flusso')` si può chiamare dalla console, e la scocca di
+   IAM la apre con `?page=`. E qui il danno non sarebbe un errore di permessi
+   pulito: le anagrafiche e le polizze si scrivono (le politiche le
+   permettono), e solo l'ULTIMA riga — il registro dei caricamenti, riservato
+   allo staff — verrebbe rifiutata. Cioè un'importazione scritta a metà, con
+   l'errore in fondo. Meglio fermarsi prima di cominciare. */
+function fluPuo() {
+  return (typeof isStaff === 'function') ? isStaff() : false;
+}
+
+function fluVietato(box) {
+  if (box) box.innerHTML = `<div class="pdoc-esito ko"><i class="ti ti-lock"></i>
+    Il caricamento del portafoglio è riservato allo staff dell'agenzia:
+    tocca anagrafiche, polizze e contabilità di tutti in una volta sola.</div>`;
+  return false;
+}
+
 async function fluScelto(files) {
   const box = document.getElementById('flu-esito');
   const M = fluMotore();
   if (!box) return;
+  if (!fluPuo()) return fluVietato(box);
   if (!M) { box.innerHTML = '<div class="empty-state">Il motore del flusso non è caricato.</div>'; return; }
   if (!files || !files.length) return;
   FLU_PIANO = null;
@@ -16575,6 +16594,7 @@ async function fluConferma() {
   const p = FLU_PIANO;
   const box = document.getElementById('flu-esito');
   if (!p || !box) return;
+  if (!fluPuo()) return fluVietato(box);
   if (!confirm('Scrivo in archivio ' + p.clienti.nuovi.length + ' clienti, ' + p.polizze.nuove.length
     + ' polizze e ' + p.titoli.nuovi.length + ' rate.\n\nI clienti che ci sono già NON vengono toccati. Procedo?')) return;
   box.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="flu-attesa">Scrivo…</div>');
@@ -16678,6 +16698,7 @@ async function fluConferma() {
 async function fluRegistro() {
   const el = document.getElementById('flu-registro');
   if (!el) return;
+  if (!fluPuo()) { fluVietato(document.getElementById('flu-esito')); el.innerHTML = ''; return; }
   let righe = [];
   try {
     const { data, error } = await db.from('quote_importazioni')

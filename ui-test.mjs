@@ -7324,6 +7324,30 @@ const avvio = async () => {
       return 'secondo giro: niente da fare, 0 scritture';
     });
 
+    await prova('flusso: la pagina si protegge da sé, non solo nascondendo la voce', async () => {
+      /* Nascondere una voce di menu non protegge niente: `showPage` si chiama
+         dalla console, e la scocca di IAM apre la pagina con `?page=`. E qui
+         il danno non sarebbe un errore pulito — anagrafiche e polizze si
+         scrivono davvero, e solo l'ultima riga (il registro, riservato allo
+         staff) verrebbe rifiutata: un'importazione scritta a metà. */
+      const r = await page.evaluate(async () => {
+        const vero = currentUser.role;
+        currentUser.role = 'collaboratore';
+        try {
+        window.__COLLAUDO.db = [];
+        const files = Object.keys(window.__CAMPIONE).map(n => new File([window.__CAMPIONE[n]], n, { type: 'text/csv' }));
+        await fluScelto(files);
+        const dopoScelta = document.getElementById('flu-esito').innerHTML;
+        await fluConferma();
+        const scritture = window.__COLLAUDO.db.filter(x => x.operazione === 'insert').length;
+        return { dopoScelta, scritture };
+        } finally { currentUser.role = vero; }
+      });
+      deve(/riservat/i.test(r.dopoScelta), 'un collaboratore vede il piano invece del rifiuto: ' + r.dopoScelta.slice(0, 200));
+      deve(r.scritture === 0, 'un collaboratore ha scritto ' + r.scritture + ' righe');
+      return 'niente piano, niente scritture';
+    });
+
     await prova('flusso: nessun errore JavaScript in tutto il blocco', async () => {
       deve(erroriFlu.length === 0, erroriFlu.slice(0, 3).join(' | '));
     });

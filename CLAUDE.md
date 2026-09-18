@@ -589,41 +589,42 @@ cancella — serve a rileggere una pratica vecchia col documento valido allora.
 **Cose sapute e non fatte, da fare prima di andare in produzione con documenti
 veri.**
 
-- Il contenitore `documenti` è ancora **pubblico**: il codice per chiuderlo è
-  pronto e provato, la chiusura si fa dopo il rilascio. Vedi **§12**.
+- ~~Il contenitore `documenti` è pubblico.~~ **Chiuso il 18/09/2026**, dopo il
+  rilascio della PR #179. Vedi **§12**.
 - Il fascicolo guidato copre solo l'**RC Auto**: fuori da lì mostra i documenti
   di base e lo dice, senza inventare operazioni.
 - L'esportazione verso un archivio esterno (Mega) resta fuori, come da brief.
 
 ---
 
-## 12. L'archivio dei documenti: il codice è pronto, la chiusura aspetta il rilascio (18/09/2026)
+## 12. L'archivio dei documenti è chiuso (18/09/2026)
 
-> **STATO AL 18/09/2026: l'archivio è APERTO, e la chiusura è l'ultimo passo.**
-> Il codice che firma gli indirizzi è qui e provato; la chiusura è stata
-> eseguita, poi **riaperta** perché era arrivata prima del codice: la
-> produzione serve `main`, e con l'archivio chiuso e il codice vecchio in
-> pagina i documenti non si aprivano.
-> **Da fare appena questo lavoro è su `main` e pubblicato**, in quest'ordine:
-> 1. `update storage.buckets set public = false where id = 'documenti';`
-> 2. i quattro controlli elencati in
->    `supabase/migrations/20260918_archivio_documenti_chiuso.sql`.
+> **STATO: CHIUSO.** La PR #179 è stata fusa, il codice è pubblicato (impronta
+> di `index.html` servito da `quoto.withusassicurazioni.it` uguale a quella di
+> `main`, 15 secondi dopo il merge) e subito dopo è stata eseguita la riga che
+> mancava: `update storage.buckets set public = false where id = 'documenti'`.
 >
-> Il resto di quella migrazione è **già attivo** e non dipende dal codice
-> nuovo: tetto di 25 MB, sovrascrivere e cancellare solo il proprio file o da
-> amministratore, regola di lettura per chi ha un account.
+> Se qualcosa non va, si riapre in una riga:
+> `update storage.buckets set public = true where id = 'documenti';`
 
-Il contenitore `documenti` di Supabase Storage è **pubblico in lettura**: chi
-ha l'indirizzo di un file lo apre senza avere un account, per sempre. E gli
-indirizzi non sono segreti, si costruiscono con l'orario in millisecondi e il
-nome del file. Dentro ci sono carte d'identità, libretti, patenti, contabili di
-bonifico, polizze firmate, fatture dei collaboratori, documenti di sinistri —
-anche di persone che non sono clienti (il familiare convivente di una Bersani).
+Fino al 18/09/2026 il contenitore `documenti` di Supabase Storage era
+**pubblico in lettura**: chi aveva l'indirizzo di un file lo apriva senza avere
+un account, per sempre. E gli indirizzi non sono segreti, si costruiscono con
+l'orario in millisecondi e il nome del file. Dentro ci sono carte d'identità,
+libretti, patenti, contabili di bonifico, polizze firmate, fatture dei
+collaboratori, documenti di sinistri — anche di persone che non sono clienti
+(il familiare convivente di una Bersani).
 
-**Misurato, non supposto:** il 18/09/2026 un `curl` senza alcuna credenziale su
-un documento in archivio risponde `200` con il PDF. Con l'archivio chiuso, per
-il tempo in cui lo è stato, rispondeva `400`. È la prova che la chiusura fa
-quello che dice, ed è il controllo da rifare dopo il rilascio.
+**Misurato, non supposto.** Lo stesso indirizzo, senza alcuna credenziale:
+
+| quando | risposta |
+|---|---|
+| prima della chiusura | `200`, con il PDF |
+| dopo | `400` — «Bucket not found» |
+
+Restano pubblici, ed è voluto, solo `note-informative` (documenti
+precontrattuali, che devono leggere tutti) e `offerte` (immagini di
+marketing). Nessuno dei due contiene dati di clienti.
 
 Il quadro completo, con le tre strade e il costo di ognuna, era già scritto in
 `iam/sql/DA-APPROVARE-archivio-documenti.sql` (30/08/2026), dove la chiusura era
@@ -726,14 +727,19 @@ niente è il guasto numero uno (§1), e vale anche per il codice appena scritto.
 
 ### Cosa resta aperto
 
-- **La chiusura, che è il punto di tutto.** Una riga, e i quattro controlli
-  del file di migrazione. Finché non si fa, tutto il resto di questo capitolo
-  è una porta nuova su una stanza che resta aperta.
+- **I tre controlli sul campo**, che si fanno solo usando l'applicazione e che
+  al 18/09/2026 non sono ancora stati fatti: caricare un allegato su una
+  fattura da IAM e riaprirlo; caricare un documento d'identità dalla scheda
+  cliente su QUOTO e riaprirlo; aprire un documento caricato PRIMA della
+  chiusura (l'indirizzo pubblico è ancora scritto nel database, e il codice ne
+  deve ricavare il percorso e firmarlo). Sono i controlli 1, 2 e 3 elencati in
+  `supabase/migrations/20260918_archivio_documenti_chiuso.sql`; il quarto —
+  che un vecchio indirizzo pubblico non risponda più — è fatto e misurato qui
+  sopra.
 - **La cache della rete di distribuzione.** Un file già richiesto resta servito
-  dalla cache fino a un'ora (`cache-control: max-age=3600`). Verificato il
-  18/09/2026 mentre l'archivio era chiuso: stesso indirizzo `200` dalla cache,
-  `400` con un parametro diverso. Il giorno della chiusura vera, aspettare
-  un'ora prima di dire che è chiuso.
+  dalla cache fino a un'ora (`cache-control: max-age=3600`): nell'ora dopo la
+  chiusura un documento può ancora aprirsi da un indirizzo pubblico. Non è la
+  chiusura che non ha funzionato, è la cache che scade.
 - **I percorsi restano indovinabili** (`rcvp/<millisecondi>_<nome>`). Con
   l'archivio chiuso non basta più indovinarli, ma la cartella casuale che già
   usano gli allegati delle fatture (`fatture/<id>/<codice casuale>_<nome>`) è

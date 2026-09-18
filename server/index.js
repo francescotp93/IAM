@@ -32,6 +32,7 @@ import { preventiviRouter } from './preventivi.js';
 import { parametriPrevRouter } from './parametriPrevidenziali.js';
 import { analisiPrevRouter } from './analisiPrevidenziali.js';
 import { utentiRouter } from './utenti.js';
+import { archivioVpsRouter } from './archivioVps.js';
 import { registroRichieste } from './registro.js';
 import { registraEsito, esitiRouter } from './esiti.js';
 
@@ -85,6 +86,9 @@ app.get('/diag', (req, res) => {
       brevo: !!process.env.BREVO_API_KEY,
       stripe: !!process.env.STRIPE_SECRET_KEY,
       paypal: !!process.env.PAYPAL_CLIENT_ID,
+      /* Solo un si'/no: che la chiave dell'archivio ci sia. Il valore non
+         esce da qui e non deve — questa rotta si apre dal browser. */
+      archivio: !!process.env.ARCHIVIO_CHIAVE,
     },
     corsOrigins: ALLOWED,
     time: new Date().toISOString(),
@@ -117,6 +121,12 @@ app.use('/parametri-previdenziali', requireAuth, parametriPrevRouter);
 app.use('/analisi-previdenziali', requireAuth, analisiPrevRouter);
 // IAM → Utenti: l'attivazione dell'accesso di una persona del registro (chiave di servizio, mai nel browser)
 app.use('/utenti', requireAuth, utentiRouter);
+
+/* L'archivio dei documenti sul VPS, cifrato a riposo (18/09/2026). Dietro il
+   login come tutto il resto: `requireAuth` dice CHI e', e la rotta di apertura
+   rilegge i metadati col token di chi chiede, cosi' il permesso lo decide il
+   database e non una seconda regola scritta qui. */
+app.use('/archivio', requireAuth, archivioVpsRouter());
 /* Il registro degli esiti di quotazione (tabella quote_quotazioni_esiti): le
    righe le scrivono le rotte di quotazione da sole; qui c'e' solo la
    segnalazione dell'operatore — «il premio non torna» — dietro il login. */

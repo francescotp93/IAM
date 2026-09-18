@@ -143,9 +143,20 @@ prova('i caricamenti salvano il percorso, non un indirizzo', () => {
   const f = ritaglia(src, 'archCarica');
   deve(f, 'manca archCarica: il caricamento comune');
   deve(/return path;/.test(f), 'archCarica non restituisce il percorso');
+  /* La soglia era 2 finché i caricamenti su Supabase erano due: il documento
+     d'identità in anagrafica e il documento del fascicolo. Dal 18/09/2026 il
+     fascicolo scrive sull'archivio cifrato del VPS (`archCaricaVps`), e qui
+     resta l'anagrafica. Il numero cala perché il lavoro si è spostato, non
+     perché qualcosa si è rotto — ma la regola che conta non cambia: un
+     attrezzo che nessuno usa è il guasto §1, e vale per TUTTI E DUE i
+     caricatori. */
   const chiamate = (src.match(/await archCarica\(/g) || []).length;
-  deve(chiamate >= 2, 'archCarica è definita ma la chiamano in ' + chiamate + ' punti: codice non collegato');
-  return caricamenti + ' caricamenti, nessun indirizzo pubblico';
+  deve(chiamate >= 1, 'archCarica è definita e non la chiama nessuno: codice non collegato');
+  const suVps = ritaglia(src, 'archCaricaVps');
+  deve(suVps, 'manca archCaricaVps: il caricamento sull\'archivio cifrato');
+  const chiamateVps = (src.match(/await archCaricaVps\(/g) || []).length;
+  deve(chiamateVps >= 1, 'archCaricaVps è definita e non la chiama nessuno: il fascicolo scriverebbe ancora in chiaro su Supabase');
+  return caricamenti + ' caricamenti, nessun indirizzo pubblico, ' + chiamate + ' su Supabase e ' + chiamateVps + ' cifrati';
 });
 
 prova('la finestra si apre PRIMA della firma, altrimenti il browser la blocca', () => {

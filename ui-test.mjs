@@ -6771,7 +6771,7 @@ const avvio = async () => {
       return document.getElementById('pdoc-bd').innerHTML;
     }, { pratica, docs });
 
-    await prova('pratica: i documenti stanno sulla pratica, nella sua cartella, e non si parla di perfezionamento', async () => {
+    await prova('pratica: i documenti stanno sulla pratica, nell\'archivio cifrato, e non si parla di perfezionamento', async () => {
       const html = await apriPratica(PRATICA_CONGELATA, []);
       deve(/Pratica in lavorazione/.test(html), 'il fascicolo non dice che è una pratica');
       /* Il perfezionamento è uno dei quattro stati della POLIZZA: dirlo di
@@ -6779,20 +6779,33 @@ const avvio = async () => {
       deve(!/perfezionat/.test(html), 'una pratica risulta «perfezionata»: ' + html.slice(0, 200));
       deve(/la pratica non è completa/.test(html), 'non dice che cosa manca a una pratica');
       const r = await page.evaluate(async () => {
+        /* DAL 18/09/2026 il fascicolo scrive sull'archivio cifrato del VPS,
+           non più nel contenitore di Supabase: qui si finge il backend.
+           Quello che questa prova sorveglia non è cambiato — il documento si
+           attacca alla PRATICA, non alla polizza — è cambiato dove finisce. */
+        const vecchioFetch = window.fetch;
+        const visto = [];
+        window.fetch = async (u, o) => {
+          visto.push(String(u));
+          return { ok: true, json: async () => ({ ok: true, riferimento: 'vps:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee' }) };
+        };
         window.__COLLAUDO.db = [];
         await pdocCarica('pr-1', 'libretto_veicolo', new File(['x'], 'libretto.pdf', { type: 'application/pdf' }));
+        window.fetch = vecchioFetch;
         const ins = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_pratica_documenti' && x.operazione === 'insert');
-        return { payload: ins[0] && ins[0].payload, quante: ins.length,
+        return { payload: ins[0] && ins[0].payload, quante: ins.length, visto,
                  rete: typeof ARCH_PREFISSI !== 'undefined' && ARCH_PREFISSI.test('pratiche/pr-1_x.pdf') };
       });
       deve(r.quante === 1, 'documenti scritti: ' + r.quante);
       deve(r.payload.entita === 'pratica', 'il documento finisce su un\'altra entità: ' + r.payload.entita);
       deve(r.payload.entita_id === 'pr-1', 'il documento non è agganciato alla pratica');
-      deve(/^pratiche\//.test(r.payload.url), 'il documento va in un\'altra cartella: ' + r.payload.url);
-      /* Se `pratiche/` non è dichiarata in ARCH_CARTELLE, la rete di sicurezza
-         non riconosce il percorso e il documento non si riapre più (§12). */
-      deve(r.rete, 'la cartella pratiche/ non è nella rete di sicurezza dell\'archivio');
-      return 'entita=pratica, cartella pratiche/, riconosciuta dalla rete';
+      deve(/^vps:/.test(r.payload.url), 'il documento non va nell\'archivio cifrato: ' + r.payload.url);
+      deve(r.visto.some(u => /entita=pratica/.test(u) && /entita_id=pr-1/.test(u)),
+        'il backend non sa a che cosa attaccarlo: ' + r.visto.join(' | '));
+      /* `pratiche/` resta nella rete di sicurezza: i documenti caricati oggi,
+         prima di questo rilascio, stanno ancora lì e devono riaprirsi (§12). */
+      deve(r.rete, 'la cartella pratiche/ non è più nella rete di sicurezza: i documenti di stamattina non si aprirebbero');
+      return 'entita=pratica, archivio cifrato, la cartella di prima ancora riconosciuta';
     });
 
     await prova('pratica: collegando la polizza i requisiti passano com\'erano e i documenti la seguono', async () => {
@@ -7042,6 +7055,85 @@ const avvio = async () => {
       return r.doc.url;
     });
 
+    /* ── L'ARCHIVIO CIFRATO SUL VPS (18/09/2026) ─────────────────────────── */
+    await prova('archivio cifrato: il fascicolo carica sul VPS, non più nel contenitore', async () => {
+      /* Il documento non passa più da Supabase Storage: sale al backend, che
+         lo cifra prima di posarlo sul disco. Quello che resta scritto in
+         archivio è un riferimento che da solo non apre niente. */
+      const r = await page.evaluate(async () => {
+        const vecchioFetch = window.fetch;
+        const vecchioStorage = db.storage.from;
+        const spia = { chiamate: [], upload: 0 };
+        db.storage.from = () => ({ upload: async () => { spia.upload++; return { error: null }; } });
+        window.fetch = async (u, o) => {
+          spia.chiamate.push({ u: String(u), metodo: (o && o.method) || 'GET', autorizzato: !!(o && o.headers && o.headers.Authorization) });
+          return { ok: true, json: async () => ({ ok: true, id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', riferimento: 'vps:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee' }) };
+        };
+        window.__COLLAUDO.db = [];
+        PDOC_RIF = { entita: 'polizza', id: 'pol-1' };
+        PDOC_APERTO = { id: 'pol-1', polizza: { id: 'pol-1', cliente_id: 'cli-1' }, anag: null, docs: [] };
+        await pdocCarica('pol-1', 'libretto_veicolo', new File(['contenuto'], 'libretto.pdf', { type: 'application/pdf' }));
+        window.fetch = vecchioFetch; db.storage.from = vecchioStorage;
+        const ins = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_pratica_documenti' && x.operazione === 'insert');
+        return { spia, doc: ins[0] && ins[0].payload };
+      });
+      deve(r.spia.upload === 0, 'il documento è finito lo stesso nel contenitore di Supabase');
+      const su = r.spia.chiamate.find(c => /\/archivio\/carica/.test(c.u));
+      deve(su, 'non ha chiamato l\'archivio cifrato: ' + r.spia.chiamate.map(c => c.u).join(' | '));
+      deve(su.metodo === 'POST' && su.autorizzato, 'il caricamento va senza sessione: ' + JSON.stringify(su));
+      /* I dati che servono al permesso viaggiano nell'indirizzo: senza, il
+         server non saprebbe a quale polizza attaccare il documento, e la
+         regola di visibilità non avrebbe niente su cui applicarsi. */
+      deve(/entita=polizza/.test(su.u) && /entita_id=pol-1/.test(su.u), 'non dice a che cosa è attaccato: ' + su.u);
+      deve(/categoria=libretto_veicolo/.test(su.u), 'perde il requisito del fascicolo: ' + su.u);
+      deve(r.doc && /^vps:[0-9a-f-]{36}$/i.test(r.doc.url), 'in archivio non è finito il riferimento: ' + (r.doc && r.doc.url));
+      return r.doc.url;
+    });
+
+    await prova('archivio cifrato: le due strade convivono, e il valore salvato dice quale prendere', async () => {
+      const r = await page.evaluate(async () => {
+        const vecchioFetch = window.fetch, apri = window.open, vecchioStorage = db.storage.from;
+        const spia = { firmati: [], chiesti: [], aperti: [] };
+        db.storage.from = () => ({ createSignedUrl: async (p) => { spia.firmati.push(p); return { data: { signedUrl: 'https://firmato/' + p }, error: null }; } });
+        window.fetch = async (u, o) => {
+          spia.chiesti.push({ u: String(u), autorizzato: !!(o && o.headers && o.headers.Authorization) });
+          return { ok: true, blob: async () => new Blob(['ciao'], { type: 'application/pdf' }) };
+        };
+        window.open = () => ({ location: {}, close() { spia.aperti.push('CHIUSA'); } });
+        const finestre = [];
+        const apriSpia = window.open;
+        window.open = () => { const w = apriSpia(); finestre.push(w); return w; };
+        await archApri('vps:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');   // la strada nuova
+        await archApri('clienti/cli-1/1_ci.pdf');                      // quella di prima
+        finestre.forEach(w => { if (w.location.href) spia.aperti.push(String(w.location.href)); });
+        window.fetch = vecchioFetch; window.open = apri; db.storage.from = vecchioStorage;
+        return spia;
+      });
+      /* Il documento cifrato si chiede al backend, con la propria sessione. */
+      deve(r.chiesti.length === 1 && /\/archivio\/apri\//.test(r.chiesti[0].u), 'il documento cifrato non è stato chiesto al backend: ' + JSON.stringify(r.chiesti));
+      deve(r.chiesti[0].autorizzato, 'il documento cifrato viene chiesto senza sessione');
+      /* Quello di prima continua a passare da Supabase: nessuna rottura. */
+      deve(r.firmati.length === 1 && r.firmati[0] === 'clienti/cli-1/1_ci.pdf', 'il documento vecchio non passa più dalla firma: ' + JSON.stringify(r.firmati));
+      deve(r.aperti.length === 2 && !r.aperti.includes('CHIUSA'), 'una delle due aperture è fallita: ' + JSON.stringify(r.aperti));
+      deve(/^blob:/.test(r.aperti[0]), 'il documento cifrato non si apre da un indirizzo temporaneo: ' + r.aperti[0]);
+      return 'cifrato dal backend, vecchio dalla firma';
+    });
+
+    await prova('archivio cifrato: un riferimento «vps:» non naviga mai come indirizzo del sito', async () => {
+      /* Stessa rete di sicurezza dei percorsi: un link che porta un
+         riferimento dell'archivio dev'essere intercettato prima che il browser
+         ci vada, altrimenti mostra una pagina che non esiste (§12, difetto 3). */
+      const r = await page.evaluate(() => ({
+        riconosciuto: archSuoIndirizzo('vps:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'),
+        nonSuo: archSuoIndirizzo('vps:non-un-id'),
+        esterno: archSuoIndirizzo('https://www.ivass.it/nota.pdf'),
+      }));
+      deve(r.riconosciuto, 'un riferimento dell\'archivio cifrato non viene riconosciuto: navigherebbe come indirizzo del sito');
+      deve(!r.nonSuo, 'qualunque cosa cominci per «vps:» viene presa per un documento');
+      deve(!r.esterno, 'un indirizzo esterno viene intercettato');
+      return 'riconosciuto, e solo quello vero';
+    });
+
     await prova('documentale: nessun errore JavaScript in tutto il blocco', async () => {
       deve(erroriDoc.length === 0, erroriDoc.slice(0, 3).join(' | '));
     });
@@ -7106,6 +7198,13 @@ const avvio = async () => {
         pagina: !!document.getElementById('page-importa-flusso'),
         porta: typeof PAGINE_DA_AVVIARE['importa-flusso'] === 'function',
         voce: !!document.getElementById('nav-import'),
+        /* E la stessa porta DENTRO il Portafoglio: la barra in alto ha
+           ventuno voci e scorre, una voce nuova in mezzo alle altre non la
+           trova chi non sa gia' che c'e'. Chi vuole caricare il portafoglio
+           apre il Portafoglio. (Segnalato da Francesco il 18/09/2026: «non
+           vedo la possibilita' in portafoglio».) */
+        daPortafoglio: !!document.querySelector('#page-portafoglio #pf-importa [onclick*="importa-flusso"]'),
+        portaSoloStaff: /pfImp[\s\S]{0,120}isStaff\(\)/.test(document.documentElement.innerHTML),
         /* La voce si accende dentro `onLogin`, e la regola dev'essere quella
            del database: `iam_is_staff` su quote_importazioni. Una voce che si
            vede a tutti è una porta che si apre su un errore di permessi. */
@@ -7115,7 +7214,9 @@ const avvio = async () => {
       deve(r.porta, 'senza porta, «?page=importa-flusso» dalla scocca apre un riquadro vuoto');
       deve(r.voce, 'manca la voce di menu');
       deve(r.soloStaff, 'la voce non è legata a isStaff(): la vedrebbe anche chi non può scrivere');
-      return 'pagina, porta e voce riservata';
+      deve(r.daPortafoglio, 'dal Portafoglio non si arriva all\'importazione: è il primo posto dove si guarda');
+      deve(r.portaSoloStaff, 'il tasto nel Portafoglio non è legato a isStaff()');
+      return 'pagina, porta, voce riservata e tasto nel Portafoglio';
     });
 
     await prova('flusso: l\'anteprima mostra il piano e NON scrive niente', async () => {
@@ -7221,6 +7322,30 @@ const avvio = async () => {
       const scritture = await page.evaluate(() => window.__COLLAUDO.db.filter(x => x.operazione === 'insert').length);
       deve(scritture === 0, 'il secondo caricamento ha scritto ' + scritture + ' righe');
       return 'secondo giro: niente da fare, 0 scritture';
+    });
+
+    await prova('flusso: la pagina si protegge da sé, non solo nascondendo la voce', async () => {
+      /* Nascondere una voce di menu non protegge niente: `showPage` si chiama
+         dalla console, e la scocca di IAM apre la pagina con `?page=`. E qui
+         il danno non sarebbe un errore pulito — anagrafiche e polizze si
+         scrivono davvero, e solo l'ultima riga (il registro, riservato allo
+         staff) verrebbe rifiutata: un'importazione scritta a metà. */
+      const r = await page.evaluate(async () => {
+        const vero = currentUser.role;
+        currentUser.role = 'collaboratore';
+        try {
+        window.__COLLAUDO.db = [];
+        const files = Object.keys(window.__CAMPIONE).map(n => new File([window.__CAMPIONE[n]], n, { type: 'text/csv' }));
+        await fluScelto(files);
+        const dopoScelta = document.getElementById('flu-esito').innerHTML;
+        await fluConferma();
+        const scritture = window.__COLLAUDO.db.filter(x => x.operazione === 'insert').length;
+        return { dopoScelta, scritture };
+        } finally { currentUser.role = vero; }
+      });
+      deve(/riservat/i.test(r.dopoScelta), 'un collaboratore vede il piano invece del rifiuto: ' + r.dopoScelta.slice(0, 200));
+      deve(r.scritture === 0, 'un collaboratore ha scritto ' + r.scritture + ' righe');
+      return 'niente piano, niente scritture';
     });
 
     await prova('flusso: nessun errore JavaScript in tutto il blocco', async () => {

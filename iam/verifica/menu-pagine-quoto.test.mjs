@@ -41,6 +41,45 @@ e.prova('le Convenzioni hanno una voce nel menu', () => {
   return 'raggiungibile dal menu, non solo dall\'indirizzo';
 });
 
+e.prova('«Importa portafoglio» ha una voce sotto Strumenti', () => {
+  /* La stessa prova delle Convenzioni, e nasce dallo stesso «non lo vedo»
+     (Francesco, 18/09/2026). La schermata sta nel preventivatore, ma nella
+     sua barra in alto — ventuno voci che scorrono — non la trovava nessuno.
+     Caricare il portafoglio e' uno strumento dell'agenzia: sta fra gli
+     Strumenti, e da li' ci si arriva. */
+  deve(/\{\s*l:\s*'Importa portafoglio'/.test(src), 'nel menu non c\'e\' nessuna voce «Importa portafoglio»');
+  deve(pagineChieste(src).includes('importa-flusso'), 'la voce non chiede la pagina «importa-flusso»');
+  /* E sta sotto Strumenti, non in mezzo ai preventivi: il posto e' parte
+     della risposta, altrimenti la si sposta e la prova non se ne accorge.
+     La finestra finisce dove finisce DAVVERO il menu Strumenti — alla voce di
+     primo livello successiva — e non dopo un tot di caratteri: alla prima
+     stesura erano 3000, e sconfinavano nelle mappe dei titoli, dove «Importa
+     portafoglio» c'e' comunque. La prova restava verde con la voce spostata
+     in cima al menu. L'ha trovato la controprova, non il ragionamento. */
+  const iStr = src.indexOf("key: 'strumenti'");
+  deve(iStr > 0, 'non trovo il menu Strumenti');
+  /* Il confine si trova contando le parentesi, non a occhio: «strumenti» e'
+     l'ultima voce di primo livello, quindi «fino alla prossima key» non
+     esiste e qualunque numero fisso di caratteri sconfina nel resto del file.
+     Si parte dalla graffa che apre la voce e si cammina fino a quella che la
+     chiude. */
+  const apre = src.lastIndexOf('{', iStr);
+  let liv = 0, fine = apre;
+  for (let k = apre; k < src.length; k++) {
+    if (src[k] === '{') liv++;
+    else if (src[k] === '}') { liv--; if (liv === 0) { fine = k; break; } }
+  }
+  deve(fine > apre, 'non riesco a delimitare il menu Strumenti');
+  const strumenti = src.slice(apre, fine);
+  /* Si cerca la VOCE, non la parola: il commento che spiega perche' quella
+     voce sta li' contiene lo stesso testo, e una prova che cerca la parola
+     resta verde anche con la voce spostata altrove — il commento basta a
+     soddisfarla. E' la trappola gia' scritta in CLAUDE.md §10 e §12, e ci
+     sono cascato scrivendo questa prova: l'ha trovata la controprova. */
+  deve(/\{\s*l:\s*'Importa portafoglio'/.test(strumenti), 'la voce esiste ma non sta sotto Strumenti');
+  return 'raggiungibile dagli Strumenti, non solo dalla barra del preventivatore';
+});
+
 e.prova('ogni pagina chiesta dal menu dichiara il suo titolo', () => {
   /* Senza titolo la terza barra resta a «IAM > IAM» e chi ci arriva non sa
      dov'e'. E' gia' successo con le Fonti, finite nella mappa sbagliata.
@@ -51,8 +90,13 @@ e.prova('ogni pagina chiesta dal menu dichiara il suo titolo', () => {
   for (const m of src.matchAll(/\b(?:aprireQuoto|Q)\(\s*'([a-z0-9:_-]+)'\s*,([^;]{0,160})/gi)) {
     if (/titolo\s*:/.test(m[2])) conTitoloInLinea.add(m[1].split(':')[0]);
   }
+  /* Le virgolette intorno alla chiave ci vogliono quando il nome della pagina
+     ha un trattino (`'importa-flusso': [...]`), che in JavaScript non si puo'
+     scrivere nudo. Senza questo `'?` la prova dichiarava «senza titolo» una
+     pagina che il titolo ce l'aveva: cercava una forma che quel nome non puo'
+     avere. Trovato aggiungendo «Importa portafoglio» il 18/09/2026. */
   const senzaTitolo = pagineChieste(src).filter(p =>
-    !conTitoloInLinea.has(p) && !new RegExp('(^|[\\s{,])' + p + ':\\s*\\[').test(mappe));
+    !conTitoloInLinea.has(p) && !new RegExp('(^|[\\s{,])\'?' + p + '\'?\\s*:\\s*\\[').test(mappe));
   deve(senzaTitolo.length === 0, 'pagine senza titolo nella barra: ' + senzaTitolo.join(', '));
   return pagineChieste(src).length + ' pagine, tutte con il loro titolo';
 });

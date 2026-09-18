@@ -76,7 +76,14 @@ prova('i percorsi di servizio sono quelli che IAM gia\' inoltra (vercel.json)', 
   const mancanti = attesi.filter(p => !qui.has(p + '/*') && !qui.has(p));
   deve(mancanti.length === 0, 'percorsi di servizio non inoltrati al backend: ' + mancanti.join(', '));
   deve(/handle @servizi \{\s*reverse_proxy localhost:3000/.test(caddy), 'i servizi non vanno al backend sulla porta 3000');
-  return attesi.length + ' percorsi, tutti verso il backend';
+  /* 18/09/2026 — L'ARCHIVIO CIFRATO. Senza questa riga, una richiesta a
+     `/archivio/apri/...` su iam. non arriverebbe al backend: cadrebbe nel
+     `handle` finale, che serve i file statici di IAM, e il documento
+     risponderebbe con la pagina di IAM invece che con il file. Non e' un caso
+     ipotetico: e' quello che succede a ogni percorso che non sta in
+     questo elenco. */
+  deve(qui.has('/archivio/*'), 'l\'archivio cifrato non e\' fra i percorsi di servizio: le sue richieste finirebbero sui file statici di IAM');
+  return attesi.length + ' percorsi, tutti verso il backend, piu\' l\'archivio cifrato';
 });
 
 // ── 2. nascosto quello che va nascosto, e NIENTE di quello che il browser carica ──

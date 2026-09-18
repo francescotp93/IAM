@@ -1,11 +1,29 @@
-id: ver-1789757522  exit: 0  2026-09-18 18:52:10
+id: sera18-1789758310  exit: 0  2026-09-18 19:05:43
 ----
-== la chiave decodifica a 32 byte? (solo il conteggio) ==
-32
-(atteso: 32)
+== ora
+2026-09-18 19:05:40 UTC
+== GROUPAMA: e' ancora sospeso da me?
+groupama-scraper.service
+groupama-scraper.service.SOSPESO
+unita' presente in /etc/systemd/system? SI (qualcuno l'ha rimessa)
+risponde sulla 4500? {"running":false,"step":"loggato","since":1789749513465,"msg":"Sessione già attiva ✅","codice_chiesto_il":0}
+== gli altri scraper e il backend
+moto       active
+allianz    active
+italiana   active
+hdi        active
+axa        active
+backend    active
 
-== il backend l'ha accettata? (se no, lo dice nel registro all'avvio) ==
+== stato di chi e' su
+allianz    {"running":false,"step":"idle","since":0,"msg":""}
+hdi        {"running":false,"step":"idle","since":1789631451720,"msg":"","esito":null}
+axa        {"running":false,"step":"pronto","since":1789631482145,"msg":"Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian"}
 
-== prova vera: una richiesta senza sessione deve dire 401, non 503 ==
-apri senza sessione: 401
-(401 = la rotta c'e' e la chiave e' a posto; 503 = chiave rifiutata)
+== richieste di codice nelle ultime 24 ore, su TUTTI gli scraper
+codici chiesti: 2
+== email mandate dal sistema nelle ultime 24 ore
+email della vigilanza: 0
+
+== commit vivo
+f266ce1 I documenti nuovi stanno sul VPS cifrati, e «Importa portafoglio» sta fra gli Strumenti (#185)

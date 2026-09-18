@@ -1,12 +1,7 @@
-id: fin-1789745949  exit: 0  2026-09-18 15:39:31
+id: fin2-1789746068  exit: 0  2026-09-18 15:41:42
 ----
-== il VPS ha preso tutto? ==
-commit: b9f81ab Le pagine non restano in cache: una copia vecchia è un'applicazione vecchia (#181)
-contrassegno di versione nella scocca: 0
-disinnesco in QUOTO:                   0
-archivio nella scocca di IAM:          0
-la scocca è chiesta con ?v=20260918:   0
-
-== header, di nuovo ==
-   https://iam.withusassicurazioni.it/ → cache-control: no-cache
-   https://iam.withusassicurazioni.it/nuovo-preventivo/ → cache-control: no-cache
+commit sul VPS: c1f970e L'indirizzo morto non resta nell'attributo, la scocca di IAM sa firmare, e il riquadro ha un contrassegno di versione (#182)
+contrassegno di versione nella scocca: 2
+disinnesco in QUOTO:                   3
+archivio nella scocca di IAM:          3
+scocca chiesta con ?v=20260918:        1

@@ -21,6 +21,12 @@
 //  LA REGOLA CHE NON SI TOCCA: da qui non esce mai un indirizzo pubblico. Se un
 //  giorno serve di nuovo `/object/public/...`, vuol dire che si sta riaprendo il
 //  contenitore, e va deciso da una persona, non da una riga di codice.
+//
+//  Qui c'era anche `caricaDocumento`, per caricare dal server. Non la chiamava
+//  nessuno — l'unico punto che caricava dal server era `uploadDoc` di sign.js,
+//  che era morta a sua volta — e in questo repository il codice che arriva e
+//  non viene collegato a niente è il guasto numero uno (CLAUDE.md §1). Chi ne
+//  avrà bisogno la riscrive in tre righe, sapendo a cosa serve.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
@@ -75,17 +81,4 @@ export async function firmaDocumento(v, secondi) {
     console.warn('archivio: non riesco a firmare «' + path + '»:', e.message || e);
     return '';
   }
-}
-
-/** Carica un file nell'archivio e restituisce il PERCORSO, mai un indirizzo. */
-export async function caricaDocumento(path, corpo, contentType) {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY non configurata');
-  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
-    method: 'POST',
-    headers: { apikey: key, Authorization: 'Bearer ' + key, 'content-type': contentType || 'application/octet-stream', 'x-upsert': 'true' },
-    body: corpo,
-  });
-  if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error('Storage: ' + (t || r.status)); }
-  return path;
 }

@@ -3254,7 +3254,19 @@ async function archApri(v) {
 
    `getAttribute('href')` e non `a.href`: il browser trasforma un percorso in
    un indirizzo assoluto del sito, e il percorso vero non si vedrebbe più. */
-const ARCH_PREFISSI = /^(clienti|polizze|preventivi|messaggi|bonifici|shop|rcvp|infcirc|tutelalegale|cvt-fi|cauz|sal|pet|fv|rcrd|tl|sv|vg|fi)\//;
+/* LE CARTELLE VERE DELL'ARCHIVIO. Alla prima stesura qui c'erano i nomi delle
+   FUNZIONI che caricano (`pet`, `fv`, `sal`, `sv`, `vg`, `cauz`) invece dei
+   nomi delle cartelle (`animali/`, `fotovoltaico/`, `salute/`…): per quei
+   moduli la rete non scattava, e il percorso navigava come indirizzo del sito
+   mostrando una pagina che non esiste. Sono anche le cartelle che il server
+   scrive (`shop/`) e quelle della scocca di IAM (`fatture/`, `collab/`).
+   La prova `archivio.test.mjs` confronta questo elenco con i percorsi che il
+   codice usa davvero: aggiungendo un modulo con una cartella nuova diventa
+   rossa, che è l'unico modo perché questo elenco non invecchi in silenzio. */
+const ARCH_CARTELLE = ['animali', 'bonifici', 'cauzioni', 'clienti', 'collab', 'cvt-fi',
+  'fatture', 'fotovoltaico', 'infcirc', 'messaggi', 'polizze', 'preventivi', 'rcrd',
+  'rcvp', 'salute', 'saravintage', 'shop', 'sinistri', 'tutelalegale', 'utility', 'viaggio'];
+const ARCH_PREFISSI = new RegExp('^(' + ARCH_CARTELLE.join('|') + ')/');
 
 function archSuoIndirizzo(v) {
   const s = String(v || '').trim();
@@ -3286,14 +3298,6 @@ async function archCarica(path, file, contentType) {
   return path;
 }
 
-/* Il link da mettere in una schermata. Non è un `href` vero: l'indirizzo non
-   esiste finché non si clicca, ed è giusto così — un `href` firmato dentro la
-   pagina sarebbe copiabile e resterebbe valido per cinque minuti in qualunque
-   posto lo si incolli. */
-function archLink(v, testo, classe) {
-  const p = String(v || '').replace(/'/g, '&#39;');
-  return `<a class="${classe || 'rin-az'}" href="javascript:void(0)" onclick="archApri('${esc(p)}')">${testo || '<i class="ti ti-eye"></i> Apri'}</a>`;
-}
 
 let ME = null;           // utente Supabase grezzo
 let token = null;        // access token Supabase (chiamate API best-effort)
@@ -15363,16 +15367,16 @@ async function pdocRidisegna(polizzaId) {
         ${r.operazioni.length
           ? 'Scegli operazione e compagnia: i documenti da raccogliere dipendono da quelli, e restano congelati su questa pratica.'
           : 'Questo ramo non ha ancora un fascicolo guidato: per ora solo RC Auto.'}</div>`;
-    if (!r.operazioni.length) {
-      /* Fuori dall'RC Auto non c'è niente da scegliere: si mostrano i campi
-         di base, senza inventare operazioni che non esistono. */
-      bd.innerHTML = `<div class="pdoc-esito ko"><i class="ti ti-info-circle"></i>
-        Fascicolo guidato disponibile per ora solo sull'RC Auto. Qui restano i documenti di base.</div>`;
-    } else {
-      pdocAnteprima(polizzaId);
-      return;
-    }
+    if (r.operazioni.length) { pdocAnteprima(polizzaId); return; }
+    /* Fuori dall'RC Auto non c'è niente da scegliere: si va avanti e si
+       mostrano i campi di base, con un avviso che lo dice. L'avviso NON si
+       scrive qui: la riga finale riscrive tutto `bd`, e scritto qui non lo
+       vedeva nessuno. Si tiene da parte e si concatena in fondo. */
   }
+  const avvisoRamo = (!r.congelato && !r.operazioni.length)
+    ? `<div class="pdoc-esito ko"><i class="ti ti-info-circle"></i>
+        Fascicolo guidato disponibile per ora solo sull'RC Auto. Qui restano i documenti di base.</div>`
+    : '';
 
   const scelta = r.congelato ? `<div class="pdoc-op">
       <div class="pdoc-op-t">Fascicolo creato${r.congelatoIl ? ' il ' + new Date(r.congelatoIl).toLocaleDateString('it-IT') : ''}</div>
@@ -15432,7 +15436,7 @@ async function pdocRidisegna(polizzaId) {
   const altri = docs.filter(d => d.url && previste.indexOf(d.categoria) < 0);
 
   const mancanti = r.mancanti;
-  bd.innerHTML = scelta +
+  bd.innerHTML = scelta + avvisoRamo +
     `<div class="pdoc-esito ${mancanti ? 'ko' : 'ok'}">
        ${mancanti
         ? `<i class="ti ti-alert-triangle"></i> <b>${mancanti}</b> document${mancanti === 1 ? 'o' : 'i'} obbligator${mancanti === 1 ? 'io' : 'i'} da completare: la polizza non è perfezionata`
@@ -15490,9 +15494,13 @@ async function pdocCarica(polizzaId, categoria, file) {
   /* Un documento del cliente non finisce mai nella pratica, e uno di terzi non
      finisce mai in anagrafica: qui si sbaglierebbe una volta sola e resterebbe
      sbagliato per sempre, perché nessuno ricontrolla dove è finito un file. */
-  const campo = M ? M.campi('rcauto', null).concat(
-      Object.keys(M.PER_OPERAZIONE).reduce((a, k) => a.concat(M.PER_OPERAZIONE[k]), []))
-      .find(c => c.cat === categoria) : null;
+  /* `definizione` è la funzione giusta: dà la scheda del tipo documento dal
+     catalogo del motore. Qui prima c'era `M.campi('rcauto', null)`, che è la
+     firma VECCHIA (la nuova vuole la polizza, non il ramo) concatenata alle
+     chiavi di PER_OPERAZIONE, che dalla Parte 2 sono stringhe e non schede:
+     il campo non si trovava mai, e ogni documento dell'operazione finiva in
+     archivio segnato «non obbligatorio». */
+  const campo = M ? M.definizione(categoria) : null;
   if (campo && M.destinazione(campo) === 'anagrafica') {
     pdocApriAnagrafica(PDOC_APERTO && PDOC_APERTO.polizza ? PDOC_APERTO.polizza.cliente_id : null);
     return;
@@ -15500,10 +15508,8 @@ async function pdocCarica(polizzaId, categoria, file) {
   if (bd) bd.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="pdoc-attesa">Carico il documento…</div>');
   try {
     const nome = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = 'polizze/' + polizzaId + '_' + categoria + '_' + Date.now() + '_' + nome;
-    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
-    if (up.error) throw new Error(up.error.message);
-    const url = path;
+    const url = await archCarica('polizze/' + polizzaId + '_' + categoria + '_' + Date.now() + '_' + nome,
+      file, file.type || 'application/pdf');
     const rec = {
       entita: 'polizza', entita_id: polizzaId, categoria, nome: file.name, url,
       firmato: false,
@@ -15640,10 +15646,8 @@ async function fdocCaricaCliente() {
   }
   if (status) { status.textContent = 'Caricamento…'; status.style.color = ''; }
   try {
-    const path = 'clienti/' + id + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/octet-stream' });
-    if (up.error) throw up.error;
-    const url = path;
+    const url = await archCarica(
+      'clienti/' + id + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_'), file);
     const docs = Array.isArray(a.documenti) ? a.documenti.slice() : [];
     const t = M ? M.tipoCliente(tipo) : { id: tipo, l: tipo };
     docs.push({ tipo: t.id, numero, url, nome: file.name, data: new Date().toISOString(), scadenza: scad });
@@ -15742,7 +15746,10 @@ async function cdocCarica(forza) {
   const M = pdocMotore();
   if (!db || !M) return;
   if (CDOC.caricato && !forza) return;
-  CDOC.caricato = true;
+  /* `caricato` si segna alla FINE, e solo se è andata: segnarlo prima voleva
+     dire che dopo un errore di rete la pagina non riprovava più, e restava a
+     mostrare gli zeri di una lettura mai riuscita. */
+  const errori = [];
   const corpoS = document.getElementById('cdoc-scad-body');
   const corpoF = document.getElementById('cdoc-fasc-body');
   if (corpoS) corpoS.innerHTML = '<tr><td colspan="5"><div class="empty-state">Carico…</div></td></tr>';
@@ -15757,17 +15764,26 @@ async function cdocCarica(forza) {
       .select('id,nominativo,documenti,doc_identita_url,doc_identita_nome');
     if (error) throw error;
     anagrafiche = data || [];
-  } catch (e) { console.warn('anagrafiche non disponibili:', e.message || e); }
+  } catch (e) { errori.push('anagrafiche: ' + (e.message || e)); }
   CDOC.scadenze = M.scadenzeClienti(anagrafiche);
 
   let polizze = [];
   try {
-    const { data, error } = await db.from('quote_polizze')
+    /* LO STESSO CANCELLO DEL PORTAFOGLIO. Senza `visibleUserIds` questa pagina
+       mostrerebbe a un collaboratore le pratiche di tutta l'agenzia, con nome
+       del cliente e nome di chi le ha fatte: un cruscotto di controllo non è
+       una scorciatoia per vedere il portafoglio degli altri. Per lo staff la
+       funzione torna `null`, e allora si vede tutto: è il comportamento di
+       ogni altro elenco di questa applicazione. */
+    let q = db.from('quote_polizze')
       .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,creato_nome,creato_da,dati')
       .neq('stato_pagamento', 'annullata').order('data_effetto', { ascending: false });
+    const ids = await visibleUserIds();
+    if (ids) q = q.in('creato_da', ids);
+    const { data, error } = await q;
     if (error) throw error;
     polizze = data || [];
-  } catch (e) { console.warn('polizze non disponibili:', e.message || e); }
+  } catch (e) { errori.push('polizze: ' + (e.message || e)); }
 
   const perCliente = {};
   anagrafiche.forEach(a => { perCliente[a.id] = a; });
@@ -15778,9 +15794,23 @@ async function cdocCarica(forza) {
       const { data } = await db.from('quote_pratica_documenti')
         .select('entita_id,categoria,url,firmato').eq('entita', 'polizza').in('entita_id', ids);
       (data || []).forEach(d => { (perPolizza[d.entita_id] = perPolizza[d.entita_id] || []).push(d); });
-    } catch (e) { console.warn('documenti di pratica non disponibili:', e.message || e); }
+    } catch (e) { errori.push('documenti di pratica: ' + (e.message || e)); }
   }
   CDOC.fascicoli = M.fascicoliIncompleti(polizze, perPolizza, perCliente);
+
+  /* Se una delle letture non è riuscita, i due numeri sarebbero falsi: uno
+     zero rassicurante su un archivio che non è stato letto. Meglio dirlo e
+     lasciare che si riprovi. */
+  if (errori.length) {
+    const avviso = `<tr><td colspan="6"><div class="empty-state">Non riesco a leggere i dati: ${esc(errori.join(' · '))}<br>
+      <button class="rin-az" style="margin-top:8px" onclick="cdocCarica(true)"><i class="ti ti-refresh"></i> Riprova</button></div></td></tr>`;
+    if (corpoS) corpoS.innerHTML = avviso;
+    if (corpoF) corpoF.innerHTML = avviso;
+    ['cdoc-n-scad', 'cdoc-n-fasc'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = '—'; });
+    const b = document.getElementById('cdoc-badge'); if (b) b.style.display = 'none';
+    return;
+  }
+  CDOC.caricato = true;
 
   const nS = document.getElementById('cdoc-n-scad');
   const dS = document.getElementById('cdoc-d-scad');
@@ -23088,8 +23118,18 @@ async function applyGeo(i) {
 }
 
 /* ── Scheda cliente · DETTAGLIO (read-only, due colonne) ── */
-function apriAnagrafica(id) {
-  const a = (ANAG_CACHE || []).find(x => x.id === id);
+async function apriAnagrafica(id) {
+  let a = (ANAG_CACHE || []).find(x => x.id === id);
+  /* ANAG_CACHE la riempie solo `cercaAnagrafica`, cioè la schermata Clienti.
+     Da quando si arriva qui anche dal fascicolo di una pratica e dal
+     contatore delle scadenze (18/09/2026), l'id può non esserci: prima
+     rispondeva «Anagrafica non trovata» su un cliente che esiste. */
+  if (!a) {
+    try {
+      const { data } = await db.from('quote_anagrafiche').select('*').eq('id', id).maybeSingle();
+      if (data) { a = data; ANAG_CACHE = (ANAG_CACHE || []).concat([data]); }
+    } catch (e) { console.warn('anagrafica non leggibile:', e.message || e); }
+  }
   if (!a) { alert('Anagrafica non trovata.'); return; }
   const isG = a.tipo === 'giuridica';
   const val = v => (v != null && String(v).trim() !== '')
@@ -25699,7 +25739,10 @@ async function salvaDocumento() {
   err.style.color = '#5b6478'; err.textContent = 'Salvataggio…';
   try {
     if (file) {
-      const path = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      /* Una cartella, non la radice del contenitore: la rete di sicurezza
+         riconosce un documento dell'archivio dal suo prefisso, e un file
+         nudo («172_modulo.pdf») navigherebbe come indirizzo del sito. */
+      const path = 'utility/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const up = await db.storage.from('documenti').upload(path, file, { contentType: file.type || 'application/pdf' });
       if (up.error) throw new Error('Upload PDF fallito (' + up.error.message + '). Crea il bucket "documenti" su Supabase Storage, oppure usa il link.');
       url = path;

@@ -689,6 +689,41 @@ restituisce il percorso invece dell'indirizzo pubblico, e in `server/sign.js` è
 sparita `uploadDoc`, che fabbricava indirizzi pubblici e non la chiamava
 nessuno.
 
+### Sette difetti trovati rileggendo il proprio diff (18/09/2026)
+
+La PR non ha CI, quindi l'unica revisione è quella che si fa a mano. Rileggendo
+il diff con `/code-review` sono saltati fuori sette difetti che **nessuna delle
+prove aveva preso**, perché guardavano i casi che chi le ha scritte aveva in
+mente. Adesso ognuno ha la sua, e la sua controprova.
+
+| difetto | cosa faceva |
+|---|---|
+| il contatore leggeva `quote_polizze` senza `visibleUserIds` | un collaboratore vedeva le pratiche di **tutta l'agenzia**, con nome del cliente e di chi le aveva fatte |
+| `ARCH_PREFISSI` elencava i nomi delle **funzioni** (`pet`, `fv`, `sal`…) invece delle cartelle (`animali/`, `fotovoltaico/`…) | per quei moduli la rete di sicurezza non scattava |
+| `salvaDocumento` salvava nella radice del contenitore, senza cartella | la rete non riconosceva il documento, il link navigava come indirizzo del sito |
+| `pdocCarica` chiamava `M.campi('rcauto', null)`, la firma **vecchia** | il tipo documento non si trovava mai: ogni documento finiva segnato «non obbligatorio» |
+| `apriAnagrafica` risolveva solo da `ANAG_CACHE` | «Anagrafica non trovata» su un cliente che esiste, arrivando dal fascicolo |
+| l'avviso «solo RC Auto» scritto e subito sovrascritto | non lo vedeva nessuno |
+| il contatore in errore mostrava `0` e non riprovava | due zeri rassicuranti su un archivio mai letto |
+
+E due attrezzi che non chiamava nessuno (`archLink`, `caricaDocumento`) sono
+stati tolti: in questo repository il codice che arriva e non viene collegato a
+niente è il guasto numero uno (§1), e vale anche per il codice appena scritto.
+
+**Due trappole delle prove sul sorgente**, trovate correggendole:
+
+1. **I commenti mentono alle prove.** Un commento che *nomina* il difetto
+   («qui prima c'era `M.campi`…») fa scattare la prova che cerca quella
+   stringa, e dichiara rotto un codice corretto. Si cerca la chiamata, non la
+   parola — la stessa trappola già scritta in §10.
+2. **Togliere i commenti con una regex globale cancella codice vero.** Un
+   «via tutto quello che sta fra `/*` e `*/`» su `index.html` si mangia
+   **451.714 caratteri e 5.270 righe**: quelle due sequenze compaiono dentro
+   le espressioni regolari e dentro il CSS, e la ricerca accoppia pezzi che
+   non sono commenti. Una prova che gira su metà file dichiara pulito quello
+   che non ha letto. In `archivio.test.mjs` si tolgono solo i commenti che
+   cominciano a inizio riga.
+
 ### Cosa resta aperto
 
 - **La chiusura, che è il punto di tutto.** Una riga, e i quattro controlli

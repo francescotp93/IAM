@@ -1,11 +1,21 @@
-id: cache-1789744466  exit: 0  2026-09-18 15:14:56
+id: hdr-1789744520  exit: 0  2026-09-18 15:15:26
 ----
-== il VPS ha preso la correzione? ==
-commit: b9f81ab Le pagine non restano in cache: una copia vecchia è un'applicazione vecchia (#181)
-no-cache nel file del repo:   2
-no-cache nel sito in esecuzione: 2
+== header veri, chiedendo al dominio dall'esterno del server ==
+-- https://iam.withusassicurazioni.it/
+   HTTP/2 200 
+   cache-control: no-cache
+   content-type: text/html; charset=utf-8
+   etag: "dlij279xlzk8ocjc"
+-- https://iam.withusassicurazioni.it/nuovo-preventivo/
+   HTTP/2 200 
+   cache-control: no-cache
+   content-type: text/html; charset=utf-8
+   etag: "dlij27a4r702147za"
+-- https://iam.withusassicurazioni.it/nuovo-preventivo/tariffe/motore/fascicolo.js
+   HTTP/2 200 
+   content-type: text/javascript; charset=utf-8
+   etag: "dlij27a6jhv0jc3"
 
-== gli header che il browser riceve davvero ==
--- IAM alla radice:
--- il riquadro /nuovo-preventivo/:
--- un motore di tariffa (deve restare in cache):
+== e la pagina servita contiene il codice nuovo? ==
+   archSuoIndirizzo nella pagina del riquadro: 2
+   fdocRenderCliente (il tab Documenti nuovo):  3

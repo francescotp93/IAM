@@ -589,25 +589,41 @@ cancella — serve a rileggere una pratica vecchia col documento valido allora.
 **Cose sapute e non fatte, da fare prima di andare in produzione con documenti
 veri.**
 
-- ~~Il contenitore `documenti` è pubblico.~~ **Chiuso il 18/09/2026, vedi §12.**
+- Il contenitore `documenti` è ancora **pubblico**: il codice per chiuderlo è
+  pronto e provato, la chiusura si fa dopo il rilascio. Vedi **§12**.
 - Il fascicolo guidato copre solo l'**RC Auto**: fuori da lì mostra i documenti
   di base e lo dice, senza inventare operazioni.
 - L'esportazione verso un archivio esterno (Mega) resta fuori, come da brief.
 
 ---
 
-## 12. L'archivio chiuso (18/09/2026)
+## 12. L'archivio dei documenti: il codice è pronto, la chiusura aspetta il rilascio (18/09/2026)
 
-Il contenitore `documenti` di Supabase Storage era **pubblico in lettura**: chi
-aveva l'indirizzo di un file lo apriva senza avere un account, per sempre. E gli
+> **STATO AL 18/09/2026: l'archivio è APERTO, e la chiusura è l'ultimo passo.**
+> Il codice che firma gli indirizzi è qui e provato; la chiusura è stata
+> eseguita, poi **riaperta** perché era arrivata prima del codice: la
+> produzione serve `main`, e con l'archivio chiuso e il codice vecchio in
+> pagina i documenti non si aprivano.
+> **Da fare appena questo lavoro è su `main` e pubblicato**, in quest'ordine:
+> 1. `update storage.buckets set public = false where id = 'documenti';`
+> 2. i quattro controlli elencati in
+>    `supabase/migrations/20260918_archivio_documenti_chiuso.sql`.
+>
+> Il resto di quella migrazione è **già attivo** e non dipende dal codice
+> nuovo: tetto di 25 MB, sovrascrivere e cancellare solo il proprio file o da
+> amministratore, regola di lettura per chi ha un account.
+
+Il contenitore `documenti` di Supabase Storage è **pubblico in lettura**: chi
+ha l'indirizzo di un file lo apre senza avere un account, per sempre. E gli
 indirizzi non sono segreti, si costruiscono con l'orario in millisecondi e il
 nome del file. Dentro ci sono carte d'identità, libretti, patenti, contabili di
 bonifico, polizze firmate, fatture dei collaboratori, documenti di sinistri —
 anche di persone che non sono clienti (il familiare convivente di una Bersani).
 
-**Misurato, non supposto:** il 18/09/2026, prima della chiusura, un `curl` senza
-alcuna credenziale su un documento in archivio rispondeva `200` con il PDF.
-Dopo, risponde `400`.
+**Misurato, non supposto:** il 18/09/2026 un `curl` senza alcuna credenziale su
+un documento in archivio risponde `200` con il PDF. Con l'archivio chiuso, per
+il tempo in cui lo è stato, rispondeva `400`. È la prova che la chiusura fa
+quello che dice, ed è il controllo da rifare dopo il rilascio.
 
 Il quadro completo, con le tre strade e il costo di ognuna, era già scritto in
 `iam/sql/DA-APPROVARE-archivio-documenti.sql` (30/08/2026), dove la chiusura era
@@ -650,11 +666,11 @@ Quattro cose da sapere prima di toccarlo.
    all'archivio — percorso o vecchio indirizzo pubblico — e lo firma. Vale anche
    per il codice che verrà scritto domani copiando il vicino.
 
-### Quello che si è rotto, di proposito
+### Quello che si romperà, di proposito, il giorno della chiusura
 
-**I collegamenti pubblici già spediti non funzionano più.** Un cliente che
-riapre una vecchia email «Scarica la tua polizza» trova un errore. Non c'è modo
-di evitarlo tenendo chiuso l'archivio. Da oggi quell'email porta un collegamento
+**I collegamenti pubblici già spediti smetteranno di funzionare.** Un cliente
+che riapre una vecchia email «Scarica la tua polizza» troverà un errore. Non
+c'è modo di evitarlo tenendo chiuso l'archivio. Da oggi quell'email porta un collegamento
 **firmato che vale 30 giorni e lo dice nel testo** (`server/notify.js`): un
 collegamento che muore in silenzio fa tornare il cliente arrabbiato, uno che
 dichiara la sua scadenza lo fa tornare informato.
@@ -675,10 +691,14 @@ nessuno.
 
 ### Cosa resta aperto
 
+- **La chiusura, che è il punto di tutto.** Una riga, e i quattro controlli
+  del file di migrazione. Finché non si fa, tutto il resto di questo capitolo
+  è una porta nuova su una stanza che resta aperta.
 - **La cache della rete di distribuzione.** Un file già richiesto resta servito
   dalla cache fino a un'ora (`cache-control: max-age=3600`). Verificato il
-  18/09/2026: stesso indirizzo `200` dalla cache, `400` con un parametro
-  diverso. Passata l'ora, chiuso davvero.
+  18/09/2026 mentre l'archivio era chiuso: stesso indirizzo `200` dalla cache,
+  `400` con un parametro diverso. Il giorno della chiusura vera, aspettare
+  un'ora prima di dire che è chiuso.
 - **I percorsi restano indovinabili** (`rcvp/<millisecondi>_<nome>`). Con
   l'archivio chiuso non basta più indovinarli, ma la cartella casuale che già
   usano gli allegati delle fatture (`fatture/<id>/<codice casuale>_<nome>`) è

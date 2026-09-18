@@ -1,9 +1,18 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
---  FATTO IL 18/09/2026 — QUESTO FILE È STORIA, NON UNA COSA DA FARE
+--  18/09/2026 — IN PARTE FATTO, IL RESTO ASPETTA IL RILASCIO
 --
 --  Francesco ha dato il via libera e la strada scelta è stata la B, la chiusura
 --  vera: non solo le regole di scrittura che questo file proponeva, ma anche
 --  il magazzino chiuso in lettura e i link firmati ovunque.
+--
+--  ATTENZIONE, lo stato al 18/09/2026: il magazzino è ancora APERTO in lettura.
+--  La chiusura è stata eseguita e poi riaperta, perché era arrivata prima del
+--  codice che sa firmare gli indirizzi: quel codice è pronto e provato, ma la
+--  produzione serve `main` e lì non c'è ancora. Si richiude dopo il rilascio,
+--  con una riga sola. Sono invece GIÀ ATTIVE le due cose che questo file
+--  proponeva (proprietario per sovrascrivere e cancellare, tetto di 25 MB):
+--  non dipendono dal codice nuovo e non rompono niente.
+--
 --  Quello che è stato eseguito sta in
 --      supabase/migrations/20260918_archivio_documenti_chiuso.sql
 --  e comprende tutto ciò che qui sotto era la proposta «C» (proprietario per

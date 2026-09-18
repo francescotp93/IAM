@@ -1,6 +1,18 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
 --  L'ARCHIVIO DEI DOCUMENTI SI CHIUDE (18/09/2026)
 --
+--  ⚠ QUANDO ESEGUIRLO. Questa migrazione è stata eseguita il 18/09/2026 e poi
+--  la sola riga `public = false` è stata rimessa indietro, perché la chiusura
+--  era arrivata PRIMA del codice che sa firmare gli indirizzi: la produzione
+--  serve `main`, e il codice stava su un ramo. Con l'archivio chiuso e il
+--  codice vecchio in pagina, i documenti non si aprivano.
+--  Il resto di questo file è già attivo (tetto, regole di scrittura, regola di
+--  lettura). Per chiudere davvero, appena il lavoro è su `main` e pubblicato:
+--
+--      update storage.buckets set public = false where id = 'documenti';
+--
+--  e poi i quattro controlli qui sotto. Niente altro da rifare.
+--
 --  `documenti` è il magazzino dove finiscono i file di tutta la piattaforma:
 --  carte d'identità, libretti, patenti, contabili di bonifico, polizze firmate,
 --  fatture dei collaboratori, allegati delle chat, documenti dei sinistri. Sono

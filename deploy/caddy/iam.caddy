@@ -61,6 +61,27 @@ iam.withusassicurazioni.it {
 		header Content-Security-Policy "frame-ancestors 'self'"
 		header X-Frame-Options SAMEORIGIN
 
+		# ── LA CACHE DELL'APPLICAZIONE (18/09/2026) ────────────────────
+		# QUOTO e IAM sono due `index.html` da un paio di megabyte: tutto il
+		# programma sta lì dentro. Senza dire niente sulla cache, il browser
+		# applica la sua euristica e si tiene la pagina per ore — e chi la ha
+		# in memoria continua a usare il codice del rilascio prima senza
+		# saperlo. Il 18/09/2026 è costato un'ora: dopo il rilascio della
+		# gestione documentale, le schermate nuove non comparivano e i
+		# documenti non si aprivano, perché la pagina in cache non aveva la
+		# parte che firma gli indirizzi. Il VPS serviva il codice giusto; era
+		# il browser a non chiederlo.
+		#
+		# `no-cache` NON vuol dire «non mettere in cache»: vuol dire
+		# «richiedi conferma prima di usarla». Col confronto dell'etichetta
+		# (`ETag`, che Caddy manda da sé) la risposta è quasi sempre un 304
+		# vuoto, quindi si paga un viaggio di rete e non due megabyte. Vale
+		# solo per le pagine: i motori di tariffa, le immagini e i fogli di
+		# stile restano in cache come prima, perché hanno la versione
+		# nell'indirizzo (`?v=20260918`).
+		@pagine path *.html /
+		header @pagine Cache-Control "no-cache"
+
 		file_server
 	}
 
@@ -87,6 +108,12 @@ iam.withusassicurazioni.it {
 			path *.mjs *.md
 		}
 		respond @sorgente_iam 404
+
+		# Stessa ragione del riquadro qui sopra: la scocca di IAM è un
+		# `index.html` solo, e una copia vecchia in cache è un'applicazione
+		# vecchia.
+		@pagine_iam path *.html /
+		header @pagine_iam Cache-Control "no-cache"
 
 		file_server
 	}

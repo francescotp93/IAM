@@ -1,32 +1,18 @@
-id: sop-1789757386  exit: 0  2026-09-18 18:50:26
+id: arch-1789757466  exit: 0  2026-09-18 18:51:38
 ----
-== servizio ==
-● cmd-runner.service                             loaded    activating start   start WithUs cmd-runner (esegue i comandi diagnostici di Claude via GitHub e ne ricarica l'output)
-  netplan-configure.service                      loaded    active     exited        Netplan Backend Configuration
-  quotiamo-scraper.service                       loaded    active     running       WithUs - Scraper Quotiamo (portale comparatore) — telecomando HTTP 127.0.0.1:5000
-● withus-autopull.service                        loaded    activating start   start WithUs auto-deploy (git pull + restart dei servizi cambiati)
-  withus-backend.service                         loaded    active     running       withus-backend (Node/Express) — mail e pagamenti
+== 1. chiave ==
+generata e scritta in server/.env (non stampata)
+permessi di .env: 600 withus
+la chiave e' lunga 44 caratteri? NO (43)
 
-== utente e cartella di lavoro del backend ==
-FragmentPath=/etc/systemd/system/withus-backend.service
-EnvironmentFiles=/opt/withus-backend/server/.env (ignore_errors=no)
-WorkingDirectory=/opt/withus-backend/server
-User=withus
-Group=
+== 2. cartella dell'archivio ==
+700 withus /var/lib/withus/archivio
+fuori dalla radice servita dal sito: ok
 
-== override gia' presenti (nomi, non contenuti) ==
-(nessuna cartella di override)
+== 3. riavvio ==
+active
 
-== la variabile e' gia' configurata? (solo si'/no) ==
-ARCHIVIO_CHIAVE: assente
-
-== cartella dell'archivio ==
-(non esiste)
-
-== spazio sul disco ==
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/sda1       193G   14G  179G   8% /
-
-== commit del backend e diag ==
-f266ce1 I documenti nuovi stanno sul VPS cifrati, e «Importa portafoglio» sta fra gli Strumenti (#185)
-{"ok":true,"version":"0.7.0-italiana","routes":["/fonti (GET/POST)","/fonti/:id (PUT/DELETE)","/shop/checkout/bonifico","/shop/anagrafica","/sign/*"],"env":{"supabase":true,"brevo":true,"stripe":true,"paypal":true,"archivio":false},"corsOrigins":["https://iam.withusassicurazioni.it","https://quoto.w
+== 4. esito ==
+"archivio":true
+la chiave NON compare in questo output, ed e' voluto.
+per la copia offline, da leggere TU sul server:  sudo grep ARCHIVIO_CHIAVE /opt/withus-backend/server/.env

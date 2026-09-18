@@ -32,10 +32,42 @@ const comuni = (a, b) => [...a].filter(x => b.has(x)).sort();
 /* La soglia e' la misura del 17/09/2026. Si abbassa, non si alza. */
 const SOGLIA = { globali: 43, id: 29, classi: 17 };
 
+/* ── I GEMELLI VOLUTI (18/09/2026) ──────────────────────────────────────────
+   Nove nomi compaiono nei due documenti perche' DEVONO: sono la rete di
+   sicurezza dell'archivio (CLAUDE.md §12), cioe' la stessa manciata di
+   funzioni che firmano gli indirizzi dei documenti. Non sono una schermata
+   scritta due volte — sono la stessa cosa che deve esserci in tutti e due i
+   posti, e finche' i documenti sono due non c'e' dove metterla una volta
+   sola: nessuno dei due importa moduli dall'altro.
+
+   Perche' si escludono invece di alzare la soglia: alzarla vorrebbe dire
+   fare spazio anche al prossimo doppione vero. Escluderli per NOME li tiene
+   contati uno per uno, e le due righe qui sotto impediscono che questo
+   elenco diventi una porta aperta:
+     · ogni nome esentato deve esistere davvero in tutti e due i documenti,
+       altrimenti l'elenco e' vecchio e va sfoltito;
+     · che le due copie non divergano lo sorveglia una prova apposta
+       (`server/verifica/archivio.test.mjs`, «le due meta' dell'archivio non
+       divergono»), che qui si controlla che esista ancora.
+   ─────────────────────────────────────────────────────────────────────── */
+const GEMELLI = ['ARCH_BUCKET', 'ARCH_CARTELLE', 'ARCH_PREFISSI', 'ARCH_SCADENZA',
+  'archApri', 'archDisinnesca', 'archFirma', 'archPercorso', 'archSuoIndirizzo'];
+
 const gQ = globali(scripts(Q)), gI = globali(scripts(I));
 const iQ = id(Q), iI = id(I);
 const cQ = classi(styles(Q)), cI = classi(styles(I));
-const G = comuni(gQ, gI), ID = comuni(iQ, iI), C = comuni(cQ, cI);
+const G = comuni(gQ, gI).filter(x => !GEMELLI.includes(x)), ID = comuni(iQ, iI), C = comuni(cQ, cI);
+
+prova('i gemelli voluti sono davvero gemelli, e qualcuno li sorveglia', () => {
+  /* Un nome esentato che non c'e' piu' in uno dei due documenti sarebbe un
+     buco: l'elenco farebbe spazio a un doppione nuovo con quel nome. */
+  const spariti = GEMELLI.filter(x => !gQ.has(x) || !gI.has(x));
+  deve(!spariti.length, 'esentati ma non presenti in tutti e due i documenti: ' + spariti.join(' ') + ' — sfoltisci l\'elenco');
+  const guardia = fs.readFileSync(path.join(RADICE, 'server', 'verifica', 'archivio.test.mjs'), 'utf8');
+  deve(guardia.includes('archivio non divergono'),
+    'e\' sparita la prova che controlla che le due copie dell\'archivio dicano la stessa cosa: senza, l\'esenzione non e\' sorvegliata da nessuno');
+  return GEMELLI.length + ' gemelli, tutti presenti e sorvegliati';
+});
 
 prova('i nomi globali in comune fra QUOTO e IAM non aumentano', () => {
   deve(G.length <= SOGLIA.globali, `${G.length} nomi globali in comune, la soglia e' ${SOGLIA.globali}: ne e' nato uno nuovo (probabilmente una schermata scritta due volte). Elenco: ${G.join(' ')}`);

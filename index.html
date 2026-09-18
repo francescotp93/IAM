@@ -897,6 +897,7 @@ button{font-family:inherit}
 .fdoc-subb:hover{border-color:var(--blue-soft)}
 .fdoc-subb.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
 .fdoc-data{font-size:15px;color:var(--ink)}
+.fdoc-nuova{margin-bottom:12px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:#fbfcff}
 .fdoc-storico{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#f8f9fc}
 .fdoc-storico summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)}
 .fdoc-storico .sc-docrow{margin-top:8px}
@@ -3264,7 +3265,7 @@ async function archApri(v) {
    codice usa davvero: aggiungendo un modulo con una cartella nuova diventa
    rossa, che è l'unico modo perché questo elenco non invecchi in silenzio. */
 const ARCH_CARTELLE = ['animali', 'bonifici', 'cauzioni', 'clienti', 'collab', 'cvt-fi',
-  'fatture', 'fotovoltaico', 'infcirc', 'messaggi', 'polizze', 'preventivi', 'rcrd',
+  'fatture', 'fotovoltaico', 'infcirc', 'messaggi', 'polizze', 'pratiche', 'preventivi', 'rcrd',
   'rcvp', 'salute', 'saravintage', 'shop', 'sinistri', 'tutelalegale', 'utility', 'viaggio'];
 const ARCH_PREFISSI = new RegExp('^(' + ARCH_CARTELLE.join('|') + ')/');
 
@@ -15190,6 +15191,10 @@ function pdocMancanti(polizza, docs, anag) {
    così il portafoglio lo legge senza rifare il conto per ogni riga. */
 async function pdocRicalcola(polizzaId, polizza, docs, anag) {
   const perfezionata = pdocMancanti(polizza, docs, anag) === 0;
+  /* Una pratica non si perfeziona: il perfezionamento è uno dei quattro stati
+     di una POLIZZA, e quella colonna sta su quote_polizze. Scriverlo altrove
+     vorrebbe dire inventare un quinto stato che nessuno legge. */
+  if (pdocEntita(polizzaId) !== 'polizza') return perfezionata;
   try {
     const { data } = await db.from('quote_polizze').select('perfezionata').eq('id', polizzaId).maybeSingle();
     if (data && data.perfezionata === perfezionata) return perfezionata;
@@ -15198,20 +15203,44 @@ async function pdocRicalcola(polizzaId, polizza, docs, anag) {
   return perfezionata;
 }
 
+/* ══ IL FASCICOLO STA SU DUE GAMBE (18/09/2026) ════════════════════════════
+   Una POLIZZA in portafoglio, oppure una PRATICA aperta prima che la polizza
+   esista: i documenti si raccolgono mentre il contratto non c'è ancora, ed è
+   il momento in cui si perdono se non hanno un posto dove stare.
+
+   Una schermata sola per tutti e due, perché le regole sono le stesse: il
+   motore legge `dati.fascicolo`, `modulo`, `prodotto`, `compagnia`,
+   `cliente_id` — e la tabella `quote_pratiche` usa quegli stessi nomi apposta
+   (migrazione 20260918_pratiche_senza_polizza.sql). Duplicare la schermata
+   vorrebbe dire due posti dove correggere la stessa cosa.
+
+   Di fascicolo aperto ce n'è uno alla volta: `PDOC_RIF` dice di che cosa. Le
+   funzioni ricevono l'id come prima e chiedono qui a che entità appartiene;
+   un id che non è quello aperto vale 'polizza', che è com'era prima. */
+let PDOC_RIF = { entita: 'polizza', id: null };
+const PDOC_TABELLA = { polizza: 'quote_polizze', pratica: 'quote_pratiche' };
+
+function pdocEntita(id) {
+  return (PDOC_RIF.id && PDOC_RIF.id === id) ? PDOC_RIF.entita : 'polizza';
+}
+
 async function pdocLeggi(polizzaId) {
   const { data, error } = await db.from('quote_pratica_documenti')
-    .select('*').eq('entita', 'polizza').eq('entita_id', polizzaId);
+    .select('*').eq('entita', pdocEntita(polizzaId)).eq('entita_id', polizzaId);
   if (error) throw error;
   return data || [];
 }
 
-/* La polizza con i suoi `dati`: lì dentro sta l'operazione scelta per il
-   fascicolo. Il portafoglio non li carica (sono un jsonb che pesa su ogni
-   riga), quindi il fascicolo se li rilegge da sé all'apertura. */
+/* La polizza (o la pratica) con i suoi `dati`: lì dentro sta l'operazione
+   scelta per il fascicolo. Il portafoglio non li carica (sono un jsonb che
+   pesa su ogni riga), quindi il fascicolo se li rilegge da sé all'apertura. */
 async function pdocPolizza(polizzaId) {
-  const { data, error } = await db.from('quote_polizze')
-    .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,data_scadenza,dati')
-    .eq('id', polizzaId).maybeSingle();
+  const ent = pdocEntita(polizzaId);
+  const colonne = ent === 'pratica'
+    ? 'id,cliente,cliente_id,modulo,prodotto,compagnia,descrizione,data_prevista,stato,polizza_id,dati'
+    : 'id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,data_scadenza,dati';
+  const { data, error } = await db.from(PDOC_TABELLA[ent])
+    .select(colonne).eq('id', polizzaId).maybeSingle();
   if (error) throw error;
   return data || null;
 }
@@ -15237,20 +15266,33 @@ async function pdocAnagrafica(clienteId) {
 let PDOC_APERTO = null;
 
 async function pdocApri(polizzaId) {
+  const pol = (PF_ROWS || []).find(p => p.id === polizzaId) || {};
+  return pdocApriRif('polizza', polizzaId, 'Fascicolo della pratica',
+    `${esc(pol.cliente || '')}${pol.prodotto ? ' · ' + esc(pol.prodotto) : ''}`);
+}
+
+/* Il fascicolo di una pratica senza polizza. Il titolo lo dice: non è una
+   polizza, e chi lo apre deve saperlo senza cercarlo. */
+async function pdocApriPratica(praticaId, sottotitolo) {
+  return pdocApriRif('pratica', praticaId, 'Fascicolo di pratica · polizza non ancora caricata',
+    esc(sottotitolo || ''));
+}
+
+async function pdocApriRif(entita, id, titolo, sottotitolo) {
   document.getElementById('pdoc-ov')?.remove();
   PDOC_RIFAI = null;
-  const pol = (PF_ROWS || []).find(p => p.id === polizzaId) || {};
+  PDOC_RIF = { entita, id };
   document.body.insertAdjacentHTML('beforeend',
     `<div id="pdoc-ov" class="pdoc-ov" onclick="if(event.target.id==='pdoc-ov')this.remove()">
       <div class="pdoc-box">
         <div class="pdoc-hd">
-          <div><b>Fascicolo della pratica</b>
-            <div class="pdoc-sub">${esc(pol.cliente || '')}${pol.prodotto ? ' · ' + esc(pol.prodotto) : ''}</div></div>
+          <div><b>${esc(titolo)}</b>
+            <div class="pdoc-sub">${sottotitolo || ''}</div></div>
           <button class="pdoc-x" onclick="document.getElementById('pdoc-ov').remove()"><i class="ti ti-x"></i></button>
         </div>
         <div class="pdoc-bd" id="pdoc-bd"><div class="empty-state">Carico…</div></div>
       </div></div>`);
-  await pdocRidisegna(polizzaId);
+  await pdocRidisegna(id);
 }
 
 /* L'operazione decide quali campi compaiono, quindi si sceglie per prima e si
@@ -15319,7 +15361,7 @@ async function pdocCreaFascicolo(polizzaId) {
   const dati = Object.assign({}, st.polizza.dati || {});
   dati.fascicolo = congelato;
   try {
-    const { error } = await db.from('quote_polizze').update({ dati }).eq('id', polizzaId);
+    const { error } = await db.from(PDOC_TABELLA[pdocEntita(polizzaId)]).update({ dati }).eq('id', polizzaId);
     if (error) throw error;
     st.polizza.dati = dati;
     PDOC_RIFAI = null;
@@ -15350,9 +15392,12 @@ async function pdocRidisegna(polizzaId) {
   const M = pdocMotore();
   if (!M) { bd.innerHTML = '<div class="empty-state">Il motore del fascicolo non è caricato.</div>'; return; }
 
+  const entita = pdocEntita(polizzaId);
   let docs = [], polizza = null, anag = null;
   try {
-    polizza = await pdocPolizza(polizzaId) || (PF_ROWS || []).find(p => p.id === polizzaId) || { id: polizzaId };
+    polizza = await pdocPolizza(polizzaId)
+      || (entita === 'polizza' ? (PF_ROWS || []).find(p => p.id === polizzaId) : null)
+      || { id: polizzaId };
     docs = await pdocLeggi(polizzaId);
     anag = await pdocAnagrafica(polizza.cliente_id);
   } catch (e) { bd.innerHTML = `<div class="empty-state">Documentale non disponibile.<br><small>${esc(e.message || e)}</small></div>`; return; }
@@ -15467,12 +15512,18 @@ async function pdocRidisegna(polizzaId) {
   const altri = docs.filter(d => d.url && previste.indexOf(d.categoria) < 0);
 
   const mancanti = r.mancanti;
-  bd.innerHTML = scelta + avvisoRamo +
-    `<div class="pdoc-esito ${mancanti ? 'ko' : 'ok'}">
-       ${mancanti
-        ? `<i class="ti ti-alert-triangle"></i> <b>${mancanti}</b> document${mancanti === 1 ? 'o' : 'i'} obbligator${mancanti === 1 ? 'io' : 'i'} da completare: la polizza non è perfezionata`
-        : '<i class="ti ti-circle-check"></i> Tutti i documenti obbligatori sono a posto: polizza perfezionata'}
-     </div>`
+  /* Il testo dice la verità su che cosa si sta guardando: una pratica non è
+     «perfezionata» — il perfezionamento è uno stato della polizza, e una
+     pratica la polizza non ce l'ha ancora. */
+  const esito = entita === 'pratica'
+    ? (mancanti
+      ? `<i class="ti ti-alert-triangle"></i> <b>${mancanti}</b> document${mancanti === 1 ? 'o' : 'i'} obbligator${mancanti === 1 ? 'io' : 'i'} da raccogliere: la pratica non è completa`
+      : '<i class="ti ti-circle-check"></i> Tutti i documenti obbligatori sono a posto: la pratica è pronta per l\'emissione')
+    : (mancanti
+      ? `<i class="ti ti-alert-triangle"></i> <b>${mancanti}</b> document${mancanti === 1 ? 'o' : 'i'} obbligator${mancanti === 1 ? 'io' : 'i'} da completare: la polizza non è perfezionata`
+      : '<i class="ti ti-circle-check"></i> Tutti i documenti obbligatori sono a posto: polizza perfezionata');
+  bd.innerHTML = scelta + avvisoRamo + (entita === 'pratica' ? pdocTestaPratica(polizza) : '') +
+    `<div class="pdoc-esito ${mancanti ? 'ko' : 'ok'}">${esito}</div>`
     + righe
     + (altri.length ? `<div class="pdoc-sez">Altri documenti in archivio</div>` + altri.map(d =>
         `<div class="pdoc-r"><div class="pdoc-r-l"><b>${esc(d.nome || d.categoria)}</b>
@@ -15488,8 +15539,34 @@ async function pdocRidisegna(polizzaId) {
        </div>`;
 
   await pdocRicalcola(polizzaId, polizza, docs, anag);
-  const p = (PF_ROWS || []).find(x => x.id === polizzaId);
-  if (p) { p.perfezionata = mancanti === 0; p.__mancanti = mancanti; if (typeof pfRender === 'function') pfRender(); }
+  if (entita === 'polizza') {
+    const p = (PF_ROWS || []).find(x => x.id === polizzaId);
+    if (p) { p.perfezionata = mancanti === 0; p.__mancanti = mancanti; if (typeof pfRender === 'function') pfRender(); }
+  }
+}
+
+/* La testata di una pratica: che cosa è, e il tasto che la fa diventare una
+   polizza vera quando la polizza arriva. Finché i requisiti non sono
+   congelati non c'è niente da collegare — e il tasto non c'è. */
+function pdocTestaPratica(pratica) {
+  const p = pratica || {};
+  const righe = [
+    p.descrizione ? esc(p.descrizione) : '',
+    p.prodotto ? esc(p.prodotto) : '',
+    p.compagnia ? esc(p.compagnia) : '',
+    p.data_prevista ? 'decorrenza prevista ' + new Date(p.data_prevista).toLocaleDateString('it-IT') : 'decorrenza da confermare'
+  ].filter(Boolean).join(' · ');
+  const collegata = p.stato === 'collegata';
+  const congelato = !!(p.dati && p.dati.fascicolo && (p.dati.fascicolo.requisiti || []).length);
+  return `<div class="pdoc-op">
+    <div class="pdoc-op-t">Pratica in lavorazione</div>
+    <div class="cl-sub">${righe}</div>
+    <div class="cl-sub" style="margin-top:4px">${collegata
+      ? 'Già collegata a una polizza: i documenti nuovi vanno caricati dal fascicolo della polizza.'
+      : 'I documenti si raccolgono qui. Quando la polizza viene caricata in portafoglio, si collega e i documenti la seguono: non si ricarica niente.'}</div>
+    ${(!collegata && congelato) ? `<div style="margin-top:8px">
+      <button class="rin-az" onclick="pdocCollega('${esc(p.id)}')"><i class="ti ti-link"></i> Collega la polizza</button></div>` : ''}
+  </div>`;
 }
 
 /* Il documento d'identità del cliente NON si carica da qui: sta in anagrafica
@@ -15502,6 +15579,98 @@ function pdocApriAnagrafica(clienteId) {
     apriAnagrafica(clienteId);
     setTimeout(() => { if (typeof clTab === 'function') { clTab('doc'); fdocSub('cli'); } }, 350);
   }
+}
+
+/* ══ QUANDO LA POLIZZA ARRIVA ══════════════════════════════════════════════
+   La pratica le si attacca: i requisiti congelati si copiano sulla polizza
+   COM'ERANO e i documenti la seguono. Non si ricarica niente, ed è il punto:
+   chi ha raccolto i documenti prima dell'emissione non deve rifare il lavoro.
+
+   Le polizze che si propongono sono quelle DELLO STESSO CLIENTE: collegare
+   una pratica alla polizza di un altro vorrebbe dire spostare i documenti di
+   una persona nel fascicolo di un'altra. Il motore lo rifiuta comunque
+   (`collegabile`), qui non si mostra nemmeno. */
+async function pdocCollega(praticaId) {
+  const M = pdocMotore();
+  const st = PDOC_APERTO && PDOC_APERTO.id === praticaId ? PDOC_APERTO : null;
+  if (!M || !st) return;
+  const pratica = st.polizza;
+  const bd = document.getElementById('pdoc-bd');
+  if (bd) bd.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="pdoc-attesa">Cerco le polizze del cliente…</div>');
+  let pol = [];
+  try {
+    const { data, error } = await db.from('quote_polizze')
+      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,dati')
+      .eq('cliente_id', pratica.cliente_id).order('data_effetto', { ascending: false });
+    if (error) throw error;
+    pol = data || [];
+  } catch (e) {
+    document.getElementById('pdoc-attesa')?.remove();
+    alert('Non riesco a leggere le polizze del cliente: ' + (e.message || e));
+    return;
+  }
+  document.getElementById('pdoc-attesa')?.remove();
+  const voci = pol.map(p => ({ p, c: M.collegabile(pratica, p) }));
+  const disponibili = voci.filter(v => v.c.ok);
+  const corpo = !pol.length
+    ? `<div class="empty-state">Questo cliente non ha ancora nessuna polizza in portafoglio.<br>
+        <small>La pratica resta aperta: si collega quando la polizza viene caricata.</small></div>`
+    : voci.map(v => `<div class="pdoc-r">
+        <div class="pdoc-r-l"><b>${esc(v.p.data_effetto ? new Date(v.p.data_effetto).toLocaleDateString('it-IT') : '—')}</b>
+          <span class="pdoc-opt">${esc(pfNumero(v.p))}</span>
+          <div class="cl-sub" style="flex-basis:100%">${esc([v.p.prodotto, v.p.compagnia].filter(Boolean).join(' · '))}${
+            v.c.ok ? '' : '<br><span style="color:#c0392b">' + esc(v.c.motivo) + '</span>'}</div></div>
+        <div class="pdoc-r-a">${v.c.ok
+          ? `<button class="btn-emetti" onclick="pdocCollegaA('${esc(praticaId)}','${esc(v.p.id)}')"><i class="ti ti-link"></i> Collega a questa</button>`
+          : ''}</div></div>`).join('');
+  document.body.insertAdjacentHTML('beforeend',
+    `<div id="pcol-ov" class="pdoc-ov" onclick="if(event.target.id==='pcol-ov')this.remove()">
+      <div class="pdoc-box">
+        <div class="pdoc-hd">
+          <div><b>Collega la pratica a una polizza</b>
+            <div class="pdoc-sub">${esc(pratica.cliente || '')} · ${disponibili.length} polizz${disponibili.length === 1 ? 'a collegabile' : 'e collegabili'}</div></div>
+          <button class="pdoc-x" onclick="document.getElementById('pcol-ov').remove()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="pdoc-bd">${corpo}</div>
+      </div></div>`);
+}
+
+/* L'ordine dei tre passi non è casuale, ed è quello che regge un'interruzione
+   a metà: prima i requisiti sulla polizza, poi i documenti, per ultimo la
+   pratica segnata collegata. Se si ferma in mezzo, rifare il collegamento
+   riprende da dove era: il motore riconosce il proprio fascicolo già copiato
+   e non lo scambia per quello di un'altra pratica. */
+async function pdocCollegaA(praticaId, polizzaId) {
+  const M = pdocMotore();
+  const st = PDOC_APERTO && PDOC_APERTO.id === praticaId ? PDOC_APERTO : null;
+  if (!M || !st) return;
+  const pratica = st.polizza;
+  try {
+    const { data: pol, error: e0 } = await db.from('quote_polizze')
+      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,dati')
+      .eq('id', polizzaId).maybeSingle();
+    if (e0) throw e0;
+    const c = M.collegabile(pratica, pol);
+    if (!c.ok) { alert(c.motivo); return; }
+
+    const dati = Object.assign({}, (pol && pol.dati) || {}, { fascicolo: c.fascicolo });
+    const { error: e1 } = await db.from('quote_polizze').update({ dati }).eq('id', polizzaId);
+    if (e1) throw e1;
+    const { error: e2 } = await db.from('quote_pratica_documenti')
+      .update({ entita: 'polizza', entita_id: polizzaId })
+      .eq('entita', 'pratica').eq('entita_id', praticaId);
+    if (e2) throw e2;
+    const { error: e3 } = await db.from('quote_pratiche')
+      .update({ stato: 'collegata', polizza_id: polizzaId }).eq('id', praticaId);
+    if (e3) throw e3;
+    try { logMovimento('Pratica collegata alla polizza', 'documento', pratica.cliente || ''); } catch (e) {}
+  } catch (e) {
+    alert('Collegamento non riuscito: ' + (e.message || e) + '\n\nNiente è andato perso: i documenti restano dove sono e si può riprovare.');
+    return;
+  }
+  document.getElementById('pcol-ov')?.remove();
+  if (typeof fdocRenderPolizze === 'function') fdocRenderPolizze();
+  await pdocApri(polizzaId);
 }
 
 /* Un solo campo file nascosto, riusato: aprire una finestra di sistema per
@@ -15537,12 +15706,17 @@ async function pdocCarica(polizzaId, categoria, file) {
     return;
   }
   if (bd) bd.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="pdoc-attesa">Carico il documento…</div>');
+  const entita = pdocEntita(polizzaId);
   try {
     const nome = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const url = await archCarica('polizze/' + polizzaId + '_' + categoria + '_' + Date.now() + '_' + nome,
+    /* Cartelle diverse per cose diverse: `pratiche/` è dichiarata in
+       ARCH_CARTELLE, altrimenti la rete di sicurezza non riconoscerebbe il
+       percorso e il documento non si aprirebbe più (§12, difetto 2). */
+    const url = await archCarica(
+      (entita === 'pratica' ? 'pratiche/' : 'polizze/') + polizzaId + '_' + categoria + '_' + Date.now() + '_' + nome,
       file, file.type || 'application/pdf');
     const rec = {
-      entita: 'polizza', entita_id: polizzaId, categoria, nome: file.name, url,
+      entita, entita_id: polizzaId, categoria, nome: file.name, url,
       firmato: false,
       obbligatorio: !!(campo && campo.obbl),
       anno: categoria === 'quietanza' ? new Date().getFullYear() : null
@@ -15698,7 +15872,7 @@ async function fdocRenderPolizze() {
   const el = document.getElementById('fdoc-pol');
   if (!el || !FDOC_CLIENTE) return;
   const id = FDOC_CLIENTE.id;
-  let pol = [];
+  let pol = [], pratiche = [];
   try {
     const { data, error } = await db.from('quote_polizze')
       .select('id,numero,numero_polizza,modulo,prodotto,compagnia,data_effetto,data_scadenza,cliente,cliente_id,perfezionata,dati')
@@ -15709,13 +15883,48 @@ async function fdocRenderPolizze() {
     el.innerHTML = `<div class="cl-empty">Elenco polizze non disponibile.<br><small>${esc(e.message || e)}</small></div>`;
     return;
   }
+  /* LE PRATICHE APERTE (18/09/2026). Il fascicolo non aspetta più la polizza:
+     i documenti si raccolgono mentre il contratto non c'è ancora. Se la
+     tabella non c'è (migrazione non applicata) l'elenco delle polizze
+     continua a funzionare: una funzione nuova che manca non deve spegnere
+     quella vecchia. */
+  try {
+    const { data, error } = await db.from('quote_pratiche')
+      .select('id,cliente,cliente_id,modulo,prodotto,compagnia,descrizione,data_prevista,stato,polizza_id,dati')
+      .eq('cliente_id', id).eq('stato', 'aperta').order('creato_il', { ascending: false });
+    if (error) throw error;
+    pratiche = data || [];
+  } catch (e) { console.warn('pratiche non disponibili:', e.message || e); }
+
+  const nuova = `<div class="fdoc-nuova">
+      <button class="rin-az" onclick="fdocNuovaPratica()"><i class="ti ti-folder-plus"></i> Nuovo fascicolo senza polizza</button>
+      <div class="cl-sub">Per una pratica in lavorazione: i documenti si raccolgono adesso e seguiranno la polizza quando verrà caricata.</div>
+      <div id="fdoc-nuova-form"></div>
+    </div>`;
+
+  const righePratiche = pratiche.map(p => {
+    const quando = p.data_prevista
+      ? 'decorrenza prevista ' + new Date(p.data_prevista).toLocaleDateString('it-IT')
+      : 'decorrenza da confermare';
+    const dettagli = [p.descrizione, p.prodotto, p.compagnia].filter(Boolean).map(esc).join(' · ');
+    return `<div class="cl-row" onclick="pdocApriPratica('${esc(p.id)}','${esc([p.cliente, p.descrizione].filter(Boolean).join(' · '))}')">
+      <div style="flex:1">
+        <b class="fdoc-data">${esc(quando)}</b>
+        <div class="cl-sub">${dettagli || 'pratica senza descrizione'}</div>
+      </div>
+      <div style="text-align:right"><span class="tk-badge st-lav">Pratica · senza polizza</span>
+        <div style="margin-top:5px"><button class="rin-az" onclick="event.stopPropagation();pdocApriPratica('${esc(p.id)}','${esc([p.cliente, p.descrizione].filter(Boolean).join(' · '))}')"><i class="ti ti-folder"></i> Apri il fascicolo</button></div></div>
+    </div>`;
+  }).join('');
+
   if (!pol.length) {
-    el.innerHTML = '<div class="cl-empty">Nessuna polizza registrata per questo cliente: il fascicolo si apre da una polizza.</div>';
+    el.innerHTML = nuova + righePratiche +
+      (righePratiche ? '' : '<div class="cl-empty">Nessuna polizza registrata per questo cliente. Il fascicolo si apre da una polizza — oppure qui sopra, se la polizza non è ancora caricata.</div>');
     return;
   }
   /* LA DATA DI POLIZZA IN EVIDENZA, poi il numero: chi cerca il fascicolo di
      una pratica passata la ricorda per quando, non per il numero. */
-  el.innerHTML = pol.map(p => {
+  el.innerHTML = nuova + righePratiche + pol.map(p => {
     const eff = p.data_effetto ? new Date(p.data_effetto).toLocaleDateString('it-IT') : '—';
     const scad = p.data_scadenza ? new Date(p.data_scadenza).toLocaleDateString('it-IT') : 'scadenza da confermare';
     const stato = p.perfezionata
@@ -15735,6 +15944,63 @@ async function fdocRenderPolizze() {
 /* Il fascicolo è lo stesso del Portafoglio: una schermata sola, aperta da due
    strade. Duplicarla vorrebbe dire due posti dove correggere la stessa cosa. */
 function fdocApriFascicolo(polizzaId) { pdocApri(polizzaId); }
+
+/* ── Il fascicolo che nasce prima della polizza (18/09/2026) ──────────────
+   Qui si chiede il MINIMO che serve a sapere che pratica è: il ramo (da cui
+   dipendono le operazioni possibili) e a che cosa si riferisce, per
+   distinguere due pratiche aperte dello stesso cliente. Operazione e
+   compagnia NON si chiedono qui: si scelgono nel fascicolo, dov'è scritto
+   che congelano i requisiti. Chiederle due volte vorrebbe dire due posti
+   dove sbagliarle. */
+function fdocNuovaPratica() {
+  const box = document.getElementById('fdoc-nuova-form');
+  if (!box || !FDOC_CLIENTE) return;
+  if (box.innerHTML.trim()) { box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="cl-docs-up" style="margin-top:8px;flex-wrap:wrap">
+      <select id="fprat-ramo">
+        <option value="rca">RC Auto (fascicolo guidato)</option>
+        <option value="">Altro ramo (solo documenti di base)</option>
+      </select>
+      <input id="fprat-descr" placeholder="Targa, veicolo o riferimento" style="min-width:190px">
+      <input id="fprat-data" type="date" title="Decorrenza prevista (si può lasciare vuota)">
+      <button class="btn-emetti" onclick="fdocCreaPratica()"><i class="ti ti-check"></i> Apri la pratica</button>
+    </div>
+    <div class="cl-sub">La decorrenza si può lasciare vuota: finché non è certa resta «da confermare», non si mette una data a caso.</div>`;
+}
+
+async function fdocCreaPratica() {
+  if (!FDOC_CLIENTE) return;
+  const id = FDOC_CLIENTE.id;
+  const anag = (ANAG_CACHE || []).find(x => x.id === id) || {};
+  const modulo = document.getElementById('fprat-ramo')?.value || '';
+  const descr = (document.getElementById('fprat-descr')?.value || '').trim();
+  const data = (document.getElementById('fprat-data')?.value || '').trim();
+  const rec = {
+    cliente_id: id,
+    cliente: anag.nominativo || null,
+    modulo: modulo || null,
+    /* `prodotto` resta vuoto fuori dall'RC Auto: non si scrive un nome di
+       prodotto che nessuno ha scelto (regola di casa §8.1). */
+    prodotto: modulo === 'rca' ? 'RC Auto' : null,
+    descrizione: descr || null,
+    data_prevista: data || null,
+    creato_nome: (typeof currentUser !== 'undefined' && currentUser && currentUser.name) || null
+  };
+  let creata = null;
+  try {
+    const { data: out, error } = await db.from('quote_pratiche').insert(rec).select('id').single();
+    if (error) throw error;
+    creata = out;
+    try { logMovimento('Pratica aperta senza polizza' + (descr ? ' · ' + descr : ''), 'documento', anag.nominativo || ''); } catch (e) {}
+  } catch (e) {
+    alert('Non riesco ad aprire la pratica: ' + (e.message || e)
+      + '\n\n(Serve la migrazione supabase/migrations/20260918_pratiche_senza_polizza.sql.)');
+    return;
+  }
+  await fdocRenderPolizze();
+  await pdocApriPratica(creata.id, [anag.nominativo, descr].filter(Boolean).join(' · '));
+}
 
 /* Prima di creare il fascicolo si vede che cosa si sta per congelare: una
    scelta che decide i requisiti per sempre non si fa alla cieca. */
@@ -15816,18 +16082,44 @@ async function cdocCarica(forza) {
     polizze = data || [];
   } catch (e) { errori.push('polizze: ' + (e.message || e)); }
 
+  /* LE PRATICHE APERTE contano quanto le polizze: un fascicolo che nessuno
+     va a completare è il motivo per cui questo contatore esiste, e una
+     pratica senza polizza è esattamente il caso in cui è più facile
+     dimenticarsene. Stesso cancello delle polizze: `visibleUserIds`.
+     Se la tabella non c'è ancora, il contatore delle polizze resta buono —
+     per questo non finisce negli `errori`. */
+  let pratiche = [];
+  try {
+    let q = db.from('quote_pratiche')
+      .select('id,cliente,cliente_id,modulo,prodotto,compagnia,descrizione,data_prevista,creato_nome,creato_da,dati')
+      .eq('stato', 'aperta').order('creato_il', { ascending: false });
+    const idsP = await visibleUserIds();
+    if (idsP) q = q.in('creato_da', idsP);
+    const { data, error } = await q;
+    if (error) throw error;
+    pratiche = (data || []).map(p => Object.assign({ entita: 'pratica' }, p));
+  } catch (e) { console.warn('pratiche non disponibili:', e.message || e); }
+
   const perCliente = {};
   anagrafiche.forEach(a => { perCliente[a.id] = a; });
   const perPolizza = {};
+  const raccogli = (righe) => { (righe || []).forEach(d => { (perPolizza[d.entita_id] = perPolizza[d.entita_id] || []).push(d); }); };
   const ids = polizze.map(p => p.id);
   if (ids.length) {
     try {
       const { data } = await db.from('quote_pratica_documenti')
         .select('entita_id,categoria,url,firmato').eq('entita', 'polizza').in('entita_id', ids);
-      (data || []).forEach(d => { (perPolizza[d.entita_id] = perPolizza[d.entita_id] || []).push(d); });
+      raccogli(data);
     } catch (e) { errori.push('documenti di pratica: ' + (e.message || e)); }
   }
-  CDOC.fascicoli = M.fascicoliIncompleti(polizze, perPolizza, perCliente);
+  if (pratiche.length) {
+    try {
+      const { data } = await db.from('quote_pratica_documenti')
+        .select('entita_id,categoria,url,firmato').eq('entita', 'pratica').in('entita_id', pratiche.map(p => p.id));
+      raccogli(data);
+    } catch (e) { errori.push('documenti delle pratiche: ' + (e.message || e)); }
+  }
+  CDOC.fascicoli = M.fascicoliIncompleti(polizze.concat(pratiche), perPolizza, perCliente);
 
   /* Se una delle letture non è riuscita, i due numeri sarebbero falsi: uno
      zero rassicurante su un archivio che non è stato letto. Meglio dirlo e
@@ -15850,6 +16142,10 @@ async function cdocCarica(forza) {
     + ' · ' + CDOC.scadenze.inScadenza + ' in scadenza entro ' + M.PREAVVISO_GIORNI + ' giorni';
   const nF = document.getElementById('cdoc-n-fasc');
   if (nF) nF.textContent = CDOC.fascicoli.pratiche;
+  const dF = document.getElementById('cdoc-d-fasc');
+  if (dF) dF.textContent = CDOC.fascicoli.senzaPolizza
+    ? CDOC.fascicoli.polizze + ' su polizza · ' + CDOC.fascicoli.senzaPolizza + ' in lavorazione, senza polizza'
+    : 'pratiche a cui manca un documento obbligatorio';
   const badge = document.getElementById('cdoc-badge');
   if (badge) {
     const tot = CDOC.scadenze.righe.length + CDOC.fascicoli.pratiche;
@@ -15913,10 +16209,14 @@ function cdocRenderFascicoli() {
       : 'Nessun fascicolo incompleto.'}</div></td></tr>`;
     return;
   }
-  body.innerHTML = righe.map(r => `<tr style="cursor:pointer" onclick="pdocApri('${esc(r.polizza_id)}')">
-      <td style="font-size:12px">${r.data_effetto ? new Date(r.data_effetto).toLocaleDateString('it-IT') : '—'}</td>
+  body.innerHTML = righe.map(r => `<tr style="cursor:pointer" onclick="${r.entita === 'pratica'
+      ? `pdocApriPratica('${esc(r.id)}','${esc([r.cliente, r.descrizione].filter(Boolean).join(' · '))}')`
+      : `pdocApri('${esc(r.id)}')`}">
+      <td style="font-size:12px">${r.data_effetto ? new Date(r.data_effetto).toLocaleDateString('it-IT') : '—'}${
+        r.prevista ? '<div class="cl-sub">prevista</div>' : ''}</td>
       <td><strong>${esc(r.cliente || '—')}</strong></td>
-      <td>${esc(r.prodotto || '—')}</td>
+      <td>${esc(r.prodotto || r.descrizione || '—')}${r.entita === 'pratica'
+        ? '<div class="cl-sub">pratica · polizza non caricata</div>' : ''}</td>
       <td>${esc(r.compagnia || '—')}</td>
       <td style="font-size:12px">${esc(r.operatore || '—')}</td>
       <td><span class="tk-badge st-scad">${r.mancanti}</span>

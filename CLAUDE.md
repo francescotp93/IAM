@@ -599,11 +599,15 @@ veri.**
 
 ## 12. L'archivio dei documenti (18/09/2026)
 
-> **STATO: APERTO, in attesa che le cache dei browser si svuotino.**
-> L'archivio è stato chiuso e poi **riaperto una seconda volta**, e la ragione
-> è la cosa più utile di tutto questo capitolo: vedi *«La lezione del
-> 18/09/2026»* qui sotto. Si richiude quando chi lavora ha ricaricato la
-> pagina almeno una volta dopo il rilascio degli header di cache.
+> **STATO: CHIUSO** (18/09/2026, a fine giornata). Per leggere un documento
+> serve un indirizzo firmato, e per farselo firmare serve un account.
+> Verificato dall'esterno senza credenziali: un vecchio indirizzo pubblico
+> risponde `400`, «Bucket not found».
+>
+> Ci sono voluti tre tentativi, e la storia sta qui sotto perché è più utile
+> del risultato: la prima volta la chiusura è arrivata prima del codice, la
+> seconda prima che le cache dei browser si svuotassero. Ha funzionato quando
+> il codice era pubblicato **e** chi lavora aveva ricaricato almeno una volta.
 >
 > La riga è sempre la stessa, nei due versi:
 > `update storage.buckets set public = false where id = 'documenti';`
@@ -667,9 +671,11 @@ Perché non un numero annotato come per `withus-one.js`: quel file cambia di
 rado, `index.html` di QUOTO cambia quasi a ogni lavoro, e una prova che
 diventa rossa tutte le volte si impara ad aggirarla.
 
-Finché la correzione non è pubblicata e le pagine vecchie non sono state
-ricaricate, l'archivio resta aperto: chiuderlo adesso vorrebbe dire rompere i
-documenti a chi ha ancora la pagina di prima.
+**Come è finita.** Pubblicati gli header e il contrassegno del riquadro,
+Francesco ha ricaricato una volta e ha visto le due sotto-linguette: la prova
+che la pagina in uso era quella nuova. Solo allora l'archivio è stato chiuso,
+ed è rimasto chiuso. L'ordine giusto, per la prossima volta: **codice
+pubblicato → qualcuno ricarica e conferma di vedere il nuovo → si chiude**.
 
 Fino al 18/09/2026 il contenitore `documenti` di Supabase Storage era
 **pubblico in lettura**: chi aveva l'indirizzo di un file lo apriva senza avere
@@ -794,15 +800,15 @@ niente è il guasto numero uno (§1), e vale anche per il codice appena scritto.
 
 ### Cosa resta aperto
 
-- **I tre controlli sul campo**, che si fanno solo usando l'applicazione e che
-  al 18/09/2026 non sono ancora stati fatti: caricare un allegato su una
+- **I due controlli sul campo che restano**: caricare un allegato su una
   fattura da IAM e riaprirlo; caricare un documento d'identità dalla scheda
-  cliente su QUOTO e riaprirlo; aprire un documento caricato PRIMA della
-  chiusura (l'indirizzo pubblico è ancora scritto nel database, e il codice ne
-  deve ricavare il percorso e firmarlo). Sono i controlli 1, 2 e 3 elencati in
-  `supabase/migrations/20260918_archivio_documenti_chiuso.sql`; il quarto —
-  che un vecchio indirizzo pubblico non risponda più — è fatto e misurato qui
-  sopra.
+  cliente su QUOTO e riaprirlo. Sono i controlli 1 e 2 di
+  `supabase/migrations/20260918_archivio_documenti_chiuso.sql`. Il terzo —
+  aprire un documento caricato PRIMA della chiusura, il cui indirizzo pubblico
+  è ancora scritto nel database — è stato fatto ad archivio aperto e ha
+  funzionato; va rifatto ora che è chiuso, perché è lì che si vede se la firma
+  ricava bene il percorso dagli indirizzi vecchi. Il quarto è fatto e misurato
+  qui sopra.
 - **La cache della rete di distribuzione.** Un file già richiesto resta servito
   dalla cache fino a un'ora (`cache-control: max-age=3600`): nell'ora dopo la
   chiusura un documento può ancora aprirsi da un indirizzo pubblico. Non è la
@@ -815,3 +821,75 @@ niente è il guasto numero uno (§1), e vale anche per il codice appena scritto.
   documenti precontrattuali che devono leggere tutti, i secondi immagini di
   marketing. Nessuno dei due contiene dati di clienti.
 
+
+---
+
+## 13. Il fascicolo prima della polizza (18/09/2026)
+
+Il fascicolo si apriva **solo** da una polizza in portafoglio. Ma i documenti
+si raccolgono prima: il cliente porta libretto e stato di famiglia mentre la
+polizza non esiste ancora — non è emessa, spesso non è nemmeno decisa la
+compagnia. Chi li riceveva se li teneva sul proprio computer finché la polizza
+non entrava in portafoglio: **l'archivio sparso da cui si viene.**
+
+| pezzo | dove |
+|---|---|
+| la tabella delle pratiche | `supabase/migrations/20260918_pratiche_senza_polizza.sql` (applicata) |
+| le regole del collegamento | `Fascicolo.collegabile` in `tariffe/motore/fascicolo.js` |
+| il contatore che conta anche le pratiche | `Fascicolo.fascicoliIncompleti`, che ora prende righe marcate `entita` |
+| apri la pratica, carica, collega | `pdocApriPratica`, `pdocCollega`, `pdocCollegaA`, `pdocTestaPratica` in `index.html` |
+| «Nuovo fascicolo senza polizza» | `fdocNuovaPratica` / `fdocCreaPratica`, linguetta «Documenti polizza» della scheda cliente |
+| prove | `server/verifica/fascicolo.test.mjs` (23) e il blocco «pratica» in `ui-test.mjs` (4) |
+
+**La strada che non si è presa, e perché.** Si poteva scrivere una riga finta
+in `quote_polizze` e nasconderla. No: da `quote_polizze` leggono scadenzario,
+titoli, produzione, estratto conto e il conteggio delle emesse. Una polizza che
+non esiste, scritta lì dentro, diventa un numero falso in un cruscotto — e
+prima o poi quel numero lo legge qualcuno. **Una pratica in lavorazione non è
+una polizza**, e ha la sua tabella.
+
+**Le colonne di `quote_pratiche` si chiamano come quelle di `quote_polizze`**
+dove il motore le legge (`modulo`, `prodotto`, `compagnia`, `cliente`,
+`cliente_id`, `dati`): così il motore lavora su una pratica senza sapere che
+non è una polizza, e non esistono due versioni della stessa regola. Le due
+eccezioni sono dichiarate: `data_prevista` non si chiama `data_effetto` perché
+una pratica non ha effetto, e `descrizione` (targa, veicolo) serve a
+distinguere due pratiche aperte dello stesso cliente.
+
+**Il collegamento è il punto delicato.** Quando la polizza arriva, i requisiti
+congelati passano su di lei **com'erano**, `congelato_il` compreso: rimetterci
+la data di oggi vorrebbe dire dire che sono stati riletti, e non è vero (§11,
+regola 4). I documenti la seguono con un aggiornamento di `entita`/`entita_id`:
+non si ricarica niente. Quattro casi in cui non si collega, ognuno col suo
+motivo detto in faccia: pratica senza fascicolo, cliente diverso, ramo diverso,
+polizza che ha già il suo fascicolo.
+
+**I tre passi non sono una transazione** (sono tre chiamate PostgREST), e
+l'ordine regge un'interruzione: prima i requisiti sulla polizza, poi i
+documenti, per ultimo la pratica segnata `collegata`. Se cade in mezzo, si
+rifà: `collegabile` riconosce **il proprio** fascicolo già copiato (stessa
+`congelato_il`, stessa operazione) e riprende, mentre quello di un'altra
+pratica resta una cosa da non sovrascrivere. Senza quella riga il secondo
+tentativo direbbe «questa polizza ha già un fascicolo» e i documenti
+resterebbero sulla pratica per sempre.
+
+**Il contatore di agenzia conta anche le pratiche**, ed è il motivo per cui
+esiste: un fascicolo senza una riga in portafoglio che lo ricordi è quello che
+si dimentica più facilmente. Il sottotitolo dice quante sono «in lavorazione,
+senza polizza», e la riga porta `entita` e `id` — niente `polizza_id` finto su
+una pratica, che farebbe aprire un fascicolo di polizza inesistente.
+
+**Cartella nuova nell'archivio: `pratiche/`.** È in `ARCH_CARTELLE` (tutte e
+due le copie, radice e `iam/`): senza, la rete di sicurezza non riconoscerebbe
+il percorso e quei documenti non si riaprirebbero più (§12, difetto 2). La
+prova `archivio.test.mjs` lo sorveglia da sé.
+
+**Una trappola trovata scrivendo la prova.** Il finto database di `ui-test.mjs`
+annotava i filtri quando parte `update`, cioè **prima** che `.eq(...)` li
+aggiungesse: una prova che guardava «quali righe stai spostando» leggeva sempre
+`{}` e restava verde comunque. Adesso i filtri si ricopiano quando la richiesta
+parte davvero.
+
+**Fuori dall'RC Auto** vale quello che vale per le polizze: documenti di base e
+un avviso che lo dice. Una pratica non inventa operazioni che il motore non
+conosce.

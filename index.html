@@ -66,6 +66,7 @@
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
 <script src="tariffe/motore/flusso-ssf.js?v=20260918"></script>
+<script src="tariffe/motore/estratto-conto.js?v=20260918"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -2741,6 +2742,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         </select>
         <input id="tit-pagatore" type="text" placeholder="pagatore (facoltativo)">
         <button class="pf-exp" onclick="titIncassaSelezionati()"><i class="ti ti-cash"></i> Segna incassati</button>
+        <!-- Assegnare il collaboratore una rata alla volta su un portafoglio
+             importato non lo fa nessuno: la selezione multipla c'era gia' per
+             l'incasso, e serve identica qui. -->
+        <select id="tit-collab"><option value="">— collaboratore —</option></select>
+        <button class="pf-exp" onclick="titAssegnaSelezionati()"><i class="ti ti-user-check"></i> Assegna</button>
         <button class="pf-reset" onclick="titDeseleziona()">Annulla</button>
       </div>
 
@@ -2749,9 +2755,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <thead><tr>
             <th style="width:34px"><input type="checkbox" id="tit-tutti" onchange="titSelTutti(this.checked)" title="Seleziona tutto"></th>
             <th>Scadenza</th><th>Cliente</th><th>Polizza</th><th>Tipo</th>
-            <th>Importo</th><th>Stato</th><th>Incasso</th>
+            <th>Importo</th><th>Stato</th><th>Collaboratore</th><th>Incasso</th>
           </tr></thead>
-          <tbody id="tit-body"><tr><td colspan="8"><div class="empty-state">Carico i titoli…</div></td></tr></tbody>
+          <tbody id="tit-body"><tr><td colspan="9"><div class="empty-state">Carico i titoli…</div></td></tr></tbody>
         </table>
       </div>
       <div class="pf-totali" id="tit-totali"></div>
@@ -2878,12 +2884,50 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── ESTRATTO CONTO ── -->
+    <!-- ── ESTRATTO CONTO DEL COLLABORATORE (18/09/2026) ───────────────────
+         Tre viste sullo stesso collaboratore, e sono tre cose diverse:
+           · DA VERSARE   le sue rate non incassate — serve a telefonargli
+           · PROVVIGIONI  le rate incassate nel periodo — serve a pagarlo
+           · RIMESSE      la lettura vecchia, che parte dai preventivi
+         Una rata sta nella prima o nella seconda, mai in tutte e due: o è
+         incassata o non lo è. La terza resta finché i numeri delle prime due
+         non sono stati confrontati con quelli di prima: una schermata in uso
+         non si spegne perché ne è nata una migliore. ─────────────────────── -->
     <div class="page" id="page-estratto">
       <div class="page-title">Estratto conto</div>
-      <div class="page-sub">Polizze emesse · le rimesse sono da versare, gli incassi online/bonifico sono già pagati</div>
-      <div id="ecq-filters" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:10px 0 4px"></div>
-      <div id="ecq-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
-      <div id="ecq-body"></div>
+      <div class="page-sub">Quello che un collaboratore deve versare, e quello che l'agenzia deve a lui</div>
+
+      <div class="tk-filters" id="ecp-tabs">
+        <button class="tk-f ecp-t active" data-t="versare" onclick="ecpTab('versare')">Da versare</button>
+        <button class="tk-f ecp-t" data-t="provvigioni" onclick="ecpTab('provvigioni')">Provvigioni</button>
+        <button class="tk-f ecp-t" data-t="rimesse" onclick="ecpTab('rimesse')">Rimesse da preventivo</button>
+      </div>
+
+      <div id="ecp-vista">
+        <div class="pf-top">
+          <div class="pf-filters">
+            <div class="pf-f"><label>Collaboratore</label>
+              <select id="ecp-collab" onchange="ecpRender()"></select></div>
+            <div class="pf-f"><label>Dal</label><input id="ecp-dal" type="date" onchange="ecpRender()"></div>
+            <div class="pf-f"><label>al</label><input id="ecp-al" type="date" onchange="ecpRender()"></div>
+            <div class="pf-f pf-f-az"><button class="pf-reset" onclick="ecpAzzera()">Questo mese</button></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="pf-exp" onclick="ecpExportExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+            <button class="pf-exp" onclick="ecpInvia()"><i class="ti ti-mail"></i> Manda per email</button>
+          </div>
+        </div>
+        <div id="ecp-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
+        <div id="ecp-body"></div>
+      </div>
+
+      <div id="ecq-vista" style="display:none">
+        <div class="page-sub" style="margin:8px 0">La lettura di prima: parte dai <b>preventivi</b> emessi, non dalle rate.
+          Resta qui per confrontare i numeri; quando le due colonne tornano, si toglie.</div>
+        <div id="ecq-filters" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:10px 0 4px"></div>
+        <div id="ecq-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
+        <div id="ecq-body"></div>
+      </div>
     </div>
 
     <!-- ── SINISTRI ── -->
@@ -10201,7 +10245,7 @@ function showPage(name) {
   if (name === 'emissioni') loadStorico();
   if (name === 'richieste') loadRichieste();   // coda unica: preventivi + ticket
   if (name === 'parametri') loadParametri();
-  if (name === 'estratto') loadEstrattoConto();
+  if (name === 'estratto') { loadEstrattoConto(); loadEstrattoCollab(); }
   if (name === 'sinistri') loadSinistri();
   if (name === 'tutela') renderTutela();
   if (name === 'persona') renderPersona();
@@ -12469,6 +12513,311 @@ function ecqPeriodoLabel(){
 }
 function ecqDataFmt(dt){ try{ return new Date(dt).toLocaleDateString('it-IT') }catch(e){ return '' } }
 function ecqEuro(n){ return '€ ' + (Number(n)||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+/* ══ L'ESTRATTO CONTO DEL COLLABORATORE (18/09/2026) ═══════════════════════
+   Le formule NON stanno qui: stanno in `tariffe/motore/estratto-conto.js`, che
+   si prova in Node senza aprire un browser (CLAUDE.md §5). Qui si raccolgono
+   le righe, si chiama il motore e si mostra la risposta.
+
+   Le quattro decisioni che il motore applica, prese da Francesco il
+   18/09/2026: la provvigione matura sull'INCASSATO; la percentuale si applica
+   alla PROVVIGIONE DI COMPAGNIA e non al premio; il «guadagno indiretto» è il
+   MARGINE DELL'AGENZIA (una sottrazione, non una gerarchia); le percentuali
+   stanno dove stavano già, in `iam_team.provv`. */
+/* `var` e non `let`: queste quattro stanno su `window`, e ci stanno apposta.
+   Il banco di prova deve poterci mettere dentro un portafoglio finto per
+   controllare i conti senza un database, e con `let` la variabile del modulo
+   e `window.X` sono due cose diverse — la prova scriverebbe in una e il codice
+   leggerebbe l'altra, restando verde senza aver misurato niente. */
+var ECP_TAB = 'versare';
+var ECP_TITOLI = [];          // le rate visibili, con la polizza attaccata
+var ECP_POLIZZE = {};         // id → polizza
+var ECP_SCHEMI = {};          // collaboratore_id → iam_team.provv
+var ECP_VISTA = null;         // l'ultimo risultato del motore, per Excel ed email
+
+function ecpTab(t) {
+  ECP_TAB = t;
+  document.querySelectorAll('.ecp-t').forEach(b => b.classList.toggle('active', b.dataset.t === t));
+  const mio = document.getElementById('ecp-vista'), vecchio = document.getElementById('ecq-vista');
+  if (mio) mio.style.display = t === 'rimesse' ? 'none' : '';
+  if (vecchio) vecchio.style.display = t === 'rimesse' ? '' : 'none';
+  if (t !== 'rimesse') ecpRender();
+}
+
+function ecpMese() {
+  const o = new Date();
+  return { dal: new Date(o.getFullYear(), o.getMonth(), 1).toISOString().slice(0, 10),
+           al: new Date(o.getFullYear(), o.getMonth() + 1, 0).toISOString().slice(0, 10) };
+}
+function ecpAzzera() {
+  const m = ecpMese();
+  const d = document.getElementById('ecp-dal'), a = document.getElementById('ecp-al');
+  if (d) d.value = m.dal;
+  if (a) a.value = m.al;
+  ecpRender();
+}
+
+/* Le percentuali stanno su `iam_team`, agganciato alla persona da `collab_id`.
+   Una persona senza scheda economica NON prende una percentuale di comodo:
+   resta senza, e il motore lo dichiara riga per riga. */
+async function ecpCaricaSchemi() {
+  ECP_SCHEMI = {};
+  const { data, error } = await db.from('iam_team').select('collab_id,provv');
+  if (error) return;
+  (data || []).forEach(r => { if (r.collab_id) ECP_SCHEMI[r.collab_id] = r.provv || []; });
+}
+
+async function loadEstrattoCollab() {
+  const body = document.getElementById('ecp-body');
+  if (!db || !body) return;
+  body.innerHTML = '<div class="empty-state">Carico…</div>';
+  try {
+    /* Il perimetro è quello delle polizze visibili, come per i titoli: la
+       riservatezza di una rata eredita da quella della sua polizza. Senza
+       questo un collaboratore vedrebbe i compensi di tutta l'agenzia. */
+    let qp = db.from('quote_polizze').select('id,numero,numero_polizza,cliente,compagnia,prodotto,modulo').limit(2000);
+    const ids = await visibleUserIds();
+    if (ids) qp = qp.in('creato_da', ids);
+    const { data: pol, error: errP } = await qp;
+    if (errP) throw errP;
+    ECP_POLIZZE = {};
+    (pol || []).forEach(p => { ECP_POLIZZE[p.id] = p; });
+
+    const { data: tit, error } = await db.from('quote_titoli').select('*').limit(5000);
+    if (error) throw error;
+    ECP_TITOLI = (tit || []).filter(t => ECP_POLIZZE[t.polizza_id]);
+
+    await caricaCollaboratori();
+    await ecpCaricaSchemi();
+    /* CHI VEDE CHI. Le politiche del database già impediscono di leggere le
+       rate degli altri, ma la tendina dei nomi no: lasciarla intera
+       mostrerebbe a un collaboratore l'elenco di tutta la rete, e il
+       riepilogo d'agenzia gli direbbe quanto prendono gli altri — anche a
+       tutti zero, sarebbe un elenco di persone che non deve avere.
+       Chi non è staff vede solo se stesso, ed è già scelto. */
+    const sel = document.getElementById('ecp-collab');
+    if (sel) {
+      if (isStaff()) sel.innerHTML = collabOpzioni(sel.value, 'Tutta l\'agenzia');
+      else {
+        const io = TIT_COLLAB.find(c => c.iam_id && currentUser && c.iam_id === currentUser.id);
+        sel.innerHTML = io
+          ? `<option value="${esc(io.id)}" selected>${esc(collabNome(io))}</option>`
+          : '<option value="">La tua scheda collaboratore non è collegata a questo accesso</option>';
+        sel.disabled = true;
+      }
+    }
+    const d = document.getElementById('ecp-dal');
+    if (d && !d.value) ecpAzzera(); else ecpRender();
+  } catch (e) {
+    body.innerHTML = `<div class="empty-state">Estratto conto non disponibile.<br><small>${esc(e.message || e)}</small></div>`;
+  }
+}
+
+const ecpEuro = (n) => n == null ? '—' : pfEuro(n);
+
+function ecpRender() {
+  const body = document.getElementById('ecp-body'), sum = document.getElementById('ecp-summary');
+  if (!body || !window.EstrattoConto) return;
+  const chi = document.getElementById('ecp-collab')?.value || null;
+  const dal = document.getElementById('ecp-dal')?.value || null;
+  const al = document.getElementById('ecp-al')?.value || null;
+  const nome = chi ? TIT_COLLAB_NOMI[chi] : null;
+
+  /* Senza un collaboratore scelto si mostra il riepilogo dell'agenzia: chi ha
+     quanto da versare e quanto gli spetta, con le rate non assegnate in una
+     riga loro — che è il lavoro da fare, non una persona. */
+  if (!chi) { ecpRiepilogo(body, sum, dal, al); return; }
+
+  if (ECP_TAB === 'provvigioni') {
+    const r = EstrattoConto.provvigionale({
+      titoli: ECP_TITOLI, polizze: ECP_POLIZZE, schema: ECP_SCHEMI[chi],
+      dal, al, collaboratore_id: chi });
+    ECP_VISTA = { tipo: 'provvigioni', nome, dal, al, ...r };
+    sum.innerHTML = ecpCard(r.totali.righe, 'Rate incassate', 'nel periodo scelto')
+      + ecpCard(pfEuro(r.totali.provvigione_compagnia), 'Provvigioni di compagnia', 'quello che entra in agenzia')
+      + ecpCard(pfEuro(r.totali.quota_collaboratore), 'Spetta al collaboratore', 'sulla percentuale concordata')
+      + ecpCard(pfEuro(r.totali.margine_agenzia), 'Resta all\'agenzia', 'provvigione meno la sua quota');
+    body.innerHTML = ecpTabellaProvv(r) + ecpNoteDaConfermare(r.daConfermare);
+    return;
+  }
+
+  const r = EstrattoConto.daVersare({
+    titoli: ECP_TITOLI, polizze: ECP_POLIZZE, dal, al, collaboratore_id: chi });
+  ECP_VISTA = { tipo: 'versare', nome, dal, al, ...r };
+  sum.innerHTML = ecpCard(r.totali.righe, 'Rate non incassate', 'a suo carico nel periodo')
+    + ecpCard(pfEuro(r.totali.importo), 'Totale', 'da incassare o da versare')
+    + ecpCard(r.totali.scadute, 'Già scadute', 'la data è passata')
+    + ecpCard(pfEuro(r.totali.importo_scaduto), 'Di cui scaduto', 'sono i soldi fuori');
+  body.innerHTML = ecpTabellaVersare(r);
+}
+
+function ecpCard(n, l, d) {
+  return `<div class="cdoc-card" style="cursor:default"><div class="cdoc-n">${n}</div>
+    <div class="cdoc-l">${l}</div><div class="cdoc-d">${d}</div></div>`;
+}
+
+function ecpRiepilogo(body, sum, dal, al) {
+  const g = EstrattoConto.perCollaboratore(ECP_TITOLI, ECP_POLIZZE, TIT_COLLAB_NOMI,
+    { schemi: ECP_SCHEMI, dal, al, dalSospesi: null, alSospesi: al });
+  ECP_VISTA = null;
+  const nonAss = g.find(x => !x.assegnato);
+  sum.innerHTML = ecpCard(g.filter(x => x.assegnato).length, 'Collaboratori', 'con almeno una rata')
+    + ecpCard(pfEuro(g.reduce((s, x) => s + (x.provvigioni.quota_collaboratore || 0), 0)), 'Da pagare in tutto', 'nel periodo scelto')
+    + ecpCard(pfEuro(g.reduce((s, x) => s + (x.daVersare.importo || 0), 0)), 'Da versare in tutto', 'rate non incassate')
+    + (nonAss ? ecpCard(nonAss.provvigioni.righe + nonAss.daVersare.righe, 'Rate senza collaboratore', 'da assegnare nella pagina Titoli') : '');
+  body.innerHTML = `<div class="cl-sub" style="margin-bottom:8px">Scegli un collaboratore per vedere il suo estratto conto e mandarglielo.</div>
+    <div class="table-wrap"><table class="storico-table">
+    <thead><tr><th>Collaboratore</th><th class="soldi">Da versare</th><th class="soldi">Provvigioni di compagnia</th>
+      <th class="soldi">Spetta a lui</th><th class="soldi">Resta all'agenzia</th><th>Da confermare</th></tr></thead>
+    <tbody>${g.map(x => `<tr${x.assegnato ? ` style="cursor:pointer" onclick="ecpScegli('${esc(x.collaboratore_id)}')"` : ''}>
+      <td>${x.assegnato ? `<strong>${esc(x.nome || 'collaboratore rimosso')}</strong>`
+          : '<span class="cl-sub">Rate non assegnate a nessuno</span>'}</td>
+      <td class="soldi">${ecpEuro(x.daVersare.importo)}</td>
+      <td class="soldi">${ecpEuro(x.provvigioni.provvigione_compagnia)}</td>
+      <td class="soldi"><b>${ecpEuro(x.provvigioni.quota_collaboratore)}</b></td>
+      <td class="soldi">${ecpEuro(x.provvigioni.margine_agenzia)}</td>
+      <td>${x.daConfermare ? `<span class="tk-badge st-aperto">${x.daConfermare}</span>` : '—'}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+function ecpScegli(id) {
+  const sel = document.getElementById('ecp-collab');
+  if (sel) { sel.value = id; ecpRender(); }
+}
+
+function ecpTabellaVersare(r) {
+  if (!r.righe.length) return '<div class="empty-state">Nessuna rata da versare in questo periodo.</div>';
+  return `<div class="table-wrap"><table class="storico-table">
+    <thead><tr><th>Scadenza</th><th>Cliente</th><th>Polizza</th><th>Prodotto</th>
+      <th class="soldi">Importo</th><th>Stato</th></tr></thead>
+    <tbody>${r.righe.map(x => `<tr>
+      <td style="font-size:12px">${polData(x.data)}${x.scaduta ? `<div class="rin-gg">scaduta da ${x.giorni} gg</div>` : ''}</td>
+      <td><strong>${esc(x.cliente || '—')}</strong></td>
+      <td style="font-size:12px">${esc(x.numero_polizza || '—')}${x.compagnia ? `<div class="cl-sub">${esc(x.compagnia)}</div>` : ''}</td>
+      <td style="font-size:12px">${esc(x.prodotto || '—')}</td>
+      <td class="soldi"><b>${ecpEuro(x.importo)}</b></td>
+      <td>${x.scaduta ? '<span class="tk-badge st-scad">scaduta</span>' : `<span class="tk-badge st-aperto">${esc(x.stato || '—')}</span>`}</td>
+    </tr>`).join('')}
+    <tr><td colspan="4"><b>Totale</b></td><td class="soldi"><b>${ecpEuro(r.totali.importo)}</b></td><td></td></tr>
+    </tbody></table></div>`;
+}
+
+function ecpTabellaProvv(r) {
+  if (!r.righe.length) return '<div class="empty-state">Nessuna rata incassata in questo periodo.</div>';
+  return `<div class="table-wrap"><table class="storico-table">
+    <thead><tr><th>Incasso</th><th>Cliente</th><th>Polizza</th><th>Prodotto</th>
+      <th class="soldi">Premio</th><th class="soldi">Provv. compagnia</th><th>%</th>
+      <th class="soldi">Spetta a lui</th><th class="soldi">Resta all'agenzia</th></tr></thead>
+    <tbody>${r.righe.map(x => `<tr${x.daConfermare.length ? ' style="opacity:.75"' : ''}>
+      <td style="font-size:12px">${polData(x.data)}</td>
+      <td><strong>${esc(x.cliente || '—')}</strong></td>
+      <td style="font-size:12px">${esc(x.numero_polizza || '—')}${x.compagnia ? `<div class="cl-sub">${esc(x.compagnia)}</div>` : ''}</td>
+      <td style="font-size:12px">${esc(x.prodotto || '—')}</td>
+      <td class="soldi">${ecpEuro(x.premio)}</td>
+      <td class="soldi">${ecpEuro(x.provvigione_compagnia)}</td>
+      <td style="font-size:12px">${x.percentuale == null ? '<span class="cl-sub">—</span>'
+          : x.percentuale + '%' + (x.speciale ? ' <span class="tk-badge st-lav">speciale</span>' : '')}</td>
+      <td class="soldi"><b>${ecpEuro(x.quota_collaboratore)}</b></td>
+      <td class="soldi">${ecpEuro(x.margine_agenzia)}</td>
+    </tr>`).join('')}
+    <tr><td colspan="4"><b>Totale</b> <span class="cl-sub">(solo le righe complete)</span></td>
+      <td class="soldi"><b>${ecpEuro(r.totali.premi)}</b></td>
+      <td class="soldi"><b>${ecpEuro(r.totali.provvigione_compagnia)}</b></td><td></td>
+      <td class="soldi"><b>${ecpEuro(r.totali.quota_collaboratore)}</b></td>
+      <td class="soldi"><b>${ecpEuro(r.totali.margine_agenzia)}</b></td></tr>
+    </tbody></table></div>`;
+}
+
+/* Le righe che il motore non ha saputo contare non spariscono e non entrano
+   nel totale: si elencano col motivo. Un estratto conto è un documento su cui
+   si litiga, e una riga stimata dentro un totale è una lite che si perde. */
+function ecpNoteDaConfermare(righe) {
+  if (!righe.length) return '';
+  return `<div class="pdoc-esito" style="margin-top:12px"><i class="ti ti-alert-triangle"></i>
+    <b>${righe.length}</b> rat${righe.length === 1 ? 'a' : 'e'} non ${righe.length === 1 ? 'è' : 'sono'} nel totale, e qui c'è il perché.
+    Finché restano così, l'estratto conto è incompleto: non si stima una percentuale che non è stata concordata.</div>
+    ${righe.map(x => `<div class="pdoc-r"><div class="pdoc-r-l">
+      <b>${esc(x.cliente || '—')}</b><span class="pdoc-opt">${esc(x.numero_polizza || '')}</span>
+      <div class="cl-sub" style="flex-basis:100%">${esc(x.daConfermare.join(' · '))}</div></div>
+      <div class="pdoc-r-a"><b>${ecpEuro(x.premio)}</b></div></div>`).join('')}`;
+}
+
+/* ══ IL FOGLIO CHE ESCE DI CASA ════════════════════════════════════════════
+   Excel ed email condividono lo stesso documento: se fossero due costruzioni
+   diverse, prima o poi direbbero due cose diverse, e quella sbagliata sarebbe
+   quella che il collaboratore ha ricevuto. */
+function ecpDocHTML() {
+  const v = ECP_VISTA;
+  if (!v) return null;
+  const periodo = (v.dal || v.al) ? `dal ${polData(v.dal) || '…'} al ${polData(v.al) || '…'}` : 'tutto il periodo';
+  const titolo = v.tipo === 'provvigioni' ? 'Estratto conto provvigionale' : 'Rate da versare';
+  const tabella = v.tipo === 'provvigioni' ? ecpTabellaProvv(v) : ecpTabellaVersare(v);
+  return `<html><head><meta charset="utf-8"></head><body>
+    <h2 style="font-family:Arial,sans-serif;margin:0 0 4px">${titolo}</h2>
+    <div style="font-family:Arial,sans-serif;font-size:13px;color:#555;margin-bottom:12px">
+      ${esc(v.nome || '')} · ${periodo}</div>
+    ${tabella.replace(/class="[^"]*"/g, '').replace(/<div[^>]*>/g, '<div>')}
+    ${v.tipo === 'provvigioni' && v.daConfermare && v.daConfermare.length
+      ? `<p style="font-family:Arial,sans-serif;font-size:12px;color:#b45309">
+          ${v.daConfermare.length} rate non sono nel totale perché manca la provvigione della compagnia
+          o la percentuale concordata. Sono elencate nel gestionale.</p>` : ''}
+    </body></html>`;
+}
+
+function ecpNomeFile(est) {
+  const v = ECP_VISTA;
+  const chi = (v && v.nome ? v.nome : 'agenzia').replace(/[^\w]+/g, '-');
+  return `${v && v.tipo === 'provvigioni' ? 'provvigioni' : 'da-versare'}_${chi}_${(v && v.al) || new Date().toISOString().slice(0, 10)}.${est}`;
+}
+
+function ecpExportExcel() {
+  const html = ecpDocHTML();
+  if (!html) { alert('Scegli un collaboratore: il riepilogo dell\'agenzia non è un estratto conto da mandare.'); return; }
+  const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = ecpNomeFile('xls');
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+
+/* L'email parte dal server, con la casella dell'agenzia, e porta il foglio in
+   allegato: `/mail/send` sa allegare (`{name, content}` in base64). Il corpo
+   ripete i numeri che contano, perché un allegato che nessuno apre non ha
+   detto niente. */
+async function ecpInvia() {
+  const v = ECP_VISTA;
+  const html = ecpDocHTML();
+  if (!v || !html) { alert('Scegli un collaboratore prima di mandare l\'estratto conto.'); return; }
+  const c = TIT_COLLAB.find(x => TIT_COLLAB_NOMI[x.id] === v.nome);
+  const a = prompt('Email del collaboratore', (c && c.email) || '');
+  if (!a) return;
+  const periodo = (v.dal || v.al) ? `dal ${polData(v.dal) || '…'} al ${polData(v.al) || '…'}` : '';
+  const oggetto = (v.tipo === 'provvigioni' ? 'Estratto conto provvigionale' : 'Rate da versare') + (periodo ? ' — ' + periodo : '');
+  const corpo = v.tipo === 'provvigioni'
+    ? `<p>Ciao ${esc(v.nome || '')},</p><p>in allegato l'estratto conto provvigionale ${esc(periodo)}.</p>
+       <p><b>${v.totali.conteggiate}</b> rate incassate · provvigioni di compagnia <b>${pfEuro(v.totali.provvigione_compagnia)}</b> ·
+       <b>spetta a te ${pfEuro(v.totali.quota_collaboratore)}</b>.</p>
+       ${v.daConfermare.length ? `<p>${v.daConfermare.length} rate non sono nel totale: manca la provvigione della compagnia o la percentuale concordata. Le vediamo insieme.</p>` : ''}`
+    : `<p>Ciao ${esc(v.nome || '')},</p><p>in allegato le rate a tuo carico non ancora incassate ${esc(periodo)}.</p>
+       <p><b>${v.totali.righe}</b> rate per <b>${pfEuro(v.totali.importo)}</b>, di cui <b>${v.totali.scadute}</b> già scadute
+       per <b>${pfEuro(v.totali.importo_scaduto)}</b>.</p>`;
+  try {
+    const b64 = btoa(unescape(encodeURIComponent(html)));
+    const r = await payFetch('/mail/send', {
+      to: a, subject: oggetto, html: corpo,
+      attachments: [{ name: ecpNomeFile('xls'), content: b64 }]
+    });
+    if (r && r.error) throw new Error(r.error);
+    alert('Mandato a ' + a + '.');
+    logMovimento('Estratto conto ' + v.tipo + ' mandato a ' + (v.nome || a), 'collaboratore', v.nome || '');
+  } catch (e) {
+    alert(/casella/i.test(String(e.message || e))
+      ? 'Il tuo utente non ha una casella di posta dell\'agenzia assegnata: l\'estratto conto si può scaricare in Excel e mandare a mano.'
+      : 'Non riesco a mandarlo: ' + (e.message || e));
+  }
+}
+
 async function loadEstrattoConto(){
   const body=document.getElementById('ecq-body'); if(body) body.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">Carico…</div>';
   if(!db) return;
@@ -15268,8 +15617,13 @@ function titRenderFasce() {
   }).join('');
 }
 
+/* Prima si selezionavano solo le rate aperte, perche' l'unica azione in
+   blocco era l'incasso. Adesso c'e' anche l'assegnazione del collaboratore,
+   che vale su tutte — su una rata gia' incassata e' la sua provvigione.
+   `titIncassaSelezionati` continua a tenere solo le aperte: e' la' che sta il
+   filtro giusto, non nella selezione. */
 function titSelTutti(on) {
-  TIT_SEL = new Set(on ? TIT_VISTA.filter(t => t.stato === 'aperto').map(t => t.id) : []);
+  TIT_SEL = new Set(on ? TIT_VISTA.map(t => t.id) : []);
   titRender();
 }
 function titDeseleziona() { TIT_SEL = new Set(); const c = document.getElementById('tit-tutti'); if (c) c.checked = false; titRender(); }
@@ -15294,7 +15648,7 @@ function titRender() {
   const tot = document.getElementById('tit-totali');
 
   if (!TIT_VISTA.length) {
-    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">${TIT_ROWS.length ? 'Nessun titolo in questa fascia. ' : 'Nessun titolo. Le rate compaiono qui appena una polizza le genera.'}</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="9"><div class="empty-state">${TIT_ROWS.length ? 'Nessun titolo in questa fascia. ' : 'Nessun titolo. Le rate compaiono qui appena una polizza le genera.'}</div></td></tr>`;
     if (tot) tot.innerHTML = '';
     titBarra();
     return;
@@ -15306,8 +15660,7 @@ function titRender() {
     const quando = titInsoluto(t) ? `scaduto da ${Math.abs(g)} gg`
                  : (t.stato === 'aperto' && g != null && g <= 30 ? (g === 0 ? 'scade oggi' : `fra ${g} gg`) : '');
     return `<tr>
-      <td>${t.stato === 'aperto'
-        ? `<input type="checkbox" ${TIT_SEL.has(t.id) ? 'checked' : ''} onchange="titSel('${t.id}',this.checked)">` : ''}</td>
+      <td><input type="checkbox" ${TIT_SEL.has(t.id) ? 'checked' : ''} onchange="titSel('${t.id}',this.checked)"></td>
       <td><strong>${pfData(t.data_scadenza || t.data_decorrenza)}</strong>
         ${quando ? `<div class="rin-gg">${quando}</div>` : ''}</td>
       <td><strong>${esc(t.__cliente || '—')}</strong></td>
@@ -15315,6 +15668,9 @@ function titRender() {
         ${t.__compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(t.__compagnia)}</div>` : ''}</td>
       <td style="font-size:12.5px">${TIT_TIPI[t.tipo] || t.tipo}</td>
       <td><strong style="color:var(--blue)">${pfEuro(t.importo_lordo)}</strong></td>
+      <td style="font-size:12.5px">${t.collaboratore_id
+          ? `<strong>${esc(TIT_COLLAB_NOMI[t.collaboratore_id] || 'collaboratore rimosso')}</strong>`
+          : '<span class="cl-sub">non assegnata</span>'}</td>
       <td><span class="tk-badge ${st[1]}">${st[0]}</span></td>
       <td style="font-size:12px">${t.stato === 'incassato'
         ? `${TIT_MEZZI[t.mezzo_pagamento] || '—'}${t.incassato_il ? `<div class="rin-gg">${pfData(t.incassato_il)}</div>` : ''}`
@@ -15331,6 +15687,57 @@ function titRender() {
       + (ins.length ? `<span><b>${ins.length}</b> insoluti per <b>${pfEuro(sommaIns)}</b> da recuperare</span>` : '<span>nessun insoluto </span>');
   }
   titBarra();
+}
+
+/* ══ DI CHI È QUESTA RATA ══════════════════════════════════════════════════
+   Il registro unico delle persone (`quote_collaboratori`) si legge una volta
+   sola e serve a tre schermate: i titoli, l'estratto conto e i sospesi. Sta
+   su `window` e non in un `var` perché i tre blocchi stanno a migliaia di
+   righe di distanza e l'ordine di valutazione non è garantito. */
+window.TIT_COLLAB = window.TIT_COLLAB || [];
+window.TIT_COLLAB_NOMI = window.TIT_COLLAB_NOMI || {};
+
+function collabNome(c) {
+  return [c.cognome, c.nome].filter(Boolean).join(' ').trim() || c.email || '(senza nome)';
+}
+
+async function caricaCollaboratori() {
+  if (!db || TIT_COLLAB.length) return TIT_COLLAB;
+  const { data, error } = await db.from('quote_collaboratori')
+    .select('id,nome,cognome,email,attivo,stato,iam_id').order('cognome');
+  if (error) return TIT_COLLAB;
+  window.TIT_COLLAB = data || [];
+  window.TIT_COLLAB_NOMI = {};
+  TIT_COLLAB.forEach(c => { TIT_COLLAB_NOMI[c.id] = collabNome(c); });
+  return TIT_COLLAB;
+}
+
+/* Riempie una tendina di collaboratori. `scelto` resta selezionato anche se
+   quella persona nel frattempo è stata disattivata: nascondergliela farebbe
+   sparire in silenzio l'assegnazione che c'è. */
+function collabOpzioni(scelto, primo) {
+  return `<option value="">${primo || '— collaboratore —'}</option>` +
+    TIT_COLLAB.map(c => `<option value="${esc(c.id)}"${c.id === scelto ? ' selected' : ''}>${esc(collabNome(c))}</option>`).join('');
+}
+
+async function titAssegnaSelezionati() {
+  const id = document.getElementById('tit-collab')?.value || null;
+  const scelti = TIT_VISTA.filter(t => TIT_SEL.has(t.id));
+  if (!scelti.length) { alert('Nessuna rata scelta.'); return; }
+  /* Togliere l'assegnazione è un'operazione vera e va detta, non subita:
+     senza la conferma un clic distratto svuoterebbe venti righe. */
+  const nome = id ? TIT_COLLAB_NOMI[id] : null;
+  if (!confirm(id
+      ? `Assegnare ${scelti.length} rat${scelti.length === 1 ? 'a' : 'e'} a ${nome}?`
+      : `Togliere il collaboratore da ${scelti.length} rat${scelti.length === 1 ? 'a' : 'e'}?`)) return;
+  try {
+    const { error } = await db.from('quote_titoli')
+      .update({ collaboratore_id: id }).in('id', scelti.map(t => t.id));
+    if (error) throw error;
+    scelti.forEach(t => { t.collaboratore_id = id; });
+    titDeseleziona();
+    logMovimento((id ? 'Rate assegnate a ' + nome : 'Collaboratore tolto dalle rate') + ' · ' + scelti.length, 'titolo', nome || '');
+  } catch (e) { alert('Non riesco ad assegnare: ' + (e.message || e)); }
 }
 
 async function titIncassaUno(id) {
@@ -15470,7 +15877,7 @@ function titExportExcel() {
 async function loadTitoli() {
   const body = document.getElementById('tit-body');
   if (!db || !body) return;
-  body.innerHTML = '<tr><td colspan="8"><div class="empty-state">Carico i titoli…</div></td></tr>';
+  body.innerHTML = '<tr><td colspan="9"><div class="empty-state">Carico i titoli…</div></td></tr>';
   try {
     // le polizze visibili danno anche il perimetro dei titoli: la riservatezza
     // dei titoli eredita da quella della polizza (politiche di quote_titoli)
@@ -15496,10 +15903,13 @@ async function loadTitoli() {
       sel.innerHTML = '<option value="">Tutte</option>' +
         valori.map(v => `<option value="${esc(v)}"${v === scelto ? ' selected' : ''}>${esc(v)}</option>`).join('');
     }
+    await caricaCollaboratori();
+    const selC = document.getElementById('tit-collab');
+    if (selC) selC.innerHTML = collabOpzioni(selC.value);
     titRender();
     titBadge();
   } catch (e) {
-    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">Titoli non disponibili.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="9"><div class="empty-state">Titoli non disponibili.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
   }
 }
 

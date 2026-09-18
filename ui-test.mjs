@@ -3914,17 +3914,39 @@ const avvio = async () => {
       return '2 titoli, riepilogo verificato';
     });
 
-    await prova('titoli: solo gli aperti si possono scegliere', async () => {
-      const r = await page.evaluate(() => {
+    await prova('titoli: si sceglie qualunque rata, ma incassare vale solo sulle aperte', async () => {
+      /* 18/09/2026. Prima la casella di scelta c'era solo sulle rate aperte,
+         perché l'unica azione in blocco era l'incasso: quella prova misurava
+         il mondo di ieri, non una regola. Adesso in blocco si assegna anche il
+         COLLABORATORE, e quello vale su ogni rata — su una già incassata è la
+         sua provvigione. La regola che deve restare in piedi è l'altra: una
+         rata incassata non si incassa una seconda volta. Il filtro sta dove
+         serve, dentro `titIncassaSelezionati`, non nella selezione. */
+      const r = await page.evaluate(async () => {
         window.titFasciaScegli('tutti');
         window.titSelTutti(true);
         const righe = [...document.querySelectorAll('#tit-body tr')];
         const conCasella = righe.filter(t => t.querySelector('input[type=checkbox]')).length;
-        return { righe: righe.length, conCasella };
+        const scelti = righe.filter(t => t.querySelector('input[type=checkbox]:checked')).length;
+        /* Il tasto «Incassa», non la parola: il badge di una rata gia'
+           incassata dice «Incassato», che contiene «Incassa». */
+        const incassabili = righe.filter(t => t.querySelector('[onclick^="titIncassaUno"]')).length;
+        /* Si prova a incassare con TUTTO selezionato, comprese le incassate:
+           quelle non devono muoversi. */
+        window.__COLLAUDO.db = [];
+        window.confirm = () => true;
+        await window.titIncassaSelezionati();
+        const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update');
+        /* L'incasso aggiorna una rata alla volta: il numero di update su
+           `quote_titoli` E' il numero di rate toccate. */
+        return { righe: righe.length, conCasella, scelti, incassabili, toccate: upd.length };
       });
-      // due sono stati incassati dalla prova precedente, uno era già incassato
-      deve(r.conCasella < r.righe, 'anche i titoli incassati hanno la casella di scelta');
-      deve(r.conCasella === 2, 'caselle disponibili: ' + r.conCasella + ' (attese 2)');
+      deve(r.conCasella === r.righe, 'una rata senza casella: non si può assegnarle un collaboratore');
+      deve(r.scelti === r.righe, 'la selezione non prende tutte le righe: ' + r.scelti + ' su ' + r.righe);
+      deve(r.incassabili === 2, 'rate aperte: ' + r.incassabili + ' (attese 2)');
+      /* IL PUNTO: l'incasso ha toccato solo le due aperte, non tutte e quattro. */
+      deve(r.toccate === 2, 'l\'incasso ha toccato ' + r.toccate + ' rate invece delle 2 aperte');
+      await page.evaluate(() => window.titDeseleziona());
     });
 
     await prova('titoli: l\'avviso sul menu conta gli insoluti', async () => {
@@ -3934,6 +3956,154 @@ const avvio = async () => {
       });
       // dopo l'incasso dei due insoluti non ne restano
       deve(b.testo === '0' && !b.visibile, 'l\'avviso non si è aggiornato dopo l\'incasso: ' + JSON.stringify(b));
+    });
+
+    /* ══ DI CHI È QUESTA RATA, E L'ESTRATTO CONTO (18/09/2026) ═══════════
+       Brief di Francesco: segnare il collaboratore su una rata in sospeso,
+       vedere «com'è combinato» e mandargli un estratto conto; e calcolare le
+       provvigioni sulla percentuale concordata, col margine che resta
+       all'agenzia. Le formule stanno nel motore (provate in Node); qui si
+       prova che la schermata le chiami e mostri quello che tornano. */
+    await prova('titoli: il collaboratore si assegna in blocco, e togliere l\'assegnazione si conferma', async () => {
+      const r = await page.evaluate(async () => {
+        window.TIT_COLLAB = [{ id: 'c-1', nome: 'Mario', cognome: 'Rossi', email: 'mario@x.it' },
+                             { id: 'c-2', nome: 'Luca', cognome: 'Verdi', email: 'luca@x.it' }];
+        window.TIT_COLLAB_NOMI = { 'c-1': 'Rossi Mario', 'c-2': 'Verdi Luca' };
+        document.getElementById('tit-collab').innerHTML = window.collabOpzioni('');
+        window.titFasciaScegli('tutti');
+        window.titSelTutti(true);
+        const quante = document.querySelectorAll('#tit-body input[type=checkbox]:checked').length;
+        document.getElementById('tit-collab').value = 'c-1';
+        window.__COLLAUDO.db = [];
+        window.confirm = () => true;
+        await window.titAssegnaSelezionati();
+        const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update');
+        /* E la conferma NEGATA non deve scrivere niente: togliere
+           l'assegnazione a venti righe con un clic distratto è il guasto. */
+        window.titSelTutti(true);
+        document.getElementById('tit-collab').value = '';
+        window.__COLLAUDO.db = [];
+        window.confirm = () => false;
+        await window.titAssegnaSelezionati();
+        const dopoNo = window.__COLLAUDO.db.filter(x => x.operazione === 'update').length;
+        window.confirm = () => true;
+        return { quante, upd: upd.map(x => x.payload), dopoNo,
+                 nelDisegno: /Rossi Mario/.test(document.getElementById('tit-body').innerHTML) };
+      });
+      deve(r.quante >= 2, 'la selezione non prende le righe: ' + r.quante);
+      deve(r.upd.length === 1, 'scritture di assegnazione: ' + r.upd.length + ' (ne basta una, in blocco)');
+      deve(r.upd[0].collaboratore_id === 'c-1', 'assegnato a ' + JSON.stringify(r.upd[0]));
+      deve(r.dopoNo === 0, 'la conferma negata ha scritto lo stesso: ' + r.dopoNo);
+      deve(r.nelDisegno, 'il nome del collaboratore non compare nella riga');
+      return '1 update in blocco, 0 se si annulla';
+    });
+
+    await prova('estratto conto: il motore è caricato dalla pagina, non solo dal disco', async () => {
+      /* La regola numero uno di questo repository: il codice che arriva e non
+         viene collegato a niente. Le formule stanno nel motore, quindi la
+         pagina deve caricarlo davvero. */
+      const v = await page.evaluate(() => window.EstrattoConto && window.EstrattoConto.VERSIONE);
+      deve(v, 'la pagina non carica tariffe/motore/estratto-conto.js');
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/EstrattoConto\.provvigionale\(/.test(h) && /EstrattoConto\.daVersare\(/.test(h),
+        'il motore è caricato ma non lo chiama nessuno');
+      /* E la schermata NON contiene la formula: se il calcolo fosse qui, non
+         si potrebbe provare senza aprire un browser. */
+      const blocco = (h.match(/function ecpRender\(\)[\s\S]*?\n\}/) || [''])[0];
+      deve(!/\*\s*\d|\/\s*100/.test(blocco), 'in ecpRender c\'è dell\'aritmetica: le formule stanno nel motore');
+      return v;
+    });
+
+    await prova('estratto conto: le due linguette sono complementari, e i numeri vengono dal motore', async () => {
+      const r = await page.evaluate(async () => {
+        /* `showPage` avvia un caricamento asincrono che rilegge tutto dal
+           database: se si mettono i dati finti prima che finisca, li
+           sovrascrive — e la prova misura una schermata vuota restando verde
+           o rossa per la ragione sbagliata. Si aspetta che abbia finito. */
+        window.showPage('estratto');
+        await new Promise(r => setTimeout(r, 400));
+        window.TIT_COLLAB = [{ id: 'c-1', nome: 'Mario', cognome: 'Rossi', email: 'mario@x.it' }];
+        window.TIT_COLLAB_NOMI = { 'c-1': 'Rossi Mario' };
+        window.ECP_POLIZZE = { p1: { id: 'p1', numero_polizza: 'NP-1', cliente: 'ROSSI MARIO', compagnia: 'PRIMA', prodotto: 'RC Auto' } };
+        window.ECP_SCHEMI = { 'c-1': [{ prodotto: 'RC Auto', perc: 60 }] };
+        window.ECP_TITOLI = [
+          { id: 't1', polizza_id: 'p1', stato: 'incassato', incassato_il: '2026-09-10', importo_lordo: 390, provvigione: 41.21, collaboratore_id: 'c-1' },
+          { id: 't2', polizza_id: 'p1', stato: 'aperto', data_scadenza: '2026-09-05', importo_lordo: 110, collaboratore_id: 'c-1' }
+        ];
+        document.getElementById('ecp-collab').innerHTML = window.collabOpzioni('c-1');
+        document.getElementById('ecp-collab').value = 'c-1';
+        document.getElementById('ecp-dal').value = '2026-09-01';
+        document.getElementById('ecp-al').value = '2026-09-30';
+        window.ecpTab('provvigioni');
+        const prov = { body: document.getElementById('ecp-body').textContent, sum: document.getElementById('ecp-summary').textContent };
+        window.ecpTab('versare');
+        const vers = { body: document.getElementById('ecp-body').textContent, sum: document.getElementById('ecp-summary').textContent };
+        window.ecpTab('rimesse');
+        const rim = { mio: document.getElementById('ecp-vista').style.display, vecchio: document.getElementById('ecq-vista').style.display };
+        return { prov, vers, rim };
+      });
+      /* 60% di 41,21 = 24,73 — e NON il 60% dei 390 € del cliente. */
+      deve(/24,73/.test(r.prov.body), 'la quota del collaboratore non c\'è: ' + r.prov.body.slice(0, 200));
+      deve(/16,48/.test(r.prov.body), 'il margine dell\'agenzia non c\'è');
+      deve(!/234,00/.test(r.prov.body), 'la percentuale è stata applicata al premio invece che alla provvigione');
+      deve(/390,00/.test(r.prov.body), 'il premio del cliente non si vede: il collaboratore non riconosce la polizza');
+      /* La rata aperta NON sta fra le provvigioni, e quella incassata non sta
+         fra i sospesi: una rata sta di qua o di là. */
+      deve(!/110,00/.test(r.prov.body), 'una rata non incassata è finita fra le provvigioni');
+      deve(/110,00/.test(r.vers.body) && !/24,73/.test(r.vers.body), 'le due linguette mostrano la stessa cosa');
+      deve(/scaduta/.test(r.vers.body), 'non dice che la rata è scaduta');
+      deve(r.rim.mio === 'none' && r.rim.vecchio !== 'none', 'la linguetta delle rimesse non scambia le viste');
+      return '24,73 + 16,48 di qua, 110,00 di là';
+    });
+
+    await prova('estratto conto: quello che non si sa non entra nel totale, e si vede il perché', async () => {
+      const r = await page.evaluate(() => {
+        window.ECP_POLIZZE.p2 = { id: 'p2', numero_polizza: 'NP-2', cliente: 'BIANCHI SRL', compagnia: 'HDI', prodotto: 'Infortuni' };
+        window.ECP_TITOLI.push({ id: 't3', polizza_id: 'p2', stato: 'incassato', incassato_il: '2026-09-12', importo_lordo: 100, provvigione: 10, collaboratore_id: 'c-1' });
+        window.ecpTab('provvigioni');
+        return document.getElementById('ecp-body').textContent;
+      });
+      /* «Infortuni» non ha una percentuale concordata: la riga si vede, il
+         motivo è scritto, il totale non la conta. Inventare una percentuale
+         vorrebbe dire pagare su un accordo che non esiste. */
+      deve(/nessuna percentuale concordata/.test(r), 'il motivo non è scritto: ' + r.slice(0, 300));
+      deve(/BIANCHI SRL/.test(r), 'la riga incompleta è sparita invece di essere dichiarata');
+      /* Il totale resta quello di prima: 24,73, non 24,73 + qualcosa. */
+      deve(/24,73/.test(r), 'il totale delle quote è cambiato');
+      return 'riga dichiarata, totale intatto';
+    });
+
+    await prova('estratto conto: il documento che esce è uno solo, e non parte senza un destinatario', async () => {
+      /* Excel ed email condividono lo stesso documento: se fossero due
+         costruzioni diverse, prima o poi direbbero due cose diverse, e quella
+         sbagliata sarebbe quella che il collaboratore ha ricevuto. */
+      const r = await page.evaluate(async () => {
+        window.ecpTab('provvigioni');
+        const doc = window.ecpDocHTML();
+        const nome = window.ecpNomeFile('xls');
+        /* Sul riepilogo d'agenzia non c'è un estratto conto da mandare. */
+        document.getElementById('ecp-collab').value = '';
+        window.ecpRender();
+        const senzaScelta = window.ecpDocHTML();
+        return { doc, nome, senzaScelta };
+      });
+      deve(/24,73/.test(r.doc) && /Rossi Mario/.test(r.doc), 'il documento non porta i numeri e il nome: ' + String(r.doc).slice(0, 200));
+      deve(/Estratto conto provvigionale/.test(r.doc), 'il documento non dice che cos\'è');
+      deve(/provvigioni_Rossi-Mario/.test(r.nome), 'il nome del file non dice di chi è: ' + r.nome);
+      deve(r.senzaScelta === null, 'il riepilogo d\'agenzia produce un documento da mandare a qualcuno');
+      return r.nome;
+    });
+
+    await prova('estratto conto: un collaboratore non vede l\'elenco della rete né i conti degli altri', async () => {
+      /* Le politiche del database impediscono di leggere le rate degli altri,
+         ma la tendina dei nomi no: lasciarla intera mostrerebbe a un
+         collaboratore l'elenco di tutta la rete. */
+      const h = fs.readFileSync('index.html', 'utf8');
+      const blocco = (h.match(/async function loadEstrattoCollab\(\)[\s\S]*?\n\}\n/) || [''])[0];
+      deve(/isStaff\(\)/.test(blocco), 'la tendina dei collaboratori non è dietro un controllo di ruolo');
+      deve(/sel\.disabled = true/.test(blocco), 'chi non è staff può cambiare collaboratore nella tendina');
+      deve(/visibleUserIds\(\)/.test(blocco), 'le rate non sono filtrate sul perimetro visibile');
+      return 'tendina bloccata, perimetro filtrato';
     });
 
     await prova('titoli: ogni emissione genera anche le rate', async () => {

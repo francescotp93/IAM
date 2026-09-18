@@ -1264,3 +1264,138 @@ Aggiungere un codice è **una riga** in `TIPO_TITOLO`, e c'è una prova che lo
 dimostra girando davvero il motore con la riga aggiunta e poi togliendola.
 Prima di aggiungerla serve sapere che cosa quel codice significa per la
 compagnia — non dal repository, da chi il flusso lo manda.
+
+---
+
+## 17. L'estratto conto del collaboratore (18/09/2026)
+
+Due conti diversi sullo stesso mucchio di rate, e **non vanno confusi**: una
+rata sta in uno dei due, mai in tutti e due, perché o è incassata o non lo è.
+
+| linguetta | che cosa mostra | a che serve |
+|---|---|---|
+| **Da versare** | le sue rate **non** incassate | telefonargli |
+| **Provvigioni** | le rate incassate nel periodo, e quanto gli spetta | pagarlo |
+| *Rimesse da preventivo* | la lettura di prima, che parte dai preventivi | confrontare i numeri, finché non tornano |
+
+| pezzo | dove |
+|---|---|
+| tutte le formule | `tariffe/motore/estratto-conto.js` |
+| le prove, in Node | `server/verifica/estratto-conto.test.mjs` — 14 |
+| la colonna «di chi è questa rata» | `supabase/migrations/20260918_titoli_collaboratore.sql` (applicata) |
+| assegnare, anche in blocco | `titAssegnaSelezionati` in `index.html`, pagina Titoli |
+| la schermata, l'Excel e l'email | blocco `ecp*` in `index.html`, `#page-estratto` |
+| prove nella pagina | blocchi «titoli» ed «estratto conto» in `ui-test.mjs` |
+
+### Le quattro decisioni, prese da Francesco e non indovinate
+
+1. **La provvigione matura sull'INCASSATO.** Una rata emessa e non pagata non
+   ha prodotto niente per nessuno. È anche la cosa che tiene insieme i due
+   conti: quello che sta nei sospesi non sta nelle provvigioni, *per
+   costruzione*. Pagare sull'emesso vorrebbe dire anticipare soldi che il
+   cliente non ha versato, e poi rincorrerli.
+2. **La percentuale si applica alla PROVVIGIONE DI COMPAGNIA**, non al premio:
+   il 60% dei 41,21 € che la compagnia riconosce, non il 60% dei 390 € pagati
+   dal cliente — che farebbe **234 €**, un numero credibile e sei volte più
+   grande di quello che l'agenzia incassa davvero.
+3. **Il «guadagno indiretto» è il MARGINE DELL'AGENZIA**: provvigione meno la
+   quota del collaboratore. Una sottrazione, non una gerarchia. L'override su
+   «chi ha portato chi» **non esiste in questo sistema** e non si finge che
+   esista: nel repository la parola «indiretto» compariva solo dentro due
+   garanzie incendio.
+4. **Le percentuali stavano già lì.** `iam_team.provv` è un elenco
+   `{prodotto, perc, speciale, note}`, una percentuale **per prodotto**.
+   Non se n'è inventata un'altra.
+
+### La regola che comanda su tutte
+
+**Quello che non si sa non si stima.** Se la compagnia non ha dichiarato la
+provvigione di una rata, o se per quel prodotto non c'è una percentuale
+concordata, la riga **non entra nei totali**: esce con il motivo scritto
+accanto. Un estratto conto che arriva a un collaboratore è un documento su cui
+si litiga, e **una riga stimata dentro un totale è una lite che si perde**.
+Non esiste una «percentuale di default»: se non è concordata, non c'è. Uno
+**zero** invece è un accordo, e si conta.
+
+### Due cose di aritmetica che sembrano dettagli e non lo sono
+
+- **Il margine si ricava per DIFFERENZA**, non con una seconda percentuale. Su
+  33,33 al 50% i due arrotondamenti separati fanno 16,67 + 16,67 = **33,34**:
+  un centesimo che nessuno sa spiegare, in un documento che si manda fuori.
+- **Gli arrotondamenti dei negativi.** `Math.round(-0.5)` in JavaScript fa
+  `-0`, cioè arrotonda *verso l'alto* anche i negativi. Gli storni esistono, e
+  su uno storno quel centesimo va dalla parte sbagliata: `cent()` arrotonda
+  simmetrico.
+
+### Di chi è questa rata
+
+`quote_titoli.collaboratore_id`, **nuova**. Non si poteva usare `creato_da`:
+quello è chi ha digitato la riga, e sul portafoglio arrivato dal flusso è
+l'utente che ha fatto l'importazione — **una persona sola, su tutte le rate**.
+Attribuire così le provvigioni vorrebbe dire dare l'intero portafoglio a chi ha
+premuto un bottone.
+
+**Sulla rata e non sulla polizza**: una polizza vive anni e può cambiare mano,
+e la rata è la granularità con cui si paga e con cui si sollecita.
+
+**Niente deduzioni automatiche.** Il flusso porta un codice collaboratore e
+un'email, e sarebbe comodo agganciarli da soli: ma quel codice non corrisponde
+a nessuna persona in agenzia se non per somiglianza, e un aggancio sbagliato
+qui è **una provvigione pagata a chi non doveva**. Si assegna a mano, e in
+blocco dalla pagina Titoli — la selezione multipla c'era già per l'incasso.
+
+Conseguenza sulla pagina Titoli: la casella di scelta adesso c'è su **ogni**
+riga, non solo sulle aperte, perché assegnare un collaboratore vale anche su
+una rata già incassata (è la sua provvigione). Il filtro sull'incasso resta
+dov'era giusto, dentro `titIncassaSelezionati`. La prova che contava «solo le
+aperte hanno la casella» misurava il mondo di ieri: si è aggiornata la regola —
+*una rata incassata non si incassa una seconda volta* — non il numero.
+
+### Chi vede chi
+
+Le politiche del database impediscono già di leggere le rate degli altri, **ma
+la tendina dei nomi no**: lasciarla intera mostrerebbe a un collaboratore
+l'elenco di tutta la rete, e il riepilogo d'agenzia direbbe quanto prendono gli
+altri. Chi non è staff vede solo se stesso, e la tendina è bloccata.
+
+### Il foglio che esce di casa
+
+Excel ed email **condividono lo stesso documento** (`ecpDocHTML`): se fossero
+due costruzioni diverse, prima o poi direbbero due cose diverse, e quella
+sbagliata sarebbe quella che il collaboratore ha ricevuto. L'Excel non è un
+vero `.xlsx`: è una tabella HTML che Excel apre e riconosce, come tutti gli
+altri export di casa. L'email parte dal server (`/mail/send`, che sa allegare
+in base64) e **ripete i numeri che contano nel corpo**, perché un allegato che
+nessuno apre non ha detto niente.
+
+### Una trappola del banco di prova, e una controprova mal costruita
+
+- **`let` al posto di `var`.** Le quattro variabili di stato (`ECP_TITOLI`,
+  `ECP_POLIZZE`, `ECP_SCHEMI`, `ECP_VISTA`) sono `var` **apposta**: con `let`
+  la variabile del modulo e `window.X` sono due cose diverse, e una prova che
+  inietta un portafoglio finto scriverebbe in una mentre il codice legge
+  l'altra — restando verde senza aver misurato niente.
+- **`showPage` avvia un caricamento asincrono** che rilegge tutto dal database:
+  mettere i dati finti prima che finisca vuol dire vederseli sovrascrivere a
+  metà prova. Si aspetta.
+- **Una controprova che non fa diventare rossa nessuna prova va guardata bene**
+  (§15). «Si paga sull'emesso» tolto togliendo il controllo sullo stato è
+  restato tutto verde: il filtro è sorvegliato in **due** punti (lo stato e la
+  data dell'incasso), e ne avevo tolto uno solo. La controprova vera sposta la
+  data di riferimento sulla decorrenza — e allora ne diventano rosse quattro.
+
+### Cosa resta aperto
+
+- **Le rate del pregresso sono tutte «non assegnate».** La colonna nasce vuota,
+  e finché non si assegnano, l'estratto conto di ognuno è vuoto e il riepilogo
+  d'agenzia ha una sola riga. È voluto, ma è lavoro da fare: la strada è la
+  selezione multipla nella pagina Titoli.
+- **La linguetta «Rimesse da preventivo» è un doppione dichiarato**, tenuto
+  apposta finché i suoi numeri non sono stati confrontati con quelli nuovi.
+  Quando tornano, si toglie: una schermata in uso non si spegne perché ne è
+  nata una migliore, ma nemmeno si tiene per sempre.
+- **Il vincolo di stato di `quote_titoli` ammetteva quattro valori e il codice
+  ne scriveva un quinto** (`annullato`, da `annullaPolizzaDiPreventivo`): o
+  quell'update falliva in silenzio, o esisteva una migrazione mai finita nel
+  repository. Il vocabolario si è allargato invece di cambiare il codice,
+  perché `annullato` è un'informazione vera e diversa da `stornato`.

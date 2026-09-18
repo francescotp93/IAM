@@ -1,29 +1,11 @@
-id: diag-1789744186  exit: 0  2026-09-18 15:09:56
+id: cache-1789744466  exit: 0  2026-09-18 15:14:56
 ----
-== che codice serve il VPS ==
-commit di /opt/withus-backend: d15e71d L'archivio è chiuso: i documenti dicono lo stato vero (#180)
-md5 di index.html servito sotto /nuovo-preventivo/: d9dcbcbae5bdbb919f02d449ab56dc66
-md5 di iam/index.html: cddf85d606fb465cf49e0094e71d6baf
+== il VPS ha preso la correzione? ==
+commit: b9f81ab Le pagine non restano in cache: una copia vecchia è un'applicazione vecchia (#181)
+no-cache nel file del repo:   2
+no-cache nel sito in esecuzione: 2
 
-== il codice nuovo c'e'? ==
-archSuoIndirizzo in index.html: 2
-ARCH_CARTELLE in index.html:    2
-motore fascicolo.js presente:   1
-
-== autopull ==
-active
-Sep 18 15:05:26 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 18 15:05:26 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 4.933s CPU time over 5.459s wall clock time, 104M memory peak.
-Sep 18 15:06:31 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Sep 18 15:06:36 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Sep 18 15:06:36 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 18 15:06:36 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 5.173s CPU time over 5.645s wall clock time, 104M memory peak.
-Sep 18 15:07:41 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Sep 18 15:07:46 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Sep 18 15:07:46 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 18 15:07:46 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 4.840s CPU time over 5.257s wall clock time, 103.9M memory peak.
-Sep 18 15:08:45 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Sep 18 15:08:50 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Sep 18 15:08:50 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 18 15:08:50 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 4.966s CPU time over 5.453s wall clock time, 104.6M memory peak.
-Sep 18 15:09:51 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+== gli header che il browser riceve davvero ==
+-- IAM alla radice:
+-- il riquadro /nuovo-preventivo/:
+-- un motore di tariffa (deve restare in cache):

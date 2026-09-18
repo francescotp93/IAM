@@ -645,6 +645,28 @@ di tariffa, che hanno la versione nell'indirizzo). `no-cache` non vuol dire
 che Caddy manda da sé la risposta è quasi sempre un 304 vuoto. La prova sta in
 `deploy/dominio-unico.test.mjs`.
 
+**E c'era un secondo piano, sotto.** Anche a header corretti, dentro IAM il
+preventivatore vive in un `iframe` che chiede sempre lo stesso indirizzo:
+`/nuovo-preventivo/?from=iam`, che non cambia mai. Ricaricare IAM non ricarica
+quello che c'è dentro — un `iframe` è un documento a sé, con la sua cache — e
+si continuava a vedere il preventivatore del rilascio prima.
+È **lo stesso guasto del 14/09/2026** (il menu che non compariva, da cui è nata
+`versione-scocca.test.mjs`), un piano più giù: un indirizzo che non cambia mai
+è un indirizzo che il browser non richiede mai.
+
+Dal 18/09/2026 la scocca aggiunge al riquadro un **contrassegno di versione**
+che non si scrive a mano: una richiesta `HEAD` legge l'etichetta del
+preventivatore (l'`ETag` che Caddy calcola dal contenuto) e la mette
+nell'indirizzo. Quando QUOTO cambia, l'indirizzo cambia; quando non cambia,
+resta identico e la cache lavora. Se la richiesta non riesce si carica senza
+contrassegno: meglio un riquadro forse vecchio di un riquadro che non si apre.
+Cinque prove in `iam/verifica/versione-riquadro.test.mjs`, di cui una fa
+girare il codice davvero con un finto server.
+
+Perché non un numero annotato come per `withus-one.js`: quel file cambia di
+rado, `index.html` di QUOTO cambia quasi a ogni lavoro, e una prova che
+diventa rossa tutte le volte si impara ad aggirarla.
+
 Finché la correzione non è pubblicata e le pagine vecchie non sono state
 ricaricate, l'archivio resta aperto: chiuderlo adesso vorrebbe dire rompere i
 documenti a chi ha ancora la pagina di prima.

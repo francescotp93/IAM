@@ -295,6 +295,70 @@ prova('la rete di sicurezza intercetta anche i link che nessuno ha convertito', 
   return 'riconosce i nostri, lascia stare gli altri';
 });
 
+prova('l\'indirizzo morto non resta nell\'attributo: «Apri in una nuova scheda» non lo raggiunge', () => {
+  /* Intercettare il clic non basta. Finché l'indirizzo pubblico resta scritto
+     nell'`href`, il browser ci arriva per tutte le altre strade: clic con la
+     rotella, tasto destro «Apri in una nuova scheda», «Copia indirizzo», il
+     trascinamento del link, una scheda ripristinata dopo il riavvio. Nessuna
+     di quelle genera un evento `click`. Il rimedio è togliere l'indirizzo
+     dall'attributo, non intercettare meglio. */
+  for (const [nome, testo] of [['index.html', src], ['iam/index.html', srcIam]]) {
+    const f = codice(ritaglia(testo, 'archDisinnesca'));
+    deve(f, nome + ': manca archDisinnesca');
+    deve(/dataset\.arch = grezzo/.test(f), nome + ': l\'indirizzo non si mette da parte');
+    deve(/setAttribute\('href', 'javascript:void\(0\)'\)/.test(f), nome + ': l\'attributo resta l\'indirizzo morto');
+    deve(/MutationObserver/.test(codice(testo)), nome + ': nessuno guarda i documenti che compaiono dopo');
+    /* E il clic deve leggere `data-arch`, altrimenti dopo il disinnesco non
+       troverebbe più niente da firmare. */
+    deve(/a\.dataset\.arch \|\| a\.getAttribute\('href'\)/.test(codice(testo)),
+      nome + ': il clic non guarda dove il disinnesco ha messo l\'indirizzo');
+  }
+  return 'due pagine: indirizzo in data-arch, href innocuo';
+});
+
+prova('anche la scocca di IAM sa firmare, e apre l\'allegato con un bottone', () => {
+  /* Al 18/09/2026 questa pagina non aveva niente dell'archivio, e mostrava
+     l'allegato di un documento da firmare con l'indirizzo grezzo di
+     `iam_firme.doc_url`: per una riga vecchia un indirizzo pubblico morto,
+     per una nuova un PERCORSO che il browser risolve come indirizzo di IAM.
+     In tutti e due i casi non si apriva niente. */
+  for (const nome of ['archPercorso', 'archFirma', 'archApri', 'archSuoIndirizzo', 'archDisinnesca']) {
+    deve(ritaglia(srcIam, nome), 'la scocca di IAM non ha ' + nome);
+  }
+  const f = codice(ritaglia(srcIam, 'schedaMioDocumento'));
+  deve(f, 'manca schedaMioDocumento');
+  deve(!/<a href="' \+ esc\(f\.doc_url\)/.test(f), 'l\'allegato è di nuovo un link con l\'indirizzo grezzo');
+  deve(/archApri\(/.test(f), 'l\'allegato non passa dalla firma');
+  return 'cinque funzioni e un bottone che firma';
+});
+
+prova('le due metà dell\'archivio non divergono', () => {
+  /* `archPercorso` e `archSuoIndirizzo` vivono in tre posti: il server, QUOTO
+     e la scocca di IAM. Non è un doppione da togliere — le due pagine sono
+     due programmi separati e nessuna può importare un modulo dell'altra — ma
+     è un doppione che può divergere, e allora le tre parti capirebbero tre
+     cose diverse dallo stesso valore. Qui si provano INSIEME. */
+  const stanza = (sorgente) => {
+    const cartelle = sorgente.match(/const ARCH_CARTELLE = \[([\s\S]*?)\];/)[1].match(/'[^']+'/g).map(x => x.slice(1, -1));
+    const ctx = { console, String, RegExp, decodeURIComponent, ARCH_PREFISSI: new RegExp('^(' + cartelle.join('|') + ')/') };
+    vm.createContext(ctx);
+    for (const n of ['archPercorso', 'archSuoIndirizzo']) vm.runInContext(ritaglia(sorgente, n), ctx);
+    return ctx;
+  };
+  const quoto = stanza(src), iam = stanza(srcIam);
+  const casi = [PUBBLICO, FIRMATO, PERCORSO, '/' + PERCORSO, '', 'https://quoto.withusassicurazioni.it/docs/dip.pdf',
+                'collab/1_mandato.pdf', 'fatture/abc/xyz_f.pdf', '#', 'javascript:void(0)'];
+  for (const c of casi) {
+    deve(quoto.archPercorso(c) === iam.archPercorso(c),
+      'percorso diverso fra QUOTO e IAM per «' + c + '»: «' + quoto.archPercorso(c) + '» vs «' + iam.archPercorso(c) + '»');
+    deve(quoto.archPercorso(c) === percorsoArchivio(c),
+      'percorso diverso fra la pagina e il server per «' + c + '»');
+    deve(quoto.archSuoIndirizzo(c) === iam.archSuoIndirizzo(c),
+      'riconoscimento diverso fra QUOTO e IAM per «' + c + '»');
+  }
+  return casi.length + ' casi, tre parti che dicono la stessa cosa';
+});
+
 prova('il server firma per chi non ha un account, con due scadenze diverse', () => {
   deve(SCADENZA.dentro_casa === 300, 'la scadenza dentro casa è ' + SCADENZA.dentro_casa);
   deve(SCADENZA.al_cliente === 30 * 24 * 3600, 'la scadenza per il cliente è ' + SCADENZA.al_cliente);

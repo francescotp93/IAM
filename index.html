@@ -3276,10 +3276,41 @@ function archSuoIndirizzo(v) {
   return ARCH_PREFISSI.test(s);
 }
 
+/* IL DISINNESCO, che è la metà mancante della rete.
+   Intercettare il clic non basta: finché l'indirizzo morto resta scritto
+   nell'attributo `href`, il browser lo raggiunge per tutte le altre strade —
+   clic con la rotella, tasto destro «Apri in una nuova scheda», «Copia
+   indirizzo», il trascinamento del link, una scheda ripristinata dopo il
+   riavvio. Nessuna di quelle genera un evento `click`, e l'utente finisce su
+   un indirizzo pubblico che non risponde più.
+   Qui l'indirizzo si sposta in `data-arch` e l'attributo diventa innocuo: da
+   quel momento non c'è più niente da copiare o da aprire per sbaglio. */
+function archDisinnesca(radice) {
+  const nodi = (radice && radice.querySelectorAll) ? radice.querySelectorAll('a[href]') : [];
+  for (const a of nodi) {
+    const grezzo = a.getAttribute('href');
+    if (!archSuoIndirizzo(grezzo)) continue;
+    a.dataset.arch = grezzo;
+    a.setAttribute('href', 'javascript:void(0)');
+  }
+  if (radice && radice.matches && radice.matches('a[href]')) archDisinnesca({ querySelectorAll: () => [radice] });
+}
+
+/* I documenti compaiono quando si apre una scheda, un fascicolo, un elenco:
+   si guarda solo quello che ARRIVA, non tutto il documento a ogni modifica. */
+if (typeof MutationObserver === 'function') {
+  new MutationObserver((mutazioni) => {
+    for (const m of mutazioni) {
+      for (const n of m.addedNodes) if (n.nodeType === 1) archDisinnesca(n);
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+}
+
 document.addEventListener('click', function (ev) {
-  const a = ev.target && ev.target.closest && ev.target.closest('a[href]');
+  const a = ev.target && ev.target.closest && ev.target.closest('a[href],a[data-arch]');
   if (!a) return;
-  const grezzo = a.getAttribute('href');
+  /* `data-arch` prima dell'href: dopo il disinnesco l'indirizzo vero sta lì. */
+  const grezzo = a.dataset.arch || a.getAttribute('href');
   if (!archSuoIndirizzo(grezzo)) return;
   ev.preventDefault();
   archApri(grezzo);

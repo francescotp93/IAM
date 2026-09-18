@@ -893,3 +893,138 @@ parte davvero.
 **Fuori dall'RC Auto** vale quello che vale per le polizze: documenti di base e
 un avviso che lo dice. Una pratica non inventa operazioni che il motore non
 conosce.
+
+---
+
+## 14. Il portafoglio che arriva dalla compagnia (18/09/2026)
+
+Le compagnie mandano ogni notte un archivio zip col portafoglio. Non è un
+formato di Prima: è lo **Standard Share File** (`SSF V12`), lo stesso tracciato
+che usano altre compagnie e piattaforme — per questo il motore si chiama
+`flusso-ssf` e non `prima`. Nove file CSV, uno per tipo di record:
+
+| record | cosa contiene |
+|---|---|
+| REC000 | testata: chi manda, che versione, che periodo |
+| REC010 | anagrafiche — **clienti e collaboratori mescolati** |
+| REC020 | polizze |
+| REC021 | il veicolo della polizza (targa, classe, settore) |
+| REC030 | garanzie, col premio di ognuna |
+| REC040 | titoli, cioè le rate, con le provvigioni |
+| REC042 | dettaglio del titolo garanzia per garanzia (non importato) |
+| REC100 | catalogo prodotti della compagnia |
+| REC101 | produttori e collaboratori |
+
+| pezzo | dove |
+|---|---|
+| tutte le regole di lettura | `tariffe/motore/flusso-ssf.js` |
+| prove in Node, sul campione sintetico | `server/verifica/flusso-ssf.test.mjs` — 16 |
+| il campione (dati inventati) | `server/verifica/campioni/ssf/` |
+| la schermata | blocco `flu*` in `index.html`, pagina `#page-importa-flusso` |
+| provenienza e registro | `supabase/migrations/20260918_importazione_flussi.sql` |
+| prove nella pagina | blocco «flusso» in `ui-test.mjs` — 7 |
+
+### Le cinque cose che il file dice e che nessuno indovinerebbe
+
+Misurate sul file vero del 17/09/2026, non dedotte da un manuale. Ognuna ha la
+sua prova, e ognuna, sbagliata, produce **numeri credibili e falsi**.
+
+1. **Metà delle «anagrafiche» non sono clienti.** 37 righe in REC010: 20
+   clienti e 17 collaboratori, distinti solo da `FLAG_COLLABORATORE`.
+   Importarle tutte vuol dire mettere la propria rete di vendita nel
+   portafoglio clienti, e da lì non si tira più fuori.
+2. **`LORDO_TOTALE` della polizza è il premio DI RATA, non annuo.** Su una
+   semestrale la polizza dice 110,00 e i due titoli dell'anno sommano 220,00.
+   Scriverlo in `premio_annuo` dimezzerebbe il portafoglio su ogni polizza
+   frazionata — e 110 è un numero credibile. Quando la rata non è l'anno
+   intero, `premio_annuo` resta **vuoto**: moltiplicare sarebbe una stima, e
+   una stima in un portafoglio diventa un dato dopo due settimane.
+3. **Le righe senza `SCADENZA_EMESSO` non sono polizze: sono offerte.** Le
+   righe in stato `PV` sono rinnovi emessi e non ancora pagati: `EFFETTO` è la
+   data del rinnovo e `SCADENZA_EFFETTIVA` è `EFFETTO + 15 giorni`, cioè il
+   **termine per pagare** (`GIORNI_MORA`), non la scadenza del contratto.
+   Importarle riempirebbe lo scadenzario di scadenze false a due settimane.
+   Il discriminante buono non è lo stato ma `SCADENZA_EMESSO`: se è vuoto, non
+   è stato emesso niente. **Non entrano in portafoglio**, ma si elencano
+   nell'anteprima: sono i clienti da chiamare, ed è la cosa più utile del file.
+4. **Una polizza che finisce alla sua scadenza naturale non è annullata.**
+   Prima non ha tacito rinnovo: alla scadenza la polizza «storna»
+   (`ST`, motivo `EXPIRING_POLICY`, data di annullamento **uguale** alla
+   scadenza) e ne nasce una nuova. Nove righe su trentadue sono così, e sei
+   scadono nei mesi successivi. Segnarle annullate le toglierebbe dallo
+   scadenzario: sono esattamente quelle da richiamare. Annullata è solo chi
+   cessa **prima** della scadenza.
+5. **Chi emette il flusso non è chi porta il rischio.** L'emittente è PRIMA; il
+   rischio sta su TRIGLAV, GREAT_LAKES, LA_PARISIENNE, NOBIS, IPTIQ.
+   `compagnia` resta l'emittente — è con lei che si lavora ed è su quel nome
+   che sono scritte le regole documentali (§11) — e il portatore del rischio si
+   conserva in `dati.ssf.compagnia_rischio`. **Da confermare con Francesco**:
+   è l'unica scelta di questo lavoro che si può ribaltare, e si ribalta in una
+   riga.
+
+### Le regole della scrittura
+
+- **Il cliente che c'è già non si tocca.** Non si aggiorna l'indirizzo, non si
+  «completa» il telefono. Il flusso porta i dati come li ha scritti il cliente
+  sul sito della compagnia; la scheda in agenzia l'ha sistemata qualcuno a
+  mano, e sovrascriverla vorrebbe dire buttare via quel lavoro ogni notte.
+  Alla polizza nuova si aggancia la scheda che c'è. Il riconoscimento è il
+  **codice fiscale**, poi la partita IVA; mai il nome.
+- **Si guarda prima di scrivere.** La schermata costruisce il piano, lo mostra,
+  e scrive solo dopo. Un'importazione che scrive prima di farsi vedere è una
+  cosa che si subisce: quando ci si accorge dei doppioni, sono già lì.
+- **Si può ricaricare lo stesso file.** `fonte`/`fonte_id` tengono la chiave
+  della compagnia, con un **indice unico** sul database: la garanzia non sta
+  nel codice che controlla prima di scrivere, sta in Postgres, che dice di no.
+  Senza, il flusso di ogni notte raddoppierebbe il portafoglio.
+- **L'ordine di scrittura non è estetica**: clienti, poi polizze (che vogliono
+  `cliente_id`), poi rate (che vogliono `polizza_id`). Se si ferma in mezzo,
+  quello che è scritto resta e si ricarica: il secondo giro salta il fatto.
+- **Quello che non si sa tradurre resta vuoto.** Un frazionamento, un mezzo di
+  pagamento o un tipo di titolo che non è nel nostro vocabolario non si forza:
+  il codice originale si conserva e l'anteprima lo dichiara. PayPal non diventa
+  «carta di credito», e un titolo `RI` da 0,00 non entra in contabilità come
+  una rata da zero euro.
+
+### Lo zip si apre senza librerie
+
+Niente JSZip da un CDN: dal contenitore di collaudo non si raggiunge, e sarebbe
+una dipendenza in più. Si legge l'**indice** dello zip (central directory) e si
+scompatta con `DecompressionStream('deflate-raw')`, che c'è nei browser e in
+Node. Sessanta righe che non invecchiano. Si legge l'indice e non le
+intestazioni locali apposta: lì le misure possono essere a zero e arrivare
+**dopo** i dati, e chi le legge si ritrova file vuoti senza un errore.
+
+### I dati veri non stanno nel repository
+
+Il campione di collaudo è **sintetico**: stessa forma, nomi e codici fiscali
+inventati, e dentro tutti i casi del file vero (società, doppione interno,
+polizza senza contraente, semestrale, cessata a scadenza, annullata davvero,
+offerta di rinnovo, titolo sconosciuto). Il file dell'agenzia contiene nome,
+indirizzo, telefono, email e codice fiscale di clienti veri: non entra qui, ed
+è la regola di casa §8.3.
+
+C'è però una prova che gira **anche sul file vero**, se qualcuno glielo indica:
+
+```bash
+FLUSSO_VERO=/percorso/al/flusso.zip node server/verifica/flusso-ssf.test.mjs
+```
+
+Senza quella variabile dice «saltata» e va avanti. È l'unico modo di accorgersi
+che una compagnia ha cambiato il tracciato: il campione sintetico, da solo,
+resterà verde per sempre.
+
+### Cosa non fa ancora
+
+- **Le offerte di rinnovo non diventano niente**: si contano e si elencano.
+  Il posto giusto sarebbe una **pratica** (§13), che le trasformerebbe in una
+  lista di lavoro, e il collegamento alla polizza esiste già. Prima di farlo
+  serve una decisione: una pratica è nata per raccogliere documenti, usarla
+  anche per i rinnovi da incassare è una seconda vita che va voluta.
+- **I collaboratori del flusso non si toccano**: il registro unico delle
+  persone (§10) è un'altra cosa, e agganciarlo a occhio sui codici `U…`
+  creerebbe il doppione che quel lavoro ha appena tolto. Il codice si conserva
+  in `dati.ssf.collaboratore`.
+- **REC042 e il catalogo prodotti** si leggono ma non si scrivono da nessuna
+  parte: il primo è il dettaglio garanzia per garanzia di ogni rata, il secondo
+  è il catalogo della compagnia, che non è il nostro catalogo di quotazione.

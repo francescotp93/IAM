@@ -185,7 +185,45 @@
      si conserva il codice della compagnia. PayPal e le prepagate non sono
      nessuna delle nostre cinque voci, e forzarle a «carta di credito»
      sporcherebbe i conti. */
-  var MEZZO = { CREDITCARD: 'carta_credito', BANK_TRANSFER: 'bonifico', CASH: 'contante', CHEQUE: 'assegno', POS: 'pos' };
+  var MEZZO = {
+  CREDITCARD: 'carta_credito', BANK_TRANSFER: 'bonifico', CASH: 'contante',
+  CHEQUE: 'assegno', POS: 'pos',
+  /* Questi arrivano dal file vero e prima finivano tutti a vuoto, perché il
+     vocabolario del gestionale ne conosceva cinque. Un mezzo di pagamento
+     vuoto su una rata incassata è un buco in contabilità: si sa che è stata
+     pagata e non come. I nomi restano i nostri, il codice della compagnia si
+     conserva accanto. */
+  PAYPAL: 'paypal', PREPAID: 'prepagata',
+  /* «EXTERNAL» e la lista multipla («APPLEPAY/CREDITCARD/GOOGLEPAY/…») dicono
+     che il pagamento è passato da fuori o che la compagnia non sa quale dei
+     modi sia stato usato: `altro` è la verità, e non si sceglie per loro. */
+  EXTERNAL: 'altro' };
+
+/* Quello che il gestionale sa scrivere. Serve a due cose: tradurre il flusso e
+   riempire la tendina con cui si CORREGGE a mano (una compagnia che manda un
+   codice nuovo non deve lasciare il campo vuoto per sempre). */
+var MEZZI = [
+  { id: 'carta_credito', l: 'Carta di credito' },
+  { id: 'bonifico',      l: 'Bonifico' },
+  { id: 'contante',      l: 'Contante' },
+  { id: 'assegno',       l: 'Assegno' },
+  { id: 'pos',           l: 'POS' },
+  { id: 'paypal',        l: 'PayPal' },
+  { id: 'prepagata',     l: 'Carta prepagata' },
+  { id: 'domiciliazione', l: 'Domiciliazione (SDD)' },
+  { id: 'altro',         l: 'Altro' }
+];
+
+/* Dal codice della compagnia al nostro. Una lista multipla («A/B/C») vuol dire
+   che la compagnia non sa quale sia stato: `altro`, non il primo della lista —
+   scegliere il primo sarebbe inventare. */
+function mezzoDa(codice) {
+  var c = String(codice || '').trim().toUpperCase();
+  if (!c) return null;
+  if (MEZZO[c]) return MEZZO[c];
+  if (c.indexOf('/') >= 0) return 'altro';
+  return null;
+}
 
   /* I tipi di titolo che sappiamo tradurre. `RI` (rimborso/regolazione, che
      nel file vero vale 0,00) non è nessuno dei nostri quattro tipi: si
@@ -220,10 +258,21 @@
     }
 
     /* ── Le anagrafiche: clienti da una parte, collaboratori dall'altra ──── */
-    var clienti = [], collaboratori = [];
+    var clienti = [], collab = {};
     righe['010'].forEach(function (r) {
       if (String(r.FLAG_COLLABORATORE || '').toUpperCase() === 'S') {
-        collaboratori.push({ codice: testo(r.ID_ANAGRAFICA_EXP), nome: testo(r.RAGIONE_SOCIALE), email: testo(r.EMAIL) });
+        var k = testo(r.ID_ANAGRAFICA_EXP);
+        if (k) collab[k] = {
+          codice: k,
+          nome: (testo(r.RAGIONE_SOCIALE) || '').replace(/^-\s*/, '').trim() || null,
+          /* L'EMAIL È IL PONTE. È l'unico campo del flusso che corrisponde a
+             qualcosa che abbiamo già: il collaboratore in agenzia ha la sua
+             email, e i codici della compagnia (`U25337`) non li conosce
+             nessuno. Senza, quei codici restano numeri che non si possono
+             abbinare a una persona. */
+          email: (testo(r.EMAIL) || '').toLowerCase() || null,
+          rui: null, polizze: 0, premi: 0, provvigioni: 0
+        };
         return;
       }
       clienti.push(versoAnagrafica(r));
@@ -244,8 +293,10 @@
     var polizze = [], offerte = [];
     var perCliente = {};
     clienti.forEach(function (c) { perCliente[c._chiave] = c; });
+    var emailCollab = {};
+    Object.keys(collab).forEach(function (k) { if (collab[k].email) emailCollab[k] = collab[k].email; });
     righe['020'].forEach(function (r) {
-      var p = versoPolizza(r, testata, veicoli[r.ID_POLIZZA_EXP], garanzie[r.ID_POLIZZA_EXP]);
+      var p = versoPolizza(r, testata, veicoli[r.ID_POLIZZA_EXP], garanzie[r.ID_POLIZZA_EXP], { emailCollab: emailCollab });
       var cli = perCliente[r.ID_ANAGRAFICA_EXP];
       p._cliente = cli ? cli._chiave : null;
       p._cf = cli ? cli.codice_fiscale : null;
@@ -256,6 +307,23 @@
         p._senzaCliente = true;
       }
       if (p._offerta) offerte.push(p); else polizze.push(p);
+    });
+
+    /* ── Il dettaglio dei titoli, garanzia per garanzia (REC042) ───────
+       Fin qui si leggeva e si buttava. Ma è lì che sta la cosa che serve a
+       chi vende: non «quanto ho guadagnato su questa polizza», ma su QUALE
+       garanzia. Sul file vero la somma delle provvigioni di garanzia fa
+       esattamente il totale del titolo su 18 titoli su 18: è un dato che
+       quadra, non una stima. */
+    var dettaglio = {};
+    righe['042'].forEach(function (r) {
+      var k = testo(r.ID_TITOLO_EXP) || testo(r.ID_TITOLO_INVIO);
+      if (!k) return;
+      (dettaglio[k] = dettaglio[k] || []).push({
+        codice: testo(r.COD_GARANZIA_CMP), descrizione: testo(r.DESCRIZIONE_GARANZIA_CMP),
+        lordo: numero(r.LORDO), netto: numero(r.NETTO), tasse: numero(r.TASSE),
+        provvigioni: numero(r.PROVVIGIONI_TOTALI)
+      });
     });
 
     /* ── I titoli ─────────────────────────────────────────────────────── */
@@ -271,6 +339,7 @@
       }
       var t = versoTitolo(r, tipo);
       t._polizza = testo(r.ID_POLIZZA_EXP);
+      t._ssf.garanzie = dettaglio[t._fonte_id] || [];
       if (!polizzePerChiave[t._polizza]) t._senzaPolizza = true;
       titoli.push(t);
     });
@@ -278,15 +347,57 @@
       avvisi.push({ g: 'avviso', t: titoliSaltati[k] + ' titol' + (titoliSaltati[k] === 1 ? 'o' : 'i') + ' di tipo «' + k + '» non importat' + (titoliSaltati[k] === 1 ? 'o' : 'i') + ': non è nessuno dei quattro tipi che il gestionale conosce.' });
     });
 
+    /* Quello che ogni collaboratore ha prodotto in questo flusso. Si conta dai
+       TITOLI e non dalle polizze, perché le provvigioni stanno lì: una polizza
+       senza titolo nel periodo non ha ancora prodotto niente. */
+    titoli.forEach(function (t) {
+      /* Le rate di una polizza che non e' in portafoglio non si attribuiscono
+         a nessuno: sono offerte di rinnovo non ancora pagate (regola 3) o
+         pratiche che nel flusso non ci sono. Contarle vorrebbe dire dire a un
+         collaboratore che ha prodotto qualcosa che il cliente non ha ancora
+         pagato — e quel numero poi si legge come se fosse dovuto. */
+      if (t._senzaPolizza) return;
+      var c = t._ssf && t._ssf.collaboratore;
+      if (!c || !collab[c]) return;
+      collab[c].polizze++;
+      collab[c].premi += (t.importo_lordo || 0);
+      collab[c].provvigioni += (t.provvigione || 0);
+    });
+    /* I produttori di REC101 portano il codice RUI, che in REC010 non c'è.
+       Chi compare solo lì entra lo stesso: è un collaboratore dell'agenzia
+       che in questo periodo non ha prodotto. */
+    righe['101'].forEach(function (r) {
+      var k = testo(r.ID_ANAGRAFICA_EXP);
+      if (!k) return;
+      if (!collab[k]) collab[k] = { codice: k, nome: null, email: null, rui: null, polizze: 0, premi: 0, provvigioni: 0 };
+      collab[k].rui = testo(r.COD_RUI) || collab[k].rui;
+      if (!collab[k].nome) collab[k].nome = (testo(r.DESCRIZIONE_COLLABORATORE) || '').replace(/^-\s*/, '').trim() || null;
+    });
+    var collaboratori = Object.keys(collab).map(function (k) {
+      var c = collab[k];
+      c.premi = Math.round(c.premi * 100) / 100;
+      c.provvigioni = Math.round(c.provvigioni * 100) / 100;
+      return c;
+    }).sort(function (a, b) { return b.provvigioni - a.provvigioni; });
+
+    /* ── Le rate che restano da incassare ─────────────────────────────────
+       Si generano DOPO il conto dei collaboratori, e non è un dettaglio: una
+       rata che nessuno ha ancora incassato non ha prodotto provvigioni, e
+       farla entrare in quel conto direbbe a un collaboratore che ha guadagnato
+       qualcosa che il cliente non ha ancora pagato. */
+    var perPolizza = {};
+    titoli.forEach(function (t) { (perPolizza[t._polizza] = perPolizza[t._polizza] || []).push(t); });
+    polizze.forEach(function (p) {
+      var r = rataDaIncassare(p, perPolizza[p._fonte_id]);
+      if (!r) return;
+      if (r.avviso) { avvisi.push({ g: 'avviso', t: r.avviso }); return; }
+      r.titolo._polizza = p._fonte_id;
+      titoli.push(r.titolo);
+    });
+
     var prodotti = righe['100'].map(function (r) {
       return { compagnia: testo(r.COMPAGNIA_EXP), ania: testo(r.COMPAGNIA_ANIA), ramo: testo(r.RAMO),
                codice: testo(r.CODICE_PRODOTTO), descrizione: testo(r.DESCRIZIONE_PRODOTTO) };
-    });
-    righe['101'].forEach(function (r) {
-      var c = testo(r.ID_ANAGRAFICA_EXP);
-      if (c && !collaboratori.some(function (x) { return x.codice === c; })) {
-        collaboratori.push({ codice: c, nome: testo(r.DESCRIZIONE_COLLABORATORE), rui: testo(r.COD_RUI) });
-      }
     });
 
     return {
@@ -340,7 +451,7 @@
 
   /* La polizza. Qui stanno le regole 2, 3, 4 e 5 della testata di questo
      file: sono quelle che, sbagliate, producono numeri credibili e falsi. */
-  function versoPolizza(r, testata, veicolo, garanzie) {
+  function versoPolizza(r, testata, veicolo, garanzie, opz) {
     var stato = String(r.COD_STATO_SHARE || '').toUpperCase();
     var emesso = data(r.SCADENZA_EMESSO);
     var incassato = data(r.SCADENZA_INCASSATO);
@@ -383,6 +494,11 @@
       copertura_al: incassato,
       frazionamento: FRAZIONAMENTO[fraz] || null,
       tacito_rinnovo: String(r.TACITO_RINNOVO_SHARE || '').toUpperCase() === 'S',
+      /* Come la paga il cliente. Si scrive in una colonna sua e non solo
+         dentro `dati`, perché è una cosa che si guarda e si CORREGGE: un
+         codice che il flusso non sa tradurre resta vuoto, e lo si mette a
+         mano dalla tendina. */
+      mezzo_pagamento: mezzoDa(r.MEZZO_PAGAMENTO_CMP),
       premio_annuo: annuo,
       premio_rata: lordo,
       stato_pagamento: pagamento,
@@ -397,6 +513,10 @@
           compagnia_ania: testo(r.COMPAGNIA_ANIA),
           agenzia: testo(r.AGENZIA),
           collaboratore: testo(r.COLLABORATORE_1),
+          /* L'email del collaboratore, presa dal suo record nel flusso: è il
+             solo modo per abbinare il codice della compagnia («U25337») a una
+             persona dell'agenzia. */
+          collaboratore_email: (opz && opz.emailCollab && opz.emailCollab[testo(r.COLLABORATORE_1)]) || null,
           ramo: testo(r.RAMO_CMP),
           frazionamento_codice: fraz || null,
           rate_anno: rate,
@@ -427,13 +547,111 @@
          non si incassa una promessa. Tutto il resto resta «aperto», che è la
          cosa vera: la rata c'è e non risulta pagata. */
       stato: (stato === 'P' && pagato) ? 'incassato' : 'aperto',
-      mezzo_pagamento: MEZZO[String(r.MEZZO_PAGAMENTO_CMP || '').toUpperCase()] || null,
+      mezzo_pagamento: mezzoDa(r.MEZZO_PAGAMENTO_CMP),
       incassato_il: pagato,
       note: null,
       _ssf: {
         stato: stato, tipo_compagnia: testo(r.TIPO_TITOLO_COMPAGNIA),
         mezzo: testo(r.MEZZO_PAGAMENTO_CMP), competenza: data(r.DT_COMPETENZA_CONTABILE),
         collaboratore: testo(r.COLLABORATORE_1), giorni_mora: testo(r.GIORNI_MORA)
+      }
+    };
+  }
+
+  /* ══ 5-bis. LA RATA CHE RESTA DA INCASSARE ════════════════════════════════
+     Su una polizza frazionata la compagnia manda la rata successiva quando
+     l'ha già emessa: nel file vero succede due volte su venticinque, e quelle
+     due arrivano con lo stato `I` (emessa, non pagata) e diventano rate
+     «aperte» senza che si debba fare niente. Le altre no — e quella rata
+     esiste lo stesso: il cliente la deve, e nessuno la vede.
+
+     Il flusso però lo dice, in date invece che a parole:
+       · `FRAZIONAMENTO_SHARE` dice in quante rate è divisa l'annualità;
+       · `SCADENZA_INCASSATO` dice fin dove la polizza è pagata;
+       · `SCADENZA_EFFETTIVA` dice fin dove il contratto corre.
+     Se la prima data viene prima della seconda, fra le due c'è un pezzo di
+     contratto scoperto, e il suo inizio è la decorrenza della rata successiva.
+     È la stessa cosa che il brief chiama «polizza appena emessa con la rata
+     successiva semestrale» — su una semestrale emessa oggi il flusso dice
+     «pagata per sei mesi, coperta per dodici» — detta in un modo che continua
+     a valere anche fra otto mesi, quando quella polizza non sarà più nuova.
+
+     DUE COSE CHE NON SI FANNO, ed è il motivo per cui questa funzione
+     restituisce anche degli avvisi invece di un numero:
+
+     1. **Non si inventa un importo.** `premio_rata` vale per una rata INTERA.
+        Se il pezzo scoperto è più corto di una rata — succede sul file vero
+        con una polizza allineata a una scadenza diversa (pagata al 17/12/2026,
+        in corsa fino al 07/03/2027) — l'importo di quel troncone non lo dice
+        nessuno. Scriverci dentro il semestre pieno vorrebbe dire mettere in
+        contabilità un credito che non esiste. Si dichiara e si lascia a mano.
+     2. **Non si duplica quello che la compagnia ha già mandato.** Se fra i
+        titoli del flusso ce n'è già uno che decorre da quella data, la rata
+        c'è: questa regola sta zitta.
+
+     La rata dedotta si riconosce: `fonte_id` finisce con `:RATA:<data>` —
+     stabile, quindi ricaricare lo stesso file non la raddoppia (l'indice unico
+     su fonte/fonte_id fa il resto) — e la nota dice in chiaro che la compagnia
+     non l'ha mandata. Una riga di contabilità che non si distingue da quelle
+     vere è una riga di cui non ci si può fidare. */
+  var MESI_RATA = { 1: 12, 2: 6, 3: 4, 4: 3, 12: 1 };
+
+  function due(n) { return (n < 10 ? '0' : '') + n; }
+
+  /* Mesi aggiunti all'anniversario, non giorni: da 31/08 un semestre porta al
+     28 (o 29) febbraio, non al 3 marzo, che è quello che farebbe `setMonth`
+     da solo traboccando nel mese dopo. */
+  function aggiungiMesi(iso, mesi) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+    if (!m) return null;
+    var tot = (+m[2] - 1) + mesi;
+    var anno = +m[1] + Math.floor(tot / 12), mese = ((tot % 12) + 12) % 12;
+    var ultimo = new Date(Date.UTC(anno, mese + 1, 0)).getUTCDate();
+    return anno + '-' + due(mese + 1) + '-' + due(Math.min(+m[3], ultimo));
+  }
+
+  /* Torna `{ titolo }`, `{ avviso }` oppure null (non c'è niente da dire). */
+  function rataDaIncassare(p, titoliDellaPolizza) {
+    if (!p || p._offerta) return null;                       // regola 3: non è una polizza
+    var ssf = (p.dati && p.dati.ssf) || {};
+    var rate = ssf.rate_anno;
+    if (!rate || rate <= 1) return null;                     // non frazionata: niente rata successiva
+    if (p.stato_pagamento === 'annullata') return null;      // regola 4: chi è cessato non deve più niente
+
+    var da = ssf.scadenza_incassato, fine = p.data_scadenza;
+    if (!da || !fine || da >= fine) return null;             // niente di scoperto
+
+    var gia = (titoliDellaPolizza || []).some(function (t) { return t.data_decorrenza === da; });
+    if (gia) return null;                                    // la compagnia l'ha già mandata
+
+    var nome = p.numero_polizza || p._fonte_id;
+    var passo = MESI_RATA[rate] || null;
+    var attesa = passo ? aggiungiMesi(da, passo) : null;
+    if (!attesa || attesa > fine) {
+      return { avviso: 'La polizza ' + nome + ' è pagata fino al ' + da + ' e corre fino al ' + fine +
+        ': resta scoperto un pezzo più corto di una rata, e il flusso non ne dice l\'importo. La rata da incassare va messa a mano.' };
+    }
+    if (p.premio_rata == null) {
+      return { avviso: 'La polizza ' + nome + ' ha una rata scoperta dal ' + da + ', ma il flusso non porta l\'importo di rata: va messa a mano.' };
+    }
+
+    return {
+      titolo: {
+        _fonte_id: p._fonte_id + ':RATA:' + da,
+        _generato: true,
+        tipo: 'rata',
+        data_decorrenza: da,
+        data_scadenza: da,
+        importo_lordo: p.premio_rata,
+        /* Le provvigioni di una rata non ancora emessa non le sa nessuno, e
+           una stima qui finirebbe dritta nell'estratto conto di qualcuno. */
+        provvigione: null,
+        stato: 'aperto',
+        mezzo_pagamento: p.mezzo_pagamento || null,
+        incassato_il: null,
+        note: 'Rata dedotta dal frazionamento ' + (p.frazionamento || rate + ' rate') +
+              ': la compagnia non l\'ha mandata nel flusso. Importo pari alla rata precedente.',
+        _ssf: { generato: true, da_frazionamento: rate, coperta_fino_al: fine, garanzie: [] }
       }
     };
   }
@@ -498,7 +716,15 @@
       testata: analisi.testata,
       clienti: { nuovi: clientiNuovi, gia: clientiGia, idPerChiave: idPerChiave },
       polizze: { nuove: polizzeNuove, gia: polizzeGia, senzaCliente: polizzeSenzaCliente },
-      titoli: { nuovi: titoliNuovi, gia: titoliGia, senzaPolizza: titoliSenzaPolizza },
+      titoli: {
+        nuovi: titoliNuovi, gia: titoliGia, senzaPolizza: titoliSenzaPolizza,
+        /* Quante di quelle rate le ha mandate la compagnia e quante le abbiamo
+           dedotte noi dal frazionamento: due numeri, perché sono due cose
+           diverse e chi guarda l'anteprima ha il diritto di saperlo prima di
+           scrivere. */
+        dedotti: titoliNuovi.filter(function (t) { return t._generato; }),
+        daIncassare: titoliNuovi.filter(function (t) { return t.stato === 'aperto'; })
+      },
       /* Le offerte di rinnovo non entrano in portafoglio (regola 3), ma si
          contano e si elencano: sono clienti da chiamare prima che scada il
          termine per pagare, cioè la cosa più utile che c'è in questo file. */
@@ -509,7 +735,22 @@
           premio: o.premio_rata, sostituisce: o._sostituisce
         };
       }),
-      collaboratori: analisi.collaboratori || [],
+      /* I COLLABORATORI DEL FLUSSO, con l'email e quello che hanno prodotto.
+         `riconosciuto` dice se quell'email è già una persona in agenzia: è
+         l'abbinamento che il codice della compagnia da solo non permette.
+         Qui non si scrive niente e non si crea nessuno — il registro unico
+         delle persone è un'altra cosa (CLAUDE.md §10), e agganciarlo a occhio
+         creerebbe i doppioni che quel lavoro ha appena tolto. Si mostra chi
+         c'è e chi no, e la decisione resta a una persona. */
+      collaboratori: (analisi.collaboratori || []).map(function (c) {
+        var id = c.email && (e.collaboratoriPerEmail || {})[c.email];
+        var x = {};
+        for (var k in c) x[k] = c[k];
+        x.riconosciuto = !!id;
+        x.persona_id = id || null;
+        return x;
+      }),
+      provvigioni: Math.round((analisi.collaboratori || []).reduce(function (t, c) { return t + (c.provvigioni || 0); }, 0) * 100) / 100,
       prodotti: analisi.prodotti || [],
       avvisi: analisi.avvisi || [],
       niente: !clientiNuovi.length && !polizzeNuove.length && !titoliNuovi.length
@@ -590,10 +831,11 @@
 
   var API = {
     VERSIONE: VERSIONE, RECORD: RECORD,
-    FRAZIONAMENTO: FRAZIONAMENTO, RAMO: RAMO, MEZZO: MEZZO, TIPO_TITOLO: TIPO_TITOLO,
+    FRAZIONAMENTO: FRAZIONAMENTO, RAMO: RAMO, MEZZO: MEZZO, MEZZI: MEZZI, mezzoDa: mezzoDa, TIPO_TITOLO: TIPO_TITOLO,
     leggiCsv: leggiCsv, tipoDaNome: tipoDaNome, raccogli: raccogli,
     data: data, numero: numero,
     versoAnagrafica: versoAnagrafica, versoPolizza: versoPolizza, versoTitolo: versoTitolo,
+    aggiungiMesi: aggiungiMesi, rataDaIncassare: rataDaIncassare,
     analizza: analizza, piano: piano,
     apriZip: apriZip
   };

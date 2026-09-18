@@ -719,7 +719,9 @@ const avvio = async () => {
     // Tre polizze finte che coprono i casi che contano: una a posto, una senza
     // scadenza, una scaduta e non perfezionata.
     const POLIZZE_FINTE = [
-      { id: 'p1', numero: 1, numero_polizza: 'HDI/123', cliente: 'Rossi Mario', modulo: 'persona',
+      /* `cliente_id` c'e' su p1 e p3 e NON su p2: il nome si apre solo quando
+         c'e' davvero un'anagrafica dietro, e p2 e' il caso in cui non c'e'. */
+      { id: 'p1', numero: 1, numero_polizza: 'HDI/123', cliente: 'Rossi Mario', cliente_id: 'anag-1', modulo: 'persona',
         prodotto: 'RC Vita Privata', compagnia: 'HDI', data_effetto: '2026-06-20',
         data_scadenza: '2027-06-20', frazionamento: 'Mensile', premio_annuo: 144, premio_rata: 12,
         stato_pagamento: 'pagato', perfezionata: true, rendicontata: true, creato_nome: 'Anna', preventivo_id: 'prev-1' },
@@ -727,7 +729,7 @@ const avvio = async () => {
         prodotto: 'Rischi Catastrofali', compagnia: 'HDI', data_effetto: '2026-07-01',
         data_scadenza: null, frazionamento: 'Annuale', premio_annuo: 60, premio_rata: 60,
         stato_pagamento: 'non_pagato', perfezionata: false, rendicontata: false, creato_nome: 'Anna', preventivo_id: null },
-      { id: 'p3', numero: 3, numero_polizza: 'AXA/999', cliente: 'Verdi Luca', modulo: 'rca',
+      { id: 'p3', numero: 3, numero_polizza: 'AXA/999', cliente: 'Verdi Luca', cliente_id: 'anag-3', modulo: 'rca',
         prodotto: 'RC Auto', compagnia: 'AXA', data_effetto: '2024-01-01',
         data_scadenza: '2025-01-01', frazionamento: 'Annuale', premio_annuo: 500, premio_rata: 500,
         stato_pagamento: 'sospeso', perfezionata: false, rendicontata: false, creato_nome: 'Luigi', preventivo_id: 'prev-3' }
@@ -754,33 +756,46 @@ const avvio = async () => {
       await window.loadPortafoglio();
     }, POLIZZE_FINTE);
 
-    await prova('portafoglio: quattro semafori per riga, ognuno con la sua spiegazione', async () => {
+    await prova('portafoglio: i pallini di stato non ci sono piu\', e al loro posto c\'e\' come paga', async () => {
+      /* 18/09/2026, richiesta di Francesco: «leviamo anche nelle polizze i
+         pallini di stato per ora, che tanto non ci servono a nulla». La prova
+         che c'era misurava quattro pallini per riga: non era sbagliata, era il
+         mondo di ieri. Si aggiorna la REGOLA, non il numero — quella colonna
+         deve portare una cosa che si guarda e si corregge tutti i giorni. */
       const r = await page.evaluate(() => {
-        const righe = [...document.querySelectorAll('#pf-body tr')].filter(t => t.querySelector('.pf-sems'));
-        const primi = [...righe[0].querySelectorAll('.sem')].map(s => s.getAttribute('title'));
-        return { righe: righe.length, semPerRiga: primi.length, titoli: primi,
-                 senzaTitolo: [...document.querySelectorAll('#pf-body .sem')].filter(s => !s.getAttribute('title')).length };
+        const righe = [...document.querySelectorAll('#pf-body tr')].filter(t => !t.querySelector('.empty-state'));
+        return { righe: righe.length,
+                 pallini: document.querySelectorAll('#pf-body .sem').length,
+                 legenda: !!document.querySelector('#page-portafoglio .pf-legenda'),
+                 mezzi: document.querySelectorAll('#pf-body .pf-mezzo').length };
       });
       deve(r.righe === 3, 'righe disegnate: ' + r.righe);
-      deve(r.semPerRiga === 4, 'semafori per riga: ' + r.semPerRiga);
-      deve(r.senzaTitolo === 0, r.senzaTitolo + ' pallini senza spiegazione (il colore da solo non è informazione)');
-      deve(/Pagamento/.test(r.titoli[0]) && /Perfezionamento/.test(r.titoli[1])
-        && /Rendicontazione/.test(r.titoli[2]) && /Copertura/.test(r.titoli[3]),
-        'i quattro fronti non sono nell\'ordine dichiarato dalla legenda: ' + r.titoli.join(' / '));
-      return r.titoli[0] + ' … ' + r.titoli[3];
+      deve(r.pallini === 0, r.pallini + ' pallini sono tornati nel portafoglio');
+      deve(!r.legenda, 'la legenda dei colori e\' rimasta senza i colori che spiegava');
+      deve(r.mezzi === 3, 'come paga il cliente non si vede su ogni riga: ' + r.mezzi);
+      return '0 pallini, 3 righe, come paga su ognuna';
     });
 
-    await prova('portafoglio: la legenda spiega tutti i colori usati', async () => {
-      const l = await page.evaluate(() => {
-        const leg = document.querySelector('#page-portafoglio .pf-legenda');
-        const classi = new Set([...document.querySelectorAll('#pf-body .sem')]
-          .flatMap(s => [...s.classList]).filter(c => c !== 'sem'));
-        const spiegate = new Set([...leg.querySelectorAll('.sem')].flatMap(s => [...s.classList]).filter(c => c !== 'sem'));
-        return { usate: [...classi], spiegate: [...spiegate], testo: leg.textContent };
+    await prova('portafoglio: gli stati non sono spariti, sono rimasti dove si guardano', async () => {
+      /* Togliere i pallini dal portafoglio non vuol dire buttare gli stati:
+         vivono nel database e `pfSemafori` li disegna ancora nella scheda del
+         cliente. Se un giorno sparisse anche di la\', sparirebbe un'informazione
+         invece di uno spazio sprecato. E il colore da solo non e\' mai
+         informazione: ogni pallino dice a parole che cosa vuol dire. */
+      const r = await page.evaluate(() => {
+        const d = document.createElement('div');
+        d.innerHTML = window.pfSemafori({ stato_pagamento: 'pagato', perfezionata: false, rendicontata: true,
+                                          data_effetto: '2020-01-01', data_scadenza: '2099-01-01' });
+        const s = [...d.querySelectorAll('.sem')];
+        return { quanti: s.length, titoli: s.map(x => x.getAttribute('title')),
+                 senzaTitolo: s.filter(x => !x.getAttribute('title')).length };
       });
-      const nonSpiegate = l.usate.filter(c => !l.spiegate.includes(c));
-      deve(nonSpiegate.length === 0, 'colori usati ma non in legenda: ' + nonSpiegate.join(', '));
-      deve(/Pagamento/.test(l.testo) && /Copertura/.test(l.testo), 'legenda incompleta');
+      deve(r.quanti === 4, 'semafori nella scheda cliente: ' + r.quanti);
+      deve(r.senzaTitolo === 0, r.senzaTitolo + ' pallini senza spiegazione (il colore da solo non e\' informazione)');
+      deve(/Pagamento/.test(r.titoli[0]) && /Perfezionamento/.test(r.titoli[1])
+        && /Rendicontazione/.test(r.titoli[2]) && /Copertura/.test(r.titoli[3]),
+        'i quattro fronti non sono nell\'ordine dichiarato: ' + r.titoli.join(' / '));
+      return r.titoli[0] + ' … ' + r.titoli[3];
     });
 
     await prova('portafoglio: il tasto di esportazione è un tasto, non una fascia', async () => {
@@ -826,7 +841,7 @@ const avvio = async () => {
       const r = await page.evaluate(() => {
         // si contano le righe VERE (quelle con i semafori): la riga di
         // "nessun risultato" non è una polizza
-        const conta = () => [...document.querySelectorAll('#pf-body tr')].filter(t => t.querySelector('.pf-sems')).length;
+        const conta = () => [...document.querySelectorAll('#pf-body tr')].filter(t => !t.querySelector('.empty-state')).length;
         const metti = (id, v) => { document.getElementById(id).value = v; window.pfRender(); };
         const out = {};
         metti('pf-compagnia', 'HDI');
@@ -868,6 +883,129 @@ const avvio = async () => {
       }));
       deve(n.conNumero === 'HDI/123', 'il numero di compagnia deve vincere: ' + n.conNumero);
       deve(n.senza === 'PL-2026-0007', 'progressivo di ripiego sbagliato: ' + n.senza);
+    });
+
+    /* ══ I TRE CLIC DELLA RIGA DI PORTAFOGLIO (18/09/2026) ═════════════════
+       Richiesta di Francesco: «cliccando sul nome devo poter entrare
+       nell'anagrafica del cliente, cliccando sul numero di polizza devo poter
+       vedere garanzie, ecc., cliccando sul premio devo poter vedere il
+       pagamento e poter effettuare eventuali modifiche».
+
+       Prima tutta la riga apriva il preventivo — quando c'era. Su una polizza
+       arrivata dal flusso della compagnia il preventivo non esiste, e la riga
+       non faceva niente: si guardavano quei dati senza poterli aprire. */
+    await prova('portafoglio: i tre clic della riga portano in tre posti diversi', async () => {
+      const r = await page.evaluate(() => {
+        window.pfRender();
+        const riga = [...document.querySelectorAll('#pf-body tr')].find(t => /HDI\/123/.test(t.textContent));
+        const dove = sel => { const a = riga.querySelector(sel); return a ? a.getAttribute('onclick') : null; };
+        return {
+          numero: dove('td:nth-child(1) a'),
+          cliente: dove('td:nth-child(2) a'),
+          premio: dove('td:nth-child(5) a'),
+          /* Senza `stopPropagation` il clic arriva anche alla riga e si
+             aprono due cose insieme. */
+          fermano: [...riga.querySelectorAll('a[onclick]')].every(a => /stopPropagation/.test(a.getAttribute('onclick')))
+        };
+      });
+      deve(/polDettaglio\('p1'\)/.test(r.numero), 'il numero non apre la polizza: ' + r.numero);
+      deve(/apriAnagrafica\(/.test(r.cliente), 'il cliente non apre la sua anagrafica: ' + r.cliente);
+      deve(/polPagamento\('p1'\)/.test(r.premio), 'il premio non apre il pagamento: ' + r.premio);
+      deve(r.fermano, 'un clic non ferma la propagazione: si aprirebbero due cose insieme');
+      return 'numero → polizza, cliente → anagrafica, premio → pagamento';
+    });
+
+    await prova('portafoglio: una polizza senza anagrafica lo dice invece di fingere un collegamento', async () => {
+      /* Le polizze del flusso hanno sempre un `cliente_id`; quelle vecchie
+         inserite a mano no. Un nome sottolineato che non apre niente e' peggio
+         di un nome normale: promette una cosa che non c'e'. */
+      const r = await page.evaluate(() => {
+        window.pfRender();
+        const riga = [...document.querySelectorAll('#pf-body tr')].find(t => /Bianchi Srl/.test(t.textContent));
+        const td = riga.querySelector('td:nth-child(2)');
+        return { link: !!td.querySelector('a'), testo: td.textContent };
+      });
+      deve(!r.link, 'un nome senza anagrafica e\' comunque un collegamento');
+      deve(/non collegata a un'anagrafica/.test(r.testo), 'non dice perche\' non si apre: ' + r.testo);
+      return 'niente collegamento finto';
+    });
+
+    await prova('polizza: il dettaglio mostra garanzie, veicolo e da dove arriva', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: 'p1', cliente: 'Rossi Mario', numero_polizza: 'HDI/123', compagnia: 'PRIMA',
+          prodotto: 'RC Auto', modulo: 'rca', data_effetto: '2026-09-16', data_scadenza: '2027-09-16',
+          frazionamento: 'Semestrale', premio_annuo: null, premio_rata: 110, tacito_rinnovo: false,
+          fonte: 'ssf', creato_nome: 'Anna', creato_il: '2026-09-17T09:30:00Z',
+          dati: { ssf: { compagnia_rischio: 'TRIGLAV', scadenza_incassato: '2027-03-16',
+            collaboratore: 'U25337', collaboratore_email: 'mario@agenzia.it',
+            veicolo: { targa: 'AB123CD', classe: '1', settore: 'AUTO' },
+            garanzie: [{ codice: 'RCA', descrizione: 'Responsabilita civile', lordo: 90, netto: 70, tasse: 20 },
+                       { codice: 'ASS', descrizione: 'Assistenza', lordo: 20, netto: 16, tasse: 4 }] } } } };
+        await window.polDettaglio('p1');
+        return document.getElementById('pol-bd').innerHTML;
+      });
+      deve(/Responsabilita civile/.test(r) && /Assistenza/.test(r), 'le garanzie non si vedono');
+      deve(/AB123CD/.test(r), 'il veicolo non si vede');
+      deve(/Semestrale/.test(r), 'il frazionamento non si vede: e\' quello che spiega il premio di rata');
+      /* REGOLA 2 del flusso: su una frazionata l'annuo non si stima. Il
+         pannello deve dirlo, non lasciare un vuoto che sembra uno zero. */
+      deve(/annuo da confermare/.test(r), 'l\'annuo mancante non e\' dichiarato');
+      deve(/TRIGLAV/.test(r), 'chi porta il rischio non si vede');
+      /* CHI E QUANDO. E\' la richiesta di Francesco, e arriva sempre mesi dopo. */
+      deve(/Creata da/.test(r) && /Anna/.test(r), 'non dice chi ha creato la polizza');
+      deve(/flusso della compagnia/.test(r) && /mario@agenzia\.it/.test(r), 'non dice che arriva dal flusso, e da chi');
+      return '2 garanzie, veicolo, provenienza e firma';
+    });
+
+    await prova('polizza: il pagamento si guarda e si corregge, e resta scritto chi', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: 'p1', cliente: 'Rossi Mario', numero_polizza: 'HDI/123', mezzo_pagamento: 'paypal',
+          stato_pagamento: 'non_pagato', creato_nome: 'Anna', creato_il: '2026-09-17T09:30:00Z', dati: {} } };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: [
+          { id: 't1', tipo: 'prima_rata', data_decorrenza: '2026-09-16', importo_lordo: 110, provvigione: 11, stato: 'incassato', incassato_il: '2026-09-16' },
+          { id: 't2', tipo: 'rata', data_decorrenza: '2027-03-16', importo_lordo: 110, provvigione: null, stato: 'aperto',
+            note: 'Rata dedotta dal frazionamento Semestrale: la compagnia non l\'ha mandata nel flusso.' } ] };
+        await window.polPagamento('p1');
+        const prima = document.getElementById('pol-bd').innerHTML;
+        /* La correzione: si cambia il mezzo e si salva da solo. */
+        window.__COLLAUDO.db = [];
+        document.getElementById('pol-mezzo').value = 'bonifico';
+        await window.polSalvaPagamento('p1');
+        const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_polizze' && x.operazione === 'update');
+        return { prima, upd: upd.map(x => x.payload), dopo: document.getElementById('pol-bd').innerHTML };
+      });
+      deve(/1 incassate su 2/.test(r.prima), 'non dice a che punto sta il pagamento: ' + r.prima.slice(0, 200));
+      deve(/dedotta dal frazionamento/.test(r.prima), 'la rata dedotta non si distingue da quelle vere');
+      deve(r.upd.length === 1, 'scritture sulla polizza: ' + r.upd.length);
+      deve(r.upd[0].mezzo_pagamento === 'bonifico', 'il mezzo non viene salvato: ' + JSON.stringify(r.upd[0]));
+      /* LA PARTE CHE CONTA: chi, quando, che cosa. `quote_log` non porta l'id
+         della riga toccata, quindi «chi ha cambiato QUESTO pagamento» ha una
+         risposta solo se la traccia resta sulla polizza. */
+      const m = (r.upd[0].dati || {}).modifiche || [];
+      deve(m.length === 1, 'la modifica non lascia traccia sulla polizza: ' + JSON.stringify(r.upd[0].dati));
+      deve(m[0].quando && /mezzo di pagamento/.test(m[0].cosa || ''), 'la traccia non dice quando e che cosa: ' + JSON.stringify(m[0]));
+      return '2 rate, 1 dedotta dichiarata, 1 correzione firmata';
+    });
+
+    await prova('polizza: una correzione che non cambia niente non scrive niente', async () => {
+      /* Il salvataggio parte da un `onchange`, che scatta anche quando si
+         rimette il valore di prima. Scrivere lo stesso riempirebbe la storia
+         della polizza di modifiche che non hanno cambiato nulla — e quella
+         storia serve proprio a distinguerle. */
+      const n = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: 'p1', cliente: 'Rossi Mario', mezzo_pagamento: 'bonifico', stato_pagamento: 'non_pagato', dati: {} } };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: [] };
+        await window.polPagamento('p1');
+        window.__COLLAUDO.db = [];
+        document.getElementById('pol-mezzo').value = 'bonifico';
+        await window.polSalvaPagamento('p1');
+        return window.__COLLAUDO.db.filter(x => x.operazione === 'update').length;
+      });
+      deve(n === 0, 'ha scritto ' + n + ' modifiche senza che sia cambiato niente');
+      return '0 scritture a vuoto';
     });
 
     /* ── Blocco E: sinistro strutturato ──────────────────────────────────── */
@@ -7235,6 +7373,21 @@ const avvio = async () => {
       return 'piano a schermo, 0 scritture';
     });
 
+    await prova('flusso: l\'anteprima distingue la rata che manda la compagnia da quella che deduciamo noi', async () => {
+      /* Due numeri messi vicini apposta. Una rata ricevuta e una dedotta non
+         hanno lo stesso peso, e confonderle è il modo più rapido di non
+         fidarsi più di nessuna delle due. */
+      const html = await scegli([]);
+      deve(/Rate da incassare/.test(html), 'le rate che restano da incassare non si vedono');
+      deve(/dedotta dal frazionamento/.test(html), 'non si vede quale rata l\'abbiamo dedotta noi');
+      deve(/emessa dalla compagnia/.test(html), 'non si vede quale rata arriva dalla compagnia');
+      deve(/NP-0008/.test(html), 'non dice su quale polizza sta la rata dedotta');
+      /* E il pezzo scoperto più corto di una rata non diventa un importo:
+         diventa un avviso, perché quel numero non lo dice nessuno. */
+      deve(/NP-0009/.test(html) && /a mano/.test(html), 'il troncone scoperto di NP-0009 sparisce in silenzio');
+      return 'una dedotta, una dalla compagnia, un avviso al posto di un numero inventato';
+    });
+
     await prova('flusso: confermando scrive clienti, polizze e rate, ognuno con la sua provenienza', async () => {
       await scegli([]);
       const r = await page.evaluate(async () => {
@@ -7259,18 +7412,28 @@ const avvio = async () => {
       deve(primo >= 0 && primo < pol && pol < tit, 'l\'ordine di scrittura è ' + r.ordine.join(' → '));
       deve(r.anag.length === 3, 'anagrafiche scritte: ' + r.anag.length + ' (attese 3: il doppione dentro il flusso non fa una scheda in più)');
       deve(r.anag.every(a => a.fonte === 'ssf' && a.fonte_id), 'un\'anagrafica senza provenienza: ' + JSON.stringify(r.anag[0]));
-      deve(r.pol.length === 5, 'polizze scritte: ' + r.pol.length + ' (attese 5: l\'offerta e quella senza contraente restano fuori)');
+      deve(r.pol.length === 7, 'polizze scritte: ' + r.pol.length + ' (attese 7: l\'offerta e quella senza contraente restano fuori)');
       deve(r.pol.every(p => p.fonte === 'ssf' && p.fonte_id), 'una polizza senza chiave di provenienza: al prossimo caricamento diventa un doppione');
       deve(r.pol.every(p => p.cliente_id), 'una polizza senza cliente_id');
       const semestrale = r.pol.find(p => p.numero_polizza === 'NP-0002');
       deve(semestrale.premio_rata === 110 && semestrale.premio_annuo === null, 'la semestrale scrive annuo ' + semestrale.premio_annuo + ': il portafoglio risulterebbe dimezzato');
-      deve(r.tit.length === 2, 'rate scritte: ' + r.tit.length);
+      /* Tre rate: due le manda la compagnia (T1, T2), la terza la deduciamo
+         noi dal frazionamento di NP-0008, che la compagnia non ha mandato. */
+      deve(r.tit.length === 3, 'rate scritte: ' + r.tit.length);
       deve(r.tit.every(t => t.polizza_id && t.fonte_id), 'una rata senza polizza o senza provenienza');
+      const dedotta = r.tit.find(t => /:RATA:/.test(t.fonte_id));
+      deve(dedotta, 'la rata dedotta dal frazionamento non viene scritta: il cliente la deve e nessuno la vede');
+      deve(dedotta.stato === 'aperto' && dedotta.importo_lordo === 145, 'la rata dedotta: ' + dedotta.stato + ' ' + dedotta.importo_lordo);
+      /* E si distingue da quelle vere: una riga di contabilita' che non si
+         distingue e' una riga di cui non ci si puo' fidare. */
+      deve(/dedotta/i.test(dedotta.note || ''), 'la rata dedotta non dichiara di esserlo: ' + dedotta.note);
+      deve(r.tit.filter(t => !/:RATA:/.test(t.fonte_id)).every(t => !t.note), 'una rata della compagnia porta una nota che non e\' sua');
       /* Il verbale si scrive alla fine, coi numeri veri. */
       deve(r.reg.length === 1, 'righe di registro: ' + r.reg.length);
-      deve(r.reg[0].conteggi.polizze_scritte === 5 && r.reg[0].emittente === 'COMPAGNIA_DI_PROVA', 'il registro non dice che cosa è stato scritto: ' + JSON.stringify(r.reg[0].conteggi));
+      deve(r.reg[0].conteggi.polizze_scritte === 7 && r.reg[0].emittente === 'COMPAGNIA_DI_PROVA', 'il registro non dice che cosa è stato scritto: ' + JSON.stringify(r.reg[0].conteggi));
+      deve(r.reg[0].conteggi.titoli_dedotti === 1, 'il verbale non dice quante rate le abbiamo dedotte noi: ' + JSON.stringify(r.reg[0].conteggi));
       deve(/Fatto/.test(r.esito), 'non dice com\'è andata');
-      return '3 clienti, 5 polizze, 2 rate, 1 riga di registro';
+      return '3 clienti, 7 polizze, 3 rate (1 dedotta), 1 riga di registro';
     });
 
     await prova('flusso: il cliente che c\'è già non viene riscritto', async () => {
@@ -7297,8 +7460,8 @@ const avvio = async () => {
       deve(r.anag.length === 2, 'anagrafiche scritte: ' + r.anag.length + ' (attese 2, la terza c\'era già)');
       /* E le sue polizze si agganciano alla scheda che c'era. */
       const sue = r.pol.filter(p => p.cliente_id === 'gia-nostro');
-      deve(sue.length === 2, 'polizze agganciate alla scheda esistente: ' + sue.length + ' (attese 2)');
-      return '1 riconosciuto, 0 sovrascritti, 2 polizze agganciate';
+      deve(sue.length === 3, 'polizze agganciate alla scheda esistente: ' + sue.length + ' (attese 3)');
+      return '1 riconosciuto, 0 sovrascritti, 3 polizze agganciate';
     });
 
     await prova('flusso: ricaricare lo stesso file non duplica niente', async () => {
@@ -7310,8 +7473,13 @@ const avvio = async () => {
           { id: 'c3', partita_iva: '12345678901' }], error: null };
         window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
           { id: 'p1', fonte_id: 'P1' }, { id: 'p2', fonte_id: 'P2' }, { id: 'p3', fonte_id: 'P3' },
-          { id: 'p4', fonte_id: 'P4' }, { id: 'p7', fonte_id: 'P7' }], error: null };
-        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [{ id: 't1', fonte_id: 'T1' }, { id: 't2', fonte_id: 'T2' }], error: null };
+          { id: 'p4', fonte_id: 'P4' }, { id: 'p7', fonte_id: 'P7' },
+          { id: 'p8', fonte_id: 'P8' }, { id: 'p9', fonte_id: 'P9' }], error: null };
+        /* Anche la rata DEDOTTA deve riconoscersi al secondo giro: la sua
+           chiave e' costruita apposta per essere sempre la stessa. */
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [
+          { id: 't1', fonte_id: 'T1' }, { id: 't2', fonte_id: 'T2' },
+          { id: 't8', fonte_id: 'P8:RATA:2027-01-01' }], error: null };
         const testi = window.__CAMPIONE;
         const files = Object.keys(testi).map(n => new File([testi[n]], n, { type: 'text/csv' }));
         window.__COLLAUDO.db = [];

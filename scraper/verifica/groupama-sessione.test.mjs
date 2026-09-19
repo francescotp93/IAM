@@ -165,6 +165,48 @@ prova('il tentativo si riarma solo rientrando, non da solo', () => {
     'il contatore viene azzerato in ' + azzeramenti + ' punti: basta uno sbagliato per riaprire la raffica di mail');
 });
 
+
+prova('il rientro automatico e\' spento, e si accende solo da fuori', () => {
+  /*  Il 19/09/2026 si e\' spento per una ragione misurata, non per prudenza:
+      guardando dentro tutte e tre le caselle che il backend legge, mail da
+      Groupama non ce n\'erano. Il codice arriva alla posta personale
+      dell\'agente. Quindi ogni rientro automatico e\' una mail che nessun
+      programma potra\' usare, spedita a una persona che sta lavorando.
+      Non cancellato: spento, perche\' il giorno in cui il portale mandera\' il
+      codice a una casella dell\'agenzia torna utile com\'e\'.  */
+  deve(/const RIENTRO_AUTO = process\.env\.GROUPAMA_RIENTRO_AUTO === '1';/.test(src),
+    'l\'interruttore non c\'e\' o non e\' un confronto esatto: un valore qualsiasi lo riaccenderebbe per sbaglio');
+  const da = src.indexOf('if (isaPwd || await hasPasswordField())');
+  const blocco = da < 0 ? '' : src.slice(da, src.indexOf('}, 4 * 60 * 1000)', da));
+  deve(blocco, 'non trovo piu\' il ramo della caduta');
+  const interruttore = blocco.indexOf('RIENTRO_AUTO');
+  const tentativo = blocco.indexOf('await doAccedi(');
+  deve(interruttore > -1, 'alla caduta si tenta il rientro senza guardare l\'interruttore: le mail ricominciano');
+  deve(tentativo > interruttore,
+    'il tentativo viene prima dell\'interruttore: il codice parte comunque');
+});
+
+prova('da spento lo dice, e lo dice una volta per caduta', () => {
+  /*  Due guasti opposti, tutti e due gia\' visti in questa casa: la rinuncia
+      muta (quattro giorni a cercare nel posto sbagliato) e il messaggio a
+      ripetizione (il keep-alive passa ogni quattro minuti).  */
+  const da = src.indexOf('if (isaPwd || await hasPasswordField())');
+  const blocco = src.slice(da, src.indexOf('}, 4 * 60 * 1000)', da));
+  const spento = blocco.indexOf('if (!RIENTRO_AUTO)');
+  deve(spento > -1, 'non c\'e\' il ramo dello spento');
+  /*  Dentro il RAMO, non dentro una finestra di caratteri: alla controprova la
+      prima versione restava verde perche' nei 600 caratteri dopo l'interruttore
+      ci finiva il messaggio del ramo ACCESO. Quarta volta che una misura in
+      caratteri al posto di un confine mi fa passare per buono un guasto.  */
+  const fine = blocco.indexOf('return;', spento);
+  deve(fine > spento, 'il ramo dello spento non si chiude con un return: il tentativo prosegue comunque');
+  const dentroIlRamo = blocco.slice(spento, fine);
+  deve(/log\(/.test(dentroIlRamo), 'da spento non scrive niente: la caduta diventa invisibile');
+  const latch = blocco.indexOf('rientroTentato = true');
+  deve(latch > -1 && latch < spento,
+    'il messaggio non e\' sotto il contatore: verrebbe ripetuto a ogni giro del keep-alive');
+});
+
 const ko = esiti.filter(e => !e[0]);
 console.log('\n── Groupama · una volta dentro, si resta dentro ────────────');
 for (const [ok, n, d] of esiti) console.log((ok ? '  ✅ ' : '  ❌ ') + n + (d ? ' — ' + d : ''));

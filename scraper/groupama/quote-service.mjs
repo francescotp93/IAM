@@ -396,6 +396,21 @@ let OTP_CHIESTO_IL = 0;   // quando il portale ha spedito l'ultimo codice (0 = n
    codice, e l'11/09/2026 quattro tentativi di fila hanno riempito la casella
    dell'agenzia. Un tentativo si', il secondo lo decide una persona. */
 let rientroTentato = false;
+/* RIENTRO AUTOMATICO: SPENTO, e si accende da fuori (19/09/2026).
+   Era acceso dal 17/09 su una premessa che sembrava solida e non lo era:
+   «la casella la legge il backend, quindi un tentativo non spreca un codice,
+   ne fa nascere uno che consumiamo noi».
+   Il 17/09 quella premessa e' stata verificata e e' FALSA. Guardando dentro
+   tutte e tre le caselle che il backend legge, di mail da Groupama non ce
+   n'era nessuna: ne' recenti, ne' vecchie. Il codice arriva ALTROVE — alla
+   posta personale dell'agente — e li' il backend non entra e non deve
+   entrare. Quindi ogni rientro automatico e' esattamente quello che era
+   l'11/09: una mail col codice che nessun programma potra' mai usare, e che
+   arriva a una persona che in quel momento magari e' da un cliente.
+   Non si cancella, si spegne: il giorno in cui il portale Groupama mandera'
+   il codice a una casella dell'agenzia, questa riga torna utile senza
+   riscrivere niente — basta GROUPAMA_RIENTRO_AUTO=1 nell'ambiente. */
+const RIENTRO_AUTO = process.env.GROUPAMA_RIENTRO_AUTO === '1';
 /* Il codice in volo si azzera QUI, in un punto solo: appena si è dentro, quel
    codice è stato usato (o non serviva) e il freno non ha più motivo di esistere.
    Farlo in setState invece che nei quattro punti che dichiarano «loggato»
@@ -910,6 +925,14 @@ setInterval(async () => {
          lettura della posta non veniva mai chiamata. */
       if (!rientroTentato) {
         rientroTentato = true;
+        /* Una riga per caduta, mai zero: una rinuncia muta qui e' costata
+           quattro giorni di ricerca nel posto sbagliato (FONTI.md §9-sexies).
+           `rientroTentato` fa da latch anche da spento, cosi' non diventa un
+           messaggio ogni quattro minuti. */
+        if (!RIENTRO_AUTO) {
+          log('rientro automatico SPENTO: non chiedo un codice. Groupama lo manda a una casella che il backend non legge, quindi il tentativo sarebbe solo una mail in piu\'. Si riaccende con GROUPAMA_RIENTRO_AUTO=1 quando il codice arrivera\' alla posta dell\'agenzia.');
+          return;
+        }
         log('rientro automatico: provo UNA volta a rifare l\'accesso — il codice lo prende il backend dalla posta dell\'agenzia');
         const st = await doAccedi().catch(e => ({ step: 'errore', msg: String(e && e.message || e) }));
         log('rientro automatico → ' + (st && st.step) + (st && st.step === 'attesa_otp'

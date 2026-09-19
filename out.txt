@@ -1,21 +1,8 @@
-id: spento-1789815887  exit: 0  2026-09-19 11:07:01
+id: dove-inoltrare-1789816065  exit: 0  2026-09-19 11:08:16
 ----
 == ora
-2026-09-19 11:05:20 UTC
-== commit vivo
-c4300fb Groupama non chiede più codici da solo: l'interruttore è spento (#188)
-== l'interruttore e' nel codice che gira?
-3
-== ed e' acceso da qualche parte? (deve essere vuoto: spento)
-  nessuna variabile: spento, come deve
-  non impostata da nessuna parte: spento
-
-== stato groupama
-active
-{"running":false,"step":"pronto","since":1789815899660,"msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_chiesto_il":0}
-== ultime righe del suo giornale
-Sep 19 11:04:50 vps-d6443a46 start-service.sh[3327650]: 11:04:50 [groupama] SIGTERM: nessuna sessione viva, tengo la copia su disco
-Sep 19 11:04:57 vps-d6443a46 start-service.sh[3489951]: 11:04:57 [groupama] telecomando HTTP su 127.0.0.1:4500
-Sep 19 11:04:58 vps-d6443a46 start-service.sh[3489951]: 11:04:58 [groupama] sessione ripresa da auth.json: 20 cookie
-Sep 19 11:04:59 vps-d6443a46 start-service.sh[3489951]: 11:04:59 [groupama] la sessione salvata non e' piu' valida: serve un accesso con codice
-Sep 19 11:04:59 vps-d6443a46 start-service.sh[3489951]: 11:04:59 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+2026-09-19 11:08:15 UTC
+== le caselle di servizio che il sistema legge (indirizzi dell'agenzia, non di clienti)
+  amministrazione@withusassicurazioni.it
+  contabilita@withusassicurazioni.it
+  intermediari@withusassicurazioni.it

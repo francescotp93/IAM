@@ -877,8 +877,34 @@ async function _driveISAQuote(targa, opts) {
 // ~4 min pingo a turno la home portale e la home ISA, così l'utente NON deve rifare il codice ogni
 // giorno. MAI durante login (running/HOLD/BUSY) o durante un preventivo (QUOTING).
 let kaTick = 0;
+/* DA SLOGGATI NON SI BUSSA. Trovato il 19/09/2026, misurando la casella a cui
+   Groupama manda davvero i codici (withus.coop@gmail.com, collegata quel
+   giorno): 45 mail in un'ora e un quarto, a due cadenze regolari — una ogni
+   4 minuti e una ogni 5. Quattro minuti e' QUESTO orologio; cinque e' il giro
+   della vigilanza. Nessuno dei due chiedeva un codice: si limitavano ad
+   aprire la home del portale. Tanto basta — il portale vede un utente noto
+   con la sessione morta e spedisce un OTP da solo.
+   Per tre giorni si e' cercata la causa fra chi CHIEDE il codice (il rientro
+   automatico, il freno anti-raffica, la lettura della posta) e non era
+   nessuno di loro: era chi si limitava a farsi vedere.
+   Un keep-alive esiste per tenere viva una sessione. Se la sessione non c'e'
+   piu', non c'e' niente da tenere vivo: continuare a navigare non la
+   resuscita, manda solo una mail all'agente ogni quattro minuti. Si riparte
+   quando una persona rifa' l'accesso — allora lo stato torna «loggato» e
+   questo orologio ricomincia da se'. */
+let kaFermoDetto = false;
 setInterval(async () => {
   if (LOGIN_STATE.running || inAttesaCodice() || BUSY || QUOTING) return;
+  if (LOGIN_STATE.step !== 'loggato') {
+    /* Una riga sola per caduta, non una ogni quattro minuti: il latch si
+       riarma da se' quando si torna dentro (piu' sotto). */
+    if (!kaFermoDetto) {
+      kaFermoDetto = true;
+      log('sessione non attiva: il keep-alive si ferma. Non apro il portale da sloggato, perche\' ogni affacciata fa spedire un codice all\'agenzia. Riprende quando rifai l\'accesso.');
+    }
+    return;
+  }
+  kaFermoDetto = false;
   try {
     await ensurePage();
     // ISA scade per inattività molto prima del guscio. Prima alternavo ISA e portale:

@@ -32,6 +32,16 @@ const server = http.createServer((req, res) => {
   try {
     // solo il percorso, senza query né hash
     let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    /* IL BANCO SOMIGLIA ALLA PRODUZIONE (19/09/2026).
+       Su `iam.withusassicurazioni.it` IAM sta alla radice e QUOTO sotto
+       `/nuovo-preventivo/` (deploy/caddy/iam.caddy). IAM carica il motore del
+       registro da `/nuovo-preventivo/tariffe/motore/registro.js`, che li' e' un
+       indirizzo vero e della stessa origine. Qui il repository e' servito tutto
+       dalla radice, quindi quel prefisso va tolto: senza, il banco direbbe 404
+       su un file che in produzione si carica benissimo — e una prova che
+       fallisce per la strada e non per il contenuto si impara a ignorarla. */
+    if (p.startsWith('/nuovo-preventivo/')) p = p.slice('/nuovo-preventivo'.length);
+    else if (p === '/nuovo-preventivo') p = '/';
     if (p.endsWith('/')) p += 'index.html';
     // niente uscite dalla radice del repo
     const file = path.normalize(path.join(RADICE, p));

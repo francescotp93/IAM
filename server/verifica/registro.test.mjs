@@ -32,11 +32,39 @@ prova('REGOLA 1 · un identificativo che non è un identificativo non si scrive'
     deve(r.riga.entita_id === null, 'è passato un id non valido: «' + x + '» → ' + r.riga.entita_id);
   });
   const rotto = R.movimento(M({ azione: 'x', entita: 'polizza', entita_id: 'pol-1' }));
-  deve(/non è valido/.test(rotto.avvisi.join(' ')), 'lo scarto avviene in silenzio: ' + JSON.stringify(rotto.avvisi));
+  deve(/non ha la forma/.test(rotto.avvisi.join(' ')), 'lo scarto avviene in silenzio: ' + JSON.stringify(rotto.avvisi));
   /* Ma il movimento si registra lo stesso, senza il collegamento: perdere il
      fatto sarebbe peggio che perdere il puntatore. */
   deve(rotto.riga && rotto.riga.azione === 'x', 'il movimento è stato buttato via insieme all\'id');
   return 'id valido sì, cinque forme sbagliate no, il fatto resta';
+});
+
+prova('la forma dell\'identificativo è quella che la TABELLA usa davvero', () => {
+  /* Misurato sul database, non deciso a tavolino: QUOTO usa uuid ovunque, IAM
+     no — `iam_team` e `iam_workdiary` hanno chiavi di testo, la cassa, i
+     ticket, le trattative e le gare hanno numeri interi. Pretendere uuid da
+     tutti avrebbe scartato in silenzio meta' dei movimenti di IAM: il registro
+     sarebbe stato costruito a meta', e la meta' mancante non si vedeva. */
+  const con = (entita, id) => R.movimento(M({ azione: 'x', entita, entita_id: id })).riga.entita_id;
+
+  deve(con('scheda', 'ab12') === 'ab12', 'una chiave di testo non passa su iam_team: ' + con('scheda', 'ab12'));
+  deve(con('cassa', '417') === '417', 'una chiave numerica non passa sulla cassa: ' + con('cassa', '417'));
+  deve(con('ticket', '9') === '9', 'una chiave numerica non passa sui ticket');
+  deve(con('lead', ID1) === ID1, 'un uuid non passa su iam_lead');
+
+  /* E ognuna rifiuta la forma dell'altra: un uuid su una tabella a numeri non
+     apre niente, e un numero al posto di un uuid nemmeno. */
+  deve(con('cassa', ID1) === null, 'un uuid e\' passato su una tabella a chiavi numeriche');
+  deve(con('polizza', '417') === null, 'un numero e\' passato dove serve un uuid');
+  deve(con('cassa', '41a') === null, 'un numero storto e\' passato');
+
+  /* Sulle chiavi di testo l'unica regola possibile: non vuoto, e non una
+     parola che di solito vuol dire «non lo so». `undefined` arriva da un
+     valore letto male, e scriverlo vorrebbe dire archiviare una stringa che
+     somiglia a un puntatore senza esserlo. */
+  ['undefined', 'null', 'NaN', ''].forEach(x =>
+    deve(con('scheda', x) === null, 'e\' passata una chiave di testo che non e\' una chiave: «' + x + '»'));
+  return '3 forme, ognuna rifiuta le altre';
 });
 
 prova('un identificativo senza il tipo non dice a che riga punta', () => {
@@ -200,6 +228,54 @@ prova('la copertura si misura solo su quello che PUÒ avere un identificativo', 
   deve(c.quota === 50, 'quota: ' + c.quota);
   deve(R.copertura([]).quota === null, 'su zero righe inventa una percentuale');
   return '1 su 2 (50%), e gli altri quattro non fanno testo';
+});
+
+prova('il riquadro «chi e quando» lo disegna il motore, una volta per tutte e due le schermate', () => {
+  /* QUOTO e IAM sono due documenti: due copie dello stesso riquadro
+     diventano due riquadri che un giorno diranno cose diverse. `esc` arriva
+     da chi chiama perche' e' l'unica cosa che il motore non puo' avere. */
+  const esc = (x) => String(x == null ? '' : x).replace(/</g, '&lt;');
+  const creato = { nome: 'Anna', il: '2026-09-01T08:00:00Z', azione: 'Polizza creata' };
+  const mov = [{ utente_nome: 'Mario', azione: 'Pagamento modificato', dettaglio: 'bonifico', creato_il: '2026-09-19T10:00:00Z' }];
+
+  const pieno = R.storiaHTML(mov, creato, { esc });
+  deve(/Anna/.test(pieno) && /Polizza creata/.test(pieno), 'non dice chi ha creato la riga');
+  deve(/Mario/.test(pieno) && /Pagamento modificato/.test(pieno), 'i movimenti non si vedono');
+
+  /* «Non risponde» e «non c'e' niente» sono DUE COSE DIVERSE: confonderle
+     rassicura a sproposito. */
+  const muto = R.storiaHTML(null, creato, { esc });
+  const vuoto = R.storiaHTML([], creato, { esc });
+  deve(/non risponde/.test(muto), 'un registro muto viene raccontato come vuoto');
+  deve(/Nessun altro movimento/.test(vuoto), 'un registro vuoto non lo dice');
+  deve(!/non risponde/.test(vuoto), 'un registro vuoto viene raccontato come rotto');
+  /* In tutti e tre i casi chi ha creato la riga si vede: e' il primo
+     movimento, e non dipende dal registro. */
+  [pieno, muto, vuoto].forEach(h => deve(/Anna/.test(h), 'la creazione sparisce in uno dei tre casi'));
+
+  /* Il testo che arriva dai dati passa da `esc`: un nome con un segno di
+     minore dentro non deve poter scrivere markup. */
+  const cattivo = R.storiaHTML([{ utente_nome: '<b>x', azione: 'y', creato_il: '2026-09-19T10:00:00Z' }], null, { esc });
+  deve(!/<b>x/.test(cattivo), 'il testo dei dati finisce nel markup senza passare da esc');
+  return '3 casi distinti, e il testo dei dati passa da esc';
+});
+
+prova('il vocabolario copre anche quello che si tocca da IAM', () => {
+  /* Il registro e' UNO: due elenchi di nomi vorrebbero dire due storie della
+     stessa agenzia. */
+  ['scheda', 'cassa', 'lead', 'formazione', 'diario', 'gara']
+    .forEach(k => deve(R.VOCI[k] && R.VOCI[k].tabella, 'manca la voce di IAM, o non sa dove vive: ' + k));
+  /* Due voci NON hanno una tabella, ed e' misurato e non deciso a tavolino:
+     `iam_fatture` non esiste — le fatture stanno dentro `iam_team.fatture`,
+     un elenco nella scheda — e «agenzia» e' un'impostazione. Dare loro una
+     tabella avrebbe prodotto puntatori che non aprono niente. */
+  deve(R.VOCI.fattura.tabella === null, 'a «fattura» e\' stata data una tabella che non esiste');
+  deve(R.VOCI.azienda.tabella === null, 'ad «agenzia» e\' stata data una tabella: non e\' una riga');
+  const m = R.movimento({ azione: 'Scheda aggiornata', entita: 'scheda', entita_id: ID1, utente_id: ID2, utente_nome: 'x' });
+  deve(m.riga.entita_id === ID1 && !m.avvisi.length, 'una voce di IAM non porta l\'identificativo: ' + JSON.stringify(m));
+  const f = R.movimento({ azione: 'Fattura registrata', entita: 'fattura', entita_id: ID1, utente_id: ID2, utente_nome: 'x' });
+  deve(f.riga.entita_id === null, 'un id su «fattura» e\' stato scritto: non c\'e\' una riga da aprire');
+  return '6 voci con tabella, 2 dichiarate senza';
 });
 
 console.log('\n══ REGISTRO DEI MOVIMENTI ══');

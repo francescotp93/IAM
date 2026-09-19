@@ -1520,8 +1520,94 @@ scritte prima di oggi.
   `entita_id` e non si possono agganciare senza indovinare: restano visibili
   allo staff nella pagina Log, e la storia di una riga comincia dal 19/09/2026.
   Il riquadro lo dice invece di far credere che non sia successo niente.
-- **IAM non scrive nel registro.** `iam/index.html` non chiama `logMovimento`
-  nemmeno una volta: tutto quello che si fa da IAM — fatture, collaboratori,
-  permessi — non lascia traccia. È il prossimo pezzo, ed è di là.
+- ~~IAM non scrive nel registro.~~ **Fatto il 19/09/2026**, poche ore dopo.
+  Vedi il paragrafo qui sotto.
 - **`dati.modifiche` si legge ancora** (quello che c'è scritto è successo
   davvero) ma non si scrive più. Quando quelle righe saranno vecchie si toglie.
+
+
+### Il registro arriva anche in IAM (19/09/2026, stesso giorno)
+
+IAM non chiamava `logMovimento` **nemmeno una volta**: fatture, permessi,
+schede economiche, cassa, blacklist — niente lasciava traccia, e la domanda
+«chi ha cambiato questa cosa» aveva una risposta solo per metà della casa.
+
+| pezzo | dove |
+|---|---|
+| il motore, **lo stesso file** | `/nuovo-preventivo/tariffe/motore/registro.js`, caricato da `iam/index.html` |
+| la copia sottile (database e DOM) | `logMovimento`, `regCarica`, `regInstalla` in `iam/index.html` |
+| il riquadro «chi e quando» | `#mc-storia`, nella scheda del collaboratore |
+| la colonna diventata testo | `supabase/migrations/20260919_registro_movimenti_2_chiave_testo.sql` (applicata) |
+| prove | `iam/verifica/registro-movimenti.test.mjs` — 6 |
+
+**Il motore non si copia: si carica.** IAM e il preventivatore sono la stessa
+origine dal 16/09 (IAM alla radice, QUOTO sotto `/nuovo-preventivo/`), quindi
+quell'indirizzo esiste davvero e punta a **un file solo**. Due copie del
+vocabolario vorrebbero dire due storie della stessa agenzia. Il banco statico
+ora conosce lo stesso prefisso (`static-server.js`): senza, una prova sarebbe
+fallita *per la strada* su un file che in produzione si carica benissimo.
+
+Restano gemelli dichiarati **tre funzioni** (`logMovimento`, `regCarica`,
+`regInstalla`) e **due classi CSS** (`reg-r`, `cl-sub`): toccano il database e
+il DOM, quindi in un motore non possono stare, e in QUOTO l'utente è
+`currentUser` mentre in IAM è `ME` — come `PAY_API`/`MAIL_API` per l'archivio.
+`fusione-collisioni.test.mjs` li esenta **per nome**, con due guardie: devono
+esistere in tutti e due i documenti, e **tutti e due devono caricare davvero il
+motore** — altrimenti l'esenzione coprirebbe un doppione vero.
+
+> **Il guardiano cercava una stringa, e quella stringa stava in un commento.**
+> Con IAM che caricava una copia locale la prova restava verde, perché
+> `tariffe/motore/registro.js` compare anche dentro un commento del blocco.
+> Adesso cerca il **tag** `<script src=…>`. È la trappola già scritta due volte
+> (§10, §12), e stavolta l'ha presa la controprova.
+
+#### La misura che ha cambiato una decisione
+
+`quote_log.entita_id` era nato `uuid`. Poi il registro è arrivato in IAM, e le
+tabelle hanno detto un'altra cosa:
+
+| forma dell'id | tabelle |
+|---|---|
+| `uuid` | `iam_utenti`, `iam_lead`, `iam_formazione`, `quote_collaboratori` |
+| **testo** | `iam_team` (le schede economiche), `iam_workdiary` |
+| **numero** | `sessioni_giornaliere` (la cassa), `iam_ticket`, `iam_trattative`, `iam_gare_config` |
+
+Con una colonna `uuid`, **metà di IAM non si sarebbe potuta agganciare**: il
+movimento si sarebbe registrato senza puntatore, e il registro sarebbe stato
+costruito a metà — con la metà mancante invisibile. La colonna è diventata
+`text`, e **il controllo si è spostato dove serviva**: il motore adesso sa per
+ogni voce che forma ha il suo identificativo e rifiuta le altre. Un uuid su una
+tabella a numeri non apre niente, e un numero al posto di un uuid nemmeno.
+
+*Non si sono cambiate le tabelle di IAM*: portare `iam_team.id` da testo a uuid
+vuol dire riscrivere ogni riga che lo referenzia, e farlo per mettere a posto un
+registro è la coda che muove il cane.
+
+**Due trappole del database, annotate.** Postgres rifiuta di cambiare il tipo di
+una colonna usata in una politica: la politica va tolta prima e rimessa subito
+dopo (fra i due passaggi la tabella resta con RLS attiva e **senza** politica di
+lettura, cioè invisibile a tutti tranne il servizio — nell'ordine opposto la
+migrazione fallisce a metà). E il confronto nella politica è `x.id::text =
+entita_id`, **mai** `entita_id::uuid`: convertire un testo qualunque in uuid
+*solleva un errore*, e un errore dentro una regola di visibilità non è un
+permesso negato — è una schermata che non si apre.
+
+#### Che cosa registra IAM adesso
+
+Tredici punti di chiamata, sulle cose che tornano indietro mesi dopo: schede
+economiche salvate ed eliminate, candidature che cambiano stato, **blacklist**,
+utenti sospesi e riattivati, **ruoli cambiati**, accesso al preventivatore dato
+o tolto, RUI, lead, trattative, corsi, cassa del giorno. Una prova misura quel
+numero e **la soglia sale, non scende**.
+
+`fattura` è nel vocabolario ma **senza tabella**: `iam_fatture` non esiste — le
+fatture stanno dentro `iam_team.fatture`, un elenco nella scheda — quindi non
+c'è una riga da aprire, e il movimento si aggancia alla **scheda**. Dargliene
+una inventata avrebbe prodotto puntatori che non aprono niente.
+
+#### Il riquadro lo disegna il motore
+
+`Registro.storiaHTML` è nato qui: con due schermate, due copie dello stesso
+riquadro diventano due riquadri che un giorno diranno cose diverse. `esc` arriva
+da chi chiama — è l'unica cosa che il motore non può avere. QUOTO è stato
+riportato sulla stessa funzione: prima se lo disegnava da sé.

@@ -58,22 +58,52 @@ const GEMELLI = ['ARCH_BUCKET', 'ARCH_CARTELLE', 'ARCH_PREFISSI', 'ARCH_SCADENZA
      copie chiamano il backend con i nomi di casa loro (PAY_API/payToken in
      QUOTO, MAIL_API/mailToken in IAM): non e' una copia incollata, e' la
      stessa cosa scritta dove serve. */
-  'archApriVps', 'archCaricaVps'];
+  'archApriVps', 'archCaricaVps',
+  /* 19/09/2026: il REGISTRO DEI MOVIMENTI. Stessa ragione, terza volta. Le
+     REGOLE stanno in un motore solo (`tariffe/motore/registro.js`), che tutti
+     e due i documenti caricano dallo stesso indirizzo — non e' una copia. Qui
+     restano le tre funzioni che toccano il database e il DOM, e che quindi in
+     un motore non possono stare. Non sono un copia-incolla: in QUOTO l'utente
+     e' `currentUser`, in IAM e' `ME`, come PAY_API e MAIL_API per l'archivio. */
+  'logMovimento', 'regCarica', 'regInstalla'];
+
+/* ── LE CLASSI GEMELLE (19/09/2026) ─────────────────────────────────────────
+   Il riquadro «chi e quando» lo disegna il MOTORE, quindi il markup e' uno
+   solo: le sue classi devono esistere in tutti e due i documenti. Sono l'unico
+   caso in cui due classi uguali NON sono una schermata scritta due volte —
+   sono una schermata scritta una volta sola e usata in due posti, che e'
+   esattamente il contrario. Valgono le stesse due guardie dei nomi. */
+const GEMELLI_CLASSI = ['reg-r', 'cl-sub'];
 
 const gQ = globali(scripts(Q)), gI = globali(scripts(I));
 const iQ = id(Q), iI = id(I);
 const cQ = classi(styles(Q)), cI = classi(styles(I));
-const G = comuni(gQ, gI).filter(x => !GEMELLI.includes(x)), ID = comuni(iQ, iI), C = comuni(cQ, cI);
+const G = comuni(gQ, gI).filter(x => !GEMELLI.includes(x)), ID = comuni(iQ, iI);
+const C = comuni(cQ, cI).filter(x => !GEMELLI_CLASSI.includes(x));
 
 prova('i gemelli voluti sono davvero gemelli, e qualcuno li sorveglia', () => {
   /* Un nome esentato che non c'e' piu' in uno dei due documenti sarebbe un
      buco: l'elenco farebbe spazio a un doppione nuovo con quel nome. */
   const spariti = GEMELLI.filter(x => !gQ.has(x) || !gI.has(x));
   deve(!spariti.length, 'esentati ma non presenti in tutti e due i documenti: ' + spariti.join(' ') + ' — sfoltisci l\'elenco');
+  const spariteC = GEMELLI_CLASSI.filter(x => !cQ.has(x) || !cI.has(x));
+  deve(!spariteC.length, 'classi esentate ma non presenti in tutti e due i documenti: ' + spariteC.join(' '));
   const guardia = fs.readFileSync(path.join(RADICE, 'server', 'verifica', 'archivio.test.mjs'), 'utf8');
   deve(guardia.includes('archivio non divergono'),
     'e\' sparita la prova che controlla che le due copie dell\'archivio dicano la stessa cosa: senza, l\'esenzione non e\' sorvegliata da nessuno');
-  return GEMELLI.length + ' gemelli, tutti presenti e sorvegliati';
+  /* Il registro e' esentato perche' le REGOLE stanno in un motore solo: se un
+     giorno uno dei due documenti smettesse di caricarlo e si riscrivesse le
+     sue, l'esenzione coprirebbe un doppione vero. */
+  /* Si cerca il TAG che lo carica, non la stringa: il percorso del motore
+     compare anche dentro un commento di IAM, e cercare la parola direbbe
+     «caricato» su un documento che non lo carica piu'. E' la trappola gia'
+     scritta in CLAUDE.md §10 e §12, e l'ha presa la controprova. */
+  const tag = /<script[^>]+src="[^"]*tariffe\/motore\/registro\.js/;
+  deve(tag.test(Q) && tag.test(I),
+    'un documento non carica piu\' il motore del registro: le tre funzioni esentate diventerebbero un doppione');
+  deve(Q.includes('Registro.movimento(') && I.includes('Registro.movimento('),
+    'un documento ha smesso di passare dal motore per scrivere un movimento');
+  return GEMELLI.length + ' gemelli + ' + GEMELLI_CLASSI.length + ' classi, tutti presenti e sorvegliati';
 });
 
 prova('i nomi globali in comune fra QUOTO e IAM non aumentano', () => {

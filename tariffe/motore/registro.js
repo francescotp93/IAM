@@ -46,28 +46,67 @@
      `tabella` dice dove vive la riga: serve a chi deve aprirla, e a chi
      scrive le politiche di visibilità sul database. Dove è `null`, quel
      movimento non punta a una riga (un'impostazione cambiata, un'esportazione)
-     e un `entita_id` lì non ha senso. */
+     e un `entita_id` lì non ha senso.
+
+     `id` dice CHE FORMA ha il suo identificativo, ed è misurato sul database,
+     non deciso a tavolino: le tabelle di QUOTO usano `uuid`, quelle di IAM no
+     — `iam_team` e `iam_workdiary` hanno chiavi di testo, la cassa, i ticket,
+     le trattative e le gare hanno numeri interi. Un solo formato preteso per
+     tutti avrebbe scartato in silenzio metà dei movimenti di IAM. */
   var VOCI = {
-    cliente:       { l: 'Cliente',       i: 'ti-user',            tabella: 'quote_anagrafiche' },
-    preventivo:    { l: 'Preventivo',    i: 'ti-file-invoice',    tabella: 'quote_preventivi' },
-    polizza:       { l: 'Polizza',       i: 'ti-file-check',      tabella: 'quote_polizze' },
-    pratica:       { l: 'Pratica',       i: 'ti-folders',         tabella: 'quote_pratiche' },
-    titolo:        { l: 'Rata',          i: 'ti-cash',            tabella: 'quote_titoli' },
-    sinistro:      { l: 'Sinistro',      i: 'ti-alert-triangle',  tabella: 'quote_sinistri' },
+    cliente:       { l: 'Cliente',       i: 'ti-user',            tabella: 'quote_anagrafiche', id: 'uuid' },
+    preventivo:    { l: 'Preventivo',    i: 'ti-file-invoice',    tabella: 'quote_preventivi', id: 'uuid' },
+    polizza:       { l: 'Polizza',       i: 'ti-file-check',      tabella: 'quote_polizze', id: 'uuid' },
+    pratica:       { l: 'Pratica',       i: 'ti-folders',         tabella: 'quote_pratiche', id: 'uuid' },
+    titolo:        { l: 'Rata',          i: 'ti-cash',            tabella: 'quote_titoli', id: 'uuid' },
+    sinistro:      { l: 'Sinistro',      i: 'ti-alert-triangle',  tabella: 'quote_sinistri', id: 'uuid' },
     documento:     { l: 'Documento',     i: 'ti-folder',          tabella: null },
     emissione:     { l: 'Emissione',     i: 'ti-rosette-discount',tabella: null },
-    collaboratore: { l: 'Collaboratore', i: 'ti-users',           tabella: 'quote_collaboratori' },
+    collaboratore: { l: 'Collaboratore', i: 'ti-users',           tabella: 'quote_collaboratori', id: 'uuid' },
     utente:        { l: 'Utente',        i: 'ti-user-cog',        tabella: null },
-    ticket:        { l: 'Ticket',        i: 'ti-ticket',          tabella: 'iam_ticket' },
-    trattativa:    { l: 'Trattativa',    i: 'ti-businessplan',    tabella: 'iam_trattative' },
+    ticket:        { l: 'Ticket',        i: 'ti-ticket',          tabella: 'iam_ticket', id: 'numero' },
+    trattativa:    { l: 'Trattativa',    i: 'ti-businessplan',    tabella: 'iam_trattative', id: 'numero' },
     incasso:       { l: 'Incasso',       i: 'ti-cash',            tabella: null },
-    importazione:  { l: 'Importazione',  i: 'ti-database-import', tabella: 'quote_importazioni' }
+    importazione:  { l: 'Importazione',  i: 'ti-database-import', tabella: 'quote_importazioni', id: 'uuid' },
+    /* ── Quello che si tocca da IAM (19/09/2026) ──────────────────────────
+       IAM non scriveva nel registro nemmeno una volta: fatture, permessi,
+       schede economiche, cassa — niente lasciava traccia. Il vocabolario è
+       lo stesso, perché il registro è uno: due elenchi di nomi vorrebbero
+       dire due storie della stessa agenzia. */
+    /* Le fatture dei collaboratori NON sono una tabella: stanno dentro
+       `iam_team.fatture`, un elenco nella scheda economica. Non c'è una riga
+       da aprire, quindi niente identificativo — il movimento che le riguarda
+       si aggancia alla SCHEDA, che una riga ce l'ha. Mettere qui una tabella
+       inventata avrebbe prodotto puntatori che non aprono niente. */
+    fattura:       { l: 'Fattura',       i: 'ti-file-euro',       tabella: null },
+    scheda:        { l: 'Scheda economica', i: 'ti-id-badge',     tabella: 'iam_team', id: 'testo' },
+    cassa:         { l: 'Cassa',         i: 'ti-wallet',          tabella: 'sessioni_giornaliere', id: 'numero' },
+    lead:          { l: 'Lead',          i: 'ti-user-plus',       tabella: 'iam_lead', id: 'uuid' },
+    formazione:    { l: 'Formazione',    i: 'ti-school',          tabella: 'iam_formazione', id: 'uuid' },
+    diario:        { l: 'Diario',        i: 'ti-notebook',        tabella: 'iam_workdiary', id: 'testo' },
+    gara:          { l: 'Gara',          i: 'ti-trophy',          tabella: 'iam_gare_config', id: 'numero' },
+    azienda:       { l: 'Agenzia',       i: 'ti-building',        tabella: null }
   };
 
   /* Un identificativo vero, non «qualcosa che assomiglia a un id». Le righe di
      questo sistema hanno tutte un uuid: accettare altro vorrebbe dire scrivere
      nel registro un puntatore che non apre niente. */
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  var NUMERO = /^-?\d+$/;
+
+  /* Un identificativo è valido quando ha la forma che quella tabella usa
+     DAVVERO. Non è pedanteria: un uuid su una tabella a chiavi numeriche non
+     apre niente, e un numero al posto di un uuid nemmeno. Per le chiavi di
+     testo l'unica regola possibile è «non vuoto, e non una parola che di solito
+     vuol dire "non lo so"» — `undefined` e `null` arrivano da un valore letto
+     male, e scriverli vorrebbe dire mettere in archivio una stringa che
+     somiglia a un puntatore senza esserlo. */
+  function idValido(forma, id) {
+    if (forma === 'uuid') return UUID.test(id);
+    if (forma === 'numero') return NUMERO.test(id);
+    if (forma === 'testo') return id.length > 0 && !/^(undefined|null|nan)$/i.test(id);
+    return false;
+  }
 
   function testo(v) {
     var s = String(v == null ? '' : v).trim();
@@ -104,10 +143,11 @@
     if (ent && !voce) avvisi.push('tipo di entità fuori vocabolario: «' + ent + '»');
 
     var id = testo(m.entita_id);
-    if (id && !UUID.test(id)) {
+    if (id && voce && voce.tabella && !idValido(voce.id, id)) {
       /* REGOLA 1. Un id sbagliato manda a guardare la riga di qualcun altro:
-         è peggio di un id assente. */
-      avvisi.push('l\'identificativo non è valido e non si scrive: «' + id + '»');
+         è peggio di un id assente. E la forma giusta dipende dalla tabella,
+         perché in questo sistema ce ne sono tre. */
+      avvisi.push('l\'identificativo non ha la forma di «' + chiave + '» (' + voce.id + ') e non si scrive: «' + id + '»');
       id = null;
     }
     if (id && !ent) {
@@ -207,10 +247,49 @@
     return { con: con, possibili: possibili, quota: possibili ? Math.round(con / possibili * 100) : null };
   }
 
+  /* ══ IL RIQUADRO «CHI E QUANDO» ═══════════════════════════════════════════
+     Sta nel motore e non nelle schermate perché le schermate sono DUE — QUOTO
+     e IAM — e due copie dello stesso riquadro vogliono dire due riquadri che
+     un giorno diranno cose diverse. È la stessa ragione per cui i testi che
+     escono di casa stanno nei motori (CLAUDE.md §5).
+
+     `esc` arriva da chi chiama: è l'unica cosa che il motore non può avere,
+     e passarla è meglio che riscriverla qui in una terza versione.
+
+     `movimenti === null` vuol dire NON SI È POTUTO LEGGERE, che non è
+     «nessun movimento»: confonderli rassicura a sproposito. */
+  function storiaHTML(movimenti, creato, opz) {
+    var o = opz || {};
+    var esc = o.esc || function (x) { return String(x == null ? '' : x); };
+    var quando = o.quando || function (v) { return v ? new Date(v).toLocaleString('it-IT') : '—'; };
+
+    var testa = (creato && (creato.nome || creato.il))
+      ? '<div class="reg-r"><div><b>' + esc(creato.nome || '—') + '</b>' +
+        '<div class="cl-sub">' + esc(creato.azione || 'Creata') + '</div></div>' +
+        '<div class="cl-sub">' + quando(creato.il) + '</div></div>'
+      : '';
+
+    if (movimenti === null) {
+      return testa + '<div class="cl-sub" style="padding:6px 0">Il registro dei movimenti non risponde. ' +
+        'Non vuol dire che non ci siano stati: vuol dire che non si è potuto leggerlo.</div>';
+    }
+    if (!movimenti || !movimenti.length) {
+      return testa + '<div class="cl-sub" style="padding:6px 0">Nessun altro movimento registrato. ' +
+        'I movimenti si registrano dal 19/09/2026: quello che è successo prima non ha lasciato traccia qui.</div>';
+    }
+    return testa + movimenti.map(function (m) {
+      return '<div class="reg-r"><div><b>' + esc(m.utente_nome || '—') + '</b>' +
+        '<div class="cl-sub">' + esc(m.azione || '') +
+        (m.dettaglio ? ' · ' + esc(m.dettaglio) : '') + '</div></div>' +
+        '<div class="cl-sub">' + quando(m.creato_il) + '</div></div>';
+    }).join('');
+  }
+
   var API = {
     VERSIONE: VERSIONE, VOCI: VOCI, UUID: UUID,
     etichetta: etichetta, movimento: movimento, storia: storia,
-    unisci: unisci, chiaveFatto: chiaveFatto, copertura: copertura
+    unisci: unisci, chiaveFatto: chiaveFatto, copertura: copertura,
+    storiaHTML: storiaHTML
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.Registro = API;

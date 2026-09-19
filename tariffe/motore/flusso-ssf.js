@@ -547,6 +547,22 @@ function mezzoDa(codice) {
      tracciato distingue con `LUNGHEZZA_COGNOME`, che dice quanti caratteri
      iniziali sono il cognome. Con il codice fiscale di sedici caratteri è una
      persona fisica; con la sola partita IVA è una società. */
+  /* M3.1 (19/09/2026): la data di nascita dal codice fiscale, quando il flusso
+     non la porta. La regola sta in UN motore (anagrafica.js) e non si ricopia
+     qui: si cerca a ogni chiamata, perché nel browser i due file possono
+     arrivare in un ordine qualunque, e in Node si carica accanto. */
+  function motoreAnagrafica() {
+    if (typeof window !== 'undefined' && window.Anagrafica) return window.Anagrafica;
+    if (typeof require === 'function') { try { return require('./anagrafica.js'); } catch (e) { return null; } }
+    return null;
+  }
+  function nascitaDaCf(cf) {
+    var M = motoreAnagrafica();
+    if (!M || !cf) return null;
+    var n = M.nascita(cf);
+    return n ? n.data : null;
+  }
+
   function versoAnagrafica(r) {
     var cf = (testo(r.CODICE_FISCALE) || '').toUpperCase() || null;
     var piva = testo(r.PARTITA_IVA);
@@ -569,7 +585,11 @@ function mezzoDa(codice) {
       comune: testo(r.COMUNE), provincia: testo(r.PROVINCIA),
       cellulare: testo(r.CELLULARE), telefono: testo(r.NUMERO_TELEFONO),
       email: (testo(r.EMAIL) || '').toLowerCase() || null,
-      data_nascita: data(r.DATA_NASCITA)
+      /* Quella del flusso vince; se manca, dal codice fiscale — e si dice
+         che è ricavata (`_nascita_da_cf`). Un codice non valido non produce
+         niente: il campo resta vuoto, e l'importazione non si ferma. */
+      data_nascita: data(r.DATA_NASCITA) || (fisica ? nascitaDaCf(cf) : null),
+      _nascita_da_cf: !data(r.DATA_NASCITA) && fisica && !!nascitaDaCf(cf)
     };
   }
 

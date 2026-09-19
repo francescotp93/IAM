@@ -1169,7 +1169,7 @@ const avvio = async () => {
       return v;
     });
 
-    await prova('registro: la copertura non scende — 32 movimenti su 53 sanno su che cosa sono', () => {
+    await prova('registro: la copertura non scende — 35 movimenti su 56 sanno su che cosa sono', () => {
       /* La soglia si ALZA, non si abbassa: è lo stesso meccanismo della prova
          sulle collisioni fra i due documenti, al contrario. Senza, un punto di
          chiamata scritto domani senza identificativo non lo nota nessuno, e il
@@ -1195,7 +1195,7 @@ const avvio = async () => {
         }
         return virgole >= 3;
       }).length;
-      const SOGLIA = 32;
+      const SOGLIA = 35;   // 19/09 (M1, M3): emissione della polizza, auguri, sinistro dalla scheda
       deve(chiamate.length >= 50, 'non ha letto i punti di chiamata: ' + chiamate.length);
       deve(conId >= SOGLIA, conId + ' movimenti su ' + chiamate.length + ' portano l\'identificativo: erano ' + SOGLIA + '. Un punto di chiamata ha perso l\'id, oppure ne è nato uno nuovo senza');
       deve(conId - SOGLIA < 3, 'adesso sono ' + conId + ': alza la soglia a ' + conId + ', altrimenti smette di sorvegliare');
@@ -6507,6 +6507,95 @@ const avvio = async () => {
       deve(r.ins[0].compagnia === 'HDI' && r.ins[0].n_polizza === 'HDI/123', 'compagnia/numero non salvati');
       deve(r.log.length === 1 && r.log[0].entita === 'sinistro' && r.log[0].entita_id === SX, 'il movimento non punta al sinistro: ' + JSON.stringify(r.log));
       return '1 sinistro in elenco, nuovo sinistro con cliente_id + polizza_id, movimento sulla riga';
+    });
+
+
+    /* ══ BRIEF IAM #01 · M3 — anagrafica (19/09/2026) ═══════════════════════ */
+    await prova('M3.1 · un parser solo del codice fiscale: le due porte della pagina passano dal motore', async () => {
+      const r = await page.evaluate(() => {
+        const omo = 'RSSMRA80A01HRLM' + Anagrafica.controllo('RSSMRA80A01HRLM');
+        return {
+          it: window.awCfNascita('RSSMRA80A01H501U'),
+          iso: window.datiDaCF('RSSMRA80A01H501U'),
+          omocodico: window.datiDaCF(omo),
+          sbagliato: window.datiDaCF('RSSMRA80A01H501X'),
+          sbagliatoIt: window.awCfNascita('RSSMRA80A01H501X')
+        };
+      });
+      deve(r.it === '01/01/1980', 'awCfNascita: ' + r.it);
+      deve(r.iso && r.iso.dataNascita === '1980-01-01' && r.iso.sesso === 'M', 'datiDaCF: ' + JSON.stringify(r.iso));
+      deve(r.omocodico && r.omocodico.dataNascita === '1980-01-01', 'l\'omocodia non si scioglie dalla pagina: ' + JSON.stringify(r.omocodico));
+      /* Prima uno dei due parser accettava qualunque cosa avesse la forma
+         giusta: un refuso diventava una data credibile. */
+      deve(r.sbagliato === null && r.sbagliatoIt === null, 'un controllo sbagliato produce ancora una data: ' + JSON.stringify([r.sbagliato, r.sbagliatoIt]));
+      const h = fs.readFileSync('index.html', 'utf8');
+      const a = (h.match(/function awCfNascita\(cf\) \{[\s\S]*?\n\}/) || [''])[0];
+      const d = (h.match(/function datiDaCF\(cf\) \{[\s\S]*?\n\}/) || [''])[0];
+      deve(/Anagrafica\.nascita\(/.test(a) && /Anagrafica\.nascita\(/.test(d), 'una delle due porte ha di nuovo la sua regola dentro');
+      return 'due porte, una regola, omocodia e controllo';
+    });
+
+    await prova('M3.2/M3.3 · la scheda dice l\'età calcolata, e mette la torta il giorno del compleanno', async () => {
+      const oggi = new Date();
+      const mmgg = '-' + String(oggi.getMonth() + 1).padStart(2, '0') + '-' + String(oggi.getDate()).padStart(2, '0');
+      const r = await page.evaluate(async (mmgg) => {
+        document.getElementById('anag-overlay')?.remove();
+        ANAG_CACHE = [{ id: 'cli-1', nominativo: 'ROSSI MARIO', tipo: 'fisica', data_nascita: '1980' + mmgg }];
+        await apriAnagrafica('cli-1');
+        const conTorta = { eta: (document.querySelector('#anag-overlay .sc-eta') || {}).textContent, torta: !!document.querySelector('#anag-overlay .sc-torta') };
+        document.getElementById('anag-overlay')?.remove();
+        ANAG_CACHE = [{ id: 'cli-1', nominativo: 'ROSSI MARIO', tipo: 'fisica', data_nascita: '1980-01-01' }];
+        await apriAnagrafica('cli-1');
+        const senza = { torta: !!document.querySelector('#anag-overlay .sc-torta') };
+        return { conTorta, senza };
+      }, mmgg);
+      const attesa = new Date().getFullYear() - 1980;
+      deve(r.conTorta.eta && r.conTorta.eta.includes(attesa + ' anni'), 'l\'età non si legge: ' + r.conTorta.eta);
+      deve(r.conTorta.torta, 'il giorno del compleanno manca la torta');
+      deve(!r.senza.torta, 'la torta compare anche quando non è il compleanno');
+      return attesa + ' anni, torta solo oggi';
+    });
+
+    await prova('M3.3/M3.4 · «Compleanni di oggi» elenca chi li compie, manda gli auguri solo con consenso, e lascia la traccia', async () => {
+      const A1 = 'dddddddd-4444-4444-8444-dddddddddddd';
+      const oggi = new Date();
+      const mmgg = '-' + String(oggi.getMonth() + 1).padStart(2, '0') + '-' + String(oggi.getDate()).padStart(2, '0');
+      const r = await page.evaluate(async (o) => {
+        const { A1, mmgg } = o;
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { error: null, data: [
+          { id: A1, nominativo: 'ROSSI MARIO', nome: 'Mario', tipo: 'fisica', data_nascita: '1980' + mmgg, consenso_marketing: true, email: 'mario@esempio.it', cellulare: '333 1234567' },
+          { id: 'b2', nominativo: 'VERDI LUCA', tipo: 'fisica', data_nascita: '1975' + mmgg, consenso_marketing: false, email: 'luca@esempio.it' },
+          { id: 'c3', nominativo: 'NERI ANNA', tipo: 'fisica', data_nascita: '1990-01-01', consenso_marketing: true, email: 'anna@esempio.it' } ] };
+        CPL_INVIATI = {};
+        await window.cplCarica();
+        const box = document.getElementById('cpl-oggi');
+        const righe = [...box.querySelectorAll('.cpl-r')].map(x => x.textContent.replace(/\s+/g, ' ').trim());
+        const bottoniRossi = [...box.querySelectorAll('.cpl-r')].find(x => /ROSSI/.test(x.textContent)).querySelectorAll('button').length;
+        const badgeVerdi = ([...box.querySelectorAll('.cpl-r')].find(x => /VERDI/.test(x.textContent)).querySelector('.tk-badge') || {}).textContent;
+        /* Il modello si corregge nel riquadro. */
+        document.getElementById('cpl-modello').value = 'Ciao {nome}, auguri da {agenzia}!';
+        const spia = [];
+        const vecchio = payFetch;
+        payFetch = async (path, body) => { spia.push({ path, body }); return { ok: true }; };
+        window.__COLLAUDO.db = [];
+        await window.cplEmail(A1);
+        payFetch = vecchio;
+        const note = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_note' && x.operazione === 'insert').map(x => x.payload);
+        const log = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload);
+        const dopo = [...box.querySelectorAll('.cpl-r')].find(x => /ROSSI/.test(x.textContent)).textContent;
+        delete window.__COLLAUDO.risposte['quote_anagrafiche:lista'];
+        try { localStorage.removeItem('cpl_modello_auguri'); } catch (e) {}
+        return { righe, bottoniRossi, badgeVerdi, spia, note, log, dopo };
+      }, { A1, mmgg });
+      deve(r.righe.length === 2, 'in elenco: ' + r.righe.length + ' (attesi 2: Rossi e Verdi, non Neri che è a gennaio) — ' + r.righe.join(' | '));
+      deve(r.bottoniRossi === 2, 'Rossi (consenso, email e cellulare) deve avere Email e WhatsApp: ' + r.bottoniRossi);
+      deve(/consenso/.test(r.badgeVerdi || ''), 'Verdi senza consenso deve dirlo e non avere tasti: ' + r.badgeVerdi);
+      deve(r.spia.length === 1 && r.spia[0].path === '/mail/send' && r.spia[0].body.to === 'mario@esempio.it', 'l\'email non parte dalla posta dell\'agenzia: ' + JSON.stringify(r.spia));
+      deve(/Ciao Mario, auguri da/.test(r.spia[0].body.html), 'il modello corretto non arriva nel messaggio: ' + r.spia[0].body.html);
+      deve(r.note.length === 1 && r.note[0].anagrafica_id === A1 && /Auguri/.test(r.note[0].testo), 'la traccia non va nel diario del cliente: ' + JSON.stringify(r.note));
+      deve(r.log.length === 1 && r.log[0].entita === 'cliente' && r.log[0].entita_id === A1, 'il movimento non punta al cliente: ' + JSON.stringify(r.log));
+      deve(/auguri inviati via email/.test(r.dopo), 'dopo l\'invio la riga non lo dice: ' + r.dopo);
+      return '2 in elenco, 1 contattabile, email + diario + registro';
     });
 
     await prova('personalizzati: il premio non si mostra mai senza il suo frazionamento', async () => {

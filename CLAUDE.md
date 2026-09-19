@@ -2105,3 +2105,53 @@ rossa una sola, l'altra ha smesso di misurare.
 `sin-polizza` per i suoi campi: i filtri della pagina Sinistri si chiamano
 `sinf-*`, altrimenti `getElementById` avrebbe letto il campo del modulo aperto
 come filtro della lista.
+
+---
+
+## 23. Brief IAM #01 — M3: l'anagrafica (19/09/2026)
+
+| voce | fatto |
+|---|---|
+| 3.1 nascita dal CF | motore **nuovo** `tariffe/motore/anagrafica.js`: mese in lettera, giorno +40, regola del secolo su «oggi», **omocodia sciolta**, **carattere di controllo verificato**, data che deve esistere. Il flusso la usa quando `DATA_NASCITA` manca (`_nascita_da_cf`). Backfill sul database: **20 anagrafiche** su 21 senza data, con la nota «ricavata dal codice fiscale» (`20260919_m3_nascita_da_codice_fiscale.sql`, applicata) |
+| 3.2 età | `Anagrafica.eta`, calcolata al giorno e **mai salvata**; nella scheda accanto alla data |
+| 3.3 compleanni | blocco «Compleanni di oggi» in cima alla pagina Clienti (`cpl*`), torta nel titolo della scheda il giorno stesso; il 29/02 si festeggia il 28 negli anni non bisestili |
+| 3.4 auguri | un clic per persona, email (`/mail/send`, casella dell'agenzia) o WhatsApp; **solo con consenso marketing e un recapito**, e chi non si può contattare resta in elenco col motivo; modello con `{nome}`, `{agenzia}`, `{firma}` corretto nel riquadro e ricordato nel browser; traccia nel **diario** del cliente (`quote_note`: un augurio è un contatto) e nel registro |
+| prove | `server/verifica/anagrafica.test.mjs` (8), `flusso-ssf.test.mjs` (41), `ui-test.mjs` (439) |
+
+### C'erano già due parser del codice fiscale, e davano due risposte
+
+`awCfNascita` (senza omocodia, senza controllo, data in italiano) e `datiDaCF`
+(con omocodia, senza controllo, data ISO), a 4.000 righe di distanza. Un
+codice con un refuso passava da tutti e due e diventava una data credibile.
+Adesso sono **due porte sullo stesso motore**, e un controllo sbagliato non
+produce niente: **vuoto si vede, sbagliato no** (§8.1). La prova sul sorgente
+cerca `Anagrafica.nascita(` dentro tutte e due.
+
+### Il backfill non fa tutto quello che fa il motore, e lo dice
+
+In SQL non si verifica il carattere di controllo e non si sciolgono le
+omocodie: erano **0 omocodici** sul database vero, e riscrivere l'algoritmo
+del controllo in Postgres sarebbe stata una seconda regola. Le righe
+ricavate portano la nota in `note` — è l'unico modo di ritrovarle, perché una
+colonna «origine della data» non c'è e non valeva la pena aggiungerla per una
+volta sola. La riga rimasta senza data ha un codice che il backfill non
+accetta: la scheda gliela metterà dal motore, se il codice è valido, oppure
+resterà vuota.
+
+### Tre trappole del banco, annotate
+
+- **`f()` della scheda fa l'escape del valore**: l'età con lo `<span>` dentro
+  compariva come testo. La riga della data di nascita si costruisce a parte.
+- **`apriAnagrafica` è `async`** (dal 18/09 rilegge dal database se la cache
+  non ha l'id): senza `await` la prova leggeva la scheda prima che esistesse.
+- **80 in omocodia è «UL», non «VL»**: la mia prova sbagliava, il motore no.
+  La controprova vera (via la verifica del controllo) ha fatto diventare
+  rosse una prova Node **e** una nel browser.
+
+### Cosa resta aperto
+
+- Il modello degli auguri è **per browser** (`localStorage`), non per agenzia:
+  se serve uno solo per tutti va in `iam_azienda.dati`.
+- Chi ha già ricevuto gli auguri oggi si vede nella sessione (`CPL_INVIATI`)
+  e nel diario del cliente; riaprendo la pagina il tasto ricompare. Leggere il
+  diario del giorno per spegnerlo è un pezzo piccolo, non fatto.

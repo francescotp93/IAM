@@ -1,33 +1,46 @@
-id: 1789839865  exit: 0  2026-09-19 17:44:35
+id: 1789840224  exit: 0  2026-09-19 17:50:54
 ----
-=== header della pagina IAM ===
-HTTP/2 200 
-accept-ranges: bytes
-alt-svc: h3=":443"; ma=2592000
-cache-control: no-cache
-content-type: text/html; charset=utf-8
-etag: "dljh562krr65peu6"
-last-modified: Sat, 19 Sep 2026 17:38:00 GMT
-server: Caddy
-vary: Accept-Encoding
-content-length: 1185630
-date: Sat, 19 Sep 2026 17:44:35 GMT
+=== COMMIT SUL SERVER ===
+3fddb5c Conti e causali: l'errore di lettura si vede anche nella scheda Causali (#206)
+025f43b Brief IAM #02 · M1: i conti e le causali (#205)
+bb93a01 Brief IAM #01 · M5: il foglio cassa dentro il Portafoglio (#204)
 
-=== la pagina SERVITA porta il pannello? (atteso 1) ===
-1
-=== quale versione di scocca chiede la pagina servita? ===
-withus-one.js?v=20260919a
-=== la scocca servita ha la voce? (atteso 1+) ===
-3
-=== header della scocca ===
-HTTP/2 200 
-accept-ranges: bytes
-alt-svc: h3=":443"; ma=2592000
-content-type: text/javascript; charset=utf-8
-etag: "dljh562lymeq27tp"
-last-modified: Sat, 19 Sep 2026 17:38:00 GMT
-server: Caddy
-vary: Accept-Encoding
-content-length: 103453
-date: Sat, 19 Sep 2026 17:44:35 GMT
-
+=== AUTOPULL: ultimo giro ===
+-rw-r--r-- 1 root root 1185991 17:45:50 iam/index.html
+-rw-r--r-- 1 root root 2051250 17:13:26 index.html
+
+=== PAGINA IAM SERVITA (brief #02 M1) ===
+1185991
+  panel-conti                1
+  cntCarica                  7
+  motore/contabilita.js      2
+  mc-codici                  3
+  reg-ultima                 1
+
+=== SCOCCA SERVITA ===
+  Conti e causali            3
+  Importa portafoglio        3
+
+=== PREVENTIVATORE SERVITO DENTRO IAM (brief #01 M1-M5) ===
+2051250
+  pol-emissione              2
+  polProduttore              2
+  clSinistri                 3
+  pf-date-su                 3
+  pf-cerca                   12
+  sinf-compagnia             3
+  RIN_FASCE                  3
+  motore/anagrafica.js       2
+  cpl-oggi                   3
+  tit-chi-paga               3
+  ecpTabellaCredito          2
+  page-foglio-cassa          1
+  motore/foglio-cassa.js     2
+
+=== HEADER DEI DUE DOCUMENTI ===
+cache-control: no-cache
+etag: "dljhb5vcc9llpf47"
+last-modified: Sat, 19 Sep 2026 17:45:50 GMT
+cache-control: no-cache
+etag: "dljgmcv0ltej17yr6"
+last-modified: Sat, 19 Sep 2026 17:13:26 GMT

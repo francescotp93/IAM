@@ -1,10 +1,11 @@
-id: brief01-m5-1789837964  exit: 0  2026-09-19 17:15:02
+id: 1789839476  exit: 0  2026-09-19 17:38:31
 ----
-== commit su /opt/withus-backend
-bb93a01 Brief IAM #01 · M5: il foglio cassa dentro il Portafoglio (#204)
-== M5 nel codice servito
-page-foglio-cassa: 1
-fcExportPdf: 2
-foglio-cassa.js: presente
-== md5 index.html
-8c805f9c731c
+025f43b Brief IAM #02 · M1: i conti e le causali (#205)
+--- contabilita.js ---
+-rw-r--r-- 1 root root 27562 Sep 19 17:38 tariffe/motore/contabilita.js
+--- pannello conti in iam/index.html ---
+4
+--- voce di menu ---
+3
+--- impronta scocca servita ---
+e32bbb82

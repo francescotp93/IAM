@@ -2385,3 +2385,70 @@ sbagliati, produce un errore subito. `iam_conto` è destinato a sparire con la M
 - **Le coordinate in `iam_azienda.dati`** (`iban1`, `iban2`, `banca`) restano
   dove sono: spostarle su `iam_conti` è una migrazione di dati che vuole una
   persona che dica quale IBAN è di quale conto.
+
+---
+
+## 27. Il numero di versione, e la prova che impedisce di dimenticarlo (19/09/2026)
+
+Nasce da una domanda di Francesco, fatta dopo la terza volta in due giorni che
+«le modifiche non le vedo»:
+
+> «Per capire se gli aggiornamenti sono pubblicati, non è il caso di pubblicare
+> una versione di software? Tipo 0.1, quindi appena vedo 0.2 è tutto
+> pubblicato?»
+
+Sì. Con un avvertimento che viene dall'errore appena tolto: in fondo al menu del
+nome c'era **`IAM · build 2026-06-15c`**, scritta a mano e **ferma da tre mesi**.
+Una targhetta che nessuno aggiorna la si legge e ci si crede: è **peggio** di
+nessuna targhetta.
+
+| pezzo | dove |
+|---|---|
+| la fonte unica del numero | `versione.json` alla radice |
+| l'annotazione nei due documenti | `<meta name="app-versione">` e `<meta name="app-versione-nome">` in `index.html` e `iam/index.html` |
+| la targhetta | `versioneApp` / `mostraVersioneInUso` / `#um-versione` in `iam/index.html` |
+| il guardiano | `iam/verifica/versione-app.test.mjs` — 5 |
+
+### Le due domande sono diverse, e servono tutte e due
+
+| domanda | risponde | può mentire? |
+|---|---|---|
+| «Quello che ho chiesto è pubblicato?» | il **numero** e il nome del rilascio | sì, se nessuno lo alza — per questo c'è la prova |
+| «Sto guardando la pagina che il server ha adesso?» | la **data**, da `document.lastModified` | no: è del documento che il browser ha davvero caricato |
+
+Il numero da solo non basta: se dice `0.2` ma la data è di ieri, stai guardando
+una copia in cache che il numero non smaschererebbe. La data da sola non basta:
+dice che la pagina è fresca, non che contiene quello che avevi chiesto. La
+targhetta le mostra insieme, più la data del preventivatore, che è un documento
+a sé con la sua cache (§12).
+
+**Il numero si legge dal `<meta>` del documento in uso, mai con un `fetch`.**
+Un `fetch` direbbe quello che il server servirebbe adesso, non quello che sta
+girando — cioè esattamente il caso che questa targhetta esiste per smascherare.
+C'è una prova che lo vieta.
+
+### Perché il numero resta scritto a mano
+
+Perché deve **significare qualcosa per una persona**. Un'impronta del contenuto
+(come quella di `withus-one.js`, §12) è automatica e non mente, ma `baffe92` non
+dice a nessuno se la prima nota c'è. `0.2 · Prima nota` sì.
+
+Il prezzo è che si può dimenticare, e la disciplina non basta mai. Quindi la
+disciplina non è scritta in una regola: è una prova che **confronta la data
+dell'ultimo commit che ha toccato i due documenti con quella dell'ultimo commit
+che ha toccato `versione.json`**, e diventa rossa se i documenti sono più
+recenti. Su un clone superficiale quella storia non c'è: allora dice «saltata»
+invece di diventare rossa *per la strada* invece che per il contenuto (§4).
+
+### Come si alza
+
+Ogni rilascio che tocca `index.html` o `iam/index.html`: si alza il numero di
+mezzo (`0.1` → `0.2`) e si riscrive `nome` con quello che quel rilascio porta.
+Una correzione piccola alza l'ultimo (`0.1.0` → `0.1.1`). I due `<meta>` vanno
+allineati **tutti e due**: dimenticarne uno è il difetto più probabile, ed è
+quello che la seconda prova prende.
+
+**Si parte da `0.1.0` il 19/09/2026.** Non si finge una storia che non c'è:
+questo numero non descrive quello che è stato fatto prima, comincia a contare
+dal giorno in cui si è cominciato a contare. Quello che c'era prima sta in
+questo file, paragrafo per paragrafo, con le date.

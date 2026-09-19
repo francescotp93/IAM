@@ -1,0 +1,30 @@
+{
+  "versione": "0.1.0",
+  "nome": "Conti e causali",
+  "data": "2026-09-19",
+  "_perche": [
+    "LA FONTE UNICA DEL NUMERO DI VERSIONE. Un posto solo: i due documenti se lo",
+    "annotano e una prova controlla che dicano la stessa cosa di questo file.",
+    "",
+    "A COSA SERVE, E A COSA NO. Serve a rispondere alla domanda «quello che ho",
+    "chiesto e' pubblicato?». Non serve a rispondere a «sto guardando la pagina",
+    "che il server ha adesso?»: a quella risponde la data, che la scrive il",
+    "browser da se' (document.lastModified) e non si puo' dimenticare.",
+    "Le due domande sono diverse e servono tutte e due, quindi la targhetta in",
+    "fondo al menu del nome le mostra insieme.",
+    "",
+    "SI PARTE DA 0.1.0 OGGI, 19/09/2026. Non si finge una storia che non c'e':",
+    "questo numero non descrive quello che e' stato fatto prima, comincia a",
+    "contare dal giorno in cui si e' cominciato a contare. Quello che c'era prima",
+    "sta in CLAUDE.md, paragrafo per paragrafo, con le date.",
+    "",
+    "COME SI ALZA. Ogni rilascio che tocca index.html o iam/index.html alza il",
+    "numero di mezzo (0.1 -> 0.2) e riscrive `nome` con quello che il rilascio",
+    "porta. Una correzione piccola alza l'ultimo (0.1.0 -> 0.1.1).",
+    "Chi se ne dimentica lo scopre subito: `iam/verifica/versione-app.test.mjs`",
+    "confronta la data dell'ultimo commit che ha toccato i documenti con quella",
+    "dell'ultimo commit che ha toccato questo file, e diventa rossa se i",
+    "documenti sono piu' recenti. E' l'unico modo perche' un numero scritto a",
+    "mano non menta: non la buona volonta', una prova che si arrabbia."
+  ]
+}

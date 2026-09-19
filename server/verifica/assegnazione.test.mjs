@@ -194,6 +194,46 @@ prova('senza RUI si passa all\'email, che per cinque persone su diciassette è t
   return 'la seconda strada resta aperta';
 });
 
+prova('le stesse evidenze, lette dalla TABELLA, propongono la stessa persona', () => {
+  /* Il pannello del pregresso non ha il file in mano: ha le evidenze che
+     un'importazione ha scritto accanto al codice. Due schermate che leggono le
+     stesse evidenze devono proporre la stessa persona — e l'unico modo per
+     esserne sicuri è che la regola sia una sola. */
+  const persone = [{ id: 'c1', rui_numero: 'E000111111' }, { id: 'c2', email: 'due@esempio.it' }];
+  const daFlusso = A.proposteDaFlusso([{ codice: 'U100', rui: 'E000111111' }], persone, 'PRIMA');
+  const daTabella = A.proposte([{ compagnia: 'PRIMA', codice: 'U100', rui_flusso: 'E000111111' }], persone);
+  deve(daTabella['PRIMA|U100'].collaboratore_id === daFlusso[0].collaboratore_id,
+       'le due porte propongono persone diverse: ' + JSON.stringify([daFlusso[0], daTabella['PRIMA|U100']]));
+  deve(daTabella['PRIMA|U100'].motivo === 'rui', 'motivo: ' + daTabella['PRIMA|U100'].motivo);
+  /* E l'email funziona anche da qui. */
+  const perEmail = A.proposte([{ compagnia: 'PRIMA', codice: 'U200', email_flusso: 'due@esempio.it' }], persone);
+  deve(perEmail['PRIMA|U200'].collaboratore_id === 'c2', 'email dalla tabella: ' + JSON.stringify(perEmail));
+  return 'stessa regola, due porte';
+});
+
+prova('ogni riga porta la SUA compagnia, anche in un elenco che le mescola', () => {
+  /* Il pannello mostra insieme i codici di tutte le compagnie: passarne una
+     sola vorrebbe dire attribuire alla prima i codici di tutte le altre, e due
+     compagnie possono usare lo stesso codice per due persone (regola 3). */
+  const persone = [{ id: 'c1', rui_numero: 'E000111111' }, { id: 'c2', rui_numero: 'E000222222' }];
+  const p = A.proposte([
+    { compagnia: 'PRIMA', codice: 'U100', rui_flusso: 'E000111111' },
+    { compagnia: 'ALTRA', codice: 'U100', rui_flusso: 'E000222222' }
+  ], persone);
+  deve(Object.keys(p).length === 2, 'chiavi: ' + Object.keys(p).join(', '));
+  deve(p['PRIMA|U100'].collaboratore_id === 'c1' && p['ALTRA|U100'].collaboratore_id === 'c2',
+       'le due compagnie si sono mescolate: ' + JSON.stringify(p));
+  return 'due codici uguali, due persone, due chiavi';
+});
+
+prova('una riga senza evidenze non propone niente, e non sparisce', () => {
+  const p = A.proposte([{ compagnia: 'PRIMA', codice: 'U300' }], [{ id: 'c1', rui_numero: 'E000111111' }]);
+  deve(p['PRIMA|U300'], 'la riga senza evidenze sparisce dalla mappa');
+  deve(p['PRIMA|U300'].collaboratore_id === null && p['PRIMA|U300'].motivo === 'email-assente',
+       'proposta senza evidenze: ' + JSON.stringify(p['PRIMA|U300']));
+  return 'resta, e dice che non c\'è niente su cui lavorare';
+});
+
 prova('il codice produttore si conserva accanto a quello delle polizze', () => {
   /* Sono due codici diversi: `ID_ANAGRAFICA_EXP` è la chiave con cui le
      polizze lo nominano, `CODICE_PRODUTTORE` è come lo chiama la compagnia.

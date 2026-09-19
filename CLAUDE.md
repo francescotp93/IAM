@@ -1784,11 +1784,36 @@ quello che c'era.
   adesso li tiene diversi (`U90001` / `P-7788` / `E000111111`), e c'è una prova
   che controlla **che restino diversi** — altrimenti smette di misurare.
 
+#### Il pannello dei Titoli propone come l'anteprima (19/09/2026)
+
+Per un giorno le proposte da RUI ed email le faceva **solo** l'anteprima del
+flusso: il pannello del pregresso leggeva le stesse evidenze — quelle che
+l'importazione scrive accanto al codice — e non proponeva niente. Due schermate
+sugli stessi dati che dicono cose diverse: a chi guarda non importa da quale
+delle due ci è arrivato.
+
+La regola è **una sola** e sta nel motore. Ci si entra da due porte:
+`proposteDaFlusso` (righe del file) e `proposte` (righe della tabella), e tutte
+e due passano per lo stesso `proponiUna`, che accetta i nomi delle due
+provenienze (`rui`/`rui_flusso`) come già fa `rigaDecisione`. Una prova
+confronta le due porte sulle stesse evidenze e pretende la **stessa** persona.
+
+**Ogni riga porta la sua compagnia.** Il pannello mostra insieme i codici di
+tutte: passarne una sola vorrebbe dire attribuire alla prima i codici di tutte
+le altre, e due compagnie possono usare lo stesso codice per due persone
+(regola 3). Per questo `proposte` prende la compagnia da ogni riga e non
+dall'elenco.
+
+E **resta una proposta**: la tendina non si muove da sola. La prova lo controlla
+per prima, così una tendina che si auto-seleziona lo dice con parole sue invece
+di far fallire un'altra riga più in basso.
+
 #### Cosa resta aperto, in più
 
-- **La strada inversa non c'è**: dalla scheda di una persona non si vede quali
-  codici compagnia sono suoi. Il posto giusto è la scheda del collaboratore in
-  IAM, ed è un lavoro di là (§10).
+- ~~La strada inversa non c'è.~~ **Fatta** poche ore dopo, vedi qui sotto.
+- **La scheda in IAM non propone**: mostra i codici liberi in una tendina, senza
+  dire quali somigliano a questa persona. Sono le stesse evidenze e la stessa
+  regola — è la stessa cucitura, dall'altro lato.
 
 ### La strada inversa: dalla scheda della persona ai suoi codici (19/09/2026)
 

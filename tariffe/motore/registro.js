@@ -85,6 +85,12 @@
     formazione:    { l: 'Formazione',    i: 'ti-school',          tabella: 'iam_formazione', id: 'uuid' },
     diario:        { l: 'Diario',        i: 'ti-notebook',        tabella: 'iam_workdiary', id: 'testo' },
     gara:          { l: 'Gara',          i: 'ti-trophy',          tabella: 'iam_gare_config', id: 'numero' },
+    /* Brief #02 M1. Sotto un conto e sotto una causale ci sono dei soldi:
+       «chi ha cambiato la natura di questo conto» e «chi ha spento questa
+       causale» sono domande che tornano indietro mesi dopo, ed è esattamente
+       il motivo per cui questo registro esiste (§18). */
+    conto:         { l: 'Conto',         i: 'ti-building-bank',   tabella: 'iam_conti', id: 'uuid' },
+    causale:       { l: 'Causale',       i: 'ti-tags',            tabella: 'iam_causali', id: 'uuid' },
     azienda:       { l: 'Agenzia',       i: 'ti-building',        tabella: null }
   };
 

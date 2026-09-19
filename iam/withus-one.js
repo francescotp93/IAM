@@ -638,6 +638,13 @@
         /* Dal 17/09/2026 «Collaboratori», il registro unico delle persone (era
            «Operativa»). La chiave act resta 'operativa': e' l'id del pannello. */
         { l: 'Collaboratori', i: 'i-users', act: 'operativa', go: function(){ vai('operativa'); } },
+        /* Conti e causali (brief #02 · M1, 19/09/2026). Sta fra gli Strumenti e
+           non in Contabilità di proposito: qui si CONFIGURA dove sta il denaro
+           e come si chiamano i movimenti, in Contabilità si REGISTRA. La
+           schermata che fa tutte e due le cose e' quella che nessuno capisce
+           piu' — stessa ragione per cui Fonti e Stato collegamenti sono due
+           voci e non una. */
+        { l: 'Conti e causali', i: 'i-bank', act: 'conti', go: function(){ vai('conti'); } },
         /* Materiale di consultazione dell'agenzia. Le tre categorie sono un
            sotto-elenco a fisarmonica DENTRO «Utility» (3° livello): un clic su
            Utility le apre, un clic sulla categoria porta il preventivatore già
@@ -699,6 +706,7 @@
        tre voci del sotto-menu sono pagine del preventivatore e dichiarano il
        loro titolo da sé. */
     operativa:   ['Collaboratori', 'Strumenti'],
+    conti:       ['Conti e causali', 'Strumenti'],
     pipeline:    ['Trattative', 'Clienti'],
     workdiary:   ['Diario di lavoro', 'Agenzia'],
     performance: ['KPI e gare', 'Agenzia'],
@@ -786,7 +794,7 @@
     workdiary: 'agenzia',
     performance: 'agenzia', pipeline: 'clienti',
     fonti: 'strumenti', analisi: 'marketing', collegamenti: 'strumenti',
-    posta: 'strumenti',
+    posta: 'strumenti', conti: 'strumenti',
     utenti: 'admin', azienda: 'admin', agenti: 'admin', quoto: 'quoto'
   };
 

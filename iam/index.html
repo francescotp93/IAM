@@ -26,6 +26,9 @@
      movimento perso è meglio di una schermata che non si apre. -->
 <script src="/nuovo-preventivo/tariffe/motore/registro.js?v=20260919"></script>
 <script src="/nuovo-preventivo/tariffe/motore/assegnazione.js?v=20260919"></script>
+<!-- I conti e le causali (brief #02 M1). Stesso file del preventivatore, per lo
+     stesso motivo: il vocabolario della contabilità dev'essere uno solo. -->
+<script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260919"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -43,6 +46,41 @@
   padding:7px 0;border-top:1px solid var(--line,#e6e9ef);font-size:13px}
 .reg-r:first-child{border-top:0}
 .cl-sub{font-size:12px;color:var(--muted,#6b7280)}
+/* ── CONTI E CAUSALI (brief #02 · M1, 19/09/2026) ───────────────────────────
+   Le due nature del denaro hanno due colori, e non è decorazione: chi guarda
+   questa schermata deve distinguere a colpo d'occhio i soldi dei clienti da
+   quelli dell'agenzia, perché l'art. 117 CAP è tutto lì. */
+.cnt-somma{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;padding:12px 16px}
+.cnt-card{background:var(--surf2);border:1px solid var(--bord);border-radius:var(--rs);padding:12px 14px}
+/* Ogni classe porta il prefisso, comprese quelle annidate dentro un'altra:
+   una classe di una lettera sola scritta dentro un discendente SEMBRA scoped e
+   non lo e' — nel foglio di stile e' un nome globale, e QUOTO ce l'ha gia'.
+   L'ha preso la prova sulle collisioni.
+   E il commento non nomina il selettore vecchio: quella prova legge il foglio
+   di stile per intero, commenti compresi, e un selettore citato a parole le
+   risulta ancora presente (§10, §12, §18 — la stessa trappola, qui nel CSS). */
+.cnt-card .cnt-k{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px}
+.cnt-card .cnt-v{font-size:20px;font-weight:800;margin-top:4px}
+.cnt-card .cnt-s{font-size:11px;color:var(--txt3);margin-top:4px}
+.cnt-lista{padding:0 16px 24px}
+.cnt-r{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--bord);
+  border-radius:var(--rs);background:var(--surf);margin-bottom:8px}
+.cnt-r.cnt-spento{opacity:.55}
+.cnt-r .cnt-nome{font-weight:700;font-size:14px}
+.cnt-r .cnt-sotto{font-size:11.5px;color:var(--txt3);margin-top:2px}
+.cnt-r .cnt-saldo{margin-left:auto;text-align:right;font-weight:800;font-size:15px;white-space:nowrap}
+.cnt-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;
+  border:1px solid var(--bord2);vertical-align:middle}
+.cnt-tag.premi{color:#a855f7;border-color:#a855f7}
+.cnt-tag.aziendale{color:#0ea5e9;border-color:#0ea5e9}
+.cnt-tag.utile{color:#22c55e;border-color:#22c55e}
+.cnt-tag.transito{color:#f59e0b;border-color:#f59e0b}
+.cnt-tag.entrata{color:#22c55e;border-color:#22c55e}
+.cnt-tag.uscita{color:#ef4444;border-color:#ef4444}
+.cnt-err{background:rgba(239,68,68,.1);border:1px solid #ef4444;color:#ef4444;border-radius:var(--rs);
+  padding:9px 12px;font-size:12px;margin-bottom:10px}
+.cnt-avv{background:rgba(245,158,11,.1);border:1px solid #f59e0b;color:#f59e0b;border-radius:var(--rs);
+  padding:9px 12px;font-size:12px;margin-bottom:10px}
 @keyframes wdBlink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
 .wd-blink-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8b5cf6;vertical-align:middle;animation:wdBlink 1s infinite;box-shadow:0 0 5px #8b5cf6;}
 .wd-blink-red{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;vertical-align:middle;animation:wdBlink .8s infinite;box-shadow:0 0 6px #ef4444;}
@@ -3365,6 +3403,57 @@ input[type=file]{display:none;}
   </div>
 </div>
 
+<!-- ══ CONTI E CAUSALI ══════════════════════════════════════════════════
+     Brief #02 · M1 (19/09/2026). È la base di tutto il brief: senza un elenco
+     di conti e uno di causali non si registra un movimento, e senza movimenti
+     non c'è prima nota, non c'è estratto conto e non c'è conto economico.
+
+     Le regole stanno tutte nel motore condiviso
+     (`/nuovo-preventivo/tariffe/motore/contabilita.js`), che è lo stesso file
+     che caricherà il preventivatore: qui c'è solo quello che tocca il database
+     e il DOM. Due copie del vocabolario della contabilità vorrebbero dire due
+     contabilità della stessa agenzia.
+
+     Chi LEGGE: lo staff — chi registrerà un movimento deve poter scegliere il
+     conto. Chi SCRIVE: l'admin, perché qui si decide dove finiscono i soldi.
+     Il cancello vero è nelle politiche del database (RLS), non nei bottoni
+     nascosti: nascondere un bottone non è un divieto. -->
+<div class="panel" id="panel-conti" style="overflow-y:auto;">
+  <section class="f-head">
+    <div>
+      <h1>Conti e causali</h1>
+      <p>Dove sta il denaro e come si chiamano i movimenti.</p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="f-b" type="button" onclick="cntCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <button class="f-b pri" type="button" id="cnt-nuovo" onclick="cntApri(null)"><i class="ti ti-plus"></i> Nuovo</button>
+    </div>
+  </section>
+
+  <div class="ptabs">
+    <button class="ptab act" id="cntt-conti" onclick="cntTab('conti')">Conti e casse</button>
+    <button class="ptab" id="cntt-causali" onclick="cntTab('causali')">Causali</button>
+  </div>
+
+  <div id="cntp-conti">
+    <section class="cnt-somma" id="cnt-somma"></section>
+    <section class="cnt-lista" id="cnt-lista"><div class="cl-sub">Carico i conti…</div></section>
+  </div>
+  <div id="cntp-causali" style="display:none">
+    <section class="cnt-lista" id="cnt-causali"><div class="cl-sub">Carico le causali…</div></section>
+  </div>
+
+  <!-- Una sola finestra per tutte e due le schede: il contenuto lo scrive il
+       codice. Due moduli scritti a mano diventano due regole diverse su quello
+       che si può salvare. -->
+  <div id="cnt-ov" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);
+       backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px"
+       onclick="if(event.target===this)cntChiudi()">
+    <div id="cnt-box" style="background:var(--surf);border-radius:var(--r);width:min(560px,100%);
+         max-height:88vh;overflow:auto;box-shadow:var(--shd2)"></div>
+  </div>
+</div>
+
 <!-- ══ STATO COLLEGAMENTI ═══════════════════════════════════════════════
      Che cosa è, e perché non è la stessa cosa di «Fonti compagnie».
 
@@ -3895,6 +3984,334 @@ async function ccpTogli(compagnia, codice) {
     logMovimento('Codice compagnia tolto · ' + compagnia + ' ' + codice, 'collaboratore', codice, CCP_PERSONA);
     ccpRender();
   } catch (e) { alert('Non riesco a togliere l\'abbinamento: ' + (e.message || e)); }
+}
+
+/* ══ CONTI E CAUSALI (brief #02 · M1, 19/09/2026) ════════════════════════════
+   La parte che tocca il database e il DOM. Tutte le REGOLE — che cos'è un
+   conto valido, quali causali si possono registrare su quale conto, come si
+   calcola un saldo, che cosa si può cancellare — stanno nel motore condiviso
+   `Contabilita`, che è lo stesso file che caricherà il preventivatore.
+
+   Qui non c'è nessuna formula: se un giorno qualcuno ne scrive una in questo
+   blocco, quella formula non si potrà provare senza aprire un browser (§5).
+
+   I MOVIMENTI ARRIVANO CON LA M3. Finché quella tabella non c'è, il saldo
+   calcolato è il saldo iniziale — e la schermata lo DICE, invece di far
+   credere che sia il saldo di oggi. Il conto dei movimenti passa già al
+   motore: il giorno in cui la prima nota esiste, questa schermata non cambia
+   di una riga. */
+let CNT_CONTI = [];
+let CNT_CAUSALI = [];
+let CNT_VISTA = 'conti';
+/* I movimenti: lista vuota finché la M3 non li porta. È una variabile e non
+   un letterale sparso: quando la tabella arriva si riempie in un posto solo. */
+let CNT_MOVIMENTI = [];
+
+function cntPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
+
+function cntTab(v) {
+  CNT_VISTA = v;
+  document.getElementById('cntt-conti')?.classList.toggle('act', v === 'conti');
+  document.getElementById('cntt-causali')?.classList.toggle('act', v === 'causali');
+  const a = document.getElementById('cntp-conti'), b = document.getElementById('cntp-causali');
+  if (a) a.style.display = v === 'conti' ? '' : 'none';
+  if (b) b.style.display = v === 'causali' ? '' : 'none';
+  const n = document.getElementById('cnt-nuovo');
+  if (n) n.innerHTML = '<i class="ti ti-plus"></i> ' + (v === 'conti' ? 'Nuovo conto' : 'Nuova causale');
+}
+
+async function cntCarica(forza) {
+  if (!db) return;
+  const lista = document.getElementById('cnt-lista');
+  if (forza && lista) lista.innerHTML = '<div class="cl-sub">Carico i conti…</div>';
+  try {
+    const [c, k] = await Promise.all([
+      db.from('iam_conti').select('*').order('ordine').order('nome'),
+      db.from('iam_causali').select('*').order('ordine').order('nome')
+    ]);
+    if (c.error) throw c.error;
+    if (k.error) throw k.error;
+    CNT_CONTI = c.data || [];
+    CNT_CAUSALI = k.data || [];
+    cntRender();
+  } catch (e) {
+    /* «Non si è potuto leggere» non è «non ce ne sono» (§12, §18): un elenco
+       vuoto su un errore farebbe credere che l'agenzia non abbia conti. */
+    if (lista) lista.innerHTML = `<div class="cnt-err">Non riesco a leggere i conti.<br>
+      <small>${esc(e.message || e)} — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerli.</small></div>`;
+  }
+}
+
+function cntRender() {
+  const puo = cntPuoScrivere();
+  const nuovo = document.getElementById('cnt-nuovo');
+  if (nuovo) nuovo.style.display = puo ? '' : 'none';
+  cntRenderSomma();
+  cntRenderConti(puo);
+  cntRenderCausali(puo);
+}
+
+function cntRenderSomma() {
+  const box = document.getElementById('cnt-somma');
+  if (!box || !window.Contabilita) return;
+  const n = Contabilita.perNatura(CNT_CONTI, CNT_MOVIMENTI);
+  const mov = CNT_MOVIMENTI.length;
+  /* Le due nature NON si sommano in un totale unico, ed è la decisione che
+     conta: un «totale liquidità» che mette insieme i premi dei clienti e i
+     soldi dell'agenzia fa credere ricca un'agenzia che ha solo incassato dei
+     premi da rimettere. */
+  const nota = mov
+    ? ('calcolato su ' + mov + ' movimenti')
+    : 'nessun movimento ancora: è il saldo iniziale dichiarato';
+  box.innerHTML = `
+    <div class="cnt-card"><div class="cnt-k">Premi · soldi dei clienti</div>
+      <div class="cnt-v" style="color:#a855f7">${esc(Contabilita.euro(n.premi))}</div>
+      <div class="cnt-s">${n.conti_premi} cont${n.conti_premi === 1 ? 'o' : 'i'} · ${esc(nota)}</div></div>
+    <div class="cnt-card"><div class="cnt-k">Aziendale · soldi dell'agenzia</div>
+      <div class="cnt-v" style="color:#0ea5e9">${esc(Contabilita.euro(n.aziendale))}</div>
+      <div class="cnt-s">${n.conti_aziendale} cont${n.conti_aziendale === 1 ? 'o' : 'i'} · ${esc(nota)}</div></div>
+    <div class="cnt-card"><div class="cnt-k">Art. 117 CAP</div>
+      <div class="cnt-v" style="font-size:13px;font-weight:600;line-height:1.35">I premi in transito non sono patrimonio dell'agenzia.</div>
+      <div class="cnt-s">Le due cifre non si sommano: sono di due proprietari diversi.</div></div>`;
+}
+
+function cntRenderConti(puo) {
+  const box = document.getElementById('cnt-lista');
+  if (!box || !window.Contabilita) return;
+  if (!CNT_CONTI.length) {
+    box.innerHTML = `<div class="cl-sub" style="padding:18px 0">Nessun conto. ${puo ? 'Aggiungi il conto premi e il conto dell\'agenzia: sono i due che servono a registrare qualunque movimento.' : 'Li aggiunge un amministratore.'}</div>`;
+    return;
+  }
+  const saldi = Contabilita.saldi(CNT_CONTI, CNT_MOVIMENTI);
+  box.innerHTML = saldi.map(s => {
+    const c = s.conto;
+    const tip = Contabilita.etichetta(Contabilita.TIPOLOGIE, c.tipologia) || c.tipologia;
+    const pezzi = [esc(tip)];
+    if (c.banca) pezzi.push(esc(c.banca));
+    if (c.iban) pezzi.push(esc(Contabilita.ibanBello(c.iban)));
+    return `<div class="cnt-r ${s.attivo ? '' : 'cnt-spento'}" ${puo ? `onclick="cntApri('${esc(c.id)}')" style="cursor:pointer"` : ''}>
+      <div>
+        <div class="cnt-nome">${esc(c.nome)}
+          <span class="cnt-tag ${esc(c.natura)}">${c.natura === 'premi' ? 'Premi' : 'Aziendale'}</span>
+          ${s.attivo ? '' : '<span class="cnt-tag">spento</span>'}</div>
+        <div class="cnt-sotto">${pezzi.join(' · ')}</div>
+      </div>
+      <div class="cnt-saldo">${esc(Contabilita.euro(s.saldo))}
+        <div class="cnt-sotto" style="font-weight:400">${s.movimenti ? s.movimenti + ' movimenti' : 'saldo iniziale'}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function cntRenderCausali(puo) {
+  const box = document.getElementById('cnt-causali');
+  if (!box) return;
+  if (!CNT_CAUSALI.length) { box.innerHTML = '<div class="cl-sub" style="padding:18px 0">Nessuna causale.</div>'; return; }
+  box.innerHTML = CNT_CAUSALI.map(c => `
+    <div class="cnt-r ${c.attiva === false ? 'cnt-spento' : ''}" ${puo ? `onclick="cntApri('${esc(c.id)}')" style="cursor:pointer"` : ''}>
+      <div>
+        <div class="cnt-nome">${esc(c.nome)}
+          <span class="cnt-tag ${c.segno === 'entrata' ? 'entrata' : 'uscita'}">${c.segno === 'entrata' ? 'Entrata' : 'Uscita'}</span>
+          ${c.natura ? `<span class="cnt-tag ${esc(c.natura)}">${c.natura === 'premi' ? 'solo conti premi' : 'solo conti aziendali'}</span>` : ''}
+          ${c.attiva === false ? '<span class="cnt-tag">spenta</span>' : ''}</div>
+        <div class="cnt-sotto">
+          <span class="cnt-tag ${c.incide_su_utile ? 'utile' : 'transito'}">${c.incide_su_utile ? 'incide sull\'utile' : 'denaro in transito'}</span>
+          &nbsp;${esc(c.codice)}${c.di_sistema ? ' · di partenza' : ''}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ─── La finestra: una sola per le due schede ─────────────────────────────── */
+function cntChiudi() { const o = document.getElementById('cnt-ov'); if (o) o.style.display = 'none'; }
+
+function cntApri(id) {
+  if (!cntPuoScrivere()) return;
+  const ov = document.getElementById('cnt-ov'), box = document.getElementById('cnt-box');
+  if (!ov || !box) return;
+  box.innerHTML = CNT_VISTA === 'conti' ? cntFormConto(id) : cntFormCausale(id);
+  ov.style.display = 'flex';
+  /* «Chi ha cambiato la natura di questo conto» e «chi ha spento questa
+     causale» sono domande che tornano indietro mesi dopo: la storia sta nel
+     registro unico (§18), non in una traccia privata di questa schermata. */
+  if (id) {
+    const riga = CNT_VISTA === 'conti' ? cntTrova(CNT_CONTI, id) : cntTrova(CNT_CAUSALI, id);
+    regInstalla('cnt-storia', CNT_VISTA === 'conti' ? 'conto' : 'causale', id,
+      riga ? { creato_il: riga.creato_il } : null);
+  }
+}
+
+function cntTrova(elenco, id) { return (elenco || []).find(x => x.id === id) || null; }
+
+function cntFormConto(id) {
+  const c = cntTrova(CNT_CONTI, id) || { tipologia: 'banca', saldo_iniziale: 0, attivo: true };
+  const opz = (elenco, sel) => elenco.map(o => `<option value="${esc(o.k)}" ${o.k === sel ? 'selected' : ''}>${esc(o.l)}</option>`).join('');
+  const el = id ? Contabilita.eliminabile(c, CNT_MOVIMENTI) : { ok: false };
+  return `
+    <div style="padding:18px 18px 0"><div style="font-size:17px;font-weight:800">${id ? 'Modifica conto' : 'Nuovo conto'}</div>
+      <div class="cl-sub" style="margin-top:3px">Il saldo non si scrive: si calcola dai movimenti. Qui si dichiara solo quello di partenza.</div></div>
+    <div class="modal-body" style="padding:14px 18px">
+      <div id="cnt-msg"></div>
+      <div class="fgrid">
+        <div class="fld ffull"><label>Nome del conto *</label><input type="text" id="cnt-nome" value="${esc(c.nome || '')}" placeholder="es. Conto premi BPER"></div>
+        <div class="fld"><label>Tipologia</label><select id="cnt-tipologia">${opz(Contabilita.TIPOLOGIE, c.tipologia)}</select></div>
+        <div class="fld"><label>Natura *</label><select id="cnt-natura"><option value="">— scegli —</option>${opz(Contabilita.NATURE, c.natura)}</select></div>
+        <div class="fld ffull"><div class="cl-sub">I premi sono soldi dei clienti in transito verso la compagnia: l'art. 117 CAP li vuole su un conto separato dal patrimonio dell'agenzia. La natura decide quali causali si potranno registrare qui.</div></div>
+        <div class="fld"><label>Banca</label><input type="text" id="cnt-banca" value="${esc(c.banca || '')}"></div>
+        <div class="fld"><label>IBAN</label><input type="text" id="cnt-iban" value="${esc(c.iban ? Contabilita.ibanBello(c.iban) : '')}" placeholder="IT60 X054 ..."></div>
+        <div class="fld"><label>Saldo iniziale (€)</label><input type="text" id="cnt-saldo" value="${esc(c.saldo_iniziale != null ? String(c.saldo_iniziale) : '0')}" inputmode="decimal"></div>
+        <div class="fld"><label>Ordine</label><input type="number" id="cnt-ordine" value="${esc(String(c.ordine || 0))}"></div>
+        <div class="fld ffull"><label><input type="checkbox" id="cnt-attivo" ${c.attivo === false ? '' : 'checked'}> Conto attivo</label>
+          <div class="cl-sub">Un conto spento esce dalle tendine e resta nei riepiloghi del passato: i movimenti che ci sono passati sono storia.</div></div>
+        <div class="fld ffull"><label>Note</label><textarea id="cnt-note" rows="2">${esc(c.note || '')}</textarea></div>
+      </div>
+      ${id ? `<div id="cnt-storia" style="margin-top:10px"></div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="f-b pri" type="button" onclick="cntSalvaConto('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
+        <button class="f-b" type="button" onclick="cntChiudi()">Annulla</button>
+        ${id ? `<button class="f-b" type="button" style="margin-left:auto;color:#ef4444" onclick="cntEliminaConto('${esc(id)}')" ${el.ok ? '' : 'disabled title="' + esc(el.motivo || '') + '"'}><i class="ti ti-trash"></i> Elimina</button>` : ''}
+      </div>
+    </div>`;
+}
+
+function cntFormCausale(id) {
+  const c = cntTrova(CNT_CAUSALI, id) || { segno: 'uscita', attiva: true };
+  const el = id ? Contabilita.causaleEliminabile(c, CNT_MOVIMENTI) : { ok: false };
+  const sel = (v, k) => v === k ? 'selected' : '';
+  return `
+    <div style="padding:18px 18px 0"><div style="font-size:17px;font-weight:800">${id ? 'Modifica causale' : 'Nuova causale'}</div>
+      <div class="cl-sub" style="margin-top:3px">«Incide sull'utile» è quello che distingue un ricavo o un costo veri dal denaro che passa e basta.</div></div>
+    <div class="modal-body" style="padding:14px 18px">
+      <div id="cnt-msg"></div>
+      <div class="fgrid">
+        <div class="fld ffull"><label>Nome *</label><input type="text" id="cnt-cnome" value="${esc(c.nome || '')}" ${c.di_sistema ? '' : ''}></div>
+        <div class="fld"><label>Segno *</label><select id="cnt-csegno">
+          <option value="entrata" ${sel(c.segno, 'entrata')}>Entrata</option>
+          <option value="uscita" ${sel(c.segno, 'uscita')}>Uscita</option></select></div>
+        <div class="fld"><label>Incide sull'utile *</label><select id="cnt-cutile">
+          <option value="" ${c.incide_su_utile == null ? 'selected' : ''}>— scegli —</option>
+          <option value="1" ${c.incide_su_utile === true ? 'selected' : ''}>Sì — è un ricavo o un costo dell'agenzia</option>
+          <option value="0" ${c.incide_su_utile === false ? 'selected' : ''}>No — è denaro solo in transito</option></select></div>
+        <div class="fld ffull"><label>Si può registrare su</label><select id="cnt-cnatura">
+          <option value="" ${!c.natura ? 'selected' : ''}>Tutti i conti</option>
+          <option value="premi" ${sel(c.natura, 'premi')}>Solo conti premi</option>
+          <option value="aziendale" ${sel(c.natura, 'aziendale')}>Solo conti aziendali</option></select>
+          <div class="cl-sub">Le spese bancarie restano su «tutti i conti» apposta: il bollo lo addebita anche la banca del conto premi, e vietarlo vorrebbe dire non poter registrare un fatto accaduto.</div></div>
+        <div class="fld"><label>Ordine</label><input type="number" id="cnt-cordine" value="${esc(String(c.ordine || 0))}"></div>
+        <div class="fld"><label><input type="checkbox" id="cnt-cattiva" ${c.attiva === false ? '' : 'checked'}> Causale attiva</label></div>
+        <div class="fld ffull"><label>Note</label><textarea id="cnt-cnote" rows="2">${esc(c.note || '')}</textarea></div>
+      </div>
+      ${c.di_sistema ? '<div class="cnt-avv" style="margin-top:10px">È una delle causali di partenza: ci si aggancia l\'automatismo dell\'incasso. Si può rinominare e spegnere, non cancellare.</div>' : ''}
+      ${id ? `<div id="cnt-storia" style="margin-top:10px"></div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="f-b pri" type="button" onclick="cntSalvaCausale('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
+        <button class="f-b" type="button" onclick="cntChiudi()">Annulla</button>
+        ${id ? `<button class="f-b" type="button" style="margin-left:auto;color:#ef4444" onclick="cntEliminaCausale('${esc(id)}')" ${el.ok ? '' : 'disabled title="' + esc(el.motivo || '') + '"'}><i class="ti ti-trash"></i> Elimina</button>` : ''}
+      </div>
+    </div>`;
+}
+
+/* Gli errori si mostrano TUTTI insieme: correggere un campo alla volta su una
+   schermata che ne segnala uno per giro è il modo più veloce per far smettere
+   qualcuno di compilare. */
+function cntMsg(v) {
+  const box = document.getElementById('cnt-msg');
+  if (!box) return;
+  let h = '';
+  if (v.errori && v.errori.length) h += '<div class="cnt-err">' + v.errori.map(esc).join('<br>') + '</div>';
+  if (v.avvisi && v.avvisi.length) h += '<div class="cnt-avv">' + v.avvisi.map(esc).join('<br>') + '</div>';
+  box.innerHTML = h;
+}
+
+async function cntSalvaConto(id) {
+  const val = (k) => document.getElementById(k)?.value ?? '';
+  const riga = {
+    nome: val('cnt-nome').trim(),
+    tipologia: val('cnt-tipologia'),
+    natura: val('cnt-natura'),
+    banca: val('cnt-banca').trim() || null,
+    iban: Contabilita.normalizzaIban(val('cnt-iban')) || null,
+    saldo_iniziale: Contabilita.numero(val('cnt-saldo')) ?? 0,
+    ordine: parseInt(val('cnt-ordine'), 10) || 0,
+    attivo: !!document.getElementById('cnt-attivo')?.checked,
+    note: val('cnt-note').trim() || null
+  };
+  const v = Contabilita.validaConto(Object.assign({ id: id || null }, riga, { iban: val('cnt-iban') }), CNT_CONTI);
+  cntMsg(v);
+  if (!v.ok) return;
+  try {
+    if (id) {
+      const { error } = await db.from('iam_conti').update(riga).eq('id', id);
+      if (error) throw error;
+      logMovimento('Conto modificato · ' + riga.nome, 'conto', riga.nome, id);
+    } else {
+      const { data, error } = await db.from('iam_conti').insert(riga).select('id').single();
+      if (error) throw error;
+      logMovimento('Conto creato · ' + riga.nome, 'conto', riga.nome + ' (' + riga.natura + ')', data?.id);
+    }
+    cntChiudi();
+    await cntCarica();
+  } catch (e) { cntMsg({ errori: ['Non riesco a salvare: ' + (e.message || e)] }); }
+}
+
+async function cntSalvaCausale(id) {
+  const val = (k) => document.getElementById(k)?.value ?? '';
+  const u = val('cnt-cutile');
+  const vecchia = cntTrova(CNT_CAUSALI, id);
+  const riga = {
+    nome: val('cnt-cnome').trim(),
+    segno: val('cnt-csegno'),
+    incide_su_utile: u === '1' ? true : u === '0' ? false : null,
+    natura: val('cnt-cnatura') || null,
+    ordine: parseInt(val('cnt-cordine'), 10) || 0,
+    attiva: !!document.getElementById('cnt-cattiva')?.checked,
+    note: val('cnt-cnote').trim() || null
+  };
+  const v = Contabilita.validaCausale(Object.assign({ id: id || null }, riga), CNT_CAUSALI);
+  cntMsg(v);
+  if (!v.ok) return;
+  try {
+    if (id) {
+      /* Il CODICE non si tocca mai: è la chiave a cui puntano i movimenti e a
+         cui si aggancia l'automatismo dell'incasso. Il nome si corregge. */
+      const { error } = await db.from('iam_causali').update(riga).eq('id', id);
+      if (error) throw error;
+      logMovimento('Causale modificata · ' + riga.nome, 'causale', (vecchia?.codice || '') + (riga.attiva ? '' : ' · spenta'), id);
+    } else {
+      riga.codice = Contabilita.codiceDa(riga.nome, CNT_CAUSALI);
+      const { data, error } = await db.from('iam_causali').insert(riga).select('id').single();
+      if (error) throw error;
+      logMovimento('Causale creata · ' + riga.nome, 'causale', riga.codice + (riga.incide_su_utile ? ' · incide sull\'utile' : ' · in transito'), data?.id);
+    }
+    cntChiudi();
+    await cntCarica();
+  } catch (e) { cntMsg({ errori: ['Non riesco a salvare: ' + (e.message || e)] }); }
+}
+
+async function cntEliminaConto(id) {
+  const c = cntTrova(CNT_CONTI, id);
+  const el = Contabilita.eliminabile(c, CNT_MOVIMENTI);
+  if (!el.ok) { cntMsg({ errori: [el.motivo] }); return; }
+  if (!confirm('Eliminare il conto «' + (c?.nome || '') + '»?')) return;
+  try {
+    const { error } = await db.from('iam_conti').delete().eq('id', id);
+    if (error) throw error;
+    logMovimento('Conto eliminato · ' + (c?.nome || ''), 'conto', c?.nome || '', id);
+    cntChiudi();
+    await cntCarica();
+  } catch (e) { cntMsg({ errori: ['Non riesco a eliminare: ' + (e.message || e)] }); }
+}
+
+async function cntEliminaCausale(id) {
+  const c = cntTrova(CNT_CAUSALI, id);
+  const el = Contabilita.causaleEliminabile(c, CNT_MOVIMENTI);
+  if (!el.ok) { cntMsg({ errori: [el.motivo] }); return; }
+  if (!confirm('Eliminare la causale «' + (c?.nome || '') + '»?')) return;
+  try {
+    const { error } = await db.from('iam_causali').delete().eq('id', id);
+    if (error) throw error;
+    logMovimento('Causale eliminata · ' + (c?.nome || ''), 'causale', c?.codice || '', id);
+    cntChiudi();
+    await cntCarica();
+  } catch (e) { cntMsg({ errori: ['Non riesco a eliminare: ' + (e.message || e)] }); }
 }
 
 function initDB() {
@@ -4665,6 +5082,12 @@ function goTab(t) {
     utenti:  () => !!PERMESSI[PROFILO?.ruolo]?.utenti,
     azienda: () => !!PERMESSI[PROFILO?.ruolo]?.utenti,
     agenti:  () => isSuperAdmin(),
+    /* Conti e causali: la stessa soglia del «Conto», perché è la stessa
+       materia. A un collaboratore esterno l'elenco dei conti dell'agenzia con
+       gli IBAN non serve e non spetta — e le politiche del database gliela
+       negherebbero comunque, lasciandogli una pagina vuota che sembra un
+       guasto. Il cancello vero è là, questo è per non mostrargli la porta. */
+    conti:   () => !!PERMESSI[PROFILO?.ruolo]?.conto,
   };
   if (RISERVATE[t] && !RISERVATE[t]()) { if (t !== 'profilo') goTab('profilo'); return; }
   // Le voci di Contabilità aprono il pannello con la loro sotto-scheda
@@ -4712,6 +5135,7 @@ function goTab(t) {
   if (t === 'miaformazione') { caricaMiaFormazione(); }
   if (t === 'performance') { mostraResiduiKPI(); selPerfTab(PERF_CUR || 'gare'); loadREFromDB(); }
   if (t === 'azienda')     { loadAzienda(); }
+  if (t === 'conti')       { cntTab(CNT_VISTA); cntCarica(true); }
   if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); }   // Blocco B
   if (t === 'agenti')    { loadAgentiAI(); }
   if (t === 'quoto') {
@@ -18528,8 +18952,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: 2082f24d — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260918b"></script>
+<!-- impronta withus-one.js: e32bbb82 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260919a"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

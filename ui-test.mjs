@@ -85,11 +85,19 @@ function initScript(conSessione) {
       function builder(tabella) {
         var singolo = false, operazione = 'select', payload = null, filtri = {};
         var b = {};
-        var passanti = ['select','upsert','delete','neq','gt','gte','lt','lte','like',
-          'ilike','is','in','or','not','contains','match','filter','order','limit',
+        var passanti = ['select','delete','neq','gt','gte','lt','lte','like',
+          'ilike','is','or','not','contains','match','filter','order','limit',
           'range','csv','abortSignal','returns','overrideTypes'];
         passanti.forEach(function (m) { b[m] = function () { return b; }; });
         b.eq = function (col, val) { filtri[col] = val; return b; };
+        /* I metodi in() e upsert() erano passanti, cioè invisibili al
+           registro: una prova che guardava «quali righe stai spostando» o
+           «che cosa stai salvando» leggeva sempre niente, e restava verde
+           qualunque cosa facesse il codice. Sono scritture come le altre e si
+           annotano come le altre — è lo stesso difetto già corretto sui filtri
+           di update, qui sotto. */
+        b.in = function (col, valori) { filtri[col] = { in: (valori || []).slice() }; return b; };
+        b.upsert = function (v) { operazione = 'upsert'; payload = v; annota(); return b; };
         b.insert = function (v) { operazione = 'insert'; payload = v; annota(); return b; };
         b.update = function (v) { operazione = 'update'; payload = v; annota(); return b; };
         b.single = function () { singolo = true; return b; };
@@ -1024,7 +1032,7 @@ const avvio = async () => {
       return v;
     });
 
-    await prova('registro: la copertura non scende — 31 movimenti su 52 sanno su che cosa sono', () => {
+    await prova('registro: la copertura non scende — 32 movimenti su 53 sanno su che cosa sono', () => {
       /* La soglia si ALZA, non si abbassa: è lo stesso meccanismo della prova
          sulle collisioni fra i due documenti, al contrario. Senza, un punto di
          chiamata scritto domani senza identificativo non lo nota nessuno, e il
@@ -1050,7 +1058,7 @@ const avvio = async () => {
         }
         return virgole >= 3;
       }).length;
-      const SOGLIA = 31;
+      const SOGLIA = 32;
       deve(chiamate.length >= 50, 'non ha letto i punti di chiamata: ' + chiamate.length);
       deve(conId >= SOGLIA, conId + ' movimenti su ' + chiamate.length + ' portano l\'identificativo: erano ' + SOGLIA + '. Un punto di chiamata ha perso l\'id, oppure ne è nato uno nuovo senza');
       deve(conId - SOGLIA < 3, 'adesso sono ' + conId + ': alza la soglia a ' + conId + ', altrimenti smette di sorvegliare');
@@ -4122,6 +4130,137 @@ const avvio = async () => {
       deve(r.dopoNo === 0, 'la conferma negata ha scritto lo stesso: ' + r.dopoNo);
       deve(r.nelDisegno, 'il nome del collaboratore non compare nella riga');
       return '1 update in blocco, 0 se si annulla';
+    });
+
+    /* ══ ASSEGNA IL PREGRESSO ══════════════════════════════════════════════
+       Il pannello che chiede una volta sola chi è un codice della compagnia e
+       poi applica la decisione a tutte le sue rate. Quello che si sorveglia qui
+       è che NON assegni mai da sé: una provvigione attribuita per somiglianza
+       la scopre il collaboratore che non la riceve. */
+    /* Gli identificativi sono uuid veri, non «c-1»: il motore del registro
+       rifiuta un puntatore che non ha la forma della tabella a cui punta, e un
+       banco con id finti direbbe «entita_id nullo» facendo credere a un difetto
+       che non c'è (§18). */
+    const ASG_C1 = '11111111-1111-4111-8111-111111111111';
+    const ASG_C2 = '22222222-2222-4222-8222-222222222222';
+    const asgBanco = async (codici, titoli) => page.evaluate(async (o) => {
+      currentUser = { id: 'u-admin', role: 'admin', name: 'Capo' };
+      window.TIT_COLLAB = [{ id: o.c1, nome: 'Mario', cognome: 'Rossi' },
+                           { id: o.c2, nome: 'Luca', cognome: 'Verdi' }];
+      window.TIT_COLLAB_NOMI = {}; window.TIT_COLLAB_NOMI[o.c1] = 'Rossi Mario'; window.TIT_COLLAB_NOMI[o.c2] = 'Verdi Luca';
+      window.__COLLAUDO.risposte['quote_polizze:lista'] = { error: null, data: [
+        { id: 'p1', cliente: 'ROSSI MARIO', compagnia: 'PRIMA', prodotto: 'RC Auto',
+          data_effetto: '2025-10-24', dati: { ssf: { collaboratore: 'U100' } } },
+        { id: 'p2', cliente: 'VERDI LUCA', compagnia: 'PRIMA', prodotto: 'RC Auto',
+          data_effetto: '2026-03-13', dati: { ssf: { collaboratore: 'U100' } } },
+        { id: 'p3', cliente: 'BIANCHI SRL', compagnia: 'PRIMA', prodotto: 'Casa',
+          data_effetto: '2026-05-06', dati: { ssf: { collaboratore: 'U200' } } },
+        /* Nata in QUOTO: nessun codice, e non si attribuisce a chi ha importato. */
+        { id: 'p4', cliente: 'GIALLI SPA', compagnia: 'PRIMA', prodotto: 'Casa', data_effetto: '2026-02-02', dati: {} }
+      ] };
+      window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: o.titoli };
+      window.__COLLAUDO.risposte['quote_codici_collaboratore:lista'] = { error: null, data: o.codici };
+      window.__COLLAUDO.db = [];
+      await window.asgApri();
+      return document.getElementById('asg-bd').innerHTML;
+    }, { codici, titoli, c1: ASG_C1, c2: ASG_C2 });
+
+    const ASG_TIT = [
+      { id: 't1', polizza_id: 'p1', collaboratore_id: null, importo_lordo: 100, provvigione: 10 },
+      { id: 't2', polizza_id: 'p1', collaboratore_id: null, importo_lordo: 100, provvigione: 10 },
+      { id: 't3', polizza_id: 'p2', collaboratore_id: null, importo_lordo: 100, provvigione: 10 },
+      { id: 't4', polizza_id: 'p3', collaboratore_id: null, importo_lordo: 100, provvigione: 10 },
+      { id: 't5', polizza_id: 'p4', collaboratore_id: null, importo_lordo: 100, provvigione: 10 }
+    ];
+
+    await prova('assegnazione: il motore è caricato dalla pagina, non solo dal disco', async () => {
+      /* CLAUDE.md §1: il guasto numero uno di questo repository è il codice che
+         arriva su main e non lo chiama nessuno. */
+      const r = await page.evaluate(() => ({
+        c: typeof window.Assegnazione,
+        v: window.Assegnazione && window.Assegnazione.VERSIONE,
+        tag: !!document.querySelector('script[src*="tariffe/motore/assegnazione.js"]')
+      }));
+      deve(r.c === 'object', 'il motore dell\'assegnazione non è nella pagina: ' + r.c);
+      deve(r.tag, 'nessun <script src> lo carica: il file esiste e non lo esegue nessuno');
+      return 'Assegnazione ' + r.v;
+    });
+
+    await prova('assegnazione: un codice mai deciso non muove niente, e porta le evidenze per riconoscerlo', async () => {
+      const html = await asgBanco([], ASG_TIT);
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        window.confirm = () => true;
+        await window.asgApplica();
+        return { scritture: window.__COLLAUDO.db.filter(x => x.operazione !== 'select').length,
+                 esito: document.getElementById('asg-esito').textContent };
+      });
+      deve(/U100/.test(html) && /U200/.test(html), 'i codici non compaiono nel pannello');
+      /* Le evidenze: nessuno si ricorda «U100», tutti si ricordano i clienti. */
+      deve(/ROSSI MARIO/.test(html) && /VERDI LUCA/.test(html), 'il pannello non mostra i clienti sotto il codice');
+      deve(/2 polizze/.test(html), 'il pannello non dice di quante polizze è fatto il codice');
+      deve(r.scritture === 0, 'ha scritto senza che nessuno decidesse: ' + r.scritture);
+      deve(/niente da salvare/i.test(r.esito), 'non dice che non c\'è niente da fare: ' + r.esito);
+      return '0 scritture, e i due codici con i loro clienti';
+    });
+
+    await prova('assegnazione: decidere un codice lo firma e assegna le sue rate in un colpo', async () => {
+      await asgBanco([], ASG_TIT);
+      const r = await page.evaluate(async (C1) => {
+        window.asgScegli('PRIMA|U100', C1);
+        const anteprima = document.getElementById('asg-quante').textContent;
+        window.__COLLAUDO.db = [];
+        window.confirm = () => true;
+        await window.asgApplica();
+        const ops = window.__COLLAUDO.db;
+        return {
+          anteprima,
+          dec: ops.filter(x => x.tabella === 'quote_codici_collaboratore' && x.operazione === 'upsert').map(x => x.payload),
+          upd: ops.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update'),
+          log: ops.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload)
+        };
+      }, ASG_C1);
+      /* L'anteprima dice quante si muovono PRIMA di muoverle. */
+      deve(/3 rate/.test(r.anteprima), 'l\'anteprima non conta le rate: ' + r.anteprima);
+      deve(r.dec.length === 1, 'decisioni scritte: ' + r.dec.length);
+      const d = Array.isArray(r.dec[0]) ? r.dec[0][0] : r.dec[0];
+      deve(d.compagnia === 'PRIMA' && d.codice === 'U100' && d.collaboratore_id === ASG_C1,
+           'la decisione scritta: ' + JSON.stringify(d));
+      deve(d.deciso === true, 'la riga non è marcata come decisa: si leggerebbe come una decisione andata a vuoto');
+      deve(d.deciso_da === 'u-admin', 'la decisione non è firmata: ' + JSON.stringify(d));
+      /* Un update in blocco, non uno per rata. */
+      deve(r.upd.length === 1, 'update sulle rate: ' + r.upd.length + ' (ne basta uno, in blocco)');
+      deve(r.upd[0].payload.collaboratore_id === ASG_C1, 'assegnate a ' + JSON.stringify(r.upd[0].payload));
+      /* Un movimento per persona, non uno per rata, e con l'identificativo. */
+      deve(r.log.length === 1 && r.log[0].entita_id === ASG_C1,
+           'il registro: ' + JSON.stringify(r.log));
+      return '1 decisione firmata, 1 update per 3 rate, 1 movimento';
+    });
+
+    await prova('assegnazione: una rata già assegnata a mano non viene coperta dal blocco', async () => {
+      const titoli = ASG_TIT.map(t => t.id === 't1' ? { ...t, collaboratore_id: ASG_C2 } : t);
+      await asgBanco([], titoli);
+      const r = await page.evaluate(async (C1) => {
+        window.asgScegli('PRIMA|U100', C1);
+        window.__COLLAUDO.db = [];
+        window.confirm = () => true;
+        await window.asgApplica();
+        const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update');
+        return { upd: upd.map(x => ({ p: x.payload, f: x.filtri })) };
+      }, ASG_C1);
+      deve(r.upd.length === 1, 'update: ' + r.upd.length);
+      const ids = (r.upd[0].f && r.upd[0].f.id && r.upd[0].f.id.in) || [];
+      deve(ids.indexOf('t1') < 0, 't1 è stata riscritta: il lavoro fatto a mano è andato perso');
+      deve(ids.length === 2, 'rate mosse: ' + ids.length + ' (attese 2, t1 resta dell\'altro)');
+      return 't1 resta di chi l\'aveva, si muovono solo t2 e t3';
+    });
+
+    await prova('assegnazione: le rate senza codice si dichiarano invece di finire a chi ha importato', async () => {
+      const html = await asgBanco([], ASG_TIT);
+      deve(/1 rata<\/b> stanno|<b>1 rata<\/b>/.test(html) || /non vengono da un flusso/.test(html),
+           'il pannello non dice niente delle rate senza codice');
+      deve(!/GIALLI SPA/.test(html), 'una polizza senza codice compare fra i codici da decidere');
+      return 't5 resta fuori, e il pannello dice perché';
     });
 
     await prova('estratto conto: il motore è caricato dalla pagina, non solo dal disco', async () => {
@@ -7749,6 +7888,78 @@ const avvio = async () => {
       deve(r.reg[0].conteggi.titoli_dedotti === 1, 'il verbale non dice quante rate le abbiamo dedotte noi: ' + JSON.stringify(r.reg[0].conteggi));
       deve(/Fatto/.test(r.esito), 'non dice com\'è andata');
       return '3 clienti, 7 polizze, 3 rate (1 dedotta), 1 riga di registro';
+    });
+
+    await prova('flusso: dove il codice è stato deciso la rata nasce già sua', async () => {
+      /* È il punto dell'intero lavoro: la domanda «chi è U90001» si fa UNA
+         volta, e da lì in poi la applica il flusso. Senza, ogni notte tornano
+         rate da assegnare a mano, e a mano non le assegna nessuno. */
+      const r = await page.evaluate(async (campione) => {
+        currentUser = { id: 'u-admin', role: 'admin', name: 'Capo' };
+        const C9 = '99999999-9999-4999-8999-999999999999';
+        window.TIT_COLLAB = [{ id: C9, nome: 'Anna', cognome: 'Neri' }];
+        window.TIT_COLLAB_NOMI = {}; window.TIT_COLLAB_NOMI[C9] = 'Neri Anna';
+        window.__COLLAUDO.risposte['quote_codici_collaboratore:lista'] = { error: null, data: [
+          { compagnia: 'COMPAGNIA_DI_PROVA', codice: 'U90001', collaboratore_id: C9, nessuno: false, deciso: true }
+        ] };
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_anagrafiche:single'] = { data: { id: 'cli-nuovo' }, error: null };
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { id: 'pol-nuova' }, error: null };
+        const files = Object.keys(campione).map(n => new File([campione[n]], n, { type: 'text/csv' }));
+        await fluScelto(files);
+        const anteprima = document.getElementById('flu-esito').innerHTML;
+        window.__COLLAUDO.db = [];
+        window.confirm = () => true;
+        await fluConferma();
+        const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
+        return {
+          anteprima,
+          tit: ins.filter(x => x.tabella === 'quote_titoli').map(x => x.payload),
+          reg: ins.filter(x => x.tabella === 'quote_importazioni').map(x => x.payload),
+          esito: document.getElementById('flu-esito').innerHTML
+        };
+      }, campione);
+      deve(/rate a Neri Anna/.test(r.anteprima), 'l\'anteprima non dice a chi andranno: ' + (r.anteprima.match(/codice da decidere/) ? 'dice «da decidere»' : '—'));
+      deve(r.tit.length === 3, 'rate scritte: ' + r.tit.length);
+      deve(r.tit.every(t => t.collaboratore_id === '99999999-9999-4999-8999-999999999999'),
+           'una rata è nata senza padrone: ' + JSON.stringify(r.tit.map(t => t.collaboratore_id)));
+      deve(r.reg[0].conteggi.titoli_assegnati === 3, 'il verbale non conta le assegnate: ' + JSON.stringify(r.reg[0].conteggi));
+      deve(/già assegnat/.test(r.esito), 'l\'esito non dice quante sono nate già di qualcuno');
+      return '3 rate su 3 nate di Neri Anna, e il verbale lo scrive';
+    });
+
+    await prova('flusso: un codice NON deciso non attribuisce niente a nessuno', async () => {
+      /* La controprova permanente della regola 1, dentro la pagina: lo stesso
+         file, senza la decisione, non deve produrre nemmeno un'attribuzione. */
+      const r = await page.evaluate(async (campione) => {
+        /* La riga c'è ma NON è decisa, e porta persino un collaboratore: è come
+           resta dopo che l'importazione ha annotato le evidenze, o dopo che
+           qualcuno ha scritto a metà nel database. Un lettore che guarda solo
+           «c'è un collaboratore?» invece di «è stato deciso?» qui attribuisce
+           tre rate che nessuno gli ha detto di attribuire. */
+        window.__COLLAUDO.risposte['quote_codici_collaboratore:lista'] = { error: null, data: [
+          { compagnia: 'COMPAGNIA_DI_PROVA', codice: 'U90001',
+            collaboratore_id: '99999999-9999-4999-8999-999999999999',
+            nessuno: false, deciso: false, nome_flusso: 'Chi Sa', email_flusso: 'chi@esempio.it' }
+        ] };
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        const files = Object.keys(campione).map(n => new File([campione[n]], n, { type: 'text/csv' }));
+        await fluScelto(files);
+        const anteprima = document.getElementById('flu-esito').innerHTML;
+        window.__COLLAUDO.db = [];
+        window.confirm = () => true;
+        await fluConferma();
+        const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
+        return { anteprima, tit: ins.filter(x => x.tabella === 'quote_titoli').map(x => x.payload) };
+      }, campione);
+      deve(/codice da decidere/.test(r.anteprima), 'l\'anteprima non segnala il codice da decidere');
+      deve(r.tit.length && r.tit.every(t => !t.collaboratore_id),
+           'una rata è stata attribuita senza decisione: ' + JSON.stringify(r.tit.map(t => t.collaboratore_id)));
+      return r.tit.length + ' rate, nessuna attribuita';
     });
 
     await prova('flusso: il cliente che c\'è già non viene riscritto', async () => {

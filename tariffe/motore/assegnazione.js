@@ -358,7 +358,51 @@
     return String(s == null ? '' : s).replace(/[\s.\-\/]/g, '').toUpperCase();
   }
 
-  /* ══ 6. ATTREZZI ══════════════════════════════════════════════════════════ */
+  /* ══ 6. LA RIGA DI DECISIONE ══════════════════════════════════════════════
+     La scrivono TRE schermate — il pannello del pregresso, l'anteprima del
+     flusso e la scheda del collaboratore in IAM — e sta qui perché tre
+     costruzioni della stessa riga diventano prima o poi tre regole diverse su
+     chi viene pagato. È l'unica cosa di questo motore che produce qualcosa da
+     scrivere, e per questo è l'unica che va tenuta in un posto solo.
+
+     `evidenze` accetta i nomi delle DUE provenienze: quelli della tabella
+     (`nome_flusso`, `email_flusso`, …) e quelli del flusso appena letto
+     (`nome`, `email`, `rui`, `produttore`). Chi chiama passa l'oggetto che ha
+     in mano senza doverlo tradurre, e la traduzione sta scritta una volta. */
+  function rigaDecisione(k, valore, evidenze, utenteId) {
+    var parti = String(k == null ? '' : k).split('|');
+    var e = evidenze || {};
+    var vuota = !valore;
+    return {
+      compagnia: parti[0] || '',
+      codice: parti[1] || '',
+      collaboratore_id: valore === NESSUNO ? null : (valore || null),
+      nessuno: valore === NESSUNO,
+      /* Un `upsert` riscrive la RIGA INTERA: le colonne che non si passano
+         tornano al valore di partenza. Senza queste quattro, abbinare un codice
+         cancellerebbe nome, email, RUI e codice produttore che il flusso aveva
+         portato — e la volta dopo quel codice tornerebbe a essere una sigla da
+         riconoscere a memoria, cioè il problema che questa tabella esiste per
+         risolvere. */
+      nome_flusso: e.nome_flusso || e.nome || null,
+      email_flusso: e.email_flusso || e.email || null,
+      rui_flusso: e.rui_flusso || e.rui || null,
+      produttore_flusso: e.produttore_flusso || e.produttore || null,
+      /* `deciso` distingue una decisione da una riga di sole evidenze.
+         Rimettere una scelta su «da decidere» la spegne invece di cancellare la
+         riga: le evidenze restano, e servono la prossima volta. */
+      deciso: !vuota,
+      deciso_da: vuota ? null : (utenteId || null),
+      deciso_il: new Date().toISOString()
+    };
+  }
+
+  /* Il valore che nella tendina vuol dire «deciso: non è di nessuno». Sta qui
+     perché tre schermate lo scrivono e una stringa copiata tre volte è una
+     stringa che una volta si scrive diversa. */
+  var NESSUNO = '__nessuno__';
+
+  /* ══ 7. ATTREZZI ══════════════════════════════════════════════════════════ */
 
   /* Simmetrico sui negativi, come in `estratto-conto.js`: gli storni esistono e
      `Math.round(-0.5)` arrotonda verso l'alto anche loro. */
@@ -388,10 +432,10 @@
   }
 
   var API = {
-    VERSIONE: VERSIONE,
+    VERSIONE: VERSIONE, NESSUNO: NESSUNO,
     chiave: chiave, codiceDi: codiceDi, statoDecisione: statoDecisione, mappa: mappa,
     riepilogo: riepilogo, piano: piano, proposteDaFlusso: proposteDaFlusso,
-    cent: cent
+    rigaDecisione: rigaDecisione, cent: cent
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.Assegnazione = API;

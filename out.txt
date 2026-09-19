@@ -1,19 +1,10 @@
-id: brief01-1789837928  exit: 0  2026-09-19 17:12:16
+id: brief01-m5-1789837964  exit: 0  2026-09-19 17:15:02
 ----
 == commit su /opt/withus-backend
-9406b3a Brief IAM #01 · M4: chi paga la rata, credito dell'agenzia verso il collaboratore, rimessa (#203)
-== ultimo autopull
-Sep 19 17:11:13 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 19 17:11:13 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 5.302s CPU time over 5.740s wall clock time, 105.1M memory peak.
-Sep 19 17:12:11 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-== M1..M5 nel codice servito
-reg-ultima: 1
-pf-date-su: 3
-rin-card-sub: 2
-cpl-oggi: 3
-tit-chi-paga: 3
-page-foglio-cassa: 0
-anagrafica.js: presente
-foglio-cassa.js: ASSENTE
+bb93a01 Brief IAM #01 · M5: il foglio cassa dentro il Portafoglio (#204)
+== M5 nel codice servito
+page-foglio-cassa: 1
+fcExportPdf: 2
+foglio-cassa.js: presente
 == md5 index.html
-0e083b01be91
+8c805f9c731c

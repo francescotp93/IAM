@@ -225,10 +225,18 @@ function mezzoDa(codice) {
   return null;
 }
 
-  /* I tipi di titolo che sappiamo tradurre. `RI` (rimborso/regolazione, che
-     nel file vero vale 0,00) non è nessuno dei nostri quattro tipi: si
-     salta e si dichiara, invece di entrare in contabilità come una rata da
-     zero euro. */
+  /* I tipi di titolo che sappiamo tradurre, e sono TRE: `PN` (il premio nuovo
+     — nel file vero copre nuovo affare, rinnovo e sostituzione), `QZ` (la
+     quietanza, cioè la rata successiva) e `AP` (l'appendice).
+
+     Tutto il resto non entra in contabilità e si DICHIARA. Non è prudenza
+     astratta: un titolo è una riga di soldi, e tradurne uno a occhio vuol
+     dire scrivere un importo che nessuno ha detto. Sul portafoglio completo
+     compaiono almeno `PS`, `ARM`, `ANN` e `RI` — codici che questo lettore
+     non ha mai visto insieme a un dato che li spieghi, e finché non si sa
+     che cosa sono restano fuori, con i loro numeri sotto gli occhi
+     (`titoli.ignoti`): è guardandoli che si decide, non indovinando.
+     Aggiungere un codice qui è una riga sola, dopo. */
   var TIPO_TITOLO = { PN: 'prima_rata', QZ: 'quietanza', AP: 'appendice' };
 
   /* ══ 4. ANALISI DEL FLUSSO ════════════════════════════════════════════════
@@ -327,7 +335,7 @@ function mezzoDa(codice) {
     });
 
     /* ── I titoli ─────────────────────────────────────────────────────── */
-    var titoli = [], titoliSaltati = {};
+    var titoli = [], titoliSaltati = {}, ignoti = [];
     var polizzePerChiave = {};
     polizze.forEach(function (p) { polizzePerChiave[p._fonte_id] = p; });
     righe['040'].forEach(function (r) {
@@ -335,6 +343,21 @@ function mezzoDa(codice) {
       if (!tipo) {
         var k = testo(r.TIPO_TITOLO_SHARE) || '(vuoto)';
         titoliSaltati[k] = (titoliSaltati[k] || 0) + 1;
+        /* Non basta contarli. Per decidere che cosa sono servono i NUMERI:
+           su quale polizza stanno, quanto valgono, quando decorrono, che
+           nome gli dà la compagnia. Un conteggio dice che c'è un buco; questi
+           dati dicono di che buco si tratta. */
+        ignoti.push({
+          tipo_share: k,
+          tipo_compagnia: testo(r.TIPO_TITOLO_COMPAGNIA),
+          _polizza: testo(r.ID_POLIZZA_EXP),
+          numero_polizza: testo(r.NUMERO_POLIZZA_CMP),
+          data: data(r.EFFETTO_TITOLO),
+          importo: numero(r.LORDO_TOTALE),
+          provvigione: numero(r.PROVVIGIONI_TOTALE),
+          stato: testo(r.STATO_SHARE),
+          pagato_il: data(r.DT_PAG_CLIENTE)
+        });
         return;
       }
       var t = versoTitolo(r, tipo);
@@ -343,9 +366,16 @@ function mezzoDa(codice) {
       if (!polizzePerChiave[t._polizza]) t._senzaPolizza = true;
       titoli.push(t);
     });
-    Object.keys(titoliSaltati).forEach(function (k) {
-      avvisi.push({ g: 'avviso', t: titoliSaltati[k] + ' titol' + (titoliSaltati[k] === 1 ? 'o' : 'i') + ' di tipo «' + k + '» non importat' + (titoliSaltati[k] === 1 ? 'o' : 'i') + ': non è nessuno dei quattro tipi che il gestionale conosce.' });
-    });
+    /* UN avviso solo, non uno per codice: quattro riquadri che dicono la
+       stessa cosa con una sigla diversa si leggono come quattro guasti, e la
+       cosa da fare è una sola. */
+    var codici = Object.keys(titoliSaltati).sort();
+    if (codici.length) {
+      avvisi.push({ g: 'avviso', t: ignoti.length + ' rat' + (ignoti.length === 1 ? 'a' : 'e') +
+        ' non entra' + (ignoti.length === 1 ? '' : 'no') + ' in contabilità: ' +
+        codici.map(function (k) { return '«' + k + '» ×' + titoliSaltati[k]; }).join(', ') +
+        '. Sono tipi di titolo che questo lettore non sa tradurre, e un importo tradotto a occhio è un numero falso in contabilità. Li trovi qui sotto con i loro numeri: dimmi che cosa sono e li aggiungo.' });
+    }
 
     /* Quello che ogni collaboratore ha prodotto in questo flusso. Si conta dai
        TITOLI e non dalle polizze, perché le provvigioni stanno lì: una polizza
@@ -403,7 +433,7 @@ function mezzoDa(codice) {
     return {
       versione: VERSIONE, testata: testata,
       clienti: clienti, collaboratori: collaboratori,
-      polizze: polizze, offerte: offerte, titoli: titoli,
+      polizze: polizze, offerte: offerte, titoli: titoli, titoliIgnoti: ignoti,
       prodotti: prodotti, avvisi: avvisi
     };
   }
@@ -705,6 +735,12 @@ function mezzoDa(codice) {
       polizzeNuove.push(p);
     });
 
+    /* Le polizze per chiave, comprese le offerte: una rata di tipo ignoto può
+       stare su un'offerta di rinnovo, e il cliente è quello che serve per
+       riconoscerla a colpo d'occhio. */
+    var polizzePerFonteLocale = {};
+    [].concat(analisi.polizze || [], analisi.offerte || []).forEach(function (x) { polizzePerFonteLocale[x._fonte_id] = x; });
+
     var titoliNuovi = [], titoliGia = [], titoliSenzaPolizza = [];
     (analisi.titoli || []).forEach(function (t) {
       if (t._senzaPolizza) { titoliSenzaPolizza.push(t); return; }
@@ -723,7 +759,18 @@ function mezzoDa(codice) {
            diverse e chi guarda l'anteprima ha il diritto di saperlo prima di
            scrivere. */
         dedotti: titoliNuovi.filter(function (t) { return t._generato; }),
-        daIncassare: titoliNuovi.filter(function (t) { return t.stato === 'aperto'; })
+        daIncassare: titoliNuovi.filter(function (t) { return t.stato === 'aperto'; }),
+        /* Le rate che restano fuori perché il tipo non si sa tradurre, coi
+           loro numeri e col nome del cliente attaccato: è guardandole che si
+           decide che cosa sono. Un conteggio da solo non basta a decidere. */
+        ignoti: (analisi.titoliIgnoti || []).map(function (x) {
+          var pol = polizzePerFonteLocale[x._polizza];
+          var y = {};
+          for (var k in x) y[k] = x[k];
+          y.cliente = pol ? pol.cliente : null;
+          y.numero_polizza = x.numero_polizza || (pol ? pol.numero_polizza : null);
+          return y;
+        })
       },
       /* Le offerte di rinnovo non entrano in portafoglio (regola 3), ma si
          contano e si elencano: sono clienti da chiamare prima che scada il

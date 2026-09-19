@@ -43,8 +43,15 @@ prova('la sessione salvata si rilegge, non si scrive soltanto', () => {
 });
 
 prova('all\'avvio si prova a rientrare PRIMA di chiedere un codice', () => {
+  /*  AL BLOCCO, NON A UNA MISURA IN CARATTERI. Questa prova ritagliava 1800
+      caratteri dall'inizio del blocco d'avvio: il 19/09/2026 un commento piu'
+      lungo ha spinto `step: 'pronto'` oltre quel confine e la prova e' diventata
+      rossa su un comportamento identico. Sesta volta in una settimana che una
+      finestra di caratteri al posto di un confine mente. Il blocco d'avvio e'
+      una funzione che si chiude da se': si legge fin li'.  */
   const da = src.indexOf('// Avvio: NON invio le credenziali');
-  const blocco = da < 0 ? '' : src.slice(da, da + 1800);
+  const fine = da < 0 ? -1 : src.indexOf('})();', da);
+  const blocco = da < 0 || fine < 0 ? '' : src.slice(da, fine);
   deve(blocco, 'il blocco di avvio non si trova piu\': questa prova va riscritta, non cancellata');
   const ripristino = blocco.indexOf('ripristinaSessione');
   const arrendersi = blocco.indexOf("step: 'pronto'");
@@ -264,6 +271,43 @@ prova('l\'interruttore del rientro e\' davvero acceso, e col valore giusto', () 
       danno errore, danno un interruttore che non accende niente.  */
   deve(/process\.env\.GROUPAMA_RIENTRO_AUTO/.test(src),
     'il codice non legge piu\' questa variabile: l\'interruttore e\' rimasto appeso al nulla');
+});
+
+
+prova('all\'avvio il portale si apre UNA volta sola', () => {
+  /*  Misurato il 19/09/2026 sulla casella dell\'agenzia: ogni riavvio dello
+      scraper con la sessione morta produceva TRE mail col codice. Tre
+      affacciate al portale da sloggati, e ognuna fa spedire.
+      Una era sprecata per costruzione: si chiedeva «sono dentro?» PRIMA di
+      rimettere la sessione salvata, cioe\' a un browser appena acceso che non
+      poteva rispondere altro che «no».  */
+  const da = src.indexOf('// Avvio: NON invio le credenziali');
+  const fine = src.indexOf('})();', da);
+  const blocco = da < 0 || fine < 0 ? '' : src.slice(da, fine);
+  deve(blocco, 'il blocco di avvio non si trova piu\'');
+  const quante = (blocco.match(/await loggedIn\(\)/g) || []).length;
+  deve(quante === 1, 'all\'avvio il portale si guarda ' + quante + ' volte invece di una: ogni volta e\' un codice spedito all\'agenzia');
+  const ripristino = blocco.indexOf('ripristinaSessione');
+  const controllo = blocco.indexOf('await loggedIn()');
+  deve(ripristino > -1 && ripristino < controllo,
+    'si guarda prima di rimettere la sessione: quella domanda ha una risposta gia\' nota e costa una mail');
+  return '1 controllo, dopo il ripristino';
+});
+
+prova('rimettere la sessione non apre nessuna pagina', () => {
+  /*  Il pezzo che rimette la memoria di pagina apriva il portale apposta per
+      scriverci dentro: una mail per una cosa che il commento stesso chiamava
+      «non grave». Con uno script d\'avvio il browser la scrive da se\' alla
+      prossima pagina, senza aprirne una adesso.  */
+  const da = src.indexOf('async function ripristinaSessione()');
+  const corpo = da < 0 ? '' : src.slice(da, src.indexOf('\n}', da));
+  deve(corpo, 'ripristinaSessione non si trova piu\'');
+  deve(!/page\.goto\(/.test(corpo),
+    'ripristinaSessione apre ancora una pagina: da sloggati quell\'apertura fa spedire un codice');
+  deve(/addInitScript\(/.test(corpo),
+    'la memoria di pagina non si rimette piu\' in nessun modo: ISA vive di quella roba');
+  deve(/memoriaInstallata/.test(corpo),
+    'lo script d\'avvio si accumula a ogni chiamata: il browser lo rieseguirebbe piu\' volte');
 });
 
 const ko = esiti.filter(e => !e[0]);

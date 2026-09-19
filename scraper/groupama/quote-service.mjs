@@ -148,6 +148,7 @@ async function salvaSessione(motivo = '') {
    dentro: lo dice il controllo che viene dopo. Se il portale l'ha invalidata,
    cookie vecchi non fanno danno — si finisce sulla schermata di accesso, come
    succedeva prima ad ogni riavvio. Quindi al peggio si sta come si stava. */
+let memoriaInstallata = false;
 async function ripristinaSessione() {
   let s = null;
   try { s = JSON.parse(fs.readFileSync(AUTH, 'utf8')); } catch { return false; }  // prima accensione o file illeggibile
@@ -157,12 +158,19 @@ async function ripristinaSessione() {
   /* Anche quello che il portale si era scritto nel browser: ISA e' una pagina
      che vive di roba tenuta li'. Best effort: se non riesce, restano i cookie,
      che sono la parte che conta. */
+  /* LA MEMORIA DI PAGINA NON SI RIMETTE NAVIGANDO. Fino al 19/09/2026 questo
+     pezzo apriva il portale apposta per scrivere nel localStorage. Misurato
+     quel giorno sulla casella dell'agenzia: quell'apertura, da sloggati, FA
+     SPEDIRE UN CODICE. Una mail per rimettere a posto una cosa «non grave».
+     Con uno script d'avvio il browser la scrive da se' alla prossima pagina
+     che apre, qualunque sia: zero navigazioni in piu', e vale anche per le
+     pagine che verranno, non solo per quella. */
   const org = (s.origins || []).filter(o => o && Array.isArray(o.localStorage) && o.localStorage.length);
-  if (org.length) {
+  const voci = org.flatMap(o => o.localStorage.map(v => [v.name, v.value]));
+  if (voci.length && !memoriaInstallata) {
     try {
-      await page.goto(origin(creds().loginUrl), { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.evaluate(voci => { try { for (const [k, v] of voci) localStorage.setItem(k, v); } catch (e) {} },
-        org.flatMap(o => o.localStorage.map(v => [v.name, v.value])));
+      await ctx.addInitScript(elenco => { try { for (const [k, v] of elenco) localStorage.setItem(k, v); } catch (e) {} }, voci);
+      memoriaInstallata = true;   // si accumulerebbe a ogni chiamata: una volta basta
     } catch (e) { log('memoria di pagina non rimessa (non grave):', e.message); }
   }
   log('sessione ripresa da auth.json:', cookies.length, 'cookie');
@@ -857,14 +865,24 @@ async function _driveISAQuote(targa, opts) {
 (async () => {
   try {
     await ensurePage();
-    let dentro = await loggedIn();
-    /* Il browser si e' appena acceso e non risulta nessuna sessione: e' il caso
-       normale dopo un riavvio, perche' i cookie di sessione non sopravvivono
-       allo spegnimento. PRIMA di dichiararsi fuori — e di far ripartire la
-       trafila del codice via email — si rimette quella salvata e si ricontrolla. */
-    if (!dentro && await ripristinaSessione()) {
-      logCache.t = 0;                  // la risposta di un attimo fa non vale più
-      dentro = await loggedIn();
+    /* PRIMA SI RIMETTE, POI SI GUARDA — E SI GUARDA UNA VOLTA SOLA.
+       Fino al 19/09/2026 qui si chiamava loggedIn() PRIMA di rimettere la
+       sessione salvata. Quel primo controllo non poteva dire altro che «sei
+       fuori»: il browser era appena acceso e i cookie di sessione non
+       sopravvivono allo spegnimento — e' scritto due righe piu' su, nel
+       commento che spiegava perche' subito dopo si rimetteva la sessione.
+       Era una domanda di cui si conosceva gia' la risposta, e costava
+       un'apertura del portale da sloggati, cioe' UN CODICE spedito all'agenzia.
+       Misurato lo stesso giorno: ogni riavvio dello scraper con la sessione
+       morta produceva TRE mail. Riordinato cosi' ne resta al massimo una, e
+       solo quando c'e' davvero qualcosa da verificare.
+       Rimettere prima non indebolisce niente: i cookie salvati sono un
+       soprainsieme di quelli che il profilo su disco si porta dietro, quindi
+       la domanda fatta DOPO e' piu' informata, non meno. */
+    const ripresa = await ripristinaSessione();
+    if (ripresa) logCache.t = 0;       // la risposta di un attimo fa non vale più
+    const dentro = await loggedIn();
+    if (ripresa) {
       if (dentro) log('rientrato con la sessione salvata: nessun codice da chiedere ✅');
       else log('la sessione salvata non e\' piu\' valida: serve un accesso con codice');
     }

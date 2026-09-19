@@ -2,6 +2,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- LA VERSIONE DI QUESTO RILASCIO.
+     Annotata, non calcolata: la fonte unica e' `versione.json` alla radice, e
+     `iam/verifica/versione-app.test.mjs` diventa rossa se qui e li' non dicono
+     la stessa cosa, o se i documenti sono cambiati senza che la versione sia
+     stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
+     «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
+<meta name="app-versione" content="0.1.0">
+<meta name="app-versione-nome" content="Conti e causali">
+
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="var(--acc)">
@@ -3813,11 +3822,40 @@ function versioneQuando(d) {
   return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
+/* LE DUE DOMANDE, CHE SONO DIVERSE E SERVONO TUTTE E DUE.
+
+   «Quello che ho chiesto è pubblicato?» → risponde il NUMERO DI VERSIONE.
+   Cambia a ogni rilascio e porta con sé il nome di quello che quel rilascio
+   contiene: vedere «0.2 · Prima nota» dice che la prima nota c'è.
+   Lo scrive una persona in `versione.json`, e una prova impedisce di
+   dimenticarsene — perché un numero scritto a mano e non sorvegliato è
+   esattamente la targhetta che stava qui prima, ferma a giugno.
+
+   «Sto guardando la pagina che il server ha adesso?» → risponde la DATA.
+   `document.lastModified` è del documento che il browser ha davvero caricato:
+   se il numero dice 0.2 ma la data è di ieri, stai guardando una copia in
+   cache che il numero da solo non smaschererebbe.
+
+   Il numero si legge dal `<meta>` del documento in uso, non da un `fetch`:
+   deve descrivere QUESTA copia, non quella che il server servirebbe adesso. */
+function versioneApp() {
+  const n = document.querySelector('meta[name="app-versione"]');
+  const t = document.querySelector('meta[name="app-versione-nome"]');
+  return {
+    numero: n ? (n.getAttribute('content') || '').trim() : '',
+    nome: t ? (t.getAttribute('content') || '').trim() : ''
+  };
+}
+
 async function mostraVersioneInUso() {
   const box = document.getElementById('um-versione');
   if (!box) return;
+  const v = versioneApp();
   const mia = versioneQuando(new Date(document.lastModified));
-  box.textContent = mia ? 'IAM · versione del ' + mia : 'IAM';
+  const pezzi = ['IAM' + (v.numero ? ' ' + v.numero : '')];
+  if (v.nome) pezzi.push(v.nome);
+  if (mia) pezzi.push('pagina del ' + mia);
+  box.textContent = pezzi.join(' · ');
   /* Il preventivatore si chiede con una HEAD: costa niente e non scarica
      1,9 MB. Se non risponde si tace, invece di scrivere un numero inventato. */
   try {

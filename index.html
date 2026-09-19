@@ -714,7 +714,9 @@ button{font-family:inherit}
 .pf-f label{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted)}
 .pf-f input,.pf-f select{padding:7px 9px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:13px;background:#fff;color:var(--ink);min-width:130px}
 .pf-f input:focus,.pf-f select:focus{border-color:var(--blue);box-shadow:var(--ring);outline:none}
-.pf-f-az{justify-content:flex-end}
+.pf-f-az{justify-content:flex-end;flex-direction:row;align-items:flex-end;gap:6px}
+.pf-cerca{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:none;border-radius:4px;background:var(--blue);color:#fff;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.pf-cerca:hover{filter:brightness(.95)}
 .pf-reset{padding:7px 12px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer}
 .pf-reset:hover{background:#f2f5f7;color:var(--ink)}
 /* Non si riusa .btn-inf: quella è la classe dei bottoni a piena larghezza dei
@@ -741,15 +743,21 @@ button{font-family:inherit}
 /* ── CRM Punto 4: scadenzario e rinnovi ───────────────────────────────────── */
 /* Le fasce di urgenza sono la prima cosa che si guarda: quante ne hai addosso
    questa settimana, questo mese, e quante sono già scadute. */
-.rin-fasce{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
-.rin-fascia{display:flex;flex-direction:column;gap:2px;padding:9px 14px;min-width:104px;cursor:pointer;
-  background:#fff;border:1px solid var(--line);border-radius:4px;font-family:inherit;text-align:left}
-.rin-fascia:hover{border-color:#b9e3cb}
-.rin-fascia.att{border-color:var(--blue);background:var(--blue-bg);box-shadow:var(--ring)}
-.rin-fascia b{font-size:19px;font-weight:700;line-height:1.1;color:var(--ink)}
+.rin-fasce{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+/* M2.3 (19/09/2026): card-contatore cliccabili. Un colore per stato — rosso
+   le scadute, arancio le imminenti, blu le prossime — e il numero grande,
+   perché è il numero che si guarda. Il clic filtra la lista sotto. */
+.rin-fascia{display:flex;flex-direction:column;gap:2px;padding:10px 16px 10px 14px;min-width:132px;cursor:pointer;
+  background:#fff;border:1px solid var(--line);border-left:4px solid #b9c3cc;border-radius:6px;font-family:inherit;text-align:left;
+  box-shadow:0 1px 2px rgba(20,30,40,.05);transition:box-shadow .12s,transform .12s}
+.rin-fascia:hover{box-shadow:0 3px 10px rgba(20,30,40,.10);transform:translateY(-1px)}
+.rin-fascia.att{border-color:var(--blue);border-left-color:var(--blue);background:var(--blue-bg);box-shadow:var(--ring)}
+.rin-fascia b{font-size:24px;font-weight:800;line-height:1.05;color:var(--ink)}
 .rin-fascia span{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
-.rin-fascia.urg b{color:#c0392b}
-.rin-fascia.avv b{color:#c25a00}
+.rin-fascia .rin-card-sub{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted);margin-top:2px}
+.rin-fascia.urg{border-left-color:#c0392b}.rin-fascia.urg b{color:#c0392b}
+.rin-fascia.avv{border-left-color:#e07b00}.rin-fascia.avv b{color:#c25a00}
+.rin-fascia.ok{border-left-color:#2a7fd5}.rin-fascia.ok b{color:#1f5fa8}
 .rin-gg{font-size:11px;color:var(--muted);margin-top:2px}
 .rin-az{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--line);
   border-radius:4px;background:#fff;color:var(--blue);font-family:inherit;font-size:11.5px;font-weight:600;
@@ -2515,7 +2523,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="pf-top">
         <div class="pf-filters">
           <div class="pf-f"><label>Stato pagamento</label>
-            <select id="pf-stato" onchange="pfRender()">
+            <select id="pf-stato">
               <option value="">Tutti</option>
               <option value="non_pagato">Non pagato</option>
               <option value="sospeso">Sospeso</option>
@@ -2523,29 +2531,30 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
               <option value="annullata">Annullata</option>
             </select></div>
           <div class="pf-f"><label>Cliente</label>
-            <input id="pf-cliente" type="text" placeholder="nome o ragione sociale" oninput="pfRender()"></div>
+            <input id="pf-cliente" type="text" placeholder="nome o ragione sociale"></div>
           <div class="pf-f"><label>Prodotto</label>
-            <select id="pf-prodotto" onchange="pfRender()"><option value="">Tutti</option></select></div>
+            <select id="pf-prodotto"><option value="">Tutti</option></select></div>
           <div class="pf-f"><label>Compagnia</label>
-            <select id="pf-compagnia" onchange="pfRender()"><option value="">Tutte</option></select></div>
+            <select id="pf-compagnia"><option value="">Tutte</option></select></div>
           <!-- M1.2 (19/09/2026): il filtro per date sceglie SU QUALE data
                lavora. «Emesse a settembre» è la ricerca più frequente in
                agenzia, e finora non si poteva fare: la data di emissione non
                era una colonna. Parte da lì. -->
           <div class="pf-f"><label>Date su</label>
-            <select id="pf-date-su" onchange="pfRender()">
+            <select id="pf-date-su">
               <option value="emissione">Emissione</option>
               <option value="effetto">Effetto</option>
               <option value="scadenza">Scadenza</option>
             </select></div>
           <div class="pf-f"><label>dal</label>
-            <input id="pf-da" type="date" onchange="pfRender()"></div>
+            <input id="pf-da" type="date"></div>
           <div class="pf-f"><label>al</label>
-            <input id="pf-a" type="date" onchange="pfRender()"></div>
+            <input id="pf-a" type="date"></div>
           <div class="pf-f"><label>Numero</label>
-            <input id="pf-numero" type="text" placeholder="polizza o progressivo" oninput="pfRender()"></div>
+            <input id="pf-numero" type="text" placeholder="polizza o progressivo"></div>
           <div class="pf-f pf-f-az">
-            <button class="pf-reset" onclick="pfAzzera()" title="Togli tutti i filtri">Azzera</button>
+            <button class="pf-cerca" onclick="pfRender()"><i class="ti ti-search"></i> Cerca</button>
+            <button class="pf-reset" onclick="pfAzzera()" title="Togli tutti i filtri">Azzera filtri</button>
           </div>
         </div>
         <button class="pf-exp" onclick="pfExportExcel()" title="Scarica l'elenco filtrato">
@@ -2606,13 +2615,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div id="cdoc-scad">
         <div class="pf-filters" style="margin-bottom:10px">
           <div class="pf-f"><label>Stato</label>
-            <select id="cdoc-f-stato" onchange="cdocRenderScadenze()">
+            <select id="cdoc-f-stato">
               <option value="">Scaduti e in scadenza</option>
               <option value="scaduto">Solo scaduti</option>
               <option value="in_scadenza">Solo in scadenza</option>
             </select></div>
           <div class="pf-f"><label>Cliente</label>
-            <input id="cdoc-f-cliente" type="text" placeholder="nome o ragione sociale" oninput="cdocRenderScadenze()"></div>
+            <input id="cdoc-f-cliente" type="text" placeholder="nome o ragione sociale"></div>
+          <div class="pf-f"><label>Scadenza dal</label><input id="cdoc-f-da" type="date"></div>
+          <div class="pf-f"><label>al</label><input id="cdoc-f-a" type="date"></div>
+          <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="cdocRenderScadenze()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="cdocAzzeraScadenze()">Azzera filtri</button></div>
         </div>
         <div class="table-wrap">
           <table class="storico-table">
@@ -2625,11 +2637,14 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div id="cdoc-fasc" style="display:none">
         <div class="pf-filters" style="margin-bottom:10px">
           <div class="pf-f"><label>Compagnia</label>
-            <select id="cdoc-f-comp" onchange="cdocRenderFascicoli()"><option value="">Tutte</option></select></div>
+            <select id="cdoc-f-comp"><option value="">Tutte</option></select></div>
           <div class="pf-f"><label>Operatore</label>
-            <select id="cdoc-f-oper" onchange="cdocRenderFascicoli()"><option value="">Tutti</option></select></div>
+            <select id="cdoc-f-oper"><option value="">Tutti</option></select></div>
           <div class="pf-f"><label>Cliente</label>
-            <input id="cdoc-f-fcli" type="text" placeholder="nome o ragione sociale" oninput="cdocRenderFascicoli()"></div>
+            <input id="cdoc-f-fcli" type="text" placeholder="nome o ragione sociale"></div>
+          <div class="pf-f"><label>Effetto dal</label><input id="cdoc-f-fda" type="date"></div>
+          <div class="pf-f"><label>al</label><input id="cdoc-f-fa" type="date"></div>
+          <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="cdocRenderFascicoli()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="cdocAzzeraFascicoli()">Azzera filtri</button></div>
         </div>
         <div class="table-wrap">
           <table class="storico-table">
@@ -2733,11 +2748,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="pf-top">
         <div class="pf-filters">
           <div class="pf-f"><label>Scadenza dal</label>
-            <input id="tit-da" type="date" onchange="titRender()"></div>
+            <input id="tit-da" type="date"></div>
           <div class="pf-f"><label>al</label>
-            <input id="tit-a" type="date" onchange="titRender()"></div>
+            <input id="tit-a" type="date"></div>
           <div class="pf-f"><label>Stato</label>
-            <select id="tit-stato" onchange="titRender()">
+            <select id="tit-stato">
               <option value="">Tutti</option>
               <option value="insoluto">Insoluti</option>
               <option value="aperto">Da incassare</option>
@@ -2745,7 +2760,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
               <option value="stornato">Stornati</option>
             </select></div>
           <div class="pf-f"><label>Tipo</label>
-            <select id="tit-tipo" onchange="titRender()">
+            <select id="tit-tipo">
               <option value="">Tutti</option>
               <option value="prima_rata">Prima rata</option>
               <option value="rata">Rata</option>
@@ -2753,10 +2768,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
               <option value="appendice">Appendice</option>
             </select></div>
           <div class="pf-f"><label>Cliente</label>
-            <input id="tit-cliente" type="text" placeholder="nome o ragione sociale" oninput="titRender()"></div>
+            <input id="tit-cliente" type="text" placeholder="nome o ragione sociale"></div>
           <div class="pf-f"><label>Compagnia</label>
-            <select id="tit-compagnia" onchange="titRender()"><option value="">Tutte</option></select></div>
-          <div class="pf-f pf-f-az"><button class="pf-reset" onclick="titAzzera()">Azzera</button></div>
+            <select id="tit-compagnia"><option value="">Tutte</option></select></div>
+          <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="titRender()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="titAzzera()">Azzera filtri</button></div>
         </div>
         <!-- Assegnare una rata alla volta un portafoglio arrivato dalla
              compagnia non lo fa nessuno: qui si decide una volta per CODICE, e
@@ -2813,26 +2828,26 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="pf-top">
         <div class="pf-filters">
           <div class="pf-f"><label>Scadenza dal</label>
-            <input id="rin-da" type="date" onchange="rinRender()"></div>
+            <input id="rin-da" type="date"></div>
           <div class="pf-f"><label>al</label>
-            <input id="rin-a" type="date" onchange="rinRender()"></div>
+            <input id="rin-a" type="date"></div>
           <div class="pf-f"><label>Tacito rinnovo</label>
-            <select id="rin-tacito" onchange="rinRender()">
+            <select id="rin-tacito">
               <option value="">Tutti</option><option value="si">Sì</option><option value="no">No</option>
             </select></div>
           <div class="pf-f"><label>Prodotto</label>
-            <select id="rin-prodotto" onchange="rinRender()"><option value="">Tutti</option></select></div>
+            <select id="rin-prodotto"><option value="">Tutti</option></select></div>
           <div class="pf-f"><label>Compagnia</label>
-            <select id="rin-compagnia" onchange="rinRender()"><option value="">Tutte</option></select></div>
+            <select id="rin-compagnia"><option value="">Tutte</option></select></div>
           <div class="pf-f"><label>Cliente</label>
-            <input id="rin-cliente" type="text" placeholder="nome o ragione sociale" oninput="rinRender()"></div>
+            <input id="rin-cliente" type="text" placeholder="nome o ragione sociale"></div>
           <div class="pf-f"><label>Rinnovo</label>
-            <select id="rin-stato" onchange="rinRender()">
+            <select id="rin-stato">
               <option value="">Tutti</option>
               <option value="da_lavorare">Da lavorare</option>
               <option value="lavorato">Già riquotata</option>
             </select></div>
-          <div class="pf-f pf-f-az"><button class="pf-reset" onclick="rinAzzera()">Azzera</button></div>
+          <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="rinRender()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="rinAzzera()">Azzera filtri</button></div>
         </div>
         <button class="pf-exp" onclick="rinExportExcel()" title="Scarica l'elenco filtrato">
           <i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
@@ -2860,6 +2875,14 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <button class="tk-f stor-f" data-f="in_esame" onclick="setStorFilter('in_esame')">In esame</button>
         <button class="tk-f stor-f" data-f="quotato" onclick="setStorFilter('quotato')">Quotati</button>
         <button class="tk-f stor-f" data-f="emessa" onclick="setStorFilter('emessa')">Polizze emesse</button>
+      </div>
+      <div class="pf-top">
+        <div class="pf-filters">
+          <div class="pf-f"><label>Creato dal</label><input id="stor-da" type="date"></div>
+          <div class="pf-f"><label>al</label><input id="stor-a" type="date"></div>
+          <div class="pf-f"><label>Cliente</label><input id="stor-cliente" type="text" placeholder="nome o ragione sociale"></div>
+          <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="renderStorico()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="storAzzeraFiltri()">Azzera filtri</button></div>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="storico-table">
@@ -2943,10 +2966,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <div class="pf-top">
           <div class="pf-filters">
             <div class="pf-f"><label>Collaboratore</label>
-              <select id="ecp-collab" onchange="ecpRender()"></select></div>
-            <div class="pf-f"><label>Dal</label><input id="ecp-dal" type="date" onchange="ecpRender()"></div>
-            <div class="pf-f"><label>al</label><input id="ecp-al" type="date" onchange="ecpRender()"></div>
-            <div class="pf-f pf-f-az"><button class="pf-reset" onclick="ecpAzzera()">Questo mese</button></div>
+              <select id="ecp-collab"></select></div>
+            <div class="pf-f"><label>Dal</label><input id="ecp-dal" type="date"></div>
+            <div class="pf-f"><label>al</label><input id="ecp-al" type="date"></div>
+            <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="ecpRender()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="ecpAzzera()">Questo mese</button></div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="pf-exp" onclick="ecpExportExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
@@ -2978,6 +3001,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <button class="tk-f sin-f" data-f="in_gestione" onclick="setSinFilter('in_gestione')">In gestione</button>
         <button class="tk-f sin-f" data-f="liquidato" onclick="setSinFilter('liquidato')">Liquidati</button>
         <button class="tk-f sin-f" data-f="chiuso" onclick="setSinFilter('chiuso')">Chiusi</button>
+      </div>
+      <!-- M2.1/M2.2 (19/09/2026): le date ovunque, e si cerca solo al clic. -->
+      <div class="pf-top">
+        <div class="pf-filters">
+          <div class="pf-f"><label>Denuncia dal</label><input id="sinf-da" type="date"></div>
+          <div class="pf-f"><label>al</label><input id="sinf-a" type="date"></div>
+          <div class="pf-f"><label>Contraente</label><input id="sinf-cliente" type="text" placeholder="nome o ragione sociale"></div>
+          <div class="pf-f"><label>Compagnia</label><input id="sinf-compagnia" type="text" placeholder="compagnia"></div>
+          <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="renderSinistri()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="sinAzzeraFiltri()">Azzera filtri</button></div>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="storico-table">
@@ -14099,12 +14132,22 @@ function setStorFilter(f){
   document.querySelectorAll('#stor-filters .stor-f').forEach(b => b.classList.toggle('active', b.dataset.f === f));
   renderStorico();
 }
+function storAzzeraFiltri(){
+  ['stor-da','stor-a','stor-cliente'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+  renderStorico();
+}
 function renderStorico(){
   const body = document.getElementById('storico-body'); if (!body) return;
   let list = STORICO_CACHE;
   if (STOR_FILTER === 'da_gestire') list = list.filter(prevDaGestire);
   else if (STOR_FILTER !== 'tutti') list = list.filter(r => prevStato(r) === STOR_FILTER);
-  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${STOR_FILTER==='da_gestire'?'Nessuna richiesta da gestire. ':'Nessun preventivo in questo stato.'}</div></td></tr>`; return; }
+  /* M2.1 (19/09/2026): intervallo di date e cliente, applicati al clic su Cerca. */
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const da = v('stor-da'), a = v('stor-a'), cli = v('stor-cliente').toLowerCase();
+  if (da) list = list.filter(r => String(r.creato_il || '').slice(0, 10) >= da);
+  if (a) list = list.filter(r => String(r.creato_il || '').slice(0, 10) <= a);
+  if (cli) list = list.filter(r => String(r.cliente || '').toLowerCase().includes(cli));
+  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${STOR_FILTER==='da_gestire'&&!da&&!a&&!cli?'Nessuna richiesta da gestire. ':'Nessun preventivo con questi filtri.'}</div></td></tr>`; return; }
   const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
   body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri il preventivo">
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>
@@ -14790,6 +14833,18 @@ function pfAzzera() {
    sull'effetto, perché «emesse a settembre» conterebbe una polizza di cui
    l'emissione non si sa. */
 const PF_DATE_SU = { emissione: 'data_emissione', effetto: 'data_effetto', scadenza: 'data_scadenza' };
+
+/* M2.2 (19/09/2026): LA RICERCA PARTE SOLO AL CLIC SU «CERCA». Nessuna barra
+   di filtri ricalcola mentre si digita o si sceglie: chi scrive «Ros» non
+   vuole vedere l'elenco saltare tre volte prima di «Rossi». Invio dentro una
+   barra vale come il clic sul suo tasto Cerca — è quello che le dita fanno. */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !e.target || !e.target.closest) return;
+  const barra = e.target.closest('.pf-filters');
+  if (!barra) return;
+  const cerca = barra.querySelector('.pf-cerca');
+  if (cerca) { e.preventDefault(); cerca.click(); }
+});
 function pfCampoData() {
   const su = (document.getElementById('pf-date-su') || {}).value;
   return PF_DATE_SU[su] || PF_DATE_SU.emissione;
@@ -17426,13 +17481,23 @@ function cdocRiempiFiltri() {
   });
 }
 
+function cdocAzzeraScadenze() {
+  ['cdoc-f-stato', 'cdoc-f-cliente', 'cdoc-f-da', 'cdoc-f-a'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  cdocRenderScadenze();
+}
+function cdocAzzeraFascicoli() {
+  ['cdoc-f-comp', 'cdoc-f-oper', 'cdoc-f-fcli', 'cdoc-f-fda', 'cdoc-f-fa'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  cdocRenderFascicoli();
+}
 function cdocRenderScadenze() {
   const body = document.getElementById('cdoc-scad-body');
   if (!body || !CDOC.scadenze) return;
   const stato = document.getElementById('cdoc-f-stato')?.value || '';
   const cli = (document.getElementById('cdoc-f-cliente')?.value || '').trim().toLowerCase();
+  const da = document.getElementById('cdoc-f-da')?.value || '', a = document.getElementById('cdoc-f-a')?.value || '';
   const righe = CDOC.scadenze.righe.filter(r =>
-    (!stato || r.stato === stato) && (!cli || String(r.nominativo).toLowerCase().includes(cli)));
+    (!stato || r.stato === stato) && (!cli || String(r.nominativo).toLowerCase().includes(cli))
+    && (!da || String(r.scadenza || '').slice(0, 10) >= da) && (!a || String(r.scadenza || '').slice(0, 10) <= a));
   if (!righe.length) {
     body.innerHTML = `<tr><td colspan="5"><div class="empty-state">${CDOC.scadenze.righe.length
       ? 'Nessun documento con questi filtri.'
@@ -17456,9 +17521,11 @@ function cdocRenderFascicoli() {
   const comp = document.getElementById('cdoc-f-comp')?.value || '';
   const oper = document.getElementById('cdoc-f-oper')?.value || '';
   const cli = (document.getElementById('cdoc-f-fcli')?.value || '').trim().toLowerCase();
+  const da = document.getElementById('cdoc-f-fda')?.value || '', a = document.getElementById('cdoc-f-fa')?.value || '';
   const righe = CDOC.fascicoli.righe.filter(r =>
     (!comp || r.compagnia === comp) && (!oper || r.operatore === oper) &&
-    (!cli || String(r.cliente).toLowerCase().includes(cli)));
+    (!cli || String(r.cliente).toLowerCase().includes(cli))
+    && (!da || String(r.data_effetto || '').slice(0, 10) >= da) && (!a || String(r.data_effetto || '').slice(0, 10) <= a));
   if (!righe.length) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${CDOC.fascicoli.righe.length
       ? 'Nessuna pratica con questi filtri.'
@@ -18056,14 +18123,18 @@ async function fluRegistro() {
    ═══════════════════════════════════════════════════════════════════════════ */
 let RIN_ROWS = [];
 let RIN_VISTA = [];
-let RIN_FASCIA = '90';   // fascia scelta: 'scadute' | '30' | '60' | '90' | 'tutte'
+let RIN_FASCIA = 'tutte';   // fascia scelta: 'scadute' | 'imminenti' | 'prossime' | 'tutte'
 
+/* M2.3 (19/09/2026): tre stati che non si sovrappongono — scadute, imminenti
+   (entro 30 giorni), prossime (da 31 a 90) — più «tutte». Prima le fasce
+   erano cumulative (entro 30 / entro 60 / entro 90) e la stessa polizza stava
+   in tre contatori: un numero che si somma con se stesso non si legge. Ogni
+   card porta il numero, il colore dello stato e i premi in gioco. */
 const RIN_FASCE = [
-  { k: 'scadute', l: 'Scadute',      cls: 'urg', test: g => g != null && g < 0 },
-  { k: '30',      l: 'Entro 30 gg',  cls: 'urg', test: g => g != null && g >= 0 && g <= 30 },
-  { k: '60',      l: 'Entro 60 gg',  cls: 'avv', test: g => g != null && g >= 0 && g <= 60 },
-  { k: '90',      l: 'Entro 90 gg',  cls: '',    test: g => g != null && g >= 0 && g <= 90 },
-  { k: 'tutte',   l: 'Tutte',        cls: '',    test: () => true }
+  { k: 'scadute',   l: 'Scadute',   sub: 'da richiamare subito', cls: 'urg', test: g => g != null && g < 0 },
+  { k: 'imminenti', l: 'Imminenti', sub: 'entro 30 giorni',      cls: 'avv', test: g => g != null && g >= 0 && g <= 30 },
+  { k: 'prossime',  l: 'Prossime',  sub: 'da 31 a 90 giorni',    cls: 'ok',  test: g => g != null && g > 30 && g <= 90 },
+  { k: 'tutte',     l: 'Tutte',     sub: 'ogni scadenza',        cls: '',    test: () => true }
 ];
 
 function rinGiorni(p) {
@@ -18094,7 +18165,7 @@ function rinFiltra() {
   const da = v('rin-da'), a = v('rin-a'), tacito = v('rin-tacito');
   const prod = v('rin-prodotto'), comp = v('rin-compagnia');
   const cli = v('rin-cliente').toLowerCase(), stato = v('rin-stato');
-  const fascia = RIN_FASCE.find(f => f.k === RIN_FASCIA) || RIN_FASCE[4];
+  const fascia = RIN_FASCE.find(f => f.k === RIN_FASCIA) || RIN_FASCE[RIN_FASCE.length - 1];
   return RIN_ROWS.filter(p => {
     const g = rinGiorni(p);
     // Le polizze senza data di scadenza non appartengono allo scadenzario:
@@ -18117,9 +18188,10 @@ function rinRenderFasce() {
   const box = document.getElementById('rin-fasce');
   if (!box) return;
   box.innerHTML = RIN_FASCE.map(f => {
-    const n = RIN_ROWS.filter(p => { const g = rinGiorni(p); return g != null && f.test(g); }).length;
-    return `<button class="rin-fascia ${f.cls}${RIN_FASCIA === f.k ? ' att' : ''}" onclick="rinFasciaScegli('${f.k}')">
-      <b>${n}</b><span>${f.l}</span></button>`;
+    const righe = RIN_ROWS.filter(p => { const g = rinGiorni(p); return g != null && f.test(g); });
+    const somma = righe.reduce((s, p) => s + (Number(p.premio_annuo) || 0), 0);
+    return `<button class="rin-fascia ${f.cls}${RIN_FASCIA === f.k ? ' att' : ''}" onclick="rinFasciaScegli('${f.k}')" title="Mostra solo queste">
+      <b>${righe.length}</b><span>${f.l}</span><span class="rin-card-sub">${f.sub} · ${pfEuro(somma)}</span></button>`;
   }).join('');
 }
 
@@ -19822,10 +19894,23 @@ async function loadSinistri(){
     SINISTRI_CACHE=data||[]; renderSinistri();
   }catch(e){ body.innerHTML=`<tr><td colspan="6"><div class="empty-state">Tabella sinistri non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`; }
 }
+function sinAzzeraFiltri(){
+  ['sinf-da','sinf-a','sinf-cliente','sinf-compagnia'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+  renderSinistri();
+}
 function renderSinistri(){
   const body=document.getElementById('sinistri-body'); if(!body) return;
   let list=SINISTRI_CACHE; if(SIN_FILTER!=='tutti') list=list.filter(s=>(s.stato||'aperto')===SIN_FILTER);
-  if(!list.length){ body.innerHTML='<tr><td colspan="6"><div class="empty-state">Nessun sinistro in questo stato. </div></td></tr>'; return; }
+  /* M2.1: le date anche qui. La data di riferimento è la denuncia; senza, il
+     giorno in cui il sinistro è stato scritto. */
+  const v=id=>(document.getElementById(id)?.value||'').trim();
+  const da=v('sinf-da'), a=v('sinf-a'), cli=v('sinf-cliente').toLowerCase(), comp=v('sinf-compagnia').toLowerCase();
+  const quando=s=>String(s.data_denuncia||s.creato_il||'').slice(0,10);
+  if(da) list=list.filter(s=>quando(s)>=da);
+  if(a) list=list.filter(s=>quando(s)<=a);
+  if(cli) list=list.filter(s=>String(s.contraente||'').toLowerCase().includes(cli));
+  if(comp) list=list.filter(s=>String(s.compagnia||'').toLowerCase().includes(comp));
+  if(!list.length){ body.innerHTML='<tr><td colspan="6"><div class="empty-state">Nessun sinistro con questi filtri. </div></td></tr>'; return; }
   body.innerHTML=list.map(s=>{const st=SIN_STATI[s.stato||'aperto']||SIN_STATI.aperto; return `<tr style="cursor:pointer" onclick="apriSinistro('${s.id}')" title="Apri sinistro">
     <td style="font-size:12px;color:#aab">${s.data_denuncia?new Date(s.data_denuncia).toLocaleDateString('it-IT'):new Date(s.creato_il).toLocaleDateString('it-IT')}</td>
     <td><i class="ti ti-alert-triangle" style="color:#e0a000"></i> ${esc(s.ramo||'Sinistro')}${s.prodotto_collegato?` <span style="font-size:11px;color:var(--muted)">· ${esc(s.prodotto_collegato)}</span>`:''}${s.numero_sx?`<div style="font-size:11px;color:var(--blue);font-family:ui-monospace,monospace">SX ${esc(s.numero_sx)}</div>`:''}</td>

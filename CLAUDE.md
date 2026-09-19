@@ -2073,3 +2073,35 @@ detto subito.
 - Le 5 polizze nate in QUOTO hanno `data_emissione` vuota: si scrive dal
   dettaglio.
 - M2–M5 del brief: una PR per milestone, in ordine.
+
+---
+
+## 22. Brief IAM #01 — M2: i filtri (19/09/2026)
+
+| voce | fatto |
+|---|---|
+| 2.1 date ovunque | intervallo «dal / al» su **otto** barre: portafoglio, titoli, scadenzario, estratto conto, documenti (scadenze e fascicoli), sinistri, storico preventivi. Le ultime quattro non ce l'avevano |
+| 2.2 solo al clic | nessun `oninput`/`onchange` sulle barre; tasto **Cerca** (`.pf-cerca`) e **Azzera filtri**; Invio dentro una barra vale come Cerca (un ascoltatore solo, su `document`); i valori restano nei campi dopo la ricerca |
+| 2.3 scadenzario | card-contatore cliccabili, **stati che non si sovrappongono**: Scadute (rosso), Imminenti 0–30 (arancio), Prossime 31–90 (blu), Tutte. Ogni card porta il numero e i premi in gioco; il clic filtra subito |
+| prove | `ui-test.mjs` **436** (una sul sorgente misura tutte le barre insieme, una sul comportamento dal percorso vero, una su sinistri e storico) |
+
+**Le fasce cumulative sono sparite di proposito.** «Entro 30 / entro 60 /
+entro 90» mettevano la stessa polizza in tre contatori: 1, 2, 3 per la stessa
+cosa, e un numero che si somma con se stesso non si legge. La prova che
+contava «cinque fasce cumulative» misurava il mondo di ieri; si è aggiornata la
+regola. Il contatore sulla voce di menu (`rinBadge`, ≤ 60 giorni) non è
+cambiato: è un avviso, non una fascia.
+
+**Il clic su una card o su un bottone di stato ricalcola subito.** «Solo al
+clic su Cerca» vale per i campi da riempire (testo, tendine, date): un clic è
+già un clic. I `metti(...) + pfRender()` delle prove vecchie continuano a
+valere perché chiamano il rendering direttamente.
+
+**Controprova** (rimesso `oninput="pfRender()"` su un campo solo): rosse **due**
+prove, quella sul sorgente e quella sul comportamento. Se un giorno ne resta
+rossa una sola, l'altra ha smesso di misurare.
+
+**Trappola dei nomi.** Il modulo «Apri sinistro» usa già `sin-compagnia` e
+`sin-polizza` per i suoi campi: i filtri della pagina Sinistri si chiamano
+`sinf-*`, altrimenti `getElementById` avrebbe letto il campo del modulo aperto
+come filtro della lista.

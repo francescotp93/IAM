@@ -884,6 +884,50 @@ const avvio = async () => {
       return 'sette filtri + azzera, le date su emissione/effetto/scadenza';
     });
 
+    await prova('M2.2 · digitare o scegliere non cambia la lista: cambia solo «Cerca» (e Invio), «Azzera filtri» la rimette', async () => {
+      const r = await page.evaluate(() => {
+        window.pfAzzera();
+        const conta = () => [...document.querySelectorAll('#pf-body tr')].filter(t => !t.querySelector('.empty-state')).length;
+        const out = { prima: conta() };
+        const cli = document.getElementById('pf-cliente');
+        cli.value = 'bianchi'; cli.dispatchEvent(new Event('input', { bubbles: true }));
+        const comp = document.getElementById('pf-compagnia');
+        comp.value = 'AXA'; comp.dispatchEvent(new Event('change', { bubbles: true }));
+        out.dopoDigitato = conta();
+        out.valoreResta = cli.value;
+        comp.value = '';
+        document.querySelector('#page-portafoglio .pf-cerca').click();
+        out.dopoCerca = conta();
+        out.valoreDopoCerca = cli.value;
+        /* Invio dentro la barra vale come Cerca. */
+        cli.value = 'verdi';
+        cli.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        out.dopoInvio = conta();
+        [...document.querySelectorAll('#page-portafoglio .pf-reset')].find(b => /Azzera/.test(b.textContent)).click();
+        out.dopoAzzera = conta();
+        return out;
+      });
+      deve(r.prima === 3, 'partenza: ' + r.prima);
+      deve(r.dopoDigitato === 3, 'la lista è cambiata mentre si digitava/sceglieva: ' + r.dopoDigitato);
+      deve(r.dopoCerca === 1 && r.valoreDopoCerca === 'bianchi', 'Cerca non applica il filtro, o lo stato dei filtri sparisce: ' + r.dopoCerca + ' / ' + r.valoreDopoCerca);
+      deve(r.dopoInvio === 1, 'Invio nella barra non cerca: ' + r.dopoInvio);
+      deve(r.dopoAzzera === 3, 'Azzera filtri non rimette tutto: ' + r.dopoAzzera);
+      return '3 → (digitato) 3 → (Cerca) 1 → (Invio) 1 → (Azzera) 3';
+    });
+
+    await prova('M2.1/M2.2 · ogni barra di filtri ha le date, il tasto Cerca, e nessun ricalcolo automatico', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      const barre = [...h.matchAll(/<div class="pf-filters"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/g)].map(m => m[1]);
+      deve(barre.length >= 8, 'barre di filtri trovate: ' + barre.length + ' (portafoglio, titoli, scadenzario, estratto conto, documenti ×2, sinistri, storico)');
+      const vive = barre.filter(b => /oninput=|onchange=/.test(b));
+      deve(!vive.length, vive.length + ' barre ricalcolano ancora mentre si digita');
+      const senzaCerca = barre.filter(b => !/class="pf-cerca"/.test(b));
+      deve(!senzaCerca.length, senzaCerca.length + ' barre senza il tasto Cerca');
+      const senzaDate = barre.filter(b => !/type="date"/.test(b));
+      deve(!senzaDate.length, senzaDate.length + ' barre senza un intervallo di date');
+      return barre.length + ' barre: date, Cerca, niente ricalcolo';
+    });
+
     await prova('portafoglio: i totali dicono cosa manca', async () => {
       const t = await page.evaluate(() => { window.pfRender(); return document.getElementById('pf-totali').textContent; });
       deve(/3\s*polizze/.test(t), 'conteggio assente: ' + t);
@@ -4735,6 +4779,43 @@ const avvio = async () => {
       await window.loadScadenzario();
     }, SCADENZE_FINTE);
 
+    await prova('M2.1 · sinistri e storico: l\'intervallo di date filtra, e solo al clic', async () => {
+      const r = await page.evaluate(() => {
+        const out = {};
+        SINISTRI_CACHE = [
+          { id: 'sx1', ramo: 'RC Auto', stato: 'aperto', contraente: 'Rossi Mario', compagnia: 'HDI', data_denuncia: '2026-09-01', creato_il: '2026-09-01T10:00:00Z' },
+          { id: 'sx2', ramo: 'Casa', stato: 'aperto', contraente: 'Verdi Luca', compagnia: 'AXA', data_denuncia: '2026-06-01', creato_il: '2026-06-01T10:00:00Z' } ];
+        SIN_FILTER = 'tutti';
+        window.renderSinistri();
+        const conta = () => [...document.querySelectorAll('#sinistri-body tr')].filter(t => !t.querySelector('.empty-state')).length;
+        out.tutti = conta();
+        const da = document.getElementById('sinf-da');
+        da.value = '2026-08-01'; da.dispatchEvent(new Event('change', { bubbles: true }));
+        out.dopoScelta = conta();
+        document.querySelector('#page-sinistri .pf-cerca').click();
+        out.dopoCerca = conta();
+        window.sinAzzeraFiltri();
+        out.dopoAzzera = conta();
+        /* storico */
+        STORICO_CACHE = [
+          { id: 'q1', creato_il: '2026-09-10T10:00:00Z', prodotto: 'RC Auto', cliente: 'Rossi Mario', modulo: 'rca', dati: { stato: 'quotato' } },
+          { id: 'q2', creato_il: '2026-03-10T10:00:00Z', prodotto: 'Casa', cliente: 'Verdi Luca', modulo: 'beni', dati: { stato: 'quotato' } } ];
+        STOR_FILTER = 'tutti'; window.renderStorico();
+        const contaS = () => [...document.querySelectorAll('#storico-body tr')].filter(t => !t.querySelector('.empty-state')).length;
+        out.stTutti = contaS();
+        document.getElementById('stor-a').value = '2026-06-30';
+        document.querySelector('#page-storico .pf-cerca').click();
+        out.stFino = contaS();
+        window.storAzzeraFiltri();
+        out.stDopo = contaS();
+        return out;
+      });
+      deve(r.tutti === 2 && r.dopoScelta === 2, 'sinistri: la lista cambia scegliendo la data, prima di Cerca: ' + JSON.stringify(r));
+      deve(r.dopoCerca === 1 && r.dopoAzzera === 2, 'sinistri: Cerca/Azzera non filtrano per data: ' + JSON.stringify(r));
+      deve(r.stTutti === 2 && r.stFino === 1 && r.stDopo === 2, 'storico: il filtro per data non funziona: ' + JSON.stringify(r));
+      return 'sinistri 2 → 1 → 2; storico 2 → 1 → 2';
+    });
+
     await prova('scadenzario: la pagina esiste e la scocca ora la trova', async () => {
       deve(await page.evaluate(() => !!document.getElementById('page-scadenzario')), 'page-scadenzario non esiste');
       deve(await page.evaluate(() => document.getElementById('page-scadenzario').classList.contains('active')),
@@ -4743,17 +4824,30 @@ const avvio = async () => {
         'la voce di navigazione non si evidenzia');
     });
 
-    await prova('scadenzario: le fasce di urgenza contano giusto', async () => {
+    await prova('scadenzario: le card-contatore contano stati che NON si sovrappongono (M2.3)', async () => {
+      /* Prima erano cinque fasce cumulative (entro 30 / 60 / 90): la stessa
+         polizza stava in tre contatori, e un numero che si somma con se
+         stesso non si legge. Ora: scadute, imminenti (0-30), prossime (31-90),
+         tutte. La prova di prima misurava il mondo di ieri. */
       const f = await page.evaluate(() => [...document.querySelectorAll('#rin-fasce .rin-fascia')]
-        .map(b => ({ n: b.querySelector('b').textContent, l: b.querySelector('span').textContent })));
+        .map(b => ({ n: b.querySelector('b').textContent, l: b.querySelector('span').textContent,
+                     sub: (b.querySelector('.rin-card-sub') || {}).textContent, cls: b.className })));
       const per = l => Number(f.find(x => x.l === l)?.n);
-      deve(f.length === 5, 'fasce presenti: ' + f.length);
+      deve(f.length === 4, 'card presenti: ' + f.length + ' — ' + f.map(x => x.l).join(', '));
       deve(per('Scadute') === 1, 'scadute: ' + per('Scadute'));
-      deve(per('Entro 30 gg') === 1, 'entro 30: ' + per('Entro 30 gg'));
-      deve(per('Entro 60 gg') === 2, 'entro 60 (deve includere i 30): ' + per('Entro 60 gg'));
-      deve(per('Entro 90 gg') === 3, 'entro 90: ' + per('Entro 90 gg'));
+      deve(per('Imminenti') === 1, 'imminenti (0-30): ' + per('Imminenti'));
+      deve(per('Prossime') === 2, 'prossime (31-90, i 45 e gli 80): ' + per('Prossime'));
       deve(per('Tutte') === 5, 'tutte: ' + per('Tutte'));
-      return 'cinque fasce cumulative';
+      /* Un colore per stato, e ogni card dice i premi in gioco. */
+      deve(/urg/.test(f[0].cls) && /avv/.test(f[1].cls) && /\bok\b/.test(f[2].cls), 'le card non hanno un colore per stato: ' + f.map(x => x.cls).join(' | '));
+      deve(f.every(x => /€/.test(x.sub || '')), 'una card non dice i premi in gioco');
+      /* Il clic sulla card filtra la lista sotto, subito. */
+      const n = await page.evaluate(() => {
+        [...document.querySelectorAll('#rin-fasce .rin-fascia')].find(b => /Scadute/.test(b.textContent)).click();
+        return [...document.querySelectorAll('#rin-body tr')].filter(t => t.querySelector('td')).length;
+      });
+      deve(n === 1, 'il clic sulla card «Scadute» non filtra la lista: ' + n + ' righe');
+      return '1 scaduta, 1 imminente, 2 prossime, 5 in tutto; il clic filtra';
     });
 
     await prova('scadenzario: si vede se il rinnovo è già stato lavorato', async () => {

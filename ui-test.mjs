@@ -1151,6 +1151,116 @@ const avvio = async () => {
       return 'colonna scritta dal flusso, esportata dall\'Excel';
     });
 
+
+    /* ══ BRIEF IAM #01 · M5 — foglio cassa (19/09/2026) ═══════════════════════ */
+    const FC_T1 = 'f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1';
+    await prova('M5 · il foglio cassa vive nel Portafoglio, ha la sua porta, e i numeri vengono dal motore', async () => {
+      const r = await page.evaluate(async (FC_T1) => {
+        const out = {};
+        out.porta = !!document.querySelector('#page-portafoglio [onclick="showPage(\'foglio-cassa\')"]');
+        window.showPage('foglio-cassa');
+        await new Promise(r => setTimeout(r, 400));
+        out.attiva = document.getElementById('page-foglio-cassa').classList.contains('active');
+        out.nav = document.getElementById('nav-portafoglio').classList.contains('active');
+        window.TIT_COLLAB = [{ id: 'c-1', nome: 'Anna', cognome: 'Neri' }];
+        window.TIT_COLLAB_NOMI = { 'c-1': 'Neri Anna' };
+        FC_POLIZZE = { p1: { id: 'p1', numero_polizza: 'NP-1', cliente: 'ROSSI MARIO', cliente_id: 'cli-1', compagnia: 'PRIMA', prodotto: 'RC Auto' },
+                       p2: { id: 'p2', numero_polizza: 'NP-2', cliente: 'VERDI LUCA', compagnia: 'HDI', prodotto: 'Casa' } };
+        FC_SCHEMI = { 'c-1': [{ prodotto: 'RC Auto', perc: 60 }] };
+        FC_TITOLI = [
+          { id: FC_T1, polizza_id: 'p1', stato: 'incassato', incassato_il: '2026-09-10', importo_lordo: 390, provvigione: 41.21, mezzo_pagamento: 'contante', collaboratore_id: 'c-1', fonte: 'ssf' },
+          { id: 't2', polizza_id: 'p2', stato: 'incassato', incassato_il: '2026-09-12', importo_lordo: 200, provvigione: 20, mezzo_pagamento: 'bonifico' },
+          { id: 't3', polizza_id: 'p1', stato: 'incassato', incassato_il: '2026-08-01', importo_lordo: 999, provvigione: 99, mezzo_pagamento: 'contante' } ];
+        document.getElementById('fc-da').value = '2026-09-01'; document.getElementById('fc-a').value = '2026-09-30';
+        document.getElementById('fc-mezzo').innerHTML = '<option value="">Tutti</option><option value="contante">Contante</option><option value="bonifico">Bonifico</option>';
+        window.fcRender();
+        out.sum = document.getElementById('fc-summary').textContent;
+        out.righe = document.querySelectorAll('#fc-body .fc-riga').length;
+        out.body = document.getElementById('fc-body').textContent;
+        out.quad = document.querySelectorAll('#fc-quadrature table.fc-quad').length;
+        out.quadTesto = document.getElementById('fc-quadrature').textContent;
+        return out;
+      }, FC_T1);
+      deve(r.porta, 'dal Portafoglio non c\'è la porta del foglio cassa');
+      deve(r.attiva && r.nav, 'la pagina non si apre o non evidenzia Portafoglio nel menu');
+      deve(r.righe === 2, 'movimenti nel periodo: ' + r.righe + ' (attesi 2: quello di agosto resta fuori)');
+      deve(/590,00/.test(r.sum) && /Premi incassati/.test(r.sum), 'i premi incassati non sono 590: ' + r.sum);
+      /* dirette 20 (bonifico, agenzia) · indirette 41,21 (c-1 al 60% → 24,73) */
+      deve(/Provvigioni dirette/.test(r.sum) && /20,00/.test(r.sum), 'le dirette non ci sono: ' + r.sum);
+      deve(/Provvigioni indirette/.test(r.sum) && /41,21/.test(r.sum) && /24,73/.test(r.sum), 'le indirette o la quota non ci sono: ' + r.sum);
+      deve(/Neri Anna/.test(r.body) && /quota/.test(r.body), 'la riga non dice il collaboratore e la sua quota');
+      deve(r.quad === 3 && /per mezzo/.test(r.quadTesto) && /per compagnia/.test(r.quadTesto) && /per collaboratore/.test(r.quadTesto), 'le tre quadrature: ' + r.quad);
+      deve(/Agenzia \(produzione diretta\)/.test(r.quadTesto), 'la produzione diretta non ha la sua riga nella quadratura per collaboratore');
+      return '2 movimenti · 590 · dirette 20 · indirette 41,21 (quota 24,73) · 3 quadrature';
+    });
+
+    await prova('M5 · i filtri valgono al clic su Cerca, e l\'Excel rispetta i filtri applicati', async () => {
+      const r = await page.evaluate(async () => {
+        const out = {};
+        const conta = () => document.querySelectorAll('#fc-body .fc-riga').length;
+        const sel = document.getElementById('fc-mezzo');
+        sel.value = 'contante'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+        out.dopoScelta = conta();
+        document.querySelector('#page-foglio-cassa .pf-cerca').click();
+        out.dopoCerca = conta();
+        /* L'Excel: si intercetta il file invece di scaricarlo. */
+        let blob = null;
+        const cou = URL.createObjectURL; URL.createObjectURL = (b) => { blob = b; return 'blob:collaudo'; };
+        const clic = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () {};
+        window.fcExportExcel();
+        URL.createObjectURL = cou; HTMLAnchorElement.prototype.click = clic;
+        out.excel = blob ? await blob.text() : null;
+        /* Il PDF: stessa cosa, si intercetta il documento che va al disegno. */
+        let documento = null;
+        const dis = PdfWithus.disegna; PdfWithus.disegna = (j, d) => { documento = d; return { output: () => new Blob(['pdf']) }; };
+        const carica = ppCaricaJsPdf; ppCaricaJsPdf = async () => function () {};
+        URL.createObjectURL = () => 'blob:collaudo'; HTMLAnchorElement.prototype.click = function () {};
+        await window.fcExportPdf();
+        URL.createObjectURL = cou; HTMLAnchorElement.prototype.click = clic; PdfWithus.disegna = dis; ppCaricaJsPdf = carica;
+        out.pdf = documento;
+        window.fcAzzera(); document.getElementById('fc-da').value = '2026-09-01'; document.getElementById('fc-a').value = '2026-09-30'; window.fcRender();
+        out.dopoAzzera = conta();
+        return out;
+      });
+      deve(r.dopoScelta === 2, 'la lista è cambiata scegliendo il mezzo, prima di Cerca: ' + r.dopoScelta);
+      deve(r.dopoCerca === 1, 'Cerca non filtra per mezzo: ' + r.dopoCerca);
+      deve(r.excel && /Contante/.test(r.excel) && /ROSSI MARIO/.test(r.excel) && !/VERDI LUCA/.test(r.excel), 'l\'Excel non rispetta il filtro: ' + String(r.excel).slice(0, 300));
+      deve(/Quadratura per mezzo/.test(r.excel) && /Quadratura per collaboratore/.test(r.excel), 'l\'Excel non porta le quadrature');
+      deve(r.pdf && r.pdf.tipo === 'FOGLIO CASSA' && /Contante/.test(r.pdf.sotto), 'il PDF non parte dal motore con i filtri: ' + JSON.stringify(r.pdf && { tipo: r.pdf.tipo, sotto: r.pdf.sotto }));
+      deve(r.pdf.blocchi.find(b => b.tipo === 'tabella').righe.length === 1, 'il PDF non rispetta il filtro');
+      deve(r.dopoAzzera === 2, 'dopo Azzera: ' + r.dopoAzzera);
+      return 'scelta 2 → Cerca 1 → Excel e PDF con 1 riga → Azzera 2';
+    });
+
+    await prova('M5 · la correzione del movimento scrive solo quello che cambia e lascia il movimento sulla rata', async () => {
+      const r = await page.evaluate(async (FC_T1) => {
+        window.fcModifica(FC_T1);
+        const ov = document.getElementById('fc-ov');
+        const c = { aperto: !!ov, data: (document.getElementById('fc-m-data') || {}).value, mezzo: (document.getElementById('fc-m-mezzo') || {}).value };
+        document.getElementById('fc-m-mezzo').value = 'pos';
+        document.getElementById('fc-m-chi').value = 'collaboratore'; document.getElementById('fc-m-chi').dispatchEvent(new Event('change'));
+        document.getElementById('fc-m-collab-sel').value = 'c-1';
+        window.__COLLAUDO.db = [];
+        await window.fcSalvaModifica(FC_T1);
+        const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update').map(x => ({ p: x.payload, f: x.filtri }));
+        const log = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload);
+        const chiuso = !document.getElementById('fc-ov');
+        /* Rimettere gli stessi valori non scrive niente. */
+        window.fcModifica(FC_T1);
+        window.__COLLAUDO.db = [];
+        await window.fcSalvaModifica(FC_T1);
+        const nulla = window.__COLLAUDO.db.length;
+        return { c, upd, log, chiuso, nulla, riga: document.getElementById('fc-body').textContent };
+      }, FC_T1);
+      deve(r.c.aperto && r.c.data === '2026-09-10' && r.c.mezzo === 'contante', 'il modulo non parte dai valori della rata: ' + JSON.stringify(r.c));
+      deve(r.upd.length === 1 && r.upd[0].f.id === FC_T1 && r.upd[0].p.mezzo_pagamento === 'pos' && r.upd[0].p.pagatore_tipo === 'collaboratore' && r.upd[0].p.pagatore_collaboratore_id === 'c-1', 'la correzione non scrive quello che deve: ' + JSON.stringify(r.upd));
+      deve(r.log.some(l => l.entita === 'titolo' && l.entita_id === FC_T1 && /corretto/.test(l.azione) && /pos|POS/.test(l.azione)), 'il movimento non è a registro sulla rata: ' + JSON.stringify(r.log));
+      deve(r.chiuso, 'il modulo resta aperto dopo il salvataggio');
+      deve(r.nulla === 0, 'rimettere gli stessi valori ha scritto ' + r.nulla + ' righe');
+      deve(/POS/.test(r.riga), 'la lista non si aggiorna dopo la correzione');
+      return 'mezzo e chi paga corretti, 1 update + 1 movimento, niente se non cambia niente';
+    });
+
     /* ══ IL REGISTRO DEI MOVIMENTI (19/09/2026) ═══════════════════════════
        `quote_log` sapeva dire che cosa e chi, non SU CHE COSA. Le prove qui
        sotto sorvegliano la cosa che quella colonna doveva rendere possibile:
@@ -1169,7 +1279,7 @@ const avvio = async () => {
       return v;
     });
 
-    await prova('registro: la copertura non scende — 35 movimenti su 56 sanno su che cosa sono', () => {
+    await prova('registro: la copertura non scende — 38 movimenti su 59 sanno su che cosa sono', () => {
       /* La soglia si ALZA, non si abbassa: è lo stesso meccanismo della prova
          sulle collisioni fra i due documenti, al contrario. Senza, un punto di
          chiamata scritto domani senza identificativo non lo nota nessuno, e il
@@ -1195,7 +1305,7 @@ const avvio = async () => {
         }
         return virgole >= 3;
       }).length;
-      const SOGLIA = 35;   // 19/09 (M1, M3): emissione della polizza, auguri, sinistro dalla scheda
+      const SOGLIA = 38;   // 19/09 (M1–M5): emissione, auguri, sinistro, credito e rimessa, cassa
       deve(chiamate.length >= 50, 'non ha letto i punti di chiamata: ' + chiamate.length);
       deve(conId >= SOGLIA, conId + ' movimenti su ' + chiamate.length + ' portano l\'identificativo: erano ' + SOGLIA + '. Un punto di chiamata ha perso l\'id, oppure ne è nato uno nuovo senza');
       deve(conId - SOGLIA < 3, 'adesso sono ' + conId + ': alza la soglia a ' + conId + ', altrimenti smette di sorvegliare');

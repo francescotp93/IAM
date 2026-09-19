@@ -1,21 +1,18 @@
-id: silenzio-1789820571  exit: 0  2026-09-19 12:23:43
+id: dep193-1789821143  exit: 0  2026-09-19 12:35:32
 ----
 == ora
-2026-09-19 12:23:18 UTC
-  ultime mail di Groupama PRIMA della correzione (12:05:41):
-    11:48:58
-    11:50:16
-    11:52:59
-    12:05:39
-    12:05:40
-    12:05:41
+2026-09-19 12:32:35 UTC
+== commit vivo
+7162ff5 All'avvio il portale Groupama si apre una volta sola, non tre (#193)
+== stato groupama
+{"running":false,"step":"loggato","since":1789821176182,"msg":"Sessione attiva","codice_chiesto_il":0}
+== giornale groupama, ultimi 10 minuti
+Sep 19 12:32:40 vps-d6443a46 start-service.sh[3499080]: 12:32:40 [groupama] SIGTERM: salvo la sessione prima di chiudere
+Sep 19 12:32:40 vps-d6443a46 start-service.sh[3499080]: 12:32:40 [groupama] sessione NON salvata: browserContext.storageState: Target page, context or browser has been closed
+Sep 19 12:32:47 vps-d6443a46 start-service.sh[3502430]: 12:32:46 [groupama] telecomando HTTP su 127.0.0.1:4500
+Sep 19 12:32:47 vps-d6443a46 start-service.sh[3502430]: 12:32:47 [groupama] sessione ripresa da auth.json: 20 cookie
+Sep 19 12:32:56 vps-d6443a46 start-service.sh[3502430]: 12:32:56 [groupama] rientrato con la sessione salvata: nessun codice da chiedere ✅
+Sep 19 12:32:56 vps-d6443a46 start-service.sh[3502430]: 12:32:56 [groupama] sessione persistente attiva ✅
 
-  mail di Groupama DOPO la correzione: 6
-    12:10:17   <<<
-    12:10:49   <<<
-    12:10:49   <<<
-    12:10:50   <<<
-    12:11:59   <<<
-    12:12:16   <<<
-
-  adesso sono le 12:23:21 UTC
+== mail di Groupama negli ultimi 15 minuti
+  mail di Groupama negli ultimi 15 minuti: 0

@@ -15795,8 +15795,11 @@ function collabNome(c) {
 
 async function caricaCollaboratori() {
   if (!db || TIT_COLLAB.length) return TIT_COLLAB;
+  /* `rui_numero` serve alle proposte sui codici della compagnia: il RUI è il
+     numero dell'intermediario, ed è l'unico campo del flusso che dice chi è una
+     persona invece di dove la si scrive. */
   const { data, error } = await db.from('quote_collaboratori')
-    .select('id,nome,cognome,email,attivo,stato,iam_id').order('cognome');
+    .select('id,nome,cognome,email,rui_numero,attivo,stato,iam_id').order('cognome');
   if (error) return TIT_COLLAB;
   window.TIT_COLLAB = data || [];
   window.TIT_COLLAB_NOMI = {};
@@ -16004,6 +16007,52 @@ function asgScegli(chiave, valore) {
   if (q) q.textContent = piano.assegna.length ? '· ' + piano.assegna.length + ' rate' : '';
 }
 
+/* La riga di decisione, costruita in UN posto solo: la scrivono due schermate
+   — il pannello del pregresso e l'anteprima del flusso — e due costruzioni
+   diverse della stessa riga prima o poi diventano due regole diverse su chi
+   viene pagato. */
+function asgRigaDecisione(chiave, valore, evidenze) {
+  const [compagnia, codice] = String(chiave).split('|');
+  const vuota = !valore;
+  const e = evidenze || {};
+  return {
+    compagnia, codice,
+    /* Un `upsert` riscrive la RIGA INTERA: le colonne che non si passano
+       tornano al valore di partenza. Senza queste quattro, abbinare un codice
+       cancellerebbe nome, email, RUI e codice produttore che il flusso aveva
+       portato — e la prossima volta quel codice tornerebbe a essere una sigla
+       da riconoscere a memoria. */
+    nome_flusso: e.nome_flusso || e.nome || null,
+    email_flusso: e.email_flusso || e.email || null,
+    rui_flusso: e.rui_flusso || e.rui || null,
+    produttore_flusso: e.produttore_flusso || e.produttore || null,
+    collaboratore_id: valore === '__nessuno__' ? null : (valore || null),
+    nessuno: valore === '__nessuno__',
+    /* `deciso` è quello che distingue una decisione da una riga di sole
+       evidenze. Rimettere una scelta su «da decidere» la spegne invece di
+       cancellare la riga: nome, email e RUI che il flusso ha portato servono a
+       riconoscere quel codice la prossima volta, e buttarli via vorrebbe dire
+       rifare da capo lo stesso riconoscimento. */
+    deciso: !vuota,
+    deciso_da: vuota ? null : (currentUser?.id || null),
+    deciso_il: new Date().toISOString()
+  };
+}
+
+/* Una decisione sola, scritta subito. La usa l'anteprima del flusso, dove i
+   codici si leggono uno alla volta e l'abbinamento si fa lì, guardandoli. */
+async function asgDecidiUno(chiave, valore, evidenze) {
+  const riga = asgRigaDecisione(chiave, valore, evidenze);
+  const { error } = await db.from('quote_codici_collaboratore')
+    .upsert([riga], { onConflict: 'compagnia,codice' });
+  if (error) throw error;
+  try {
+    logMovimento('Codice compagnia abbinato · ' + riga.compagnia + ' ' + riga.codice,
+      'collaboratore', riga.codice, riga.collaboratore_id || null);
+  } catch (e) {}
+  return riga;
+}
+
 async function asgApplica() {
   const esito = document.getElementById('asg-esito');
   const mappa = asgMappaConScelte();
@@ -16024,23 +16073,8 @@ async function asgApplica() {
 
   try {
     if (nuove.length) {
-      const righe = nuove.map(k => {
-        const [compagnia, codice] = k.split('|');
-        const v = ASG_SCELTE[k];
-        const vuota = !v;
-        return { compagnia, codice,
-          collaboratore_id: v === '__nessuno__' ? null : (v || null),
-          nessuno: v === '__nessuno__',
-          /* `deciso` è quello che distingue una decisione da una riga di sole
-             evidenze. Rimettere una scelta su «da decidere» la spegne invece di
-             cancellare la riga: nome ed email che il flusso ha portato servono
-             a riconoscere quel codice la prossima volta, e buttarli via
-             vorrebbe dire rifare da capo lo stesso riconoscimento. */
-          deciso: !vuota,
-          deciso_da: vuota ? null : (currentUser?.id || null),
-          deciso_il: new Date().toISOString() };
-      });
-      const { error } = await db.from('quote_codici_collaboratore').upsert(righe, { onConflict: 'compagnia,codice' });
+      const { error } = await db.from('quote_codici_collaboratore')
+        .upsert(nuove.map(k => asgRigaDecisione(k, ASG_SCELTE[k], ASG_MAPPA[k])), { onConflict: 'compagnia,codice' });
       if (error) throw error;
     }
 
@@ -17409,6 +17443,7 @@ async function cdocTogliRegola(id) {
    ═══════════════════════════════════════════════════════════════════════════ */
 let FLU_PIANO = null;   // il piano visto a schermo, in attesa di conferma
 let FLU_CODICI = {};    // le decisioni già prese su chi è ogni codice collaboratore
+let FLU_PROPOSTE = {};  // chi POTREBBE essere ogni codice, per RUI o per email
 let FLU_NOMI = '';      // i file da cui è nato, per il registro
 
 function fluMotore() {
@@ -17487,7 +17522,13 @@ async function fluScelto(files) {
     const { data: cod } = await db.from('quote_codici_collaboratore').select('*');
     FLU_CODICI = Assegnazione.mappa(cod || []);
     await caricaCollaboratori();   // i nomi, per dire A CHI andranno
-  } catch (e) { FLU_CODICI = {}; }
+    /* Le proposte: chi POTREBBE essere ogni codice, per RUI e poi per email.
+       Non decidono niente — la tendina resta su «da abbinare» — ma senza di
+       loro chi guarda deve riconoscere «U25337» a memoria. */
+    FLU_PROPOSTE = {};
+    Assegnazione.proposteDaFlusso(FLU_PIANO.collaboratori || [], TIT_COLLAB, FLU_PIANO.testata.emittente)
+      .forEach(x => { if (x.chiave) FLU_PROPOSTE[x.chiave] = x; });
+  } catch (e) { FLU_CODICI = {}; FLU_PROPOSTE = {}; }
   fluMostra();
 }
 
@@ -17588,20 +17629,35 @@ function fluMostra() {
         <div class="pdoc-r-a"><span class="tk-badge st-aperto">entro il ${o.entro ? new Date(o.entro).toLocaleDateString('it-IT') : '—'}</span>
           <b>${pfEuro(o.premio)}</b></div></div>`).join('')}` : ''}
     ${p.collaboratori.length ? `<div class="flu-sez">Chi ha prodotto — ${p.collaboratori.length} collaboratori · ${pfEuro(p.provvigioni)} di provvigioni</div>
-      <div class="cl-sub" style="margin-bottom:8px">L'email è il ponte: i codici della compagnia («U25337») non li conosce nessuno.
-        Qui non si indovina niente: dove il codice è stato <b>deciso</b> una volta (Titoli › «Assegna il pregresso»)
-        le rate nascono già sue, dove non lo è restano da assegnare.</div>
+      <div class="cl-sub" style="margin-bottom:8px">Il codice produttore («U25337») non lo conosce nessuno: <b>abbinalo qui</b>, una volta sola.
+        Da quel momento le rate di quel codice nascono già sue, in questo flusso e in tutti quelli che verranno.
+        La proposta, quando c'è, arriva dal <b>RUI</b> — il numero dell'intermediario — e solo dopo dall'email: un recapito si presta, un numero di registro no.</div>
       ${p.collaboratori.map(c => {
-        const d = FLU_CODICI[Assegnazione.chiave(t.emittente, c.codice)];
-        const chi = Assegnazione.statoDecisione(d) === 'persona' ? (TIT_COLLAB_NOMI[d.collaboratore_id] || 'una persona') : null;
+        const k = Assegnazione.chiave(t.emittente, c.codice);
+        const d = FLU_CODICI[k];
+        const stato = Assegnazione.statoDecisione(d);
+        const scelto = stato === 'persona' ? d.collaboratore_id : (stato === 'nessuno' ? '__nessuno__' : '');
+        const prop = (FLU_PROPOSTE || {})[k];
         return `<div class="pdoc-r"><div class="pdoc-r-l">
           <b>${esc(c.nome || c.codice)}</b><span class="pdoc-opt">${esc(c.codice)}</span>
-          <div class="cl-sub" style="flex-basis:100%">${c.email
+          ${c.produttore && c.produttore !== c.codice ? `<span class="pdoc-opt">produttore ${esc(c.produttore)}</span>` : ''}
+          <div class="cl-sub" style="flex-basis:100%">${c.rui ? '<b>RUI ' + esc(c.rui) + '</b> · ' : ''}${c.email
             ? esc(c.email) + (c.riconosciuto ? ' · <b>già in agenzia</b>' : ' · non corrisponde a nessuna persona in agenzia')
-            : '<span style="color:#c0392b">senza email: non si può abbinare a nessuno</span>'}${c.rui ? ' · RUI ' + esc(c.rui) : ''}</div></div>
-        <div class="pdoc-r-a">${chi
-            ? `<span class="tk-badge st-risolto">rate a ${esc(chi)}</span>`
-            : '<span class="tk-badge st-aperto">codice da decidere</span>'}
+            : '<span style="color:#c0392b">senza email</span>'}</div>
+          ${!scelto && prop && prop.collaboratore_id ? `<div class="cl-sub" style="flex-basis:100%">
+            Sembra <b>${esc(TIT_COLLAB_NOMI[prop.collaboratore_id] || 'una persona in agenzia')}</b>,
+            ${prop.motivo === 'rui' ? 'per il RUI' : 'per l\'email'} — confermalo tu qui accanto.</div>` : ''}
+          ${!scelto && prop && prop.motivo === 'rui-ambiguo' ? `<div class="cl-sub" style="flex-basis:100%">
+            Due persone in agenzia hanno questo RUI: da sistemare nel registro, non qui.</div>` : ''}</div>
+        <div class="pdoc-r-a">
+          ${asgPuoDecidere() ? `<select onchange="fluAbbina('${esc(k)}', this.value)">
+              <option value="">— da abbinare —</option>
+              <option value="__nessuno__"${scelto === '__nessuno__' ? ' selected' : ''}>Nessuno (agenzia)</option>
+              ${TIT_COLLAB.map(x => `<option value="${esc(x.id)}"${x.id === scelto ? ' selected' : ''}${
+                  !scelto && prop && prop.collaboratore_id === x.id ? '' : ''}>${esc(collabNome(x))}</option>`).join('')}
+            </select>` : (scelto === '__nessuno__' ? '<span class="tk-badge st-risolto">nessuno</span>'
+                : (scelto ? `<span class="tk-badge st-risolto">${esc(TIT_COLLAB_NOMI[scelto] || 'abbinato')}</span>`
+                          : '<span class="tk-badge st-aperto">da abbinare</span>'))}
           ${c.polizze ? `<span class="tk-badge st-lav">${c.polizze} titol${c.polizze === 1 ? 'o' : 'i'}</span>` : ''}
           ${c.provvigioni ? `<b>${pfEuro(c.provvigioni)}</b>` : '<span class="cl-sub">nessuna provvigione nel periodo</span>'}</div></div>`;
       }).join('')}` : ''}
@@ -17636,6 +17692,31 @@ function fluMostra() {
    le rate (che vogliono `polizza_id`). Se si ferma in mezzo, quello che è
    stato scritto resta e il caricamento si rifà: la chiave di provenienza fa
    sì che il secondo giro salti quello che c'è già. */
+/* L'abbinamento fatto dall'anteprima, dove il codice si legge. Si scrive
+   subito — non c'è un «salva» da ricordarsi — e l'anteprima si ridisegna, così
+   si vede immediatamente che quelle rate adesso hanno un padrone.
+   La decisione la scrive `asgDecidiUno`, la stessa del pannello: una riga di
+   decisione costruita in due posti diventa due regole su chi viene pagato. */
+async function fluAbbina(chiave, valore) {
+  try {
+    /* Le evidenze: quelle che il flusso ha in mano adesso, e sotto quelle che
+       la tabella aveva gia'. Il flusso che si sta guardando e' piu' recente. */
+    const dal = (FLU_PIANO && FLU_PIANO.collaboratori || [])
+      .find(c => Assegnazione.chiave(FLU_PIANO.testata.emittente, c.codice) === chiave) || {};
+    const riga = await asgDecidiUno(chiave, valore,
+      Object.assign({}, FLU_CODICI[chiave] || {}, {
+        nome_flusso: dal.nome || (FLU_CODICI[chiave] || {}).nome_flusso || null,
+        email_flusso: dal.email || (FLU_CODICI[chiave] || {}).email_flusso || null,
+        rui_flusso: dal.rui || (FLU_CODICI[chiave] || {}).rui_flusso || null,
+        produttore_flusso: dal.produttore || (FLU_CODICI[chiave] || {}).produttore_flusso || null
+      }));
+    FLU_CODICI[chiave] = riga;
+    fluMostra();
+  } catch (e) {
+    alert('Non riesco a salvare l\'abbinamento: ' + (e.message || e));
+  }
+}
+
 /* Di chi è una rata, secondo la decisione presa sul codice della sua polizza.
    `null` quando il codice non c'è o non è stato deciso: non c'è un ripiego, e
    non deve esserci (`tariffe/motore/assegnazione.js`, regola 1). */
@@ -17755,12 +17836,13 @@ async function fluConferma() {
        una riga decisa vorrebbe dire che un flusso può cambiare un'evidenza
        sotto una decisione già presa. */
     const evidenze = (p.collaboratori || [])
-      .filter(c => c.codice && (c.nome || c.email || c.rui))
+      .filter(c => c.codice && (c.nome || c.email || c.rui || c.produttore))
       .filter(c => !mappaCodici[Assegnazione.chiave(p.testata.emittente, c.codice)])
       .map(c => ({
         compagnia: String(p.testata.emittente || '').trim().toUpperCase(),
         codice: String(c.codice).trim().toUpperCase(),
         nome_flusso: c.nome || null, email_flusso: c.email || null, rui_flusso: c.rui || null,
+        produttore_flusso: c.produttore || null,
         deciso: false
       }))
       .filter(c => c.compagnia && c.codice);

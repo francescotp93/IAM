@@ -163,7 +163,48 @@ prova('una riga di sole evidenze non è una decisione andata a vuoto', () => {
   return 'non deciso, ma con il nome accanto per riconoscerlo';
 });
 
-/* ══ REGOLA 5 — l'email aggancia solo se è una ══════════════════════════ */
+/* ══ REGOLA 5 — prima il RUI, poi l'email, e solo se sono uno ═══════════ */
+prova('il RUI viene prima dell\'email: è il numero dell\'intermediario', () => {
+  /* Il caso che decide: l'email porterebbe a una persona, il RUI a un'altra.
+     Vince il RUI, perché un recapito si presta e un numero di registro no. */
+  const persone = [
+    { id: 'c1', email: 'condivisa@esempio.it', rui_numero: 'E000111111' },
+    { id: 'c2', email: 'condivisa@esempio.it', rui_numero: 'E000222222' }
+  ];
+  const p = A.proposteDaFlusso([{ codice: 'U100', email: 'condivisa@esempio.it', rui: 'E 000.222222' }], persone, 'PRIMA');
+  deve(p[0].collaboratore_id === 'c2', 'proposta: ' + p[0].collaboratore_id);
+  deve(p[0].motivo === 'rui', 'motivo: ' + p[0].motivo);
+  return 'spazi e punti non contano, il numero sì — e batte un\'email ambigua';
+});
+
+prova('due persone con lo stesso RUI non producono niente, e lo dicono', () => {
+  /* Nel registro vero ce n'è già un caso: dodici schede con il RUI e undici
+     numeri distinti. Sceglierne una a caso pagherebbe la persona sbagliata. */
+  const persone = [{ id: 'c1', rui_numero: 'E000111111' }, { id: 'c2', rui_numero: 'E000111111' }];
+  const p = A.proposteDaFlusso([{ codice: 'U100', rui: 'E000111111' }], persone, 'PRIMA');
+  deve(p[0].collaboratore_id === null, 'agganciata a caso: ' + p[0].collaboratore_id);
+  deve(p[0].motivo === 'rui-ambiguo', 'motivo: ' + p[0].motivo);
+  return 'il motivo dice che c\'è da sistemare il registro, non il flusso';
+});
+
+prova('senza RUI si passa all\'email, che per cinque persone su diciassette è tutto', () => {
+  const persone = [{ id: 'c1', email: 'uno@esempio.it' }, { id: 'c2', email: 'due@esempio.it', rui_numero: 'E000222222' }];
+  const p = A.proposteDaFlusso([{ codice: 'U100', email: 'uno@esempio.it', rui: '' }], persone, 'PRIMA');
+  deve(p[0].collaboratore_id === 'c1' && p[0].motivo === 'email', 'proposta: ' + JSON.stringify(p[0]));
+  return 'la seconda strada resta aperta';
+});
+
+prova('il codice produttore si conserva accanto a quello delle polizze', () => {
+  /* Sono due codici diversi: `ID_ANAGRAFICA_EXP` è la chiave con cui le
+     polizze lo nominano, `CODICE_PRODUTTORE` è come lo chiama la compagnia.
+     Chi deve riconoscere una persona ha bisogno di tutti e due. */
+  const p = A.proposteDaFlusso([{ codice: 'U100', produttore: 'P-7788', rui: 'E000111111' }],
+                               [{ id: 'c1', rui_numero: 'E000111111' }], 'PRIMA');
+  deve(p[0].produttore_flusso === 'P-7788', 'il codice produttore si perde: ' + JSON.stringify(p[0]));
+  deve(p[0].rui_flusso === 'E000111111', 'il RUI si perde come evidenza');
+  return 'U100 per le polizze, P-7788 per la compagnia, tutti e due scritti';
+});
+
 prova('un indirizzo che tocca una sola persona diventa una proposta', () => {
   const persone = [
     { id: 'c1', email: 'Uno@Esempio.IT' },

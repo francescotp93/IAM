@@ -1730,3 +1730,62 @@ nessuno: è il motivo per cui il lavoro del 18/09 era rimasto fermo.
   del 18/09 `collaboratori` era `[]`. Da quel momento il pannello mostrerà anche
   come si chiamano, e `proposteDaFlusso` potrà proporre gli abbinamenti per
   indirizzo — proporre, non decidere.
+
+### L'abbinamento si fa dove il codice si legge (19/09/2026, stesso giorno)
+
+> «Dammi la possibilità a me di abbinare il codice produttore di Prima
+> all'intermediario» — Francesco.
+
+Il pannello dei Titoli c'era già, ma i codici produttore si leggono
+**nell'anteprima del flusso**, sotto «Chi ha prodotto»: chiedere di cambiare
+schermata per abbinarli è la stessa distanza che aveva fatto perdere la voce
+«Importa» nella barra da ventuno voci (§15). Adesso ogni riga di quell'elenco ha
+la sua tendina: si sceglie lì, si salva subito, e l'anteprima si ridisegna.
+
+La riga di decisione la costruisce **una funzione sola** (`asgRigaDecisione`),
+usata dalle due schermate: due costruzioni della stessa riga diventano prima o
+poi due regole diverse su chi viene pagato.
+
+**Il RUI viene prima dell'email.** Il flusso porta tre codici che fino a ieri
+erano uno: `ID_ANAGRAFICA_EXP` (con cui le polizze nominano il collaboratore),
+`CODICE_PRODUTTORE` (come lo chiama la compagnia) e `COD_RUI` (il numero con cui
+è iscritto al registro). Solo l'ultimo dice **chi è** una persona invece di dove
+la si scrive: un'email è un recapito e i recapiti si prestano — la casella
+dell'agenzia su due schede, quella di un collaboratore usata dal suo assistente.
+Quindi la proposta si fa sul RUI e solo dopo sull'email, che resta perché cinque
+persone su diciassette il RUI non ce l'hanno scritto. In tutti e due i casi vale
+«aggancia solo se è **una**»: nel registro vero ci sono dodici schede con il RUI
+e **undici numeri distinti**, cioè due persone con lo stesso numero, e lì non si
+propone niente — si dice che c'è da sistemare il registro.
+
+Il confronto ignora spazi, punti e maiuscole: lo stesso numero è scritto
+`E000123456` in agenzia e `E 000.123456` dalla compagnia, e due stringhe diverse
+per lo stesso intermediario non agganciano niente.
+
+#### Un difetto che ha trovato la prova, e non era piccolo
+
+`upsert` **riscrive la riga intera**: le colonne che non si passano tornano al
+valore di partenza. Abbinare un codice avrebbe cancellato nome, email, RUI e
+codice produttore che il flusso aveva annotato — e la volta dopo quel codice
+sarebbe tornato a essere una sigla da riconoscere a memoria, cioè esattamente il
+problema che questa tabella esiste per risolvere. Adesso le evidenze si
+ripassano a ogni scrittura, con una regola dichiarata: **dove il flusso che si
+sta guardando ha un valore vince lui** (è più recente), dove non ha niente resta
+quello che c'era.
+
+#### Due trappole del banco, annotate
+
+- **`selected` diventa `selected=""`.** Il browser normalizza l'attributo quando
+  si rilegge `innerHTML`: una prova che cerca la forma scritta a mano dichiara
+  rotto un codice giusto.
+- **Il campione non distingueva i tre codici.** In `REC101` di collaudo
+  `CODICE_PRODUTTORE` era uguale a `ID_ANAGRAFICA_EXP` e `COD_RUI` era vuoto:
+  una prova che li confronta sarebbe stata verde per costruzione. Il campione
+  adesso li tiene diversi (`U90001` / `P-7788` / `E000111111`), e c'è una prova
+  che controlla **che restino diversi** — altrimenti smette di misurare.
+
+#### Cosa resta aperto, in più
+
+- **La strada inversa non c'è**: dalla scheda di una persona non si vede quali
+  codici compagnia sono suoi. Il posto giusto è la scheda del collaboratore in
+  IAM, ed è un lavoro di là (§10).

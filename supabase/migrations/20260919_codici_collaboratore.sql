@@ -70,7 +70,15 @@ create table if not exists public.quote_codici_collaboratore (
   -- accanto alla decisione e non la sostituiscono mai.
   nome_flusso      text,
   email_flusso     text,
+  -- Il RUI è il numero con cui l'intermediario è iscritto al registro: è
+  -- l'unico campo del flusso che dice CHI È una persona invece di dove la si
+  -- scrive. Per questo le proposte lo guardano per primo e l'email dopo.
   rui_flusso       text,
+  -- `CODICE_PRODUTTORE` di REC101: come la compagnia lo chiama nei suoi
+  -- discorsi. Può non coincidere con `codice` (`ID_ANAGRAFICA_EXP`), che è la
+  -- chiave con cui le polizze lo nominano — e chi deve riconoscere una persona
+  -- ha bisogno di tutti e due.
+  produttore_flusso text,
 
   note             text,
   -- Chi ha firmato la decisione. Su una tabella che governa dei pagamenti è la

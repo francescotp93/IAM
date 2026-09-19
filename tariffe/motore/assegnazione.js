@@ -280,21 +280,38 @@
     return { assegna: assegna, saltate: saltate, sovrascritte: sovrascritte, perPersona: perPersona };
   }
 
-  /* ══ 5. LE PROPOSTE DALL'EMAIL ════════════════════════════════════════════
-     Quando il flusso porta l'indirizzo di un collaboratore (REC010), quello è
-     l'unico campo che corrisponde a qualcosa che abbiamo già — i codici `U…`
-     non li conosce nessuno (§16). Un indirizzo che tocca UNA sola persona è
-     un'evidenza forte, e questo motore la restituisce come PROPOSTA: la scrive
-     qualcuno, guardandola.
+  /* ══ 5. LE PROPOSTE: PRIMA IL RUI, POI L'EMAIL ════════════════════════════
+     Due campi del flusso corrispondono a qualcosa che abbiamo già, e non
+     valgono uguale.
 
-     Il nome non si guarda mai. `DESCRIZIONE_COLLABORATORE` arriva come capita,
-     e due persone che si chiamano quasi uguale in un'agenzia ci sono sempre. */
+     **Il RUI viene per primo perché è il numero dell'intermediario.** È il
+     registro pubblico che dice chi è: non cambia quando qualcuno cambia
+     indirizzo di posta, non si condivide fra due persone per comodità, e su
+     `quote_collaboratori.rui_numero` è già scritto per dodici persone su
+     diciassette. Un'email invece è un recapito, e i recapiti si prestano: la
+     casella dell'agenzia messa su due schede, quella di un collaboratore usata
+     dal suo assistente. Fra i due, quello che identifica una persona è il RUI.
+
+     L'email resta come seconda strada, perché cinque persone su diciassette il
+     RUI non ce l'hanno scritto e senza di lei per loro non ci sarebbe niente.
+
+     In tutti e due i casi vale la stessa regola: **aggancia solo se è UNA**.
+     Nel registro vero ci sono già undici RUI distinti su dodici schede, cioè
+     due persone con lo stesso numero: lì non si propone niente, e l'ambiguità
+     si dice invece di sceglierne una.
+
+     Il nome non si guarda mai. `DESCRIZIONE_COLLABORATORE` arriva come capita
+     («- STUDIO DI PROVA S.R.L.»), e due persone che si chiamano quasi uguale in
+     un'agenzia ci sono sempre.
+
+     E resta comunque una PROPOSTA: la scrive qualcuno, guardandola. */
   function proposteDaFlusso(collaboratoriFlusso, persone, compagnia) {
-    var perEmail = {};
+    var perEmail = {}, perRui = {};
     (persone || []).forEach(function (p) {
       var e = mail(p.email);
-      if (!e) return;
-      (perEmail[e] = perEmail[e] || []).push(p);
+      if (e) (perEmail[e] = perEmail[e] || []).push(p);
+      var r = codiceRui(p.rui_numero);
+      if (r) (perRui[r] = perRui[r] || []).push(p);
     });
 
     return (collaboratoriFlusso || []).map(function (c) {
@@ -302,17 +319,43 @@
         compagnia: norm(compagnia), codice: norm(c.codice),
         chiave: chiave(compagnia, c.codice),
         nome_flusso: c.nome || null, email_flusso: c.email || null, rui_flusso: c.rui || null,
+        produttore_flusso: c.produttore || null,
         collaboratore_id: null, motivo: null
       };
+
+      var r = codiceRui(c.rui);
+      var perRuiTrovate = r ? (perRui[r] || []) : [];
+      if (perRuiTrovate.length === 1) {
+        base.collaboratore_id = perRuiTrovate[0].id;
+        base.motivo = 'rui';
+        return base;
+      }
+
       var e = mail(c.email);
-      if (!e) { base.motivo = 'email-assente'; return base; }
-      var trovate = perEmail[e] || [];
-      if (!trovate.length) { base.motivo = 'email-sconosciuta'; return base; }
-      if (trovate.length > 1) { base.motivo = 'email-ambigua'; return base; }
-      base.collaboratore_id = trovate[0].id;
-      base.motivo = 'email';
+      var trovate = e ? (perEmail[e] || []) : [];
+      if (trovate.length === 1) {
+        base.collaboratore_id = trovate[0].id;
+        base.motivo = 'email';
+        return base;
+      }
+
+      /* Niente aggancio: si dice PERCHÉ, e il motivo più informativo vince.
+         «Due persone con questo RUI» è una cosa da andare a sistemare nel
+         registro; «non ha email» è solo un dato che manca. */
+      if (perRuiTrovate.length > 1) base.motivo = 'rui-ambiguo';
+      else if (trovate.length > 1) base.motivo = 'email-ambigua';
+      else if (r && !perRuiTrovate.length && !e) base.motivo = 'rui-sconosciuto';
+      else if (!e) base.motivo = 'email-assente';
+      else base.motivo = 'email-sconosciuta';
       return base;
     });
+  }
+
+  /* Il RUI si confronta senza spazi, punti e maiuscole: lo stesso numero è
+     scritto «E000123456» in agenzia e «E 000123456» dalla compagnia, e due
+     stringhe diverse per lo stesso intermediario non agganciano niente. */
+  function codiceRui(s) {
+    return String(s == null ? '' : s).replace(/[\s.\-\/]/g, '').toUpperCase();
   }
 
   /* ══ 6. ATTREZZI ══════════════════════════════════════════════════════════ */

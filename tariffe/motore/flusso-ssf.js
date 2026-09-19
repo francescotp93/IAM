@@ -279,7 +279,7 @@ function mezzoDa(codice) {
              nessuno. Senza, quei codici restano numeri che non si possono
              abbinare a una persona. */
           email: (testo(r.EMAIL) || '').toLowerCase() || null,
-          rui: null, polizze: 0, premi: 0, provvigioni: 0
+          rui: null, produttore: null, polizze: 0, premi: 0, provvigioni: 0
         };
         return;
       }
@@ -393,14 +393,21 @@ function mezzoDa(codice) {
       collab[c].premi += (t.importo_lordo || 0);
       collab[c].provvigioni += (t.provvigione || 0);
     });
-    /* I produttori di REC101 portano il codice RUI, che in REC010 non c'è.
-       Chi compare solo lì entra lo stesso: è un collaboratore dell'agenzia
+    /* I produttori di REC101 portano due cose che in REC010 non ci sono: il
+       CODICE RUI — il numero con cui l'intermediario è iscritto al registro,
+       cioè l'unico campo del flusso che dice chi è una persona e non dove la
+       si scrive — e il CODICE PRODUTTORE, che è quello con cui la compagnia lo
+       chiama nei suoi discorsi. I due codici possono non coincidere con
+       `ID_ANAGRAFICA_EXP`, che è la chiave delle polizze: si conservano tutti e
+       tre, perché è con quello che si riconosce chi si sta guardando.
+       Chi compare solo qui entra lo stesso: è un collaboratore dell'agenzia
        che in questo periodo non ha prodotto. */
     righe['101'].forEach(function (r) {
       var k = testo(r.ID_ANAGRAFICA_EXP);
       if (!k) return;
-      if (!collab[k]) collab[k] = { codice: k, nome: null, email: null, rui: null, polizze: 0, premi: 0, provvigioni: 0 };
+      if (!collab[k]) collab[k] = { codice: k, nome: null, email: null, rui: null, produttore: null, polizze: 0, premi: 0, provvigioni: 0 };
       collab[k].rui = testo(r.COD_RUI) || collab[k].rui;
+      collab[k].produttore = testo(r.CODICE_PRODUTTORE) || collab[k].produttore;
       if (!collab[k].nome) collab[k].nome = (testo(r.DESCRIZIONE_COLLABORATORE) || '').replace(/^-\s*/, '').trim() || null;
     });
     var collaboratori = Object.keys(collab).map(function (k) {

@@ -70,6 +70,7 @@
 <script src="tariffe/motore/registro.js?v=20260919"></script>
 <script src="tariffe/motore/assegnazione.js?v=20260919"></script>
 <script src="tariffe/motore/anagrafica.js?v=20260919"></script>
+<script src="tariffe/motore/foglio-cassa.js?v=20260919"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -2524,6 +2525,12 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
            apre il Portafoglio — è lì che guarda, ed è lì che dev'esserci la
            porta. Non è un doppione: è la stessa pagina, raggiunta da dove la
            si cerca. Il tasto lo vede lo staff, come la voce di menu. -->
+      <!-- M5 (19/09/2026): il foglio cassa sta DENTRO il Portafoglio, come
+           chiede il brief: la porta è qui, in cima, dove si guarda. -->
+      <div style="margin:-4px 0 10px">
+        <button class="rin-az" onclick="showPage('foglio-cassa')"><i class="ti ti-cash-register"></i> Foglio cassa</button>
+        <span class="cl-sub" style="margin-left:8px">la produzione giorno per giorno: incassi, provvigioni, quadrature, Excel e PDF</span>
+      </div>
       <div id="pf-importa" style="display:none;margin:-4px 0 14px">
         <button class="rin-az" onclick="showPage('importa-flusso')"><i class="ti ti-file-import"></i>
           Importa il portafoglio dalla compagnia</button>
@@ -2842,6 +2849,38 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
          ogni polizza in scadenza si vede se è già stata riquotata. È il lavoro
          che porta più fatturato in agenzia, quindi non deve essere una ricerca
          da fare, ma una lista che si presenta da sola. ──────────────────── -->
+    <!-- ── M5 · FOGLIO CASSA (19/09/2026) ─────────────────────────────────────
+         La produzione giorno per giorno, dentro il Portafoglio. Le regole stanno
+         nel motore tariffe/motore/foglio-cassa.js; i filtri si applicano al
+         clic (M2). ─────────────────────────────────────────────────────── -->
+    <div class="page" id="page-foglio-cassa">
+      <div class="page-title">Foglio cassa</div>
+      <div class="page-sub">Che cosa è entrato, da chi, come — e che cosa resta all'agenzia. Dal flusso della compagnia e dagli incassi segnati a mano.</div>
+      <div style="margin:-4px 0 12px"><button class="rin-az" onclick="showPage('portafoglio')"><i class="ti ti-arrow-left"></i> Portafoglio</button></div>
+      <div class="pf-top">
+        <div class="pf-filters">
+          <div class="pf-f"><label>Compagnia</label><select id="fc-compagnia"><option value="">Tutte</option></select></div>
+          <div class="pf-f"><label>Mezzo di pagamento</label><select id="fc-mezzo"><option value="">Tutti</option></select></div>
+          <div class="pf-f"><label>Collaboratore</label><select id="fc-collab"><option value="">Tutti</option></select></div>
+          <div class="pf-f"><label>Incassi dal</label><input id="fc-da" type="date"></div>
+          <div class="pf-f"><label>al</label><input id="fc-a" type="date"></div>
+          <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="fcRender()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="fcAzzera()">Questo mese</button></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="pf-exp" onclick="fcExportExcel()" title="Scarica i movimenti filtrati"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+          <button class="pf-exp" onclick="fcExportPdf()" title="Stampa il foglio cassa filtrato"><i class="ti ti-file-type-pdf"></i> PDF</button>
+        </div>
+      </div>
+      <div id="fc-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
+      <div class="table-wrap">
+        <table class="storico-table">
+          <thead><tr><th>Incasso</th><th>Cliente</th><th>Polizza</th><th>Mezzo · chi paga</th><th class="soldi">Premio</th><th class="soldi">Provv. compagnia</th><th>Collaboratore</th><th class="soldi">Resta all'agenzia</th><th></th></tr></thead>
+          <tbody id="fc-body"><tr><td colspan="9"><div class="empty-state">Carico la cassa…</div></td></tr></tbody>
+        </table>
+      </div>
+      <div id="fc-quadrature"></div>
+    </div>
+
     <div class="page" id="page-scadenzario">
       <div class="page-title">Scadenzario e rinnovi</div>
       <div class="page-sub">Non un elenco di date: per ogni polizza si vede se il rinnovo è già stato lavorato</div>
@@ -10329,10 +10368,11 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',portafoglio:'nav-portafoglio',scadenzario:'nav-scadenzario','controllo-documenti':'nav-cdoc','importa-flusso':'nav-import',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',portafoglio:'nav-portafoglio','foglio-cassa':'nav-portafoglio',scadenzario:'nav-scadenzario','controllo-documenti':'nav-cdoc','importa-flusso':'nav-import',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
+  if (name === 'foglio-cassa') fcCarica();         // M5: la cassa, dentro il Portafoglio
   if (name === 'controllo-documenti') cdocCarica();  // Lavoro 3 §3.8
   if (name === 'importa-flusso') fluRegistro();      // il registro dei caricamenti
   if (name === 'scadenzario') loadScadenzario();   // CRM Punto 4
@@ -25969,6 +26009,230 @@ const CRO_TIPI = {
   nota:       ['ti-notes',                   '#7a6a4f'],
   cliente:    ['ti-user',             'var(--muted)']
 };
+
+/* ═══ IL FOGLIO CASSA (M5, 19/09/2026) ═══════════════════════════════════════
+   Dentro il Portafoglio: la produzione giorno per giorno. Le regole — che cosa
+   è un movimento, dirette e indirette, le quadrature, il PDF — stanno nel
+   motore `FoglioCassa`, che usa la STESSA regola dell'estratto conto per la
+   quota del collaboratore. Qui: la lettura, i filtri (al clic, M2), i tre
+   contatori, la lista, le quadrature, la correzione del singolo movimento e
+   le due esportazioni sui filtri applicati.
+
+   Prefisso `fc`, libero al 19/09/2026 (`grep -cE "^(var|let|const|function) fc"`). */
+var FC_TITOLI = [];
+var FC_POLIZZE = {};
+var FC_SCHEMI = {};
+var FC_VISTA = null;
+
+function fcFiltri() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  return { dal: v('fc-da') || null, al: v('fc-a') || null, compagnia: v('fc-compagnia') || null,
+           mezzo: v('fc-mezzo') || null, collaboratore_id: v('fc-collab') || null };
+}
+
+async function fcCarica() {
+  const body = document.getElementById('fc-body');
+  if (!db || !body || !window.FoglioCassa) return;
+  body.innerHTML = '<tr><td colspan="9"><div class="empty-state">Carico la cassa…</div></td></tr>';
+  try {
+    /* Il perimetro è quello delle polizze visibili: la riservatezza di un
+       incasso eredita da quella della sua polizza, come nell'estratto conto. */
+    let qp = db.from('quote_polizze').select('id,numero,numero_polizza,cliente,cliente_id,compagnia,prodotto,modulo').limit(2000);
+    const ids = await visibleUserIds();
+    if (ids) qp = qp.in('creato_da', ids);
+    const { data: pol, error: errP } = await qp;
+    if (errP) throw errP;
+    FC_POLIZZE = {};
+    (pol || []).forEach(p => { FC_POLIZZE[p.id] = p; });
+    const { data: tit, error } = await db.from('quote_titoli').select('*').eq('stato', 'incassato').limit(5000);
+    if (error) throw error;
+    FC_TITOLI = (tit || []).filter(t => FC_POLIZZE[t.polizza_id]);
+    await caricaCollaboratori();
+    await ecpCaricaSchemi();
+    FC_SCHEMI = ECP_SCHEMI;
+
+    const selC = document.getElementById('fc-compagnia');
+    if (selC) {
+      const scelto = selC.value;
+      const valori = [...new Set(Object.values(FC_POLIZZE).map(p => p.compagnia).filter(Boolean))].sort();
+      selC.innerHTML = '<option value="">Tutte</option>' + valori.map(v => `<option value="${esc(v)}"${v === scelto ? ' selected' : ''}>${esc(v)}</option>`).join('');
+    }
+    const selM = document.getElementById('fc-mezzo');
+    if (selM && selM.options.length <= 1) selM.innerHTML = '<option value="">Tutti</option>' + Object.keys(FoglioCassa.MEZZI).map(k => `<option value="${k}">${esc(FoglioCassa.MEZZI[k])}</option>`).join('');
+    const selK = document.getElementById('fc-collab');
+    if (selK) {
+      if (isStaff()) selK.innerHTML = collabOpzioni(selK.value, 'Tutti');
+      else { selK.innerHTML = collabOpzioni(mioCollaboratoreId(), 'Io'); selK.disabled = true; }
+    }
+    const d = document.getElementById('fc-da');
+    if (d && !d.value) { const m = ecpMese(); d.value = m.dal; const a = document.getElementById('fc-a'); if (a) a.value = m.al; }
+    fcRender();
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="9"><div class="empty-state">Foglio cassa non disponibile.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
+  }
+}
+
+/* Chi non è staff vede la propria produzione: la tendina è bloccata su di
+   lui, come nell'estratto conto. */
+function mioCollaboratoreId() {
+  const io = (window.TIT_COLLAB || []).find(c => c.iam_id && currentUser && c.iam_id === currentUser.id);
+  return io ? io.id : '';
+}
+
+function fcAzzera() {
+  ['fc-compagnia', 'fc-mezzo'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const k = document.getElementById('fc-collab'); if (k && !k.disabled) k.value = '';
+  const m = ecpMese();
+  const d = document.getElementById('fc-da'), a = document.getElementById('fc-a');
+  if (d) d.value = m.dal; if (a) a.value = m.al;
+  fcRender();
+}
+
+function fcRender() {
+  const body = document.getElementById('fc-body'), sum = document.getElementById('fc-summary'), quad = document.getElementById('fc-quadrature');
+  if (!body || !window.FoglioCassa) return;
+  const f = fcFiltri();
+  FC_VISTA = FoglioCassa.riassunto(Object.assign({ titoli: FC_TITOLI, polizze: FC_POLIZZE, schemi: FC_SCHEMI, nomi: window.TIT_COLLAB_NOMI || {} }, f));
+  FC_VISTA.filtri = f;
+  const t = FC_VISTA.totali;
+  if (sum) sum.innerHTML = ecpCard(pfEuro(t.premi), 'Premi incassati', t.movimenti + ' movimenti nel filtro attivo')
+    + ecpCard(pfEuro(t.provvigioni_dirette), 'Provvigioni dirette', 'produzione dell\'agenzia, senza collaboratore')
+    + ecpCard(pfEuro(t.provvigioni_indirette), 'Provvigioni indirette', 'di cui ai collaboratori ' + pfEuro(t.quota_collaboratori))
+    + ecpCard(pfEuro(t.margine_agenzia), 'Resta all\'agenzia', 'dirette + margine sulle indirette')
+    + (t.daConfermare ? ecpCard(t.daConfermare, 'Da confermare', 'provvigione non dichiarata o percentuale non concordata: premi sì, provvigioni no') : '');
+  if (!FC_VISTA.righe.length) {
+    body.innerHTML = `<tr><td colspan="9"><div class="empty-state">${FC_TITOLI.length ? 'Nessun incasso con questi filtri.' : 'Nessun incasso registrato: gli incassi arrivano dal flusso della compagnia o si segnano nella pagina Titoli.'}</div></td></tr>`;
+    if (quad) quad.innerHTML = '';
+    return;
+  }
+  body.innerHTML = FC_VISTA.righe.map(r => `<tr class="fc-riga">
+    <td style="font-size:12px">${polData(r.data)}<div class="cl-sub">${r.fonte === 'flusso' ? 'dal flusso' : 'a mano'}</div></td>
+    <td>${r.cliente_id ? `<a href="#" onclick="event.preventDefault();apriAnagrafica('${esc(r.cliente_id)}')" style="font-weight:700;color:var(--ink);text-decoration:underline">${esc(r.cliente || '—')}</a>` : `<strong>${esc(r.cliente || '—')}</strong>`}</td>
+    <td style="font-size:12px"><a href="#" onclick="event.preventDefault();polDettaglio('${esc(r.polizza_id)}')" style="font-family:ui-monospace,monospace;color:var(--blue);text-decoration:underline">${esc(r.numero_polizza || '—')}</a>
+      <div class="cl-sub">${esc(r.compagnia || '—')}${r.prodotto ? ' · ' + esc(r.prodotto) : ''}</div></td>
+    <td style="font-size:12px">${esc(r.mezzo_nome || '—')}<div class="cl-sub">${esc(FoglioCassa.PAGATORI[r.pagatore_tipo] || r.pagatore_tipo)}${r.pagatore ? ' · ' + esc(r.pagatore) : ''}</div></td>
+    <td class="soldi"><b>${pfEuro(r.importo)}</b></td>
+    <td class="soldi">${r.provvigione == null ? '<span class="cl-sub">non dichiarata</span>' : pfEuro(r.provvigione)}</td>
+    <td style="font-size:12px">${r.collaboratore_id ? esc(r.collaboratore || 'collaboratore rimosso') : '<span class="cl-sub">agenzia</span>'}
+      ${r.collaboratore_id ? `<div class="cl-sub">${r.quota_collaboratore != null ? 'quota ' + pfEuro(r.quota_collaboratore) + (r.percentuale != null ? ' (' + r.percentuale + '%)' : '') : esc(r.daConfermare.join('; '))}</div>` : ''}</td>
+    <td class="soldi">${r.margine_agenzia == null ? '—' : pfEuro(r.margine_agenzia)}</td>
+    <td><div style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="rin-az" onclick="fcModifica('${esc(r.titolo_id)}')" title="Correggi data, mezzo, chi ha pagato"><i class="ti ti-pencil"></i></button>
+      <button class="rin-az" onclick="polDettaglio('${esc(r.polizza_id)}')" title="Apri la polizza"><i class="ti ti-file-invoice"></i></button></div></td>
+  </tr>`).join('')
+  + `<tr><td colspan="4"><b>Totale</b></td><td class="soldi"><b>${pfEuro(t.premi)}</b></td><td class="soldi"><b>${pfEuro(t.provvigioni)}</b></td><td style="font-size:12px">ai collaboratori <b>${pfEuro(t.quota_collaboratori)}</b></td><td class="soldi"><b>${pfEuro(t.margine_agenzia)}</b></td><td></td></tr>`;
+
+  const tab = (titolo, gruppi, colonna) => `<div class="flu-sez" style="margin-top:14px">${titolo}</div>
+    <div class="table-wrap"><table class="storico-table fc-quad"><thead><tr><th>${colonna}</th><th>Movimenti</th><th class="soldi">Premi</th><th class="soldi">Provvigioni</th><th class="soldi">Ai collaboratori</th></tr></thead>
+    <tbody>${gruppi.map(g => `<tr><td><strong>${esc(g.etichetta)}</strong></td><td>${g.movimenti}</td><td class="soldi">${pfEuro(g.premi)}</td><td class="soldi">${pfEuro(g.provvigioni)}</td><td class="soldi">${pfEuro(g.quota_collaboratori)}</td></tr>`).join('')}
+    <tr><td><b>Totale</b></td><td><b>${t.movimenti}</b></td><td class="soldi"><b>${pfEuro(t.premi)}</b></td><td class="soldi"><b>${pfEuro(t.provvigioni)}</b></td><td class="soldi"><b>${pfEuro(t.quota_collaboratori)}</b></td></tr>
+    </tbody></table></div>`;
+  if (quad) quad.innerHTML = tab('Quadratura per mezzo di pagamento', FC_VISTA.quadrature.perMezzo, 'Mezzo')
+    + tab('Quadratura per compagnia', FC_VISTA.quadrature.perCompagnia, 'Compagnia')
+    + tab('Quadratura per collaboratore', FC_VISTA.quadrature.perCollaboratore, 'Collaboratore');
+}
+
+/* La correzione del singolo movimento: data dell'incasso, mezzo, chi ha
+   pagato, nota. Scrive solo quello che è cambiato e lascia il movimento a
+   registro con l'id della rata. */
+function fcModifica(titoloId) {
+  const t = FC_TITOLI.find(x => x.id === titoloId);
+  if (!t) return;
+  const p = FC_POLIZZE[t.polizza_id] || {};
+  document.getElementById('fc-ov')?.remove();
+  const mezzi = Object.keys(FoglioCassa.MEZZI).map(k => `<option value="${k}"${t.mezzo_pagamento === k ? ' selected' : ''}>${esc(FoglioCassa.MEZZI[k])}</option>`).join('');
+  const chi = t.pagatore_tipo || 'cliente';
+  document.body.insertAdjacentHTML('beforeend', `<div class="modal-ov" id="fc-ov" onclick="if(event.target.id==='fc-ov')this.remove()">
+    <div class="modal" style="width:520px;max-width:96vw">
+      <div class="modal-title"><i class="ti ti-cash-register"></i> Movimento di cassa</div>
+      <div class="cl-sub" style="margin-bottom:10px">${esc(p.cliente || '')} · ${esc(p.numero_polizza || '')} · ${pfEuro(t.importo_lordo)}</div>
+      <div class="ana-row"><div class="ana-f"><label>Data dell'incasso</label><input type="date" id="fc-m-data" value="${esc(String(t.incassato_il || '').slice(0, 10))}"></div>
+        <div class="ana-f"><label>Mezzo</label><select id="fc-m-mezzo"><option value="">— da indicare —</option>${mezzi}</select></div></div>
+      <div class="ana-row"><div class="ana-f"><label>Chi ha pagato</label><select id="fc-m-chi" onchange="document.getElementById('fc-m-collab').style.display=this.value==='collaboratore'?'':'none'">
+          <option value="cliente"${chi === 'cliente' ? ' selected' : ''}>Il cliente</option>
+          <option value="collaboratore"${chi === 'collaboratore' ? ' selected' : ''}>Il collaboratore (credito agenzia)</option>
+          <option value="agenzia"${chi === 'agenzia' ? ' selected' : ''}>L'agenzia</option></select></div>
+        <div class="ana-f" id="fc-m-collab" style="${chi === 'collaboratore' ? '' : 'display:none'}"><label>Quale collaboratore</label><select id="fc-m-collab-sel">${collabOpzioni(t.pagatore_collaboratore_id || '', '— quale —')}</select></div></div>
+      <div class="field"><label>Nota</label><input id="fc-m-note" value="${esc(t.note || '')}"></div>
+      <div class="modal-actions">
+        <button class="primary" onclick="fcSalvaModifica('${esc(titoloId)}')"><i class="ti ti-check"></i> Salva</button>
+        <button class="ghost" onclick="document.getElementById('fc-ov').remove()">Annulla</button>
+      </div></div></div>`);
+}
+
+async function fcSalvaModifica(titoloId) {
+  const t = FC_TITOLI.find(x => x.id === titoloId);
+  if (!t) return;
+  const p = FC_POLIZZE[t.polizza_id] || {};
+  const v = id => (document.getElementById(id)?.value || '').trim() || null;
+  const nuovo = { incassato_il: v('fc-m-data'), mezzo_pagamento: v('fc-m-mezzo'), pagatore_tipo: v('fc-m-chi') || 'cliente', note: v('fc-m-note') };
+  nuovo.pagatore_collaboratore_id = nuovo.pagatore_tipo === 'collaboratore' ? v('fc-m-collab-sel') : null;
+  if (nuovo.pagatore_tipo === 'collaboratore' && !nuovo.pagatore_collaboratore_id) { alert('Se ha incassato il collaboratore devi dire quale.'); return; }
+  if (!nuovo.incassato_il) { alert('Un incasso senza data non si può mettere in cassa.'); return; }
+  const cambi = [];
+  if (String(t.incassato_il || '').slice(0, 10) !== nuovo.incassato_il) cambi.push('data ' + polData(nuovo.incassato_il));
+  if ((t.mezzo_pagamento || null) !== nuovo.mezzo_pagamento) cambi.push('mezzo ' + (FoglioCassa.MEZZI[nuovo.mezzo_pagamento] || 'tolto'));
+  if ((t.pagatore_tipo || 'cliente') !== nuovo.pagatore_tipo || (t.pagatore_collaboratore_id || null) !== nuovo.pagatore_collaboratore_id) cambi.push('chi paga: ' + nuovo.pagatore_tipo);
+  if ((t.note || null) !== nuovo.note) cambi.push('nota');
+  if (!cambi.length) { document.getElementById('fc-ov')?.remove(); return; }
+  try {
+    const { error } = await db.from('quote_titoli').update(nuovo).eq('id', titoloId);
+    if (error) throw error;
+    Object.assign(t, nuovo);
+    try { logMovimento('Movimento di cassa corretto · ' + cambi.join(', ') + ' · ' + pfEuro(t.importo_lordo), 'titolo', p.cliente || '', titoloId); } catch (e) {}
+    document.getElementById('fc-ov')?.remove();
+    fcRender();
+  } catch (e) { alert('Non riesco a salvare: ' + (e.message || e)); }
+}
+
+/* ── Le esportazioni: sui filtri applicati, stessi oggetti della schermata ── */
+function fcExportExcel() {
+  if (!FC_VISTA || !FC_VISTA.righe.length) { alert('Nessun movimento da esportare con questi filtri.'); return; }
+  const t = FC_VISTA.totali, f = FC_VISTA.filtri || {};
+  const riga = r => `<tr><td>${FoglioCassa.dataIt(r.data)}</td><td>${esc(r.cliente || '')}</td><td>${esc(r.numero_polizza || '')}</td><td>${esc(r.compagnia || '')}</td><td>${esc(r.prodotto || '')}</td>
+    <td>${esc(r.mezzo_nome || '')}</td><td>${esc(FoglioCassa.PAGATORI[r.pagatore_tipo] || r.pagatore_tipo)}</td><td>${r.importo != null ? Number(r.importo).toFixed(2) : ''}</td>
+    <td>${r.provvigione != null ? Number(r.provvigione).toFixed(2) : ''}</td><td>${esc(r.collaboratore || (r.collaboratore_id ? 'rimosso' : 'agenzia'))}</td>
+    <td>${r.quota_collaboratore != null ? Number(r.quota_collaboratore).toFixed(2) : ''}</td><td>${r.margine_agenzia != null ? Number(r.margine_agenzia).toFixed(2) : ''}</td><td>${esc(r.fonte)}</td></tr>`;
+  const quad = (titolo, g) => `<tr><th colspan="13" style="text-align:left">${titolo}</th></tr>` + g.map(x => `<tr><td colspan="7">${esc(x.etichetta)}</td><td>${x.movimenti}</td><td>${x.premi.toFixed(2)}</td><td>${x.provvigioni.toFixed(2)}</td><td>${x.quota_collaboratori.toFixed(2)}</td><td></td><td></td></tr>`).join('');
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
+    + '<head><meta charset="utf-8"><style>table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;font:12px sans-serif}th{background:#f6f8fa;font-weight:700}</style></head><body>'
+    + '<table><thead><tr><th colspan="13">Foglio cassa ' + (f.dal ? 'dal ' + FoglioCassa.dataIt(f.dal) : '') + (f.al ? ' al ' + FoglioCassa.dataIt(f.al) : '')
+    + (f.compagnia ? ' · ' + esc(f.compagnia) : '') + (f.mezzo ? ' · ' + esc(FoglioCassa.MEZZI[f.mezzo] || f.mezzo) : '') + (f.collaboratore_id ? ' · ' + esc((window.TIT_COLLAB_NOMI || {})[f.collaboratore_id] || '') : '') + '</th></tr>'
+    + '<tr><th>Data</th><th>Cliente</th><th>Polizza</th><th>Compagnia</th><th>Prodotto</th><th>Mezzo</th><th>Chi paga</th><th>Premio</th><th>Provv. compagnia</th><th>Collaboratore</th><th>Quota collaboratore</th><th>Resta all\'agenzia</th><th>Fonte</th></tr></thead>'
+    + '<tbody>' + FC_VISTA.righe.map(riga).join('')
+    + `<tr><th colspan="7">Totale</th><th>${t.premi.toFixed(2)}</th><th>${t.provvigioni.toFixed(2)}</th><th></th><th>${t.quota_collaboratori.toFixed(2)}</th><th>${t.margine_agenzia.toFixed(2)}</th><th></th></tr>`
+    + quad('Quadratura per mezzo di pagamento', FC_VISTA.quadrature.perMezzo) + quad('Quadratura per compagnia', FC_VISTA.quadrature.perCompagnia) + quad('Quadratura per collaboratore', FC_VISTA.quadrature.perCollaboratore)
+    + '</tbody></table></body></html>';
+  const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'foglio-cassa_' + (f.dal || 'inizio') + '_' + (f.al || 'oggi') + '.xls';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+async function fcExportPdf() {
+  if (!FC_VISTA || !FC_VISTA.righe.length) { alert('Nessun movimento da stampare con questi filtri.'); return; }
+  const f = FC_VISTA.filtri || {};
+  try {
+    const jsPDF = await ppCaricaJsPdf();
+    const logo = await ppLogo();
+    const az = await ppAzienda();
+    const documento = FoglioCassa.documentoPdf(FC_VISTA, {
+      dal: f.dal, al: f.al, compagnia: f.compagnia, mezzo: f.mezzo,
+      collaboratore: f.collaboratore_id ? ((window.TIT_COLLAB_NOMI || {})[f.collaboratore_id] || null) : null,
+      azienda: { ragioneSociale: az.rs || '', sede: az.sede || '', piva: az.piva || '',
+        rui: (typeof ppRuiTesto === 'function' && az.rui_numero) ? ppRuiTesto(az.rui_sezione, az.rui_numero, az.rui_data) : '',
+        contatti: [az.tel, az.email, az.pec].filter(Boolean) } });
+    const doc = PdfWithus.disegna(jsPDF, documento, { logo });
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = documento.nomeFile;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  } catch (e) { alert('Non riesco a produrre il PDF: ' + (e.message || e)); }
+}
 
 /* ═══ COMPLEANNI DI OGGI E AUGURI (M3.3/M3.4, 19/09/2026) ═══════════════════
    Le regole (chi compie gli anni, chi si può contattare, il testo) stanno nel

@@ -2201,3 +2201,61 @@ c'era già.
 `TIT_VISTA` e `TIT_SEL` sono `let`: `window.TIT_VISTA` non esiste. Nella prova
 si usano i nomi nudi, come le altre prove dei titoli. È la stessa cosa scritta
 in §17 per le variabili dell'estratto conto, dall'altro lato.
+
+---
+
+## 25. Brief IAM #01 — M5: il foglio cassa (19/09/2026)
+
+| voce | fatto |
+|---|---|
+| 5.1 contenuto | le rate **incassate con la data** (`quote_titoli`), dal flusso della compagnia e segnate a mano — la colonna «fonte» lo dice riga per riga. Non è un terzo archivio |
+| 5.2 filtri | compagnia, mezzo, collaboratore, intervallo di date degli incassi; al clic su **Cerca** (M2); «Questo mese» come azzera |
+| 5.3 barra | Premi incassati · Provvigioni dirette · Provvigioni indirette (di cui ai collaboratori) · Resta all'agenzia · Da confermare |
+| 5.4 quadrature | per mezzo, per compagnia, per collaboratore — con la riga di totale, e la prova che **la somma dei gruppi torna col totale** |
+| 5.5 provvigioni | su ogni riga: provvigione di compagnia, collaboratore e la sua quota (con la %), quello che resta all'agenzia |
+| 5.6 azioni | correzione del movimento (data, mezzo, chi paga, nota) con il movimento a registro **sulla rata**; apertura della polizza e dell'anagrafica |
+| 5.7 export | Excel (tabella HTML come gli altri) e **PDF con la carta intestata** (`FoglioCassa.documentoPdf` → `PdfWithus.disegna`), tutti e due **sui filtri applicati** e sugli stessi oggetti della schermata |
+| dove | `tariffe/motore/foglio-cassa.js` (5 prove Node), blocco `fc*` e `#page-foglio-cassa` in `index.html`, 3 prove in `ui-test.mjs` (**444**) |
+
+### Dirette e indirette, decise (punto 4 «da chiarire»)
+
+Le provvigioni **arrivano dal file** dove la compagnia le dichiara (Prima sì,
+Plurima 0,00, §20) e stanno sulla rata; la quota del collaboratore viene da
+`iam_team.provv` con la **stessa funzione** dell'estratto conto
+(`EstrattoConto.rigaProvvigionale`, cercata a ogni chiamata come per
+`anagrafica.js`). Nessuna tabella di aliquote nuova.
+
+- **Diretta** = provvigione di compagnia su una rata senza collaboratore:
+  resta tutta all'agenzia. Su queste **non** si chiede la percentuale — la
+  prima stesura lo faceva, e tutte le dirette uscivano «da confermare» con
+  dirette = 0. L'ha detto la prova, non la lettura.
+- **Indiretta** = su una rata con collaboratore: quota a lui, margine
+  all'agenzia. «Resta all'agenzia» = dirette + margine sulle indirette.
+- Quello che non si sa non entra nei totali (§17): premi sì, provvigioni no,
+  e la card «Da confermare» conta quante.
+
+**Il filtro per collaboratore guarda chi ha PRODOTTO la rata**, non chi l'ha
+incassata: il foglio cassa è la produzione. Chi ha incassato sta nella colonna
+«chi paga» (M4), ed è un'altra domanda.
+
+### Dove sta la porta
+
+Il brief dice «dentro Portafoglio»: il tasto è in cima alla pagina
+Portafoglio, e la pagina evidenzia Portafoglio nel menu. **Non** è nel menu
+`MEGA` della scocca di IAM: quel menu è contratto (`INTERFACCIA-QUOTO-IAM.md`
+§2.6) e toccarlo vuol dire versione e impronta della scocca. Si raggiunge dal
+Portafoglio, che nel menu c'è.
+
+### Controprova
+
+Dirette e indirette confuse (tutte e due = tutte le righe): rossa la prova
+Node su dirette/indirette. La correzione del movimento con gli stessi valori
+**non scrive niente**, e c'è una prova.
+
+### Cosa resta aperto
+
+- Un «nuovo movimento manuale» dal foglio cassa non c'è: un incasso a mano
+  nasce nella pagina Titoli (M4), e il foglio lo legge. Se serve una scorciatoia
+  da qui, è un tasto che porta lì.
+- Il PDF si prova con `PdfWithus.disegna` intercettato: il disegno vero con
+  jsPDF vuole il CDN, che dal contenitore non si raggiunge (§14).

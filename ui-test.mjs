@@ -4193,6 +4193,55 @@ const avvio = async () => {
       return '2 titoli, riepilogo verificato';
     });
 
+    await prova('M4.2 · se incassa il collaboratore la rata lo dice (con chi), e il mezzo parte da quello della compagnia', async () => {
+      const r = await page.evaluate(async () => {
+        window.TIT_COLLAB = [{ id: 'c-1', nome: 'Mario', cognome: 'Rossi' }];
+        window.TIT_COLLAB_NOMI = { 'c-1': 'Rossi Mario' };
+        document.getElementById('tit-pagatore-collab').innerHTML = window.collabOpzioni('', '— quale collaboratore —');
+        window.titFasciaScegli('tutti');
+        /* Una sola rata aperta con un mezzo dichiarato dalla compagnia. */
+        const aperta = TIT_VISTA.find(t => t.stato === 'aperto');
+        aperta.mezzo_pagamento = 'paypal';
+        TIT_SEL = new Set([aperta.id]); window.titBarra();
+        const mezzoProposto = document.getElementById('tit-mezzo').value;
+        document.getElementById('tit-chi-paga').value = 'collaboratore'; window.titChiPaga();
+        const tendinaVisibile = document.getElementById('tit-pagatore-collab').style.display !== 'none';
+        /* Senza dire QUALE collaboratore non si incassa: il credito non avrebbe un debitore. */
+        const detti = []; const alertPrima = window.alert; window.alert = (m) => detti.push(String(m));
+        window.__COLLAUDO.db = [];
+        document.getElementById('tit-pagatore-collab').value = '';
+        window.confirm = () => true;
+        await window.titIncassaSelezionati();
+        window.alert = alertPrima;
+        const fermato = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_titoli').length === 0 && detti.some(a => /quale/.test(a));
+        TIT_SEL = new Set([aperta.id]); window.titBarra();
+        document.getElementById('tit-chi-paga').value = 'collaboratore'; window.titChiPaga();
+        document.getElementById('tit-pagatore-collab').value = 'c-1';
+        document.getElementById('tit-pagatore').value = '';
+        window.__COLLAUDO.db = [];
+        let riepilogo = null; window.confirm = (m) => { riepilogo = m; return true; };
+        await window.titIncassaSelezionati();
+        const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update').map(x => x.payload);
+        const log = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload);
+        document.getElementById('tit-chi-paga').value = 'cliente'; window.titChiPaga();
+        /* Si rimette a posto SOLO la rata toccata: la prova dopo conta le rate
+           aperte, e ricaricare tutto il banco riporterebbe in vita anche
+           quelle che una prova precedente ha incassato. */
+        aperta.stato = 'aperto'; aperta.incassato_il = null; aperta.pagatore = null;
+        aperta.pagatore_tipo = null; aperta.pagatore_collaboratore_id = null;
+        window.titRender();
+        return { mezzoProposto, tendinaVisibile, fermato, riepilogo, upd, log };
+      });
+      deve(r.mezzoProposto === 'paypal', 'il mezzo non parte da quello della compagnia: ' + r.mezzoProposto);
+      deve(r.tendinaVisibile, 'scegliendo «collaboratore» non compare la tendina di chi');
+      deve(r.fermato, 'ha incassato «a carico del collaboratore» senza dire quale');
+      deve(/credito dell'agenzia/.test(r.riepilogo || ''), 'il riepilogo non dice che nasce un credito: ' + r.riepilogo);
+      deve(r.upd.length === 1 && r.upd[0].pagatore_tipo === 'collaboratore' && r.upd[0].pagatore_collaboratore_id === 'c-1', 'la rata non dice chi ha pagato: ' + JSON.stringify(r.upd));
+      deve(r.upd[0].pagatore === 'Rossi Mario', 'il nome sulla quietanza non è quello del collaboratore: ' + r.upd[0].pagatore);
+      deve(r.log.some(l => l.entita === 'titolo' && /collaboratore Rossi Mario/.test(l.azione)), 'il credito non lascia il movimento sulla rata: ' + JSON.stringify(r.log.map(l => l.azione)));
+      return 'mezzo proposto PayPal; senza «chi» si ferma; con c-1 scrive pagatore_tipo + id e il movimento';
+    });
+
     await prova('titoli: si sceglie qualunque rata, ma incassare vale solo sulle aperte', async () => {
       /* 18/09/2026. Prima la casella di scelta c'era solo sulle rate aperte,
          perché l'unica azione in blocco era l'incasso: quella prova misurava
@@ -4492,6 +4541,51 @@ const avvio = async () => {
       deve(/scaduta/.test(r.vers.body), 'non dice che la rata è scaduta');
       deve(r.rim.mio === 'none' && r.rim.vecchio !== 'none', 'la linguetta delle rimesse non scambia le viste');
       return '24,73 + 16,48 di qua, 110,00 di là';
+    });
+
+    await prova('M4.2 · l\'estratto conto mostra il credito dell\'agenzia verso il collaboratore, e «Segna rimesso» lo chiude', async () => {
+      const TIT = 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee';
+      const r = await page.evaluate(async (TIT) => {
+        window.ECP_TITOLI = [
+          { id: 't1', polizza_id: 'p1', stato: 'incassato', incassato_il: '2026-09-10', importo_lordo: 390, provvigione: 41.21, collaboratore_id: 'c-1' },
+          { id: 't2', polizza_id: 'p1', stato: 'aperto', data_scadenza: '2026-09-05', importo_lordo: 110, collaboratore_id: 'c-1' },
+          /* incassata DA LUI per conto dell'agenzia, non ancora rimessa */
+          { id: TIT, polizza_id: 'p1', stato: 'incassato', incassato_il: '2026-09-12', importo_lordo: 120, mezzo_pagamento: 'contante',
+            collaboratore_id: 'c-1', pagatore_tipo: 'collaboratore', pagatore_collaboratore_id: 'c-1' }
+        ];
+        document.getElementById('ecp-collab').value = 'c-1';
+        window.ecpTab('versare');
+        const prima = { sum: document.getElementById('ecp-summary').textContent, body: document.getElementById('ecp-body').textContent,
+                        righe: document.querySelectorAll('#ecp-body .ecp-credito').length };
+        /* Nelle provvigioni quella rata NON è un credito: è premio, e la sua
+           provvigione (non dichiarata) resta da confermare, come le altre. */
+        window.ecpTab('provvigioni');
+        const provv = document.getElementById('ecp-body').textContent;
+        window.ecpTab('versare');
+        window.__COLLAUDO.db = [];
+        window.confirm = () => true;
+        await window.ecpRimesso(TIT);
+        const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update').map(x => ({ p: x.payload, f: x.filtri }));
+        const log = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload);
+        const dopo = { body: document.getElementById('ecp-body').textContent, righe: document.querySelectorAll('#ecp-body .ecp-credito').length };
+        /* Il riepilogo d'agenzia porta la colonna. */
+        document.getElementById('ecp-collab').value = '';
+        window.ECP_TITOLI[2].rimesso_il = null;
+        window.ecpRender();
+        const agenzia = document.getElementById('ecp-body').textContent + ' ' + document.getElementById('ecp-summary').textContent;
+        document.getElementById('ecp-collab').value = 'c-1';
+        return { prima, provv, upd, log, dopo, agenzia };
+      }, TIT);
+      deve(r.prima.righe === 1 && /120,00/.test(r.prima.body) && /da rimettere/i.test(r.prima.body), 'il credito non si vede nella linguetta «Da versare»: ' + r.prima.body.slice(-200));
+      deve(/da rimettere/.test(r.prima.sum) && /120,00/.test(r.prima.sum), 'la card del credito manca: ' + r.prima.sum);
+      /* La rata da rimettere NON si confonde con i sospesi: 110 è il sospeso, 120 il credito. */
+      deve(/110,00/.test(r.prima.body), 'il sospeso è sparito');
+      deve(!/Segna rimesso/.test(r.provv), 'il credito compare anche fra le provvigioni: è premio, non compenso');
+      deve(r.upd.length === 1 && r.upd[0].p.rimesso_il && r.upd[0].f.id === TIT, 'la rimessa non scrive rimesso_il sulla rata giusta: ' + JSON.stringify(r.upd));
+      deve(r.log.some(l => l.entita === 'titolo' && l.entita_id === TIT && /Rimessa/.test(l.azione)), 'la rimessa non lascia il movimento: ' + JSON.stringify(r.log));
+      deve(r.dopo.righe === 0, 'dopo la rimessa il credito è ancora aperto');
+      deve(/Da rimettere/.test(r.agenzia) && /120,00/.test(r.agenzia), 'il riepilogo d\'agenzia non porta il credito: ' + r.agenzia.slice(0, 300));
+      return 'credito 120 visibile, non fra le provvigioni, chiuso con rimesso_il + movimento';
     });
 
     await prova('estratto conto: quello che non si sa non entra nel totale, e si vede il perché', async () => {

@@ -2155,3 +2155,49 @@ resterà vuota.
 - Chi ha già ricevuto gli auguri oggi si vede nella sessione (`CPL_INVIATI`)
   e nel diario del cliente; riaprendo la pagina il tasto ricompare. Leggere il
   diario del giorno per spegnerlo è un pezzo piccolo, non fatto.
+
+---
+
+## 24. Brief IAM #01 — M4: collaboratori e pagamenti (19/09/2026)
+
+| voce | fatto |
+|---|---|
+| 4.1 codici produttore per compagnia | **già fatto** (§19): tabella `quote_codici_collaboratore` (compagnia + codice → persona), scheda del collaboratore in IAM, abbinamento dall'anteprima del flusso, rate che nascono già assegnate. L'unica differenza col brief è voluta: «collegare automaticamente» vale **dopo che una persona ha deciso una volta**; i codici non decisi sono la lista di eccezioni |
+| 4.2 pagamento precompilato | il mezzo che dice la compagnia è già sulla polizza e sulla rata dal flusso; nella barra dell'incasso **parte da quello** (`titBarra`) e si corregge; la correzione dal dettaglio lascia il movimento (M1) |
+| 4.2 chi paga | `quote_titoli.pagatore_tipo` (cliente / collaboratore / agenzia), `pagatore_collaboratore_id`, `rimesso_il`, `rimesso_da` (`20260919_m4_pagatore_collaboratore.sql`, applicata). La barra dell'incasso chiede **chi ha pagato**; «collaboratore» senza dire quale non incassa |
+| 4.2 credito agenzia | `EstrattoConto.creditoAgenzia`: le rate incassate **dal** collaboratore e non rimesse. Nell'estratto conto (linguetta «Da versare») una sezione sua con «Segna rimesso»; nel riepilogo d'agenzia la colonna «Da rimettere» e la card del totale |
+| prove | `estratto-conto.test.mjs` (15), `ui-test.mjs` (441) |
+
+### Tre conti, non due
+
+§17 ne aveva due: da versare (rate non incassate) e provvigioni (rate
+incassate). La rata incassata dal collaboratore per conto dell'agenzia non
+sta in nessuno dei due: **è incassata** (quindi non è un sospeso) ed **è
+premio** (quindi non è compenso). È un terzo conto — un credito dell'agenzia
+verso di lui — e si chiude solo con la rimessa. Metterla fra i sospesi
+l'avrebbe fatta sembrare un cliente moroso; fra le provvigioni, un compenso.
+
+**Il credito guarda chi ha PAGATO, non chi ha prodotto.** Una rata assegnata a
+Tizio ma incassata da Caio è un credito verso Caio: per questo il riepilogo
+d'agenzia lo calcola su tutte le rate, non sul mucchio di ognuno, e una
+persona che ha solo incassato (mai prodotto) compare lo stesso.
+
+**Il mezzo di pagamento allargato anche per le rate.** `TIT_MEZZI` ne aveva
+cinque mentre il vincolo del database ne ammette nove dal 18/09: un PayPal
+arrivato dal flusso non si poteva scegliere nella barra dell'incasso e non si
+leggeva nell'estratto conto.
+
+### Quello che il brief chiedeva al punto 3 «da chiarire»
+
+*«Il credito va solo tracciato, o serve una vista partite aperte con saldo e
+registrazione dell'incasso?»* — fatta la seconda, ma piccola: la vista è
+la sezione nell'estratto conto del collaboratore (con il saldo aperto) e la
+registrazione è «Segna rimesso» (`rimesso_il`, `rimesso_da`, movimento sulla
+rata). Non è una milestone a parte: sono quaranta righe sopra un motore che
+c'era già.
+
+### Trappola del banco
+
+`TIT_VISTA` e `TIT_SEL` sono `let`: `window.TIT_VISTA` non esiste. Nella prova
+si usano i nomi nudi, come le altre prove dei titoli. È la stessa cosa scritta
+in §17 per le variabili dell'estratto conto, dall'altro lato.

@@ -1,19 +1,15 @@
 echo "== ora"; date '+%F %T %Z'
-echo "== GROUPAMA: e' ancora sospeso da me?"
-ls -1 /root/servizi-sospesi/ 2>/dev/null
-echo -n "unita' presente in /etc/systemd/system? "; [ -f /etc/systemd/system/groupama-scraper.service ] && echo "SI (qualcuno l'ha rimessa)" || echo "no, ancora sospesa"
-echo -n "risponde sulla 4500? "; curl -s --max-time 5 http://127.0.0.1:4500/loginstate || echo "no, fermo"
+sleep 100
+cd /opt/withus-backend
+echo "== commit vivo"; git log --oneline -1
+echo "== l'interruttore e' nel codice che gira?"
+grep -c "GROUPAMA_RIENTRO_AUTO" scraper/groupama/quote-service.mjs
+echo "== ed e' acceso da qualche parte? (deve essere vuoto: spento)"
+systemctl show groupama-scraper -p Environment -p EnvironmentFiles --no-pager 2>/dev/null | grep -i RIENTRO || echo "  nessuna variabile: spento, come deve"
+grep -rl "GROUPAMA_RIENTRO_AUTO" /etc/systemd/system/ /opt/withus-backend/server/.env 2>/dev/null || echo "  non impostata da nessuna parte: spento"
 echo
-echo "== gli altri scraper e il backend"
-for n in moto allianz italiana hdi axa; do printf '%-10s %s\n' "$n" "$(systemctl is-active $n-scraper.service 2>/dev/null)"; done
-printf '%-10s %s\n' "backend" "$(systemctl is-active withus-backend 2>/dev/null)"
-echo
-echo "== stato di chi e' su"
-for p in allianz:4200 hdi:4400 axa:4700; do n=${p%%:*}; k=${p##*:}; printf '%-10s ' "$n"; curl -s --max-time 5 http://127.0.0.1:$k/loginstate | head -c 160; echo; done
-echo
-echo "== richieste di codice nelle ultime 24 ore, su TUTTI gli scraper"
-journalctl --since "-24 hours" --no-pager 2>/dev/null | grep -cE "schermata OTP raggiunta" | sed 's/^/codici chiesti: /'
-echo "== email mandate dal sistema nelle ultime 24 ore"
-journalctl --since "-24 hours" --no-pager 2>/dev/null | grep -c "email inviata" | sed 's/^/email della vigilanza: /'
-echo
-echo "== commit vivo"; cd /opt/withus-backend && git log --oneline -1
+echo "== stato groupama"
+systemctl is-active groupama-scraper.service
+curl -s --max-time 6 http://127.0.0.1:4500/loginstate; echo
+echo "== ultime righe del suo giornale"
+journalctl -u groupama-scraper --since "-10 min" --no-pager -o short 2>/dev/null | grep "\[groupama\]" | tail -8

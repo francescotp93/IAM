@@ -1,18 +1,18 @@
-id: dep193-1789821143  exit: 0  2026-09-19 12:35:32
+id: 1789830593  exit: 0  2026-09-19 15:10:26
 ----
-== ora
-2026-09-19 12:32:35 UTC
-== commit vivo
-7162ff5 All'avvio il portale Groupama si apre una volta sola, non tre (#193)
-== stato groupama
-{"running":false,"step":"loggato","since":1789821176182,"msg":"Sessione attiva","codice_chiesto_il":0}
-== giornale groupama, ultimi 10 minuti
-Sep 19 12:32:40 vps-d6443a46 start-service.sh[3499080]: 12:32:40 [groupama] SIGTERM: salvo la sessione prima di chiudere
-Sep 19 12:32:40 vps-d6443a46 start-service.sh[3499080]: 12:32:40 [groupama] sessione NON salvata: browserContext.storageState: Target page, context or browser has been closed
-Sep 19 12:32:47 vps-d6443a46 start-service.sh[3502430]: 12:32:46 [groupama] telecomando HTTP su 127.0.0.1:4500
-Sep 19 12:32:47 vps-d6443a46 start-service.sh[3502430]: 12:32:47 [groupama] sessione ripresa da auth.json: 20 cookie
-Sep 19 12:32:56 vps-d6443a46 start-service.sh[3502430]: 12:32:56 [groupama] rientrato con la sessione salvata: nessun codice da chiedere ✅
-Sep 19 12:32:56 vps-d6443a46 start-service.sh[3502430]: 12:32:56 [groupama] sessione persistente attiva ✅
+== commit del clone che Caddy serve ==
+755fc4c Anche la scheda in IAM propone quali codici sembrano suoi (#198)
 
-== mail di Groupama negli ultimi 15 minuti
-  mail di Groupama negli ultimi 15 minuti: 0
+== i file di oggi ci sono? ==
+tariffe/motore/assegnazione.js         6491fd70
+tariffe/motore/registro.js             e530bb11
+iam/index.html                         86c8852e
+index.html (QUOTO)                     fe01465d
+
+== il blocco dei codici compagnia e' nel documento servito? ==
+5
+2
+
+== e come risponde Caddy dall'interno ==
+iam/                                308
+/nuovo-preventivo/tariffe/.../asseg  308

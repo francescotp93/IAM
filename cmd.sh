@@ -1,8 +1,11 @@
 echo "== ora"; date '+%F %T %Z'
-echo "== fermo groupama per fermare il battito ogni 4 minuti"
-systemctl stop groupama-scraper.service 2>&1
-sleep 2
-echo -n "stato: "; systemctl is-active groupama-scraper.service 2>&1
-echo -n "porta 4500: "; curl -s --max-time 5 http://127.0.0.1:4500/loginstate || echo "muta"
-echo
-echo "NOTA: torna su da solo al prossimo deploy (autopull). La cura vera e' la correzione al keep-alive."
+sleep 120
+cd /opt/withus-backend
+echo "== commit vivo"; git log --oneline -1
+echo "== la guardia c'e' nel codice che gira?"
+grep -c "LOGIN_STATE.step !== 'loggato'" scraper/groupama/quote-service.mjs
+echo "== stato groupama"
+systemctl is-active groupama-scraper.service
+curl -s --max-time 6 http://127.0.0.1:4500/loginstate; echo
+echo "== il suo giornale"
+journalctl -u groupama-scraper --since "-10 min" --no-pager -o short 2>/dev/null | grep "\[groupama\]" | tail -8

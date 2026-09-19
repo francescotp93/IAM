@@ -1,6 +1,11 @@
-id: 1789856801  exit: 0  2026-09-19 22:27:12
+id: 1789856847  exit: 0  2026-09-19 22:27:46
 ----
 === commit ===
-baffe92 Bugfix: uno stato di preventivo fuori vocabolario svuotava la scheda cliente (#207)
+e622ac7 Un numero di versione che non può mentire: 0.1.0 (#208)
 === versione.json servito ===
-=== la versione annotata nelle due pagine servite ===
+=== versione annotata: IAM ===
+name="app-versione" content="0.1.0"
+name="app-versione-nome" content="Conti e causali"
+=== versione annotata: preventivatore ===
+name="app-versione" content="0.1.0"
+name="app-versione-nome" content="Conti e causali"

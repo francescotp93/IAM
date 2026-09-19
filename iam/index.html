@@ -25,6 +25,7 @@
      Se non si carica, `logMovimento` non scrive e non rompe niente: un
      movimento perso è meglio di una schermata che non si apre. -->
 <script src="/nuovo-preventivo/tariffe/motore/registro.js?v=20260919"></script>
+<script src="/nuovo-preventivo/tariffe/motore/assegnazione.js?v=20260919"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -431,6 +432,16 @@ input[type=file]{display:none;}
 .palt{background:var(--grn-bg);color:var(--grn-txt);}
 .pmed{background:var(--amb-bg);color:var(--amb-txt);}
 .pbas{background:var(--red-bg);color:var(--red-txt);}
+/* I codici compagnia della persona. L'avviso sul RUI discorde è giallo e non
+   rosso: non è un guasto, è una cosa da guardare — e un rosso che non è un
+   guasto insegna a ignorare i rossi. */
+.ccp-r{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:9px 0;border-bottom:1px solid var(--bord)}
+.ccp-r:last-child{border-bottom:none}
+.ccp-avviso{margin-top:4px;font-size:12px;line-height:1.45;padding:6px 9px;border-radius:8px;
+  background:var(--amb-bg,#fff7ed);color:var(--amb-txt,#92400e)}
+.ccp-agg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ccp-agg select{flex:1;min-width:220px}
 .fsec{margin-top:14px;}
 .fsec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);margin-bottom:8px;}
 .doc-btn{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surf2);border-radius:var(--rs);cursor:pointer;font-size:12px;color:var(--txt2);border:1.5px dashed var(--bord);margin-bottom:6px;transition:all .15s;}
@@ -2998,6 +3009,15 @@ input[type=file]{display:none;}
            torna indietro mesi dopo e' «chi ha cambiato questa percentuale»: da
            oggi c'e' scritto. Il riquadro lo riempie `regInstalla` leggendo il
            registro, e lo disegna il motore condiviso. -->
+      <!-- I CODICI COMPAGNIA (19/09/2026). La strada inversa: dal codice alla
+           persona si passa da QUOTO, da qui si guarda dall'altra parte —
+           «questa persona su quali codici lavora?». È la domanda che si fa
+           aprendo una scheda, e fino a oggi non aveva risposta. -->
+      <div class="fsec"><div class="fsec-title">Codici compagnia</div>
+        <div class="cl-sub" style="margin-bottom:8px">Il codice con cui la compagnia chiama questa persona nel flusso del portafoglio.
+          Abbinarlo qui vuol dire che le sue rate, da stanotte in poi, nascono già sue.</div>
+        <div id="mc-codici"></div>
+      </div>
       <div class="fsec"><div class="fsec-title">Chi e quando</div>
         <div id="mc-storia"></div>
       </div>
@@ -3722,6 +3742,124 @@ async function regInstalla(contenitoreId, entita, id, creato) {
   const mov = await regCarica(entita, id);
   const b = document.getElementById(contenitoreId);
   if (b) b.innerHTML = Registro.storiaHTML(mov, creato, { esc });
+}
+
+/* ══ I CODICI COMPAGNIA DI QUESTA PERSONA (19/09/2026) ═══════════════════════
+   La strada inversa. Dal codice alla persona si passa da QUOTO (l'anteprima del
+   flusso e il pannello dei Titoli); da qui si guarda dall'altra parte: **questa
+   persona, su quali codici lavora?** È la domanda che si fa aprendo una scheda,
+   e finora non aveva risposta da nessuna parte.
+
+   La decisione è la stessa e la costruisce lo STESSO motore che carica QUOTO:
+   `Assegnazione.rigaDecisione`. Tre schermate che scrivono la stessa riga in tre
+   modi diversi diventano tre regole diverse su chi viene pagato.
+
+   Chi decide è l'admin, come di là: qui si decide a chi vanno dei soldi. */
+let CCP_RIGHE = [];      // tutti i codici in tabella, per compagnia e codice
+let CCP_PERSONA = null;  // la persona di cui si sta guardando la scheda
+
+function ccpPuoDecidere() { return PROFILO?.ruolo === 'admin'; }
+
+async function ccpInstalla(personaId) {
+  CCP_PERSONA = personaId || null;
+  const box = document.getElementById('mc-codici');
+  if (!box) return;
+  if (!personaId) {
+    /* Una scheda che non è ancora agganciata a una persona del registro non ha
+       codici, e non è un errore: lo si dice invece di mostrare un vuoto. */
+    box.innerHTML = '<div class="cl-sub">Questa scheda non è ancora agganciata a una persona del registro: i codici si abbinano da lì.</div>';
+    return;
+  }
+  box.innerHTML = '<div class="cl-sub" style="padding:6px 0">Carico i codici…</div>';
+  try {
+    const { data, error } = await db.from('quote_codici_collaboratore').select('*');
+    if (error) throw error;
+    CCP_RIGHE = data || [];
+    ccpRender();
+  } catch (e) {
+    /* «Non si è potuto leggere» non è «non ce ne sono»: confonderli qui
+       vorrebbe dire far credere che una persona non abbia codici mentre li ha
+       (§18, la stessa regola del registro). */
+    box.innerHTML = `<div class="cl-sub">Non riesco a leggere i codici compagnia.<br>
+      <small>${esc(e.message || e)} — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerli.</small></div>`;
+  }
+}
+
+function ccpRender() {
+  const box = document.getElementById('mc-codici');
+  if (!box || !window.Assegnazione) return;
+  const suoi = CCP_RIGHE.filter(r => r.collaboratore_id === CCP_PERSONA && Assegnazione.statoDecisione(r) === 'persona');
+  const liberi = CCP_RIGHE.filter(r => Assegnazione.statoDecisione(r) === 'non-deciso');
+  const ruiScheda = (document.getElementById('mc-rui')?.value || '').replace(/[\s.\-\/]/g, '').toUpperCase();
+  const puo = ccpPuoDecidere();
+
+  box.innerHTML = `
+    ${suoi.length ? suoi.map(r => {
+      const ruiFlusso = (r.rui_flusso || '').replace(/[\s.\-\/]/g, '').toUpperCase();
+      /* Il confronto fra il RUI della scheda e quello che manda la compagnia:
+         se non coincidono, o l'abbinamento è sbagliato o uno dei due numeri è
+         vecchio. In tutti e due i casi è meglio saperlo prima di pagare. */
+      const discorde = ruiScheda && ruiFlusso && ruiScheda !== ruiFlusso;
+      return `<div class="ccp-r">
+        <div>
+          <b>${esc(r.codice)}</b> <span class="cl-sub">${esc(r.compagnia)}</span>
+          ${r.produttore_flusso && r.produttore_flusso !== r.codice
+            ? `<span class="cl-sub"> · produttore ${esc(r.produttore_flusso)}</span>` : ''}
+          <div class="cl-sub">${r.nome_flusso ? esc(r.nome_flusso) + ' · ' : ''}${
+            r.rui_flusso ? 'RUI ' + esc(r.rui_flusso) : 'nessun RUI nel flusso'}${
+            r.email_flusso ? ' · ' + esc(r.email_flusso) : ''}</div>
+          ${discorde ? `<div class="ccp-avviso">Il RUI di questa scheda (${esc(document.getElementById('mc-rui').value)})
+            non è quello che manda la compagnia: o l'abbinamento è sbagliato, o uno dei due numeri è vecchio.</div>` : ''}
+        </div>
+        ${puo ? `<button class="mbtn" onclick="ccpTogli('${esc(r.compagnia)}','${esc(r.codice)}')"><i class="ti ti-unlink"></i> Togli</button>` : ''}
+      </div>`;
+    }).join('') : '<div class="cl-sub">Nessun codice compagnia abbinato a questa persona.</div>'}
+
+    ${puo && liberi.length ? `<div class="ccp-agg">
+      <select id="ccp-libero">
+        <option value="">— codici ancora da abbinare —</option>
+        ${liberi.map(r => `<option value="${esc(r.compagnia)}|${esc(r.codice)}">${esc(r.compagnia)} ${esc(r.codice)}${
+          r.nome_flusso ? ' · ' + esc(r.nome_flusso) : ''}${r.rui_flusso ? ' · RUI ' + esc(r.rui_flusso) : ''}</option>`).join('')}
+      </select>
+      <button class="mbtn" onclick="ccpAggiungi()"><i class="ti ti-link"></i> Abbina a questa persona</button>
+    </div>` : ''}
+    ${puo && !liberi.length ? '<div class="cl-sub" style="margin-top:8px">Non ci sono codici in attesa di essere abbinati. Quelli nuovi arrivano con l\'importazione del portafoglio.</div>' : ''}`;
+}
+
+/* Scrive la decisione. Le evidenze si ripassano tutte: un `upsert` riscrive la
+   riga intera, e senza di loro il codice tornerebbe a essere una sigla. */
+async function ccpScrivi(compagnia, codice, valore) {
+  const k = compagnia + '|' + codice;
+  const vecchia = CCP_RIGHE.find(r => r.compagnia === compagnia && r.codice === codice) || {};
+  const riga = Assegnazione.rigaDecisione(k, valore, vecchia, ME?.id || null);
+  const { error } = await db.from('quote_codici_collaboratore')
+    .upsert([riga], { onConflict: 'compagnia,codice' });
+  if (error) throw error;
+  CCP_RIGHE = CCP_RIGHE.filter(r => !(r.compagnia === compagnia && r.codice === codice)).concat([riga]);
+  return riga;
+}
+
+async function ccpAggiungi() {
+  const v = document.getElementById('ccp-libero')?.value || '';
+  if (!v || !CCP_PERSONA) return;
+  const [compagnia, codice] = v.split('|');
+  if (!confirm('Abbinare il codice ' + codice + ' di ' + compagnia + ' a questa persona?\n\nDa questo momento le rate di quel codice sono sue, anche quelle già in archivio: si assegnano dai Titoli del preventivatore.')) return;
+  try {
+    await ccpScrivi(compagnia, codice, CCP_PERSONA);
+    logMovimento('Codice compagnia abbinato · ' + compagnia + ' ' + codice, 'collaboratore', codice, CCP_PERSONA);
+    ccpRender();
+  } catch (e) { alert('Non riesco ad abbinare: ' + (e.message || e)); }
+}
+
+async function ccpTogli(compagnia, codice) {
+  if (!confirm('Togliere il codice ' + codice + ' di ' + compagnia + ' da questa persona?\n\nLe rate già assegnate NON tornano indietro: restano sue finché non le si cambia dai Titoli.')) return;
+  try {
+    /* Si toglie la DECISIONE, non la riga: nome, email, RUI e codice produttore
+       che il flusso aveva portato restano, e servono a chi dovrà riabbinarlo. */
+    await ccpScrivi(compagnia, codice, '');
+    logMovimento('Codice compagnia tolto · ' + compagnia + ' ' + codice, 'collaboratore', codice, CCP_PERSONA);
+    ccpRender();
+  } catch (e) { alert('Non riesco a togliere l\'abbinamento: ' + (e.message || e)); }
 }
 
 function initDB() {
@@ -8171,6 +8309,9 @@ async function openCollabModal(id) {
   selCollabTab('ana');
   document.getElementById('modal-collab').classList.add('show');
   regInstalla('mc-storia', 'scheda', TEAM_ID, { nome: c?.creato_da_nome || null, il: c?.creato_il || null, azione: 'Scheda creata' });
+  /* I codici della compagnia stanno sulla PERSONA, non sulla scheda economica:
+     una persona può cambiare scheda e i suoi codici restano suoi. */
+  ccpInstalla(TEAM_PERSONA);
   const comps = c?.compagnie || [];
   ['hdi','allianz','groupama','prima','generali','sara','vittoria','unipolsai'].forEach(k=>{
     const el=document.getElementById('mc-comp-'+k);

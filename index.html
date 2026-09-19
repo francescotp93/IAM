@@ -16007,36 +16007,13 @@ function asgScegli(chiave, valore) {
   if (q) q.textContent = piano.assegna.length ? '· ' + piano.assegna.length + ' rate' : '';
 }
 
-/* La riga di decisione, costruita in UN posto solo: la scrivono due schermate
-   — il pannello del pregresso e l'anteprima del flusso — e due costruzioni
-   diverse della stessa riga prima o poi diventano due regole diverse su chi
-   viene pagato. */
+/* La riga di decisione la costruisce il MOTORE, non questa pagina: la scrivono
+   tre schermate — il pannello del pregresso, l'anteprima del flusso e la scheda
+   del collaboratore in IAM, che è un altro documento — e tre costruzioni della
+   stessa riga prima o poi diventano tre regole diverse su chi viene pagato.
+   Qui resta solo chi firma, che il motore non può sapere. */
 function asgRigaDecisione(chiave, valore, evidenze) {
-  const [compagnia, codice] = String(chiave).split('|');
-  const vuota = !valore;
-  const e = evidenze || {};
-  return {
-    compagnia, codice,
-    /* Un `upsert` riscrive la RIGA INTERA: le colonne che non si passano
-       tornano al valore di partenza. Senza queste quattro, abbinare un codice
-       cancellerebbe nome, email, RUI e codice produttore che il flusso aveva
-       portato — e la prossima volta quel codice tornerebbe a essere una sigla
-       da riconoscere a memoria. */
-    nome_flusso: e.nome_flusso || e.nome || null,
-    email_flusso: e.email_flusso || e.email || null,
-    rui_flusso: e.rui_flusso || e.rui || null,
-    produttore_flusso: e.produttore_flusso || e.produttore || null,
-    collaboratore_id: valore === '__nessuno__' ? null : (valore || null),
-    nessuno: valore === '__nessuno__',
-    /* `deciso` è quello che distingue una decisione da una riga di sole
-       evidenze. Rimettere una scelta su «da decidere» la spegne invece di
-       cancellare la riga: nome, email e RUI che il flusso ha portato servono a
-       riconoscere quel codice la prossima volta, e buttarli via vorrebbe dire
-       rifare da capo lo stesso riconoscimento. */
-    deciso: !vuota,
-    deciso_da: vuota ? null : (currentUser?.id || null),
-    deciso_il: new Date().toISOString()
-  };
+  return Assegnazione.rigaDecisione(chiave, valore, evidenze, currentUser?.id || null);
 }
 
 /* Una decisione sola, scritta subito. La usa l'anteprima del flusso, dove i

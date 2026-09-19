@@ -1789,3 +1789,44 @@ quello che c'era.
 - **La strada inversa non c'è**: dalla scheda di una persona non si vede quali
   codici compagnia sono suoi. Il posto giusto è la scheda del collaboratore in
   IAM, ed è un lavoro di là (§10).
+
+### La strada inversa: dalla scheda della persona ai suoi codici (19/09/2026)
+
+Dal codice alla persona si passa da QUOTO; dalla scheda del collaboratore in
+IAM si guarda dall'altra parte — **questa persona su quali codici lavora?**
+È la domanda che si fa aprendo una scheda, e fino a oggi non aveva risposta da
+nessuna parte.
+
+| pezzo | dove |
+|---|---|
+| il riquadro «Codici compagnia» | `#mc-codici` e blocco `ccp*` in `iam/index.html` |
+| il motore, **lo stesso file** | `/nuovo-preventivo/tariffe/motore/assegnazione.js` |
+| prove | `iam/verifica/codici-compagnia.test.mjs` — 10 |
+
+**La riga di decisione è salita nel motore** (`Assegnazione.rigaDecisione`).
+La scrivono tre schermate — il pannello del pregresso, l'anteprima del flusso e
+la scheda in IAM, che è un altro documento — e tre costruzioni della stessa riga
+diventano tre regole diverse su chi viene pagato. In pagina resta solo chi
+firma, che il motore non può sapere.
+
+**I codici stanno sulla PERSONA, non sulla scheda economica.** `TEAM_PERSONA`
+(`quote_collaboratori.id`), non `TEAM_ID` (`iam_team.id`): una persona può
+cambiare scheda e i suoi codici restano suoi, mentre agganciarli alla scheda
+vorrebbe dire perderli al primo cambio.
+
+**Il RUI della scheda si confronta con quello del flusso**, normalizzato come
+nel motore. Se non coincidono, o l'abbinamento è sbagliato o uno dei due numeri
+è vecchio: in tutti e due i casi è meglio saperlo prima di pagare. L'avviso è
+**giallo e non rosso** — non è un guasto, e un rosso che non è un guasto insegna
+a ignorare i rossi.
+
+**Togliere un codice toglie la DECISIONE, non la riga**: nome, email, RUI e
+codice produttore che il flusso aveva portato restano, e servono a chi dovrà
+riabbinarlo. E lo dice in faccia: *le rate già assegnate non tornano indietro*,
+perché il dato è sulla rata e questa tabella è solo il modo con cui ci si è
+arrivati.
+
+**Decide l'admin, non lo staff**, come nel pannello: qui si decide a chi vanno
+dei soldi. La prova non guarda solo che il cancello esista — guarda che sia
+**chiamato**, perché una funzione di controllo che non chiama nessuno è il
+guasto numero uno di questo repository (§1).

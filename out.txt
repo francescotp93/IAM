@@ -1,16 +1,19 @@
-id: stopora-1789834586  exit: 0  2026-09-19 16:16:54
+id: brief01-1789837928  exit: 0  2026-09-19 17:12:16
 ----
-== ora
-2026-09-19 16:16:51 UTC
-== FERMO SUBITO groupama: sta girando in tondo
-stato: inactive
-porta 4500: muta
-
-== che cosa faceva: giornale groupama, ultimi 40 minuti, SENZA filtri
-Sep 19 16:16:51 vps-d6443a46 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
-Sep 19 16:16:51 vps-d6443a46 start-service.sh[3502430]: 16:16:51 [groupama] SIGTERM: nessuna sessione viva, tengo la copia su disco
-Sep 19 16:16:51 vps-d6443a46 systemd[1]: groupama-scraper.service: Deactivated successfully.
-Sep 19 16:16:51 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
-Sep 19 16:16:51 vps-d6443a46 systemd[1]: groupama-scraper.service: Consumed 6min 34.168s CPU time over 3h 44min 10.546s wall clock time, 535.7M memory peak.
-
-== e il backend: righe su otp/codice/conferma, ultimi 40 minuti
+== commit su /opt/withus-backend
+9406b3a Brief IAM #01 · M4: chi paga la rata, credito dell'agenzia verso il collaboratore, rimessa (#203)
+== ultimo autopull
+Sep 19 17:11:13 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 19 17:11:13 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 5.302s CPU time over 5.740s wall clock time, 105.1M memory peak.
+Sep 19 17:12:11 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+== M1..M5 nel codice servito
+reg-ultima: 1
+pf-date-su: 3
+rin-card-sub: 2
+cpl-oggi: 3
+tit-chi-paga: 3
+page-foglio-cassa: 0
+anagrafica.js: presente
+foglio-cassa.js: ASSENTE
+== md5 index.html
+0e083b01be91

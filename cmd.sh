@@ -1,6 +1,10 @@
-sleep 100
-echo "== commit su /opt/withus-backend"; git log --oneline -1
-echo "== M5 nel codice servito"
-for k in 'page-foglio-cassa' 'fcExportPdf'; do printf '%s: ' "$k"; grep -c "$k" index.html; done
-printf 'foglio-cassa.js: '; test -f tariffe/motore/foglio-cassa.js && echo presente || echo ASSENTE
-echo "== md5 index.html"; md5sum index.html | cut -c1-12
+cd /opt/withus-backend
+git log --oneline -1
+echo "--- contabilita.js ---"
+ls -l tariffe/motore/contabilita.js 2>&1 | tail -1
+echo "--- pannello conti in iam/index.html ---"
+grep -c 'panel-conti\|cntPuoScrivere' iam/index.html
+echo "--- voce di menu ---"
+grep -c "Conti e causali" iam/withus-one.js
+echo "--- impronta scocca servita ---"
+md5sum iam/withus-one.js | cut -c1-8

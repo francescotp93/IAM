@@ -1,12 +1,6 @@
-id: 1789849474  exit: 0  2026-09-19 20:24:50
+id: 1789856801  exit: 0  2026-09-19 22:27:12
 ----
 === commit ===
 baffe92 Bugfix: uno stato di preventivo fuori vocabolario svuotava la scheda cliente (#207)
-=== il preventivatore servito ha la correzione? ===
-  prevStatoBadge     3
-  chiusa:{label      1
-  rigaSicura         3
-=== IAM servito: targhetta versione ===
-  um-versione          2
-  mostraVersioneInUso  2
-  build 2026-06-15c    2
+=== versione.json servito ===
+=== la versione annotata nelle due pagine servite ===

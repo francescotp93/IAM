@@ -1,12 +1,6 @@
-echo "== ora"; date '+%F %T %Z'
-echo "== FERMO SUBITO groupama: sta girando in tondo"
-systemctl stop groupama-scraper.service 2>&1
-sleep 2
-echo -n "stato: "; systemctl is-active groupama-scraper.service 2>&1
-echo -n "porta 4500: "; curl -s --max-time 5 http://127.0.0.1:4500/loginstate || echo "muta"
-echo
-echo "== che cosa faceva: giornale groupama, ultimi 40 minuti, SENZA filtri"
-journalctl -u groupama-scraper --since "-40 min" --no-pager -o short 2>/dev/null | tail -30
-echo
-echo "== e il backend: righe su otp/codice/conferma, ultimi 40 minuti"
-journalctl -u withus-backend --since "-40 min" --no-pager -o cat 2>/dev/null | grep -iE "otp|codice|conferma|resend|accedi" | tail -25
+echo "== commit su /opt/withus-backend"; git log --oneline -1
+echo "== ultimo autopull"; tail -3 /var/log/withus-autopull.log 2>/dev/null || journalctl -u withus-autopull --no-pager -n 3 2>/dev/null | tail -3
+echo "== M1..M5 nel codice servito"
+for k in 'reg-ultima' 'pf-date-su' 'rin-card-sub' 'cpl-oggi' 'tit-chi-paga' 'page-foglio-cassa'; do printf '%s: ' "$k"; grep -c "$k" index.html; done
+for f in anagrafica.js foglio-cassa.js; do printf '%s: ' "$f"; test -f tariffe/motore/$f && echo presente || echo ASSENTE; done
+echo "== md5 index.html"; md5sum index.html | cut -c1-12

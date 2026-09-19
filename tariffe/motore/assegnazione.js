@@ -331,6 +331,31 @@
     return fuori;
   }
 
+  /* La stessa cosa guardata dalla persona: fra i codici ANCORA DA DECIDERE,
+     quali sembrano suoi. È quello che serve alla sua scheda, dove la domanda
+     non è «di chi è questo codice» ma «quali codici sono di questo qui».
+
+     `persone` sono TUTTE, non solo lei, e non è un dettaglio: la regola
+     «aggancia solo se è una» si può applicare soltanto guardando gli altri.
+     Passando la sola persona aperta, due colleghi con lo stesso RUI
+     diventerebbero una proposta sicura — e sarebbe sicura di niente.
+
+     I codici già decisi restano fuori: uno assegnato a un altro non «sembra»
+     di questo, è di quell'altro, e riproporlo qui sarebbe un invito a
+     sovrascrivere il lavoro di qualcuno. */
+  function suoi(righe, persone, personaId) {
+    if (!personaId) return [];
+    var tutte = proposte(righe, persone);
+    var fuori = [];
+    (righe || []).forEach(function (r) {
+      if (statoDecisione(r) !== 'non-deciso') return;
+      var k = chiave(r.compagnia, r.codice);
+      var p = k && tutte[k];
+      if (p && p.collaboratore_id === personaId) fuori.push(p);
+    });
+    return fuori;
+  }
+
   function indiciPersone(persone) {
     var perEmail = {}, perRui = {};
     (persone || []).forEach(function (p) {
@@ -471,7 +496,7 @@
     VERSIONE: VERSIONE, NESSUNO: NESSUNO,
     chiave: chiave, codiceDi: codiceDi, statoDecisione: statoDecisione, mappa: mappa,
     riepilogo: riepilogo, piano: piano,
-    proposteDaFlusso: proposteDaFlusso, proposte: proposte,
+    proposteDaFlusso: proposteDaFlusso, proposte: proposte, suoi: suoi,
     rigaDecisione: rigaDecisione, cent: cent
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

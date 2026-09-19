@@ -234,6 +234,60 @@ prova('una riga senza evidenze non propone niente, e non sparisce', () => {
   return 'resta, e dice che non c\'è niente su cui lavorare';
 });
 
+/* ══ DALLA PARTE DELLA PERSONA ═════════════════════════════════════════ */
+const PERSONE = [
+  { id: 'c1', email: 'uno@esempio.it', rui_numero: 'E000111111' },
+  { id: 'c2', email: 'due@esempio.it', rui_numero: 'E000222222' },
+  /* Due colleghi con lo STESSO RUI: è il caso che c'è già nel registro vero. */
+  { id: 'c3', email: 'tre@esempio.it', rui_numero: 'E000999999' },
+  { id: 'c4', email: 'quattro@esempio.it', rui_numero: 'E000999999' }
+];
+
+prova('dalla scheda di una persona si vede quali codici sembrano suoi', () => {
+  const righe = [
+    { compagnia: 'PRIMA', codice: 'U100', rui_flusso: 'E 000.111111' },
+    { compagnia: 'PRIMA', codice: 'U200', email_flusso: 'uno@esempio.it' },
+    { compagnia: 'PRIMA', codice: 'U300', rui_flusso: 'E000222222' }
+  ];
+  const s = A.suoi(righe, PERSONE, 'c1');
+  deve(s.length === 2, 'codici proposti a c1: ' + s.map(x => x.codice).join(', '));
+  deve(s.map(x => x.codice).sort().join(',') === 'U100,U200', 'quali: ' + s.map(x => x.codice));
+  deve(s.find(x => x.codice === 'U100').motivo === 'rui', 'il motivo del primo: ' + s[0].motivo);
+  return 'due suoi, e quello di un altro resta fuori';
+});
+
+prova('la regola «solo se è una» vale anche guardando dalla persona', () => {
+  /* Il difetto che si fa senza accorgersene: passare SOLO la persona aperta.
+     Con un elenco di uno, due colleghi con lo stesso RUI non si vedono, e
+     quella proposta diventa sicura di niente. */
+  const righe = [{ compagnia: 'PRIMA', codice: 'U400', rui_flusso: 'E000999999' }];
+  deve(A.suoi(righe, PERSONE, 'c3').length === 0, 'proposto a c3 un RUI che è di due persone');
+  deve(A.suoi(righe, PERSONE, 'c4').length === 0, 'proposto a c4 un RUI che è di due persone');
+  /* E con l'elenco ridotto alla sola persona la proposta comparirebbe: è
+     esattamente quello da non fare, ed è qui scritto perché si veda. */
+  deve(A.suoi(righe, [PERSONE[2]], 'c3').length === 1,
+       'il banco non riproduce il difetto: la prova sopra non misura niente');
+  return 'con tutte le persone nessuna proposta, con una sola sì — per questo si passano tutte';
+});
+
+prova('un codice già deciso non «sembra» di nessun altro', () => {
+  /* Riproporre un codice assegnato a un altro sarebbe un invito a
+     sovrascrivere il lavoro di qualcuno (regola 2, dall'altro lato). */
+  const righe = [
+    { compagnia: 'PRIMA', codice: 'U100', rui_flusso: 'E000111111', collaboratore_id: 'c2', deciso: true },
+    { compagnia: 'PRIMA', codice: 'U200', rui_flusso: 'E000111111', nessuno: true, deciso: true }
+  ];
+  deve(A.suoi(righe, PERSONE, 'c1').length === 0, 'un codice deciso viene riproposto');
+  return 'i decisi restano fuori, «nessuno» compreso';
+});
+
+prova('senza persona non si propone niente', () => {
+  const righe = [{ compagnia: 'PRIMA', codice: 'U100', rui_flusso: 'E000111111' }];
+  deve(A.suoi(righe, PERSONE, null).length === 0, 'proposto qualcosa a nessuno');
+  deve(A.suoi(righe, PERSONE, undefined).length === 0, 'proposto qualcosa a undefined');
+  return 'una scheda senza persona non ha codici da riconoscere';
+});
+
 prova('il codice produttore si conserva accanto a quello delle polizze', () => {
   /* Sono due codici diversi: `ID_ANAGRAFICA_EXP` è la chiave con cui le
      polizze lo nominano, `CODICE_PRODUTTORE` è come lo chiama la compagnia.

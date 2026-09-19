@@ -1811,9 +1811,7 @@ di far fallire un'altra riga più in basso.
 #### Cosa resta aperto, in più
 
 - ~~La strada inversa non c'è.~~ **Fatta** poche ore dopo, vedi qui sotto.
-- **La scheda in IAM non propone**: mostra i codici liberi in una tendina, senza
-  dire quali somigliano a questa persona. Sono le stesse evidenze e la stessa
-  regola — è la stessa cucitura, dall'altro lato.
+- ~~La scheda in IAM non propone.~~ **Allineata**, vedi in fondo a §19.
 
 ### La strada inversa: dalla scheda della persona ai suoi codici (19/09/2026)
 
@@ -1855,3 +1853,32 @@ arrivati.
 dei soldi. La prova non guarda solo che il cancello esista — guarda che sia
 **chiamato**, perché una funzione di controllo che non chiama nessuno è il
 guasto numero uno di questo repository (§1).
+
+
+### Anche la scheda in IAM propone (19/09/2026)
+
+Terza e ultima cucitura: dalla scheda si vede **quali codici liberi sembrano
+suoi**, in cima alla tendina, con la spunta e il motivo. Le stesse evidenze e la
+stessa regola delle altre due schermate — cambia solo il verso della domanda:
+non «di chi è questo codice» ma «quali codici sono di questo qui».
+
+`Assegnazione.suoi(righe, persone, personaId)` è la terza porta dello stesso
+`proponiUna`. Due cose che fa e che si dimenticano:
+
+**Si passano TUTTE le persone, non solo quella aperta.** La regola «aggancia
+solo se è una» si può applicare soltanto guardando gli altri: con l'elenco
+ridotto alla persona che si sta guardando, due colleghi con lo stesso RUI
+diventerebbero una proposta sicura — e sarebbe **sicura di niente**. La prova
+lo dimostra girando il motore nei due modi: con tutte non propone, con una sola
+propone. È il difetto scritto accanto alla regola, perché la prossima volta si
+riconosca.
+
+**Un codice già deciso non «sembra» di nessun altro.** Riproporre a Tizio un
+codice assegnato a Caio sarebbe un invito a sovrascrivere il lavoro di
+qualcuno: è la regola 2 guardata dall'altro lato. Restano fuori anche quelli
+decisi «nessuno».
+
+E la tendina **parte dal vuoto**: aprendo una scheda non si abbina niente da
+solo, e il testo lo dice — *«Confermali tu: il sistema non abbina niente da
+solo»*. Una prova controlla il primo `<option>`, perché è quello che il browser
+sceglie da sé.

@@ -129,6 +129,56 @@ prova('il RUI discorde si vede, e non e\' un rosso', () => {
   return 'avviso giallo, confronto normalizzato';
 });
 
+prova('la scheda propone, e la proposta la calcola il MOTORE', () => {
+  /* La stessa cucitura dell'altro lato: due schermate che leggono le stesse
+     evidenze devono proporre la stessa persona. */
+  const blocco = ritaglia('function ccpRender');
+  deve(/Assegnazione\.suoi\(/.test(blocco),
+    'la scheda non chiede al motore quali codici sembrano suoi: se la regola la scrive di qua, sono due regole');
+  /* E il motore fa quello che dice, sul serio: qui si esegue. */
+  const righe = [{ compagnia: 'PRIMA', codice: 'U100', rui_flusso: 'E 000.111111' }];
+  const persone = [{ id: 'p1', rui_numero: 'E000111111' }, { id: 'p2', rui_numero: 'E000222222' }];
+  const s = A.suoi(righe, persone, 'p1');
+  deve(s.length === 1 && s[0].motivo === 'rui', 'il motore non propone: ' + JSON.stringify(s));
+  return 'la scheda chiede, il motore risponde';
+});
+
+prova('si passano TUTTE le persone, non solo quella aperta', () => {
+  /* Il difetto che si fa senza accorgersene. La regola «aggancia solo se e'
+     una» si puo' applicare soltanto guardando gli altri: con l'elenco ridotto
+     alla persona aperta, due colleghi con lo stesso RUI diventerebbero una
+     proposta sicura — e sarebbe sicura di niente. */
+  const carica = ritaglia('async function ccpInstalla');
+  deve(/from\('quote_collaboratori'\)[\s\S]{0,80}rui_numero/.test(carica),
+    'la scheda non carica le persone con il loro RUI: ' + carica.slice(0, 400));
+  deve(/CCP_PERSONE = /.test(carica), 'l\'elenco delle persone non viene riempito');
+  /* E l'elenco arriva al motore INTERO: un `.filter` per strada e la regola
+     non ha piu' nessuno con cui confrontare. */
+  const disegna = ritaglia('function ccpRender');
+  deve(/Assegnazione\.suoi\(CCP_RIGHE,\s*CCP_PERSONE,\s*CCP_PERSONA\)/.test(disegna),
+    'le persone arrivano al motore filtrate: ' + (disegna.match(/Assegnazione\.suoi\([^;]*/) || ['—'])[0]);
+  /* E il motore lo dimostra: con tutte, niente proposta; con una sola, sì. */
+  const righe = [{ compagnia: 'PRIMA', codice: 'U400', rui_flusso: 'E000999999' }];
+  const due = [{ id: 'p3', rui_numero: 'E000999999' }, { id: 'p4', rui_numero: 'E000999999' }];
+  deve(A.suoi(righe, due, 'p3').length === 0, 'due persone con lo stesso RUI producono una proposta');
+  deve(A.suoi(righe, [due[0]], 'p3').length === 1, 'il banco non riproduce il difetto');
+  return 'con tutte nessuna proposta, con una sola si — per questo si passano tutte';
+});
+
+prova('i suggeriti stanno in cima, e restano suggerimenti', () => {
+  const blocco = ritaglia('function ccpRender');
+  deve(/const ordinati = liberi\.slice\(\)\.sort\(/.test(blocco),
+    'i codici suggeriti non vanno in cima alla tendina');
+  /* La tendina parte dal vuoto: nessun codice si abbina da solo aprendo una
+     scheda. Il primo `<option>` e' quello che il browser sceglie. */
+  deve(/<option value="">— codici ancora da abbinare —<\/option>/.test(blocco),
+    'la tendina non parte dal vuoto: un codice si abbinerebbe da solo');
+  deve(/Confermali tu/.test(blocco), 'la scheda non dice che l\'abbinamento lo conferma una persona');
+  /* E l'abbinamento resta un gesto: nessuna scrittura parte dal disegno. */
+  deve(!/ccpScrivi\(/.test(blocco), 'il disegno della scheda scrive nel database');
+  return 'in cima, con la spunta, e nessuna scrittura';
+});
+
 prova('l\'abbinamento e il distacco lasciano traccia a registro', () => {
   const agg = ritaglia('async function ccpAggiungi');
   const tog = ritaglia('async function ccpTogli');

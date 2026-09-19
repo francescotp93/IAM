@@ -440,6 +440,8 @@ input[type=file]{display:none;}
 .ccp-r:last-child{border-bottom:none}
 .ccp-avviso{margin-top:4px;font-size:12px;line-height:1.45;padding:6px 9px;border-radius:8px;
   background:var(--amb-bg,#fff7ed);color:var(--amb-txt,#92400e)}
+.ccp-sugg{margin-top:10px;font-size:12.5px;line-height:1.5;padding:8px 10px;border-radius:8px;
+  background:var(--surf2);border:1px solid var(--bord)}
 .ccp-agg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
 .ccp-agg select{flex:1;min-width:220px}
 .fsec{margin-top:14px;}
@@ -3757,6 +3759,11 @@ async function regInstalla(contenitoreId, entita, id, creato) {
    Chi decide è l'admin, come di là: qui si decide a chi vanno dei soldi. */
 let CCP_RIGHE = [];      // tutti i codici in tabella, per compagnia e codice
 let CCP_PERSONA = null;  // la persona di cui si sta guardando la scheda
+/* TUTTE le persone del registro, non solo quella aperta: la regola «aggancia
+   solo se è una» si può applicare soltanto guardando gli altri. Con l'elenco
+   ridotto a una, due colleghi con lo stesso RUI diventerebbero una proposta
+   sicura — e sarebbe sicura di niente. */
+let CCP_PERSONE = [];
 
 function ccpPuoDecidere() { return PROFILO?.ruolo === 'admin'; }
 
@@ -3775,6 +3782,8 @@ async function ccpInstalla(personaId) {
     const { data, error } = await db.from('quote_codici_collaboratore').select('*');
     if (error) throw error;
     CCP_RIGHE = data || [];
+    const { data: gente } = await db.from('quote_collaboratori').select('id,email,rui_numero');
+    CCP_PERSONE = gente || [];
     ccpRender();
   } catch (e) {
     /* «Non si è potuto leggere» non è «non ce ne sono»: confonderli qui
@@ -3792,6 +3801,19 @@ function ccpRender() {
   const liberi = CCP_RIGHE.filter(r => Assegnazione.statoDecisione(r) === 'non-deciso');
   const ruiScheda = (document.getElementById('mc-rui')?.value || '').replace(/[\s.\-\/]/g, '').toUpperCase();
   const puo = ccpPuoDecidere();
+  /* Quali fra i codici liberi sembrano suoi. Lo decide il motore, con le
+     stesse evidenze e la stessa regola che usa QUOTO: due schermate che
+     leggono gli stessi dati devono proporre la stessa persona. */
+  const sugg = Assegnazione.suoi(CCP_RIGHE, CCP_PERSONE, CCP_PERSONA);
+  /* I suggeriti in cima: una tendina che mette per primi i codici che non
+     c'entrano niente si scorre per niente. */
+  const suggChiavi = {};
+  sugg.forEach(s => { suggChiavi[s.chiave] = true; });
+  const ordinati = liberi.slice().sort((a, b) => {
+    const sa = suggChiavi[Assegnazione.chiave(a.compagnia, a.codice)] ? 0 : 1;
+    const sb = suggChiavi[Assegnazione.chiave(b.compagnia, b.codice)] ? 0 : 1;
+    return sa - sb;
+  });
 
   box.innerHTML = `
     ${suoi.length ? suoi.map(r => {
@@ -3815,14 +3837,26 @@ function ccpRender() {
       </div>`;
     }).join('') : '<div class="cl-sub">Nessun codice compagnia abbinato a questa persona.</div>'}
 
-    ${puo && liberi.length ? `<div class="ccp-agg">
-      <select id="ccp-libero">
-        <option value="">— codici ancora da abbinare —</option>
-        ${liberi.map(r => `<option value="${esc(r.compagnia)}|${esc(r.codice)}">${esc(r.compagnia)} ${esc(r.codice)}${
-          r.nome_flusso ? ' · ' + esc(r.nome_flusso) : ''}${r.rui_flusso ? ' · RUI ' + esc(r.rui_flusso) : ''}</option>`).join('')}
-      </select>
-      <button class="mbtn" onclick="ccpAggiungi()"><i class="ti ti-link"></i> Abbina a questa persona</button>
-    </div>` : ''}
+    ${puo && liberi.length ? `
+      ${sugg.length ? `<div class="ccp-sugg">
+        ${sugg.length === 1 ? 'Un codice sembra suo' : sugg.length + ' codici sembrano suoi'}:
+        <b>${sugg.map(s => esc(s.codice)).join('</b>, <b>')}</b> —
+        ${sugg.every(s => s.motivo === 'rui') ? 'per il RUI'
+          : sugg.every(s => s.motivo === 'email') ? 'per l\'email' : 'per il RUI o per l\'email'}.
+        In cima alla tendina, con la spunta. <b>Confermali tu</b>: il sistema non abbina niente da solo.
+      </div>` : ''}
+      <div class="ccp-agg">
+        <select id="ccp-libero">
+          <option value="">— codici ancora da abbinare —</option>
+          ${ordinati.map(r => {
+            const s = sugg.find(x => x.codice === r.codice && x.compagnia === (r.compagnia || '').toUpperCase());
+            return `<option value="${esc(r.compagnia)}|${esc(r.codice)}">${s ? '✓ ' : ''}${esc(r.compagnia)} ${esc(r.codice)}${
+              r.nome_flusso ? ' · ' + esc(r.nome_flusso) : ''}${r.rui_flusso ? ' · RUI ' + esc(r.rui_flusso) : ''}${
+              s ? (s.motivo === 'rui' ? ' · sembra suo (RUI)' : ' · sembra suo (email)') : ''}</option>`;
+          }).join('')}
+        </select>
+        <button class="mbtn" onclick="ccpAggiungi()"><i class="ti ti-link"></i> Abbina a questa persona</button>
+      </div>` : ''}
     ${puo && !liberi.length ? '<div class="cl-sub" style="margin-top:8px">Non ci sono codici in attesa di essere abbinati. Quelli nuovi arrivano con l\'importazione del portafoglio.</div>' : ''}`;
 }
 

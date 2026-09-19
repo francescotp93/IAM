@@ -398,6 +398,23 @@ prova('V8 · senza SCADENZA_INCASSATO non si deduce nessuna rata', () => {
   return 'nessuna rata inventata';
 });
 
+prova('M1.2 · la data di emissione esce in una colonna sua, e dove il tracciato non la porta resta vuota', () => {
+  /* Nel V12 sta in DATA_EMISSIONE; P1 la porta (10/09/2026), P2 no. Non si
+     ricava dall'effetto: si emette PRIMA di decorrere, a volte settimane
+     prima, e una data indovinata nel filtro «emesse a settembre» è una
+     polizza contata nel mese sbagliato. */
+  const p1 = A.polizze.find(p => p._fonte_id === 'P1');
+  deve(p1 && p1.data_emissione === '2026-09-10', 'P1: ' + (p1 && p1.data_emissione));
+  const p2 = A.polizze.find(p => p._fonte_id === 'P2');
+  deve(p2 && p2.data_emissione === null, 'P2 senza data ha una data: ' + (p2 && p2.data_emissione));
+  deve(p1.dati.ssf.data_emissione === '2026-09-10', 'la copia dentro dati.ssf è sparita');
+  /* V8: la colonna NON C'È. Tutte vuote, e il tracciato lo dichiara. */
+  deve(A8.polizze.every(p => p.data_emissione === null), 'nel V8 qualche polizza ha una data di emissione inventata');
+  deve(A8.tracciato.senza.some(s => /data di emissione/.test(s)), 'il V8 non dichiara che manca la data di emissione');
+  deve(!A.tracciato.senza.some(s => /data di emissione/.test(s)), 'il V12 dichiara una mancanza che non ha');
+  return 'V12: P1 10/09/2026, P2 vuota · V8: tutte vuote e dichiarato';
+});
+
 prova('V8 · lo zip si apre e dà lo stesso risultato dei CSV sciolti', () => {
   esiti.push({ nome: 'V8 · lo zip (asincrona)', fn: null, asincrona: async () => {
     const m = await F.apriZip(fs.readFileSync(path.join(CAMPIONI8, 'flusso-v8-di-collaudo.zip')));

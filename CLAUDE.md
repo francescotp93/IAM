@@ -1986,3 +1986,90 @@ del CSV — un file di prova sbagliato è una prova che misura un'altra cosa.
 - **Il file vero non sta nel repository** (§8.3): il campione V8 è sintetico e
   ricalca i casi che contano. La prova sul file vero si lancia con
   `FLUSSO_VERO=… node server/verifica/flusso-ssf.test.mjs`.
+
+---
+
+## 21. Brief IAM #01 — M1: dettaglio polizza e scheda cliente (19/09/2026)
+
+Il brief dice «App: IAM, stack React + Node/Express, Vercel». Nessuna delle
+tre cose è vera per questo repository (§9, §10): portafoglio, scheda cliente e
+dettaglio polizza vivono in `index.html` alla radice (QUOTO), IAM li mostra
+nel riquadro, e la produzione è Caddy sul VPS. Il brief si è letto per quello
+che chiede, non per lo stack che immagina. Sei punti, una migrazione, due
+motori.
+
+| voce | dove |
+|---|---|
+| 1.1 «Ultima modifica: nome — gg/mm/aaaa hh:mm» | `Registro.ultimaModifica` / `quandoBreve` in `tariffe/motore/registro.js`: la scrive il motore, quindi la vedono QUOTO **e** IAM |
+| 1.2 data di emissione | colonna `quote_polizze.data_emissione` + indice (`supabase/migrations/20260919_m1_emissione_e_sinistro_polizza.sql`, applicata); il flusso la scrive (`data(r.DATA_EMISSIONE)`); nel portafoglio il filtro «Date su» (emissione/effetto/scadenza); nel dettaglio è un campo che si corregge |
+| 1.3 clic sulla polizza dalla scheda cliente | `caricaCollegati` → `polDettaglio(id)`, **senza** chiudere `#anag-overlay`: chiudendo il dettaglio si è di nuovo nella scheda |
+| 1.4 pallini | `pfSemafori` **cancellata** (era chiamata in un posto solo) |
+| 1.5 cronologia | «Scadenza polizza · n. X · targa Y», niente «in arrivo»; la targa arriva con `targa:dati->ssf->veicolo->>targa` nella select |
+| 1.6 nuovo sinistro dalla scheda | `clSinistri`, `apriNuovoSinistro(clienteId)`, colonna `quote_sinistri.polizza_id` |
+| prove | `registro.test.mjs` (16), `flusso-ssf.test.mjs` (40), blocchi «M1» in `ui-test.mjs` (433) |
+
+### Quello che il brief chiedeva e che c'era già
+
+Prima di scrivere una riga si è misurato (§1): il registro dei movimenti con
+l'id della riga (§18) copre 1.1 salvo l'etichetta; il dettaglio polizza (§16)
+mostrava già garanzie, veicolo, date e premio; i codici produttore per
+compagnia di **M4.1** sono esattamente §19 — con una differenza voluta: il
+brief dice «collegare automaticamente», qui si collega **dopo che una persona
+ha deciso una volta**, e il non deciso finisce nella lista da abbinare (che è
+la stessa accettazione del brief, letta con la regola §8.1).
+
+### Le risposte ai quattro «punti da chiarire» del brief
+
+1. **M1.1** — lo storico c'è: `quote_log` con `entita_id` dal 19/09/2026 (§18).
+   L'etichetta prende il movimento **più recente per data**, non il primo
+   dell'elenco; senza movimenti l'ultima modifica è la creazione; se il
+   registro non si è potuto leggere l'etichetta **non compare** — un «ultima
+   modifica: Anna» con in mezzo un movimento di Mario non letto è falso.
+2. **M1.2** — la data di emissione c'è nel tracciato **V12** (Prima) e non nel
+   **V8** (Plurima): il lettore lo dichiara nel riquadro giallo. Backfill fatto
+   sulle 25 polizze dal flusso (`dati.ssf.data_emissione`, forma ISO); le 5
+   nate in QUOTO restano vuote — «effetto» non è «emissione», si emette prima
+   che decorra, e una data indovinata conta la polizza nel mese sbagliato.
+3. **M4.2** — decisione presa in M4, non qui.
+4. **M5** — le provvigioni arrivano dal file dove la compagnia le dichiara
+   (Prima sì, Plurima 0,00) e la quota del collaboratore da `iam_team.provv`
+   (§17); nessuna tabella di aliquote nuova.
+
+### Tre scelte che non sono dettagli
+
+- **Il filtro per data non ripiega.** «Emesse a settembre» su una polizza che
+  la data di emissione non ce l'ha risponde *no*, non *forse sull'effetto*:
+  ripiegare conterebbe polizze di cui l'emissione non si sa.
+- **Il produttore nel dettaglio non si indovina.** Tre risposte: il
+  collaboratore delle rate; la persona **decisa** per il codice della compagnia
+  (o «produzione diretta» se deciso «nessuno»); altrimenti «codice U… non
+  ancora abbinato», con la strada per farlo. Un nome per somiglianza qui è una
+  provvigione pagata a chi non doveva (§19).
+- **Il sinistro punta alla polizza vera**, non a un numero scritto a mano:
+  `polizza_id` con `on delete set null`, perché cancellare una polizza non
+  cancella un sinistro che è successo davvero. La tendina propone solo le
+  polizze del cliente aperto.
+
+### Due prove aggiornate perché misuravano il mondo di ieri
+
+«Gli stati non sono spariti: `pfSemafori` li disegna ancora nella scheda
+cliente» e «gli eventi futuri sono etichettati *in arrivo*». Tutte e due
+giuste il 18/09 e sbagliate il 19/09. Si è aggiornata la **regola** (§15,
+§16): gli stati restano in `PF_PAG`/`pfCopertura` e si leggono a parole;
+il futuro si distingue con la classe `fut`, e la voce dice numero e targa.
+
+### Una trappola già scritta, presa di nuovo
+
+`git checkout <file>` per «annullare la controprova» ha annullato **anche il
+lavoro** su `registro.js`: la controprova si era fatta sul file già modificato
+e non ancora committato. Per una controprova su un file sporco si fa la copia
+prima (`cp`), non `git checkout`. Il lavoro si è riscritto; le prove lo hanno
+detto subito.
+
+### Cosa resta aperto
+
+- `tracciabilita.test.mjs` è rosso **anche su `main` prima di questo lavoro**
+  (10/17): non è di qui, va guardato a parte.
+- Le 5 polizze nate in QUOTO hanno `data_emissione` vuota: si scrive dal
+  dettaglio.
+- M2–M5 del brief: una PR per milestone, in ordine.

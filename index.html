@@ -911,6 +911,7 @@ button{font-family:inherit}
 .fdoc-subb.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
 .fdoc-data{font-size:15px;color:var(--ink)}
 .pf-mezzo{font-size:12.5px;font-weight:600}
+.reg-ultima{font-size:12.5px;color:var(--ink);padding:4px 0 8px;border-bottom:1px dashed var(--line);margin-bottom:6px}
 .reg-r{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
   padding:7px 0;border-top:1px solid var(--line);font-size:13px}
 .reg-r:first-child{border-top:0}
@@ -2527,7 +2528,17 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             <select id="pf-prodotto" onchange="pfRender()"><option value="">Tutti</option></select></div>
           <div class="pf-f"><label>Compagnia</label>
             <select id="pf-compagnia" onchange="pfRender()"><option value="">Tutte</option></select></div>
-          <div class="pf-f"><label>Effetto dal</label>
+          <!-- M1.2 (19/09/2026): il filtro per date sceglie SU QUALE data
+               lavora. «Emesse a settembre» è la ricerca più frequente in
+               agenzia, e finora non si poteva fare: la data di emissione non
+               era una colonna. Parte da lì. -->
+          <div class="pf-f"><label>Date su</label>
+            <select id="pf-date-su" onchange="pfRender()">
+              <option value="emissione">Emissione</option>
+              <option value="effetto">Effetto</option>
+              <option value="scadenza">Scadenza</option>
+            </select></div>
+          <div class="pf-f"><label>dal</label>
             <input id="pf-da" type="date" onchange="pfRender()"></div>
           <div class="pf-f"><label>al</label>
             <input id="pf-a" type="date" onchange="pfRender()"></div>
@@ -2543,10 +2554,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
       <!-- I QUATTRO PALLINI NON CI SONO PIÙ (18/09/2026, richiesta di Francesco:
            «leviamo anche nelle polizze i pallini di stato per ora, che tanto
-           non ci servono a nulla»). Non sono stati cancellati: gli stati
-           vivono nel database e `pfSemafori` li disegna ancora nella scheda
-           del cliente. Qui la colonna è tornata a una cosa che si guarda e si
-           corregge tutti i giorni — come paga il cliente. -->
+           non ci servono a nulla»). Il 19/09 (brief M1.4) sono spariti anche
+           dalla scheda del cliente, e con loro `pfSemafori`. Gli stati NON
+           sono stati cancellati: vivono nel database, si leggono nel pannello
+           del pagamento e nell'esportazione. Qui la colonna è una cosa che si
+           guarda e si corregge tutti i giorni — come paga il cliente. -->
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr>
@@ -14747,17 +14759,11 @@ function pfCopertura(p) {
   return ['sem-ok', 'Copertura: attiva fino al ' + pfData(al)];
 }
 
-function pfSemafori(p) {
-  const pag = PF_PAG[p.stato_pagamento] || ['—', 'sem-no'];
-  const cop = pfCopertura(p);
-  const s = [
-    [pag[1], 'Pagamento: ' + pag[0]],
-    [p.perfezionata ? 'sem-ok' : 'sem-no', 'Perfezionamento: ' + (p.perfezionata ? 'completo' : 'documenti da completare')],
-    [p.rendicontata ? 'sem-ok' : 'sem-att', 'Rendicontazione: ' + (p.rendicontata ? 'liquidata' : 'da rendicontare')],
-    cop
-  ];
-  return '<span class="pf-sems">' + s.map(x => `<i class="sem ${x[0]}" title="${esc(x[1])}"></i>`).join('') + '</span>';
-}
+/* `pfSemafori` (i quattro pallini) non c'è più dal 19/09/2026: tolti dal
+   portafoglio il 18/09 e dalla scheda cliente il 19/09 (brief M1.4). Gli stati
+   restano: PF_PAG e pfCopertura li scrivono a parole nel pagamento e
+   nell'esportazione. Una funzione che non chiama nessuno è il guasto numero
+   uno di questo repository (CLAUDE.md §1), e vale anche per il codice tolto. */
 
 function pfRiempiFiltri() {
   [['pf-prodotto', 'prodotto'], ['pf-compagnia', 'compagnia']].forEach(([id, campo]) => {
@@ -14773,20 +14779,35 @@ function pfRiempiFiltri() {
 function pfAzzera() {
   ['pf-stato', 'pf-cliente', 'pf-prodotto', 'pf-compagnia', 'pf-da', 'pf-a', 'pf-numero']
     .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const su = document.getElementById('pf-date-su'); if (su) su.value = 'emissione';
   pfRender();
+}
+
+/* Su quale data lavora il filtro «dal / al». Emissione, effetto o scadenza:
+   sono tre date diverse e tre domande diverse («quante ne abbiamo emesse a
+   settembre», «quali decorrono da ottobre», «quali scadono entro Natale»).
+   Una polizza SENZA la data scelta non entra nell'intervallo: non si ripiega
+   sull'effetto, perché «emesse a settembre» conterebbe una polizza di cui
+   l'emissione non si sa. */
+const PF_DATE_SU = { emissione: 'data_emissione', effetto: 'data_effetto', scadenza: 'data_scadenza' };
+function pfCampoData() {
+  const su = (document.getElementById('pf-date-su') || {}).value;
+  return PF_DATE_SU[su] || PF_DATE_SU.emissione;
 }
 
 function pfFiltra() {
   const v = id => (document.getElementById(id)?.value || '').trim();
   const stato = v('pf-stato'), cli = v('pf-cliente').toLowerCase(), prod = v('pf-prodotto');
   const comp = v('pf-compagnia'), da = v('pf-da'), a = v('pf-a'), num = v('pf-numero').toLowerCase();
+  const campo = pfCampoData();
   return PF_ROWS.filter(p => {
     if (stato && p.stato_pagamento !== stato) return false;
     if (prod && p.prodotto !== prod) return false;
     if (comp && p.compagnia !== comp) return false;
     if (cli && !String(p.cliente || '').toLowerCase().includes(cli)) return false;
-    if (da && String(p.data_effetto || '') < da) return false;
-    if (a && String(p.data_effetto || '') > a) return false;
+    if ((da || a) && !p[campo]) return false;
+    if (da && String(p[campo] || '') < da) return false;
+    if (a && String(p[campo] || '') > a) return false;
     if (num) {
       const etichette = [String(p.numero || ''), String(p.numero_polizza || ''), pfNumero(p)].join(' ').toLowerCase();
       if (!etichette.includes(num)) return false;
@@ -14864,20 +14885,41 @@ async function polDettaglio(id) {
   const gar = ssf.garanzie || [];
   const v = ssf.veicolo;
 
+  /* M1.3 (19/09/2026): il dettaglio deve bastare da solo — pagamento, rate in
+     scadenza e produttore stanno QUI, non in tre pannelli da aprire uno dopo
+     l'altro. Le rate si leggono con una chiamata in più; se non arrivano, il
+     resto del pannello si vede lo stesso. */
+  let rate = [];
+  try {
+    const { data } = await db.from('quote_titoli').select('*').eq('polizza_id', id).order('data_decorrenza');
+    rate = data || [];
+  } catch (e) { rate = []; }
+  const prod = await polProduttore(p, rate);
+
   const riga = (et, val) => `<div class="pol-r"><span>${et}</span><b>${val}</b></div>`;
   document.getElementById('pol-ov').querySelector('.pdoc-sub').textContent =
     (p.cliente || '') + (p.prodotto ? ' · ' + p.prodotto : '');
+  const pag = PF_PAG[p.stato_pagamento] || null;
+  const mezzo = pfMezzoNome(p.mezzo_pagamento);
   document.getElementById('pol-bd').innerHTML = `
     <div class="pol-griglia">
       ${riga('Numero di compagnia', esc(p.numero_polizza || '—'))}
       ${riga('Compagnia', esc(p.compagnia || '—') + (ssf.compagnia_rischio ? ' <span class="pdoc-opt">rischio: ' + esc(ssf.compagnia_rischio) + '</span>' : ''))}
       ${riga('Prodotto', esc(p.prodotto || p.modulo || '—'))}
+      ${riga('Emissione', `<input type="date" id="pol-emissione" value="${esc(p.data_emissione || '')}" onchange="polSalvaEmissione('${esc(p.id)}')" style="font:inherit;border:1px solid var(--line);border-radius:4px;padding:2px 4px">`
+          + (p.data_emissione ? '' : ' <span class="cl-sub">da indicare</span>'))}
       ${riga('Effetto → scadenza', polData(p.data_effetto) + ' → ' + (p.data_scadenza ? polData(p.data_scadenza) : '<span class="tk-badge st-aperto">da confermare</span>'))}
       ${riga('Coperta fino al', ssf.scadenza_incassato ? polData(ssf.scadenza_incassato) : (p.copertura_al ? polData(p.copertura_al) : '—'))}
       ${riga('Frazionamento', esc(p.frazionamento || '—') + (p.tacito_rinnovo ? ' · tacito rinnovo' : ' · senza tacito rinnovo'))}
       ${riga('Premio', (p.premio_annuo != null ? 'annuo ' + pfEuro(p.premio_annuo) : '<span class="cl-sub">annuo da confermare</span>')
           + (p.premio_rata != null ? ' · rata ' + pfEuro(p.premio_rata) : ''))}
+      ${riga('Pagamento', (mezzo ? esc(mezzo) : '<span class="cl-sub">mezzo da indicare</span>') + (pag ? ' · ' + esc(pag[0]) : '')
+          + ` <a href="#" onclick="event.preventDefault();polPagamento('${esc(p.id)}')" style="font-size:11px;color:var(--blue);text-decoration:underline">correggi</a>`)}
+      ${riga('Produttore', `<span class="pol-produttore">${esc(prod.testo)}</span>` + (prod.da ? ' <span class="cl-sub">' + esc(prod.da) + '</span>' : ''))}
     </div>
+
+    <div class="flu-sez">Rate in scadenza</div>
+    ${polRateInScadenza(rate)}
 
     <div class="flu-sez">Garanzie — ${gar.length || 'nessuna nel flusso'}</div>
     ${gar.length ? `<table class="storico-table"><thead><tr><th>Garanzia</th><th class="soldi">Netto</th><th class="soldi">Tasse</th><th class="soldi">Lordo</th></tr></thead><tbody>
@@ -14901,6 +14943,79 @@ async function polDettaglio(id) {
     </div>
     ${polFirma(p)}`;
   regInstalla('pol-storia', 'polizza', p.id, { nome: p.creato_nome, il: p.creato_il, azione: 'Polizza creata' });
+}
+
+/* Le rate ancora da incassare, la più vicina per prima. Una rata annullata o
+   stornata non «scade»: non entra. Se non ce n'è nessuna aperta lo si dice —
+   una sezione vuota sembra un dato mancante, non un dato buono. */
+function polRateInScadenza(rate) {
+  const oggi = new Date().toISOString().slice(0, 10);
+  const aperte = (rate || [])
+    .filter(r => r.stato !== 'incassato' && r.stato !== 'annullato' && r.stato !== 'stornato')
+    .sort((a, b) => String(a.data_decorrenza || '') < String(b.data_decorrenza || '') ? -1 : 1);
+  if (!rate || !rate.length) return '<div class="cl-sub">Nessuna rata registrata: arrivano dal flusso della compagnia o dalla pagina Titoli.</div>';
+  if (!aperte.length) return `<div class="cl-sub">Tutte le ${rate.length} rate sono incassate: niente in scadenza.</div>`;
+  return `<table class="storico-table"><thead><tr><th>Decorrenza</th><th>Tipo</th><th class="soldi">Importo</th><th>Stato</th></tr></thead><tbody>
+    ${aperte.slice(0, 5).map(r => {
+      const scaduta = r.data_decorrenza && String(r.data_decorrenza).slice(0, 10) < oggi;
+      return `<tr class="pol-rata-aperta"><td style="font-size:12px">${polData(r.data_decorrenza)}</td>
+        <td style="font-size:12px">${esc(r.tipo || '—')}</td>
+        <td class="soldi">${pfEuro(r.importo_lordo)}</td>
+        <td><span class="tk-badge ${scaduta ? 'st-scad' : 'st-aperto'}">${scaduta ? 'scaduta' : esc(r.stato || 'aperta')}</span></td></tr>`;
+    }).join('')}
+    </tbody></table>${aperte.length > 5 ? `<div class="cl-sub">e altre ${aperte.length - 5}: tutte nel pagamento.</div>` : ''}`;
+}
+
+/* CHI HA PRODOTTO QUESTA POLIZZA. Tre risposte possibili, nessuna indovinata:
+   1. le rate hanno un collaboratore (quote_titoli.collaboratore_id): è lui;
+   2. la polizza porta un codice della compagnia (dati.ssf.collaboratore) e
+      quel codice è stato DECISO (§19): la persona decisa, o «produzione
+      diretta» se deciso «nessuno»;
+   3. altrimenti si dice che non è assegnato — un nome messo per somiglianza
+      qui è una provvigione pagata a chi non doveva. */
+async function polProduttore(p, rate) {
+  const ssf = (p.dati && p.dati.ssf) || {};
+  const codice = ssf.collaboratore || null;
+  const daRate = [...new Set((rate || []).map(r => r.collaboratore_id).filter(Boolean))];
+  let nomi = {};
+  if (daRate.length || codice) {
+    try { await caricaCollaboratori(); nomi = window.TIT_COLLAB_NOMI || {}; } catch (e) { nomi = {}; }
+  }
+  const nome = id => nomi[id] || ('collaboratore ' + String(id).slice(0, 8));
+  if (daRate.length) {
+    return { testo: daRate.map(nome).join(', '), da: daRate.length > 1 ? 'dalle rate: più persone' : 'dalle rate' };
+  }
+  if (codice) {
+    let dec = null;
+    try {
+      const { data } = await db.from('quote_codici_collaboratore').select('collaboratore_id,nessuno,deciso')
+        .eq('compagnia', p.compagnia).eq('codice', codice).maybeSingle();
+      dec = data || null;
+    } catch (e) { dec = null; }
+    const stato = (window.Assegnazione && Assegnazione.statoDecisione) ? Assegnazione.statoDecisione(dec) : 'non-deciso';
+    if (stato === 'persona') return { testo: nome(dec.collaboratore_id), da: 'codice ' + codice + ' della compagnia' };
+    if (stato === 'nessuno') return { testo: 'produzione diretta dell\'agenzia', da: 'codice ' + codice + ', deciso «nessuno»' };
+    return { testo: 'codice ' + codice + ' non ancora abbinato a una persona', da: 'si abbina da Titoli › Assegna il pregresso' };
+  }
+  return { testo: 'non assegnato', da: p.creato_nome ? 'inserita da ' + p.creato_nome : null };
+}
+
+/* La data di emissione si corregge dal dettaglio e resta scritto chi l'ha
+   cambiata. Rimettere la stessa data non scrive niente. */
+async function polSalvaEmissione(id) {
+  const val = (document.getElementById('pol-emissione') || {}).value || null;
+  let p;
+  try { p = await polLeggi(id); } catch (e) { alert('Non riesco a rileggere la polizza: ' + (e.message || e)); return; }
+  if (!p || (p.data_emissione || null) === val) return;
+  try {
+    const { error } = await db.from('quote_polizze').update({ data_emissione: val }).eq('id', id);
+    if (error) throw error;
+    const r = (PF_ROWS || []).find(x => x.id === id);
+    if (r) r.data_emissione = val;
+    if (typeof pfRender === 'function') pfRender();
+    try { logMovimento('Data di emissione: ' + (val ? polData(val) : 'tolta'), 'polizza', p.cliente || '', id); } catch (e) {}
+    regInstalla('pol-storia', 'polizza', id, { nome: p.creato_nome, il: p.creato_il, azione: 'Polizza creata' });
+  } catch (e) { alert('Non riesco a salvare la data di emissione: ' + (e.message || e)); }
 }
 
 /* ══ IL PAGAMENTO ═════════════════════════════════════════════════════════
@@ -15076,7 +15191,8 @@ function pfRender() {
           : `<strong>${esc(p.cliente || '—')}</strong><div class="cl-sub">non collegata a un'anagrafica</div>`}</td>
       <td><i class="ti ${ICON[p.modulo] || 'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(p.prodotto || p.modulo || '—')}
         ${p.compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.compagnia)}</div>` : ''}</td>
-      <td style="font-size:12px">${pfData(p.data_effetto)} → ${scad}${avviso}</td>
+      <td style="font-size:12px">${pfData(p.data_effetto)} → ${scad}${avviso}
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" class="pf-em">${p.data_emissione ? 'emessa il ' + pfData(p.data_emissione) : 'emissione da indicare'}</div></td>
       <td><a href="#" onclick="event.preventDefault();event.stopPropagation();polPagamento('${p.id}')"
              title="Il pagamento: rate, mezzo, stato — e si corregge"
              style="color:var(--blue);font-weight:700;text-decoration:underline">${pfEuro(p.premio_annuo)}</a>
@@ -15107,6 +15223,7 @@ function pfExportExcel() {
     return `<tr>
       <td>${esc(pfNumero(p))}</td><td>${esc(p.cliente || '')}</td>
       <td>${esc(p.prodotto || '')}</td><td>${esc(p.compagnia || '')}</td>
+      <td>${p.data_emissione ? pfData(p.data_emissione) : ''}</td>
       <td>${pfData(p.data_effetto)}</td><td>${p.data_scadenza ? pfData(p.data_scadenza) : 'da confermare'}</td>
       <td>${esc(p.frazionamento || '')}</td>
       <td class="soldi">${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
@@ -15118,7 +15235,7 @@ function pfExportExcel() {
   }).join('');
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
     + '<head><meta charset="utf-8"><style>table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;font:12px sans-serif}th{background:#f6f8fa;font-weight:700}</style></head><body>'
-    + '<table><thead><tr><th>Polizza</th><th>Cliente</th><th>Prodotto</th><th>Compagnia</th><th>Effetto</th>'
+    + '<table><thead><tr><th>Polizza</th><th>Cliente</th><th>Prodotto</th><th>Compagnia</th><th>Emissione</th><th>Effetto</th>'
     + '<th>Scadenza</th><th>Frazionamento</th><th>Premio annuo</th><th>Stato pagamento</th><th>Mezzo di pagamento</th><th>Perfezionata</th>'
     + '<th>Rendicontata</th><th>Copertura</th><th>Operatore</th></tr></thead><tbody>' + righe + '</tbody></table></body></html>';
   const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
@@ -15169,7 +15286,7 @@ async function loadPortafoglio() {
   body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr>';
   try {
     let q = db.from('quote_polizze')
-      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_effetto,data_scadenza,frazionamento,tacito_rinnovo,premio_annuo,premio_rata,stato_pagamento,perfezionata,rendicontata,copertura_dal,copertura_al,creato_nome,creato_da,creato_il,preventivo_id,dati')
+      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_emissione,data_effetto,data_scadenza,frazionamento,tacito_rinnovo,premio_annuo,premio_rata,stato_pagamento,perfezionata,rendicontata,copertura_dal,copertura_al,creato_nome,creato_da,creato_il,preventivo_id,dati')
       .order('data_effetto', { ascending: false }).limit(1000);
     const ids = await visibleUserIds();
     if (ids) q = q.in('creato_da', ids);
@@ -17792,6 +17909,7 @@ async function fluConferma() {
         cliente_id: cliente_id, cliente: x.cliente,
         numero_polizza: x.numero_polizza, compagnia: x.compagnia, prodotto: x.prodotto, modulo: x.modulo,
         data_effetto: x.data_effetto, data_scadenza: x.data_scadenza,
+        data_emissione: x.data_emissione || null,
         copertura_dal: x.copertura_dal, copertura_al: x.copertura_al,
         frazionamento: x.frazionamento, tacito_rinnovo: x.tacito_rinnovo,
         mezzo_pagamento: x.mezzo_pagamento,
@@ -19717,16 +19835,37 @@ function renderSinistri(){
     <td style="font-size:13px">${esc(s.creato_nome||'–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`;}).join('');
 }
-function apriNuovoSinistro(){
-  SIN_CLIENTE_ID=null; SIN_PREV=null;
+/* M1.6 (19/09/2026): si apre anche DALLA SCHEDA CLIENTE, precompilato. Con
+   `clienteId` il contraente è già scritto e la tendina propone le polizze
+   VERE di quel cliente (quote_polizze): scegliendone una si riempiono
+   compagnia e numero, e il sinistro nasce collegato a quella riga
+   (polizza_id), non a un numero scritto a mano. Senza `clienteId` è la
+   schermata di prima. */
+let SIN_POLIZZA=null;
+async function apriNuovoSinistro(clienteId){
+  SIN_CLIENTE_ID=null; SIN_PREV=null; SIN_POLIZZA=null;
   const oggi=new Date().toISOString().slice(0,10);
+  let anag=null, polizzeCliente=[];
+  if(clienteId){
+    try{ anag=(ANAG_CACHE||[]).find(a=>a.id===clienteId)||null;
+      if(!anag){ const {data}=await db.from('quote_anagrafiche').select('id,nominativo,codice_fiscale,partita_iva').eq('id',clienteId).maybeSingle(); anag=data||null; }
+    }catch(e){ anag=null; }
+    try{ const {data}=await db.from('quote_polizze').select('id,numero,numero_polizza,prodotto,compagnia,data_effetto,data_scadenza,modulo').eq('cliente_id',clienteId).order('data_effetto',{ascending:false}); polizzeCliente=data||[]; }catch(e){ polizzeCliente=[]; }
+    SIN_CLIENTE_ID=clienteId;
+  }
+  window.__SIN_POLIZZE=polizzeCliente;
+  const tendina=clienteId?`<div class="field"><label>Polizza del cliente <span style="font-weight:400;color:var(--muted)">(compagnia e numero si riempiono da soli)</span></label>
+      <select id="sin-polizza-sel" onchange="sinApplyPolizza(this.value)"><option value="">— nessuna / non in portafoglio —</option>
+      ${polizzeCliente.map(p=>`<option value="${esc(p.id)}">${esc(pfNumero(p))} · ${esc(p.prodotto||p.modulo||'')}${p.compagnia?' · '+esc(p.compagnia):''}${p.data_scadenza?' · scade il '+new Date(p.data_scadenza).toLocaleDateString('it-IT'):''}</option>`).join('')}</select>
+      ${polizzeCliente.length?'':'<div class="cl-sub">Questo cliente non ha polizze in portafoglio: il sinistro si apre lo stesso, senza collegamento.</div>'}</div>`:'';
   const html=`<div class="modal-ov" id="sin-ov" onclick="if(event.target.id==='sin-ov')this.remove()">
     <div class="modal" style="width:680px;max-width:96vw;max-height:92vh;overflow:auto">
       <div class="modal-title"><i class="ti ti-alert-triangle" style="color:#e0a000"></i> Apri nuovo sinistro</div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Contraente / Assicurato</div>
-      <div class="field geo-wrap"><label>Cerca cliente già censito</label><input id="sin-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="sinClienteSearch(this.value)"><div id="sin-search-res" class="geo-res"></div></div>
-      <div class="ana-row"><div class="ana-f"><label>Contraente *</label><input id="sin-contraente"></div><div class="ana-f"><label>Codice fiscale / P.IVA</label><input id="sin-cf" style="text-transform:uppercase"></div></div>
-      <div class="field geo-wrap"><label>Polizza / prodotto collegato <span style="font-weight:400;color:var(--muted)">(facoltativo — cerca tra i preventivi/polizze del cliente)</span></label><input id="sin-prevlink" placeholder="Cerca prodotto o numero preventivo…" autocomplete="off" oninput="sinPrevSearch(this.value)"><div id="sin-prev-res" class="geo-res"></div></div>
+      ${clienteId?'':`<div class="field geo-wrap"><label>Cerca cliente già censito</label><input id="sin-search" placeholder="Nominativo, codice fiscale…" autocomplete="off" oninput="sinClienteSearch(this.value)"><div id="sin-search-res" class="geo-res"></div></div>`}
+      <div class="ana-row"><div class="ana-f"><label>Contraente *</label><input id="sin-contraente" value="${esc(anag?anag.nominativo||'':'')}"${clienteId?' readonly':''}></div><div class="ana-f"><label>Codice fiscale / P.IVA</label><input id="sin-cf" style="text-transform:uppercase" value="${esc(anag?(anag.codice_fiscale||anag.partita_iva||''):'')}"></div></div>
+      ${tendina}
+      <div class="field geo-wrap"><label>Preventivo / prodotto collegato <span style="font-weight:400;color:var(--muted)">(facoltativo — cerca tra i preventivi del cliente)</span></label><input id="sin-prevlink" placeholder="Cerca prodotto o numero preventivo…" autocomplete="off" oninput="sinPrevSearch(this.value)"><div id="sin-prev-res" class="geo-res"></div></div>
       <div class="aw-sec" style="text-align:left;color:var(--blue)">Dati del sinistro</div>
       <div class="ana-row"><div class="ana-f"><label>Ramo / Tipo *</label><select id="sin-ramo">${SIN_RAMI.map(r=>`<option>${esc(r)}</option>`).join('')}</select></div><div class="ana-f"><label>Compagnia</label><input id="sin-compagnia"></div></div>
       <div class="ana-row"><div class="ana-f"><label>N. polizza</label><input id="sin-polizza"></div><div class="ana-f"><label>Luogo del sinistro</label><input id="sin-luogo"></div></div>
@@ -19770,6 +19909,12 @@ function sinPrevSearch(q){
     }catch(e){}
   },300);
 }
+function sinApplyPolizza(id){
+  const p=(window.__SIN_POLIZZE||[]).find(x=>x.id===id)||null;
+  SIN_POLIZZA=p?{id:p.id,numero:pfNumero(p),prodotto:p.prodotto||p.modulo||'',compagnia:p.compagnia||''}:null;
+  const set=(k,v)=>{const e=document.getElementById(k); if(e) e.value=v||'';};
+  if(p){ set('sin-compagnia',p.compagnia||''); set('sin-polizza',pfNumero(p)); }
+}
 function sinApplyPrev(i){
   const p=(window.__SINP||[])[i]; if(!p) return;
   SIN_PREV={ id:p.id, prodotto:p.prodotto, numero:prevNumero(p) };
@@ -19801,7 +19946,9 @@ async function salvaSinistro(){
     const documenti=await sinUploadFiles('sin-files','doc');
     const storia=[{ stato:'aperto', ts:new Date().toISOString(), da:currentUser.name, nota:'Sinistro aperto' }];
     const rec={ contraente, contraente_cf:cf||null, cliente_id:SIN_CLIENTE_ID||null,
-      preventivo_id:SIN_PREV?SIN_PREV.id:null, prodotto_collegato:SIN_PREV?(SIN_PREV.prodotto+' · '+SIN_PREV.numero):null,
+      polizza_id:SIN_POLIZZA?SIN_POLIZZA.id:null,
+      preventivo_id:SIN_PREV?SIN_PREV.id:null,
+      prodotto_collegato:SIN_PREV?(SIN_PREV.prodotto+' · '+SIN_PREV.numero):(SIN_POLIZZA?(SIN_POLIZZA.prodotto+' · '+SIN_POLIZZA.numero):null),
       ramo:v('sin-ramo'), compagnia:v('sin-compagnia')||null, n_polizza:v('sin-polizza')||null, numero_sx:null,
       luogo:v('sin-luogo')||null, data_accadimento:v('sin-accadimento')||null, data_denuncia:v('sin-denuncia')||null,
       descrizione:v('sin-descrizione'), controparte:v('sin-controparte')||null,
@@ -19811,6 +19958,10 @@ async function salvaSinistro(){
     logMovimento('Nuovo sinistro · '+rec.ramo+' · '+contraente,'sinistro',contraente,sinNuovo&&sinNuovo.id);
     document.getElementById('sin-ov')?.remove();
     await loadSinistri();
+    /* Aperto dalla scheda cliente: la linguetta Sinistri si aggiorna da sola. */
+    if(rec.cliente_id && document.getElementById('cl-sin') && window.__CL_ANAG && window.__CL_ANAG.id===rec.cliente_id){
+      clSinistri(rec.cliente_id, []).catch(()=>{});
+    }
     alert('✓ Sinistro aperto e registrato.');
   }catch(e){ alert('Errore: '+(e.message||e)+'\n\n(Hai eseguito lo SQL della tabella quote_sinistri?)'); if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-check"></i> Apri sinistro'; } }
 }
@@ -25671,7 +25822,13 @@ async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
   (polizze || []).forEach(p => {
     agg(p.data_effetto, 'polizza', 'Polizza emessa · ' + (p.prodotto || ''),
       pfNumero(p) + (p.compagnia ? ' · ' + p.compagnia : ''));
-    if (p.data_scadenza) agg(p.data_scadenza, 'polizza', 'Scadenza polizza · ' + (p.prodotto || ''), pfNumero(p));
+    /* M1.5 (19/09/2026): la scadenza si legge con numero di polizza e targa
+       (dove c'è): «scadenza RC Auto» su un cliente con due auto non dice
+       quale. La targa arriva da dati.ssf.veicolo, letta come `targa`. */
+    const targa = p.targa || (p.dati && p.dati.ssf && p.dati.ssf.veicolo && p.dati.ssf.veicolo.targa) || null;
+    if (p.data_scadenza) agg(p.data_scadenza, 'polizza',
+      'Scadenza polizza · n. ' + pfNumero(p) + (targa ? ' · targa ' + targa : ''),
+      (p.prodotto || '') + (p.compagnia ? ' · ' + p.compagnia : ''));
   });
 
   // incassi: dalle rate delle polizze del cliente
@@ -25756,7 +25913,7 @@ async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
     return `<div class="cro-e${futuro ? ' fut' : ''}">
       <div class="cro-ic" style="color:${t[1]}"><i class="ti ${t[0]}"></i></div>
       <div class="cro-c">
-        <div class="cro-t">${esc(e.testo)}${futuro ? ' <span class="cro-fut">in arrivo</span>' : ''}</div>
+        <div class="cro-t">${esc(e.testo)}</div>
         ${e.dettaglio ? `<div class="cro-d">${esc(e.dettaglio)}</div>` : ''}
       </div>
       <div class="cro-q">${croData(e.quando)}</div>
@@ -26062,25 +26219,32 @@ async function caricaCollegati(id, nominativo) {
      sul vecchio elenco, così lo storico non sparisce dalla scheda. */
   let polReali = [];
   try {
+    /* La targa arriva con la polizza (dati.ssf.veicolo) senza scaricare tutto
+       il jsonb: serve alla cronologia (M1.5), dove una scadenza «RC Auto»
+       senza targa non dice quale auto. */
     const { data } = await db.from('quote_polizze')
-      .select('id,numero,numero_polizza,prodotto,compagnia,data_effetto,data_scadenza,premio_annuo,frazionamento,stato_pagamento,perfezionata,rendicontata,preventivo_id,copertura_dal,copertura_al,modulo')
+      .select('id,numero,numero_polizza,prodotto,compagnia,data_emissione,data_effetto,data_scadenza,premio_annuo,frazionamento,stato_pagamento,mezzo_pagamento,perfezionata,rendicontata,preventivo_id,copertura_dal,copertura_al,modulo,targa:dati->ssf->veicolo->>targa')
       .eq('cliente_id', id).order('data_effetto', { ascending: false });
     polReali = data || [];
   } catch (e) { console.warn('polizze del cliente non disponibili:', e.message || e); }
 
   if (polReali.length) {
+    /* M1.3 (19/09/2026): il clic apre IL DETTAGLIO DI QUELLA POLIZZA, non
+       l'elenco generale del portafoglio, e la scheda del cliente resta sotto:
+       chiudendo il dettaglio si torna dov'era. Prima la riga apriva il
+       preventivo se c'era e altrimenti «showPage('portafoglio')», cioè tutte le
+       polizze di tutti. M1.4: i quattro pallini non ci sono più nemmeno qui;
+       al loro posto come paga, che si legge. */
     polPane.innerHTML = polReali.map(p => {
       const scad = p.data_scadenza
         ? new Date(p.data_scadenza).toLocaleDateString('it-IT')
         : '<span class="tk-badge st-aperto">scadenza da confermare</span>';
-      const apri = p.preventivo_id
-        ? `document.getElementById('anag-overlay').remove();apriPreventivo('${p.preventivo_id}')`
-        : `document.getElementById('anag-overlay').remove();showPage('portafoglio')`;
-      return `<div class="cl-row" style="align-items:center;cursor:pointer" onclick="${apri}">
+      const mezzo = pfMezzoNome(p.mezzo_pagamento);
+      return `<div class="cl-row cl-polizza" style="align-items:center;cursor:pointer" onclick="polDettaglio('${esc(p.id)}')" title="Apri il dettaglio di questa polizza">
         <div style="flex:1"><b>${esc(p.prodotto || p.modulo || '—')}</b>
           <div class="cl-sub">${esc(pfNumero(p))}${p.compagnia ? ' · ' + esc(p.compagnia) : ''}
-            · ${new Date(p.data_effetto).toLocaleDateString('it-IT')} → ${scad}</div></div>
-        <div style="text-align:right">${pfSemafori(p)}
+            · ${new Date(p.data_effetto).toLocaleDateString('it-IT')} → ${scad}${p.data_emissione ? ' · emessa il ' + new Date(p.data_emissione).toLocaleDateString('it-IT') : ''}</div></div>
+        <div style="text-align:right"><span class="cl-sub">${mezzo ? esc(mezzo) : 'pagamento da indicare'}</span>
           <div class="cl-prem">${(p.premio_annuo == null ? '' : soldi(p.premio_annuo))}</div></div>
       </div>`;
     }).join('');
@@ -26142,10 +26306,10 @@ async function caricaCollegati(id, nominativo) {
      archivio. Tutto il resto sta in fdoc* più sotto. */
   fdocInstalla(id, recs);
 
-  // ── SINISTRI (dichiarati nella situazione dei preventivi) ──
+  // ── SINISTRI: quelli APERTI in agenzia, e sotto quelli dichiarati nei preventivi ──
   const sin = [];
   recs.forEach(r => { const ss = (r.dati && r.dati.situazione && r.dati.situazione.sinistri) || []; ss.forEach(x => { if (x.num && parseInt(x.num, 10) > 0) sin.push({ anno: x.anno, num: x.num, prod: r.prodotto || '' }); }); });
-  document.getElementById('cl-sin').innerHTML = sin.length ? sin.map(x => `<div class="cl-row"><div><b>${esc(x.num)} sinistro/i</b><div class="cl-sub">${esc(x.prod)}</div></div><span class="tk-badge st-aperto">${esc(String(x.anno))}</span></div>`).join('') : '<div class="cl-empty">Nessun sinistro dichiarato nei preventivi del cliente.</div>';
+  clSinistri(id, sin).catch(e => console.warn('sinistri del cliente non disponibili:', e.message || e));
 
   /* Note e trattative si caricano da sole: se una delle due tabelle non
      risponde, le altre linguette restano piene. */
@@ -26160,6 +26324,41 @@ async function caricaCollegati(id, nominativo) {
     if (p) p.innerHTML = '<div class="cl-empty">Cronologia non disponibile.</div>';
   });
 }
+/* M1.6 (19/09/2026): la linguetta Sinistri mostrava SOLO i sinistri
+   dichiarati nei preventivi (quelli dell'attestato di rischio), non quelli
+   aperti in agenzia su questo cliente — che stavano nella pagina Sinistri e
+   non si vedevano dalla scheda. Adesso: i sinistri veri (quote_sinistri),
+   il tasto «Nuovo sinistro» precompilato col cliente, e sotto, distinti, quelli
+   dichiarati. Chi apre un sinistro da qui non deve cambiare sezione. */
+async function clSinistri(clienteId, dichiarati) {
+  const pane = document.getElementById('cl-sin');
+  if (!pane) return;
+  let veri = [];
+  let lettura = true;
+  try {
+    const { data, error } = await db.from('quote_sinistri').select('*').eq('cliente_id', clienteId).order('creato_il', { ascending: false });
+    if (error) throw error;
+    veri = data || [];
+  } catch (e) { lettura = false; }
+  /* Il pannello del sinistro (`apriSinistro`) legge dalla cache della pagina
+     Sinistri: si mettono lì anche questi, così si aprono da qui. */
+  veri.forEach(s => { if (!SINISTRI_CACHE.find(x => x.id === s.id)) SINISTRI_CACHE.push(s); });
+  const testa = `<div style="margin-bottom:10px"><button class="btn-emetti gruppi-add-btn" style="padding:5px 12px" onclick="apriNuovoSinistro('${esc(clienteId)}')"><i class="ti ti-plus"></i> Nuovo sinistro</button></div>`;
+  const righe = veri.map(s => {
+    const st = SIN_STATI[s.stato || 'aperto'] || SIN_STATI.aperto;
+    const quando = s.data_accadimento || s.data_denuncia || s.creato_il;
+    return `<div class="cl-row cl-sinistro" style="cursor:pointer" onclick="apriSinistro('${esc(s.id)}')">
+      <div><b>${esc(s.ramo || 'Sinistro')}</b>${s.numero_sx ? ` <span class="cl-sub">SX ${esc(s.numero_sx)}</span>` : ''}
+        <div class="cl-sub">${quando ? new Date(quando).toLocaleDateString('it-IT') : ''}${s.compagnia ? ' · ' + esc(s.compagnia) : ''}${s.n_polizza ? ' · pol. ' + esc(s.n_polizza) : ''}</div></div>
+      <span class="tk-badge ${st.cls}">${st.label}</span></div>`;
+  }).join('');
+  const dich = (dichiarati || []).map(x => `<div class="cl-row"><div><b>${esc(x.num)} sinistro/i dichiarati</b><div class="cl-sub">${esc(x.prod)}</div></div><span class="tk-badge st-aperto">${esc(String(x.anno))}</span></div>`).join('');
+  pane.innerHTML = testa
+    + (veri.length ? righe : (lettura ? '<div class="cl-empty">Nessun sinistro aperto per questo cliente.</div>'
+                                       : '<div class="cl-empty">Non riesco a leggere i sinistri. Non vuol dire che non ce ne siano.</div>'))
+    + (dich ? '<div class="flu-sez" style="margin-top:12px">Dichiarati nei preventivi</div>' + dich : '');
+}
+
 // Elimina un preventivo dalla scheda cliente
 async function eliminaPreventivoCliente(id) {
   const r = STORICO_CACHE.find(x => x.id === id);

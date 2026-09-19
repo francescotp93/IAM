@@ -258,16 +258,51 @@
 
      `movimenti === null` vuol dire NON SI È POTUTO LEGGERE, che non è
      «nessun movimento»: confonderli rassicura a sproposito. */
+  /* «gg/mm/aaaa hh:mm», il formato chiesto dal brief (M1.1) per l'etichetta.
+     Si costruisce a mano e non con toLocaleString: quello mette la virgola e
+     i secondi, e cambia da un browser all'altro. */
+  function quandoBreve(v) {
+    if (!v) return '—';
+    var d = new Date(v);
+    if (isNaN(d.getTime())) return '—';
+    var z = function (n) { return (n < 10 ? '0' : '') + n; };
+    return z(d.getDate()) + '/' + z(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + z(d.getHours()) + ':' + z(d.getMinutes());
+  }
+
+  /* L'ULTIMA MODIFICA (M1.1, 19/09/2026). Il movimento più recente per data,
+     non il primo dell'elenco: chi chiama può passarli in un ordine qualunque.
+     Se non c'è nessun movimento, l'ultima modifica è la creazione — la riga
+     esiste, qualcuno l'ha scritta. Se il registro NON SI È POTUTO LEGGERE
+     (`null`) non si risponde: un'etichetta che dice «ultima modifica: Anna»
+     mentre in mezzo c'è un movimento di Mario non letto sarebbe falsa con la
+     faccia seria. */
+  function ultimaModifica(movimenti, creato) {
+    if (movimenti === null) return null;
+    var ultimo = null;
+    (movimenti || []).forEach(function (m) {
+      if (!m || !m.creato_il) return;
+      if (!ultimo || String(m.creato_il) > String(ultimo.creato_il)) ultimo = m;
+    });
+    if (ultimo) return { nome: ultimo.utente_nome || '—', il: ultimo.creato_il, azione: ultimo.azione || '' };
+    if (creato && (creato.nome || creato.il)) return { nome: creato.nome || '—', il: creato.il || null, azione: creato.azione || 'Creata' };
+    return null;
+  }
+
   function storiaHTML(movimenti, creato, opz) {
     var o = opz || {};
     var esc = o.esc || function (x) { return String(x == null ? '' : x); };
     var quando = o.quando || function (v) { return v ? new Date(v).toLocaleString('it-IT') : '—'; };
 
-    var testa = (creato && (creato.nome || creato.il))
+    var um = ultimaModifica(movimenti, creato);
+    var etichetta = um
+      ? '<div class="reg-ultima">Ultima modifica: <b>' + esc(um.nome) + '</b> — ' + quandoBreve(um.il) + '</div>'
+      : '';
+
+    var testa = etichetta + ((creato && (creato.nome || creato.il))
       ? '<div class="reg-r"><div><b>' + esc(creato.nome || '—') + '</b>' +
         '<div class="cl-sub">' + esc(creato.azione || 'Creata') + '</div></div>' +
         '<div class="cl-sub">' + quando(creato.il) + '</div></div>'
-      : '';
+      : '');
 
     if (movimenti === null) {
       return testa + '<div class="cl-sub" style="padding:6px 0">Il registro dei movimenti non risponde. ' +
@@ -289,7 +324,7 @@
     VERSIONE: VERSIONE, VOCI: VOCI, UUID: UUID,
     etichetta: etichetta, movimento: movimento, storia: storia,
     unisci: unisci, chiaveFatto: chiaveFatto, copertura: copertura,
-    storiaHTML: storiaHTML
+    storiaHTML: storiaHTML, ultimaModifica: ultimaModifica, quandoBreve: quandoBreve
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.Registro = API;

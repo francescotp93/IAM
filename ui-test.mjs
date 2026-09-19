@@ -730,7 +730,7 @@ const avvio = async () => {
       /* `cliente_id` c'e' su p1 e p3 e NON su p2: il nome si apre solo quando
          c'e' davvero un'anagrafica dietro, e p2 e' il caso in cui non c'e'. */
       { id: 'p1', numero: 1, numero_polizza: 'HDI/123', cliente: 'Rossi Mario', cliente_id: 'anag-1', modulo: 'persona',
-        prodotto: 'RC Vita Privata', compagnia: 'HDI', data_effetto: '2026-06-20',
+        prodotto: 'RC Vita Privata', compagnia: 'HDI', data_emissione: '2026-06-10', data_effetto: '2026-06-20',
         data_scadenza: '2027-06-20', frazionamento: 'Mensile', premio_annuo: 144, premio_rata: 12,
         stato_pagamento: 'pagato', perfezionata: true, rendicontata: true, creato_nome: 'Anna', preventivo_id: 'prev-1' },
       { id: 'p2', numero: 2, numero_polizza: null, cliente: 'Bianchi Srl', modulo: 'beni',
@@ -738,7 +738,7 @@ const avvio = async () => {
         data_scadenza: null, frazionamento: 'Annuale', premio_annuo: 60, premio_rata: 60,
         stato_pagamento: 'non_pagato', perfezionata: false, rendicontata: false, creato_nome: 'Anna', preventivo_id: null },
       { id: 'p3', numero: 3, numero_polizza: 'AXA/999', cliente: 'Verdi Luca', cliente_id: 'anag-3', modulo: 'rca',
-        prodotto: 'RC Auto', compagnia: 'AXA', data_effetto: '2024-01-01',
+        prodotto: 'RC Auto', compagnia: 'AXA', data_emissione: '2023-12-20', data_effetto: '2024-01-01',
         data_scadenza: '2025-01-01', frazionamento: 'Annuale', premio_annuo: 500, premio_rata: 500,
         stato_pagamento: 'sospeso', perfezionata: false, rendicontata: false, creato_nome: 'Luigi', preventivo_id: 'prev-3' }
     ];
@@ -784,26 +784,22 @@ const avvio = async () => {
       return '0 pallini, 3 righe, come paga su ognuna';
     });
 
-    await prova('portafoglio: gli stati non sono spariti, sono rimasti dove si guardano', async () => {
-      /* Togliere i pallini dal portafoglio non vuol dire buttare gli stati:
-         vivono nel database e `pfSemafori` li disegna ancora nella scheda del
-         cliente. Se un giorno sparisse anche di la\', sparirebbe un'informazione
-         invece di uno spazio sprecato. E il colore da solo non e\' mai
-         informazione: ogni pallino dice a parole che cosa vuol dire. */
-      const r = await page.evaluate(() => {
-        const d = document.createElement('div');
-        d.innerHTML = window.pfSemafori({ stato_pagamento: 'pagato', perfezionata: false, rendicontata: true,
-                                          data_effetto: '2020-01-01', data_scadenza: '2099-01-01' });
-        const s = [...d.querySelectorAll('.sem')];
-        return { quanti: s.length, titoli: s.map(x => x.getAttribute('title')),
-                 senzaTitolo: s.filter(x => !x.getAttribute('title')).length };
-      });
-      deve(r.quanti === 4, 'semafori nella scheda cliente: ' + r.quanti);
-      deve(r.senzaTitolo === 0, r.senzaTitolo + ' pallini senza spiegazione (il colore da solo non e\' informazione)');
-      deve(/Pagamento/.test(r.titoli[0]) && /Perfezionamento/.test(r.titoli[1])
-        && /Rendicontazione/.test(r.titoli[2]) && /Copertura/.test(r.titoli[3]),
-        'i quattro fronti non sono nell\'ordine dichiarato: ' + r.titoli.join(' / '));
-      return r.titoli[0] + ' … ' + r.titoli[3];
+    await prova('portafoglio: i pallini non ci sono piu\' da nessuna parte, gli stati si\'', async () => {
+      /* 18/09: via dal portafoglio. 19/09 (brief M1.4): via anche dalla scheda
+         del cliente, e con loro `pfSemafori`. La prova che c'era misurava
+         quattro pallini disegnati da quella funzione: era il mondo di ieri.
+         La REGOLA che resta: gli stati non spariscono — PF_PAG li scrive a
+         parole nel pagamento e nell'esportazione, pfCopertura li deduce. */
+      const r = await page.evaluate(() => ({
+        funzione: typeof window.pfSemafori,
+        pag: Object.keys(PF_PAG).length,
+        copertura: typeof window.pfCopertura
+      }));
+      deve(r.funzione === 'undefined', 'pfSemafori esiste ancora: una funzione che non chiama nessuno');
+      deve(r.pag === 4 && r.copertura === 'function', 'gli stati sono spariti insieme ai pallini');
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(!/pfSemafori\(/.test(h), 'qualcuno chiama ancora pfSemafori');
+      return 'niente pallini, quattro stati di pagamento a parole';
     });
 
     await prova('portafoglio: il tasto di esportazione è un tasto, non una fascia', async () => {
@@ -860,10 +856,19 @@ const avvio = async () => {
         out.cliente = conta();
         metti('pf-cliente', ''); metti('pf-numero', 'axa');
         out.numero = conta();
-        metti('pf-numero', ''); metti('pf-da', '2026-01-01');
+        metti('pf-numero', ''); metti('pf-date-su', 'effetto'); metti('pf-da', '2026-01-01');
         out.dal2026 = conta();
+        /* M1.2: la stessa finestra sull'EMISSIONE. p1 emessa il 10/06/2026,
+           p3 il 20/12/2023, p2 senza data: dal 2026 ne resta UNA — e p2, che
+           una data di emissione non ce l'ha, non si conta ripiegando
+           sull'effetto. */
+        metti('pf-date-su', 'emissione');
+        out.emesse2026 = conta();
+        metti('pf-da', ''); metti('pf-a', '2023-12-31');
+        out.emesseFino2023 = conta();
         window.pfAzzera();
         out.dopoAzzera = conta();
+        out.suDopoAzzera = document.getElementById('pf-date-su').value;
         return out;
       });
       deve(r.hdi === 2, 'filtro compagnia: ' + r.hdi + ' invece di 2');
@@ -872,8 +877,11 @@ const avvio = async () => {
       deve(r.cliente === 1, 'filtro cliente (senza distinzione maiuscole): ' + r.cliente);
       deve(r.numero === 1, 'filtro numero di polizza: ' + r.numero);
       deve(r.dal2026 === 2, 'filtro data effetto: ' + r.dal2026);
+      deve(r.emesse2026 === 1, 'filtro data emissione dal 2026: ' + r.emesse2026 + ' (attesa 1: p2 senza data non si conta)');
+      deve(r.emesseFino2023 === 1, 'filtro data emissione fino al 2023: ' + r.emesseFino2023);
       deve(r.dopoAzzera === 3, 'Azzera non ripristina tutto: ' + r.dopoAzzera);
-      return 'sei filtri + azzera';
+      deve(r.suDopoAzzera === 'emissione', 'dopo Azzera il filtro non torna sull\'emissione: ' + r.suDopoAzzera);
+      return 'sette filtri + azzera, le date su emissione/effetto/scadenza';
     });
 
     await prova('portafoglio: i totali dicono cosa manca', async () => {
@@ -1012,6 +1020,91 @@ const avvio = async () => {
       deve(/mezzo di pagamento/.test(log[0].azione || ''), 'non dice che cosa e\' cambiato: ' + log[0].azione);
       deve(log[0].utente_nome, 'non dice chi: ' + JSON.stringify(log[0]));
       return '2 rate, 1 dedotta dichiarata, 1 movimento registrato sulla riga';
+    });
+
+
+    /* ══ BRIEF IAM #01 · M1 — dettaglio polizza (19/09/2026) ═══════════════ */
+    await prova('M1.1 · il pannello scrive «Ultima modifica: nome — gg/mm/aaaa hh:mm», sul movimento piu\' recente', async () => {
+      const POL = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+      const r = await page.evaluate(async (POL) => {
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: POL, cliente: 'Rossi Mario', numero_polizza: 'HDI/123', creato_nome: 'Anna', creato_il: '2026-09-01T08:00:00Z', dati: {} } };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: [] };
+        /* In ordine sparso apposta: l'etichetta deve prendere il piu' recente. */
+        window.__COLLAUDO.risposte['quote_log:lista'] = { error: null, data: [
+          { utente_nome: 'Mario', azione: 'Pagamento modificato', creato_il: '2026-09-10T10:00:00Z', entita: 'polizza', entita_id: POL },
+          { utente_nome: 'Luca',  azione: 'Numero corretto',      creato_il: '2026-09-19T14:05:00Z', entita: 'polizza', entita_id: POL } ] };
+        await window.polDettaglio(POL);
+        await new Promise(r => setTimeout(r, 80));
+        const s = document.getElementById('pol-storia');
+        const out = s ? s.innerHTML : '';
+        delete window.__COLLAUDO.risposte['quote_log:lista'];
+        return out;
+      }, POL);
+      deve(/Ultima modifica: <b>Luca<\/b> — \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/.test(r), 'manca l\'etichetta col formato del brief: ' + r.slice(0, 200));
+      deve(!/Ultima modifica: <b>Mario/.test(r), 'l\'etichetta prende il primo dell\'elenco, non il piu\' recente');
+      return 'Ultima modifica: Luca — 19/09/2026 hh:mm';
+    });
+
+    await prova('M1.2/M1.3 · il dettaglio ha emissione (modificabile), pagamento, rate in scadenza e produttore', async () => {
+      const POL = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+      const COL = 'cccccccc-3333-4333-8333-cccccccccccc';
+      const r = await page.evaluate(async (o) => {
+        const { POL, COL } = o;
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: POL, cliente: 'Rossi Mario', numero_polizza: 'PR/77', compagnia: 'PRIMA', prodotto: 'RC Auto',
+          data_emissione: '2026-09-10', data_effetto: '2026-09-16', data_scadenza: '2027-09-16',
+          mezzo_pagamento: 'bonifico', stato_pagamento: 'pagato', premio_annuo: 390, creato_nome: 'Anna', creato_il: '2026-09-17T09:30:00Z',
+          dati: { ssf: { collaboratore: 'U25337' } } } };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: [
+          { id: 't1', tipo: 'prima_rata', data_decorrenza: '2026-09-16', importo_lordo: 195, stato: 'incassato', incassato_il: '2026-09-16' },
+          { id: 't2', tipo: 'rata', data_decorrenza: '2027-03-16', importo_lordo: 195, stato: 'aperto' } ] };
+        /* Il codice della compagnia NON e' deciso: il pannello non deve
+           inventare un nome. */
+        window.__COLLAUDO.risposte['quote_codici_collaboratore:single'] = { error: null, data: { collaboratore_id: null, nessuno: false, deciso: false } };
+        TIT_COLLAB = []; window.TIT_COLLAB_NOMI = {};
+        await window.polDettaglio(POL);
+        const bd = document.getElementById('pol-bd');
+        const prima = {
+          html: bd.innerHTML,
+          emissione: (document.getElementById('pol-emissione') || {}).value,
+          rateAperte: bd.querySelectorAll('.pol-rata-aperta').length,
+          produttore: (bd.querySelector('.pol-produttore') || {}).textContent
+        };
+        /* Ora il codice e' DECISO: la persona si legge, non si indovina. */
+        window.__COLLAUDO.risposte['quote_codici_collaboratore:single'] = { error: null, data: { collaboratore_id: COL, nessuno: false, deciso: true } };
+        window.__COLLAUDO.risposte['quote_collaboratori:lista'] = { error: null, data: [{ id: COL, nome: 'Anna', cognome: 'Neri' }] };
+        TIT_COLLAB = []; window.TIT_COLLAB_NOMI = {};
+        await window.polDettaglio(POL);
+        const deciso = (document.getElementById('pol-bd').querySelector('.pol-produttore') || {}).textContent;
+        /* La correzione dell'emissione: scrive la colonna e lascia il movimento. */
+        window.__COLLAUDO.db = [];
+        document.getElementById('pol-emissione').value = '2026-09-12';
+        await window.polSalvaEmissione(POL);
+        const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_polizze' && x.operazione === 'update').map(x => x.payload);
+        const log = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload);
+        delete window.__COLLAUDO.risposte['quote_codici_collaboratore:single'];
+        delete window.__COLLAUDO.risposte['quote_collaboratori:lista'];
+        TIT_COLLAB = []; window.TIT_COLLAB_NOMI = {};
+        return { prima, deciso, upd, log };
+      }, { POL, COL });
+      deve(r.prima.emissione === '2026-09-10', 'la data di emissione non si vede nel campo: ' + r.prima.emissione);
+      deve(/Bonifico/.test(r.prima.html) && /Pagato/.test(r.prima.html), 'il pagamento (mezzo e stato) non si legge nel dettaglio');
+      deve(r.prima.rateAperte === 1 && /16\/03\/2027/.test(r.prima.html), 'le rate in scadenza: ' + r.prima.rateAperte + ' (attesa 1, quella del 16/03/2027)');
+      deve(/U25337/.test(r.prima.produttore) && /non ancora abbinato/.test(r.prima.produttore), 'un codice non deciso deve restare un codice: ' + r.prima.produttore);
+      deve(r.deciso === 'Neri Anna', 'con la decisione presa il produttore non e\' la persona: ' + r.deciso);
+      deve(r.upd.length === 1 && r.upd[0].data_emissione === '2026-09-12', 'la data corretta non viene scritta: ' + JSON.stringify(r.upd));
+      deve(r.log.length === 1 && /Data di emissione/.test(r.log[0].azione) && r.log[0].entita_id === POL, 'la correzione non lascia il movimento sulla riga: ' + JSON.stringify(r.log));
+      return 'emissione 10/09 → 12/09 con movimento; 1 rata in scadenza; produttore da codice deciso';
+    });
+
+    await prova('M1.2 · il flusso scrive la data di emissione in colonna, e la sua esportazione la porta', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      const blocco = (h.match(/async function fluConferma\(\)[\s\S]*?quote_polizze'\)\.insert/) || [''])[0];
+      deve(/data_emissione: x\.data_emissione/.test(blocco), 'fluConferma non scrive data_emissione sulla polizza');
+      const exp = (h.match(/function pfExportExcel\(\)[\s\S]*?<\/thead>/) || [''])[0];
+      deve(/<th>Emissione<\/th>/.test(exp), 'l\'esportazione Excel non ha la colonna Emissione');
+      return 'colonna scritta dal flusso, esportata dall\'Excel';
     });
 
     /* ══ IL REGISTRO DEI MOVIMENTI (19/09/2026) ═══════════════════════════
@@ -3813,18 +3906,26 @@ const avvio = async () => {
       return r.soloData + ' · ' + r.conOrario;
     });
 
-    await prova('cliente: le scadenze future si distinguono dal passato', async () => {
-      const r = await page.evaluate(() => {
+    await prova('cliente: la scadenza si legge con numero di polizza e targa, senza «in arrivo»', async () => {
+      /* M1.5 (19/09/2026). La prova di prima pretendeva l'etichetta «in arrivo»
+         sugli eventi futuri: era il mondo di ieri. Il futuro si distingue
+         ancora (classe `fut`, piu\' chiaro), ma la voce dice quello che serve
+         a chi telefona: quale polizza e quale auto. */
+      const r = await page.evaluate(async () => {
+        const pol = [{ id: 'p1', numero: 1, numero_polizza: 'HDI/123', prodotto: 'RC Auto',
+                       compagnia: 'HDI', data_effetto: '2026-06-20', data_scadenza: '2027-06-20', targa: 'AB123CD' }];
+        await window.clCronologia('c1', 'Rossi Mario', [], pol, { id: 'c1', creato_il: '2026-01-10T09:00:00Z' });
         const e = [...document.querySelectorAll('#cl-cro .cro-e')];
         const fut = e.filter(x => x.classList.contains('fut'));
         return { futuri: fut.length, testo: fut.map(x => x.textContent).join(' '),
-                 haEtichetta: fut.some(x => x.querySelector('.cro-fut')) };
+                 etichetta: !!document.querySelector('#cl-cro .cro-fut') };
       });
-      // la scadenza 2027 è nel futuro: è un promemoria, non una cosa successa
       deve(r.futuri >= 1, 'nessun evento futuro riconosciuto');
-      deve(/Scadenza polizza/.test(r.testo), 'la scadenza futura non è fra i futuri: ' + r.testo.slice(0, 80));
-      deve(r.haEtichetta, 'gli eventi futuri non sono etichettati');
-      return r.futuri + ' in arrivo';
+      deve(!r.etichetta, 'l\'etichetta «in arrivo» c\'e\' ancora');
+      deve(!/in arrivo/.test(r.testo), 'la dicitura «in arrivo» c\'e\' ancora nel testo');
+      deve(/Scadenza polizza · n\. HDI\/123/.test(r.testo), 'la scadenza non porta il numero di polizza: ' + r.testo.slice(0, 120));
+      deve(/targa AB123CD/.test(r.testo), 'la scadenza non porta la targa: ' + r.testo.slice(0, 120));
+      return 'scadenza n. HDI/123 · targa AB123CD';
     });
 
     await prova('cliente: una fonte che non risponde non cancella la storia', async () => {
@@ -6239,6 +6340,79 @@ const avvio = async () => {
       document.getElementById('anag-overlay')?.remove();
       ANAG_CACHE = [{ id: 'cli-1', nominativo: 'ROSSI MARIO', tipo: 'fisica' }];
       apriAnagrafica('cli-1');
+    });
+
+
+    /* ══ BRIEF IAM #01 · M1 — scheda cliente (19/09/2026) ═══════════════════ */
+    await prova('M1.3/M1.4 · dalla scheda cliente il clic apre QUELLA polizza, la scheda resta sotto, niente pallini', async () => {
+      await apriScheda();
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { error: null, data: [
+          { id: 'p1', numero: 1, numero_polizza: 'HDI/123', prodotto: 'RC Auto', compagnia: 'HDI', data_emissione: '2026-06-10',
+            data_effetto: '2026-06-20', data_scadenza: '2027-06-20', premio_annuo: 500, mezzo_pagamento: 'bonifico',
+            preventivo_id: 'prev-1', targa: 'AB123CD' } ] };
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { error: null, data: [] };
+        await caricaCollegati('cli-1', 'ROSSI MARIO');
+        const riga = document.querySelector('#cl-pol .cl-polizza');
+        const out = { onclick: riga && riga.getAttribute('onclick'), pallini: document.querySelectorAll('#cl-pol .sem').length,
+                      testo: document.getElementById('cl-pol').textContent };
+        delete window.__COLLAUDO.risposte['quote_polizze:lista'];
+        delete window.__COLLAUDO.risposte['quote_sinistri:lista'];
+        return out;
+      });
+      deve(/polDettaglio\('p1'\)/.test(r.onclick || ''), 'il clic non apre il dettaglio di quella polizza: ' + r.onclick);
+      /* Prima: `apriPreventivo` se c'era un preventivo, altrimenti
+         `showPage('portafoglio')` — l'elenco di TUTTE le polizze. E chiudeva
+         la scheda: tornare indietro voleva dire riaprirla. */
+      deve(!/showPage\('portafoglio'\)|anag-overlay|apriPreventivo/.test(r.onclick || ''), 'apre ancora l\'elenco generale o chiude la scheda');
+      deve(r.pallini === 0, r.pallini + ' pallini nella scheda cliente');
+      deve(/Bonifico/.test(r.testo) && /emessa il 10\/06\/2026/.test(r.testo), 'al posto dei pallini non c\'e\' come paga, e l\'emissione non si legge: ' + r.testo.slice(0, 160));
+      return 'clic → polDettaglio(p1), scheda sotto, 0 pallini';
+    });
+
+    await prova('M1.6 · la scheda elenca i sinistri APERTI e «Nuovo sinistro» nasce collegato a cliente e polizza', async () => {
+      await apriScheda();
+      const SX = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
+      const r = await page.evaluate(async (SX) => {
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { error: null, data: [
+          { id: 'p1', numero: 1, numero_polizza: 'HDI/123', prodotto: 'RC Auto', compagnia: 'HDI', data_effetto: '2026-06-20', data_scadenza: '2027-06-20' } ] };
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { error: null, data: [
+          { id: 's1', ramo: 'RC Auto', stato: 'in_gestione', compagnia: 'HDI', n_polizza: 'HDI/123', data_accadimento: '2026-09-01', cliente_id: 'cli-1' } ] };
+        await caricaCollegati('cli-1', 'ROSSI MARIO');
+        await new Promise(r => setTimeout(r, 80));
+        const pane = document.getElementById('cl-sin');
+        const elenco = pane.textContent;
+        const bottone = [...pane.querySelectorAll('button')].find(b => /Nuovo sinistro/.test(b.textContent));
+        document.getElementById('sin-ov')?.remove();
+        await apriNuovoSinistro('cli-1');
+        const sel = document.getElementById('sin-polizza-sel');
+        const opzioni = sel ? [...sel.options].map(o => o.textContent) : null;
+        const contraente = document.getElementById('sin-contraente').value;
+        sel.value = 'p1'; sel.dispatchEvent(new Event('change'));
+        const compagnia = document.getElementById('sin-compagnia').value;
+        const numero = document.getElementById('sin-polizza').value;
+        document.getElementById('sin-descrizione').value = 'Tamponamento in colonna';
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['quote_sinistri:single'] = { error: null, data: { id: SX } };
+        await salvaSinistro();
+        const ins = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_sinistri' && x.operazione === 'insert').map(x => x.payload);
+        const log = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload);
+        document.getElementById('sin-ov')?.remove();
+        delete window.__COLLAUDO.risposte['quote_polizze:lista'];
+        delete window.__COLLAUDO.risposte['quote_sinistri:lista'];
+        delete window.__COLLAUDO.risposte['quote_sinistri:single'];
+        return { elenco, bottone: !!bottone, bottoneOnclick: bottone && bottone.getAttribute('onclick'), opzioni, contraente, compagnia, numero, ins, log };
+      }, SX);
+      deve(/RC Auto/.test(r.elenco) && /In gestione/.test(r.elenco), 'i sinistri aperti in agenzia non si vedono nella scheda: ' + r.elenco.slice(0, 120));
+      deve(r.bottone && /apriNuovoSinistro\('cli-1'\)/.test(r.bottoneOnclick), 'manca «Nuovo sinistro» precompilato col cliente');
+      deve(r.contraente === 'ROSSI MARIO', 'il contraente non e\' precompilato: ' + r.contraente);
+      deve(r.opzioni && r.opzioni.some(o => /HDI\/123/.test(o) && /RC Auto/.test(o)), 'la tendina non propone le polizze del cliente: ' + JSON.stringify(r.opzioni));
+      deve(r.compagnia === 'HDI' && r.numero === 'HDI/123', 'scegliere la polizza non riempie compagnia e numero: ' + r.compagnia + ' / ' + r.numero);
+      deve(r.ins.length === 1, 'inserimenti: ' + r.ins.length);
+      deve(r.ins[0].cliente_id === 'cli-1' && r.ins[0].polizza_id === 'p1', 'il sinistro non nasce collegato a cliente e polizza: ' + JSON.stringify(r.ins[0]));
+      deve(r.ins[0].compagnia === 'HDI' && r.ins[0].n_polizza === 'HDI/123', 'compagnia/numero non salvati');
+      deve(r.log.length === 1 && r.log[0].entita === 'sinistro' && r.log[0].entita_id === SX, 'il movimento non punta al sinistro: ' + JSON.stringify(r.log));
+      return '1 sinistro in elenco, nuovo sinistro con cliente_id + polizza_id, movimento sulla riga';
     });
 
     await prova('personalizzati: il premio non si mostra mai senza il suo frazionamento', async () => {

@@ -509,6 +509,8 @@ function mezzoDa(codice) {
       senza.push('non marca i collaboratori fra le anagrafiche: si riconoscono dai produttori (REC101)');
     if (!dichiara('020', 'MEZZO_PAG_SHARE') && !dichiara('020', 'MEZZO_PAGAMENTO_CMP'))
       senza.push('non dice come paga il cliente');
+    if (!dichiara('020', 'DATA_EMISSIONE'))
+      senza.push('non porta la data di emissione: resta vuota, si scrive a mano dal dettaglio della polizza');
     if (!righe['021'].length) senza.push('non porta il veicolo (targa, classe)');
     if (!righe['030'].length) senza.push('non porta le garanzie della polizza');
     if (!righe['042'].length) senza.push('non porta il dettaglio delle provvigioni garanzia per garanzia');
@@ -644,6 +646,12 @@ function mezzoDa(codice) {
       modulo: RAMO[String(r.RAMO_CMP || '').toUpperCase()] || null,
       data_effetto: effetto,
       data_scadenza: scadenza,
+      /* Quando la compagnia l'ha EMESSA — che non è quando decorre: si emette
+         prima, a volte settimane prima. È il criterio di ricerca più usato in
+         agenzia, quindi sta in una colonna sua (M1.2, 19/09/2026), non solo
+         dentro `dati`. Il V8 non porta la colonna: resta vuota, non si ricava
+         dall'effetto. */
+      data_emissione: data(r.DATA_EMISSIONE),
       copertura_dal: effetto,
       copertura_al: incassato,
       frazionamento: FRAZIONAMENTO[fraz] || null,

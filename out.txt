@@ -1,39 +1,16 @@
-id: ancora-1789834479  exit: 0  2026-09-19 16:15:42
+id: stopora-1789834586  exit: 0  2026-09-19 16:16:54
 ----
 == ora
-2026-09-19 16:15:15 UTC
-== commit vivo
-3ff4f3e Brief IAM #01 · M1: dettaglio polizza e scheda cliente (#200)
-== stato groupama
-{"running":false,"step":"attesa_otp","since":1789830324145,"msg":"Codice non accettato — controlla e riprova, oppure invia un altro codice.","codice_chiesto_il":1789829814649}
+2026-09-19 16:16:51 UTC
+== FERMO SUBITO groupama: sta girando in tondo
+stato: inactive
+porta 4500: muta
 
-== A. mail di Groupama nell'ultima ora, con l'orario
-  mail di Groupama nell'ultima ora: 11
-    15:25:02
-    15:30:03
-    15:34:46
-    15:39:17
-    15:44:16
-    15:49:16
-    15:54:17
-    15:59:17
-    16:04:16
-    16:09:16
-    16:13:43
-  altri messaggi nell'ultima ora: 0
+== che cosa faceva: giornale groupama, ultimi 40 minuti, SENZA filtri
+Sep 19 16:16:51 vps-d6443a46 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
+Sep 19 16:16:51 vps-d6443a46 start-service.sh[3502430]: 16:16:51 [groupama] SIGTERM: nessuna sessione viva, tengo la copia su disco
+Sep 19 16:16:51 vps-d6443a46 systemd[1]: groupama-scraper.service: Deactivated successfully.
+Sep 19 16:16:51 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 19 16:16:51 vps-d6443a46 systemd[1]: groupama-scraper.service: Consumed 6min 34.168s CPU time over 3h 44min 10.546s wall clock time, 535.7M memory peak.
 
-== B. giornale groupama, ultima ora
-
-== C. backend: vigilanza e posta, ultima ora
-[vigilanza-fonti] giro 8 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 9 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 10 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 2 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 3 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 4 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 5 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 6 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 7 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 8 · controllate 7 · cadute 0 · rientrate 0
-[vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
+== e il backend: righe su otp/codice/conferma, ultimi 40 minuti

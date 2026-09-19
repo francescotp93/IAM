@@ -207,6 +207,45 @@ prova('da spento lo dice, e lo dice una volta per caduta', () => {
     'il messaggio non e\' sotto il contatore: verrebbe ripetuto a ogni giro del keep-alive');
 });
 
+
+prova('da sloggati il keep-alive non apre il portale', () => {
+  /*  Misurato il 19/09/2026 sulla casella a cui Groupama manda davvero i
+      codici: 45 mail in un'ora e un quarto, una ogni 4 minuti — il battito di
+      questo orologio. Non chiedeva un codice: apriva la home. Tanto basta,
+      perche\' il portale vede un utente noto con la sessione morta e spedisce.
+      Un keep-alive su una sessione che non c\'e\' piu\' non tiene vivo niente:
+      manda solo una mail all\'agente ogni quattro minuti.  */
+  const da = src.indexOf('let kaTick');
+  const ka = da < 0 ? '' : src.slice(da, src.indexOf('}, 4 * 60 * 1000)', da));
+  deve(ka, 'non trovo piu\' il keep-alive: prova da riscrivere, non da cancellare');
+  const guardia = ka.indexOf("LOGIN_STATE.step !== 'loggato'");
+  deve(guardia > -1, 'il keep-alive non guarda se c\'e\' una sessione: da sloggati continua a bussare, e ogni colpo e\' una mail');
+  const primaNavigazione = ka.indexOf('page.goto(');
+  deve(primaNavigazione > -1, 'il keep-alive non naviga piu\' affatto: allora non tiene sveglio niente');
+  deve(guardia < primaNavigazione, 'la guardia viene DOPO la prima navigazione: il colpo e\' gia\' partito');
+  const ritorno = ka.indexOf('return;', guardia);
+  deve(ritorno > guardia && ritorno < primaNavigazione, 'la guardia non esce: si prosegue lo stesso fino al portale');
+});
+
+prova('quando si ferma lo dice, una volta sola', () => {
+  /*  Muto no (quattro giorni persi a cercare una rinuncia silenziosa), ma
+      nemmeno una riga ogni quattro minuti: il giornale diventa illeggibile
+      proprio nei giorni in cui serve.  */
+  const da = src.indexOf('let kaTick');
+  const ka = src.slice(da, src.indexOf('}, 4 * 60 * 1000)', da));
+  const guardia = ka.indexOf("LOGIN_STATE.step !== 'loggato'");
+  const ritorno = ka.indexOf('return;', guardia);
+  const dentro = ka.slice(guardia, ritorno);
+  deve(/log\(/.test(dentro), 'si ferma in silenzio: nel giornale la sessione morta diventa invisibile');
+  deve(/kaFermoDetto/.test(dentro), 'senza un contatore il messaggio si ripete a ogni giro, ogni quattro minuti');
+  /*  E deve riarmarsi, o alla seconda caduta nessuno lo scrive piu\'.  */
+  /*  La DICHIARAZIONE non e' un riarmo: contarla insieme agli altri fa fallire
+      la prova su codice giusto. Stessa trappola gia' scritta qui sopra per
+      `rientroTentato`, e ci sono ricascato dentro lo stesso file.  */
+  const riarmi = ka.split('\n').filter(r => r.includes('kaFermoDetto = false') && !r.trim().startsWith('let ')).length;
+  deve(riarmi === 1, 'il contatore si riarma in ' + riarmi + ' punti invece di uno');
+});
+
 const ko = esiti.filter(e => !e[0]);
 console.log('\n── Groupama · una volta dentro, si resta dentro ────────────');
 for (const [ok, n, d] of esiti) console.log((ok ? '  ✅ ' : '  ❌ ') + n + (d ? ' — ' + d : ''));

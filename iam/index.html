@@ -16,12 +16,31 @@
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
+<!-- IL REGISTRO DEI MOVIMENTI (19/09/2026) — è lo STESSO file che carica QUOTO,
+     non una copia. IAM e il preventivatore sono la stessa origine dal 16/09
+     (iam.withusassicurazioni.it serve IAM alla radice e QUOTO sotto
+     /nuovo-preventivo/), quindi questo indirizzo esiste davvero e punta a un
+     file solo. Due copie del vocabolario vorrebbero dire due storie della
+     stessa agenzia, e quella sbagliata sarebbe quella che nessuno guarda.
+     Se non si carica, `logMovimento` non scrive e non rompe niente: un
+     movimento perso è meglio di una schermata che non si apre. -->
+<script src="/nuovo-preventivo/tariffe/motore/registro.js?v=20260919"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
+/* ── IL RIQUADRO «CHI E QUANDO» (19/09/2026) ────────────────────────────────
+   Questi due nomi sono gli STESSI di QUOTO, e non per pigrizia: il riquadro lo
+   disegna il motore condiviso (`tariffe/motore/registro.js`), quindi il markup
+   e' uno solo e le classi devono esistere in tutti e due i documenti. Sono
+   gemelli dichiarati, come le funzioni dell'archivio, e la prova sulle
+   collisioni li tiene contati uno per uno. */
+.reg-r{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  padding:7px 0;border-top:1px solid var(--line,#e6e9ef);font-size:13px}
+.reg-r:first-child{border-top:0}
+.cl-sub{font-size:12px;color:var(--muted,#6b7280)}
 @keyframes wdBlink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
 .wd-blink-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8b5cf6;vertical-align:middle;animation:wdBlink 1s infinite;box-shadow:0 0 5px #8b5cf6;}
 .wd-blink-red{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;vertical-align:middle;animation:wdBlink .8s infinite;box-shadow:0 0 6px #ef4444;}
@@ -2975,6 +2994,13 @@ input[type=file]{display:none;}
       <div class="fsec"><div class="fsec-title">Note</div>
         <div class="fld"><textarea id="mc-note" rows="3" placeholder="Note libere..."></textarea></div>
       </div>
+      <!-- CHI E QUANDO (19/09/2026). Su una scheda economica la domanda che
+           torna indietro mesi dopo e' «chi ha cambiato questa percentuale»: da
+           oggi c'e' scritto. Il riquadro lo riempie `regInstalla` leggendo il
+           registro, e lo disegna il motore condiviso. -->
+      <div class="fsec"><div class="fsec-title">Chi e quando</div>
+        <div id="mc-storia"></div>
+      </div>
     </div>
 
     <!-- TAB 2: FATTURAZIONE & PROVVIGIONI -->
@@ -3644,6 +3670,60 @@ document.addEventListener('click', function (ev) {
 
 let ME = null;
 
+/* ══ IL REGISTRO DEI MOVIMENTI, ANCHE DI QUA (19/09/2026) ══════════════════
+   Fino a oggi IAM non scriveva nel registro NEMMENO UNA VOLTA: fatture,
+   permessi, schede economiche, cassa, gare — niente lasciava traccia. La
+   domanda «chi ha cambiato questa cosa» aveva una risposta solo per metà
+   della casa.
+
+   Le regole stanno nel motore (`tariffe/motore/registro.js`), che è lo stesso
+   file che carica QUOTO: questa è la copia SOTTILE, quella che tocca il
+   database e il DOM e che quindi non può stare in un motore. È la stessa
+   ragione per cui `archApriVps` esiste in tutti e due i documenti — e come
+   là, i nomi di casa sono diversi (`ME` qui, `currentUser` in QUOTO), quindi
+   non è un copia-incolla, è la stessa cosa scritta dove serve.
+
+   `ME` è l'utente di Supabase, quindi `ME.id` È `auth.uid()`: senza,
+   `log_insert` rifiuta la riga — e fa bene, perché un registro che non
+   garantisce «chi» non garantisce niente. */
+function mioNome() {
+  if (!ME) return null;
+  return (ME.user_metadata && ME.user_metadata.full_name) || ME.email || null;
+}
+
+async function logMovimento(azione, entita, dettaglio, entita_id) {
+  if (!db || !ME || !window.Registro) return;
+  const m = Registro.movimento({
+    azione, entita, dettaglio, entita_id,
+    utente_id: ME.id, utente_nome: mioNome()
+  });
+  if (m.avvisi.length) console.warn('registro:', m.avvisi.join(' · '), '←', azione);
+  if (!m.riga) return;
+  try { await db.from('quote_log').insert(m.riga); } catch {}
+}
+
+/* La storia di una riga. `null` vuol dire NON SI È POTUTO LEGGERE, che non è
+   «nessun movimento»: il riquadro lo dice in faccia, e a dirlo è il motore. */
+async function regCarica(entita, id) {
+  if (!db || !window.Registro || !entita || !id) return [];
+  try {
+    const { data, error } = await db.from('quote_log').select('*')
+      .eq('entita', entita).eq('entita_id', id)
+      .order('creato_il', { ascending: false }).limit(100);
+    if (error) throw error;
+    return data || [];
+  } catch (e) { return null; }
+}
+
+async function regInstalla(contenitoreId, entita, id, creato) {
+  const box = document.getElementById(contenitoreId);
+  if (!box || !window.Registro) return;
+  box.innerHTML = '<div class="cl-sub" style="padding:6px 0">Carico la storia…</div>';
+  const mov = await regCarica(entita, id);
+  const b = document.getElementById(contenitoreId);
+  if (b) b.innerHTML = Registro.storiaHTML(mov, creato, { esc });
+}
+
 function initDB() {
   try {
     if (window.supabase && window.SUPABASE_URL && window.SUPABASE_KEY) {
@@ -4030,6 +4110,7 @@ async function saveSession(sospesi, incassi, dati) {
     } else {
       // INSERT
       const { error } = await db.from('sessioni_giornaliere').insert(payload);
+      if (!error) logMovimento('Cassa del giorno registrata', 'cassa', payload.data_riferimento || null);
       if (error) throw error;
     }
   } catch(e) {
@@ -6061,6 +6142,7 @@ async function saveTeamDB(c) {
     };
     const { error } = await db.from('iam_team').upsert(payload);
     if (error) throw error;
+    logMovimento('Scheda economica salvata · ' + [c.cogn, c.nome].filter(Boolean).join(' '), 'scheda', c.email || null, c.id);
     // Aggiorna cache locale con docs
     loadTeam();
     const idx = TEAM.findIndex(x=>x.id===c.id);
@@ -6081,6 +6163,7 @@ async function delTeamDB(id) {
   if (!db) { loadTeam(); TEAM=TEAM.filter(x=>x.id!==id); saveTeam(); renderTeam(); return; }
   try {
     await db.from('iam_team').delete().eq('id', id);
+    logMovimento('Scheda economica eliminata', 'scheda', (TEAM.find(x=>x.id===id)||{}).email || null, id);
     TEAM=TEAM.filter(x=>x.id!==id); saveTeam(); renderTeam();
   } catch(e) { console.warn('delTeamDB error:', e); }
 }
@@ -6757,6 +6840,7 @@ async function candCambiaStato(id, stato) {
   try {
     const { error } = await db.from('quote_collaboratori').update({ stato }).eq('id', id);
     if (error) throw error;
+    logMovimento('Candidatura → ' + stato, 'collaboratore', null, id);
     await loadCollabLeadDB();
     renderCandidature(); renderTeam();
   } catch (e) {
@@ -6791,6 +6875,7 @@ async function confermaBlackList() {
   }
   if (!db || !NERA_ID) return;
   try {
+    logMovimento('Messo in blacklist · ' + (motivo || 'senza motivo'), 'collaboratore', null, NERA_ID);
     const { error } = await db.from('quote_collaboratori').update({
       stato: 'blacklist',
       blacklist_motivo: motivo,
@@ -7783,6 +7868,7 @@ async function salvaNuovaFormazione() {
 async function eliminaFormazione(id) {
   if (!confirm('Eliminare questa registrazione?')) return;
   try {
+    logMovimento('Corso eliminato', 'formazione', null, id);
     const { error } = await db.from('iam_formazione').delete().eq('id', id);
     if (error) throw error;
     caricaMiaFormazione();
@@ -8084,6 +8170,7 @@ async function openCollabModal(id) {
   renderFormazioneCollab(TEAM_ID, 'mc-anni'); renderProvv(); renderCollabDocs(); renderFattureCollab();
   selCollabTab('ana');
   document.getElementById('modal-collab').classList.add('show');
+  regInstalla('mc-storia', 'scheda', TEAM_ID, { nome: c?.creato_da_nome || null, il: c?.creato_il || null, azione: 'Scheda creata' });
   const comps = c?.compagnie || [];
   ['hdi','allianz','groupama','prima','generali','sara','vittoria','unipolsai'].forEach(k=>{
     const el=document.getElementById('mc-comp-'+k);
@@ -8879,6 +8966,7 @@ async function saveLead() {
     if (LEAD_ID) {
       const { error } = await db.from('iam_lead').update(obj).eq('id', LEAD_ID);
       if (error) throw error;
+      logMovimento('Lead modificato', 'lead', obj.nome || null, LEAD_ID);
     } else {
       const { error } = await db.from('iam_lead').insert(obj);
       if (error) throw error;
@@ -9749,13 +9837,17 @@ async function saveTrattDB(t) {
       };
       const { error } = await db.from('iam_trattative').update(payload).eq('id', parseInt(t.id));
       if (error) throw error;
+      logMovimento('Trattativa aggiornata', 'trattativa', payload.cliente || null, String(t.id));
     }
   } catch(e) { console.warn('Errore save trattativa:', e); savePipe(); }
 }
 
 async function delTrattDB(id) {
   if (!db) { loadPipe(); PIPE=PIPE.filter(t=>t.id!==id); savePipe(); return; }
-  try { await db.from('iam_trattative').delete().eq('id', id); } catch(e) { console.warn(e); }
+  try {
+    await db.from('iam_trattative').delete().eq('id', id);
+    logMovimento('Trattativa eliminata', 'trattativa', null, String(id));
+  } catch(e) { console.warn(e); }
 }
 
 // ─── CARICA AGENDA DA SUPABASE ────────────────────────────────────────────────
@@ -10196,6 +10288,7 @@ async function toggleSospendi(userId, attivo) {
   try {
     const { error } = await db.from('iam_utenti').update({ attivo: !attivo }).eq('id', userId);
     if (error) throw error;
+    logMovimento(attivo ? 'Utente sospeso' : 'Utente riattivato', 'utente', (_su && _su.email) || null);
     await renderUtenti();
   } catch(e) { alert('Errore: '+(e.message||e)); }
 }
@@ -10209,6 +10302,7 @@ async function cambiaRuolo(userId, ruoloAttuale) {
   try {
     const { error } = await db.from('iam_utenti').update({ ruolo: dbRuolo(nuovo) }).eq('id', userId);
     if (error) throw error;
+    logMovimento('Ruolo · ' + ruoloAttuale + ' → ' + nuovo, 'utente', null);
     await renderUtenti();
   } catch(e) { alert('Errore: '+(e.message||e)); }
 }
@@ -10241,6 +10335,7 @@ async function toggleQuotoAccess(userId, attuale) {
   try {
     const { error } = await db.from('iam_utenti').update({ accesso_quoto: !attuale }).eq('id', userId);
     if (error) throw error;
+    logMovimento(attuale ? 'Accesso al preventivatore tolto' : 'Accesso al preventivatore dato', 'utente', null);
     if (userId === ME?.id && PROFILO) { PROFILO.accesso_quoto = !attuale; applicaPermessi(PROFILO.ruolo); }
     await renderUtenti();
   } catch(e) { alert('Errore salvataggio accesso ai preventivi: '+(e.message||e)); await renderUtenti(); }
@@ -10253,6 +10348,7 @@ async function setRui(userId) {
   try {
     const { error } = await db.from('iam_utenti').update({ rui: val.trim() || null }).eq('id', userId);
     if (error) throw error;
+    logMovimento(val.trim() ? 'RUI · ' + val.trim() : 'RUI tolto', 'utente', u.email || null);
     if (userId === ME?.id && PROFILO) PROFILO.rui = val.trim() || null;
     await renderUtenti();
   } catch(e) { alert('Errore salvataggio RUI: ' + (e.message || e) + '\n\n(Serve la colonna "rui" su iam_utenti in Supabase.)'); }

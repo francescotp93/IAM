@@ -14036,27 +14036,10 @@ async function regCarica(entita, id) {
 
 const regQuando = (v) => v ? new Date(v).toLocaleString('it-IT') : '—';
 
-/* `creato` è la riga stessa (chi l'ha creata e quando): sta in cima alla
-   storia perché è il primo movimento, anche se il registro non lo contiene —
-   le righe scritte prima del 19/09/2026 non hanno lasciato traccia. */
-function regHTML(movimenti, creato) {
-  const testa = creato && (creato.nome || creato.il)
-    ? `<div class="reg-r"><div><b>${esc(creato.nome || '—')}</b>
-         <div class="cl-sub">${esc(creato.azione || 'Creata')}</div></div>
-       <div class="cl-sub">${regQuando(creato.il)}</div></div>` : '';
-  if (movimenti === null) {
-    return testa + `<div class="cl-sub" style="padding:6px 0">Il registro dei movimenti non risponde.
-      Non vuol dire che non ci siano stati: vuol dire che non si è potuto leggerlo.</div>`;
-  }
-  if (!movimenti.length) {
-    return testa + `<div class="cl-sub" style="padding:6px 0">Nessun altro movimento registrato.
-      I movimenti si registrano dal 19/09/2026: quello che è successo prima non ha lasciato traccia qui.</div>`;
-  }
-  return testa + movimenti.map(m => `<div class="reg-r">
-    <div><b>${esc(m.utente_nome || '—')}</b>
-      <div class="cl-sub">${esc(m.azione || '')}${m.dettaglio ? ' · ' + esc(m.dettaglio) : ''}</div></div>
-    <div class="cl-sub">${regQuando(m.creato_il)}</div></div>`).join('');
-}
+/* Il riquadro lo disegna il MOTORE: le schermate sono due (QUOTO e IAM) e due
+   copie dello stesso riquadro diventano due riquadri che un giorno diranno
+   cose diverse. Qui si passa solo `esc`, che il motore non può avere. */
+const regHTML = (movimenti, creato) => Registro.storiaHTML(movimenti, creato, { esc, quando: regQuando });
 
 /* Riempie un contenitore già disegnato. Si chiama DOPO aver scritto l'HTML del
    pannello: leggere il registro è una chiamata di rete, e far aspettare il

@@ -920,6 +920,12 @@ button{font-family:inherit}
 .flu-file:hover{filter:brightness(1.05)}
 .flu-sez{font-size:13px;font-weight:700;margin:16px 0 6px;color:var(--ink)}
 .flu-testata{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fbfcff}
+/* Che cosa il tracciato NON porta. Non è un rosso: è una cosa da sapere, e un
+   rosso che non è un guasto insegna a ignorare i rossi. */
+.flu-senza{margin-top:8px;padding:8px 10px;border-radius:8px;font-size:12.5px;line-height:1.5;
+  background:#fff7ed;border:1px solid #f2d6b8;color:#7a4a08}
+.flu-senza ul{margin:6px 0 0 18px;padding:0}
+.flu-senza li{margin:2px 0}
 .fdoc-storico{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#f8f9fc}
 .fdoc-storico summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)}
 .fdoc-storico .sc-docrow{margin-top:8px}
@@ -17577,6 +17583,11 @@ function fluMostra() {
     <div class="flu-testata">
       <b>${esc(t.emittente || 'compagnia non dichiarata')}</b>
       <span class="pdoc-opt">${esc(t.versione || 'tracciato non dichiarato')}</span>
+      ${(p.tracciato && p.tracciato.senza || []).length ? `<div class="flu-senza">
+        <b>Questo tracciato non porta tutto.</b> Non è un guasto del gestionale: è quello che la compagnia
+        non manda, e conviene saperlo prima di guardare i numeri.
+        <ul>${p.tracciato.senza.map(s => `<li>${esc(s)}</li>`).join('')}</ul>
+      </div>` : ''}
       <div class="cl-sub">${t.dal ? 'movimenti dal ' + new Date(t.dal).toLocaleDateString('it-IT') + ' al ' + new Date(t.al).toLocaleDateString('it-IT') : 'periodo non dichiarato'}${
         t.intermediario ? ' · agenzia ' + esc(t.intermediario) : ''}</div>
     </div>

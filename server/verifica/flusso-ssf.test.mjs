@@ -282,6 +282,133 @@ await (async () => {
   } });
 })();
 
+/* ══ L'ALTRO TRACCIATO: SSF V8 (19/09/2026) ══════════════════════════════════
+   Il flusso di Plurima è lo stesso standard in una versione precedente: sei
+   file invece di nove, metà delle colonne, e i file si chiamano in un altro
+   modo. Il lettore si fermava al primo passo — «il file vero non ha testata»,
+   che sembra un archivio rotto e invece era un archivio che non sapevamo
+   aprire.
+
+   Il campione qui sotto è sintetico e ricalca quello vero nei casi che
+   contano, compresi i due che si scoprono solo guardandolo: la provvigione
+   dichiarata ZERO su ogni rata, e `DATA_ANNULLAMENTO` valorizzata anche sulle
+   polizze attive. */
+const CAMPIONI8 = path.join(QUI, 'campioni', 'ssf-v8');
+const mappa8 = {};
+for (const f of fs.readdirSync(CAMPIONI8)) {
+  if (f.endsWith('.csv')) mappa8[f] = fs.readFileSync(path.join(CAMPIONI8, f), 'utf8');
+}
+const R8 = F.raccogli(mappa8);
+const A8 = F.analizza(R8.record);
+
+prova('V8 · i file si chiamano in un altro modo, e si riconoscono lo stesso', () => {
+  deve(R8.trovati === 6, 'record riconosciuti: ' + R8.trovati + ' su 6 — ' + R8.ignorati.join(', '));
+  deve(F.tipoDaNome('SSF_20_polizze.csv') === '020', 'SSF_20 → ' + F.tipoDaNome('SSF_20_polizze.csv'));
+  deve(F.tipoDaNome('SSF_00_testa.csv') === '000', 'SSF_00 → ' + F.tipoDaNome('SSF_00_testa.csv'));
+  /* Il numero non è a tre cifre: `100` non deve diventare `010`, altrimenti il
+     catalogo prodotti si legge come le anagrafiche. */
+  deve(F.tipoDaNome('SSF_100_prodotti.csv') === '100', 'SSF_100 → ' + F.tipoDaNome('SSF_100_prodotti.csv'));
+  deve(F.tipoDaNome('SSF_10_anagrafiche.csv') === '010', 'SSF_10 → ' + F.tipoDaNome('SSF_10_anagrafiche.csv'));
+  deve(F.tipoDaNome('SSF_101_collaboratori.csv') === '101', 'SSF_101 → ' + F.tipoDaNome('SSF_101_collaboratori.csv'));
+  /* E il modo vecchio continua a funzionare. */
+  deve(F.tipoDaNome('REC020_M_PRIMA_A2194_2026_P.csv') === '020', 'il nome V12 non si riconosce più');
+  return '6 record, due modi di chiamarli';
+});
+
+prova('V8 · senza SCADENZA_EMESSO le polizze NON diventano tutte offerte', () => {
+  /* È il guasto che avrebbe fatto più danno: quella colonna in V8 non esiste,
+     e leggerla come vuota vuol dire «non è mai stato emesso niente» su OGNI
+     riga. Sul file vero di Plurima sarebbero state venti polizze su venti a
+     non entrare in portafoglio. */
+  deve(A8.polizze.length === 4, 'polizze importate: ' + A8.polizze.length + ' (attese 4)');
+  deve(A8.offerte.length === 1, 'offerte: ' + A8.offerte.length + ' (attesa 1, quella in stato PV)');
+  deve(A8.offerte[0].numero_polizza === 'V8-0003', 'l\'offerta è ' + A8.offerte[0].numero_polizza);
+  /* E il ripiego si dichiara, invece di far finta di essere la regola vera. */
+  deve(A8.tracciato.senza.some(s => /offerte di rinnovo/.test(s)), 'il tracciato non dichiara come distingue le offerte');
+  return '4 polizze, 1 offerta (dallo stato), e il ripiego dichiarato';
+});
+
+prova('V8 · «la colonna non c\'è» non è «la colonna è vuota»', () => {
+  /* La differenza si vede confrontando i due tracciati: in V12 una polizza
+     senza `SCADENZA_EMESSO` È un'offerta, in V8 quel campo non esiste e la
+     stessa lettura darebbe la risposta opposta a quella giusta. */
+  const v12 = A.polizze.length, v8 = A8.polizze.length;
+  deve(v12 > 0 && v8 > 0, 'uno dei due tracciati non importa niente: ' + v12 + ' / ' + v8);
+  deve(A.tracciato.senza.length < A8.tracciato.senza.length,
+       'il V12 dichiara di non portare tante cose quanto il V8: ' + A.tracciato.senza.length + ' / ' + A8.tracciato.senza.length);
+  return 'V12 dichiara ' + A.tracciato.senza.length + ' mancanze, V8 ' + A8.tracciato.senza.length;
+});
+
+prova('V8 · i collaboratori si riconoscono dai produttori, non da un flag', () => {
+  /* `FLAG_COLLABORATORE` in V8 non c'è: senza una seconda strada, la rete di
+     vendita finirebbe nel portafoglio clienti (regola 1). */
+  deve(A8.clienti.length === 3, 'clienti: ' + A8.clienti.length + ' (attesi 3: A9 è un collaboratore)');
+  deve(!A8.clienti.some(c => c._chiave === 'A9'), 'un collaboratore è entrato fra i clienti');
+  deve(A8.collaboratori.length === 2, 'collaboratori: ' + A8.collaboratori.length);
+  /* Uno dei due non ha un'anagrafica (come nel file vero): entra lo stesso,
+     con il suo codice produttore. */
+  const c77 = A8.collaboratori.find(c => c.codice === 'C77');
+  deve(c77 && c77.produttore === 'P-0077', 'il produttore senza anagrafica si perde: ' + JSON.stringify(c77));
+  /* L'altro ce l'ha, e allora arriva anche la sua email. */
+  const a9 = A8.collaboratori.find(c => c.codice === 'A9');
+  deve(a9 && a9.email === 'collab@esempio.test', 'l\'email del collaboratore con anagrafica: ' + JSON.stringify(a9));
+  return '3 clienti, 2 collaboratori, 1 con email';
+});
+
+prova('V8 · il codice produttore sta sull\'anagrafica, non sulla polizza', () => {
+  const sua = A8.polizze.find(p => p.numero_polizza === 'V8-0002');
+  deve(sua.dati.ssf.collaboratore === 'C77',
+       'la polizza non eredita il codice dal suo contraente: ' + sua.dati.ssf.collaboratore);
+  /* E le polizze dell'agenzia restano SENZA codice: `AGENZIA` (3489) non è un
+     collaboratore, ed è la colonna che verrebbe voglia di usare. */
+  const diretta = A8.polizze.find(p => p.numero_polizza === 'V8-0001');
+  deve(!diretta.dati.ssf.collaboratore, 'il codice agenzia è diventato un collaboratore: ' + diretta.dati.ssf.collaboratore);
+  return 'C77 alla sua polizza, niente sulle dirette';
+});
+
+prova('V8 · DATA_ANNULLAMENTO su una polizza ATTIVA non la annulla', () => {
+  /* Sul file vero è valorizzata su tutte e venti le polizze, che sono tutte
+     `AT`. Non è un annullamento: somiglia a una scadenza. Leggerla come fa la
+     V12 toglierebbe dal portafoglio l'intero flusso. */
+  const attiva = A8.polizze.find(p => p.numero_polizza === 'V8-0005');
+  deve(attiva.dati.ssf.data_annullamento, 'il campione non riproduce il caso: la data non c\'è');
+  deve(attiva.stato_pagamento !== 'annullata', 'una polizza attiva è stata annullata: ' + attiva.stato_pagamento);
+  /* E quella cessata davvero PRIMA della scadenza sì. */
+  const cessata = A8.polizze.find(p => p.numero_polizza === 'V8-0004');
+  deve(cessata.stato_pagamento === 'annullata', 'la cessata prima della scadenza non è annullata: ' + cessata.stato_pagamento);
+  return '1 attiva con la data, 1 annullata davvero';
+});
+
+prova('V8 · una provvigione dichiarata ZERO non è una provvigione assente', () => {
+  /* Le due cose si somigliano e l'estratto conto le tratta in modo opposto:
+     uno zero è un accordo e si conta, un vuoto esce dai totali col motivo.
+     Il flusso di Plurima manda `0,00` su ogni rata — e chi guarda deve saperlo
+     prima di credere che sia il gestionale a sbagliare i conti. */
+  deve(A8.titoli.every(t => t.provvigione === 0), 'le provvigioni non sono tutte zero: ' + JSON.stringify(A8.titoli.map(t => t.provvigione)));
+  deve(A8.tracciato.senza.some(s => /provvigione 0,00/.test(s)), 'il tracciato non dichiara le provvigioni a zero');
+  deve(!A8.tracciato.senza.some(s => /NESSUNA provvigione/.test(s)), 'lo zero è stato letto come «non dichiarata»');
+  return 'zero dichiarato, e detto';
+});
+
+prova('V8 · senza SCADENZA_INCASSATO non si deduce nessuna rata', () => {
+  /* La rata successiva si deduce da «fin dove è pagata»: quel campo in V8 non
+     c'è, e dedurre senza sarebbe inventare un credito. */
+  deve(!(A8.titoli || []).some(t => t._generato), 'una rata è stata dedotta senza il dato che serve');
+  deve(A8.tracciato.senza.some(s => /rata successiva non si può dedurre/.test(s)), 'il tracciato non lo dichiara');
+  return 'nessuna rata inventata';
+});
+
+prova('V8 · lo zip si apre e dà lo stesso risultato dei CSV sciolti', () => {
+  esiti.push({ nome: 'V8 · lo zip (asincrona)', fn: null, asincrona: async () => {
+    const m = await F.apriZip(fs.readFileSync(path.join(CAMPIONI8, 'flusso-v8-di-collaudo.zip')));
+    const a = F.analizza(F.raccogli(m).record);
+    deve(a.polizze.length === A8.polizze.length && a.clienti.length === A8.clienti.length,
+         'dallo zip escono numeri diversi: ' + a.polizze.length + '/' + a.clienti.length);
+    return Object.keys(m).length + ' file, stesso risultato';
+  } });
+  return 'programmata';
+});
+
 /* ── la prova sul file VERO, se c'è ───────────────────────────────────────────
    Il file vero non sta nel repository. Se qualcuno lo mette nella cartella di
    lavoro (`FLUSSO_VERO=/percorso/al/file.zip`), questa prova gira anche su

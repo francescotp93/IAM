@@ -1882,3 +1882,107 @@ E la tendina **parte dal vuoto**: aprendo una scheda non si abbina niente da
 solo, e il testo lo dice — *«Confermali tu: il sistema non abbina niente da
 solo»*. Una prova controlla il primo `<option>`, perché è quello che il browser
 sceglie da sé.
+---
+
+## 20. L'altro tracciato: SSF V8 (19/09/2026)
+
+Francesco ha mandato un flusso di **Plurima** chiedendo «facciamo lo stesso per
+le altre compagnie». Il lettore si è fermato al primo passo: *«il file vero non
+ha testata»* — che sembra un archivio rotto, ed era un archivio che non
+sapevamo aprire.
+
+| pezzo | dove |
+|---|---|
+| le due convenzioni di nome, e le regole che dipendono dal tracciato | `tariffe/motore/flusso-ssf.js` |
+| il campione sintetico V8 | `server/verifica/campioni/ssf-v8/` |
+| prove | blocco «V8» in `server/verifica/flusso-ssf.test.mjs` — 10 |
+| l'anteprima che dichiara le mancanze | `flu-senza` in `index.html`, 1 prova in `ui-test.mjs` |
+
+### Che cosa il file dice, misurato e non dedotto
+
+`VERSIONE_TRACCIATO` = **SSF V8**, non V12. Stessa famiglia, versione
+precedente: **sei** record invece di nove e circa **metà** delle colonne.
+
+| | Prima (V12) | Plurima (V8) |
+|---|---|---|
+| record | 9 | 6 — niente veicoli, garanzie, dettaglio provvigioni |
+| polizze | 51 colonne | 25 |
+| titoli | 40 colonne | 17 |
+| anagrafiche | 43 colonne | 22 |
+
+**I file si chiamano in un altro modo**: `SSF_20_polizze.csv` invece di
+`REC020_M_PRIMA_…`. Il riconoscimento andava per prefisso `REC\d{3}` e non li
+vedeva. Nel modo nuovo il numero non è a tre cifre (`0`, `10`, `20`, `100`): si
+riempie a sinistra con gli zeri, e **`100` resta `100`** — leggerlo come «10»
+metterebbe il catalogo prodotti al posto delle anagrafiche.
+
+### La regola che vale più di tutte le altre
+
+> **«La colonna non c'è nel tracciato» non è «la colonna c'è ed è vuota».**
+
+È la stessa distinzione fra «non risponde» e «non c'è niente» (§18), applicata
+alle colonne invece che alle righe. Il lettore adesso tiene l'**intestazione**
+di ogni record, non solo le righe, e le regole chiedono *«questo tracciato
+dichiara questa colonna?»* prima di fidarsi di un campo vuoto.
+
+Senza quella domanda, tre regole si comportano male — e la prima in modo
+catastrofico:
+
+1. **`SCADENZA_EMESSO` non esiste in V8.** La regola 3 dice «se è vuoto non è
+   mai stato emesso niente, è un'offerta»: letta così, **tutte e venti** le
+   polizze di Plurima sarebbero rimaste fuori dal portafoglio. Dove quella
+   colonna non c'è si guarda lo **stato** (`PV` = rinnovo emesso e non pagato,
+   che è il vocabolario dello standard), e il ripiego **si dichiara** invece di
+   spacciarsi per la regola vera.
+2. **`FLAG_COLLABORATORE` non esiste.** Senza una seconda strada la rete di
+   vendita entra nel portafoglio clienti (regola 1). La seconda strada c'è:
+   collaboratore è chi compare fra i **produttori** (REC101).
+3. **`COLLABORATORE_1` sta sull'ANAGRAFICA, non sulla polizza.** La polizza
+   eredita il codice dal suo contraente. **Non** si usa `AGENZIA`, che pure sul
+   file vero coincide riga per riga (3 polizze su «3520», 17 su «3489»): quello
+   è il codice dell'agenzia, e farne un codice produttore vorrebbe dire
+   inventare un collaboratore che è l'agenzia stessa.
+
+E due che degradano da sole, correttamente: senza `SCADENZA_INCASSATO` non si
+deduce nessuna rata (dedurre senza quel dato sarebbe inventare un credito), e
+senza `MEZZO_PAG_SHARE` come paga il cliente resta vuoto.
+
+### Due cose del file vero che nessuno indovinerebbe
+
+- **`DATA_ANNULLAMENTO` è valorizzata su tutte e venti le polizze**, che sono
+  tutte in stato `AT` (attive). Non è un annullamento — somiglia a una scadenza.
+  La regola 4 regge perché guarda lo stato prima della data, ma quel campo
+  **non si legge** finché la compagnia non dice che cos'è.
+- **`PROVVIGIONI_TOTALE` arriva `0,00` su tutte e trentasette le rate.** Non è
+  vuoto: è zero. E l'estratto conto tratta le due cose in modo **opposto**
+  (§17) — uno zero è un accordo e si conta, un vuoto esce dai totali col motivo.
+  Convertire l'uno nell'altro sarebbe inventare in tutte e due le direzioni:
+  **lo zero resta zero**, e l'anteprima lo dice a chi deve chiederlo a Plurima.
+
+### L'anteprima dichiara quello che non c'è
+
+Un riquadro giallo — non rosso, non è un guasto — elenca che cosa quel tracciato
+non porta: le offerte non distinte, la rata non deducibile, i collaboratori senza
+flag, il mezzo di pagamento, il veicolo, le garanzie, il dettaglio provvigioni,
+le provvigioni a zero. **«Le provvigioni sono a zero» su un estratto conto
+sembra un nostro errore di calcolo**: sapere che arrivano così da chi le manda è
+un'altra conversazione, e si fa con la compagnia.
+
+### Un difetto trovato dal motore, non dalla lettura
+
+Il campione sintetico aveva una riga con **una colonna in meno**: l'email di un
+collaboratore usciva come `s`, perché tutti i campi dopo il codice fiscale erano
+sfalsati di uno. L'ha trovato il motore girando sul campione, non la rilettura
+del CSV — un file di prova sbagliato è una prova che misura un'altra cosa.
+
+### Cosa resta aperto
+
+- **Le due domande a Plurima**: che cos'è `DATA_ANNULLAMENTO` su una polizza
+  attiva, e se le provvigioni a zero sono un accordo o una colonna di default.
+  Finché non rispondono, il primo campo non si usa e il secondo si dichiara.
+- **Gli alias delle compagnie**: `quote_compagnie` ne ha solo per HDI e Prima.
+  Un flusso il cui emittente non corrisponde al nome del catalogo non ritrova le
+  sue regole documentali (§11). Plurima non è ancora in quella tabella.
+- **Il file vero non sta nel repository** (§8.3): il campione V8 è sintetico e
+  ricalca i casi che contano. La prova sul file vero si lancia con
+  `FLUSSO_VERO=… node server/verifica/flusso-ssf.test.mjs`.

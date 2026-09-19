@@ -7766,6 +7766,12 @@ const avvio = async () => {
     for (const f of fs.readdirSync(CAMPIONI)) {
       if (f.endsWith('.csv')) campione[f] = fs.readFileSync(path.join(CAMPIONI, f), 'utf8');
     }
+    /* Il secondo tracciato: SSF V8, sei file invece di nove e i nomi diversi. */
+    const CAMPIONI8 = path.join(process.cwd(), 'server', 'verifica', 'campioni', 'ssf-v8');
+    const campione8 = {};
+    for (const f of fs.readdirSync(CAMPIONI8)) {
+      if (f.endsWith('.csv')) campione8[f] = fs.readFileSync(path.join(CAMPIONI8, f), 'utf8');
+    }
 
     const scegli = async (esistenti) => page.evaluate(async (o) => {
       window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: o.esistenti || [], error: null };
@@ -8069,6 +8075,36 @@ const avvio = async () => {
       deve(r.tit.length && r.tit.every(t => !t.collaboratore_id),
            'una rata è stata attribuita senza decisione: ' + JSON.stringify(r.tit.map(t => t.collaboratore_id)));
       return r.tit.length + ' rate, nessuna attribuita';
+    });
+
+    await prova('flusso: un tracciato V8 si apre, e la pagina dice che cosa non porta', async () => {
+      /* Il file di Plurima (19/09/2026) è SSF V8: sei file, nomi diversi, metà
+         delle colonne. Prima di oggi la schermata diceva «in questo archivio
+         non c'è nessun file del flusso» — che sembra un archivio rotto. */
+      const r = await page.evaluate(async (campione) => {
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_codici_collaboratore:lista'] = { data: [], error: null };
+        const files = Object.keys(campione).map(n => new File([campione[n]], n, { type: 'text/csv' }));
+        await fluScelto(files);
+        const html = document.getElementById('flu-esito').innerHTML;
+        /* `FLU_PIANO` e' dichiarato con `let`: non e' su `window`, e cercarlo
+           la' darebbe sempre «non c'e' il piano». */
+        return { html, piano: !!FLU_PIANO,
+                 polizze: FLU_PIANO ? FLU_PIANO.polizze.nuove.length : -1,
+                 offerte: FLU_PIANO ? FLU_PIANO.offerte.length : -1 };
+      }, campione8);
+      deve(r.piano, 'il piano non si costruisce: l\'archivio V8 non viene riconosciuto');
+      /* Il numero che conta: senza la regola sul tracciato sarebbero ZERO. */
+      deve(r.polizze === 4, 'polizze nel piano: ' + r.polizze + ' (attese 4)');
+      deve(r.offerte === 1, 'offerte: ' + r.offerte + ' (attesa 1)');
+      deve(/SSF V8/.test(r.html), 'l\'anteprima non dice quale tracciato sta leggendo');
+      /* E dice che cosa manca, perché sembra un guasto nostro e non lo è. */
+      deve(/Questo tracciato non porta tutto/.test(r.html), 'la pagina non dichiara che cosa il tracciato non porta');
+      deve(/provvigione 0,00/.test(r.html), 'non dice che le provvigioni arrivano a zero');
+      deve(/non porta le garanzie/.test(r.html), 'non dice che mancano le garanzie');
+      return '4 polizze, 1 offerta, e l\'elenco di quello che non c\'è';
     });
 
     await prova('flusso: il cliente che c\'è già non viene riscritto', async () => {

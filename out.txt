@@ -1,24 +1,71 @@
-id: verifica-casella-1789818648  exit: 0  2026-09-19 11:51:51
+id: correlazione-1789818749  exit: 0  2026-09-19 11:53:30
 ----
 == ora
-2026-09-19 11:51:23 UTC
-PROVA 1 — il server vede la casella?
-  caselle configurate: 4
-    amministrazione@withusassicurazioni.it
-    contabilita@withusassicurazioni.it
-    intermediari@withusassicurazioni.it
-    withus.coop@gmail.com
-  ESITO: SI, c'e'
+2026-09-19 11:53:04 UTC
+== A. quando e' ripartito lo scraper groupama (ultime 48 ore)
+  2026-09-17T19:24:15  AVVIO
+  2026-09-17T19:24:15  AVVIO
+  2026-09-17T19:30:41  AVVIO
+  2026-09-17T19:30:47  AVVIO
+  2026-09-17T20:17:19  AVVIO
+  2026-09-17T20:17:19  AVVIO
+  2026-09-17T20:40:58  AVVIO
+  2026-09-17T20:41:04  AVVIO
+  2026-09-17T20:45:25  AVVIO
+  2026-09-17T20:45:25  AVVIO
+  2026-09-18T14:55:32  AVVIO
+  2026-09-18T14:55:37  AVVIO
+  2026-09-19T11:04:50  AVVIO
+  2026-09-19T11:04:50  AVVIO
+  2026-09-19T11:04:50  AVVIO
+  2026-09-19T11:04:51  AVVIO
+  2026-09-19T11:04:51  AVVIO
+  2026-09-19T11:04:51  AVVIO
+  2026-09-19T11:04:57  AVVIO
 
-PROVA 2 — riesce a collegarsi davvero?
-  collegato. INBOX: 1000 messaggi
-  ESITO: SI
-
-PROVA 3 — ci trova dentro i codici di Groupama?
-    2026-09-19 11:04:58  da otp@groupama.it  → codice TROVATO (non lo stampo)
-    2026-09-19 11:04:59  da otp@groupama.it  → codice TROVATO (non lo stampo)
-    2026-09-19 11:04:59  da otp@groupama.it  → codice TROVATO (non lo stampo)
-    2026-09-19 11:06:53  da otp@groupama.it  → codice TROVATO (non lo stampo)
-    2026-09-19 11:08:24  da otp@groupama.it  → codice TROVATO (non lo stampo)
-  mail da Groupama negli ultimi 30 messaggi: 29, di cui con un codice leggibile: 29
-  ESITO: SI — la catena puo' chiudersi
+== B. quando sono arrivate le mail di Groupama
+  2026-09-19T10:36:52  MAIL
+  2026-09-19T10:39:43  MAIL
+  2026-09-19T10:41:53  MAIL
+  2026-09-19T10:43:44  MAIL
+  2026-09-19T10:46:53  MAIL
+  2026-09-19T10:47:43  MAIL
+  2026-09-19T10:47:46  MAIL
+  2026-09-19T10:51:44  MAIL
+  2026-09-19T10:51:52  MAIL
+  2026-09-19T10:55:43  MAIL
+  2026-09-19T10:56:52  MAIL
+  2026-09-19T10:59:44  MAIL
+  2026-09-19T10:59:46  MAIL
+  2026-09-19T11:01:53  MAIL
+  2026-09-19T11:03:43  MAIL
+  2026-09-19T11:04:58  MAIL
+  2026-09-19T11:04:59  MAIL
+  2026-09-19T11:04:59  MAIL
+  2026-09-19T11:06:53  MAIL
+  2026-09-19T11:08:24  MAIL
+  2026-09-19T11:08:58  MAIL
+  2026-09-19T11:09:00  MAIL
+  2026-09-19T11:12:54  MAIL
+  2026-09-19T11:12:58  MAIL
+  2026-09-19T11:16:58  MAIL
+  2026-09-19T11:17:53  MAIL
+  2026-09-19T11:20:58  MAIL
+  2026-09-19T11:21:00  MAIL
+  2026-09-19T11:22:53  MAIL
+  2026-09-19T11:24:58  MAIL
+  2026-09-19T11:27:53  MAIL
+  2026-09-19T11:28:58  MAIL
+  2026-09-19T11:30:46  MAIL
+  2026-09-19T11:32:58  MAIL
+  2026-09-19T11:33:00  MAIL
+  2026-09-19T11:35:16  MAIL
+  2026-09-19T11:36:58  MAIL
+  2026-09-19T11:40:16  MAIL
+  2026-09-19T11:40:58  MAIL
+  2026-09-19T11:44:58  MAIL
+  2026-09-19T11:45:00  MAIL
+  2026-09-19T11:45:16  MAIL
+  2026-09-19T11:48:58  MAIL
+  2026-09-19T11:50:16  MAIL
+  2026-09-19T11:52:59  MAIL

@@ -278,6 +278,32 @@ prova('il vocabolario copre anche quello che si tocca da IAM', () => {
   return '6 voci con tabella, 2 dichiarate senza';
 });
 
+prova('M1.1 · «Ultima modifica: nome — gg/mm/aaaa hh:mm» è il movimento più RECENTE, non il primo', () => {
+  const esc = (x) => String(x == null ? '' : x).replace(/</g, '&lt;');
+  const creato = { nome: 'Anna', il: '2026-09-01T08:00:00Z', azione: 'Polizza creata' };
+  /* In ordine sparso apposta: chi chiama può passarli come vuole. */
+  const mov = [
+    { utente_nome: 'Mario', azione: 'Pagamento modificato', creato_il: '2026-09-10T10:00:00Z' },
+    { utente_nome: 'Luca',  azione: 'Numero corretto',      creato_il: '2026-09-19T14:05:00Z' },
+    { utente_nome: 'Mario', azione: 'Mezzo cambiato',       creato_il: '2026-09-15T09:00:00Z' }
+  ];
+  const um = R.ultimaModifica(mov, creato);
+  deve(um.nome === 'Luca', 'l\'ultima modifica non è la più recente: ' + JSON.stringify(um));
+  const h = R.storiaHTML(mov, creato, { esc });
+  deve(/Ultima modifica: <b>Luca<\/b> — \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/.test(h), 'l\'etichetta manca o non ha il formato del brief: ' + h.slice(0, 160));
+  /* Il formato è quello chiesto, senza virgola e senza secondi. */
+  const q = R.quandoBreve('2026-09-19T14:05:33Z');
+  deve(/^\d{2}\/\d{2}\/2026 \d{2}:\d{2}$/.test(q), 'formato: ' + q);
+  /* Senza movimenti l'ultima modifica È la creazione: la riga qualcuno l'ha scritta. */
+  deve(R.ultimaModifica([], creato).nome === 'Anna', 'senza movimenti non ripiega su chi ha creato la riga');
+  deve(/Ultima modifica: <b>Anna<\/b>/.test(R.storiaHTML([], creato, { esc })), 'l\'etichetta non compare con la sola creazione');
+  /* Registro NON LEGGIBILE: non si risponde. Dire «Anna» mentre in mezzo può
+     esserci un movimento non letto è un'etichetta falsa. */
+  deve(R.ultimaModifica(null, creato) === null, 'con il registro muto inventa un\'ultima modifica');
+  deve(!/Ultima modifica/.test(R.storiaHTML(null, creato, { esc })), 'l\'etichetta compare anche quando il registro non risponde');
+  return 'Luca (19/09), non Mario né Anna; niente etichetta a registro muto';
+});
+
 console.log('\n══ REGISTRO DEI MOVIMENTI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

@@ -73,7 +73,9 @@ const GEMELLI = ['ARCH_BUCKET', 'ARCH_CARTELLE', 'ARCH_PREFISSI', 'ARCH_SCADENZA
    caso in cui due classi uguali NON sono una schermata scritta due volte —
    sono una schermata scritta una volta sola e usata in due posti, che e'
    esattamente il contrario. Valgono le stesse due guardie dei nomi. */
-const GEMELLI_CLASSI = ['reg-r', 'cl-sub'];
+/* `reg-ultima` (19/09/2026, brief M1.1): l'etichetta «Ultima modifica» la
+   scrive `Registro.storiaHTML`, cioè il motore — stessa ragione di `reg-r`. */
+const GEMELLI_CLASSI = ['reg-r', 'cl-sub', 'reg-ultima'];
 
 const gQ = globali(scripts(Q)), gI = globali(scripts(I));
 const iQ = id(Q), iI = id(I);

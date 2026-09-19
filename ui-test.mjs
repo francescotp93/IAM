@@ -952,41 +952,167 @@ const avvio = async () => {
          pannello deve dirlo, non lasciare un vuoto che sembra uno zero. */
       deve(/annuo da confermare/.test(r), 'l\'annuo mancante non e\' dichiarato');
       deve(/TRIGLAV/.test(r), 'chi porta il rischio non si vede');
-      /* CHI E QUANDO. E\' la richiesta di Francesco, e arriva sempre mesi dopo. */
-      deve(/Creata da/.test(r) && /Anna/.test(r), 'non dice chi ha creato la polizza');
+      /* CHI E QUANDO. 19/09/2026: «Creata da …» non e' piu' scritto nel
+         pannello, lo mette `regInstalla` leggendo il REGISTRO — leggerlo e'
+         una chiamata di rete, e il pannello non deve aspettarla. La regola
+         che resta e' che il posto ci sia e venga riempito con chi e quando. */
+      deve(/id="pol-storia"/.test(r), 'manca il contenitore della storia della polizza');
+      deve(/Chi e quando/.test(r), 'il pannello non ha piu\' la sezione «chi e quando»');
       deve(/flusso della compagnia/.test(r) && /mario@agenzia\.it/.test(r), 'non dice che arriva dal flusso, e da chi');
-      return '2 garanzie, veicolo, provenienza e firma';
+      return '2 garanzie, veicolo, provenienza e contenitore della storia';
     });
 
     await prova('polizza: il pagamento si guarda e si corregge, e resta scritto chi', async () => {
-      const r = await page.evaluate(async () => {
+      /* L'identificativo qui e' un uuid VERO e non il comodo «p1» delle altre
+         prove: il registro rifiuta quello che non e' un identificativo, ed e'
+         il suo mestiere. Con «p1» questa prova misurava un movimento che nel
+         mondo vero non sarebbe mai stato agganciato a niente. */
+      const POL = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+      const r = await page.evaluate(async (POL) => {
         window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
-          id: 'p1', cliente: 'Rossi Mario', numero_polizza: 'HDI/123', mezzo_pagamento: 'paypal',
+          id: POL, cliente: 'Rossi Mario', numero_polizza: 'HDI/123', mezzo_pagamento: 'paypal',
           stato_pagamento: 'non_pagato', creato_nome: 'Anna', creato_il: '2026-09-17T09:30:00Z', dati: {} } };
         window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: [
           { id: 't1', tipo: 'prima_rata', data_decorrenza: '2026-09-16', importo_lordo: 110, provvigione: 11, stato: 'incassato', incassato_il: '2026-09-16' },
           { id: 't2', tipo: 'rata', data_decorrenza: '2027-03-16', importo_lordo: 110, provvigione: null, stato: 'aperto',
             note: 'Rata dedotta dal frazionamento Semestrale: la compagnia non l\'ha mandata nel flusso.' } ] };
-        await window.polPagamento('p1');
+        await window.polPagamento(POL);
         const prima = document.getElementById('pol-bd').innerHTML;
         /* La correzione: si cambia il mezzo e si salva da solo. */
         window.__COLLAUDO.db = [];
         document.getElementById('pol-mezzo').value = 'bonifico';
-        await window.polSalvaPagamento('p1');
+        await window.polSalvaPagamento(POL);
         const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_polizze' && x.operazione === 'update');
-        return { prima, upd: upd.map(x => x.payload), dopo: document.getElementById('pol-bd').innerHTML };
-      });
+        const log = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert');
+        return { prima, upd: upd.map(x => x.payload), log: log.map(x => x.payload),
+                 dopo: document.getElementById('pol-bd').innerHTML };
+      }, POL);
       deve(/1 incassate su 2/.test(r.prima), 'non dice a che punto sta il pagamento: ' + r.prima.slice(0, 200));
       deve(/dedotta dal frazionamento/.test(r.prima), 'la rata dedotta non si distingue da quelle vere');
       deve(r.upd.length === 1, 'scritture sulla polizza: ' + r.upd.length);
       deve(r.upd[0].mezzo_pagamento === 'bonifico', 'il mezzo non viene salvato: ' + JSON.stringify(r.upd[0]));
-      /* LA PARTE CHE CONTA: chi, quando, che cosa. `quote_log` non porta l'id
-         della riga toccata, quindi «chi ha cambiato QUESTO pagamento» ha una
-         risposta solo se la traccia resta sulla polizza. */
-      const m = (r.upd[0].dati || {}).modifiche || [];
-      deve(m.length === 1, 'la modifica non lascia traccia sulla polizza: ' + JSON.stringify(r.upd[0].dati));
-      deve(m[0].quando && /mezzo di pagamento/.test(m[0].cosa || ''), 'la traccia non dice quando e che cosa: ' + JSON.stringify(m[0]));
-      return '2 rate, 1 dedotta dichiarata, 1 correzione firmata';
+      /* LA PARTE CHE CONTA, e il 19/09/2026 si e' spostata. La traccia NON sta
+         piu' dentro la polizza (`dati.modifiche` era un rimedio per una
+         schermata sola, nato il giorno prima): sta nel REGISTRO, con l'id
+         della riga toccata. Due archivi dei movimenti vogliono dire due
+         risposte diverse alla stessa domanda. */
+      deve(!(r.upd[0].dati || {}).modifiche, 'la traccia viene ancora scritta dentro la polizza: sono due registri');
+      const log = r.log || [];
+      deve(log.length === 1, 'movimenti registrati: ' + log.length + ' (ne serve 1)');
+      deve(log[0].entita === 'polizza' && log[0].entita_id === POL,
+        'il movimento non dice SU QUALE riga: ' + JSON.stringify(log[0]));
+      deve(/mezzo di pagamento/.test(log[0].azione || ''), 'non dice che cosa e\' cambiato: ' + log[0].azione);
+      deve(log[0].utente_nome, 'non dice chi: ' + JSON.stringify(log[0]));
+      return '2 rate, 1 dedotta dichiarata, 1 movimento registrato sulla riga';
+    });
+
+    /* ══ IL REGISTRO DEI MOVIMENTI (19/09/2026) ═══════════════════════════
+       `quote_log` sapeva dire che cosa e chi, non SU CHE COSA. Le prove qui
+       sotto sorvegliano la cosa che quella colonna doveva rendere possibile:
+       chiedere a una riga chi l'ha toccata. */
+    await prova('registro: il motore e\' caricato dalla pagina, e le regole non stanno nella schermata', async () => {
+      const v = await page.evaluate(() => window.Registro && window.Registro.VERSIONE);
+      deve(v, 'la pagina non carica tariffe/motore/registro.js');
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/Registro\.movimento\(/.test(h), 'il motore e\' caricato ma `logMovimento` non lo chiama');
+      deve(/Registro\.unisci\(/.test(h), 'la pagina Log non usa la regola di fusione del motore');
+      deve(/Registro\.etichetta\(/.test(h), 'le etichette sono ancora scritte nella schermata');
+      /* La vecchia chiave di fusione — azione+nome+dettaglio+minuto — univa
+         due movimenti VERI identici nello stesso minuto. Non deve tornare. */
+      const blocco = (h.match(/async function loadLog\(\)[\s\S]*?\n\}\n/) || [''])[0];
+      deve(!/new Set\(\)[\s\S]{0,400}seen\.has/.test(blocco), 'e\' tornata la fusione a occhio nella pagina Log');
+      return v;
+    });
+
+    await prova('registro: la copertura non scende — 31 movimenti su 52 sanno su che cosa sono', () => {
+      /* La soglia si ALZA, non si abbassa: è lo stesso meccanismo della prova
+         sulle collisioni fra i due documenti, al contrario. Senza, un punto di
+         chiamata scritto domani senza identificativo non lo nota nessuno, e il
+         registro torna piano piano a sapere solo «una polizza».
+
+         I ventuno che restano non sono dimenticanze: sono movimenti che NON
+         puntano a una riga (impostazioni, punti vendita, incassi in blocco,
+         importazioni) oppure inserimenti che non si fanno restituire l'id. Si
+         chiudono uno alla volta, e ogni volta questo numero sale. */
+      const h = fs.readFileSync('index.html', 'utf8');
+      const chiamate = [...h.matchAll(/logMovimento\((?!.*function)([^;]*?)\);/g)].map(x => x[1]);
+      const conId = chiamate.filter(c => {
+        /* Le virgole DENTRO le stringhe e dentro le parentesi non contano:
+           contarle direbbe che un movimento ha un id solo perché il suo testo
+           ha una virgola. */
+        let liv = 0, virgole = 0, dentro = false, apice = '';
+        for (const ch of c) {
+          if (dentro) { if (ch === apice) dentro = false; continue; }
+          if (ch === '\'' || ch === '"' || ch === '`') { dentro = true; apice = ch; continue; }
+          if ('([{'.includes(ch)) liv++;
+          if (')]}'.includes(ch)) liv--;
+          if (ch === ',' && liv === 0) virgole++;
+        }
+        return virgole >= 3;
+      }).length;
+      const SOGLIA = 31;
+      deve(chiamate.length >= 50, 'non ha letto i punti di chiamata: ' + chiamate.length);
+      deve(conId >= SOGLIA, conId + ' movimenti su ' + chiamate.length + ' portano l\'identificativo: erano ' + SOGLIA + '. Un punto di chiamata ha perso l\'id, oppure ne è nato uno nuovo senza');
+      deve(conId - SOGLIA < 3, 'adesso sono ' + conId + ': alza la soglia a ' + conId + ', altrimenti smette di sorvegliare');
+      return conId + '/' + chiamate.length;
+    });
+
+    await prova('registro: un movimento porta l\'identificativo della riga toccata', async () => {
+      const r = await page.evaluate(async () => {
+        const ID = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
+        window.__COLLAUDO.db = [];
+        await window.logMovimento('Pagamento modificato', 'polizza', 'Rossi', ID);
+        await window.logMovimento('Orari aggiornati', 'utente');
+        const righe = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log').map(x => x.payload);
+        return { righe, ID };
+      });
+      deve(r.righe.length === 2, 'movimenti scritti: ' + r.righe.length);
+      deve(r.righe[0].entita_id === r.ID, 'l\'id non arriva al registro: ' + JSON.stringify(r.righe[0]));
+      /* Un movimento che non punta a una riga si registra lo stesso, senza
+         id: perdere il fatto sarebbe peggio che perdere il puntatore. */
+      deve(r.righe[1].entita === 'utente' && r.righe[1].entita_id === null,
+        'un movimento senza riga e\' stato scartato o gli e\' stato dato un id: ' + JSON.stringify(r.righe[1]));
+      deve(r.righe.every(x => x.utente_id && x.utente_nome), 'un movimento non dice chi');
+      return '1 con id, 1 senza, tutti e due firmati';
+    });
+
+    await prova('registro: un identificativo che non e\' un identificativo non arriva al database', async () => {
+      /* Un id sbagliato manda ad aprire la riga di qualcun altro: e\' peggio
+         di un id assente, e chi guarda non ha modo di accorgersene. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.db = [];
+        await window.logMovimento('Modifica', 'polizza', '', 'p1');
+        const righe = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log').map(x => x.payload);
+        return righe;
+      });
+      deve(r.length === 1, 'il movimento e\' stato buttato via insieme all\'id: ' + r.length);
+      deve(r[0].entita_id === null, 'un id inventato e\' arrivato al database: ' + r[0].entita_id);
+      return 'il fatto resta, il puntatore falso no';
+    });
+
+    await prova('registro: la storia di una riga si legge dalla riga, e dice quando non si e\' potuta leggere', async () => {
+      const r = await page.evaluate(async () => {
+        const ID = 'cccccccc-3333-4333-8333-cccccccccccc';
+        document.getElementById('reg-prova')?.remove();
+        document.body.insertAdjacentHTML('beforeend', '<div id="reg-prova"></div>');
+        window.__COLLAUDO.risposte['quote_log:lista'] = { error: null, data: [
+          { azione: 'Pagamento modificato', entita: 'polizza', entita_id: ID, utente_nome: 'Mario', creato_il: '2026-09-19T10:00:00Z', dettaglio: 'bonifico' }
+        ] };
+        await window.regInstalla('reg-prova', 'polizza', ID, { nome: 'Anna', il: '2026-09-01T08:00:00Z', azione: 'Polizza creata' });
+        const conStoria = document.getElementById('reg-prova').textContent;
+        /* E quando il registro non risponde, non si dice «nessun movimento»:
+           sono due cose diverse, e confonderle rassicura a sproposito. */
+        window.__COLLAUDO.risposte['quote_log:lista'] = { data: null, error: { message: 'giu\'' } };
+        await window.regInstalla('reg-prova', 'polizza', ID, { nome: 'Anna', il: '2026-09-01T08:00:00Z' });
+        const inErrore = document.getElementById('reg-prova').textContent;
+        delete window.__COLLAUDO.risposte['quote_log:lista'];
+        return { conStoria, inErrore };
+      });
+      deve(/Anna/.test(r.conStoria) && /Polizza creata/.test(r.conStoria), 'non dice chi ha creato la riga: ' + r.conStoria);
+      deve(/Mario/.test(r.conStoria) && /Pagamento modificato/.test(r.conStoria), 'i movimenti non si vedono: ' + r.conStoria);
+      deve(/non risponde/.test(r.inErrore), 'un registro che non risponde viene raccontato come un registro vuoto: ' + r.inErrore);
+      deve(!/Nessun altro movimento/.test(r.inErrore), 'dice «nessun movimento» quando non ha potuto leggere');
+      return 'creazione + movimenti, e l\'errore detto in faccia';
     });
 
     await prova('polizza: una correzione che non cambia niente non scrive niente', async () => {

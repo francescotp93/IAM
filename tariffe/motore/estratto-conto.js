@@ -265,6 +265,54 @@
     };
   }
 
+  /* ══ IL CREDITO DELL'AGENZIA VERSO IL COLLABORATORE (M4.2, 19/09/2026) ════
+     Le rate che il collaboratore ha INCASSATO LUI, per conto dell'agenzia
+     (`pagatore_tipo = 'collaboratore'`): quei soldi il cliente li ha pagati,
+     ma all'agenzia non sono ancora arrivati. È un terzo conto, e non va
+     confuso con gli altri due: non è un sospeso (la rata È incassata) e non è
+     una provvigione (è premio, non compenso). Si chiude con `rimesso_il`.
+
+     `opz`: { titoli, polizze, collaboratore_id, dal, al, oggi, ancheRimesse }
+     Senza `ancheRimesse` escono solo i crediti aperti; con il periodo si
+     guarda la data dell'incasso. */
+  function creditoAgenzia(opz) {
+    var o = opz || {};
+    var polizze = o.polizze || {};
+    var righe = [];
+    (o.titoli || []).forEach(function (t) {
+      if (t.pagatore_tipo !== 'collaboratore' || !t.pagatore_collaboratore_id) return;
+      if (t.stato !== 'incassato') return;
+      if (o.collaboratore_id && t.pagatore_collaboratore_id !== o.collaboratore_id) return;
+      if (t.rimesso_il && !o.ancheRimesse) return;
+      if ((o.dal || o.al) && !dentro(t.incassato_il, o.dal, o.al)) return;
+      var pol = polizze[t.polizza_id] || {};
+      righe.push({
+        titolo_id: t.id || null,
+        polizza_id: t.polizza_id || null,
+        collaboratore_id: t.pagatore_collaboratore_id,
+        numero_polizza: testo(pol.numero_polizza),
+        cliente: testo(pol.cliente),
+        compagnia: testo(pol.compagnia),
+        prodotto: testo(pol.prodotto) || testo(pol.modulo),
+        incassato_il: t.incassato_il || null,
+        mezzo_pagamento: testo(t.mezzo_pagamento),
+        importo: t.importo_lordo == null ? null : Number(t.importo_lordo),
+        rimesso_il: t.rimesso_il || null
+      });
+    });
+    righe.sort(function (a, b) { return String(a.incassato_il).localeCompare(String(b.incassato_il)); });
+    var aperte = righe.filter(function (r) { return !r.rimesso_il; });
+    return {
+      righe: righe,
+      totali: {
+        righe: righe.length,
+        aperte: aperte.length,
+        importo: cent(righe.reduce(function (s, r) { return s + (r.importo || 0); }, 0)),
+        importo_aperto: cent(aperte.reduce(function (s, r) { return s + (r.importo || 0); }, 0))
+      }
+    };
+  }
+
   /* ══ IL RIEPILOGO PER COLLABORATORE ═══════════════════════════════════════
      Quando si guarda l'agenzia intera invece di una persona sola. Le rate
      senza collaboratore NON si distribuiscono a caso e non spariscono: fanno
@@ -280,16 +328,31 @@
       mappa[k].titoli.push(t);
     });
 
+    /* Il credito si conta su CHI HA PAGATO, non su chi ha prodotto: una rata
+       assegnata a Tizio ma incassata da Caio è un credito verso Caio. Per
+       questo si passa da tutti i titoli, non dal mucchio di ognuno. */
+    var crediti = {};
+    (titoli || []).forEach(function (t) {
+      if (t.pagatore_tipo === 'collaboratore' && t.pagatore_collaboratore_id) {
+        var kc = t.pagatore_collaboratore_id;
+        if (!mappa[kc]) mappa[kc] = { collaboratore_id: kc, nome: (nomi || {})[kc] || null, titoli: [] };
+        crediti[kc] = true;
+      }
+    });
+
     return Object.keys(mappa).map(function (k) {
       var g = mappa[k];
       var prov = provvigionale({ titoli: g.titoli, polizze: polizze, schema: (o.schemi || {})[k], dal: o.dal, al: o.al });
       var sosp = daVersare({ titoli: g.titoli, polizze: polizze, dal: o.dalSospesi, al: o.alSospesi, oggi: o.oggi });
+      var cred = g.collaboratore_id ? creditoAgenzia({ titoli: titoli, polizze: polizze, collaboratore_id: g.collaboratore_id }).totali
+                                    : { righe: 0, aperte: 0, importo: 0, importo_aperto: 0 };
       return {
         collaboratore_id: g.collaboratore_id,
         nome: g.nome,
         assegnato: !!g.collaboratore_id,
         provvigioni: prov.totali,
         daVersare: sosp.totali,
+        credito: cred,
         daConfermare: prov.daConfermare.length
       };
     }).sort(function (a, b) {
@@ -303,7 +366,7 @@
     VERSIONE: VERSIONE,
     cent: cent, percentualeDi: percentualeDi, rigaProvvigionale: rigaProvvigionale,
     dentro: dentro, provvigionale: provvigionale, daVersare: daVersare,
-    perCollaboratore: perCollaboratore
+    perCollaboratore: perCollaboratore, creditoAgenzia: creditoAgenzia
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.EstrattoConto = API;

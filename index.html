@@ -2794,14 +2794,27 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
            nessuno, e i titoli restano aperti per sempre. -->
       <div class="tit-barra" id="tit-barra" style="display:none">
         <span id="tit-sel-testo"></span>
-        <select id="tit-mezzo">
+        <select id="tit-mezzo" title="Come è stata pagata: parte dal mezzo che dice la compagnia, si corregge">
           <option value="bonifico">Bonifico</option>
           <option value="contante">Contante</option>
           <option value="assegno">Assegno</option>
           <option value="pos">POS</option>
           <option value="carta_credito">Carta di credito</option>
+          <option value="paypal">PayPal</option>
+          <option value="prepagata">Carta prepagata</option>
+          <option value="domiciliazione">Domiciliazione (SDD)</option>
+          <option value="altro">Altro</option>
         </select>
-        <input id="tit-pagatore" type="text" placeholder="pagatore (facoltativo)">
+        <!-- M4.2 (19/09/2026): CHI ha pagato. Se incassa il collaboratore, quei
+             soldi all'agenzia non sono ancora arrivati: nasce un credito verso
+             di lui, che si vede nell'estratto conto e si chiude con la rimessa. -->
+        <select id="tit-chi-paga" onchange="titChiPaga()" title="Chi ha materialmente pagato">
+          <option value="cliente">Paga il cliente</option>
+          <option value="collaboratore">Incassa il collaboratore (credito agenzia)</option>
+          <option value="agenzia">Paga l'agenzia</option>
+        </select>
+        <select id="tit-pagatore-collab" style="display:none"><option value="">— quale collaboratore —</option></select>
+        <input id="tit-pagatore" type="text" placeholder="nome sulla quietanza (facoltativo)">
         <button class="pf-exp" onclick="titIncassaSelezionati()"><i class="ti ti-cash"></i> Segna incassati</button>
         <!-- Assegnare il collaboratore una rata alla volta su un portafoglio
              importato non lo fa nessuno: la selezione multipla c'era gia' per
@@ -12727,12 +12740,51 @@ function ecpRender() {
 
   const r = EstrattoConto.daVersare({
     titoli: ECP_TITOLI, polizze: ECP_POLIZZE, dal, al, collaboratore_id: chi });
-  ECP_VISTA = { tipo: 'versare', nome, dal, al, ...r };
+  /* M4.2: il TERZO conto — quello che ha incassato lui per conto dell'agenzia
+     e non ha ancora rimesso. Non è un sospeso e non è una provvigione. */
+  const cred = EstrattoConto.creditoAgenzia({ titoli: ECP_TITOLI, polizze: ECP_POLIZZE, collaboratore_id: chi });
+  ECP_VISTA = { tipo: 'versare', nome, dal, al, credito: cred, ...r };
   sum.innerHTML = ecpCard(r.totali.righe, 'Rate non incassate', 'a suo carico nel periodo')
     + ecpCard(pfEuro(r.totali.importo), 'Totale', 'da incassare o da versare')
     + ecpCard(r.totali.scadute, 'Già scadute', 'la data è passata')
-    + ecpCard(pfEuro(r.totali.importo_scaduto), 'Di cui scaduto', 'sono i soldi fuori');
-  body.innerHTML = ecpTabellaVersare(r);
+    + ecpCard(pfEuro(r.totali.importo_scaduto), 'Di cui scaduto', 'sono i soldi fuori')
+    + ecpCard(pfEuro(cred.totali.importo_aperto), 'Incassato da lui, da rimettere', 'credito dell\'agenzia verso il collaboratore');
+  body.innerHTML = ecpTabellaVersare(r) + ecpTabellaCredito(cred);
+}
+
+/* Le rate incassate dal collaboratore per conto dell'agenzia, non ancora
+   rimesse. «Segna rimesso» chiude il credito e lascia il movimento. */
+function ecpTabellaCredito(c) {
+  const aperte = (c.righe || []).filter(x => !x.rimesso_il);
+  return `<div class="flu-sez" style="margin-top:14px">Incassato dal collaboratore, da rimettere all'agenzia — ${aperte.length || 'niente'}</div>`
+    + (aperte.length ? `<div class="table-wrap"><table class="storico-table">
+      <thead><tr><th>Incasso</th><th>Cliente</th><th>Polizza</th><th>Mezzo</th><th class="soldi">Importo</th><th></th></tr></thead>
+      <tbody>${aperte.map(x => `<tr class="ecp-credito">
+        <td style="font-size:12px">${polData(x.incassato_il)}</td>
+        <td><strong>${esc(x.cliente || '—')}</strong></td>
+        <td style="font-size:12px">${esc(x.numero_polizza || '—')}${x.compagnia ? `<div class="cl-sub">${esc(x.compagnia)}</div>` : ''}</td>
+        <td style="font-size:12px">${esc(TIT_MEZZI[x.mezzo_pagamento] || x.mezzo_pagamento || '—')}</td>
+        <td class="soldi"><b>${ecpEuro(x.importo)}</b></td>
+        <td><button class="rin-az" onclick="ecpRimesso('${esc(x.titolo_id)}')" title="Il collaboratore ha girato questi soldi all'agenzia"><i class="ti ti-check"></i> Segna rimesso</button></td>
+      </tr>`).join('')}
+      <tr><td colspan="4"><b>Totale da rimettere</b></td><td class="soldi"><b>${ecpEuro(c.totali.importo_aperto)}</b></td><td></td></tr>
+      </tbody></table></div>`
+      : '<div class="cl-sub">Nessun incasso a suo carico da rimettere.</div>');
+}
+
+async function ecpRimesso(titoloId) {
+  const t = (ECP_TITOLI || []).find(x => x.id === titoloId);
+  if (!t) return;
+  const p = ECP_POLIZZE[t.polizza_id] || {};
+  if (!confirm('Il collaboratore ha rimesso all\'agenzia ' + pfEuro(t.importo_lordo) + ' (' + (p.cliente || '') + ')?')) return;
+  const oggi = new Date().toISOString().slice(0, 10);
+  try {
+    const { error } = await db.from('quote_titoli').update({ rimesso_il: oggi, rimesso_da: currentUser.id }).eq('id', titoloId);
+    if (error) throw error;
+    t.rimesso_il = oggi; t.rimesso_da = currentUser.id;
+    try { logMovimento('Rimessa del collaboratore ' + ((window.TIT_COLLAB_NOMI || {})[t.pagatore_collaboratore_id] || '') + ' · ' + pfEuro(t.importo_lordo), 'titolo', p.cliente || '', titoloId); } catch (e) {}
+    ecpRender();
+  } catch (e) { alert('Non riesco a registrare la rimessa: ' + (e.message || e)); }
 }
 
 function ecpCard(n, l, d) {
@@ -12748,15 +12800,17 @@ function ecpRiepilogo(body, sum, dal, al) {
   sum.innerHTML = ecpCard(g.filter(x => x.assegnato).length, 'Collaboratori', 'con almeno una rata')
     + ecpCard(pfEuro(g.reduce((s, x) => s + (x.provvigioni.quota_collaboratore || 0), 0)), 'Da pagare in tutto', 'nel periodo scelto')
     + ecpCard(pfEuro(g.reduce((s, x) => s + (x.daVersare.importo || 0), 0)), 'Da versare in tutto', 'rate non incassate')
+    + ecpCard(pfEuro(g.reduce((s, x) => s + ((x.credito || {}).importo_aperto || 0), 0)), 'Da rimettere in tutto', 'incassato dai collaboratori, non ancora in agenzia')
     + (nonAss ? ecpCard(nonAss.provvigioni.righe + nonAss.daVersare.righe, 'Rate senza collaboratore', 'da assegnare nella pagina Titoli') : '');
   body.innerHTML = `<div class="cl-sub" style="margin-bottom:8px">Scegli un collaboratore per vedere il suo estratto conto e mandarglielo.</div>
     <div class="table-wrap"><table class="storico-table">
-    <thead><tr><th>Collaboratore</th><th class="soldi">Da versare</th><th class="soldi">Provvigioni di compagnia</th>
+    <thead><tr><th>Collaboratore</th><th class="soldi">Da versare</th><th class="soldi">Da rimettere</th><th class="soldi">Provvigioni di compagnia</th>
       <th class="soldi">Spetta a lui</th><th class="soldi">Resta all'agenzia</th><th>Da confermare</th></tr></thead>
     <tbody>${g.map(x => `<tr${x.assegnato ? ` style="cursor:pointer" onclick="ecpScegli('${esc(x.collaboratore_id)}')"` : ''}>
       <td>${x.assegnato ? `<strong>${esc(x.nome || 'collaboratore rimosso')}</strong>`
           : '<span class="cl-sub">Rate non assegnate a nessuno</span>'}</td>
       <td class="soldi">${ecpEuro(x.daVersare.importo)}</td>
+      <td class="soldi">${x.credito && x.credito.importo_aperto ? '<b>' + ecpEuro(x.credito.importo_aperto) + '</b>' : '—'}</td>
       <td class="soldi">${ecpEuro(x.provvigioni.provvigione_compagnia)}</td>
       <td class="soldi"><b>${ecpEuro(x.provvigioni.quota_collaboratore)}</b></td>
       <td class="soldi">${ecpEuro(x.provvigioni.margine_agenzia)}</td>
@@ -15779,7 +15833,8 @@ const TIT_STATI = {
 };
 const TIT_MEZZI = {
   contante: 'Contante', assegno: 'Assegno', bonifico: 'Bonifico',
-  pos: 'POS', carta_credito: 'Carta di credito'
+  pos: 'POS', carta_credito: 'Carta di credito',
+  paypal: 'PayPal', prepagata: 'Carta prepagata', domiciliazione: 'Domiciliazione (SDD)', altro: 'Altro'
 };
 
 /* Il piano delle rate di una polizza: date e importi calcolati.
@@ -15923,6 +15978,19 @@ function titBarra() {
   b.style.display = '';
   document.getElementById('tit-sel-testo').textContent =
     scelti.length + (scelti.length === 1 ? ' titolo scelto · ' : ' titoli scelti · ') + pfEuro(somma);
+  /* M4.2: il mezzo parte da quello che dice la compagnia (è sulla rata dal
+     flusso). Se le rate scelte ne hanno uno solo, è quello; se ne hanno di
+     diversi non si sceglie per loro. Resta modificabile: è un default. */
+  const mezzi = [...new Set(scelti.map(t => t.mezzo_pagamento).filter(m => m && TIT_MEZZI[m]))];
+  const selM = document.getElementById('tit-mezzo');
+  if (selM && mezzi.length === 1) selM.value = mezzi[0];
+  const selC = document.getElementById('tit-pagatore-collab');
+  if (selC && selC.options.length <= 1 && typeof TIT_COLLAB !== 'undefined' && TIT_COLLAB.length) selC.innerHTML = collabOpzioni('', '— quale collaboratore —');
+}
+function titChiPaga() {
+  const chi = document.getElementById('tit-chi-paga')?.value || 'cliente';
+  const selC = document.getElementById('tit-pagatore-collab');
+  if (selC) selC.style.display = chi === 'collaboratore' ? '' : 'none';
 }
 
 function titRender() {
@@ -16307,13 +16375,20 @@ async function titIncassaSelezionati() {
   const scelti = TIT_VISTA.filter(t => TIT_SEL.has(t.id) && t.stato === 'aperto');
   if (!scelti.length) { alert('Nessun titolo da incassare fra quelli scelti.'); return; }
   const mezzo = document.getElementById('tit-mezzo')?.value || 'bonifico';
-  const pagatore = (document.getElementById('tit-pagatore')?.value || '').trim() || null;
+  /* M4.2: CHI ha pagato. «collaboratore» vuol dire che i soldi sono da lui,
+     non in agenzia: senza dire quale, il credito non avrebbe un debitore. */
+  const chi = document.getElementById('tit-chi-paga')?.value || 'cliente';
+  const collabId = chi === 'collaboratore' ? (document.getElementById('tit-pagatore-collab')?.value || null) : null;
+  if (chi === 'collaboratore' && !collabId) { alert('Se incassa il collaboratore devi dire quale: è lui che deve rimettere i soldi all\'agenzia.'); return; }
+  const collabNomeScelto = collabId ? ((window.TIT_COLLAB_NOMI || {})[collabId] || null) : null;
+  const pagatore = (document.getElementById('tit-pagatore')?.value || '').trim() || collabNomeScelto || null;
   const somma = scelti.reduce((s, t) => s + (Number(t.importo_lordo) || 0), 0);
 
   /* Riepilogo prima di eseguire: si sta registrando denaro incassato, e un
      click distratto su venti titoli non deve poter passare inosservato. */
   if (!confirm('Segnare incassati ' + scelti.length + (scelti.length === 1 ? ' titolo' : ' titoli')
       + ' per ' + pfEuro(somma) + '?\nMezzo: ' + (TIT_MEZZI[mezzo] || mezzo)
+      + '\nChi paga: ' + (chi === 'collaboratore' ? 'il collaboratore ' + (collabNomeScelto || '') + ' — nasce un credito dell\'agenzia verso di lui' : chi === 'agenzia' ? 'l\'agenzia' : 'il cliente')
       + (pagatore ? '\nPagatore: ' + pagatore : ''))) return;
 
   const oggi = new Date().toISOString().slice(0, 10);
@@ -16321,10 +16396,15 @@ async function titIncassaSelezionati() {
   for (const t of scelti) {
     try {
       const { error } = await db.from('quote_titoli')
-        .update({ stato: 'incassato', mezzo_pagamento: mezzo, pagatore, incassato_il: oggi })
+        .update({ stato: 'incassato', mezzo_pagamento: mezzo, pagatore, incassato_il: oggi,
+                  pagatore_tipo: chi, pagatore_collaboratore_id: collabId })
         .eq('id', t.id);
       if (error) throw error;
       t.stato = 'incassato'; t.mezzo_pagamento = mezzo; t.pagatore = pagatore; t.incassato_il = oggi;
+      t.pagatore_tipo = chi; t.pagatore_collaboratore_id = collabId;
+      /* Il credito verso il collaboratore si registra RATA PER RATA, con
+         l'id: fra sei mesi «chi ha incassato questa» deve avere una risposta. */
+      if (collabId) { try { logMovimento('Incassata dal collaboratore ' + (collabNomeScelto || '') + ' · ' + pfEuro(t.importo_lordo) + ' · credito agenzia', 'titolo', t.__cliente || '', t.id); } catch (e) {} }
       fatti++;
     } catch (e) {
       console.warn('titolo non incassato ' + t.id + ':', e.message || e);
@@ -16464,6 +16544,8 @@ async function loadTitoli() {
     await caricaCollaboratori();
     const selC = document.getElementById('tit-collab');
     if (selC) selC.innerHTML = collabOpzioni(selC.value);
+    const selP = document.getElementById('tit-pagatore-collab');
+    if (selP) selP.innerHTML = collabOpzioni(selP.value, '— quale collaboratore —');
     titRender();
     titBadge();
   } catch (e) {

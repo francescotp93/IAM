@@ -217,6 +217,35 @@ prova('il riepilogo d\'agenzia tiene le rate non assegnate in una riga sua', () 
   return '2 persone + 1 riga «non assegnate», in fondo';
 });
 
+prova('M4.2 · la rata incassata DAL collaboratore è un credito dell\'agenzia verso di lui, finché non la rimette', () => {
+  /* Tre conti diversi, e questo è il terzo: non è un sospeso (la rata È
+     incassata) e non è una provvigione (è premio, non compenso). */
+  const titoli = TITOLI.concat([
+    T({ id: 'c1a', polizza_id: 'pol-1', stato: 'incassato', incassato_il: '2026-09-11', importo_lordo: 120, pagatore_tipo: 'collaboratore', pagatore_collaboratore_id: 'c1' }),
+    T({ id: 'c1b', polizza_id: 'pol-2', stato: 'incassato', incassato_il: '2026-09-12', importo_lordo: 80, pagatore_tipo: 'collaboratore', pagatore_collaboratore_id: 'c1', rimesso_il: '2026-09-14' }),
+    /* prodotta da c1 ma INCASSATA da c2: il credito è verso c2 */
+    T({ id: 'c2a', polizza_id: 'pol-1', stato: 'incassato', incassato_il: '2026-09-13', importo_lordo: 50, pagatore_tipo: 'collaboratore', pagatore_collaboratore_id: 'c2' }),
+    /* pagata dal cliente: non è un credito verso nessuno */
+    T({ id: 'cli', polizza_id: 'pol-1', stato: 'incassato', incassato_il: '2026-09-13', importo_lordo: 999, pagatore_tipo: 'cliente' }),
+    /* segnata «collaboratore» ma ancora aperta: i soldi non ci sono, niente credito */
+    T({ id: 'ap', polizza_id: 'pol-1', stato: 'aperto', importo_lordo: 777, pagatore_tipo: 'collaboratore', pagatore_collaboratore_id: 'c1' }),
+    /* di nessuno: la riga «non assegnate» del riepilogo */
+    T({ id: 'na', polizza_id: 'pol-1', stato: 'aperto', data_scadenza: '2026-09-20', importo_lordo: 10, collaboratore_id: null })
+  ]);
+  const c1 = E.creditoAgenzia({ titoli, polizze: POLIZZE, collaboratore_id: 'c1' });
+  deve(c1.totali.aperte === 1 && c1.totali.importo_aperto === 120, 'credito aperto verso c1: ' + JSON.stringify(c1.totali) + ' (atteso 1 rata, 120)');
+  const c1tutte = E.creditoAgenzia({ titoli, polizze: POLIZZE, collaboratore_id: 'c1', ancheRimesse: true });
+  deve(c1tutte.totali.righe === 2 && c1tutte.totali.importo === 200, 'con le rimesse: ' + JSON.stringify(c1tutte.totali));
+  const c2 = E.creditoAgenzia({ titoli, polizze: POLIZZE, collaboratore_id: 'c2' });
+  deve(c2.totali.importo_aperto === 50, 'il credito guarda chi ha PAGATO, non chi ha prodotto: ' + c2.totali.importo_aperto);
+  /* E il riepilogo d'agenzia lo porta accanto agli altri due conti. */
+  const g = E.perCollaboratore(titoli, POLIZZE, { c1: 'Uno', c2: 'Due' }, { schemi: { c1: SCHEMA }, dal: '2026-09-01', al: '2026-09-30' });
+  const r1 = g.find(x => x.collaboratore_id === 'c1'), r2 = g.find(x => x.collaboratore_id === 'c2');
+  deve(r1.credito.importo_aperto === 120 && r2.credito.importo_aperto === 50, 'il riepilogo non porta il credito: ' + JSON.stringify([r1.credito, r2.credito]));
+  deve(!g.find(x => !x.assegnato).credito.importo_aperto, 'le rate non assegnate hanno un credito: verso chi?');
+  return 'c1: 120 aperto (80 rimesso), c2: 50; il cliente e la rata aperta non contano';
+});
+
 console.log('\n══ ESTRATTO CONTO DEL COLLABORATORE ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

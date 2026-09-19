@@ -69,6 +69,7 @@
 <script src="tariffe/motore/estratto-conto.js?v=20260918"></script>
 <script src="tariffe/motore/registro.js?v=20260919"></script>
 <script src="tariffe/motore/assegnazione.js?v=20260919"></script>
+<script src="tariffe/motore/anagrafica.js?v=20260919"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -919,6 +920,15 @@ button{font-family:inherit}
 .fdoc-subb.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
 .fdoc-data{font-size:15px;color:var(--ink)}
 .pf-mezzo{font-size:12.5px;font-weight:600}
+.sc-eta{color:var(--muted);font-weight:500;font-size:12.5px}
+.sc-torta{color:#d63384;font-size:18px;vertical-align:-2px;margin-left:4px}
+.cpl-box{margin-bottom:12px}
+.cpl-card{background:#fff7fb;border:1px solid #f3cfe0;border-left:4px solid #d63384;border-radius:6px;padding:10px 14px}
+.cpl-card h4{margin:0 0 6px;font-size:13.5px;display:flex;align-items:center;gap:6px;color:#8a1c58}
+.cpl-r{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px dashed #f3cfe0;flex-wrap:wrap}
+.cpl-r .cpl-az{display:flex;gap:6px;flex-wrap:wrap}
+.cpl-modello{width:100%;box-sizing:border-box;min-height:64px;border:1px solid #f3cfe0;border-radius:4px;padding:8px;font-family:inherit;font-size:12.5px;margin:4px 0 8px}
+.cpl-vuoto{font-size:12.5px;color:var(--muted);padding:6px 0}
 .reg-ultima{font-size:12.5px;color:var(--ink);padding:4px 0 8px;border-bottom:1px dashed var(--line);margin-bottom:6px}
 .reg-r{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
   padding:7px 0;border-top:1px solid var(--line);font-size:13px}
@@ -3141,6 +3151,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <button class="ana-tab" id="anag-view-lead" onclick="anagView('lead')"><i class="ti ti-flag-2" style="vertical-align:-2px"></i> Lead <span id="anag-cnt-lead" class="cl-count" style="margin-left:4px">·</span></button>
         </div>
         <div id="anag-lead-hint" style="display:none;background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:8px 12px;margin-bottom:.7rem;font-size:12.5px"><i class="ti ti-info-circle" style="vertical-align:-2px"></i> I <b>Lead</b> sono nominativi senza privacy firmata (recuperati dal preventivatore o inseriti a mano). Firma la privacy dalla scheda per convertirli in clienti.</div>
+        <!-- M3.3/M3.4 (19/09/2026): chi compie gli anni oggi, e gli auguri
+             con un clic per persona. Invio manuale assistito, non automatico:
+             la lista serve anche a ESCLUDERE (un sinistro aperto, un
+             contenzioso). Solo con consenso marketing. -->
+        <div id="cpl-oggi" class="cpl-box"></div>
         <div class="anag-search">
           <input id="anag-q" placeholder="Cerca per nominativo, codice fiscale, P.IVA o telefono…" onkeydown="if(event.key==='Enter')cercaAnagrafica()">
           <button class="btn-add" onclick="cercaAnagrafica()"><i class="ti ti-search"></i> Cerca</button>
@@ -21000,13 +21015,13 @@ function logoChip(key, h) {
 // È un preventivo moto/ciclomotore? (in tal caso si quotano DUE compagnie: Italiana + 24H)
 function awEsMoto() { const t = (AUTO_DATA.tipoVeicolo || '').toLowerCase(); return /motoci|ciclo/.test(t); }
 // Ricava la data di nascita (DD/MM/YYYY) dal codice fiscale (serve alla quotazione 24H).
+/* Dal 19/09/2026 (M3.1) il codice fiscale lo legge UN motore solo,
+   tariffe/motore/anagrafica.js: qui c'erano due parser diversi (questo e
+   `datiDaCF`), uno senza omocodia e uno senza carattere di controllo. Questa
+   resta la porta che vuole la data in italiano (gg/mm/aaaa). */
 function awCfNascita(cf) {
-  cf = (cf || '').toUpperCase().trim(); if (cf.length < 11) return null;
-  const M = { A:1, B:2, C:3, D:4, E:5, H:6, L:7, M:8, P:9, R:10, S:11, T:12 };
-  const yy = parseInt(cf.slice(6, 8), 10), mo = M[cf[8]]; let dd = parseInt(cf.slice(9, 11), 10);
-  if (!mo || isNaN(yy) || isNaN(dd)) return null; if (dd > 40) dd -= 40; // femmine: giorno +40
-  const cur = new Date().getFullYear() % 100; const year = (yy <= cur ? 2000 : 1900) + yy;
-  return String(dd).padStart(2, '0') + '/' + String(mo).padStart(2, '0') + '/' + year;
+  const n = window.Anagrafica ? Anagrafica.nascita(cf) : null;
+  return n ? n.data.split('-').reverse().join('/') : null;
 }
 // Quotazione 24H · Moto Platinum (POST /moto/preventivo: targa + data nascita)
 async function awPremio24h() {
@@ -24959,6 +24974,7 @@ function initAnagrafiche() {
   if (ts && !ts.options.length) ts.innerHTML = TIPI_SOCIETA.map(s => `<option value="${esc(s)}">${s || '—'}</option>`).join('');
   anagTab('cerca');
   cercaAnagrafica();   // mostra subito i clienti salvati (più recenti)
+  cplCarica().catch(e => console.warn('compleanni non disponibili:', e.message || e));
   // Intermediari per la tendina del nuovo cliente (default: il collaboratore stesso).
   caricaIntermediari().then(() => popolaSelectInterm('ag-intermediario', mioIntermediarioId()));
 }
@@ -25124,20 +25140,10 @@ function anagFiltro(f){
 
 /* ── Codice Fiscale → data di nascita ── */
 const CF_MESE = {A:0,B:1,C:2,D:3,E:4,H:5,L:6,M:7,P:8,R:9,S:10,T:11};
+/* Vedi `awCfNascita`: stessa regola, stesso motore, porta in forma ISO. */
 function datiDaCF(cf) {
-  cf = (cf||'').toUpperCase().replace(/\s/g,'');
-  if (!/^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/.test(cf)) {
-    const omo = {L:'0',M:'1',N:'2',P:'3',Q:'4',R:'5',S:'6',T:'7',U:'8',V:'9'};
-    const arr = cf.split(''); [6,7,9,10,12,13,14].forEach(i => { if (omo[arr[i]]) arr[i] = omo[arr[i]]; });
-    cf = arr.join('');
-    if (!/^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/.test(cf)) return null;
-  }
-  const mese = CF_MESE[cf[8]]; if (mese === undefined) return null;
-  let gg = parseInt(cf.substr(9,2),10);
-  const sesso = gg > 40 ? 'F' : 'M'; if (gg > 40) gg -= 40;
-  const yy = parseInt(cf.substr(6,2),10), cut = new Date().getFullYear()%100;
-  const anno = yy <= cut ? 2000+yy : 1900+yy;
-  return { dataNascita: `${anno}-${String(mese+1).padStart(2,'0')}-${String(gg).padStart(2,'0')}`, sesso };
+  const n = window.Anagrafica ? Anagrafica.nascita(cf) : null;
+  return n ? { dataNascita: n.data, sesso: n.sesso } : null;
 }
 function cfAutofill(cfId, dobId) {
   const r = datiDaCF(document.getElementById(cfId)?.value);
@@ -25364,7 +25370,15 @@ async function apriAnagrafica(id) {
   ] : [
     f('Nominativo', a.nominativo, true),
     f('Codice fiscale', a.codice_fiscale),
-    f('Data di nascita', a.data_nascita ? new Date(a.data_nascita).toLocaleDateString('it-IT') : ''),
+    /* M3.2: l'età si CALCOLA, non si salva — un'età in tabella è sbagliata
+       dal giorno dopo. Non passa da `f()`, che fa l'escape del valore. */
+    (function () {
+      const d = a.data_nascita ? new Date(a.data_nascita).toLocaleDateString('it-IT') : '';
+      const e = (a.data_nascita && window.Anagrafica) ? Anagrafica.eta(a.data_nascita) : null;
+      return `<div class="sc-f"><div class="sc-lbl">Data di nascita</div>${d
+        ? `<div class="sc-val">${esc(d)}${e != null ? ` <span class="sc-eta">(${e} anni)</span>` : ''}</div>`
+        : '<div class="sc-val empty">—</div>'}</div>`;
+    })(),
     f('Professione', a.professione, true),
     (function () {
       const c = [];
@@ -25378,7 +25392,7 @@ async function apriAnagrafica(id) {
   <div class="modal-ov" id="anag-overlay" onclick="if(event.target.id==='anag-overlay')this.remove()">
     <div class="modal" style="width:920px;max-width:96vw;max-height:90vh;overflow:auto">
       <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">
-        <span>${esc(a.nominativo)} <span class="${isG ? 'badge-admin' : 'badge-collab'}" style="margin-left:8px;font-size:11px">${isG ? 'Giuridica' : 'Fisica'}</span>${awIsLead(a) ? ` <span style="margin-left:6px;font-size:11px;font-weight:800;background:#f86200;color:#fff;border-radius:6px;padding:2px 8px;letter-spacing:.3px"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> LEAD</span>` : ''}</span>
+        <span>${esc(a.nominativo)}${(!isG && window.Anagrafica && Anagrafica.compleannoOggi(a.data_nascita)) ? ' <span class="sc-torta" title="Oggi compie gli anni"><i class="ti ti-cake"></i></span>' : ''} <span class="${isG ? 'badge-admin' : 'badge-collab'}" style="margin-left:8px;font-size:11px">${isG ? 'Giuridica' : 'Fisica'}</span>${awIsLead(a) ? ` <span style="margin-left:6px;font-size:11px;font-weight:800;background:#f86200;color:#fff;border-radius:6px;padding:2px 8px;letter-spacing:.3px"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> LEAD</span>` : ''}</span>
         <button class="ghost" style="padding:6px 10px" onclick="document.getElementById('anag-overlay').remove()"><i class="ti ti-x"></i></button>
       </div>
       <div class="sc-grid">
@@ -25873,6 +25887,125 @@ const CRO_TIPI = {
   nota:       ['ti-notes',                   '#7a6a4f'],
   cliente:    ['ti-user',             'var(--muted)']
 };
+
+/* ═══ COMPLEANNI DI OGGI E AUGURI (M3.3/M3.4, 19/09/2026) ═══════════════════
+   Le regole (chi compie gli anni, chi si può contattare, il testo) stanno nel
+   motore `Anagrafica`. Qui: la lettura, il riquadro, l'invio, la traccia.
+
+   INVIO MANUALE, UN CLIC PER PERSONA. Un invio automatico non sa che quel
+   cliente ha un sinistro aperto o una lite in corso: la lista si guarda, e
+   chi non va contattato si salta. Il modello del messaggio si corregge nel
+   riquadro e resta salvato nel browser di chi lo usa. La traccia va nel
+   DIARIO del cliente (quote_note: un augurio è un contatto) e nel registro. */
+var CPL_OGGI = [];
+var CPL_INVIATI = {};
+const CPL_MODELLO_CHIAVE = 'cpl_modello_auguri';
+
+function cplModello() {
+  let m = null;
+  try { m = localStorage.getItem(CPL_MODELLO_CHIAVE); } catch (e) { m = null; }
+  return (m && m.trim()) || (window.Anagrafica ? Anagrafica.TESTO_AUGURI : '');
+}
+function cplSalvaModello() {
+  const el = document.getElementById('cpl-modello');
+  if (!el) return;
+  try { localStorage.setItem(CPL_MODELLO_CHIAVE, el.value); } catch (e) {}
+}
+
+async function cplCarica() {
+  const box = document.getElementById('cpl-oggi');
+  if (!box || !db || !window.Anagrafica) return;
+  let righe = [];
+  try {
+    let q = db.from('quote_anagrafiche')
+      .select('id,nominativo,nome,cognome,tipo,data_nascita,email,cellulare,telefono,consenso_marketing,creato_da')
+      .not('data_nascita', 'is', null).limit(5000);
+    const ids = await visibleUserIds();
+    if (ids) q = q.in('creato_da', ids);
+    const { data, error } = await q;
+    if (error) throw error;
+    righe = data || [];
+  } catch (e) {
+    box.innerHTML = '<div class="cpl-vuoto">Compleanni non disponibili: non si è potuto leggere l\'anagrafica.</div>';
+    return;
+  }
+  CPL_OGGI = Anagrafica.delGiorno(righe);
+  cplRender();
+}
+
+function cplRender() {
+  const box = document.getElementById('cpl-oggi');
+  if (!box) return;
+  if (!CPL_OGGI.length) { box.innerHTML = '<div class="cpl-vuoto"><i class="ti ti-cake"></i> Nessun compleanno oggi.</div>'; return; }
+  const righe = CPL_OGGI.map(x => {
+    const a = x.anagrafica;
+    const fatto = CPL_INVIATI[a.id];
+    const azioni = x.contattabile
+      ? (fatto ? `<span class="tk-badge st-risolto">auguri inviati via ${esc(fatto)}</span>`
+               : (x.email ? `<button class="rin-az" onclick="cplEmail('${esc(a.id)}')"><i class="ti ti-mail"></i> Email</button>` : '')
+                 + (x.telefono ? `<button class="rin-az" onclick="cplWhatsapp('${esc(a.id)}')"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>` : ''))
+      : `<span class="tk-badge st-aperto" title="GDPR: gli auguri sono marketing">${esc(x.motivo)}</span>`;
+    return `<div class="cpl-r">
+      <div><a href="#" onclick="event.preventDefault();apriAnagrafica('${esc(a.id)}')" style="font-weight:700;color:var(--ink)">${esc(a.nominativo || '')}</a>
+        <span class="cl-sub">${x.eta != null ? x.eta + ' anni' : ''}${x.email ? ' · ' + esc(x.email) : ''}${x.telefono ? ' · ' + esc(x.telefono) : ''}</span></div>
+      <div class="cpl-az">${azioni}</div></div>`;
+  }).join('');
+  box.innerHTML = `<div class="cpl-card">
+    <h4><i class="ti ti-cake"></i> Compleanni di oggi — ${CPL_OGGI.length}</h4>
+    <div class="cl-sub">Il messaggio, da correggere se serve (segnaposto: {nome}, {agenzia}, {firma}). Si manda un cliente alla volta: chi ha un sinistro aperto o una lite in corso si salta.</div>
+    <textarea id="cpl-modello" class="cpl-modello" onchange="cplSalvaModello()">${esc(cplModello())}</textarea>
+    ${righe}</div>`;
+}
+
+async function cplTesto(a) {
+  let az = {};
+  try { az = await ppAzienda(); } catch (e) { az = {}; }
+  const agenzia = (az && (az.rs || az.ragione_sociale)) || 'With Us Assicurazioni';
+  const firma = (typeof currentUser !== 'undefined' && currentUser && currentUser.name) ? currentUser.name + ' — ' + agenzia : agenzia;
+  return Anagrafica.testoAuguri((document.getElementById('cpl-modello') || {}).value || cplModello(), a, agenzia, firma);
+}
+
+/* La traccia: diario del cliente (un augurio è un contatto) e registro. */
+async function cplTraccia(a, canale) {
+  try {
+    await db.from('quote_note').insert({ anagrafica_id: a.id, testo: 'Auguri di compleanno inviati via ' + canale + '.',
+      autore_id: currentUser.id, autore_nome: currentUser.name || currentUser.email || '' });
+  } catch (e) {}
+  try { logMovimento('Auguri di compleanno via ' + canale, 'cliente', a.nominativo || '', a.id); } catch (e) {}
+  CPL_INVIATI[a.id] = canale;
+  cplRender();
+}
+
+async function cplEmail(id) {
+  const x = CPL_OGGI.find(r => r.anagrafica.id === id);
+  if (!x || !x.contattabile || !x.email) return;
+  const a = x.anagrafica;
+  const testo = await cplTesto(a);
+  const html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.6;color:#1f2a37">'
+    + testo.split('\n').map(r => '<p>' + esc(r) + '</p>').join('') + '</div>';
+  try {
+    await payFetch('/mail/send', { to: x.email, subject: 'Tanti auguri di buon compleanno!', html });
+    try { quotoToast('Auguri inviati a ' + x.email); } catch (e) {}
+    await cplTraccia(a, 'email');
+  } catch (e) {
+    const m = String(e.message || e);
+    alert(/casella/i.test(m)
+      ? 'Il tuo utente non ha una casella di posta dell\'agenzia assegnata: si assegna in IAM, nella scheda utente.'
+      : 'Invio non riuscito: ' + m);
+  }
+}
+
+async function cplWhatsapp(id) {
+  const x = CPL_OGGI.find(r => r.anagrafica.id === id);
+  if (!x || !x.contattabile || !x.telefono) return;
+  const a = x.anagrafica;
+  const testo = await cplTesto(a);
+  const n = Anagrafica.numeroWhatsapp(x.telefono);
+  /* La finestra si apre PRIMA di scrivere la traccia: dopo una chiamata di
+     rete il browser la bloccherebbe come popup (CLAUDE.md §12). */
+  window.open('https://wa.me/' + n + '?text=' + encodeURIComponent(testo), '_blank');
+  await cplTraccia(a, 'WhatsApp');
+}
 
 /* Alcuni fatti hanno l'orario (un preventivo salvato alle 11:04), altri sono
    solo date (la decorrenza di una polizza). Scrivere "00:00" su questi ultimi

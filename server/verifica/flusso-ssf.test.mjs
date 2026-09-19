@@ -398,6 +398,22 @@ prova('V8 · senza SCADENZA_INCASSATO non si deduce nessuna rata', () => {
   return 'nessuna rata inventata';
 });
 
+prova('M3.1 · la data di nascita che il flusso non porta si ricava dal codice fiscale — valido', () => {
+  /* C4 ha il codice fiscale e nessuna DATA_NASCITA: la si ricava. C1 ha
+     tutte e due: vince quella del flusso, e non si dice «ricavata». */
+  /* La chiave del cliente è codice fiscale + tipo + agenzia, non l'ID del
+     file: C4 è la riga dell'agenzia A9998, C1 quella di A9999. */
+  const c4 = A.clienti.find(c => /A9998$/.test(c._chiave));
+  deve(c4 && c4.data_nascita === '1980-01-01' && c4._nascita_da_cf === true, 'C4: ' + JSON.stringify(c4 && { d: c4.data_nascita, cf: c4._nascita_da_cf }));
+  const c1 = A.clienti.find(c => /^RSSMRA80A01H501U-M-A9999$/.test(c._chiave));
+  deve(c1 && c1.data_nascita === '1980-01-01' && c1._nascita_da_cf === false, 'C1: la data del flusso non vince');
+  /* Il V8 di collaudo ha codici fiscali SINTETICI col controllo sbagliato:
+     non deve uscire nessuna data ricavata, e le date del file restano. */
+  deve(!A8.clienti.some(c => c._nascita_da_cf), 'nel V8 una data è stata ricavata da un codice non valido');
+  deve(A8.clienti.some(c => c.data_nascita), 'nel V8 le date del file sono sparite');
+  return 'C4 ricavata, C1 dal flusso, V8 niente inventato';
+});
+
 prova('M1.2 · la data di emissione esce in una colonna sua, e dove il tracciato non la porta resta vuota', () => {
   /* Nel V12 sta in DATA_EMISSIONE; P1 la porta (10/09/2026), P2 no. Non si
      ricava dall'effetto: si emette PRIMA di decorrere, a volte settimane

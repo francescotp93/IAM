@@ -4145,8 +4145,8 @@ const avvio = async () => {
     const ASG_C2 = '22222222-2222-4222-8222-222222222222';
     const asgBanco = async (codici, titoli) => page.evaluate(async (o) => {
       currentUser = { id: 'u-admin', role: 'admin', name: 'Capo' };
-      window.TIT_COLLAB = [{ id: o.c1, nome: 'Mario', cognome: 'Rossi' },
-                           { id: o.c2, nome: 'Luca', cognome: 'Verdi' }];
+      window.TIT_COLLAB = [{ id: o.c1, nome: 'Mario', cognome: 'Rossi', rui_numero: 'E000111111' },
+                           { id: o.c2, nome: 'Luca', cognome: 'Verdi', email: 'luca@esempio.it' }];
       window.TIT_COLLAB_NOMI = {}; window.TIT_COLLAB_NOMI[o.c1] = 'Rossi Mario'; window.TIT_COLLAB_NOMI[o.c2] = 'Verdi Luca';
       window.__COLLAUDO.risposte['quote_polizze:lista'] = { error: null, data: [
         { id: 'p1', cliente: 'ROSSI MARIO', compagnia: 'PRIMA', prodotto: 'RC Auto',
@@ -4202,6 +4202,34 @@ const avvio = async () => {
       deve(r.scritture === 0, 'ha scritto senza che nessuno decidesse: ' + r.scritture);
       deve(/niente da salvare/i.test(r.esito), 'non dice che non c\'è niente da fare: ' + r.esito);
       return '0 scritture, e i due codici con i loro clienti';
+    });
+
+    await prova('assegnazione: il pannello propone come l\'anteprima del flusso, dalle stesse evidenze', async () => {
+      /* Le stesse evidenze lette da due schermate devono proporre la stessa
+         persona: a chi guarda non importa da quale delle due ci è arrivato.
+         Qui le evidenze non vengono dal file — vengono da quello che
+         un'importazione ha scritto accanto al codice. */
+      const html = await asgBanco([
+        { compagnia: 'PRIMA', codice: 'U100', collaboratore_id: null, nessuno: false, deciso: false,
+          nome_flusso: 'STUDIO DI PROVA', rui_flusso: 'E 000.111111', produttore_flusso: 'P-7788' },
+        { compagnia: 'PRIMA', codice: 'U200', collaboratore_id: null, nessuno: false, deciso: false,
+          email_flusso: 'luca@esempio.it' }
+      ], ASG_TIT);
+      /* PRIMA di tutto: resta una PROPOSTA. La tendina non si muove da sola —
+         se si muovesse, il pannello avrebbe deciso al posto di chi guarda, che
+         è il guasto che tutto questo lavoro esiste per evitare. */
+      deve(!/value="11111111-1111-4111-8111-111111111111" selected/.test(html),
+           'la proposta si è scelta da sola: allora non è una proposta, è una deduzione');
+      deve(/<option value="">— da decidere —<\/option>/.test(html), 'la tendina non è sul vuoto');
+      /* Il RUI arriva scritto con spazi e punti, come lo manda la compagnia. */
+      deve(/Sembra\s*<b>Rossi Mario<\/b>,\s*per il RUI/.test(html),
+           'il pannello non propone dal RUI: ' + JSON.stringify((html.match(/Sembra[\s\S]{0,140}/) || ['—'])[0]));
+      deve(/Sembra\s*<b>Verdi Luca<\/b>,\s*per l'email/.test(html), 'il pannello non propone dall\'email');
+      /* E le evidenze che servono a riconoscere il codice si vedono. */
+      deve(/P-7788/.test(html), 'il codice produttore non compare nel pannello');
+      deve(/RUI E 000\.111111/.test(html), 'il RUI non compare nel pannello');
+      deve(/STUDIO DI PROVA/.test(html), 'il nome dal flusso non compare nel pannello');
+      return 'due proposte, nessuna scelta al posto di nessuno';
     });
 
     await prova('assegnazione: decidere un codice lo firma e assegna le sue rate in un colpo', async () => {

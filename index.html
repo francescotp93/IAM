@@ -15856,6 +15856,7 @@ var ASG_POLIZZE = [];      // le polizze con il loro `dati.ssf`
 var ASG_TITOLI = [];       // tutte le rate visibili
 var ASG_MAPPA = {};        // chiave «COMPAGNIA|CODICE» → riga di decisione
 var ASG_SCELTE = {};       // quello che si sta per decidere, non ancora salvato
+var ASG_PROPOSTE = {};     // chi POTREBBE essere ogni codice, per RUI o per email
 
 function asgPuoDecidere() {
   return (typeof convAdmin === 'function') ? convAdmin() : !!(currentUser && currentUser.role === 'admin');
@@ -15914,6 +15915,12 @@ function asgRender() {
   if (!bd) return;
   const righe = Assegnazione.riepilogo(ASG_POLIZZE, ASG_TITOLI, ASG_MAPPA);
   const piano = Assegnazione.piano(ASG_TITOLI, ASG_POLIZZE, asgMappaConScelte());
+  /* Chi POTREBBE essere ogni codice, dalle evidenze che l'importazione ha
+     scritto accanto: le stesse che legge l'anteprima del flusso, con la stessa
+     regola del motore. Due schermate che leggono le stesse evidenze devono
+     proporre la stessa persona — e a chi guarda non importa da quale delle due
+     ci è arrivato. */
+  ASG_PROPOSTE = Assegnazione.proposte(Object.keys(ASG_MAPPA).map(k => ASG_MAPPA[k]), TIT_COLLAB);
   const senzaCodice = piano.saltate.filter(s => s.motivo === 'senza-codice').length;
   const puo = asgPuoDecidere();
 
@@ -15962,12 +15969,22 @@ function asgRiga(r, puo) {
     r.dal ? (pfData(r.dal) + (r.al && r.al !== r.dal ? ' → ' + pfData(r.al) : '')) : ''
   ].filter(Boolean).join(' · ');
 
+  const d = r.decisione || {};
+  const prop = ASG_PROPOSTE[r.chiave];
   return `<tr>
     <td><b>${esc(r.codice)}</b><div class="cl-sub">${esc(r.compagnia)}</div>
-      ${r.decisione && r.decisione.nome_flusso ? `<div class="cl-sub">${esc(r.decisione.nome_flusso)}</div>` : ''}
+      ${d.nome_flusso ? `<div class="cl-sub">${esc(d.nome_flusso)}</div>` : ''}
+      ${d.produttore_flusso && d.produttore_flusso !== r.codice
+        ? `<div class="cl-sub">produttore ${esc(d.produttore_flusso)}</div>` : ''}
+      ${d.rui_flusso ? `<div class="cl-sub">RUI ${esc(d.rui_flusso)}</div>` : ''}
       ${r.stato === 'da-ridecidere' ? '<div class="tk-badge st-aperto">da ridecidere</div>' : ''}</td>
     <td><div>${esc(evidenze)}</div>
-      <div class="cl-sub">${esc(r.clienti.join(' · ')) || 'nessun cliente sulle polizze'}</div></td>
+      <div class="cl-sub">${esc(r.clienti.join(' · ')) || 'nessun cliente sulle polizze'}</div>
+      ${!scelta && prop && prop.collaboratore_id ? `<div class="cl-sub">Sembra
+        <b>${esc(TIT_COLLAB_NOMI[prop.collaboratore_id] || 'una persona in agenzia')}</b>,
+        ${prop.motivo === 'rui' ? 'per il RUI' : 'per l\'email'} — confermalo tu qui accanto.</div>` : ''}
+      ${!scelta && prop && prop.motivo === 'rui-ambiguo' ? `<div class="cl-sub">Due persone in agenzia
+        hanno questo RUI: da sistemare nel registro, non qui.</div>` : ''}</td>
     <td class="soldi">${r.titoliDaAssegnare}
       ${r.titoliAssegnati ? `<div class="cl-sub">${r.titoliAssegnati} già assegnate</div>` : ''}
       <div class="cl-sub">${pfEuro(r.provvigione)} provv.</div></td>

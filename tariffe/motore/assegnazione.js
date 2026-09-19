@@ -306,6 +306,32 @@
 
      E resta comunque una PROPOSTA: la scrive qualcuno, guardandola. */
   function proposteDaFlusso(collaboratoriFlusso, persone, compagnia) {
+    var idx = indiciPersone(persone);
+    return (collaboratoriFlusso || []).map(function (c) {
+      return proponiUna(c, idx, compagnia);
+    });
+  }
+
+  /* La stessa regola, entrando dall'altra porta: le righe della TABELLA invece
+     delle righe del flusso. Le usa il pannello del pregresso, che le evidenze
+     non le ha dal file — le ha da quello che un'importazione ci ha scritto
+     accanto. Due schermate che leggono le stesse evidenze devono proporre la
+     stessa persona, e l'unico modo per esserne sicuri è che la regola sia una.
+
+     Ogni riga porta la SUA compagnia: un pannello mostra insieme i codici di
+     tutte, e passarne una sola vorrebbe dire attribuire alla prima compagnia i
+     codici di tutte le altre. Torna una mappa chiave → proposta, che è come la
+     schermata poi la cerca. */
+  function proposte(righe, persone) {
+    var idx = indiciPersone(persone), fuori = {};
+    (righe || []).forEach(function (r) {
+      var p = proponiUna(r, idx, r.compagnia);
+      if (p.chiave) fuori[p.chiave] = p;
+    });
+    return fuori;
+  }
+
+  function indiciPersone(persone) {
     var perEmail = {}, perRui = {};
     (persone || []).forEach(function (p) {
       var e = mail(p.email);
@@ -313,42 +339,52 @@
       var r = codiceRui(p.rui_numero);
       if (r) (perRui[r] = perRui[r] || []).push(p);
     });
+    return { perEmail: perEmail, perRui: perRui };
+  }
 
-    return (collaboratoriFlusso || []).map(function (c) {
-      var base = {
-        compagnia: norm(compagnia), codice: norm(c.codice),
-        chiave: chiave(compagnia, c.codice),
-        nome_flusso: c.nome || null, email_flusso: c.email || null, rui_flusso: c.rui || null,
-        produttore_flusso: c.produttore || null,
-        collaboratore_id: null, motivo: null
-      };
+  /* `ev` accetta i nomi delle due provenienze — `rui`/`email` come li chiama il
+     flusso, `rui_flusso`/`email_flusso` come li chiama la tabella — così chi
+     chiama passa quello che ha in mano e la traduzione sta scritta una volta,
+     come per `rigaDecisione`. */
+  function proponiUna(ev, idx, compagnia) {
+    ev = ev || {};
+    var rui = ev.rui != null ? ev.rui : ev.rui_flusso;
+    var email = ev.email != null ? ev.email : ev.email_flusso;
+    var base = {
+      compagnia: norm(compagnia), codice: norm(ev.codice),
+      chiave: chiave(compagnia, ev.codice),
+      nome_flusso: ev.nome || ev.nome_flusso || null,
+      email_flusso: email || null,
+      rui_flusso: rui || null,
+      produttore_flusso: ev.produttore || ev.produttore_flusso || null,
+      collaboratore_id: null, motivo: null
+    };
 
-      var r = codiceRui(c.rui);
-      var perRuiTrovate = r ? (perRui[r] || []) : [];
-      if (perRuiTrovate.length === 1) {
-        base.collaboratore_id = perRuiTrovate[0].id;
-        base.motivo = 'rui';
-        return base;
-      }
-
-      var e = mail(c.email);
-      var trovate = e ? (perEmail[e] || []) : [];
-      if (trovate.length === 1) {
-        base.collaboratore_id = trovate[0].id;
-        base.motivo = 'email';
-        return base;
-      }
-
-      /* Niente aggancio: si dice PERCHÉ, e il motivo più informativo vince.
-         «Due persone con questo RUI» è una cosa da andare a sistemare nel
-         registro; «non ha email» è solo un dato che manca. */
-      if (perRuiTrovate.length > 1) base.motivo = 'rui-ambiguo';
-      else if (trovate.length > 1) base.motivo = 'email-ambigua';
-      else if (r && !perRuiTrovate.length && !e) base.motivo = 'rui-sconosciuto';
-      else if (!e) base.motivo = 'email-assente';
-      else base.motivo = 'email-sconosciuta';
+    var r = codiceRui(rui);
+    var perRuiTrovate = r ? (idx.perRui[r] || []) : [];
+    if (perRuiTrovate.length === 1) {
+      base.collaboratore_id = perRuiTrovate[0].id;
+      base.motivo = 'rui';
       return base;
-    });
+    }
+
+    var e = mail(email);
+    var trovate = e ? (idx.perEmail[e] || []) : [];
+    if (trovate.length === 1) {
+      base.collaboratore_id = trovate[0].id;
+      base.motivo = 'email';
+      return base;
+    }
+
+    /* Niente aggancio: si dice PERCHÉ, e il motivo più informativo vince.
+       «Due persone con questo RUI» è una cosa da andare a sistemare nel
+       registro; «non ha email» è solo un dato che manca. */
+    if (perRuiTrovate.length > 1) base.motivo = 'rui-ambiguo';
+    else if (trovate.length > 1) base.motivo = 'email-ambigua';
+    else if (r && !perRuiTrovate.length && !e) base.motivo = 'rui-sconosciuto';
+    else if (!e) base.motivo = 'email-assente';
+    else base.motivo = 'email-sconosciuta';
+    return base;
   }
 
   /* Il RUI si confronta senza spazi, punti e maiuscole: lo stesso numero è
@@ -434,7 +470,8 @@
   var API = {
     VERSIONE: VERSIONE, NESSUNO: NESSUNO,
     chiave: chiave, codiceDi: codiceDi, statoDecisione: statoDecisione, mappa: mappa,
-    riepilogo: riepilogo, piano: piano, proposteDaFlusso: proposteDaFlusso,
+    riepilogo: riepilogo, piano: piano,
+    proposteDaFlusso: proposteDaFlusso, proposte: proposte,
     rigaDecisione: rigaDecisione, cent: cent
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

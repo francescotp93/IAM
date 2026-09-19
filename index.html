@@ -3642,8 +3642,32 @@ const SEZIONI_TICKET = ['Generale','RCA','Infortuni','Tutela Legale','Anagrafica
 const TK_PRIORITA = { bassa:{label:'Bassa',cls:'pr-bassa'}, normale:{label:'Normale',cls:'pr-normale'}, alta:{label:'Alta',cls:'pr-alta'}, urgente:{label:'Urgente',cls:'pr-urgente'} };
 const TK_STATO    = { aperto:{label:'Aperto',cls:'st-aperto'}, in_lavorazione:{label:'In lavorazione',cls:'st-lav'}, risolto:{label:'Risolto',cls:'st-risolto'} };
 // Flusso preventivo: Richiesta → In esame → Quotato → Polizza emessa
-const PREV_STATI  = { richiesta:{label:'Richiesta',cls:'st-aperto'}, in_esame:{label:'In esame',cls:'st-lav'}, quotato:{label:'Quotato',cls:'st-quotato'}, emessa:{label:'Polizza emessa',cls:'st-risolto'} };
+/* GLI STATI DI UN PREVENTIVO, E IL QUINTO CHE MANCAVA (19/09/2026).
+   `chiusa` la scrive `rqCambiaStato` dalla coda delle Richieste, ed è uno stato
+   VERO e voluto — il commento lì lo dice: «chiudere una richiesta che non è
+   andata in porto non è emettere una polizza». Ma qui non c'era, e questa
+   mappa la legge una schermata sola: la scheda cliente. Risultato: un
+   preventivo chiuso faceva `PREV_STATI[...]` = undefined, `s.cls` sollevava, e
+   la scheda di quel cliente restava VUOTA — preventivi, documenti, sinistri,
+   note, trattative e cronologia insieme, perché stanno tutti dopo quella riga.
+   Un solo preventivo su 87, e bastava.
+
+   Si allarga il VOCABOLARIO, non si riscrive il dato: è la stessa decisione
+   presa per `quote_titoli.annullato` (§17) — `chiusa` è un'informazione vera e
+   diversa da «emessa», e cancellarla per far tornare una mappa vorrebbe dire
+   perdere il motivo per cui quella pratica è finita. */
+const PREV_STATI  = { richiesta:{label:'Richiesta',cls:'st-aperto'}, in_esame:{label:'In esame',cls:'st-lav'}, quotato:{label:'Quotato',cls:'st-quotato'}, emessa:{label:'Polizza emessa',cls:'st-risolto'}, chiusa:{label:'Chiusa',cls:'st-scad'} };
 function prevStato(r){ return r.polizza_emessa ? 'emessa' : ((r.dati && r.dati.stato) || 'richiesta'); }
+/* E per il prossimo stato che nascerà da un'altra parte: uno stato che questa
+   mappa non conosce si MOSTRA com'è scritto, invece di far sparire la scheda.
+   Un refuso deve vedersi (§18, regola 3), non spegnere sei pannelli. */
+function prevStatoBadge(r){
+  const k = prevStato(r);
+  const s = PREV_STATI[k];
+  if (s) return s;
+  console.warn('stato preventivo fuori vocabolario:', k, '— la scheda lo mostra così com\'è');
+  return { label: String(k), cls: 'st-aperto' };
+}
 // Numero preventivo personalizzato QUOTO (contatore globale lato DB: colonna quote_preventivi.numero)
 function prevNumero(r){ return (r && r.numero) ? ('QT-' + new Date(r.creato_il).getFullYear() + '-' + String(r.numero).padStart(4,'0')) : ('#' + String((r&&r.id)||'').slice(0,8)); }
 // Super amministratore (account proprietario): sopra tutti, ruolo non modificabile, vede l'Attività di tutti
@@ -26835,10 +26859,21 @@ async function caricaCollegati(id, nominativo) {
      sbagliato e concludeva che non ci fosse niente.
      Restano distinti dove conta: tabelle diverse (i premi battuti a mano non
      entrano nei conti di Performance) e un distintivo sulla riga. */
+  /* `caricaCollegati` è una funzione sola e sequenziale: tutto quello che sta
+     DOPO il punto in cui solleva non viene eseguito. È così che un preventivo
+     con uno stato fuori vocabolario svuotava anche documenti, sinistri, note,
+     trattative e cronologia — pannelli che non c'entravano niente.
+     Da qui in giù ogni sezione è isolata: quella che cade lo dice, le altre
+     restano piene. */
+  try {
   await ppCarica(id);
   const rigaMotore = r => {
-    const s = PREV_STATI[prevStato(r)];
-    const canManage = isStaff() || r.creato_da === currentUser.id;
+    /* `prevStatoBadge` non torna mai `undefined`: uno stato che il vocabolario
+       non conosce si mostra com'è scritto. Prima qui c'era `PREV_STATI[...]` e
+       la riga dopo leggeva `.cls` — bastava un preventivo con uno stato fuori
+       mappa per svuotare l'intera scheda del cliente. */
+    const s = prevStatoBadge(r);
+    const canManage = isStaff() || (currentUser && r.creato_da === currentUser.id);
     const apri = `document.getElementById('anag-overlay').remove();apriPreventivo('${r.id}')`;
     return `<div class="cl-row" style="align-items:center">
       <div style="flex:1;cursor:pointer" onclick="${apri}"><b>${esc(r.prodotto || r.modulo || '—')}</b><div class="cl-sub">${new Date(r.creato_il).toLocaleDateString('it-IT')} · ${esc(r.creato_nome || '')}</div></div>
@@ -26849,18 +26884,44 @@ async function caricaCollegati(id, nominativo) {
       </div>` : ''}
     </div>`;
   };
-  const tutte = [
-    ...preventivi.map(r => ({ quando: r.creato_il, html: rigaMotore(r) })),
-    ...(PP_CACHE || []).map(r => ({ quando: r.creato_il, html: ppRigaElenco(r) }))
-  ].sort((a, b) => new Date(b.quando) - new Date(a.quando));
   /* Il segnalatore non fa preventivi: niente bottone e niente avviso, come
      ovunque. La porta e' sempre la stessa funzione. */
   const testa = ppVietato() ? '' : (ppAvvisoAzienda()
     + `<div style="margin-bottom:10px"><button class="btn-emetti gruppi-add-btn" style="padding:5px 12px" onclick="ppApri('${esc(id)}')"><i class="ti ti-plus"></i> Nuovo preventivo personalizzato</button></div>`);
-  document.getElementById('cl-prev').innerHTML = testa + (tutte.length
+  /* IL BOTTONE SI SCRIVE PRIMA DELLE RIGHE (19/09/2026).
+     Prima testa e righe finivano nel DOM con la stessa istruzione: se il
+     disegno di una riga sollevava, non arrivava niente — nemmeno il bottone, e
+     la linguetta sembrava una schermata rotta invece di una lista vuota.
+     Quello che una persona può FARE non dipende da quello che il database ha
+     risposto. */
+  const prevPane = document.getElementById('cl-prev');
+  if (prevPane) prevPane.innerHTML = testa;
+
+  /* UNA RIGA ROTTA NON AZZERA IL PANNELLO.
+     Il try/catch è per RIGA, non intorno all'elenco: avvolgere tutto avrebbe
+     solo spostato il punto in cui si perde tutto. Una riga che non si sa
+     disegnare si dichiara — e il difetto si vede invece di sparire (§18). */
+  const rigaSicura = (r, disegna) => {
+    try { return disegna(r); }
+    catch (e) {
+      console.warn('riga preventivo non disegnabile:', (r && r.id) || '?', e.message || e);
+      return `<div class="cl-row"><div style="flex:1"><b>${esc((r && (r.prodotto || r.modulo)) || 'Preventivo')}</b>
+        <div class="cl-sub">Questa riga non si è potuta mostrare. Le altre sì.</div></div></div>`;
+    }
+  };
+  const tutte = [
+    ...preventivi.map(r => ({ quando: r.creato_il, html: rigaSicura(r, rigaMotore) })),
+    ...(PP_CACHE || []).map(r => ({ quando: r.creato_il, html: rigaSicura(r, ppRigaElenco) }))
+  ].sort((a, b) => new Date(b.quando) - new Date(a.quando));
+  if (prevPane) prevPane.innerHTML = testa + (tutte.length
     ? tutte.map(x => x.html).join('')
     : '<div class="cl-empty">Nessun preventivo per questo cliente.</div>');
   if (cnt) cnt.textContent = tutte.length + ' preventivi · ' + (polReali.length || polizze.length) + ' polizze';
+  } catch (e) {
+    console.warn('preventivi del cliente non disponibili:', e.message || e);
+    const p = document.getElementById('cl-prev');
+    if (p && !p.innerHTML.trim()) p.innerHTML = '<div class="cl-empty">I preventivi non si sono potuti caricare. Non vuol dire che non ce ne siano.</div>';
+  }
 
   /* ── DOCUMENTI (Lavoro 3, 18/09/2026) ────────────────────────────────────
      Due contenitori distinti, non un archivio unico: i documenti anagrafici
@@ -26868,7 +26929,8 @@ async function caricaCollegati(id, nominativo) {
      caricamento avviene QUI, senza passare da «Modifica cliente»: era il
      motivo per cui i documenti finivano sul Mac dell'agenzia invece che in
      archivio. Tutto il resto sta in fdoc* più sotto. */
-  fdocInstalla(id, recs);
+  try { fdocInstalla(id, recs); }
+  catch (e) { console.warn('documenti del cliente non disponibili:', e.message || e); }
 
   // ── SINISTRI: quelli APERTI in agenzia, e sotto quelli dichiarati nei preventivi ──
   const sin = [];

@@ -6713,6 +6713,66 @@ const avvio = async () => {
       return '1 sinistro in elenco, nuovo sinistro con cliente_id + polizza_id, movimento sulla riga';
     });
 
+    /* ══ BUGFIX · LA SCHEDA CLIENTE CHE SI SVUOTAVA (19/09/2026) ════════════
+       `TypeError: Cannot read properties of undefined (reading 'cls')` in
+       `rigaMotore`. `PREV_STATI` conosceva quattro stati; `rqCambiaStato` ne
+       scrive un quinto, `chiusa`, e lo fa apposta. Un preventivo chiuso —
+       UNO, su 87 in archivio — sollevava dentro il `.map`, e siccome
+       `caricaCollegati` è una funzione sola e sequenziale, tutto quello che
+       sta dopo non veniva eseguito: preventivi, documenti, sinistri, note,
+       trattative e cronologia vuoti insieme.
+       Questa prova gira il percorso vero e guarda i SEI pannelli. */
+    await prova('BUGFIX · uno stato di preventivo fuori vocabolario non svuota più la scheda cliente', async () => {
+      await apriScheda();
+      const r = await page.evaluate(async () => {
+        const errori = [];
+        const vecchio = window.onerror;
+        window.onerror = (m) => { errori.push(String(m)); return false; };
+        window.__COLLAUDO.risposte['quote_preventivi:lista'] = { error: null, data: [
+          /* La riga vera che rompeva: ANGUZZA ANTONIO, «Cauzione generico». */
+          { id: 'pv-chiusa', cliente_id: 'cli-1', prodotto: 'Cauzione generico', modulo: 'cauzioni',
+            creato_il: '2026-08-28T10:37:44Z', creato_nome: 'Anna', premio: 120,
+            polizza_emessa: false, dati: { stato: 'chiusa' } },
+          { id: 'pv-ok', cliente_id: 'cli-1', prodotto: 'RC Auto', modulo: 'rca',
+            creato_il: '2026-08-29T10:00:00Z', creato_nome: 'Anna', premio: 390,
+            polizza_emessa: false, dati: { stato: 'quotato' } },
+          /* E uno stato che NESSUNO ha ancora inventato: la scheda deve
+             reggere anche il prossimo, non solo quello di oggi. */
+          { id: 'pv-futuro', cliente_id: 'cli-1', prodotto: 'Casa', modulo: 'casa',
+            creato_il: '2026-08-30T10:00:00Z', creato_nome: 'Anna', premio: 200,
+            polizza_emessa: false, dati: { stato: 'sospesa_dal_cliente' } }
+        ] };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { error: null, data: [] };
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { error: null, data: [] };
+        await caricaCollegati('cli-1', 'ROSSI MARIO');
+        await new Promise(x => setTimeout(x, 250));
+        const t = (id) => (document.getElementById(id) || {}).innerHTML || '';
+        const sin = document.getElementById('cl-sin');
+        const out = {
+          errori,
+          righePrev: document.querySelectorAll('#cl-prev .cl-row').length,
+          testoPrev: (document.getElementById('cl-prev') || {}).textContent || '',
+          pieni: ['cl-prev', 'cl-doc', 'cl-sin', 'cl-note', 'cl-tratt', 'cl-cro'].filter(id => t(id).trim().length > 0),
+          bottoneSinistro: !!([...(sin ? sin.querySelectorAll('button') : [])].find(b => /Nuovo sinistro/.test(b.textContent)))
+        };
+        window.onerror = vecchio;
+        delete window.__COLLAUDO.risposte['quote_preventivi:lista'];
+        delete window.__COLLAUDO.risposte['quote_polizze:lista'];
+        delete window.__COLLAUDO.risposte['quote_sinistri:lista'];
+        return out;
+      });
+      deve(r.errori.length === 0, 'la scheda solleva ancora: ' + r.errori.join(' | '));
+      deve(r.righePrev >= 3, 'righe preventivo disegnate: ' + r.righePrev + ' (attese 3)');
+      /* Lo stato voluto si legge col suo nome; quello sconosciuto si mostra
+         com'è scritto invece di sparire (§18, regola 3). */
+      deve(/Chiusa/.test(r.testoPrev), 'lo stato «chiusa» non si legge: ' + r.testoPrev.slice(0, 200));
+      deve(/sospesa_dal_cliente/.test(r.testoPrev), 'uno stato sconosciuto non si vede: ' + r.testoPrev.slice(0, 200));
+      /* I SEI pannelli: è questo che il difetto spegneva tutto insieme. */
+      deve(r.pieni.length === 6, 'pannelli riempiti: ' + r.pieni.join(',') + ' (attesi 6)');
+      deve(r.bottoneSinistro, 'il bottone «Nuovo sinistro» non c\'è: le azioni non devono dipendere dai dati');
+      return '3 righe, 6 pannelli pieni, stato ignoto mostrato com\'è';
+    });
+
 
     /* ══ BRIEF IAM #01 · M3 — anagrafica (19/09/2026) ═══════════════════════ */
     await prova('M3.1 · un parser solo del codice fiscale: le due porte della pagina passano dal motore', async () => {

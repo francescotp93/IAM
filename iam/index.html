@@ -1374,7 +1374,15 @@ input[type=file]{display:none;}
   </div>
   <div class="umenu-sep"></div>
   <button class="umenu-item danger" onclick="doLogout()"><i class="ti ti-logout" style="font-size:16px;"></i> Esci dall'account</button>
-  <div style="text-align:center;font-size:10px;color:var(--txt3);padding:8px 0 2px;">IAM · build 2026-06-15c</div>
+  <!-- LA VERSIONE CHE STAI USANDO, non quella che è stata pubblicata.
+       Qui c'era «IAM · build 2026-06-15c», scritta a mano e ferma da tre mesi:
+       una targhetta che nessuno aggiorna è peggio di nessuna targhetta, perché
+       la si legge e ci si crede. Adesso la scrive `document.lastModified`, cioè
+       la data del documento che il browser ha DAVVERO caricato: se è vecchia,
+       è vecchia la copia in cache, e si vede subito (§12 — «è pubblicato» non
+       vuol dire «è quello che la gente sta usando»). Non c'è niente da
+       ricordarsi di aggiornare. -->
+  <div id="um-versione" style="text-align:center;font-size:10px;color:var(--txt3);padding:8px 0 2px;">IAM</div>
 </div>
 
 <!-- Settings overlay -->
@@ -3781,6 +3789,44 @@ document.addEventListener('click', function (ev) {
 }, true);
 
 let ME = null;
+
+/* ══ CHE VERSIONE STO USANDO (19/09/2026) ═══════════════════════════════════
+   Tre volte in due giorni la domanda è stata la stessa: «le modifiche non le
+   vedo». Tre volte il codice era pubblicato e giusto sul server, e a essere
+   vecchia era la copia nel browser di chi guardava (§12).
+
+   Mancava il modo di distinguere le due cose in un secondo. Adesso c'è, e non
+   è una targhetta scritta a mano — quella c'era, diceva «build 2026-06-15c» ed
+   era ferma da tre mesi: una targhetta che nessuno aggiorna la si legge e ci
+   si crede, quindi è peggio di niente.
+
+   `document.lastModified` è la data del documento che il browser ha DAVVERO
+   caricato: se mostra ieri, in cache c'è quella di ieri, e non c'è niente da
+   ricordarsi di aggiornare perché la scrive il server a ogni rilascio.
+
+   E si mostra anche quella del PREVENTIVATORE, che è un documento a sé dentro
+   il riquadro e ha la sua cache (§12, il secondo piano): i due numeri possono
+   essere diversi, ed è proprio quando lo sono che serve saperlo. */
+function versioneQuando(d) {
+  if (!d || isNaN(d.getTime())) return null;
+  const p = (n) => String(n).padStart(2, '0');
+  return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+async function mostraVersioneInUso() {
+  const box = document.getElementById('um-versione');
+  if (!box) return;
+  const mia = versioneQuando(new Date(document.lastModified));
+  box.textContent = mia ? 'IAM · versione del ' + mia : 'IAM';
+  /* Il preventivatore si chiede con una HEAD: costa niente e non scarica
+     1,9 MB. Se non risponde si tace, invece di scrivere un numero inventato. */
+  try {
+    const r = await fetch('/nuovo-preventivo/', { method: 'HEAD', cache: 'no-store' });
+    const lm = r.headers.get('last-modified');
+    const q = lm ? versioneQuando(new Date(lm)) : null;
+    if (q) box.textContent = box.textContent + ' · preventivatore del ' + q;
+  } catch (e) { /* offline o percorso assente: la versione di IAM basta */ }
+}
 
 /* ══ IL REGISTRO DEI MOVIMENTI, ANCHE DI QUA (19/09/2026) ══════════════════
    Fino a oggi IAM non scriveva nel registro NEMMENO UNA VOLTA: fatture,
@@ -18946,6 +18992,7 @@ async function saveThemeToDB(tema) {
 
 document.addEventListener('DOMContentLoaded', () => {
   applyStoredTheme();
+  mostraVersioneInUso();
   document.getElementById('i-data').value = new Date().toISOString().split('T')[0];
   initDB();
   loadTeam(); loadPipe(); loadWD(); loadAzienda();

@@ -1399,3 +1399,129 @@ nessuno apre non ha detto niente.
   quell'update falliva in silenzio, o esisteva una migrazione mai finita nel
   repository. Il vocabolario si è allargato invece di cambiare il codice,
   perché `annullato` è un'informazione vera e diversa da `stornato`.
+
+---
+
+## 18. Il registro dei movimenti (19/09/2026)
+
+`quote_log` sapeva dire **che cosa** è successo, **chi** l'ha fatto e di che
+**tipo** di cosa si trattava. Non sapeva dire **su quale riga** — e quella è la
+domanda che in agenzia arriva sempre, e arriva mesi dopo: «chi ha cambiato
+QUESTO pagamento?», «chi ha creato QUESTA anagrafica?».
+
+Senza la risposta, ogni schermata che ci provava si costruiva la sua traccia
+privata: `quote_polizze.dati.modifiche`, scritta il 18/09, era un rimedio per
+una schermata sola. Adesso l'archivio dei movimenti è uno.
+
+| pezzo | dove |
+|---|---|
+| le regole (che cos'è un identificativo, che cosa può portarlo, che cosa vuol dire «lo stesso movimento») | `tariffe/motore/registro.js` |
+| le prove, in Node | `server/verifica/registro.test.mjs` — 12 |
+| la colonna, la visibilità e la firma | `supabase/migrations/20260919_registro_movimenti.sql` (applicata) |
+| chi scrive | `logMovimento(azione, entita, dettaglio, entita_id)` in `index.html` |
+| la storia di una riga | `regCarica` / `regHTML` / `regInstalla`, contenitore `#pol-storia` |
+| la pagina Log | `loadLog`, che ora usa `Registro.unisci` e apre la riga con un clic |
+| prove nella pagina | blocco «registro» in `ui-test.mjs` — 5 |
+
+### Le tre cose che il motore NON fa, ed è il motivo per cui esiste
+
+1. **Non inventa un collegamento.** Un `entita_id` che non è un uuid non si
+   scrive: diventa vuoto e la cosa finisce in console. **Un id sbagliato è
+   peggio di un id assente** — manda ad aprire la riga di qualcun altro, e chi
+   guarda non ha modo di accorgersene. Il movimento però si registra lo stesso,
+   senza il puntatore: perdere il fatto sarebbe peggio che perdere il
+   collegamento.
+2. **Non unisce due movimenti veri.** La pagina Log univa le righe con una
+   chiave a occhio — *azione + nome + dettaglio + minuto* — e due movimenti
+   identici nello stesso minuto (due documenti caricati di fila, due incassi
+   uguali) diventavano **uno**. Adesso **il registro non si tocca mai**: si
+   scarta soltanto una riga *derivata* (ricostruita dai preventivi o dai
+   sinistri) quando il registro ha già quel fatto.
+3. **Non nasconde quello che non conosce.** Un tipo fuori vocabolario si mostra
+   com'è scritto, senza icona e senza collegamento. Nelle 230 righe già scritte
+   ce n'è una con `entita` = *il nome di una tabella*: è un refuso a un punto di
+   chiamata, e deve **vedersi**.
+
+### Il vocabolario non rinomina lo storico
+
+I nomi sono quelli che stavano **già** nei dati (`preventivo` 126, `cliente` 65,
+`emissione` 13, `utente` 9, `ticket` 5, `documento` 4, `polizza` 2,
+`trattativa` 1). Rinominarli avrebbe voluto dire riscrivere lo storico o tenere
+due vocabolari, e uno dei due sarebbe stato quello che nessuno guarda. L'unica
+correzione è a un punto di chiamata che scriveva `anagrafica` dove tutta la
+casa scrive `cliente`: due nomi per la stessa cosa sono due elenchi che non si
+incrociano.
+
+Ogni voce dice **in quale tabella vive**, e dove non vive in nessuna
+(`utente`, `incasso`, `emissione`, `documento`) **un identificativo non si
+scrive**: prometterebbe un collegamento che non esiste.
+
+### Chi può leggere un movimento — ed è cambiato
+
+Prima: `iam_is_staff()`. Un collaboratore non vedeva **niente**, nemmeno la
+storia delle proprie polizze — e «chi ha cambiato questo pagamento» se la
+chiede lui per primo.
+
+Adesso: **si vede il movimento di una riga che si vede già.** È la stessa regola
+di `quote_pratica_documenti` e di `iam_archivio` (§15), applicata a un archivio
+di fatti invece che di documenti: la visibilità non si riscrive, si eredita —
+riscriverla qui vorrebbe dire averne due. I movimenti che non puntano a una riga
+restano allo staff: sono l'attività dell'agenzia, non la storia di una cosa che
+si possiede.
+
+**E il registro dice chi, quindi deve essere vero.** `log_insert` non aveva
+nessun controllo: chiunque poteva scrivere una riga firmata con l'identificativo
+di un altro. In una tabella qualunque è un difetto; in un registro **è il**
+difetto. Adesso `with check (utente_id = auth.uid())`, e l'aggiornamento è
+vietato a tutti: un movimento non si corregge.
+
+### La copertura, e la soglia che sale
+
+**31 punti di chiamata su 52** passano l'identificativo. I ventuno che restano
+non sono dimenticanze: sono movimenti che non puntano a una riga (impostazioni,
+punti vendita, incassi in blocco, importazioni) o inserimenti che non si fanno
+restituire l'id. Una prova misura quel numero e **la soglia si alza, non si
+abbassa** — è lo stesso meccanismo delle collisioni fra i due documenti (§10),
+al contrario. Senza, un punto di chiamata scritto domani senza identificativo
+non lo noterebbe nessuno, e il registro tornerebbe piano piano a sapere solo
+«una polizza».
+
+### Due decisioni sul quarto parametro
+
+`entita_id` è **l'ultimo** e facoltativo. Metterlo al secondo posto avrebbe
+costretto a rivedere cinquantatré punti di chiamata in un colpo solo, e un
+movimento perso vale più di un collegamento mancante. Gli avvisi del motore
+vanno in **console**, non davanti all'utente: chi sta salvando una polizza non
+deve essere interrotto perché il registro ha scartato un puntatore — ma chi
+programma deve poterlo vedere.
+
+### «Non risponde» e «non c'è niente» sono due cose diverse
+
+`regCarica` torna `null` quando la lettura non riesce e `[]` quando non ci sono
+movimenti. Il riquadro lo dice in faccia: *«Il registro non risponde. Non vuol
+dire che non ci siano stati movimenti: vuol dire che non si è potuto
+leggerlo.»* Confonderli rassicura a sproposito — ed è lo stesso difetto del
+contatore documentale che mostrava `0` su un archivio mai letto (§12).
+
+### Una controprova mal costruita, di nuovo
+
+«La fusione a occhio» rimessa dentro **senza toccare la chiave** è restata tutta
+verde: le due righe della prova avevano identificativi diversi, quindi
+qualunque chiave che li contenga le tiene separate. La controprova vera rimette
+la chiave **di prima** (azione + nome + dettaglio + minuto), che di
+identificativo non ne ha, e allora ne diventano rosse due. Nel frattempo la
+prova si è rinforzata col caso che quella regola sbagliava davvero: **due
+movimenti identici senza identificativo**, che è come sono tutte le righe
+scritte prima di oggi.
+
+### Cosa resta aperto
+
+- **Lo storico non si aggancia.** Le 230 righe scritte prima di oggi non hanno
+  `entita_id` e non si possono agganciare senza indovinare: restano visibili
+  allo staff nella pagina Log, e la storia di una riga comincia dal 19/09/2026.
+  Il riquadro lo dice invece di far credere che non sia successo niente.
+- **IAM non scrive nel registro.** `iam/index.html` non chiama `logMovimento`
+  nemmeno una volta: tutto quello che si fa da IAM — fatture, collaboratori,
+  permessi — non lascia traccia. È il prossimo pezzo, ed è di là.
+- **`dati.modifiche` si legge ancora** (quello che c'è scritto è successo
+  davvero) ma non si scrive più. Quando quelle righe saranno vecchie si toglie.

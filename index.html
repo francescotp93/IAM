@@ -67,6 +67,7 @@
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
 <script src="tariffe/motore/flusso-ssf.js?v=20260918"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260918"></script>
+<script src="tariffe/motore/registro.js?v=20260919"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -900,6 +901,9 @@ button{font-family:inherit}
 .fdoc-subb.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
 .fdoc-data{font-size:15px;color:var(--ink)}
 .pf-mezzo{font-size:12.5px;font-weight:600}
+.reg-r{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.reg-r:first-child{border-top:0}
 .fdoc-nuova{margin-bottom:12px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:#fbfcff}
 .flu-scelta{padding:16px;border:1px dashed var(--line);border-radius:12px;background:#fbfcff;text-align:center}
 .flu-file{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;background:var(--blue);color:#fff;font-weight:600;cursor:pointer}
@@ -8352,7 +8356,7 @@ async function icatInvia(){
         partita_iva: ct.cfPiva.length===11 ? ct.cfPiva : null,
         creato_da: currentUser.id
       }).select('id').single();
-      if(data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da Rischi Catastrofali) · '+(ct.nominativo||''), 'cliente'); }
+      if(data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da Rischi Catastrofali) · '+(ct.nominativo||''), 'cliente', null, data.id); }
     }catch(e){}
   }
   const newId = await savePreventivo({ modulo:'impresa', prodotto:'Rischi Catastrofali · Impresa', cliente: ct.nominativo||null, dati: ICAT_DATA });
@@ -8630,7 +8634,7 @@ async function rcabInvia(mode){
   if (ct.cfPiva && !ct.clienteId){
     try{
       const {data}=await db.from('quote_anagrafiche').insert({ tipo: ct.cfPiva.length===11?'giuridica':'fisica', nominativo:(ct.nominativo||ct.cfPiva).toUpperCase(), codice_fiscale: ct.cfPiva.length>11?ct.cfPiva:null, partita_iva: ct.cfPiva.length===11?ct.cfPiva:null, creato_da:currentUser.id }).select('id').single();
-      if(data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da Catastrofali Abitazione) · '+(ct.nominativo||''), 'cliente'); }
+      if(data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da Catastrofali Abitazione) · '+(ct.nominativo||''), 'cliente', null, data.id); }
     }catch(e){}
   }
   RCAB_DATA.stato='quotato';
@@ -9000,7 +9004,7 @@ async function fiInvia(mode){
   if(ct.cfPiva && !ct.clienteId){ try{ const {data:ex}=await db.from('quote_anagrafiche').select('id').ilike('codice_fiscale', ct.cfPiva).limit(1); if(ex&&ex[0]) ct.clienteId=ex[0].id; }catch(e){} }
   if(ct.cfPiva && !ct.clienteId){
     try{ const {data}=await db.from('quote_anagrafiche').insert({ tipo: ct.cfPiva.length===11?'giuridica':'fisica', nominativo:(ct.nominativo||ct.cfPiva).toUpperCase(), codice_fiscale: ct.cfPiva.length>11?ct.cfPiva:null, partita_iva: ct.cfPiva.length===11?ct.cfPiva:null, creato_da:currentUser.id }).select('id').single();
-      if(data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da Furto Incendio) · '+(ct.nominativo||''), 'cliente'); } }catch(e){}
+      if(data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da Furto Incendio) · '+(ct.nominativo||''), 'cliente', null, data.id); } }catch(e){}
   }
   FI_DATA.emissioneRichiesta = mode==='emissione';
   FI_DATA.stato = mode==='emissione' ? 'in_esame' : 'quotato';
@@ -13064,7 +13068,7 @@ async function censisciCliente({ nominativo, cf, piva, dob, telefono, origine })
   try {
     const { data } = await db.from('quote_anagrafiche').insert(riga).select('id').single();
     if (data) {
-      if (typeof logMovimento === 'function') logMovimento('Nuovo cliente' + (origine ? ' (da ' + origine + ')' : '') + ' · ' + nominativo, 'cliente');
+      if (typeof logMovimento === 'function') logMovimento('Nuovo cliente' + (origine ? ' (da ' + origine + ')' : '') + ' · ' + nominativo, 'cliente', null, data.id);
       return { id: data.id, esisteva: false };
     }
   } catch (e) { return { id: null, motivo: 'Non e\' stato possibile salvare il cliente.' }; }
@@ -13170,7 +13174,7 @@ async function savePreventivo(rec) {
       ({ data, error } = await db.from('quote_preventivi').insert(row).select('id').single());
     }
     if (error) throw error;
-    logMovimento('Nuovo preventivo · ' + (rec.prodotto || rec.modulo || ''), 'preventivo', rec.cliente || '');
+    logMovimento('Nuovo preventivo · ' + (rec.prodotto || rec.modulo || ''), 'preventivo', rec.cliente || '', data && data.id);
     return data?.id || null;
   } catch (e) { console.warn('savePreventivo:', e.message); return null; }
 }
@@ -13288,7 +13292,10 @@ async function emettiPolizza() {
   try {
     await db.from('quote_preventivi').update({ polizza_emessa: true, polizza_il: new Date().toISOString() }).eq('id', PREV_ID);
     await creaPolizzaDaPreventivo(PREV_ID);
-    logMovimento('Polizza emessa · ' + (flowCtx.productName || ''), 'polizza', flowCtx.anagrafica ? (flowCtx.anagrafica.cognome ? flowCtx.anagrafica.cognome + ' ' + (flowCtx.anagrafica.nome||'') : flowCtx.anagrafica.ragioneSociale || '') : '');
+    /* L'id qui e' quello del PREVENTIVO: la polizza nasce dentro
+       `creaPolizzaDaPreventivo` e non torna indietro. Meglio il preventivo
+       giusto che la polizza indovinata. */
+    logMovimento('Polizza emessa · ' + (flowCtx.productName || ''), 'preventivo', flowCtx.anagrafica ? (flowCtx.anagrafica.cognome ? flowCtx.anagrafica.cognome + ' ' + (flowCtx.anagrafica.nome||'') : flowCtx.anagrafica.ragioneSociale || '') : '');
     const b = document.getElementById('det-polizza-btn');
     if (b) { b.textContent = '✓ Polizza emessa'; b.disabled = true; b.style.background = '#1c8a52'; }
     // §12A.1 — la polizza si manda via mail: se il cliente non ha email, si chiede ora.
@@ -13902,7 +13909,7 @@ async function anaSalvaEProsegui() {
     } else {
       riga.creato_da = currentUser ? currentUser.id : null;
       const { data } = await db.from('quote_anagrafiche').insert(riga).select('id').single();
-      if (data) { id = data.id; logMovimento('Nuovo cliente · ' + nominativo, 'cliente'); }
+      if (data) { id = data.id; logMovimento('Nuovo cliente · ' + nominativo, 'cliente', null, data.id); }
     }
   } catch (e) {
     anaMostraErrori(['Salvataggio non riuscito: ' + (e.message || e)]);
@@ -13982,11 +13989,88 @@ async function visibleUserIds() {
   }
   return ids;
 }
-// Registra un movimento nel log attività (visibile solo admin)
-async function logMovimento(azione, entita, dettaglio) {
-  if (!db || !currentUser) return;
-  try { await db.from('quote_log').insert({ azione, entita: entita || null, utente_id: currentUser.id, utente_nome: currentUser.name, dettaglio: dettaglio || null }); } catch {}
+/* ══ IL REGISTRO DEI MOVIMENTI ═════════════════════════════════════════════
+   Il quarto parametro, `entita_id`, è quello che risponde a «chi ha toccato
+   QUESTA riga»: senza, il registro sa dire che è stata modificata "una
+   polizza", non quale. È in fondo e facoltativo apposta — cambiare l'ordine
+   avrebbe voluto dire rivedere cinquantatré punti di chiamata in un colpo
+   solo, e un movimento perso vale più di un collegamento mancante.
+
+   Le regole (che cosa è un identificativo valido, che cosa può portarlo) NON
+   stanno qui: stanno in `tariffe/motore/registro.js`, dove si provano senza
+   aprire un browser. Qui si raccoglie e si scrive.
+
+   Gli avvisi del motore finiscono in console e non davanti all'utente: chi sta
+   salvando una polizza non deve essere interrotto perché il registro ha
+   scartato un puntatore — ma chi programma deve poterlo vedere. */
+async function logMovimento(azione, entita, dettaglio, entita_id) {
+  if (!db || !currentUser || !window.Registro) return;
+  const m = Registro.movimento({
+    azione, entita, dettaglio, entita_id,
+    utente_id: currentUser.id, utente_nome: currentUser.name
+  });
+  if (m.avvisi.length) console.warn('registro:', m.avvisi.join(' · '), '←', azione);
+  if (!m.riga) return;
+  try { await db.from('quote_log').insert(m.riga); } catch {}
 }
+
+/* ══ LA STORIA DI UNA RIGA ═════════════════════════════════════════════════
+   «Chi ha creato questa anagrafica?», «chi ha cambiato questo pagamento?».
+   Un riquadro solo, che si installa in fondo a qualunque pannello: il
+   contenitore lo mette chi disegna, il contenuto lo mette questo blocco.
+
+   Perché non dentro ogni schermata: erano già nate due tracce private
+   (`quote_polizze.dati.modifiche`) prima che il registro sapesse rispondere.
+   Due archivi dei movimenti vogliono dire due risposte diverse alla stessa
+   domanda, e quella sbagliata è quella che nessuno guarda. */
+async function regCarica(entita, id) {
+  if (!db || !window.Registro || !entita || !id) return [];
+  try {
+    const { data, error } = await db.from('quote_log').select('*')
+      .eq('entita', entita).eq('entita_id', id)
+      .order('creato_il', { ascending: false }).limit(100);
+    if (error) throw error;
+    return data || [];
+  } catch (e) { return null; }   // null = non si è potuto leggere, ≠ nessun movimento
+}
+
+const regQuando = (v) => v ? new Date(v).toLocaleString('it-IT') : '—';
+
+/* `creato` è la riga stessa (chi l'ha creata e quando): sta in cima alla
+   storia perché è il primo movimento, anche se il registro non lo contiene —
+   le righe scritte prima del 19/09/2026 non hanno lasciato traccia. */
+function regHTML(movimenti, creato) {
+  const testa = creato && (creato.nome || creato.il)
+    ? `<div class="reg-r"><div><b>${esc(creato.nome || '—')}</b>
+         <div class="cl-sub">${esc(creato.azione || 'Creata')}</div></div>
+       <div class="cl-sub">${regQuando(creato.il)}</div></div>` : '';
+  if (movimenti === null) {
+    return testa + `<div class="cl-sub" style="padding:6px 0">Il registro dei movimenti non risponde.
+      Non vuol dire che non ci siano stati: vuol dire che non si è potuto leggerlo.</div>`;
+  }
+  if (!movimenti.length) {
+    return testa + `<div class="cl-sub" style="padding:6px 0">Nessun altro movimento registrato.
+      I movimenti si registrano dal 19/09/2026: quello che è successo prima non ha lasciato traccia qui.</div>`;
+  }
+  return testa + movimenti.map(m => `<div class="reg-r">
+    <div><b>${esc(m.utente_nome || '—')}</b>
+      <div class="cl-sub">${esc(m.azione || '')}${m.dettaglio ? ' · ' + esc(m.dettaglio) : ''}</div></div>
+    <div class="cl-sub">${regQuando(m.creato_il)}</div></div>`).join('');
+}
+
+/* Riempie un contenitore già disegnato. Si chiama DOPO aver scritto l'HTML del
+   pannello: leggere il registro è una chiamata di rete, e far aspettare il
+   pannello intero per la sua storia vorrebbe dire una schermata che si apre
+   in ritardo per la parte meno urgente. */
+async function regInstalla(contenitoreId, entita, id, creato) {
+  const box = document.getElementById(contenitoreId);
+  if (!box) return;
+  box.innerHTML = '<div class="cl-sub" style="padding:6px 0">Carico la storia…</div>';
+  const mov = await regCarica(entita, id);
+  const b = document.getElementById(contenitoreId);
+  if (b) b.innerHTML = regHTML(mov, creato);
+}
+
 
 let STOR_FILTER = 'da_gestire';
 function prevDaGestire(r){
@@ -14738,14 +14822,22 @@ const polData = (v) => v ? new Date(v).toLocaleDateString('it-IT') : '—';
 const polQuando = (v) => v ? new Date(v).toLocaleString('it-IT') : '—';
 
 /* La riga «chi e quando», in fondo a ogni pannello. */
+/* 19/09/2026: la storia arriva dal REGISTRO, non più da una traccia scritta
+   dentro la polizza. `dati.modifiche` resta letta — quello che c'è scritto è
+   successo davvero — ma non si scrive più: due archivi dei movimenti vogliono
+   dire due risposte diverse alla stessa domanda.
+
+   Il contenitore è vuoto e lo riempie `regInstalla` dopo: leggere il registro
+   è una chiamata di rete, e il pannello non deve aspettarla. */
 function polFirma(p) {
-  const s = (p.dati && p.dati.modifiche) || [];
-  const ultima = s.length ? s[s.length - 1] : null;
+  const vecchie = (p.dati && p.dati.modifiche) || [];
   return `<div class="pol-firma">
-    <div>Creata da <b>${esc(p.creato_nome || '—')}</b> il ${polQuando(p.creato_il)}</div>
     ${p.fonte === 'ssf' ? `<div>Arrivata dal flusso della compagnia${p.dati && p.dati.ssf && p.dati.ssf.collaboratore
         ? ' · collaboratore ' + esc(p.dati.ssf.collaboratore) + (p.dati.ssf.collaboratore_email ? ' (' + esc(p.dati.ssf.collaboratore_email) + ')' : '') : ''}</div>` : ''}
-    ${ultima ? `<div>Ultima modifica: <b>${esc(ultima.chi || '—')}</b> il ${polQuando(ultima.quando)} — ${esc(ultima.cosa || '')}</div>` : ''}
+    <div class="flu-sez" style="margin-top:10px">Chi e quando</div>
+    <div id="pol-storia"></div>
+    ${vecchie.length ? `<div class="cl-sub" style="margin-top:6px">Prima del registro (${vecchie.length}):
+      ${vecchie.map(x => esc((x.chi || '—') + ' · ' + polQuando(x.quando) + ' · ' + (x.cosa || ''))).join(' — ')}</div>` : ''}
   </div>`;
 }
 
@@ -14805,6 +14897,7 @@ async function polDettaglio(id) {
       <button class="rin-az" onclick="document.getElementById('pol-ov').remove();pdocApri('${esc(p.id)}')"><i class="ti ti-folder"></i> Documenti</button>
     </div>
     ${polFirma(p)}`;
+  regInstalla('pol-storia', 'polizza', p.id, { nome: p.creato_nome, il: p.creato_il, azione: 'Polizza creata' });
 }
 
 /* ══ IL PAGAMENTO ═════════════════════════════════════════════════════════
@@ -14860,6 +14953,7 @@ async function polPagamento(id) {
       <button class="rin-az" onclick="polDettaglio('${esc(p.id)}')"><i class="ti ti-file-invoice"></i> Dettaglio della polizza</button>
     </div>
     ${polFirma(p)}`;
+  regInstalla('pol-storia', 'polizza', p.id, { nome: p.creato_nome, il: p.creato_il, azione: 'Polizza creata' });
 }
 
 /* Salva, e scrive CHI e QUANDO sulla polizza stessa. Il registro generale
@@ -14874,17 +14968,18 @@ async function polSalvaPagamento(id) {
   if ((p.mezzo_pagamento || null) !== (mezzo || null)) cambi.push('mezzo di pagamento: ' + (pfMezzoNome(mezzo) || 'tolto'));
   if (p.stato_pagamento !== stato) cambi.push('stato: ' + ((PF_PAG[stato] || [stato])[0]));
   if (!cambi.length) return;
-  const chi = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : null;
-  const dati = Object.assign({}, p.dati || {});
-  dati.modifiche = (dati.modifiche || []).concat([{ chi, quando: new Date().toISOString(), cosa: cambi.join(' · ') }]);
+  /* La traccia va nel REGISTRO, non dentro la polizza: `dati.modifiche` era
+     un rimedio per una schermata sola, nato il giorno prima che il registro
+     sapesse dire su quale riga. Si continua a leggere quello che c'e' gia'
+     scritto, ma non si scrive piu'. */
   try {
     const { error } = await db.from('quote_polizze')
-      .update({ mezzo_pagamento: mezzo || null, stato_pagamento: stato, dati }).eq('id', id);
+      .update({ mezzo_pagamento: mezzo || null, stato_pagamento: stato }).eq('id', id);
     if (error) throw error;
     const r = (PF_ROWS || []).find(x => x.id === id);
     if (r) { r.mezzo_pagamento = mezzo || null; r.stato_pagamento = stato; }
     if (typeof pfRender === 'function') pfRender();
-    try { logMovimento('Pagamento modificato · ' + cambi.join(' · '), 'polizza', p.cliente || ''); } catch (e) {}
+    try { logMovimento('Pagamento modificato · ' + cambi.join(' · '), 'polizza', p.cliente || '', id); } catch (e) {}
     await polPagamento(id);
   } catch (e) { alert('Non riesco a salvare: ' + (e.message || e)); }
 }
@@ -14929,7 +15024,7 @@ async function pfCambiaMezzo(id) {
     const { error } = await db.from('quote_polizze').update({ mezzo_pagamento: mezzo }).eq('id', id);
     if (error) throw error;
     p.mezzo_pagamento = mezzo;
-    try { logMovimento('Mezzo di pagamento: ' + (pfMezzoNome(mezzo) || 'tolto') + ' · polizza ' + pfNumero(p), 'polizza', p.cliente || ''); } catch (e) {}
+    try { logMovimento('Mezzo di pagamento: ' + (pfMezzoNome(mezzo) || 'tolto') + ' · polizza ' + pfNumero(p), 'polizza', p.cliente || '', p.id); } catch (e) {}
     pfRender();
   } catch (e) { alert('Non riesco a salvare: ' + (e.message || e)); }
 }
@@ -15800,7 +15895,7 @@ async function annullaPolizzaDiPreventivo(preventivoId, cliente) {
       await db.from('quote_polizze').update({ stato_pagamento: 'annullata' }).eq('id', pol.id);
       /* neq('stato','incassato'): le rate riscosse restano come sono. */
       await db.from('quote_titoli').update({ stato: 'annullato' }).eq('polizza_id', pol.id).neq('stato', 'incassato');
-      try { logMovimento('Emissione riaperta: polizza annullata · ' + (pol.numero || pol.id), 'polizza', cliente || ''); } catch (e) {}
+      try { logMovimento('Emissione riaperta: polizza annullata · ' + (pol.numero || pol.id), 'polizza', cliente || '', pol.id); } catch (e) {}
     }
   } catch (e) { console.warn('annullamento polizza da riapertura', e.message || e); }
 }
@@ -15825,7 +15920,7 @@ async function polNumero(polizzaId) {
        la ricerca «senza numero» ne trova metà. */
     await db.from('quote_polizze').update({ numero_polizza: num || null }).eq('id', polizzaId);
     if (attuale) attuale.numero_polizza = num || null;
-    try { logMovimento((num ? 'Numero di compagnia · ' + num : 'Numero di compagnia tolto'), 'polizza', (attuale && attuale.cliente) || ''); } catch (e) {}
+    try { logMovimento((num ? 'Numero di compagnia · ' + num : 'Numero di compagnia tolto'), 'polizza', (attuale && attuale.cliente) || '', id); } catch (e) {}
     pfRender();
   } catch (e) { alert('Non sono riuscito a salvare il numero: ' + (e.message || e)); }
 }
@@ -16128,7 +16223,7 @@ async function pdocCreaFascicolo(polizzaId) {
     if (error) throw error;
     st.polizza.dati = dati;
     PDOC_RIFAI = null;
-    try { logMovimento('Fascicolo creato · ' + op + (comp ? ' · ' + comp.nome : ''), 'documento', st.polizza.cliente || ''); } catch (e) {}
+    try { logMovimento('Fascicolo creato · ' + op + (comp ? ' · ' + comp.nome : ''), pdocEntita(polizzaId), st.polizza.cliente || '', polizzaId); } catch (e) {}
   } catch (e) { alert('Non riesco a salvare il fascicolo: ' + (e.message || e)); return; }
   await pdocRidisegna(polizzaId);
 }
@@ -16426,7 +16521,9 @@ async function pdocCollegaA(praticaId, polizzaId) {
     const { error: e3 } = await db.from('quote_pratiche')
       .update({ stato: 'collegata', polizza_id: polizzaId }).eq('id', praticaId);
     if (e3) throw e3;
-    try { logMovimento('Pratica collegata alla polizza', 'documento', pratica.cliente || ''); } catch (e) {}
+    /* Si registra sulla POLIZZA: e' li' che il fascicolo e' arrivato, ed e'
+       li' che fra sei mesi qualcuno chiedera' da dove viene. */
+    try { logMovimento('Pratica collegata alla polizza', 'polizza', pratica.cliente || '', polizzaId); } catch (e) {}
   } catch (e) {
     alert('Collegamento non riuscito: ' + (e.message || e) + '\n\nNiente è andato perso: i documenti restano dove sono e si può riprovare.');
     return;
@@ -16488,7 +16585,7 @@ async function pdocCarica(polizzaId, categoria, file) {
     };
     const { error } = await db.from('quote_pratica_documenti').insert(rec);
     if (error) throw error;
-    try { logMovimento('Documento caricato · ' + categoria, 'documento', ''); } catch (e) {}
+    try { logMovimento('Documento caricato · ' + categoria, entita, '', polizzaId); } catch (e) {}
   } catch (e) {
     alert('Caricamento non riuscito: ' + (e.message || e)
       + '\n\n(I documenti del fascicolo salgono sull\'archivio cifrato del VPS: se il messaggio parla di ARCHIVIO_CHIAVE, la chiave non è configurata sul server.)');
@@ -16627,7 +16724,7 @@ async function fdocCaricaCliente() {
     a.documenti = docs;
     fdocRenderCliente();
     if (status) status.textContent = '✓ Caricato';
-    try { logMovimento('Documento cliente caricato · ' + (t.l || t.id), 'cliente', a.nominativo || ''); } catch (e) {}
+    try { logMovimento('Documento cliente caricato · ' + (t.l || t.id), 'cliente', a.nominativo || '', id); } catch (e) {}
   } catch (e) {
     if (status) { status.textContent = 'Caricamento non riuscito: ' + (e.message || e); status.style.color = '#c0392b'; }
   }
@@ -16758,7 +16855,7 @@ async function fdocCreaPratica() {
     const { data: out, error } = await db.from('quote_pratiche').insert(rec).select('id').single();
     if (error) throw error;
     creata = out;
-    try { logMovimento('Pratica aperta senza polizza' + (descr ? ' · ' + descr : ''), 'documento', anag.nominativo || ''); } catch (e) {}
+    try { logMovimento('Pratica aperta senza polizza' + (descr ? ' · ' + descr : ''), 'pratica', anag.nominativo || '', out && out.id); } catch (e) {}
   } catch (e) {
     alert('Non riesco ad aprire la pratica: ' + (e.message || e)
       + '\n\n(Serve la migrazione supabase/migrations/20260918_pratiche_senza_polizza.sql.)');
@@ -18213,7 +18310,7 @@ async function pvCensisciCliente() {
     const inp = document.getElementById('pv-cliente'); if (inp) inp.value = data.nominativo || nome;
     window.__PV_CLIENTE_ID = data.id;
     const box = document.getElementById('pv-cli-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
-    logMovimento('Nuovo cliente censito · ' + (data.nominativo || nome), 'cliente');
+    logMovimento('Nuovo cliente censito · ' + (data.nominativo || nome), 'cliente', null, data.id);
     alert('Cliente censito: ' + (data.nominativo || nome) + '\n\nCompleta i dati (codice fiscale, contatti) nella sezione Clienti.\nRicorda di premere "Salva modifiche" per collegarlo al preventivo.');
   } catch (e) { alert('Errore censimento cliente: ' + (e.message || e)); }
 }
@@ -18288,7 +18385,7 @@ async function pvSave(id, opts = {}) {
        butta: si annulla, che e' uno stato previsto e resta visibile. */
     else if (opts.stato && prev.polizza_emessa) await annullaPolizzaDiPreventivo(id, rec.cliente || '');
     const az = opts.stato ? ('Preventivo → ' + (PREV_STATI[opts.stato]?.label || opts.stato)) : 'Modifica preventivo';
-    logMovimento(az + ' · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || '');
+    logMovimento(az + ' · ' + (rec.prodotto || ''), 'preventivo', rec.cliente || '', id);
     if (opts.stato === 'quotato' || opts.stato === 'emessa') notifyEmail(opts.stato, id);
     else if (opts.stato === 'in_esame') notifyEmail('presa_in_carico', id);
     if (opts.stato === 'emessa') notifyEmail('emessa_cliente', id);
@@ -18647,7 +18744,7 @@ async function pvInviaMsg(id) {
     const { error } = await db.from('quote_preventivi').update({ dati }).eq('id', id);
     if (error) throw error;
     if (prev.dati) prev.dati.messaggi = dati.messaggi;
-    logMovimento('Messaggio su preventivo · ' + (prev.prodotto || ''), 'preventivo', prev.cliente || '');
+    logMovimento('Messaggio su preventivo · ' + (prev.prodotto || ''), 'preventivo', prev.cliente || '', id);
     notifyEmail('messaggio', id, { fromId: currentUser.id, fromName: currentUser.name, testo: testo || '(documento allegato)' });
     await loadStorico();
     // Contesto: tab "Comunicazioni" dentro il dettaglio preventivo
@@ -18861,7 +18958,7 @@ async function paypConferma(){
 }
 async function eliminaPreventivo(id) {
   if (!confirm('Eliminare questo preventivo?')) return;
-  try { await db.from('quote_preventivi').delete().eq('id', id); logMovimento('Eliminato preventivo', 'preventivo'); document.getElementById('prev-ov')?.remove(); loadStorico(); }
+  try { await db.from('quote_preventivi').delete().eq('id', id); logMovimento('Eliminato preventivo', 'preventivo', null, id); document.getElementById('prev-ov')?.remove(); loadStorico(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
@@ -19302,8 +19399,8 @@ async function salvaSinistro(){
       descrizione:v('sin-descrizione'), controparte:v('sin-controparte')||null,
       danni_persone:!!document.getElementById('sin-dpers')?.checked, danni_cose:!!document.getElementById('sin-dcose')?.checked,
       documenti, storia, note:v('sin-note')||null, stato:'aperto', creato_da:currentUser.id, creato_nome:currentUser.name };
-    const {error}=await db.from('quote_sinistri').insert(rec); if(error) throw error;
-    logMovimento('Nuovo sinistro · '+rec.ramo+' · '+contraente,'sinistro',contraente);
+    const {data:sinNuovo,error}=await db.from('quote_sinistri').insert(rec).select('id').single(); if(error) throw error;
+    logMovimento('Nuovo sinistro · '+rec.ramo+' · '+contraente,'sinistro',contraente,sinNuovo&&sinNuovo.id);
     document.getElementById('sin-ov')?.remove();
     await loadSinistri();
     alert('✓ Sinistro aperto e registrato.');
@@ -19372,7 +19469,7 @@ async function sinSetStato(id, stato){
     storia.push({ stato, ts:new Date().toISOString(), da:currentUser.name, nota:(stato==='in_gestione'&&(upd.numero_sx||s.numero_sx))?('N. SX '+(upd.numero_sx||s.numero_sx)):'' });
     upd.storia=storia;
     await db.from('quote_sinistri').update(upd).eq('id',id);
-    logMovimento('Sinistro → '+(SIN_STATI[stato]?.label||stato),'sinistro',s.contraente||'');
+    logMovimento('Sinistro → '+(SIN_STATI[stato]?.label||stato),'sinistro',s.contraente||'',id);
     document.getElementById('sind-ov')?.remove(); await loadSinistri(); apriSinistro(id);
   }catch(e){ alert('Errore: '+(e.message||e)); }
 }
@@ -19512,13 +19609,13 @@ async function sinAddDocs(id){
     if(!nuovi.length){ alert('Seleziona almeno un file.'); return; }
     const s=SINISTRI_CACHE.find(x=>x.id===id)||{}; const documenti=(Array.isArray(s.documenti)?s.documenti:[]).concat(nuovi);
     await db.from('quote_sinistri').update({documenti}).eq('id',id);
-    logMovimento('Documenti aggiunti al sinistro','sinistro');
+    logMovimento('Documenti aggiunti al sinistro','sinistro',null,id);
     document.getElementById('sind-ov')?.remove(); await loadSinistri(); apriSinistro(id);
   }catch(e){ alert('Errore: '+(e.message||e)); }
 }
 async function eliminaSinistro(id){
   if(!confirm('Eliminare questo sinistro?')) return;
-  try{ await db.from('quote_sinistri').delete().eq('id',id); logMovimento('Eliminato sinistro','sinistro'); document.getElementById('sind-ov')?.remove(); await loadSinistri(); }
+  try{ await db.from('quote_sinistri').delete().eq('id',id); logMovimento('Eliminato sinistro','sinistro',null,id); document.getElementById('sind-ov')?.remove(); await loadSinistri(); }
   catch(e){ alert('Errore: '+(e.message||e)); }
 }
 
@@ -19995,11 +20092,11 @@ async function awInserisciLead(fill) {
   const base = { tipo: 'fisica', nominativo, cognome: fill.cognome || null, nome: fill.nome || null, codice_fiscale: cf || null, data_nascita: fill.dataNascita || null, indirizzo: fill.indirizzo || null, comune: fill.comune || null, provincia: fill.prov || null, creato_da: currentUser.id };
   try {
     const { data, error } = await db.from('quote_anagrafiche').insert(Object.assign({}, base, { lead: true, lead_origine: 'rinnovo auto', note: 'LEAD · rinnovo auto' })).select('id').single();
-    if (!error && data) { try { logMovimento('Nuovo LEAD (rinnovo auto) · ' + nominativo, 'cliente'); } catch (e) {} return data.id; }
+    if (!error && data) { try { logMovimento('Nuovo LEAD (rinnovo auto) · ' + nominativo, 'cliente', null, data.id); } catch (e) {} return data.id; }
   } catch (e) {}
   try { // fallback: senza la colonna 'lead', marco con il campo note
     const { data } = await db.from('quote_anagrafiche').insert(Object.assign({}, base, { note: 'LEAD · rinnovo auto' })).select('id').single();
-    if (data) { try { logMovimento('Nuovo LEAD (rinnovo auto) · ' + nominativo, 'cliente'); } catch (e) {} return data.id; }
+    if (data) { try { logMovimento('Nuovo LEAD (rinnovo auto) · ' + nominativo, 'cliente', null, data.id); } catch (e) {} return data.id; }
   } catch (e) {}
   return null;
 }
@@ -21255,7 +21352,7 @@ async function awCensisciContraente() {
         email: c.email, cellulare: c.cellulare, creato_da: currentUser.id,
         ha_figli: awTriBool(c.figli), sposato: awTriBool(c.sposato), casa_proprieta: awTriBool(c.casaProprieta)
       }).select('id').single();
-      if (data) { c.clienteId = data.id; logMovimento('Nuovo cliente (da preventivo Auto) · ' + (c.cognome || ''), 'cliente'); }
+      if (data) { c.clienteId = data.id; logMovimento('Nuovo cliente (da preventivo Auto) · ' + (c.cognome || ''), 'cliente', null, data.id); }
     } catch {}
   }
 
@@ -21835,7 +21932,7 @@ async function casaEnsureCliente(){
         indirizzo:c.indirizzo, civico:c.civico, cap:c.cap, comune:c.comune, provincia:c.prov,
         email:c.email, cellulare:c.cellulare, creato_da:currentUser.id
       }).select('id').single();
-      if (data){ c.clienteId=data.id; logMovimento('Nuovo cliente (da preventivo Casa) · '+(c.cognome||''), 'cliente'); }
+      if (data){ c.clienteId=data.id; logMovimento('Nuovo cliente (da preventivo Casa) · '+(c.cognome||''), 'cliente', null, data.id); }
     }catch(e){}
   }
   return c.clienteId || null;
@@ -23240,7 +23337,7 @@ async function cauzInvia(){
         partita_iva: ct.cfPiva.length===11 ? ct.cfPiva : null,
         creato_da: currentUser.id
       }).select('id').single();
-      if (data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da cauzione) · '+(ct.nominativo||''), 'cliente'); }
+      if (data){ ct.clienteId=data.id; logMovimento('Nuovo cliente (da cauzione) · '+(ct.nominativo||''), 'cliente', null, data.id); }
     }catch(e){}
   }
   const prodotto = cauzProdotto(CAUZ_DATA.tipo || 'Provvisoria');
@@ -25729,7 +25826,7 @@ async function aggiornaAnagrafica(id) {
   if (isG) { rec.ragione_sociale = v('e-ragione'); rec.partita_iva = v('e-piva'); rec.tipo_societa = v('e-tiposoc'); rec.nominativo = (v('e-ragione') || a.nominativo).toUpperCase(); }
   else { rec.cognome = v('e-cognome'); rec.nome = v('e-nome'); rec.data_nascita = v('e-dob') || null; rec.professione = v('e-professione'); rec.nominativo = ((v('e-cognome') + ' ' + v('e-nome')).trim() || a.nominativo).toUpperCase(); rec.sposato = fOn('e-sposato'); rec.ha_figli = fOn('e-figli'); rec.casa_proprieta = fOn('e-casa'); }
   if (rec.email && await emailGiaUsata(rec.email, id)) { alert('Questa email è già associata a un altro cliente. Usa un indirizzo diverso.'); return; }
-  try { await db.from('quote_anagrafiche').update(rec).eq('id', id); logMovimento('Modifica cliente · ' + (rec.nominativo || ''), 'cliente'); Object.assign(a, rec); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); apriAnagrafica(id); }
+  try { await db.from('quote_anagrafiche').update(rec).eq('id', id); logMovimento('Modifica cliente · ' + (rec.nominativo || ''), 'cliente', null, id); Object.assign(a, rec); document.getElementById('anag-overlay')?.remove(); cercaAnagrafica(); apriAnagrafica(id); }
   catch (e) { alert('Errore salvataggio: ' + (e.message || e)); }
 }
 
@@ -25768,7 +25865,7 @@ async function eliminaAnagrafica(id) {
   try {
     const { error } = await db.from('quote_anagrafiche').delete().eq('id', id);
     if (error) throw error;
-    if (typeof logMovimento === 'function') logMovimento('Eliminato cliente: ' + nome, 'anagrafica');
+    if (typeof logMovimento === 'function') logMovimento('Eliminato cliente: ' + nome, 'cliente', nome, id);
     document.getElementById('anag-overlay')?.remove();
     cercaAnagrafica();
   } catch (e) {
@@ -27245,7 +27342,7 @@ async function importaAgleaSalus(){
 }
 async function eliminaDocumento(id) {
   if (!confirm('Eliminare questo documento?')) return;
-  try { await db.from('quote_documenti').delete().eq('id', id); logMovimento('Eliminato documento', 'documento'); loadDocumenti(); }
+  try { await db.from('quote_documenti').delete().eq('id', id); logMovimento('Eliminato documento', 'documento', null, id); loadDocumenti(); }
   catch (e) { alert('Errore: ' + (e.message || e)); }
 }
 
@@ -27367,48 +27464,71 @@ async function reteRinomina(nomeEnc){
 async function loadLog() {
   const body = document.getElementById('log-body');
   if (!db) return;
-  const entries = [];
-  // 1) tabella log (proprie + quanto consentito dalla RLS)
+  /* Due mucchi separati, e non è un dettaglio: il REGISTRO è la prova di
+     quello che è successo e non si tocca; i feed DERIVATI ricostruiscono i
+     movimenti dai preventivi e dai sinistri, perché il registro è nato dopo
+     di loro. `Registro.unisci` scarta un derivato solo quando il registro ha
+     già quel fatto — mai due righe del registro fra loro. */
+  const registro = [], derivate = [];
   try {
     const { data } = await db.from('quote_log').select('*').order('creato_il', { ascending: false }).limit(400);
-    (data || []).forEach(l => entries.push({ ts: l.creato_il, nome: l.utente_nome, azione: l.azione, entita: l.entita, dettaglio: l.dettaglio, uid: l.utente_id }));
+    (data || []).forEach(l => registro.push({ creato_il: l.creato_il, utente_nome: l.utente_nome, azione: l.azione,
+      entita: l.entita, entita_id: l.entita_id, dettaglio: l.dettaglio, utente_id: l.utente_id, dalRegistro: true }));
   } catch (e) {}
+  const entries = derivate;
   // 2) feed derivato dai preventivi (visibili all'admin) — così si vede l'attività di tutti anche senza policy sul log
   try {
-    const { data } = await db.from('quote_preventivi').select('prodotto,cliente,creato_il,creato_nome,creato_da,polizza_emessa,polizza_il,dati').order('creato_il', { ascending: false }).limit(600);
+    const { data } = await db.from('quote_preventivi').select('id,prodotto,cliente,creato_il,creato_nome,creato_da,polizza_emessa,polizza_il,dati').order('creato_il', { ascending: false }).limit(600);
     (data || []).forEach(p => {
-      entries.push({ ts: p.creato_il, nome: p.creato_nome, azione: 'Nuovo preventivo', entita: 'preventivo', dettaglio: (p.prodotto || '') + (p.cliente ? ' · ' + p.cliente : ''), uid: p.creato_da });
-      if (p.polizza_emessa) entries.push({ ts: p.polizza_il || p.creato_il, nome: p.creato_nome, azione: 'Polizza emessa', entita: 'polizza', dettaglio: (p.prodotto || ''), uid: p.creato_da });
+      entries.push({ creato_il: p.creato_il, utente_nome: p.creato_nome, azione: 'Nuovo preventivo', entita: 'preventivo', entita_id: p.id, dettaglio: (p.prodotto || '') + (p.cliente ? ' · ' + p.cliente : ''), utente_id: p.creato_da });
+      if (p.polizza_emessa) entries.push({ creato_il: p.polizza_il || p.creato_il, utente_nome: p.creato_nome, azione: 'Polizza emessa', entita: 'preventivo', entita_id: p.id, dettaglio: (p.prodotto || ''), utente_id: p.creato_da });
       const ms = (p.dati && Array.isArray(p.dati.messaggi)) ? p.dati.messaggi : [];
-      ms.forEach(mm => entries.push({ ts: mm.ts, nome: mm.nome, azione: 'Messaggio su preventivo', entita: 'preventivo', dettaglio: (p.prodotto || ''), uid: mm.da }));
+      ms.forEach(mm => entries.push({ creato_il: mm.ts, utente_nome: mm.nome, azione: 'Messaggio su preventivo', entita: 'preventivo', entita_id: p.id, dettaglio: (p.prodotto || ''), utente_id: mm.da }));
     });
   } catch (e) {}
   // 3) feed derivato dai sinistri
   try {
-    const { data } = await db.from('quote_sinistri').select('ramo,contraente,creato_il,creato_nome,creato_da,storia').order('creato_il', { ascending: false }).limit(400);
+    const { data } = await db.from('quote_sinistri').select('id,ramo,contraente,creato_il,creato_nome,creato_da,storia').order('creato_il', { ascending: false }).limit(400);
     (data || []).forEach(s => {
-      entries.push({ ts: s.creato_il, nome: s.creato_nome, azione: 'Nuovo sinistro', entita: 'sinistro', dettaglio: (s.ramo || '') + (s.contraente ? ' · ' + s.contraente : ''), uid: s.creato_da });
-      (Array.isArray(s.storia) ? s.storia : []).forEach(h => { if (h.stato && h.stato !== 'aperto') entries.push({ ts: h.ts, nome: h.da, azione: 'Sinistro → ' + (SIN_STATI[h.stato]?.label || h.stato), entita: 'sinistro', dettaglio: (s.ramo || '') }); });
+      entries.push({ creato_il: s.creato_il, utente_nome: s.creato_nome, azione: 'Nuovo sinistro', entita: 'sinistro', entita_id: s.id, dettaglio: (s.ramo || '') + (s.contraente ? ' · ' + s.contraente : ''), utente_id: s.creato_da });
+      (Array.isArray(s.storia) ? s.storia : []).forEach(h => { if (h.stato && h.stato !== 'aperto') entries.push({ creato_il: h.ts, utente_nome: h.da, azione: 'Sinistro → ' + (SIN_STATI[h.stato]?.label || h.stato), entita: 'sinistro', entita_id: s.id, dettaglio: (s.ramo || '') }); });
     });
   } catch (e) {}
-  // dedup (log + derivato si sovrappongono per le proprie azioni) e ordina
-  const seen = new Set();
-  const list = entries.filter(e => e.ts).sort((a, b) => new Date(b.ts) - new Date(a.ts)).filter(e => {
-    const k = (e.azione || '') + '|' + (e.nome || '') + '|' + (e.dettaglio || '') + '|' + Math.floor(new Date(e.ts).getTime() / 60000);
-    if (seen.has(k)) return false; seen.add(k); return true;
-  }).slice(0, 400);
-  const altrui = list.filter(e => e.nome && e.nome !== currentUser.name).length;
+  const list = Registro.unisci(registro, derivate.filter(e => e.creato_il)).slice(0, 400);
+  const altrui = list.filter(e => e.utente_nome && e.utente_nome !== currentUser.name).length;
   const hint = document.getElementById('log-hint');
   if (hint) hint.textContent = `${list.length} attività · ${altrui} di altri utenti · ruolo: ${ruoloLabel(currentUser.role)}`;
   if (!list.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty-state">Nessuna attività registrata.</div></td></tr>'; return; }
-  const TIPO = { preventivo:'ti-file-invoice', polizza:'ti-file-check', cliente:'ti-user', utente:'ti-users', ticket:'ti-ticket', documento:'ti-folder', sinistro:'ti-alert-triangle' };
-  body.innerHTML = list.map(l => `<tr>
-    <td style="font-size:12px;color:#aab">${new Date(l.ts).toLocaleString('it-IT')}</td>
-    <td style="font-size:13px"><strong>${esc(l.nome || '—')}</strong></td>
+  body.innerHTML = list.map(l => {
+    /* L'etichetta la decide il motore, ed è lui a dire anche che cosa NON
+       conosce: un tipo fuori vocabolario si vede com'è scritto, senza icona.
+       Sparire in silenzio vorrebbe dire che un refuso cancella un movimento. */
+    const e = Registro.etichetta(l.entita);
+    const apri = l.entita_id && e.noto && logApribile(e.chiave)
+      ? ` style="cursor:pointer" onclick="logApri('${esc(e.chiave)}','${esc(l.entita_id)}')" title="Apri la riga"` : '';
+    return `<tr${apri}>
+    <td style="font-size:12px;color:#aab">${new Date(l.creato_il).toLocaleString('it-IT')}</td>
+    <td style="font-size:13px"><strong>${esc(l.utente_nome || '—')}</strong></td>
     <td>${esc(l.azione || '')}</td>
-    <td>${l.entita ? `<span class="tk-badge tk-sez"><i class="ti ${TIPO[l.entita] || 'ti-point'}"></i> ${esc(l.entita)}</span>` : '—'}</td>
+    <td>${l.entita ? `<span class="tk-badge tk-sez"><i class="ti ${e.i || 'ti-point'}"></i> ${esc(e.l)}</span>${
+        l.entita_id ? '' : '<div class="cl-sub">senza riga collegata</div>'}` : '—'}</td>
     <td style="font-size:13px;color:#5b6478">${esc(l.dettaglio || '')}</td>
-  </tr>`).join('');
+  </tr>`; }).join('');
+}
+
+/* Quali tipi si sanno aprire davvero. Un tipo che il vocabolario conosce ma
+   che questa pagina non sa aprire NON diventa una riga cliccabile: un clic che
+   non fa niente è peggio di una riga ferma. */
+function logApribile(k) { return ['polizza', 'cliente', 'preventivo', 'pratica', 'sinistro'].includes(k); }
+
+async function logApri(entita, id) {
+  try {
+    if (entita === 'polizza') return polDettaglio(id);
+    if (entita === 'cliente') return apriAnagrafica(id);
+    if (entita === 'preventivo') return apriPreventivo(id);
+    if (entita === 'pratica') return pdocApriPratica(id, '');
+    if (entita === 'sinistro') return apriSinistro(id);
+  } catch (e) { alert('Non riesco ad aprirla: ' + (e.message || e)); }
 }
 document.addEventListener('keydown', e => {
   /* Si guarda la visibilita' VERA (offsetParent), non lo stile in linea: ora la

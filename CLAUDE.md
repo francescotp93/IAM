@@ -2259,3 +2259,129 @@ Node su dirette/indirette. La correzione del movimento con gli stessi valori
   da qui, è un tasto che porta lì.
 - Il PDF si prova con `PdfWithus.disegna` intercettato: il disegno vero con
   jsPDF vuole il CDN, che dal contenitore non si raggiunge (§14).
+
+---
+
+## 26. Brief IAM #02 — M1: i conti e le causali (19/09/2026)
+
+Base di tutto il brief #02: senza un elenco di conti e uno di causali non si
+registra un movimento, e senza movimenti non c'è prima nota, non c'è estratto
+conto e non c'è conto economico.
+
+| pezzo | dove |
+|---|---|
+| tutte le regole | `tariffe/motore/contabilita.js` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — 11 |
+| le due tabelle, le politiche, il trigger, il rollback | `supabase/migrations/20260919_b02_m1_conti_e_causali.sql` (applicata) |
+| il pannello | blocco `cnt*` e `#panel-conti` in `iam/index.html`, Strumenti › Conti e causali |
+| la voce di menu | `iam/withus-one.js` (`MEGA`, `TITOLI`, `TAB2MENU`) |
+| prove sul pannello | `iam/verifica/conti-causali.test.mjs` — 9 |
+
+**Misurato prima di scrivere.** Non esisteva nessuna tabella di conti né di
+causali: la contabilità di IAM era `sessioni_giornaliere` (68 righe, il foglio
+del giorno) e `iam_conto` (2 righe, l'estratto della banca caricato da file).
+In `iam_azienda.dati` c'erano `iban1`, `iban2` e `banca`: due coordinate scritte
+come testo, che nessuno può usare per registrare un movimento.
+
+### Le due decisioni che comandano su tutto il resto
+
+**1. Le due nature del denaro non si mescolano.** Un conto è `premi` (soldi dei
+clienti in transito verso la compagnia, che l'art. 117 CAP vuole su un conto
+separato dal patrimonio dell'agenzia) oppure `aziendale`. Una causale dichiara
+su quale natura si può registrare, e `Contabilita.compatibile` lo dice **prima**
+del salvataggio, con il motivo scritto in faccia. Una causale a natura `null`
+vale su tutti i conti, ed è il caso delle spese bancarie: il bollo lo addebita
+anche la banca del conto premi, e vietarlo vorrebbe dire non poter registrare un
+fatto accaduto. La stessa funzione **riempie la tendina** e **rifiuta**: due
+strade separate diventerebbero una schermata che propone quello che il
+salvataggio poi respinge.
+
+**2. `incide_su_utile` separa il movimento economico da quello finanziario.**
+«Incasso premi» e «Rimesse in compagnia» muovono il conto e **non** il
+risultato: sono le due facce dello stesso denaro in transito. Senza quella
+colonna il conto economico conterebbe come utile l'intero premio incassato —
+cioè i soldi di qualcun altro, un numero grande, credibile e falso. C'è una
+prova che lo misura: sui dati di collaudo i ricavi sono 41,21 e i premi
+incassati 590, e la prova diventa rossa se i secondi finiscono nei primi.
+
+### Il saldo non si scrive, si calcola
+
+L'unico numero scritto a mano è `saldo_iniziale`, quello del giorno in cui il
+conto entra nel sistema. **Non c'è nessuna colonna `saldo`**, ed è una decisione:
+un saldo memorizzato si aggiorna da un'altra parte, e il giorno in cui si scosta
+dalla somma dei movimenti nessuno sa più quale dei due sia quello vero. C'è una
+prova che lo verifica dai due lati — la colonna non esiste nella migrazione, e
+il motore ignora una `saldo` scritta a mano su un conto.
+
+**I movimenti arrivano con la M3.** Finché quella tabella non c'è, il saldo
+calcolato è quello iniziale, e la schermata **lo dice** («nessun movimento
+ancora: è il saldo iniziale dichiarato») invece di far credere che sia il saldo
+di oggi. Il conto dei movimenti passa già al motore: il giorno in cui la prima
+nota esiste, questa schermata non cambia di una riga.
+
+Le due cifre di natura diversa **non si sommano in un totale unico**: un «totale
+liquidità» che mette insieme i premi dei clienti e i soldi dell'agenzia fa
+credere ricca un'agenzia che ha solo incassato dei premi da rimettere.
+
+### Quello che non si cancella
+
+Un conto con movimenti **non si cancella, si spegne**: i movimenti che ci sono
+passati sono storia, e cancellare il conto li renderebbe orfani. Un conto spento
+esce dalle tendine e resta nei riepiloghi del passato. Le dieci causali di
+partenza si possono rinominare e spegnere, mai cancellare: ci si aggancia
+l'automatismo dell'incasso (M3), e il divieto sta **in un trigger del database**,
+non nella schermata — la schermata è una delle strade, non l'unica (c'è la
+console, c'è PostgREST, ci sarà QUOTO).
+
+**Il codice di una causale non si tocca mai.** È la chiave stabile a cui
+punteranno i movimenti; il nome si corregge. La prova legge separatamente il
+ramo dell'update e quello dell'insert, perché è lì che la differenza si perde.
+
+### Chi legge e chi scrive
+
+Leggere: lo staff (`iam_is_staff()`) — chi registrerà un movimento deve poter
+scegliere il conto. Scrivere: l'admin (`iam_is_admin()`), perché qui si decide
+dove finiscono i soldi: è la stessa soglia dei codici collaboratore (§19). Il
+cancello **vero** è nelle politiche del database; il bottone nascosto è solo per
+non mostrare la porta. La prova non guarda che `cntPuoScrivere` esista — guarda
+che sia **chiamata** (§1).
+
+### Dove sta e dove non sta
+
+La voce è in **Strumenti**, non in Contabilità: qui si *configura* dove sta il
+denaro e come si chiamano i movimenti, in Contabilità si *registra*. È la stessa
+ragione per cui «Fonti compagnie» e «Stato collegamenti» sono due voci e non una.
+
+**Il motore si carica, non si copia**: `/nuovo-preventivo/tariffe/motore/contabilita.js`,
+lo stesso file che caricherà il preventivatore. Due vocabolari della contabilità
+sarebbero due contabilità della stessa agenzia. La prova cerca il **tag**
+`<script src=…>`, non la stringa: quel percorso compare anche nei commenti.
+
+**Nomi**: esiste già `iam_conto` (singolare), che è un'altra cosa — l'estratto
+conto caricato da file, chiave `tipo`, colonne `movimenti`/`bonif`. Non ha
+nessuna colonna in comune con `iam_conti`: sbagliare tabella non produce numeri
+sbagliati, produce un errore subito. `iam_conto` è destinato a sparire con la M5.
+
+### Due trappole, e una è nuova
+
+- **Una classe CSS di una lettera dentro un discendente non è scoped.**
+  `.cnt-card .v` sembra al sicuro e non lo è: nel foglio di stile `v` è un nome
+  globale, e QUOTO ce l'aveva già. L'ha preso `fusione-collisioni.test.mjs`.
+  Adesso ogni classe porta il prefisso, comprese le annidate.
+- **E poi l'ha preso di nuovo, sul commento che spiegava la correzione.**
+  Quella prova legge il foglio di stile per intero, commenti compresi: un
+  selettore *citato a parole* le risulta ancora presente. È la trappola già
+  scritta tre volte (§10, §12, §18), qui nel CSS invece che nel JavaScript. Il
+  commento adesso descrive il difetto senza scriverne il selettore.
+
+### Cosa resta aperto
+
+- **I conti veri non ci sono ancora**: la tabella nasce vuota, e finché
+  qualcuno non crea il conto premi e quello dell'agenzia i riepiloghi sono a
+  zero. È voluto — inventare due conti con dei saldi sarebbe la regola §8.1
+  violata sul denaro — ma è la prima cosa da fare in schermata.
+- **I movimenti sono la M3**: `CNT_MOVIMENTI` è una lista vuota in un posto
+  solo, pronta a riempirsi.
+- **Le coordinate in `iam_azienda.dati`** (`iban1`, `iban2`, `banca`) restano
+  dove sono: spostarle su `iam_conti` è una migrazione di dati che vuole una
+  persona che dica quale IBAN è di quale conto.

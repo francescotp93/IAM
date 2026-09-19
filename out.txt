@@ -1,13 +1,33 @@
-id: 1789839806  exit: 0  2026-09-19 17:44:06
+id: 1789839865  exit: 0  2026-09-19 17:44:35
 ----
-=== commit ===
-025f43b Brief IAM #02 · M1: i conti e le causali (#205)
-=== il file su disco contiene il pannello? ===
+=== header della pagina IAM ===
+HTTP/2 200 
+accept-ranges: bytes
+alt-svc: h3=":443"; ma=2592000
+cache-control: no-cache
+content-type: text/html; charset=utf-8
+etag: "dljh562krr65peu6"
+last-modified: Sat, 19 Sep 2026 17:38:00 GMT
+server: Caddy
+vary: Accept-Encoding
+content-length: 1185630
+date: Sat, 19 Sep 2026 17:44:35 GMT
+
+=== la pagina SERVITA porta il pannello? (atteso 1) ===
 1
+=== quale versione di scocca chiede la pagina servita? ===
 withus-one.js?v=20260919a
-=== header della pagina IAM, dal server stesso ===
-curl: (35) TLS connect error: error:0A000438:SSL routines::tlsv1 alert internal error
-=== la pagina SERVITA porta il pannello? ===
-0
-=== la scocca servita ha la voce? ===
-0
+=== la scocca servita ha la voce? (atteso 1+) ===
+3
+=== header della scocca ===
+HTTP/2 200 
+accept-ranges: bytes
+alt-svc: h3=":443"; ma=2592000
+content-type: text/javascript; charset=utf-8
+etag: "dljh562lymeq27tp"
+last-modified: Sat, 19 Sep 2026 17:38:00 GMT
+server: Caddy
+vary: Accept-Encoding
+content-length: 103453
+date: Sat, 19 Sep 2026 17:44:35 GMT
+

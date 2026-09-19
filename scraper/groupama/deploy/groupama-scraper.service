@@ -12,6 +12,14 @@ KillMode=control-group
 TimeoutStopSec=15
 Environment=DISPLAY=:95
 Environment=VNC_PASS=groupama2026
+# RIENTRO AUTOMATICO — acceso il 19/09/2026, quando la catena ha potuto chiudersi.
+# Era spento dal 19/09 mattina (#188) per una ragione che non c'e' piu': il codice
+# arrivava a una casella che il backend non leggeva, quindi ogni tentativo era solo
+# una mail all'agente. Quel pomeriggio withus.coop@gmail.com e' stata collegata al
+# Pannello Fonti e verificata sul campo: il sistema ci entra e riconosce il codice.
+# Adesso un tentativo non spreca piu' un codice — ne fa nascere uno che consumiamo noi.
+# Si spegne togliendo questa riga (o mettendola a 0): il valore deve essere ESATTAMENTE 1.
+Environment=GROUPAMA_RIENTRO_AUTO=1
 # IMPORTANTE: stessa FONTI_SECRET del backend per decifrare le credenziali del Pannello Fonti.
 # Se withus-backend usa un EnvironmentFile, riusarlo qui:
 # EnvironmentFile=/opt/withus-backend/.env

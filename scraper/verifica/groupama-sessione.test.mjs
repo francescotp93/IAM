@@ -246,6 +246,26 @@ prova('quando si ferma lo dice, una volta sola', () => {
   deve(riarmi === 1, 'il contatore si riarma in ' + riarmi + ' punti invece di uno');
 });
 
+
+prova('l\'interruttore del rientro e\' davvero acceso, e col valore giusto', () => {
+  /*  §1 del CLAUDE.md applicato a una variabile: un interruttore che nessuno
+      accende e\' codice che non serve a niente. Il codice lo legge con un
+      confronto esatto a '1'; se la definizione del servizio scrivesse
+      «true», «si» o «on», resterebbe spento e nessuno se ne accorgerebbe —
+      il rientro semplicemente non partirebbe, in silenzio.
+      Acceso il 19/09/2026, quando la casella a cui Groupama manda i codici
+      (withus.coop@gmail.com) e\' stata collegata e verificata sul campo.  */
+  const unita = fs.readFileSync(path.join(RADICE, 'groupama/deploy/groupama-scraper.service'), 'utf8');
+  const riga = unita.split('\n').find(r => /^\s*Environment=GROUPAMA_RIENTRO_AUTO=/.test(r));
+  deve(riga, 'la definizione del servizio non accende il rientro: il codice c\'e\' ma non parte mai');
+  deve(/^\s*Environment=GROUPAMA_RIENTRO_AUTO=1\s*$/.test(riga),
+    'il valore non e\' esattamente 1, quindi il codice lo legge come spento: ' + riga.trim());
+  /*  E il nome dev'essere lo STESSO che legge il codice: due nomi diversi non
+      danno errore, danno un interruttore che non accende niente.  */
+  deve(/process\.env\.GROUPAMA_RIENTRO_AUTO/.test(src),
+    'il codice non legge piu\' questa variabile: l\'interruttore e\' rimasto appeso al nulla');
+});
+
 const ko = esiti.filter(e => !e[0]);
 console.log('\n── Groupama · una volta dentro, si resta dentro ────────────');
 for (const [ok, n, d] of esiti) console.log((ok ? '  ✅ ' : '  ❌ ') + n + (d ? ' — ' + d : ''));

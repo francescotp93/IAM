@@ -7921,13 +7921,89 @@ const avvio = async () => {
           esito: document.getElementById('flu-esito').innerHTML
         };
       }, campione);
-      deve(/rate a Neri Anna/.test(r.anteprima), 'l\'anteprima non dice a chi andranno: ' + (r.anteprima.match(/codice da decidere/) ? 'dice «da decidere»' : '—'));
+      /* La regola, non la parola: l'anteprima deve dire a CHI andranno quelle
+         rate. Prima lo diceva con un'etichetta, dal 19/09 con la tendina
+         dell'abbinamento, che mostra selezionata la persona decisa. */
+      /* `selected=""` e non `selected`: il browser normalizza l'attributo
+         quando si rilegge `innerHTML`, e una prova che cerca la forma scritta
+         a mano dichiara rotto un codice giusto. */
+      deve(/<option value="99999999-9999-4999-8999-999999999999" selected(="")?>Neri Anna<\/option>/.test(r.anteprima),
+           'l\'anteprima non dice a chi andranno le rate di quel codice');
       deve(r.tit.length === 3, 'rate scritte: ' + r.tit.length);
       deve(r.tit.every(t => t.collaboratore_id === '99999999-9999-4999-8999-999999999999'),
            'una rata è nata senza padrone: ' + JSON.stringify(r.tit.map(t => t.collaboratore_id)));
       deve(r.reg[0].conteggi.titoli_assegnati === 3, 'il verbale non conta le assegnate: ' + JSON.stringify(r.reg[0].conteggi));
       deve(/già assegnat/.test(r.esito), 'l\'esito non dice quante sono nate già di qualcuno');
       return '3 rate su 3 nate di Neri Anna, e il verbale lo scrive';
+    });
+
+    await prova('flusso: il codice produttore si abbina da qui, e le evidenze non si perdono', async () => {
+      /* «Dammi la possibilità a me di abbinare il codice produttore
+         all'intermediario» — Francesco, 19/09/2026. La tendina sta dove il
+         codice si legge, non in un'altra schermata. */
+      const r = await page.evaluate(async (campione) => {
+        const C9 = '99999999-9999-4999-8999-999999999999';
+        currentUser = { id: 'u-admin', role: 'admin', name: 'Capo' };
+        window.TIT_COLLAB = [{ id: C9, nome: 'Anna', cognome: 'Neri', rui_numero: 'E000111111' }];
+        window.TIT_COLLAB_NOMI = {}; window.TIT_COLLAB_NOMI[C9] = 'Neri Anna';
+        /* Il codice NON è deciso, ma la riga porta già le evidenze che il flusso
+           di ieri aveva annotato: sono quelle che devono sopravvivere. */
+        window.__COLLAUDO.risposte['quote_codici_collaboratore:lista'] = { error: null, data: [
+          { compagnia: 'COMPAGNIA_DI_PROVA', codice: 'U90001', collaboratore_id: null, nessuno: false,
+            deciso: false, nome_flusso: 'STUDIO DI PROVA S.R.L.', email_flusso: 'studio@esempio.it',
+            rui_flusso: 'E000111111', produttore_flusso: 'P-7788' },
+          /* U90003 in REC101 non ha email: quella che c'è in tabella è l'unica,
+             e deve sopravvivere all'abbinamento. */
+          { compagnia: 'COMPAGNIA_DI_PROVA', codice: 'U90003', collaboratore_id: null, nessuno: false,
+            deciso: false, email_flusso: 'terzo@esempio.it' }
+        ] };
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        const files = Object.keys(campione).map(n => new File([campione[n]], n, { type: 'text/csv' }));
+        await fluScelto(files);
+        const prima = document.getElementById('flu-esito').innerHTML;
+        window.__COLLAUDO.db = [];
+        await window.fluAbbina('COMPAGNIA_DI_PROVA|U90001', C9);
+        await window.fluAbbina('COMPAGNIA_DI_PROVA|U90003', '__nessuno__');
+        const ops = window.__COLLAUDO.db;
+        return {
+          prima,
+          dopo: document.getElementById('flu-esito').innerHTML,
+          dec: ops.filter(x => x.tabella === 'quote_codici_collaboratore' && x.operazione === 'upsert').map(x => x.payload),
+          log: ops.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload)
+        };
+      }, campione);
+      /* Le evidenze servono a riconoscerlo PRIMA di abbinarlo. */
+      deve(/P-7788/.test(r.prima), 'il codice produttore non si vede nell\'anteprima');
+      deve(/E000111111/.test(r.prima), 'il RUI non si vede: è il numero che dice chi è');
+      deve(/Sembra <b>Neri Anna<\/b>/.test(r.prima) && /per il RUI/.test(r.prima),
+           'la proposta dal RUI non compare, o non dice da dove viene');
+      /* Un solo upsert, firmato, e con le evidenze ancora dentro. */
+      deve(r.dec.length === 2, 'decisioni scritte: ' + r.dec.length);
+      const d = Array.isArray(r.dec[0]) ? r.dec[0][0] : r.dec[0];
+      deve(d.deciso === true && d.deciso_da === 'u-admin', 'la decisione: ' + JSON.stringify(d));
+      deve(d.collaboratore_id === '99999999-9999-4999-8999-999999999999', 'abbinato a ' + d.collaboratore_id);
+      /* Un upsert riscrive la RIGA INTERA: se non si ripassano, nome, email,
+         RUI e codice produttore tornano vuoti e il codice ridiventa una sigla.
+         Dove il flusso che si sta guardando ha un valore, vince lui — è più
+         recente di quello che la tabella si portava dietro. */
+      deve(d.nome_flusso === 'STUDIO DI PROVA S.R.L.' && d.rui_flusso === 'E000111111'
+           && d.produttore_flusso === 'P-7788' && d.email_flusso === 'collab1@esempio.test',
+           'l\'abbinamento ha cancellato o invecchiato le evidenze: ' + JSON.stringify(d));
+      /* E dove il flusso NON ha niente, quello che c'era resta. */
+      const d3 = Array.isArray(r.dec[1]) ? r.dec[1][0] : r.dec[1];
+      deve(d3.codice === 'U90003' && d3.nessuno === true && d3.deciso === true, 'la seconda decisione: ' + JSON.stringify(d3));
+      deve(d3.email_flusso === 'terzo@esempio.it',
+           'l\'email che il flusso non porta è stata cancellata: ' + JSON.stringify(d3));
+      deve(d3.produttore_flusso === 'P-9900', 'il codice produttore di chi non ha prodotto si perde: ' + JSON.stringify(d3));
+      deve(r.log.length === 2 && r.log[0].entita_id === '99999999-9999-4999-8999-999999999999',
+           'il movimento: ' + JSON.stringify(r.log));
+      /* «Nessuno» è una decisione e non punta a una persona: il registro
+         scrive il fatto e lascia vuoto il puntatore invece di inventarlo. */
+      deve(r.log[1].entita_id === null, 'un movimento «nessuno» punta a qualcuno: ' + JSON.stringify(r.log[1]));
+      deve(/selected(="")?>Neri Anna/.test(r.dopo), 'l\'anteprima non si aggiorna dopo l\'abbinamento');
+      return 'proposta dal RUI, 1 upsert firmato, evidenze intatte, anteprima aggiornata';
     });
 
     await prova('flusso: un codice NON deciso non attribuisce niente a nessuno', async () => {
@@ -7956,7 +8032,12 @@ const avvio = async () => {
         const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
         return { anteprima, tit: ins.filter(x => x.tabella === 'quote_titoli').map(x => x.payload) };
       }, campione);
-      deve(/codice da decidere/.test(r.anteprima), 'l\'anteprima non segnala il codice da decidere');
+      /* E dove non è deciso la tendina resta sul vuoto: è l'invito ad
+         abbinare, ed è il motivo per cui la tendina sta qui e non solo nel
+         pannello dei Titoli — il codice si legge in questa schermata. */
+      deve(/onchange="fluAbbina\(/.test(r.anteprima), 'non si può abbinare da qui: la tendina non c\'è');
+      deve(/<option value="">— da abbinare —<\/option>\s*<option value="__nessuno__">/.test(r.anteprima),
+           'la tendina non è sul vuoto su un codice non deciso');
       deve(r.tit.length && r.tit.every(t => !t.collaboratore_id),
            'una rata è stata attribuita senza decisione: ' + JSON.stringify(r.tit.map(t => t.collaboratore_id)));
       return r.tit.length + ' rate, nessuna attribuita';

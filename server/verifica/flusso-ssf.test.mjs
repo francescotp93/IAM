@@ -311,6 +311,21 @@ prova('l\'email del collaboratore arriva, ed e\' l\'unico ponte verso le persone
   return A.collaboratori.length + ' collaboratori, ' + A.collaboratori.filter(x => x.email).length + ' con email';
 });
 
+prova('il codice produttore e il RUI arrivano, e sono due cose diverse dal codice delle polizze', () => {
+  /* 19/09/2026. `ID_ANAGRAFICA_EXP` è la chiave con cui le POLIZZE nominano il
+     collaboratore; `CODICE_PRODUTTORE` è come lo chiama la compagnia; `COD_RUI`
+     è il numero con cui è iscritto al registro, cioè l'unico dei tre che dice
+     CHI È e non come lo si chiama. Tenerne uno solo vuol dire non riconoscerlo
+     più, o abbinarlo con l'evidenza più debole che c'è. */
+  const c = A.collaboratori.find(x => x.codice === 'U90001');
+  deve(c.produttore === 'P-7788', 'il codice produttore si perde: ' + c.produttore);
+  deve(c.rui === 'E000111111', 'il RUI si perde: ' + c.rui);
+  deve(c.codice !== c.produttore, 'il campione non distingue più i due codici: la prova non misura niente');
+  const senzaRui = A.collaboratori.find(x => x.codice === 'U90003');
+  deve(senzaRui.produttore === 'P-9900' && !senzaRui.rui, 'chi non ha il RUI: ' + JSON.stringify(senzaRui.rui));
+  return 'U90001 per le polizze, P-7788 per la compagnia, E000111111 al registro';
+});
+
 prova('si sa chi ha prodotto che cosa, e non si aggancia nessuno da solo', () => {
   const c = A.collaboratori.find(x => x.codice === 'U90001');
   deve(c.polizze === 2, 'titoli attribuiti: ' + c.polizze + ' (attesi 2)');

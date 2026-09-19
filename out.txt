@@ -1,18 +1,39 @@
-id: 1789830593  exit: 0  2026-09-19 15:10:26
+id: ancora-1789834479  exit: 0  2026-09-19 16:15:42
 ----
-== commit del clone che Caddy serve ==
-755fc4c Anche la scheda in IAM propone quali codici sembrano suoi (#198)
+== ora
+2026-09-19 16:15:15 UTC
+== commit vivo
+3ff4f3e Brief IAM #01 · M1: dettaglio polizza e scheda cliente (#200)
+== stato groupama
+{"running":false,"step":"attesa_otp","since":1789830324145,"msg":"Codice non accettato — controlla e riprova, oppure invia un altro codice.","codice_chiesto_il":1789829814649}
 
-== i file di oggi ci sono? ==
-tariffe/motore/assegnazione.js         6491fd70
-tariffe/motore/registro.js             e530bb11
-iam/index.html                         86c8852e
-index.html (QUOTO)                     fe01465d
+== A. mail di Groupama nell'ultima ora, con l'orario
+  mail di Groupama nell'ultima ora: 11
+    15:25:02
+    15:30:03
+    15:34:46
+    15:39:17
+    15:44:16
+    15:49:16
+    15:54:17
+    15:59:17
+    16:04:16
+    16:09:16
+    16:13:43
+  altri messaggi nell'ultima ora: 0
 
-== il blocco dei codici compagnia e' nel documento servito? ==
-5
-2
+== B. giornale groupama, ultima ora
 
-== e come risponde Caddy dall'interno ==
-iam/                                308
-/nuovo-preventivo/tariffe/.../asseg  308
+== C. backend: vigilanza e posta, ultima ora
+[vigilanza-fonti] giro 8 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 9 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 10 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 2 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 3 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 4 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 5 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 6 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 7 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 8 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 1 · controllate 7 · cadute 0 · rientrate 0

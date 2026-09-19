@@ -1,16 +1,42 @@
-id: dep191-1789819497  exit: 0  2026-09-19 12:07:16
+id: grplogin-1789819977  exit: 0  2026-09-19 12:13:26
 ----
 == ora
-2026-09-19 12:05:15 UTC
+2026-09-19 12:13:25 UTC
 == commit vivo
-bf9db95 Da sloggati il keep-alive non apre più il portale Groupama (#191)
-== la guardia c'e' nel codice che gira?
-1
-== stato groupama
-active
-{"running":false,"step":"pronto","since":1789819541667,"msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_chiesto_il":0}
-== il suo giornale
+eadc25a Riacceso il rientro automatico di Groupama: adesso la catena si chiude (#192)
+== l'interruttore e' arrivato nel servizio che gira?
+GROUPAMA_RIENTRO_AUTO=1
+
+== stato groupama adesso
+{"running":false,"step":"loggato","since":1789819954463,"msg":"Login completato ✅","codice_chiesto_il":0}
+auth.json: 2026-09-19 12:12:34
+
+== giornale groupama, ultimi 30 minuti
+Sep 19 11:54:45 vps-d6443a46 start-service.sh[3489951]: 11:54:45 [groupama] SIGTERM: nessuna sessione viva, tengo la copia su disco
 Sep 19 12:05:37 vps-d6443a46 start-service.sh[3498074]: 12:05:37 [groupama] telecomando HTTP su 127.0.0.1:4500
 Sep 19 12:05:40 vps-d6443a46 start-service.sh[3498074]: 12:05:40 [groupama] sessione ripresa da auth.json: 20 cookie
 Sep 19 12:05:41 vps-d6443a46 start-service.sh[3498074]: 12:05:41 [groupama] la sessione salvata non e' piu' valida: serve un accesso con codice
 Sep 19 12:05:41 vps-d6443a46 start-service.sh[3498074]: 12:05:41 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+Sep 19 12:09:37 vps-d6443a46 start-service.sh[3498074]: 12:09:37 [groupama] sessione non attiva: il keep-alive si ferma. Non apro il portale da sloggato, perche' ogni affacciata fa spedire un codice all'agenzia. Riprende quando rifai l'accesso.
+Sep 19 12:10:40 vps-d6443a46 start-service.sh[3498074]: 12:10:40 [groupama] SIGTERM: nessuna sessione viva, tengo la copia su disco
+Sep 19 12:10:47 vps-d6443a46 start-service.sh[3499080]: 12:10:47 [groupama] telecomando HTTP su 127.0.0.1:4500
+Sep 19 12:10:49 vps-d6443a46 start-service.sh[3499080]: 12:10:49 [groupama] sessione ripresa da auth.json: 20 cookie
+Sep 19 12:10:50 vps-d6443a46 start-service.sh[3499080]: 12:10:50 [groupama] la sessione salvata non e' piu' valida: serve un accesso con codice
+Sep 19 12:10:50 vps-d6443a46 start-service.sh[3499080]: 12:10:50 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
+Sep 19 12:12:16 vps-d6443a46 start-service.sh[3499080]: 12:12:16 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
+Sep 19 12:12:31 vps-d6443a46 start-service.sh[3499080]: 12:12:31 [groupama] OTP inserito → valore nel campo: "006370" OK
+Sep 19 12:12:34 vps-d6443a46 start-service.sh[3499080]: 12:12:34 [groupama] sessione salvata su disco (login riuscito)
+
+== backend: vigilanza e posta, ultimi 30 minuti
+[vigilanza-fonti] giro 4 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 5 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 6 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 7 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 8 · controllate 7 · cadute 0 · rientrate 0
+[vigilanza-fonti] giro 9 · controllate 7 · cadute 0 · rientrate 0
+2026-09-19T12:12:15.421Z OPTIONS /fonti/c-groupama/accedi 204 1ms u:-
+2026-09-19T12:12:15.498Z POST   /fonti/c-groupama/accedi 200 413ms u:a5ab0cd0
+2026-09-19T12:12:19.017Z OPTIONS /fonti/c-groupama/loginstate 204 2ms u:-
+2026-09-19T12:12:19.105Z GET    /fonti/c-groupama/loginstate 200 8ms u:a5ab0cd0
+2026-09-19T12:12:31.539Z OPTIONS /fonti/c-groupama/conferma-codice 204 1ms u:-
+2026-09-19T12:12:31.609Z POST   /fonti/c-groupama/conferma-codice 200 2857ms u:a5ab0cd0

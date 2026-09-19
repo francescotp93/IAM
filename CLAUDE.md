@@ -1611,3 +1611,122 @@ una inventata avrebbe prodotto puntatori che non aprono niente.
 riquadro diventano due riquadri che un giorno diranno cose diverse. `esc` arriva
 da chi chiama — è l'unica cosa che il motore non può avere. QUOTO è stato
 riportato sulla stessa funzione: prima se lo disegnava da sé.
+
+---
+
+## 19. Di chi sono le rate del pregresso (19/09/2026)
+
+`quote_titoli.collaboratore_id` esiste dal 18/09 e nasceva vuota. Finché resta
+vuota l'estratto conto di ognuno è vuoto e il riepilogo d'agenzia ha una riga
+sola: il lavoro del 18/09 c'era tutto e non serviva a nessuno.
+
+### La misura che ha deciso il lavoro
+
+Presa sul database vero **prima** di scrivere una riga di codice:
+
+| | |
+|---|---|
+| rate | **55**, di cui **0** assegnate |
+| polizze con un codice collaboratore | **25 su 30**, **11 codici** distinti, tutti di PRIMA |
+| `creato_da` sulle 55 rate | **un solo utente** — anche sulle 38 che non vengono dal flusso |
+| nome ed email di quei codici | **non sono nel database** (`collaboratori: []` nel verbale, nessuna `collaboratore_email` sulle polizze) |
+
+Da cui la conclusione, che non è un'opinione: **non esiste in questo sistema un
+dato che dica chi è `U25274`.** Assegnare in automatico vorrebbe dire inventare
+(§8.1), e una provvigione inventata è pagata a chi non doveva.
+
+### Indovinare e applicare una decisione non sono la stessa cosa
+
+Il codice della compagnia è **stabile**: `U25274` sarà `U25274` anche nel flusso
+di stanotte e in quello fra un anno. Quindi la domanda «chi è U25274» si fa
+**una volta sola**, la risposta si scrive, ed è firmata.
+
+Dal risultato le due cose si somigliano — delle rate cambiano padrone senza che
+nessuno le tocchi una per una — e nella sostanza sono opposte: una la può
+smentire chiunque, l'altra ha un nome e una data. È la stessa distinzione del
+registro unico delle persone (§10), dove l'aggancio per codice fiscale si fa e
+quello per somiglianza no.
+
+| pezzo | dove |
+|---|---|
+| tutte le regole | `tariffe/motore/assegnazione.js` |
+| prove in Node | `server/verifica/assegnazione.test.mjs` — 19 |
+| la tabella delle decisioni | `supabase/migrations/20260919_codici_collaboratore.sql` (applicata) |
+| il pannello | blocco `asg*` in `index.html`, dalla pagina Titoli |
+| il flusso che applica da sé | `fluChiDi` e `fluConferma` in `index.html` |
+| prove nella pagina | blocchi «assegnazione» e «flusso» in `ui-test.mjs` — 7 |
+
+### Le cinque regole, e perché ognuna esiste
+
+1. **Niente decisione, niente assegnazione.** Nessun ripiego, nessun «quello che
+   ha più polizze». Non deciso vuol dire non deciso.
+2. **Non si sovrascrive quello che c'è.** Chi ha assegnato a mano sapeva
+   qualcosa che il codice non sa — un subentro, una polizza che ha cambiato
+   mano — e un'applicazione in blocco che glielo cancella è lavoro perso che
+   nessuno si accorge di aver perso. `sovrascrivi` esiste, ed è una scelta
+   esplicita che si conta a parte.
+3. **La chiave è la coppia compagnia+codice.** Due compagnie possono usare lo
+   stesso codice per due persone: su una chiave a codice solo la seconda
+   decisione mangerebbe la prima, in silenzio.
+4. **«Nessuno» è una decisione** (la produzione diretta dell'agenzia) e non
+   torna più a chiedere. Confonderla con «non deciso» vorrebbe dire riproporre
+   ogni volta le stesse righe, e chi rivede sempre le stesse righe smette di
+   guardarle.
+5. **L'email aggancia solo se è una.** Un indirizzo che tocca una sola persona
+   diventa una **proposta**; due persone con lo stesso indirizzo non producono
+   niente. Il nome non si guarda mai: «Rossi Mario» e «Mario Rossi» si
+   somigliano, e la somiglianza qui costa una provvigione.
+
+### Quattro stati, non due — e il quarto si è scoperto scrivendo il flusso
+
+`persona`, `nessuno`, `da-ridecidere` (deciso, ma quella persona è stata
+cancellata), `non-deciso`. La colonna `deciso` esiste per tenere separati gli
+ultimi due: l'importazione scrive nome, email e RUI accanto al codice **appena
+li trova**, perché servono a riconoscerlo la prima volta che lo si guarda, ma
+una riga di sole evidenze non è una decisione andata a vuoto. Senza quella
+colonna ogni codice mai guardato comparirebbe in rosso, **e un allarme che suona
+sempre non lo guarda più nessuno**.
+
+### La schermata serve a riconoscere il codice, non a leggerlo
+
+Nessuno si ricorda «U25274»; tutti si ricordano i clienti che ci stanno sotto.
+Ogni riga del pannello porta polizze, rate, premio, provvigione, periodo,
+prodotti e i primi nomi di clienti. In cima ci sono i codici con più rate ferme:
+una schermata che mette per primi quelli già a posto fa scorrere per niente.
+
+### Il giro si chiude sul flusso
+
+Decisa la persona una volta, `fluConferma` fa nascere le rate **già sue**;
+l'anteprima lo dice prima di scrivere (`rate a Neri Anna` / `codice da
+decidere`) e il verbale conta quante sono nate assegnate. Senza questo pezzo
+ogni notte tornerebbero rate da assegnare a mano — e a mano non le assegna
+nessuno: è il motivo per cui il lavoro del 18/09 era rimasto fermo.
+
+### Due cose trovate dalle prove, non dal ragionamento
+
+- **Il banco non vedeva due scritture su tre.** `in()` e `upsert()` erano
+  *passanti* nel finto database di `ui-test.mjs`: una prova che guardava «quali
+  righe stai spostando» o «che cosa stai salvando» leggeva sempre niente e
+  restava verde qualunque cosa facesse il codice. È lo stesso difetto già
+  corretto il 18/09 sui filtri di `update` (§13), un metodo più in là.
+- **Una controprova che non era una controprova, di nuovo** (§15, §17, §18).
+  Tolto dal flusso il controllo «è stato deciso?» e lasciato «c'è un
+  collaboratore?», tutto restava verde: il banco provava solo il caso «nessuna
+  riga», dove i due lettori si comportano uguale. La controprova vera ha avuto
+  bisogno di un banco più cattivo — **una riga non decisa che porta già un
+  collaboratore**, com'è dopo che l'importazione ha annotato le evidenze — e
+  allora la prova diventa rossa.
+
+### Cosa resta aperto
+
+- **Gli undici codici sono ancora tutti da decidere**, ed è il punto: il sistema
+  ha finito il suo lavoro quando ha chiesto. Finché nessuno risponde, le 55 rate
+  restano non assegnate — e questa volta si vede dove, con quanto, e a chi
+  chiedere.
+- **Le 38 rate su polizze nate in QUOTO non hanno un codice** e non si possono
+  attribuire a chi ha importato. Si assegnano a mano dalla pagina Titoli, che ha
+  già la selezione multipla; il pannello lo dice invece di fingere di saperlo.
+- **Il nome e l'email dei codici arriveranno col prossimo flusso**: nel verbale
+  del 18/09 `collaboratori` era `[]`. Da quel momento il pannello mostrerà anche
+  come si chiamano, e `proposteDaFlusso` potrà proporre gli abbinamenti per
+  indirizzo — proporre, non decidere.

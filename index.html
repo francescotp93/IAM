@@ -68,6 +68,7 @@
 <script src="tariffe/motore/flusso-ssf.js?v=20260918"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260918"></script>
 <script src="tariffe/motore/registro.js?v=20260919"></script>
+<script src="tariffe/motore/assegnazione.js?v=20260919"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -875,6 +876,15 @@ button{font-family:inherit}
   font-size:12.5px;margin-bottom:12px;border:1px solid}
 .pdoc-esito.ok{background:#eaf7f0;border-color:#b9e3cb;color:#016b38}
 .pdoc-esito.ko{background:#fdeede;border-color:#f2d6b8;color:#8a4b00}
+/* Assegna il pregresso. La nota in cima non è decorazione: dice perché la
+   schermata chiede una cosa invece di farla da sé, e senza quella frase la
+   domanda «perché devo dirglielo io?» resta senza risposta. */
+.asg-nota{background:var(--bg);border:1px solid var(--line);border-radius:4px;
+  padding:10px 12px;font-size:12.5px;line-height:1.5;margin-bottom:12px}
+.asg-t td{vertical-align:top}
+.asg-t select{max-width:210px}
+.asg-piede{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-top:14px}
 .pdoc-r{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   padding:10px 0;border-bottom:1px solid var(--line2)}
 .pdoc-r-l{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
@@ -2730,6 +2740,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             <select id="tit-compagnia" onchange="titRender()"><option value="">Tutte</option></select></div>
           <div class="pf-f pf-f-az"><button class="pf-reset" onclick="titAzzera()">Azzera</button></div>
         </div>
+        <!-- Assegnare una rata alla volta un portafoglio arrivato dalla
+             compagnia non lo fa nessuno: qui si decide una volta per CODICE, e
+             la decisione vale anche per il flusso di stanotte. -->
+        <button class="pf-exp" onclick="asgApri()"><i class="ti ti-users-group"></i> Assegna il pregresso</button>
         <button class="pf-exp" onclick="titExportExcel()"><i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
       </div>
 
@@ -15818,6 +15832,251 @@ async function titAssegnaSelezionati() {
   } catch (e) { alert('Non riesco ad assegnare: ' + (e.message || e)); }
 }
 
+/* ══ ASSEGNA IL PREGRESSO (19/09/2026) ═══════════════════════════════════════
+   Il problema misurato: 55 rate, 0 assegnate, e `creato_da` su tutte e 55 è
+   UN SOLO utente. Non c'è nel database un dato che dica chi è «U25274»:
+   assegnarle a occhio vorrebbe dire pagare una provvigione a chi non doveva.
+
+   Quello che si fa invece è chiedere UNA volta per codice. Il codice della
+   compagnia è stabile, quindi la risposta vale per il pregresso e per il flusso
+   di stanotte: la decisione si scrive in `quote_codici_collaboratore`, firmata,
+   e da lì in poi la applica il motore (`tariffe/motore/assegnazione.js`).
+
+   La schermata serve a RICONOSCERE il codice: nessuno si ricorda «U25274», ma
+   tutti si ricordano i clienti che ci stanno sotto. Per questo ogni riga porta
+   polizze, rate, premio, periodo e i primi nomi di clienti.
+
+   Le variabili di stato sono `var` e non `let`, come in `ecp*`: con `let` la
+   variabile del modulo e `window.X` sono due cose diverse, e una prova che
+   inietta dati finti scriverebbe in una mentre il codice legge l'altra. */
+var ASG_POLIZZE = [];      // le polizze con il loro `dati.ssf`
+var ASG_TITOLI = [];       // tutte le rate visibili
+var ASG_MAPPA = {};        // chiave «COMPAGNIA|CODICE» → riga di decisione
+var ASG_SCELTE = {};       // quello che si sta per decidere, non ancora salvato
+
+function asgPuoDecidere() {
+  return (typeof convAdmin === 'function') ? convAdmin() : !!(currentUser && currentUser.role === 'admin');
+}
+
+async function asgApri() {
+  document.getElementById('asg-ov')?.remove();
+  document.body.insertAdjacentHTML('beforeend',
+    `<div id="asg-ov" class="pdoc-ov" onclick="if(event.target.id==='asg-ov')this.remove()">
+      <div class="pdoc-box">
+        <div class="pdoc-hd">
+          <div><b>Assegna il pregresso</b>
+            <div class="pdoc-sub">Un codice della compagnia è una persona — ma lo dici tu, una volta sola</div></div>
+          <button class="pdoc-x" onclick="document.getElementById('asg-ov').remove()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="pdoc-bd" id="asg-bd"><div class="empty-state">Carico…</div></div>
+      </div></div>`);
+  try {
+    await asgCarica();
+    asgRender();
+  } catch (e) {
+    const bd = document.getElementById('asg-bd');
+    if (bd) bd.innerHTML = `<div class="empty-state">Non riesco a leggere i codici.<br>
+      <small>${esc(e.message || e)}</small><br>
+      <small>Non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerli.</small></div>`;
+  }
+}
+
+/* Le polizze si rileggono qui con `dati` dentro, che `loadTitoli` non carica:
+   il codice collaboratore sta lì. È un peso che si paga solo aprendo questo
+   pannello, non a ogni apertura della pagina Titoli. */
+async function asgCarica() {
+  ASG_SCELTE = {};
+  let qp = db.from('quote_polizze').select('id,cliente,compagnia,prodotto,data_effetto,dati').limit(2000);
+  const ids = await visibleUserIds();
+  if (ids) qp = qp.in('creato_da', ids);
+  const { data: pol, error: errP } = await qp;
+  if (errP) throw errP;
+  ASG_POLIZZE = pol || [];
+
+  const perId = {};
+  ASG_POLIZZE.forEach(p => { perId[p.id] = p; });
+  const { data: tit, error: errT } = await db.from('quote_titoli').select('id,polizza_id,collaboratore_id,importo_lordo,provvigione').limit(5000);
+  if (errT) throw errT;
+  ASG_TITOLI = (tit || []).filter(t => perId[t.polizza_id]);
+
+  const { data: cod, error: errC } = await db.from('quote_codici_collaboratore').select('*');
+  if (errC) throw errC;
+  ASG_MAPPA = Assegnazione.mappa(cod || []);
+
+  await caricaCollaboratori();
+}
+
+function asgRender() {
+  const bd = document.getElementById('asg-bd');
+  if (!bd) return;
+  const righe = Assegnazione.riepilogo(ASG_POLIZZE, ASG_TITOLI, ASG_MAPPA);
+  const piano = Assegnazione.piano(ASG_TITOLI, ASG_POLIZZE, asgMappaConScelte());
+  const senzaCodice = piano.saltate.filter(s => s.motivo === 'senza-codice').length;
+  const puo = asgPuoDecidere();
+
+  if (!righe.length) {
+    bd.innerHTML = `<div class="empty-state">Nessuna polizza porta un codice collaboratore.<br>
+      <small>I codici arrivano con il flusso della compagnia: finché non se ne importa uno, qui non c'è niente da decidere.</small></div>`;
+    return;
+  }
+
+  bd.innerHTML = `
+    <div class="asg-nota">
+      Il flusso non dice chi è <b>U25274</b>: dice solo che quelle polizze sono sue. Riconoscilo dai clienti
+      qui sotto e scegli la persona: la decisione vale per queste rate <b>e per tutte quelle che arriveranno</b>,
+      perché il codice della compagnia non cambia.
+    </div>
+
+    <table class="storico-table asg-t">
+      <thead><tr>
+        <th>Codice</th><th>Di che cosa è fatto</th><th class="soldi">Rate</th><th>Chi è</th>
+      </tr></thead>
+      <tbody>${righe.map(r => asgRiga(r, puo)).join('')}</tbody>
+    </table>
+
+    ${senzaCodice ? `<div class="asg-nota">
+      <b>${senzaCodice} rat${senzaCodice === 1 ? 'a' : 'e'}</b> stanno su polizze che non vengono da un flusso:
+      non portano nessun codice, e non si attribuiscono a chi ha fatto l'importazione.
+      Quelle si assegnano a mano, con la selezione multipla della pagina Titoli.
+    </div>` : ''}
+
+    <div class="asg-piede">
+      <div id="asg-esito"></div>
+      ${puo
+        ? `<button class="pf-exp" onclick="asgApplica()"><i class="ti ti-user-check"></i>
+             Salva le decisioni e assegna <span id="asg-quante">${piano.assegna.length ? '· ' + piano.assegna.length + ' rate' : ''}</span></button>`
+        : `<div class="cl-sub">Chi decide a chi vanno le provvigioni è un amministratore: qui puoi guardare, non cambiare.</div>`}
+    </div>`;
+}
+
+function asgRiga(r, puo) {
+  const scelta = ASG_SCELTE.hasOwnProperty(r.chiave)
+    ? ASG_SCELTE[r.chiave]
+    : (r.stato === 'persona' ? r.collaboratore_id : (r.stato === 'nessuno' ? '__nessuno__' : ''));
+  const evidenze = [
+    r.polizze + ' polizz' + (r.polizze === 1 ? 'a' : 'e'),
+    r.prodotti.slice(0, 3).join(', '),
+    r.dal ? (pfData(r.dal) + (r.al && r.al !== r.dal ? ' → ' + pfData(r.al) : '')) : ''
+  ].filter(Boolean).join(' · ');
+
+  return `<tr>
+    <td><b>${esc(r.codice)}</b><div class="cl-sub">${esc(r.compagnia)}</div>
+      ${r.decisione && r.decisione.nome_flusso ? `<div class="cl-sub">${esc(r.decisione.nome_flusso)}</div>` : ''}
+      ${r.stato === 'da-ridecidere' ? '<div class="tk-badge st-aperto">da ridecidere</div>' : ''}</td>
+    <td><div>${esc(evidenze)}</div>
+      <div class="cl-sub">${esc(r.clienti.join(' · ')) || 'nessun cliente sulle polizze'}</div></td>
+    <td class="soldi">${r.titoliDaAssegnare}
+      ${r.titoliAssegnati ? `<div class="cl-sub">${r.titoliAssegnati} già assegnate</div>` : ''}
+      <div class="cl-sub">${pfEuro(r.provvigione)} provv.</div></td>
+    <td>${puo
+      ? `<select onchange="asgScegli('${esc(r.chiave)}', this.value)"${r.titoliDaAssegnare || r.titoliAssegnati ? '' : ''}>
+           <option value="">— da decidere —</option>
+           <option value="__nessuno__"${scelta === '__nessuno__' ? ' selected' : ''}>Nessuno (agenzia)</option>
+           ${TIT_COLLAB.map(c => `<option value="${esc(c.id)}"${c.id === scelta ? ' selected' : ''}>${esc(collabNome(c))}</option>`).join('')}
+         </select>`
+      : `<b>${scelta === '__nessuno__' ? 'Nessuno (agenzia)' : (TIT_COLLAB_NOMI[scelta] || '— da decidere —')}</b>`}</td>
+  </tr>`;
+}
+
+/* La mappa «come sarebbe se salvassi adesso»: serve all'anteprima, che deve
+   dire quante rate si muovono PRIMA di muoverle. Il piano si guarda prima di
+   scrivere, come per l'importazione del flusso. */
+function asgMappaConScelte() {
+  const m = Object.assign({}, ASG_MAPPA);
+  Object.keys(ASG_SCELTE).forEach(k => {
+    const v = ASG_SCELTE[k];
+    if (!v) { delete m[k]; return; }
+    const [compagnia, codice] = k.split('|');
+    /* `deciso: true` non è un dettaglio: senza, il motore legge questa riga
+       come «non ancora deciso» e l'anteprima direbbe zero rate mentre l'utente
+       sta guardando una scelta appena fatta. */
+    m[k] = { compagnia, codice,
+      collaboratore_id: v === '__nessuno__' ? null : v,
+      nessuno: v === '__nessuno__', deciso: true };
+  });
+  return m;
+}
+
+function asgScegli(chiave, valore) {
+  ASG_SCELTE[chiave] = valore;
+  const piano = Assegnazione.piano(ASG_TITOLI, ASG_POLIZZE, asgMappaConScelte());
+  const q = document.getElementById('asg-quante');
+  if (q) q.textContent = piano.assegna.length ? '· ' + piano.assegna.length + ' rate' : '';
+}
+
+async function asgApplica() {
+  const esito = document.getElementById('asg-esito');
+  const mappa = asgMappaConScelte();
+  const piano = Assegnazione.piano(ASG_TITOLI, ASG_POLIZZE, mappa);
+
+  /* Le decisioni cambiate, non tutte: riscrivere una riga identica rifarebbe
+     la firma e la data di una decisione che nessuno ha ripreso in mano. */
+  const nuove = Object.keys(ASG_SCELTE).filter(k => {
+    const v = ASG_SCELTE[k], vecchia = ASG_MAPPA[k];
+    const ora = v === '__nessuno__' ? '__nessuno__' : (v || '');
+    const prima = vecchia ? (vecchia.collaboratore_id || (vecchia.nessuno ? '__nessuno__' : '')) : '';
+    return ora !== prima;
+  });
+  if (!nuove.length && !piano.assegna.length) { if (esito) esito.textContent = 'Non c\'è niente da salvare.'; return; }
+
+  const quante = piano.assegna.length;
+  if (!confirm(`Salvare ${nuove.length} decision${nuove.length === 1 ? 'e' : 'i'} e assegnare ${quante} rat${quante === 1 ? 'a' : 'e'}?`)) return;
+
+  try {
+    if (nuove.length) {
+      const righe = nuove.map(k => {
+        const [compagnia, codice] = k.split('|');
+        const v = ASG_SCELTE[k];
+        const vuota = !v;
+        return { compagnia, codice,
+          collaboratore_id: v === '__nessuno__' ? null : (v || null),
+          nessuno: v === '__nessuno__',
+          /* `deciso` è quello che distingue una decisione da una riga di sole
+             evidenze. Rimettere una scelta su «da decidere» la spegne invece di
+             cancellare la riga: nome ed email che il flusso ha portato servono
+             a riconoscere quel codice la prossima volta, e buttarli via
+             vorrebbe dire rifare da capo lo stesso riconoscimento. */
+          deciso: !vuota,
+          deciso_da: vuota ? null : (currentUser?.id || null),
+          deciso_il: new Date().toISOString() };
+      });
+      const { error } = await db.from('quote_codici_collaboratore').upsert(righe, { onConflict: 'compagnia,codice' });
+      if (error) throw error;
+    }
+
+    /* Le rate, raggruppate per persona: un `update ... in (...)` per ognuna,
+       non una chiamata per rata. */
+    const perPersona = {};
+    piano.assegna.forEach(a => { (perPersona[a.collaboratore_id] = perPersona[a.collaboratore_id] || []).push(a.id); });
+    for (const chi of Object.keys(perPersona)) {
+      const ids = perPersona[chi];
+      for (let i = 0; i < ids.length; i += 200) {
+        const { error } = await db.from('quote_titoli')
+          .update({ collaboratore_id: chi }).in('id', ids.slice(i, i + 200));
+        if (error) throw error;
+      }
+      /* Un movimento per persona, non uno per rata: il registro deve dire che
+         cosa è successo, e «quarantadue righe uguali» non lo dice meglio di
+         una. L'identificativo è la persona, così il movimento si ritrova dalla
+         sua scheda. */
+      try {
+        logMovimento('Rate del pregresso assegnate · ' + ids.length, 'collaboratore',
+          Object.keys(ASG_SCELTE).filter(k => ASG_SCELTE[k] === chi).join(', '), chi);
+      } catch (e) {}
+    }
+
+    await asgCarica();
+    asgRender();
+    const bd = document.getElementById('asg-esito');
+    if (bd) bd.innerHTML = `<span class="pdoc-esito ok"><i class="ti ti-circle-check"></i>
+      ${quante} rat${quante === 1 ? 'a' : 'e'} assegnat${quante === 1 ? 'a' : 'e'}.</span>`;
+    if (typeof loadTitoli === 'function') await loadTitoli();
+  } catch (e) {
+    if (esito) esito.innerHTML = `<span class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i>
+      Non riesco a salvare: ${esc(e.message || e)}</span>`;
+  }
+}
+
 async function titIncassaUno(id) {
   TIT_SEL = new Set([id]);
   await titIncassaSelezionati();
@@ -17149,6 +17408,7 @@ async function cdocTogliRegola(id) {
    ha creato quattrocento anagrafiche doppie, sono già lì.
    ═══════════════════════════════════════════════════════════════════════════ */
 let FLU_PIANO = null;   // il piano visto a schermo, in attesa di conferma
+let FLU_CODICI = {};    // le decisioni già prese su chi è ogni codice collaboratore
 let FLU_NOMI = '';      // i file da cui è nato, per il registro
 
 function fluMotore() {
@@ -17220,6 +17480,14 @@ async function fluScelto(files) {
 
   FLU_PIANO = M.piano(analisi, esistenti);
   FLU_PIANO._ignorati = raccolta.ignorati;
+  /* Le decisioni già prese sui codici, per dire nell'anteprima quante rate
+     nasceranno già di qualcuno. Si guarda prima di scrivere, come tutto il
+     resto di questa schermata. */
+  try {
+    const { data: cod } = await db.from('quote_codici_collaboratore').select('*');
+    FLU_CODICI = Assegnazione.mappa(cod || []);
+    await caricaCollaboratori();   // i nomi, per dire A CHI andranno
+  } catch (e) { FLU_CODICI = {}; }
   fluMostra();
 }
 
@@ -17321,14 +17589,22 @@ function fluMostra() {
           <b>${pfEuro(o.premio)}</b></div></div>`).join('')}` : ''}
     ${p.collaboratori.length ? `<div class="flu-sez">Chi ha prodotto — ${p.collaboratori.length} collaboratori · ${pfEuro(p.provvigioni)} di provvigioni</div>
       <div class="cl-sub" style="margin-bottom:8px">L'email è il ponte: i codici della compagnia («U25337») non li conosce nessuno.
-        Qui non si crea e non si aggancia niente — chi abbinare a chi lo decidi tu.</div>
-      ${p.collaboratori.map(c => `<div class="pdoc-r"><div class="pdoc-r-l">
+        Qui non si indovina niente: dove il codice è stato <b>deciso</b> una volta (Titoli › «Assegna il pregresso»)
+        le rate nascono già sue, dove non lo è restano da assegnare.</div>
+      ${p.collaboratori.map(c => {
+        const d = FLU_CODICI[Assegnazione.chiave(t.emittente, c.codice)];
+        const chi = Assegnazione.statoDecisione(d) === 'persona' ? (TIT_COLLAB_NOMI[d.collaboratore_id] || 'una persona') : null;
+        return `<div class="pdoc-r"><div class="pdoc-r-l">
           <b>${esc(c.nome || c.codice)}</b><span class="pdoc-opt">${esc(c.codice)}</span>
           <div class="cl-sub" style="flex-basis:100%">${c.email
             ? esc(c.email) + (c.riconosciuto ? ' · <b>già in agenzia</b>' : ' · non corrisponde a nessuna persona in agenzia')
             : '<span style="color:#c0392b">senza email: non si può abbinare a nessuno</span>'}${c.rui ? ' · RUI ' + esc(c.rui) : ''}</div></div>
-        <div class="pdoc-r-a">${c.polizze ? `<span class="tk-badge st-lav">${c.polizze} titol${c.polizze === 1 ? 'o' : 'i'}</span>` : ''}
-          ${c.provvigioni ? `<b>${pfEuro(c.provvigioni)}</b>` : '<span class="cl-sub">nessuna provvigione nel periodo</span>'}</div></div>`).join('')}` : ''}
+        <div class="pdoc-r-a">${chi
+            ? `<span class="tk-badge st-risolto">rate a ${esc(chi)}</span>`
+            : '<span class="tk-badge st-aperto">codice da decidere</span>'}
+          ${c.polizze ? `<span class="tk-badge st-lav">${c.polizze} titol${c.polizze === 1 ? 'o' : 'i'}</span>` : ''}
+          ${c.provvigioni ? `<b>${pfEuro(c.provvigioni)}</b>` : '<span class="cl-sub">nessuna provvigione nel periodo</span>'}</div></div>`;
+      }).join('')}` : ''}
     ${(p.titoli.ignoti || []).length ? `<div class="flu-sez">Rate che restano fuori — ${p.titoli.ignoti.length}</div>
       <div class="cl-sub" style="margin-bottom:8px">Il loro tipo non è nessuno dei tre che sappiamo tradurre, e un titolo è una riga di soldi:
         tradurne uno a occhio vuol dire mettere in contabilità un importo che nessuno ha dichiarato.
@@ -17360,6 +17636,17 @@ function fluMostra() {
    le rate (che vogliono `polizza_id`). Se si ferma in mezzo, quello che è
    stato scritto resta e il caricamento si rifà: la chiave di provenienza fa
    sì che il secondo giro salti quello che c'è già. */
+/* Di chi è una rata, secondo la decisione presa sul codice della sua polizza.
+   `null` quando il codice non c'è o non è stato deciso: non c'è un ripiego, e
+   non deve esserci (`tariffe/motore/assegnazione.js`, regola 1). */
+function fluChiDi(polizza, mappaCodici) {
+  if (!polizza) return null;
+  const c = Assegnazione.codiceDi(polizza);
+  if (!c) return null;
+  const d = mappaCodici[c.chiave];
+  return Assegnazione.statoDecisione(d) === 'persona' ? d.collaboratore_id : null;
+}
+
 async function fluConferma() {
   const p = FLU_PIANO;
   const box = document.getElementById('flu-esito');
@@ -17369,8 +17656,25 @@ async function fluConferma() {
     + ' polizze e ' + p.titoli.nuovi.length + ' rate.\n\nI clienti che ci sono già NON vengono toccati. Procedo?')) return;
   box.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="flu-attesa">Scrivo…</div>');
   const idPerChiave = Object.assign({}, p.clienti.idPerChiave);
-  const fatti = { clienti: 0, polizze: 0, titoli: 0, dedotte: 0 };
+  const fatti = { clienti: 0, polizze: 0, titoli: 0, dedotte: 0, assegnate: 0 };
   const mio = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : null;
+
+  /* Le decisioni già prese su chi è ogni codice collaboratore (§ «Assegna il
+     pregresso»). Si leggono PRIMA di scrivere le rate, così una rata nasce già
+     di qualcuno invece di essere assegnata a mano il giorno dopo.
+     Se la lettura non riesce non si ferma niente: le rate entrano senza
+     collaboratore, che è come entravano prima. Una decisione che non si è
+     potuta leggere non è una decisione diversa — è una decisione mancante. */
+  let mappaCodici = {};
+  try {
+    const { data: cod } = await db.from('quote_codici_collaboratore').select('*');
+    mappaCodici = Assegnazione.mappa(cod || []);
+  } catch (e) { mappaCodici = {}; }
+  /* Il codice sta sulla POLIZZA, la rata ha solo il riferimento: qui si ritrova
+     l'una dall'altra. Le polizze che c'erano già portano il loro codice come le
+     nuove — è lo stesso flusso che le descrive. */
+  const polPerFonte = {};
+  [].concat(p.polizze.nuove || [], p.polizze.gia || []).forEach(x => { polPerFonte[x._fonte_id] = x; });
 
   try {
     /* 1. I clienti nuovi. `fonte`/`fonte_id` dicono da dove arrivano; il
@@ -17429,12 +17733,40 @@ async function fluConferma() {
            compagnia non le ha mandate: una riga di contabilità che non si
            distingue da quelle vere è una riga di cui non ci si può fidare. */
         note: t.note || null,
-        fonte: 'ssf', fonte_id: t._fonte_id
+        fonte: 'ssf', fonte_id: t._fonte_id,
+        /* Di chi è. Non è una deduzione: è la decisione che una persona ha già
+           preso su quel codice, applicata. Dove il codice non è deciso la rata
+           nasce senza collaboratore e resta da assegnare, che è quello che
+           deve succedere. */
+        collaboratore_id: fluChiDi(polPerFonte[t._polizza], mappaCodici)
       };
       const { error } = await db.from('quote_titoli').insert(rec);
       if (error) throw error;
       fatti.titoli++;
+      if (rec.collaboratore_id) fatti.assegnate++;
       if (t._generato) fatti.dedotte++;
+    }
+
+    /* 3-bis. Le evidenze dei collaboratori del flusso: nome, email e RUI
+       accanto al loro codice. NON decidono niente (`deciso` resta falso) —
+       servono a chi dovrà riconoscere «U25337» la prima volta che lo guarda,
+       e senza di loro quel riconoscimento si rifà da capo a ogni flusso.
+       Si scrivono solo le righe che non hanno già una decisione: riscrivere
+       una riga decisa vorrebbe dire che un flusso può cambiare un'evidenza
+       sotto una decisione già presa. */
+    const evidenze = (p.collaboratori || [])
+      .filter(c => c.codice && (c.nome || c.email || c.rui))
+      .filter(c => !mappaCodici[Assegnazione.chiave(p.testata.emittente, c.codice)])
+      .map(c => ({
+        compagnia: String(p.testata.emittente || '').trim().toUpperCase(),
+        codice: String(c.codice).trim().toUpperCase(),
+        nome_flusso: c.nome || null, email_flusso: c.email || null, rui_flusso: c.rui || null,
+        deciso: false
+      }))
+      .filter(c => c.compagnia && c.codice);
+    if (evidenze.length) {
+      try { await db.from('quote_codici_collaboratore').upsert(evidenze, { onConflict: 'compagnia,codice' }); }
+      catch (e) {}   // sono evidenze: se non entrano, l'importazione non si ferma
     }
 
     /* 4. Il verbale. Si scrive alla fine e con i numeri VERI, non con quelli
@@ -17451,6 +17783,10 @@ async function fluConferma() {
         /* Quante di quelle rate le ha mandate la compagnia e quante le abbiamo
            dedotte noi: il verbale deve poterlo dire anche fra sei mesi. */
         titoli_dedotti: fatti.dedotte,
+        /* Quante sono nate già di qualcuno. Zero su un flusso pieno vuol dire
+           che nessun codice è stato deciso, ed è un'informazione utile a
+           distinguerlo da «nessuno ha prodotto niente». */
+        titoli_assegnati: fatti.assegnate,
         offerte: p.offerte.length, polizze_senza_cliente: p.polizze.senzaCliente.length
       },
       avvisi: p.avvisi, collaboratori: p.collaboratori, creato_nome: mio
@@ -17468,7 +17804,9 @@ async function fluConferma() {
   try { logMovimento('Portafoglio importato · ' + (p.testata.emittente || ''), 'documento', ''); } catch (e) {}
   FLU_PIANO = null;
   box.innerHTML = `<div class="pdoc-esito ok"><i class="ti ti-circle-check"></i>
-      Fatto: <b>${fatti.clienti}</b> client${fatti.clienti === 1 ? 'e' : 'i'}, <b>${fatti.polizze}</b> polizz${fatti.polizze === 1 ? 'a' : 'e'} e <b>${fatti.titoli}</b> rat${fatti.titoli === 1 ? 'a' : 'e'} in archivio.</div>`;
+      Fatto: <b>${fatti.clienti}</b> client${fatti.clienti === 1 ? 'e' : 'i'}, <b>${fatti.polizze}</b> polizz${fatti.polizze === 1 ? 'a' : 'e'} e <b>${fatti.titoli}</b> rat${fatti.titoli === 1 ? 'a' : 'e'} in archivio.
+      ${fatti.titoli ? `<br><small>${fatti.assegnate} rat${fatti.assegnate === 1 ? 'a è nata' : 'e sono nate'} già assegnat${fatti.assegnate === 1 ? 'a' : 'e'} dalle decisioni sui codici${
+        fatti.assegnate < fatti.titoli ? `; le altre ${fatti.titoli - fatti.assegnate} aspettano che si decida di chi è il loro codice (Titoli › «Assegna il pregresso»)` : ''}.</small>` : ''}</div>`;
   if (typeof loadPortafoglio === 'function') loadPortafoglio();
   await fluRegistro();
 }

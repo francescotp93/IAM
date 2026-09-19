@@ -4036,9 +4036,15 @@ async function cntCarica(forza) {
     cntRender();
   } catch (e) {
     /* «Non si è potuto leggere» non è «non ce ne sono» (§12, §18): un elenco
-       vuoto su un errore farebbe credere che l'agenzia non abbia conti. */
-    if (lista) lista.innerHTML = `<div class="cnt-err">Non riesco a leggere i conti.<br>
+       vuoto su un errore farebbe credere che l'agenzia non abbia conti.
+       L'avviso va in TUTTE E DUE le schede: le due letture partono insieme e
+       cadono insieme, e scriverlo solo nella prima lascerebbe chi sta guardando
+       le causali davanti a un «Carico le causali…» che non finisce mai. */
+    const avviso = `<div class="cnt-err">Non riesco a leggere conti e causali.<br>
       <small>${esc(e.message || e)} — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerli.</small></div>`;
+    if (lista) lista.innerHTML = avviso;
+    const lc = document.getElementById('cnt-causali');
+    if (lc) lc.innerHTML = avviso;
   }
 }
 

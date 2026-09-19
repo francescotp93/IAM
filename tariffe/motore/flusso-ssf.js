@@ -135,9 +135,27 @@
   /* Dal nome del file al tipo di record. Se il nome non è quello previsto si
      restituisce null e chi chiama lo dice: un file che non si riconosce non
      si indovina dal contenuto. */
+  /* I file si chiamano in due modi, e il secondo l'abbiamo scoperto il
+     19/09/2026 aprendo il flusso di Plurima:
+
+       V12 · `REC020_M_PRIMA_A2194_20260917040040_P.csv`
+       V8  · `SSF_20_polizze.csv`
+
+     Non è un dettaglio estetico: il lettore riconosceva solo il primo e si
+     fermava prima di cominciare — «il file vero non ha testata», che sembra un
+     archivio rotto e invece è un archivio che non abbiamo saputo aprire.
+
+     Nel secondo modo il numero non è a tre cifre: `0`, `10`, `20`, `100`.
+     Si riempie a sinistra con gli zeri, e `100` resta `100` — leggerlo come
+     «10» metterebbe il catalogo prodotti al posto delle anagrafiche. */
   function tipoDaNome(nome) {
-    var m = /(?:^|\/)REC(\d{3})[_.]/i.exec(String(nome || ''));
-    return m && RECORD[m[1]] ? m[1] : null;
+    var s = String(nome || '');
+    var m = /(?:^|\/)REC(\d{3})[_.]/i.exec(s);
+    if (m) return RECORD[m[1]] ? m[1] : null;
+    m = /(?:^|\/)SSF[_-](\d{1,3})[_.]/i.exec(s);
+    if (!m) return null;
+    var t = m[1].length === 3 ? m[1] : ('00' + m[1]).slice(-3);
+    return RECORD[t] ? t : null;
   }
 
   /* ══ 2. CONVERSIONI ═══════════════════════════════════════════════════════ */
@@ -245,10 +263,23 @@ function mezzoDa(codice) {
   function analizza(file) {
     var f = file || {};
     var avvisi = [];
-    var righe = {};
+    /* Si tiene anche l'INTESTAZIONE di ogni record, non solo le righe.
+       «La colonna non c'è nel tracciato» e «la colonna c'è ed è vuota» sono
+       due cose diverse, e su questa differenza si decide se una polizza entra
+       in portafoglio: leggere un campo assente come vuoto, il 19/09/2026,
+       avrebbe scartato tutte e venti le polizze di un flusso V8 chiamandole
+       offerte di rinnovo. È la stessa distinzione fra «non risponde» e «non
+       c'è niente» (CLAUDE.md §18). */
+    var righe = {}, colonne = {};
     Object.keys(RECORD).forEach(function (t) {
-      righe[t] = f[t] ? leggiCsv(f[t]).righe : [];
+      var c = f[t] ? leggiCsv(f[t]) : { intestazione: [], righe: [] };
+      righe[t] = c.righe;
+      colonne[t] = {};
+      (c.intestazione || []).forEach(function (x) { if (x) colonne[t][x] = true; });
     });
+    /* «Questo tracciato dichiara questa colonna?» — la domanda che le regole
+       fanno prima di fidarsi di un campo vuoto. */
+    function dichiara(t, campo) { return !!(colonne[t] && colonne[t][campo]); }
 
     if (!righe['020'].length) avvisi.push({ g: 'grave', t: 'Nel flusso non c\'è nessuna polizza (REC020): controlla di aver scelto l\'archivio giusto.' });
 
@@ -261,14 +292,29 @@ function mezzoDa(codice) {
       intermediario: testo(t0.INTERMEDIARIO_EXP)
     };
     if (!testata.emittente) avvisi.push({ g: 'grave', t: 'Manca la testata (REC000): non si sa quale compagnia ha mandato questo flusso.' });
-    if (testata.versione && !/V12/i.test(testata.versione)) {
-      avvisi.push({ g: 'avviso', t: 'Il tracciato dichiara «' + testata.versione + '»: questo lettore è stato scritto sulla V12. Controlla i numeri prima di confermare.' });
+    if (testata.versione && !/V\s*(12|8)\b/i.test(testata.versione)) {
+      avvisi.push({ g: 'avviso', t: 'Il tracciato dichiara «' + testata.versione + '»: questo lettore conosce la V12 e la V8. Controlla i numeri prima di confermare.' });
     }
 
-    /* ── Le anagrafiche: clienti da una parte, collaboratori dall'altra ──── */
+    /* ── Le anagrafiche: clienti da una parte, collaboratori dall'altra ────
+       Il discriminante non è sempre lo stesso. La V12 marca il collaboratore
+       sull'anagrafica (`FLAG_COLLABORATORE`); la V8 quella colonna non ce
+       l'ha, e allora collaboratore è chi compare fra i PRODUTTORI (REC101).
+       Senza questa seconda strada, un flusso V8 metterebbe la propria rete di
+       vendita nel portafoglio clienti — la regola 1, che su Prima toglie 17
+       righe su 37, sparirebbe in silenzio. */
+    var produttori = {};
+    righe['101'].forEach(function (r) {
+      var k = testo(r.ID_ANAGRAFICA_EXP);
+      if (k) produttori[k] = true;
+    });
+    var marcaCollab = dichiara('010', 'FLAG_COLLABORATORE');
     var clienti = [], collab = {};
     righe['010'].forEach(function (r) {
-      if (String(r.FLAG_COLLABORATORE || '').toUpperCase() === 'S') {
+      var eCollab = marcaCollab
+        ? String(r.FLAG_COLLABORATORE || '').toUpperCase() === 'S'
+        : !!produttori[testo(r.ID_ANAGRAFICA_EXP)];
+      if (eCollab) {
         var k = testo(r.ID_ANAGRAFICA_EXP);
         if (k) collab[k] = {
           codice: k,
@@ -303,8 +349,19 @@ function mezzoDa(codice) {
     clienti.forEach(function (c) { perCliente[c._chiave] = c; });
     var emailCollab = {};
     Object.keys(collab).forEach(function (k) { if (collab[k].email) emailCollab[k] = collab[k].email; });
+    /* Il codice produttore visto dall'anagrafica: serve alla V8, che sulla
+       polizza quella colonna non ce l'ha. Si prende dalla riga grezza, non dal
+       cliente già convertito, perché è un campo che al portafoglio non serve e
+       nella scheda del cliente non deve finire. */
+    var collabDiAnagrafica = {};
+    righe['010'].forEach(function (r) {
+      var k = testo(r.ID_ANAGRAFICA_EXP), c = testo(r.COLLABORATORE_1);
+      if (k && c) collabDiAnagrafica[k] = c;
+    });
     righe['020'].forEach(function (r) {
-      var p = versoPolizza(r, testata, veicoli[r.ID_POLIZZA_EXP], garanzie[r.ID_POLIZZA_EXP], { emailCollab: emailCollab });
+      var p = versoPolizza(r, testata, veicoli[r.ID_POLIZZA_EXP], garanzie[r.ID_POLIZZA_EXP],
+        { emailCollab: emailCollab, dichiara: dichiara,
+          collabCliente: collabDiAnagrafica[testo(r.ID_ANAGRAFICA_EXP)] || null });
       var cli = perCliente[r.ID_ANAGRAFICA_EXP];
       p._cliente = cli ? cli._chiave : null;
       p._cf = cli ? cli.codice_fiscale : null;
@@ -437,8 +494,45 @@ function mezzoDa(codice) {
                codice: testo(r.CODICE_PRODOTTO), descrizione: testo(r.DESCRIZIONE_PRODOTTO) };
     });
 
+    /* ── CHE COSA QUESTO TRACCIATO NON PORTA ──────────────────────────────
+       Non è un elenco di guasti: è quello che la compagnia non manda, e va
+       detto prima che qualcuno lo scambi per un difetto del gestionale.
+       «Le provvigioni sono a zero» su un estratto conto sembra un nostro
+       errore di calcolo; sapere che la colonna arriva vuota da chi la manda è
+       un'altra conversazione, e si fa con la compagnia. */
+    var senza = [];
+    if (!dichiara('020', 'SCADENZA_EMESSO'))
+      senza.push('non distingue le offerte di rinnovo dalle polizze con una data: si guarda lo stato (PV)');
+    if (!dichiara('020', 'SCADENZA_INCASSATO'))
+      senza.push('non dice fin dove la polizza è pagata: la rata successiva non si può dedurre');
+    if (!dichiara('010', 'FLAG_COLLABORATORE'))
+      senza.push('non marca i collaboratori fra le anagrafiche: si riconoscono dai produttori (REC101)');
+    if (!dichiara('020', 'MEZZO_PAG_SHARE') && !dichiara('020', 'MEZZO_PAGAMENTO_CMP'))
+      senza.push('non dice come paga il cliente');
+    if (!righe['021'].length) senza.push('non porta il veicolo (targa, classe)');
+    if (!righe['030'].length) senza.push('non porta le garanzie della polizza');
+    if (!righe['042'].length) senza.push('non porta il dettaglio delle provvigioni garanzia per garanzia');
+    /* Le due cose che si somigliano e non sono la stessa, e nessuna delle due
+       si può convertire nell'altra senza inventare:
+
+         · la colonna arriva VUOTA   → la compagnia non ha dichiarato niente
+         · la colonna arriva a ZERO  → la compagnia ha dichiarato zero
+
+       L'estratto conto le tratta in modo opposto (§17): una provvigione non
+       dichiarata esce dai totali col motivo scritto, uno zero è un accordo e
+       si conta. Sul flusso di Plurima del 19/09/2026 arriva `0,00` su tutte e
+       trentasette le rate — che è quasi certamente una colonna riempita di
+       default, ma «quasi certamente» non è un dato: lo zero resta zero, e lo
+       si dice a chi deve chiederlo alla compagnia. */
+    var conProvv = titoli.filter(function (t) { return t.provvigione != null; });
+    if (titoli.length && !conProvv.length)
+      senza.push('NESSUNA provvigione dichiarata su nessuna rata: l\'estratto conto provvigionale non avrà numeri da calcolare');
+    else if (titoli.length && conProvv.length === titoli.length && !conProvv.some(function (t) { return t.provvigione !== 0; }))
+      senza.push('tutte le rate dichiarano provvigione 0,00: il numero c\'è ed è zero, e uno zero nell\'estratto conto vale come un accordo — se non è così, va chiesto alla compagnia');
+
     return {
       versione: VERSIONE, testata: testata,
+      tracciato: { versione: testata.versione || null, senza: senza },
       clienti: clienti, collaboratori: collaboratori,
       polizze: polizze, offerte: offerte, titoli: titoli, titoliIgnoti: ignoti,
       prodotti: prodotti, avvisi: avvisi
@@ -498,8 +592,18 @@ function mezzoDa(codice) {
     var fraz = String(r.FRAZIONAMENTO_SHARE || '').trim();
     var lordo = numero(r.LORDO_TOTALE);
 
-    /* REGOLA 3 — se non è mai stato emesso niente, non è una polizza. */
-    var offerta = !emesso && !incassato;
+    /* REGOLA 3 — se non è mai stato emesso niente, non è una polizza.
+       Il discriminante buono è `SCADENZA_EMESSO`, **quando il tracciato ce
+       l'ha**. La V8 non la manda affatto: leggerla come vuota vorrebbe dire
+       chiamare offerta ogni polizza del flusso — sul file di Plurima del
+       19/09/2026 tutte e venti — e non importarne nessuna.
+       Dove quella colonna non esiste si guarda lo STATO, che è lo stesso
+       vocabolario dello standard: `PV` è il rinnovo emesso e non ancora
+       pagato. È un ripiego dichiarato, non una supposizione: l'anteprima dice
+       che quel tracciato le offerte non le distingue come la V12. */
+    var offerta = (opz && opz.dichiara && !opz.dichiara('020', 'SCADENZA_EMESSO'))
+      ? (stato === 'PV')
+      : (!emesso && !incassato);
 
     /* REGOLA 4 — annullata solo se cessa PRIMA della sua scadenza. */
     var annullataDavvero = !!(stato === 'ST' && annullamento && scadenza && annullamento < scadenza);
@@ -515,6 +619,19 @@ function mezzoDa(codice) {
        stima in un portafoglio diventa un dato dopo due settimane. */
     var rate = RATE_ANNO[fraz] || null;
     var annuo = (rate === 1) ? lordo : null;
+
+    /* IL CODICE PRODUTTORE, e dove sta. La V12 lo mette sulla POLIZZA; la V8
+       non ha quella colonna e lo mette sull'ANAGRAFICA del contraente. Chi
+       chiama passa quello del cliente, e qui vince comunque il campo della
+       polizza quando c'è: è il più specifico — una polizza può cambiare mano,
+       un cliente no.
+
+       NON si usa `AGENZIA`, che pure sul file di Plurima coincide riga per
+       riga (3 polizze su «3520», 17 su «3489»): quello è il codice
+       dell'agenzia, non di un collaboratore, e farne un codice produttore
+       vorrebbe dire inventare un collaboratore che è l'agenzia stessa. Resta
+       scritto fra le evidenze, per chi guarda. */
+    var collaboratore = testo(r.COLLABORATORE_1) || (opz && opz.collabCliente) || null;
 
     return {
       _fonte_id: testo(r.ID_POLIZZA_EXP),
@@ -549,11 +666,11 @@ function mezzoDa(codice) {
           compagnia_rischio: testo(r.COMPAGNIA_EXP),
           compagnia_ania: testo(r.COMPAGNIA_ANIA),
           agenzia: testo(r.AGENZIA),
-          collaboratore: testo(r.COLLABORATORE_1),
+          collaboratore: collaboratore,
           /* L'email del collaboratore, presa dal suo record nel flusso: è il
              solo modo per abbinare il codice della compagnia («U25337») a una
              persona dell'agenzia. */
-          collaboratore_email: (opz && opz.emailCollab && opz.emailCollab[testo(r.COLLABORATORE_1)]) || null,
+          collaboratore_email: (opz && opz.emailCollab && opz.emailCollab[collaboratore]) || null,
           ramo: testo(r.RAMO_CMP),
           frazionamento_codice: fraz || null,
           rate_anno: rate,
@@ -757,6 +874,9 @@ function mezzoDa(codice) {
 
     return {
       testata: analisi.testata,
+      /* Che cosa il tracciato non porta viaggia fino al piano: è quello che
+         la schermata deve dire PRIMA che qualcuno guardi i numeri. */
+      tracciato: analisi.tracciato,
       clienti: { nuovi: clientiNuovi, gia: clientiGia, idPerChiave: idPerChiave },
       polizze: { nuove: polizzeNuove, gia: polizzeGia, senzaCliente: polizzeSenzaCliente },
       titoli: {

@@ -1,46 +1,12 @@
-id: 1789840224  exit: 0  2026-09-19 17:50:54
+id: 1789849474  exit: 0  2026-09-19 20:24:50
 ----
-=== COMMIT SUL SERVER ===
-3fddb5c Conti e causali: l'errore di lettura si vede anche nella scheda Causali (#206)
-025f43b Brief IAM #02 · M1: i conti e le causali (#205)
-bb93a01 Brief IAM #01 · M5: il foglio cassa dentro il Portafoglio (#204)
-
-=== AUTOPULL: ultimo giro ===
--rw-r--r-- 1 root root 1185991 17:45:50 iam/index.html
--rw-r--r-- 1 root root 2051250 17:13:26 index.html
-
-=== PAGINA IAM SERVITA (brief #02 M1) ===
-1185991
-  panel-conti                1
-  cntCarica                  7
-  motore/contabilita.js      2
-  mc-codici                  3
-  reg-ultima                 1
-
-=== SCOCCA SERVITA ===
-  Conti e causali            3
-  Importa portafoglio        3
-
-=== PREVENTIVATORE SERVITO DENTRO IAM (brief #01 M1-M5) ===
-2051250
-  pol-emissione              2
-  polProduttore              2
-  clSinistri                 3
-  pf-date-su                 3
-  pf-cerca                   12
-  sinf-compagnia             3
-  RIN_FASCE                  3
-  motore/anagrafica.js       2
-  cpl-oggi                   3
-  tit-chi-paga               3
-  ecpTabellaCredito          2
-  page-foglio-cassa          1
-  motore/foglio-cassa.js     2
-
-=== HEADER DEI DUE DOCUMENTI ===
-cache-control: no-cache
-etag: "dljhb5vcc9llpf47"
-last-modified: Sat, 19 Sep 2026 17:45:50 GMT
-cache-control: no-cache
-etag: "dljgmcv0ltej17yr6"
-last-modified: Sat, 19 Sep 2026 17:13:26 GMT
+=== commit ===
+baffe92 Bugfix: uno stato di preventivo fuori vocabolario svuotava la scheda cliente (#207)
+=== il preventivatore servito ha la correzione? ===
+  prevStatoBadge     3
+  chiusa:{label      1
+  rigaSicura         3
+=== IAM servito: targhetta versione ===
+  um-versione          2
+  mostraVersioneInUso  2
+  build 2026-06-15c    2

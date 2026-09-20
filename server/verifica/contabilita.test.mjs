@@ -520,6 +520,133 @@ prova('la tabella della M4 esiste, e i divieti stanno nel DATABASE', () => {
   return 'tabella, due indici unici, due trigger, RLS, zero seed';
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA GIORNATA RICOSTRUITA, IL FONDO CASSA E LE ANOMALIE — M5 (20/09/2026)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CASSA_M5 = { id: 'kx', nome: 'Cassa', tipologia: 'cassa', natura: 'premi', saldo_iniziale: 100, attivo: true, mezzi: ['contanti'] };
+const BANCA_M5 = { id: 'ky', nome: 'Banca', tipologia: 'banca', natura: 'premi', saldo_iniziale: 0, attivo: true, mezzi: ['pos'] };
+const G = [
+  M({ id: 'g1', data: '2026-09-20', conto_id: 'kx', causale_id: inc, importo: 250 }),
+  M({ id: 'g2', data: '2026-09-20', conto_id: 'ky', causale_id: aff, importo: 80 }),
+  M({ id: 'g3', data: '2026-09-19', conto_id: 'kx', causale_id: inc, importo: 999 })
+];
+
+prova('la giornata si RICOSTRUISCE dai movimenti, conto per conto', () => {
+  const g = C.giornata('2026-09-20', G, [CASSA_M5, BANCA_M5], { causali: CAU });
+  deve(g.righe === 2, 'ha preso anche i movimenti di un altro giorno: ' + g.righe);
+  deve(g.entrate === 250 && g.uscite === 80 && g.saldo === 170, 'i totali del giorno: ' + JSON.stringify(g));
+  deve(g.per_conto.length === 2, 'non separa i conti');
+  const cassa = g.per_conto.find(c => c.conto_id === 'kx');
+  /* Il saldo A FINE GIORNATA, non solo il movimento del giorno: e' quello che
+     si confronta con la cassa contata. 100 iniziali + 999 (il 19) + 250. */
+  deve(cassa.saldo === 250 && cassa.saldo_fine === 1349, 'saldo del giorno vs saldo a fine giornata: ' + JSON.stringify(cassa));
+  /* Un movimento annullato non fa parte della giornata. */
+  const conAnn = G.concat([M({ id: 'g4', data: '2026-09-20', conto_id: 'kx', causale_id: inc, importo: 500, annullato_il: 'x', annullato_perche: 'y' })]);
+  deve(C.giornata('2026-09-20', conAnn, [CASSA_M5, BANCA_M5], { causali: CAU }).entrate === 250, 'un annullato entra nella giornata');
+  return '250 in, 80 out, due conti, saldo a fine giornata 1.349';
+});
+
+prova('IL SEMAFORO HA TRE LUCI, e il grigio non e\' un verde prudente', () => {
+  /* La regola: «non si puo' dire» e' una risposta, e va data. Un grigio
+     mostrato come verde direbbe che la giornata quadra quando non c'e' niente
+     con cui confrontarla — la stessa bugia della quadratura mai fatta. */
+  const g = C.giornata('2026-09-20', G, [CASSA_M5, BANCA_M5], { causali: CAU });
+  deve(C.semaforoGiornata(g, 170).stato === 'verde', 'una giornata che quadra non e\u2019 verde');
+  const r = C.semaforoGiornata(g, 200);
+  deve(r.stato === 'rosso' && r.differenza === -30, 'una giornata che non quadra: ' + JSON.stringify(r));
+  deve(/dichiarato .* in piu/.test(r.motivo), 'non dice da che parte sta la differenza: ' + r.motivo);
+  const r2 = C.semaforoGiornata(g, 140);
+  deve(r2.differenza === 30 && /movimenti dicono/.test(r2.motivo), 'verso opposto sbagliato');
+  /* Grigio nei due casi in cui manca un lato del confronto. */
+  deve(C.semaforoGiornata(g, null).stato === 'grigio', 'senza dichiarato non e\u2019 grigio');
+  const vuota = C.giornata('2026-01-01', G, [CASSA_M5], { causali: CAU });
+  deve(C.semaforoGiornata(vuota, 500).stato === 'grigio', 'senza movimenti non e\u2019 grigio');
+  /* E un centesimo di arrotondamento non fa rosso. */
+  deve(C.semaforoGiornata(g, 169.99).stato === 'verde', 'un centesimo fa diventare rossa la giornata');
+  return 'verde, rosso col verso, grigio nei due casi in cui manca un lato';
+});
+
+prova('il fondo cassa sono le CASSE, non tutto quello che ha un saldo', () => {
+  /* Un conto corrente non e' fondo cassa: sommarlo darebbe un numero che
+     nessuno puo' contare aprendo il cassetto. */
+  const f = C.fondoCassa([CASSA_M5, BANCA_M5], G, { causali: CAU });
+  deve(f.quante === 1 && f.casse.length === 1, 'ha contato anche la banca come cassa');
+  deve(f.totale === 1349, 'il fondo cassa: ' + f.totale);
+  /* A una data, per il giorno prima. */
+  deve(C.fondoCassa([CASSA_M5, BANCA_M5], G, { causali: CAU, al: '2026-09-19' }).totale === 1099, 'il fondo cassa a data');
+  /* Una cassa spenta non conta piu'. */
+  deve(C.fondoCassa([Object.assign({}, CASSA_M5, { attivo: false })], G, { causali: CAU }).quante === 0, 'una cassa spenta conta ancora');
+  return '1.349 nelle casse, la banca fuori';
+});
+
+prova('le ANOMALIE dicono che cosa fare, e non si inventano quando non sanno', () => {
+  const sosp = [
+    { id: 's1', stato: 'aperto', mezzo: 'pos', importo: 300, data_incasso: '2026-08-01', conto_id: 'ky' }, // in ritardo
+    { id: 's2', stato: 'aperto', mezzo: 'pos', importo: 100, data_incasso: '2026-09-20', conto_id: 'ky' }
+  ];
+  const tit = [{ id: 't1', importo_lordo: 500 }, { id: 't2', importo_lordo: 200 }];
+  const movConTitolo = G.concat([M({ id: 'g9', data: '2026-09-20', conto_id: 'kx', causale_id: inc, importo: 500, titolo_id: 't1' })]);
+  const a = C.anomalie({ conti: [CASSA_M5, BANCA_M5], movimenti: movConTitolo, sospesi: sosp,
+                         titoli: tit, causali: CAU, oggi: '2026-09-20' });
+  const t = (k) => a.find(x => new RegExp(k, 'i').test(x.titolo));
+  deve(t('non arrivano'), 'non segnala gli incassi fermi');
+  deve(t('non arrivano').quanti === 1 && t('non arrivano').importo === 300, 'conta male gli incassi fermi');
+  /* La rata gia' portata dentro NON e' un'anomalia: t1 ha il suo movimento. */
+  const fuori = t('il conto non sa');
+  deve(fuori && fuori.quanti === 1 && fuori.importo === 200, 'conta anche le rate gia\u2019 entrate: ' + JSON.stringify(fuori));
+  /* Ogni riga dice il verbo: un elenco di problemi senza «che cosa fare» e'
+     un elenco che nessuno guarda due volte. */
+  deve(a.every(x => x.dafare && x.dafare.length > 20), 'una riga non dice che cosa fare');
+  /* Il rosso viene prima del giallo. */
+  deve(a[0].gravita === 'rosso', 'i rossi non stanno in cima: ' + a.map(x => x.gravita).join(','));
+  return a.length + ' anomalie, ordinate, ognuna col suo verbo';
+});
+
+prova('le anomalie della configurazione: conti muti e nessuna cassa', () => {
+  /* Senza i mezzi dichiarati ogni incasso legge «non si sa» (M4): e\u2019 una
+     configurazione mancante, non un errore — giallo, non rosso. */
+  const muto = { id: 'kz', nome: 'Conto', tipologia: 'banca', attivo: true, mezzi: [] };
+  const a = C.anomalie({ conti: [muto], movimenti: [], causali: CAU, oggi: '2026-09-20' });
+  deve(a.some(x => /che cosa ricevono/.test(x.titolo)), 'un conto senza mezzi non viene segnalato');
+  deve(a.some(x => /cassa contanti/.test(x.titolo)), 'la cassa contanti mancante non viene segnalata');
+  deve(a.every(x => x.gravita === 'giallo'), 'una configurazione mancante e\u2019 segnata come errore');
+  /* Con la cassa e i mezzi a posto, quelle due spariscono. */
+  const b = C.anomalie({ conti: [CASSA_M5, BANCA_M5], movimenti: [], causali: CAU, oggi: '2026-09-20' });
+  deve(!b.some(x => /che cosa ricevono|cassa contanti/.test(x.titolo)), 'restano segnalate anche a posto');
+  return 'due anomalie di configurazione, e spariscono quando si configura';
+});
+
+prova('un movimento la cui causale non esiste piu\' e\' un ROSSO', () => {
+  /* Senza causale non ha un verso, quindi NON entra nei saldi (si e' gia'
+     provato sopra): un saldo a cui manca una riga non torna, e non si vede da
+     dove. */
+  const orf = [M({ id: 'o1', data: '2026-09-20', conto_id: 'kx', causale_id: 'sparita', importo: 400 })];
+  const a = C.anomalie({ conti: [CASSA_M5], movimenti: orf, causali: CAU, oggi: '2026-09-20' });
+  const r = a.find(x => /senza causale/.test(x.titolo));
+  deve(r && r.gravita === 'rosso' && r.importo === 400, 'un movimento orfano non e\u2019 un rosso: ' + JSON.stringify(r));
+  return 'rosso, con l\u2019importo che resta fuori dai saldi';
+});
+
+prova('le anomalie dei conti mai verificati arrivano dalla quadratura, non da un\'altra regola', () => {
+  /* Due regole sulla stessa cosa divergono: qui si riusa `quadrature` (M3). */
+  const a = C.anomalie({ conti: [CASSA_M5], movimenti: G, causali: CAU, quadrature: [], oggi: '2026-09-20' });
+  deve(a.some(x => /mai verificati/.test(x.titolo)), 'un conto mai verificato non viene segnalato');
+  const b = C.anomalie({ conti: [CASSA_M5], movimenti: G, causali: CAU,
+    quadrature: [{ conto_id: 'kx', data: '2026-09-20', saldo_dichiarato: 1349 }], oggi: '2026-09-20' });
+  deve(!b.some(x => /mai verificati|non quadrano/.test(x.titolo)), 'un conto che quadra viene segnalato lo stesso');
+  const c = C.anomalie({ conti: [CASSA_M5], movimenti: G, causali: CAU,
+    quadrature: [{ conto_id: 'kx', data: '2026-09-20', saldo_dichiarato: 1000 }], oggi: '2026-09-20' });
+  const q = c.find(x => /non quadrano/.test(x.titolo));
+  deve(q && q.gravita === 'rosso' && q.importo === 349, 'un conto che non quadra: ' + JSON.stringify(q));
+  /* Senza le quadrature NON si dice niente: «non e' stato verificato» e «non
+     ho i dati per dirlo» sono due cose diverse. */
+  deve(!C.anomalie({ conti: [CASSA_M5], movimenti: G, causali: CAU, oggi: '2026-09-20' })
+        .some(x => /mai verificati|non quadrano/.test(x.titolo)),
+    'senza le quadrature si pronuncia lo stesso');
+  return 'una regola sola, e il silenzio quando i dati non ci sono';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

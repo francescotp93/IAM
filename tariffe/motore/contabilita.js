@@ -102,7 +102,7 @@
 (function () {
   'use strict';
 
-  var VERSIONE = '2026-09-20b';
+  var VERSIONE = '2026-09-20c';
 
   /* ═══ VOCABOLARI ══════════════════════════════════════════════════════════ */
 
@@ -769,6 +769,178 @@
       .sort(function (a, b) { return b.totale - a.totale; });
   }
 
+  /* ═══ LA GIORNATA, RICOSTRUITA DAI MOVIMENTI (M5) ═════════════════════════
+
+     Fino alla M5 la giornata si DIGITAVA: contanti, versamenti, spese, fondo
+     cassa, POS. Sessantotto giorni cosi', a mano. Adesso che i movimenti
+     esistono (M3) e che gli incassi ci arrivano (M4), la stessa giornata si
+     puo' RICOSTRUIRE — e le due cose messe una accanto all'altra sono la
+     quadratura (regola 7) applicata al giorno invece che al conto.
+
+     Il semaforo ha TRE luci, non due, ed e' sempre la stessa regola:
+       verde  — dichiarato e ricostruito coincidono;
+       rosso  — non coincidono, e la differenza si legge;
+       grigio — nessun movimento registrato quel giorno: non si puo' dire.
+     Il grigio non e' un verde prudente: e' l'unica risposta onesta quando non
+     c'e' niente con cui confrontare. */
+  function giornata(data, movimenti, conti, opz) {
+    opz = opz || {};
+    var g = testo(data);
+    var causali = opz.causali ? indice(opz.causali) : null;
+    var r = { data: g, entrate: 0, uscite: 0, saldo: 0, righe: 0, per_conto: [] };
+    var acc = {};
+    vivi(movimenti).forEach(function (m) {
+      if (testo(m.data) !== g) return;
+      var imp = numero(m.importo);
+      if (imp == null) return;
+      var v = versoDi(m, causali);
+      if (!v) return;
+      r.righe++;
+      if (v > 0) r.entrate = cent(r.entrate + Math.abs(imp));
+      else       r.uscite  = cent(r.uscite  + Math.abs(imp));
+      var k = m.conto_id || '—';
+      if (!acc[k]) acc[k] = { conto_id: m.conto_id || null, entrate: 0, uscite: 0, righe: 0 };
+      if (v > 0) acc[k].entrate = cent(acc[k].entrate + Math.abs(imp));
+      else       acc[k].uscite  = cent(acc[k].uscite  + Math.abs(imp));
+      acc[k].righe++;
+    });
+    r.saldo = cent(r.entrate - r.uscite);
+    var idx = indice(conti);
+    r.per_conto = Object.keys(acc).map(function (k) {
+      var c = idx[k];
+      return Object.assign(acc[k], {
+        nome: c ? c.nome : 'conto sconosciuto',
+        tipologia: c ? c.tipologia : null,
+        natura: c ? c.natura : null,
+        saldo: cent(acc[k].entrate - acc[k].uscite),
+        /* Il saldo del conto A FINE GIORNATA, non solo il movimento del
+           giorno: e' quello che si confronta con la cassa contata. */
+        saldo_fine: c ? saldo(c, movimenti, { causali: opz.causali, al: g }).saldo : null
+      });
+    }).sort(function (a, b) { return (b.entrate + b.uscite) - (a.entrate + a.uscite); });
+    return r;
+  }
+
+  /* Il fondo cassa non si scrive piu': e' il saldo delle CASSE, calcolato.
+     Le casse sono i conti di tipologia `cassa` — un conto corrente non e'
+     fondo cassa, e sommarli darebbe un numero che non si puo' contare. */
+  function fondoCassa(conti, movimenti, opz) {
+    opz = opz || {};
+    var casse = (conti || []).filter(function (c) { return c && c.tipologia === 'cassa' && c.attivo !== false; });
+    var tot = 0;
+    var righe = casse.map(function (c) {
+      var s = saldo(c, movimenti, { causali: opz.causali, al: opz.al });
+      tot = cent(tot + s.saldo);
+      return { conto_id: c.id, nome: c.nome, saldo: s.saldo, movimenti: s.movimenti };
+    });
+    return { totale: cent(tot), casse: righe, quante: casse.length };
+  }
+
+  /* Il semaforo di una giornata. `dichiarato` e' quello che una persona ha
+     scritto (la vecchia quadratura a mano), `ricostruito` quello che dicono i
+     movimenti. */
+  function semaforoGiornata(ric, dichiarato, opz) {
+    opz = opz || {};
+    var d = numero(dichiarato);
+    var out = { data: ric ? ric.data : null, ricostruito: ric ? ric.saldo : null, dichiarato: d, differenza: null };
+    if (!ric || !ric.righe) {
+      out.stato = 'grigio';
+      out.motivo = 'Nessun movimento registrato in questa giornata: non c\u2019e\u2019 niente da confrontare.';
+      return out;
+    }
+    if (d == null) {
+      out.stato = 'grigio';
+      out.motivo = 'Nessun dato dichiarato per questa giornata: il ricostruito c\u2019e\u2019, il termine di paragone no.';
+      return out;
+    }
+    out.differenza = cent(out.ricostruito - d);
+    out.stato = Math.abs(out.differenza) <= TOLLERANZA ? 'verde' : 'rosso';
+    if (out.stato === 'rosso') {
+      out.motivo = out.differenza > 0
+        ? 'I movimenti dicono ' + euro(Math.abs(out.differenza)) + ' in piu\u2019 di quanto e\u2019 stato dichiarato.'
+        : 'E\u2019 stato dichiarato ' + euro(Math.abs(out.differenza)) + ' in piu\u2019 di quanto risulta dai movimenti.';
+    }
+    return out;
+  }
+
+  /* ═══ LE ANOMALIE (M5) ════════════════════════════════════════════════════
+
+     Non sono «gli errori»: sono le cose che, lasciate li', diventano un numero
+     sbagliato in un rendiconto. Ognuna dice che cosa fare, perche' un elenco
+     di problemi senza il verbo e' un elenco che nessuno guarda due volte.
+
+     E una regola sopra tutte: **un'anomalia che non si puo' verificare non si
+     dichiara**. Se i movimenti non sono stati letti, qui non compare «tutto a
+     posto» — non si sa, ed e' un'altra cosa. */
+  function anomalie(dati) {
+    dati = dati || {};
+    var oggi = testo(dati.oggi) || new Date().toISOString().slice(0, 10);
+    var conti = dati.conti || [], movimenti = dati.movimenti || [];
+    var sospesi = dati.sospesi || [], titoli = dati.titoli || [], causali = dati.causali || [];
+    var out = [];
+    var agg = function (gravita, titolo, quanti, importo, dafare) {
+      out.push({ gravita: gravita, titolo: titolo, quanti: quanti, importo: importo == null ? null : cent(importo), dafare: dafare });
+    };
+
+    /* 1. Incassi fermi da piu' di quanto quel mezzo ci mette (M4). */
+    var rit = sospesiAperti(sospesi).filter(function (s) { return inRitardo(s, oggi); });
+    if (rit.length) agg('rosso', 'Incassi che non arrivano', rit.length,
+      rit.reduce(function (a, s) { return a + (numero(s.importo) || 0); }, 0),
+      'Controlla in banca: sono fermi da piu\u2019 giorni di quelli che quel mezzo ci mette.');
+
+    /* 2. Rate incassate che in contabilita' non sono mai entrate: il conto non
+          sa di quei soldi, e il saldo e' piu' basso del vero. */
+    var dentro = {};
+    vivi(movimenti).forEach(function (m) { if (m.titolo_id) dentro[m.titolo_id] = true; });
+    (sospesi || []).forEach(function (s) { if (s.titolo_id && s.stato !== 'annullato') dentro[s.titolo_id] = true; });
+    var fuori = (titoli || []).filter(function (t) { return t && t.id && !dentro[t.id]; });
+    if (fuori.length) agg('giallo', 'Rate incassate che il conto non sa', fuori.length,
+      fuori.reduce(function (a, t) { return a + (numero(t.importo_lordo) || 0); }, 0),
+      'Portale in contabilita\u2019 da «Incassi da accreditare».');
+
+    /* 3. Conti che non dicono che mezzi ricevono: finche' e' cosi', ogni
+          incasso legge «non si sa» e non si puo' registrare. */
+    var muti = (conti || []).filter(function (c) { return c && c.attivo !== false && !(c.mezzi || []).length; });
+    if (muti.length) agg('giallo', 'Conti che non dicono che cosa ricevono', muti.length, null,
+      'Aprili in Strumenti \u203a Conti e causali e spunta i mezzi: senza, gli incassi non sanno dove andare.');
+
+    /* 4. Nessuna cassa contanti: un incasso in contanti non ha dove andare. */
+    if (!(conti || []).some(function (c) { return c && c.tipologia === 'cassa' && c.attivo !== false; })) {
+      agg('giallo', 'Nessuna cassa contanti', 1, null,
+        'Creala in Strumenti \u203a Conti e causali: senza, i contanti restano fuori dalla contabilita\u2019.');
+    }
+
+    /* 5. Movimenti la cui causale non esiste piu': non hanno un verso, quindi
+          NON entrano nei saldi — e un saldo a cui manca una riga non torna. */
+    var cau = indice(causali);
+    var orfani = vivi(movimenti).filter(function (m) { return m.causale_id && !cau[m.causale_id]; });
+    if (orfani.length) agg('rosso', 'Movimenti senza causale', orfani.length,
+      orfani.reduce(function (a, m) { return a + (numero(m.importo) || 0); }, 0),
+      'Riaprili e rimetti una causale: senza, non hanno un verso e restano fuori dai saldi.');
+
+    /* 6. Conti mai verificati (regola 7): il saldo c'e' e nessuno l'ha mai
+          confrontato con la banca. */
+    if (dati.quadrature) {
+      var mai = quadrature((conti || []).filter(function (c) { return c.attivo !== false; }),
+                           movimenti, dati.quadrature, { causali: causali, al: oggi })
+        .filter(function (q) { return q.quadra === null; });
+      if (mai.length) agg('giallo', 'Conti mai verificati', mai.length, null,
+        'Dichiara il saldo che dice la banca in Contabilita\u2019 \u203a Quadratura conti.');
+      var storti = quadrature((conti || []).filter(function (c) { return c.attivo !== false; }),
+                              movimenti, dati.quadrature, { causali: causali, al: oggi })
+        .filter(function (q) { return q.quadra === false; });
+      if (storti.length) agg('rosso', 'Conti che non quadrano', storti.length,
+        storti.reduce(function (a, q) { return a + Math.abs(q.differenza || 0); }, 0),
+        'Guarda la differenza: o c\u2019e\u2019 un movimento di troppo, o ne manca uno.');
+    }
+
+    out.sort(function (a, b) {
+      var p = { rosso: 0, giallo: 1 };
+      return (p[a.gravita] - p[b.gravita]) || ((b.importo || 0) - (a.importo || 0));
+    });
+    return out;
+  }
+
   /* ═══ LA QUADRATURA DEI CONTI (M3) ════════════════════════════════════════ */
 
   /* Regola 7. Due numeri e la loro differenza:
@@ -859,6 +1031,9 @@
     MEZZI: MEZZI, mezzo: mezzo, contoPerMezzo: contoPerMezzo, destinoIncasso: destinoIncasso,
     giorniDa: giorniDa, inRitardo: inRitardo, sospesiAperti: sospesiAperti,
     riepilogoSospesi: riepilogoSospesi, validaAccredito: validaAccredito,
+    /* M5 — la giornata ricostruita, il fondo cassa, le anomalie */
+    giornata: giornata, fondoCassa: fondoCassa, semaforoGiornata: semaforoGiornata,
+    anomalie: anomalie,
     eliminabile: eliminabile, causaleEliminabile: causaleEliminabile,
     ibanValido: ibanValido, normalizzaIban: normalizzaIban, ibanBello: ibanBello,
     etichetta: etichetta, segnoDi: segnoDi, cent: cent, numero: numero, euro: euro

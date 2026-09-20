@@ -1,8 +1,23 @@
 {
-  "versione": "0.4.0",
-  "nome": "Incassi da accreditare",
+  "versione": "0.5.0",
+  "nome": "La contabilità si ricostruisce da sé",
   "data": "2026-09-20",
   "storia": [
+    {
+      "v": "0.5.0",
+      "data": "2026-09-20",
+      "nome": "La contabilità si ricostruisce da sé",
+      "voci": [
+        "Contabilità › Quadratura: sopra il modulo da compilare c'è la stessa giornata ricostruita dai movimenti registrati, con entrate, uscite, saldo e fondo cassa calcolati — non digitati.",
+        "Un semaforo dice se la giornata digitata e quella ricostruita vanno d'accordo. Ha tre luci: quando non c'è niente da confrontare lo dice, invece di mostrare verde.",
+        "Il fondo cassa non si scrive più: è il saldo delle casse, e si vede da dove viene.",
+        "Contabilità › Anomalie elenca anche quello che non torna nella contabilità: incassi che non arrivano, rate incassate che il conto non sa, conti che non dicono che mezzi ricevono, movimenti senza causale, conti mai verificati. Ogni riga dice che cosa fare.",
+        "Contabilità › Storico: una riga per giornata col suo semaforo, e un clic apre quel giorno nella Quadratura, col dichiarato già dentro.",
+        "Contabilità › Conto: il saldo di ogni conto ricostruito dai movimenti, con gli ultimi tre, accanto agli estratti conto caricati da file.",
+        "La linguetta «Carica documenti» non c'è più: i due file si caricano dentro Sospesi, che è la schermata che li usa.",
+        "Il modulo della giornata da compilare resta dov'è: i 68 giorni già scritti sono l'unica contabilità che c'è, e si spegne quando i due numeri saranno stati confrontati."
+      ]
+    },
     {
       "v": "0.4.0",
       "data": "2026-09-20",

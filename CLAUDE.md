@@ -2899,3 +2899,105 @@ fotografia: la prima schermata con i dati finti è uscita vuota.
   di QUOTO e poi si porta in contabilità da qui, con un clic. Farlo scattare
   all'incasso è un pezzo piccolo, e va deciso dove: il bottone sta in due
   documenti diversi.
+
+---
+
+## 33. Brief IAM #02 — M5: la contabilità si ricostruisce da sé (20/09/2026)
+
+Il brief chiede di riorganizzare Contabilità: riepilogo della giornata
+automatico, semafori, fondo cassa calcolato, via «Carica documenti», storico
+per giornata, conto ricostruito, anomalie. Sette voci, una riga di codice
+soltanto nel database — perché le tabelle c'erano già (M3, M4): quello che
+mancava era **leggerle**.
+
+| pezzo | dove |
+|---|---|
+| le regole (stesso motore di M1, M3 e M4) | `tariffe/motore/contabilita.js` — `giornata`, `fondoCassa`, `semaforoGiornata`, `anomalie` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **34** (erano 27) |
+| le quattro schermate | blocco `gio*` in `iam/index.html`, contenitori `#gio-oggi`, `#gio-anomalie`, `#gio-storico`, `#gio-conto` |
+| prove sul pannello | `iam/verifica/contabilita-ricostruita.test.mjs` — 10 |
+
+### Misurato prima di scrivere
+
+La Quadratura di giornata è **tutta digitata a mano**: `i-cassa`, `i-vers`,
+`i-spese`, `i-fondo`, `i-pos-bianco`, `i-pos-nero`, salvati in
+`sessioni_giornaliere` — **68 giorni dal 25/05 al 16/09/2026**. Le Anomalie
+leggevano soltanto `APP.sospesi`, cioè il file Excel caricato a mano. Il
+fondo cassa era un campo da riempire.
+
+### La decisione più importante è quello che NON si è fatto
+
+**Il modulo a mano non si spegne.** Quei 68 giorni sono l'unica contabilità
+che questa agenzia ha, e il ricostruito oggi è **vuoto**, perché i movimenti
+cominciano adesso. Una schermata in uso si spegne quando i suoi numeri sono
+stati confrontati con quelli nuovi e tornano — non perché ne è nata una
+migliore. È la stessa regola della linguetta «Rimesse da preventivo» (§17), e
+c'è una prova che sorveglia che il modulo resti dov'è, **sotto** il
+ricostruito: quello che nessuno deve digitare viene prima.
+
+### Il semaforo ha tre luci, e la terza è quella che conta
+
+`verde` coincidono, `rosso` non coincidono (con la differenza e il suo verso),
+**`grigio` non si può dire** — o non c'è nessun movimento quel giorno, o
+nessuno ha dichiarato niente. Il grigio non è un verde prudente: mostrare
+verde quando non c'è niente da confrontare è la stessa bugia del conto mai
+verificato (§29) e del contatore documentale che mostrava `0` su un archivio
+mai letto (§12). **Controprova**: il grigio trasformato in verde fa diventare
+rossa la prova del motore.
+
+### Il fondo cassa non si scrive: sono le casse
+
+`fondoCassa` somma i conti di **tipologia `cassa`**, non tutto quello che ha
+un saldo. Un conto corrente non è fondo cassa, e sommarlo darebbe un numero
+che nessuno può contare aprendo il cassetto.
+
+### Le anomalie hanno il verbo
+
+Sei famiglie, ognuna con che cosa fare: incassi fermi da più giorni di quelli
+che quel mezzo ci mette (M4); rate incassate che in contabilità non sono mai
+entrate; conti che non dicono che mezzi ricevono; nessuna cassa contanti;
+movimenti la cui causale non esiste più (rossi: senza verso restano **fuori
+dai saldi**); conti mai verificati e conti che non quadrano, letti dalla
+**stessa** `quadrature` della M3 — riscriverla qui vorrebbe dire averne due, e
+quella che sbaglia sarebbe quella che nessuno guarda. Un elenco di problemi
+senza il verbo è un elenco che nessuno guarda due volte.
+
+E quando la lettura non riesce, i quattro riquadri **non dicono «tutto a
+posto»**: dicono che non si è potuto controllare. Su una schermata di anomalie
+è la bugia peggiore possibile.
+
+### «Carica documenti» si toglie, i due caricamenti no
+
+Il brief dice di togliere la linguetta. Cancellare i due file avrebbe spento
+**quattro** schermate: sono l'unica strada da cui arrivano i sospesi della
+compagnia, gli incassi, le anomalie e il contatore della Scrivania. Quindi si
+sono spostati **dentro Sospesi**, che è la schermata che li usa; il vecchio
+nome rimasto in `iam_last_tab` porta lì, non su un riquadro vuoto (§6b).
+
+`contabilita-una-schermata.test.mjs` pretendeva due linguette separate: era
+giusta il 01/08/2026 e misura il mondo di ieri. Si è aggiornata la **regola**
+(§15, §16), non il numero — quello che Francesco aveva chiesto non era «due
+linguette», era «non farmi trovare la cassa quando cerco i file», e vale
+identico adesso.
+
+### La trappola dei commenti, ottava volta — e il filtro non basta
+
+Il commento che spiega perché le quattro linguette fanno partire una lettura
+sola **nominava la funzione** che la prova cerca, e la prova ha dichiarato
+rotto un codice giusto (§10, §12, §18, §26, §29, §31). Stavolta il filtro dei
+commenti a inizio riga **non l'ha presa**: era una riga *interna* di un
+commento su più righe, che comincia con del testo. Due correzioni, come
+sempre: la prova cerca la **chiamata con le parentesi**, e il commento non
+scrive quel nome.
+
+### Cosa resta aperto
+
+- **I riquadri ricostruiti sono vuoti finché non ci sono movimenti**, ed è
+  giusto: la prima nota nasce vuota (§29) e i saldi iniziali dei due conti
+  sono a zero. Il semaforo dice grigio, che è la risposta vera.
+- **Le due quadrature convivono**, dichiarate: quella di giornata (il foglio
+  di cassa) e quella dei conti (M3). Si fondono quando i numeri del
+  dichiarato e del ricostruito saranno stati confrontati, non prima.
+- **Le anomalie dei file caricati restano sotto**, separate da quelle della
+  contabilità: sono due archivi diversi e mescolarli renderebbe impossibile
+  dire da dove viene un problema.

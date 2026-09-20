@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.3.0">
-<meta name="app-versione-nome" content="Prima nota e quadratura">
+<meta name="app-versione" content="0.3.1">
+<meta name="app-versione-nome" content="La grafica di IAM su tutte le schermate">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -727,6 +727,16 @@ input[type=file]{display:none;}
 
    Dichiarati dentro #panel-dashboard perche' la scrivania e' una superficie
    chiara fissa: lasciarli liberi sfonderebbe il tema scuro altrove. */
+/* I GETTONI DEL KIT, E PERCHE' NON STANNO SU :root.
+   Stavano dentro `#panel-dashboard`: le regole del kit li trovavano solo sulla
+   Scrivania, e fuori di li' `var(--w1-raggio)` non risolve — la proprieta'
+   viene ignorata e una scheda perde gli angoli senza che nessun errore lo
+   dica. Promossi il 20/09/2026, ma NON su :root: e' una tavolozza chiara
+   fissa, e lasciata libera sfonderebbe il tema scuro in tutto il resto del
+   gestionale (lo diceva gia' `verifica/scrivania.test.mjs`, e aveva ragione).
+   Quindi valgono sull'elenco DICHIARATO delle schermate portate sul kit —
+   l'elenco cresce man mano che le altre ci passano, e chi lo allunga sa che
+   sta portando li' anche la tavolozza. */
 #panel-dashboard{
   --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
   --w1-sfondo:#f3f5f7; --w1-bordo:#e3e8ec;
@@ -738,33 +748,88 @@ input[type=file]{display:none;}
   --w1-ombra:0 1px 2px rgba(16,36,54,.04),0 12px 34px rgba(16,36,54,.055);
   background:var(--w1-sfondo); color:var(--w1-testo);
 }
-#panel-dashboard .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px;padding:16px 16px 0}
-#panel-dashboard .eyebrow{color:var(--w1-testo3);font-size:11px;margin-bottom:4px}
-#panel-dashboard .page-head h1{font-size:22px;letter-spacing:-.03em;margin:0 0 5px;color:var(--w1-testo)}
-#panel-dashboard .subtitle{color:var(--w1-testo2);font-size:13px}
-#panel-dashboard .head-actions{display:flex;gap:8px;flex-wrap:wrap}
-#panel-dashboard .d-btn{height:34px;border-radius:var(--w1-raggio);border:1px solid var(--w1-bordo);background:#fff;color:var(--w1-testo);padding:0 12px;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer}
-#panel-dashboard .d-btn:hover{background:#f7f9fa}
-#panel-dashboard .d-btn:focus-visible{outline:none;box-shadow:var(--w1-focus)}
-#panel-dashboard .d-btn.primario{border-color:var(--w1-verde);background:var(--w1-verde);color:#fff}
-#panel-dashboard .d-btn.primario:hover{background:var(--w1-verde-scuro)}
-#panel-dashboard .d-card{background:#fff;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);box-shadow:var(--w1-ombra)}
+
+/* LE SCHERMATE PORTATE SUL KIT. Ognuna si prende gli stessi gettoni della
+   Scrivania: la riga sopra resta scritta da sola perche' una prova legge
+   `#panel-dashboard{` per controllare che la tavolozza chiara sia confinata. */
+#panel-conti,
+#panel-compagnie,
+#panel-provvigioni,
+#contab-panel-primanota,
+#contab-panel-conti {
+  --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
+  --w1-sfondo:#f3f5f7; --w1-bordo:#e3e8ec;
+  --w1-testo:#1f2a37; --w1-testo2:#5a6b7c; --w1-testo3:#8b9aa9;
+  --w1-ambra:#b06a00; --w1-ambra-bg:#fff4e6;
+  --w1-rosso:#a3352a; --w1-rosso-bg:#fff6f5;
+  --w1-raggio:4px;
+  --w1-focus:0 0 0 3px rgba(2,152,78,.14);
+  --w1-ombra:0 1px 2px rgba(16,36,54,.04),0 12px 34px rgba(16,36,54,.055);
+  background:var(--w1-sfondo); color:var(--w1-testo);
+}
+
+/* ══ IL KIT GRAFICO DI IAM ══════════════════════════════════════════════════
+   (promosso il 20/09/2026 — prima ogni regola del kit era scritta con
+   `#panel-dashboard` davanti, cioe' valeva SOLO sulla Scrivania.)
+
+   MISURATO PRIMA DI TOCCARE: 26 regole del kit chiuse dentro un pannello
+   solo, e ZERO usi di quei nomi fuori di li'. Non era una scelta: era la
+   Scrivania che si teneva il vestito buono. Ogni schermata scritta dopo ha
+   dovuto reinventarselo, e ognuna se l'e' inventato diverso — `f-head`,
+   `cl-head`, `slbl`, piu' 1.798 stili scritti a mano dentro una pagina sola.
+   Il risultato si vedeva: un `<h1>` senza regole esce col carattere di
+   sistema, grande il doppio e nero, e un `<button>` senza regole e' un
+   bottone grigio del browser. E' il guasto §1 in versione grafica: una cosa
+   buona esiste e nessun altro la puo' raggiungere.
+
+   Adesso valgono ovunque, e una schermata nuova si scrive cosi':
+
+     <section class="page-head">
+       <div><h1>Titolo</h1><div class="subtitle">A che serve.</div></div>
+       <div class="head-actions">
+         <button class="d-btn">Secondaria</button>
+         <button class="d-btn primario">Azione principale</button>
+       </div>
+     </section>
+     <div class="d-card">
+       <div class="card-head"><div class="card-title">
+         <span class="pictogram"><i class="ti ti-x"></i></span> Titolo</div></div>
+       <div class="card-body">…</div>
+     </div>
+
+   Le tre cose che il kit non aveva, e che stanno accanto con il prefisso
+   `cnt-`: la tessera di riepilogo (`cnt-somma`/`cnt-card`), la riga di
+   elenco (`cnt-r`) e la pastiglia di stato (`cnt-tag`). Sono le uniche, e
+   usano le variabili del tema — non `#fff` scritto a mano.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px;padding:16px 16px 0}
+.eyebrow{color:var(--w1-testo3);font-size:11px;margin-bottom:4px}
+.page-head h1{font-size:22px;letter-spacing:-.03em;margin:0 0 5px;color:var(--w1-testo)}
+.subtitle{color:var(--w1-testo2);font-size:13px}
+.head-actions{display:flex;gap:8px;flex-wrap:wrap}
+.d-btn{height:34px;border-radius:var(--w1-raggio);border:1px solid var(--w1-bordo);background:var(--w1-card);color:var(--w1-testo);padding:0 12px;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer}
+.d-btn:hover{background:#f7f9fa}
+.d-btn:focus-visible{outline:none;box-shadow:var(--w1-focus)}
+.d-btn.primario{border-color:var(--w1-verde);background:var(--w1-verde);color:#fff}
+.d-btn.primario:hover{background:var(--w1-verde-scuro)}
+.d-card{background:var(--w1-card);border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);box-shadow:var(--w1-ombra)}
 /* Le classi .kpi* (striscia di indicatori in cima) sono state tolte con la
    striscia stessa (§13.3): i numeri restano solo dentro «Da fare oggi». */
-#panel-dashboard .pictogram{width:32px;height:32px;border-radius:7px;display:grid;place-items:center;background:var(--w1-verde-tenue);color:var(--w1-verde-scuro);flex:none}
-#panel-dashboard .pictogram i{font-size:18px}
-#panel-dashboard .pictogram.amber{background:var(--w1-ambra-bg);color:var(--w1-ambra)}
-#panel-dashboard .pictogram.red{background:var(--w1-rosso-bg);color:var(--w1-rosso)}
-#panel-dashboard .pictogram.gray{background:#f0f3f5;color:#6d7f8e}
-#panel-dashboard .dashboard-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(310px,.8fr);gap:12px;align-items:start;padding:0 16px 16px}
-#panel-dashboard .stack{display:grid;gap:12px;min-width:0}
-#panel-dashboard .card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--w1-bordo)}
-#panel-dashboard .card-title{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700}
-#panel-dashboard .card-title .pictogram{width:28px;height:28px}
-#panel-dashboard .card-body{padding:14px 15px}
+.pictogram{width:32px;height:32px;border-radius:7px;display:grid;place-items:center;background:var(--w1-verde-tenue);color:var(--w1-verde-scuro);flex:none}
+.pictogram i{font-size:18px}
+.pictogram.amber{background:var(--w1-ambra-bg);color:var(--w1-ambra)}
+.pictogram.red{background:var(--w1-rosso-bg);color:var(--w1-rosso)}
+.pictogram.gray{background:#f0f3f5;color:#6d7f8e}
+.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(310px,.8fr);gap:12px;align-items:start;padding:0 16px 16px}
+.stack{display:grid;gap:12px;min-width:0}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--w1-bordo)}
+.card-title{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700}
+.card-title .pictogram{width:28px;height:28px}
+.card-body{padding:14px 15px}
 /* Sotto i 1100px le due colonne si impilano. */
-@media(max-width:1100px){#panel-dashboard .dashboard-grid{grid-template-columns:1fr}}
-@media(max-width:720px){#panel-dashboard .page-head{flex-direction:column}#panel-dashboard .head-actions{width:100%}#panel-dashboard .head-actions .d-btn{flex:1}}
+@media(max-width:1100px){.dashboard-grid{grid-template-columns:1fr}}
+@media(max-width:720px){.page-head{flex-direction:column}.head-actions{width:100%}.head-actions .d-btn{flex:1}}
 /* minmax(min(100%,258px),…): la colonna minima non supera mai la larghezza
    disponibile, così la griglia di «Da fare oggi» non sborda oltre la sua
    colonna e non finisce sotto/sopra «Azioni rapide» accanto (§13.3). */
@@ -1662,19 +1727,25 @@ input[type=file]{display:none;}
        resta dov'e': quello e' una riga al giorno e non sa su quale conto sia
        finito il denaro. La riorganizzazione dei due e' la M5. -->
   <div id="contab-panel-primanota" style="display:none;">
-    <section class="f-head">
+    <section class="page-head">
       <div>
+        <div class="eyebrow">Contabilità</div>
         <h1>Prima nota</h1>
-        <p>Ogni movimento dei conti dell'agenzia, con la sua causale. Il saldo dei conti si calcola da qui.</p>
+        <div class="subtitle">Ogni movimento dei conti dell'agenzia, con la sua causale. Il saldo dei conti si calcola da qui.</div>
       </div>
-      <div style="display:flex;gap:8px">
-        <button class="f-b" type="button" onclick="pntCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
-        <button class="f-b pri" type="button" id="pnt-nuovo" onclick="pntApriMovimento(null)"><i class="ti ti-plus"></i> Nuovo movimento</button>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="pntCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+        <button class="d-btn primario" type="button" id="pnt-nuovo" onclick="pntApriMovimento(null)"><i class="ti ti-plus"></i> Nuovo movimento</button>
       </div>
     </section>
 
-    <!-- La ricerca parte al clic su Cerca, mai mentre si digita (brief #01 M2). -->
-    <section class="cnt-lista" style="padding:12px">
+    <!-- La ricerca parte al clic su Cerca, mai mentre si digita (brief #01 M2).
+         Sta dentro una scheda del kit: un modulo appoggiato sullo sfondo e'
+         la cosa che fa sembrare una schermata non finita. -->
+    <div class="d-card" style="margin-bottom:12px">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-filter"></i></span> Cerca nei movimenti</div></div>
+      <div class="card-body">
       <div class="fgrid" style="align-items:end">
         <div class="fld"><label>Dal</label><input type="date" id="pnt-dal"></div>
         <div class="fld"><label>Al</label><input type="date" id="pnt-al"></div>
@@ -1687,10 +1758,11 @@ input[type=file]{display:none;}
         </select></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="f-b pri" type="button" onclick="pntRender()"><i class="ti ti-search"></i> Cerca</button>
-        <button class="f-b" type="button" onclick="pntAzzera()">Azzera filtri</button>
+        <button class="d-btn" type="button" onclick="pntAzzera()">Azzera filtri</button>
+        <button class="d-btn primario" type="button" onclick="pntRender()"><i class="ti ti-search"></i> Cerca</button>
       </div>
-    </section>
+      </div>
+    </div>
 
     <section class="cnt-somma" id="pnt-somma"></section>
     <section class="cnt-lista" id="pnt-lista"><div class="cl-sub">Carico i movimenti…</div></section>
@@ -1706,13 +1778,14 @@ input[type=file]{display:none;}
        si mostra in verde e' la bugia piu' comoda che un sistema di
        contabilita' possa raccontare. -->
   <div id="contab-panel-conti" style="display:none;">
-    <section class="f-head">
+    <section class="page-head">
       <div>
+        <div class="eyebrow">Contabilità</div>
         <h1>Quadratura conti</h1>
-        <p>Il saldo che risulta dai movimenti, a confronto con quello che dice la banca o la conta della cassa.</p>
+        <div class="subtitle">Il saldo che risulta dai movimenti, a confronto con quello che dice la banca o la conta della cassa.</div>
       </div>
-      <div style="display:flex;gap:8px">
-        <button class="f-b" type="button" onclick="pntCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="pntCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
       </div>
     </section>
     <section class="cnt-somma" id="pnt-q-somma"></section>
@@ -3523,14 +3596,15 @@ input[type=file]{display:none;}
      Il cancello vero è nelle politiche del database (RLS), non nei bottoni
      nascosti: nascondere un bottone non è un divieto. -->
 <div class="panel" id="panel-conti" style="overflow-y:auto;">
-  <section class="f-head">
+  <section class="page-head">
     <div>
+      <div class="eyebrow">Strumenti</div>
       <h1>Conti e causali</h1>
-      <p>Dove sta il denaro e come si chiamano i movimenti.</p>
+      <div class="subtitle">Dove sta il denaro e come si chiamano i movimenti.</div>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="f-b" type="button" onclick="cntCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
-      <button class="f-b pri" type="button" id="cnt-nuovo" onclick="cntApri(null)"><i class="ti ti-plus"></i> Nuovo</button>
+    <div class="head-actions">
+      <button class="d-btn" type="button" onclick="cntCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <button class="d-btn primario" type="button" id="cnt-nuovo" onclick="cntApri(null)"><i class="ti ti-plus"></i> Nuovo</button>
     </div>
   </section>
 
@@ -3574,14 +3648,15 @@ input[type=file]{display:none;}
      ne apre una nuova da oggi. Gli estratti conto già mandati devono
      continuare a dire lo stesso numero. -->
 <div class="panel" id="panel-compagnie" style="overflow-y:auto;">
-  <section class="f-head">
+  <section class="page-head">
     <div>
+      <div class="eyebrow">Strumenti</div>
       <h1>Gestione compagnie</h1>
-      <p>Quanto riconosce ogni compagnia, e quanto ne gira al collaboratore.</p>
+      <div class="subtitle">Quanto riconosce ogni compagnia, e quanto ne gira al collaboratore.</div>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="f-b" type="button" onclick="prvCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
-      <button class="f-b pri" type="button" id="prv-nuova-tariffa" onclick="prvApriTariffa(null)"><i class="ti ti-plus"></i> Nuova tariffa</button>
+    <div class="head-actions">
+      <button class="d-btn" type="button" onclick="prvCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <button class="d-btn primario" type="button" id="prv-nuova-tariffa" onclick="prvApriTariffa(null)"><i class="ti ti-plus"></i> Nuova tariffa</button>
     </div>
   </section>
 
@@ -3600,14 +3675,15 @@ input[type=file]{display:none;}
      e perché. Serve a vedere una configurazione PRIMA che produca un
      estratto conto, che è l'unico momento in cui correggerla costa poco. -->
 <div class="panel" id="panel-provvigioni" style="overflow-y:auto;">
-  <section class="f-head">
+  <section class="page-head">
     <div>
+      <div class="eyebrow">Strumenti</div>
       <h1>Provvigioni</h1>
-      <p>Gli accordi con le persone, i gruppi produttivi e la prova del calcolo.</p>
+      <div class="subtitle">Gli accordi con le persone, i gruppi produttivi e la prova del calcolo.</div>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="f-b" type="button" onclick="prvCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
-      <button class="f-b pri" type="button" id="prv-nuovo" onclick="prvNuovo()"><i class="ti ti-plus"></i> Nuovo</button>
+    <div class="head-actions">
+      <button class="d-btn" type="button" onclick="prvCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <button class="d-btn primario" type="button" id="prv-nuovo" onclick="prvNuovo()"><i class="ti ti-plus"></i> Nuovo</button>
     </div>
   </section>
 
@@ -3631,7 +3707,7 @@ input[type=file]{display:none;}
         <div class="fld"><label>Provvigione dichiarata (€)</label><input type="text" id="prv-s-provv" placeholder="vuoto = la compagnia non l&#39;ha dichiarata"></div>
         <div class="fld"><label>Data della rata</label><input type="date" id="prv-s-data"></div>
       </div>
-      <button class="f-b pri" type="button" style="margin-top:12px" onclick="prvSimula()"><i class="ti ti-calculator"></i> Calcola</button>
+      <button class="d-btn primario" type="button" style="margin-top:12px" onclick="prvSimula()"><i class="ti ti-calculator"></i> Calcola</button>
       <div id="prv-s-esito" style="margin-top:14px"></div>
     </div>
   </div>
@@ -4516,9 +4592,9 @@ function cntFormConto(id) {
       </div>
       ${id ? `<div id="cnt-storia" style="margin-top:10px"></div>` : ''}
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-        <button class="f-b pri" type="button" onclick="cntSalvaConto('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
-        <button class="f-b" type="button" onclick="cntChiudi()">Annulla</button>
-        ${id ? `<button class="f-b" type="button" style="margin-left:auto;color:#ef4444" onclick="cntEliminaConto('${esc(id)}')" ${el.ok ? '' : 'disabled title="' + esc(el.motivo || '') + '"'}><i class="ti ti-trash"></i> Elimina</button>` : ''}
+        <button class="d-btn primario" type="button" onclick="cntSalvaConto('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
+        <button class="d-btn" type="button" onclick="cntChiudi()">Annulla</button>
+        ${id ? `<button class="d-btn" type="button" style="margin-left:auto;color:#ef4444" onclick="cntEliminaConto('${esc(id)}')" ${el.ok ? '' : 'disabled title="' + esc(el.motivo || '') + '"'}><i class="ti ti-trash"></i> Elimina</button>` : ''}
       </div>
     </div>`;
 }
@@ -4553,9 +4629,9 @@ function cntFormCausale(id) {
       ${c.di_sistema ? '<div class="cnt-avv" style="margin-top:10px">È una delle causali di partenza: ci si aggancia l\'automatismo dell\'incasso. Si può rinominare e spegnere, non cancellare.</div>' : ''}
       ${id ? `<div id="cnt-storia" style="margin-top:10px"></div>` : ''}
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-        <button class="f-b pri" type="button" onclick="cntSalvaCausale('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
-        <button class="f-b" type="button" onclick="cntChiudi()">Annulla</button>
-        ${id ? `<button class="f-b" type="button" style="margin-left:auto;color:#ef4444" onclick="cntEliminaCausale('${esc(id)}')" ${el.ok ? '' : 'disabled title="' + esc(el.motivo || '') + '"'}><i class="ti ti-trash"></i> Elimina</button>` : ''}
+        <button class="d-btn primario" type="button" onclick="cntSalvaCausale('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
+        <button class="d-btn" type="button" onclick="cntChiudi()">Annulla</button>
+        ${id ? `<button class="d-btn" type="button" style="margin-left:auto;color:#ef4444" onclick="cntEliminaCausale('${esc(id)}')" ${el.ok ? '' : 'disabled title="' + esc(el.motivo || '') + '"'}><i class="ti ti-trash"></i> Elimina</button>` : ''}
       </div>
     </div>`;
 }
@@ -4834,9 +4910,9 @@ function pntRenderLista(righe, puo) {
       </div>
       <div style="text-align:right">
         <div class="cnt-saldo">${verso < 0 ? '−' : '+'} ${Contabilita.euro(Math.abs(Contabilita.numero(m.importo) || 0))}</div>
-        ${puo && !ann ? `<button class="f-b" type="button" style="padding:3px 9px;font-size:11px;margin-top:4px"
+        ${puo && !ann ? `<button class="d-btn" type="button" style="padding:3px 9px;font-size:11px;margin-top:4px"
              onclick="pntApriMovimento('${esc(m.id)}')">Apri</button>` : ''}
-        ${puo && ann ? `<button class="f-b" type="button" style="padding:3px 9px;font-size:11px;margin-top:4px"
+        ${puo && ann ? `<button class="d-btn" type="button" style="padding:3px 9px;font-size:11px;margin-top:4px"
              onclick="pntRiapri('${esc(m.id)}')">Riapri</button>` : ''}
       </div>
     </div>`;
@@ -4935,9 +5011,9 @@ function pntApriMovimento(id) {
       <div id="pnt-storia" style="margin-top:12px"></div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;padding:0 18px 18px">
-      <button class="f-b" type="button" onclick="pntChiudi()">Chiudi</button>
-      ${id ? `<button class="f-b" type="button" onclick="pntAnnulla('${esc(id)}')">Annulla il movimento</button>` : ''}
-      ${auto ? '' : `<button class="f-b pri" type="button" onclick="pntSalva(${id ? "'" + esc(id) + "'" : 'null'})">Salva</button>`}
+      <button class="d-btn" type="button" onclick="pntChiudi()">Chiudi</button>
+      ${id ? `<button class="d-btn" type="button" onclick="pntAnnulla('${esc(id)}')">Annulla il movimento</button>` : ''}
+      ${auto ? '' : `<button class="d-btn primario" type="button" onclick="pntSalva(${id ? "'" + esc(id) + "'" : 'null'})">Salva</button>`}
     </div>`);
   if (id && typeof regInstalla === 'function') regInstalla('pnt-storia', 'movimento', id);
 }
@@ -5046,7 +5122,7 @@ function pntRenderQuadrature() {
         ${r.motivo ? `<div class="cnt-sotto">${esc(r.motivo)}</div>` : ''}
       </div>
       <div style="text-align:right">
-        ${puo ? `<button class="f-b" type="button" style="padding:3px 9px;font-size:11px"
+        ${puo ? `<button class="d-btn" type="button" style="padding:3px 9px;font-size:11px"
              onclick="pntApriQuadratura('${esc(r.conto_id)}')">Dichiara il saldo</button>` : ''}
       </div>
     </div>`;
@@ -5075,8 +5151,8 @@ function pntApriQuadratura(contoId) {
           s.nota ? ' · ' + esc(s.nota) : ''}</div>`).join('')}</div>` : ''}
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;padding:0 18px 18px">
-      <button class="f-b" type="button" onclick="pntChiudi()">Chiudi</button>
-      <button class="f-b pri" type="button" onclick="pntSalvaQuadratura('${esc(contoId)}')">Salva</button>
+      <button class="d-btn" type="button" onclick="pntChiudi()">Chiudi</button>
+      <button class="d-btn primario" type="button" onclick="pntSalvaQuadratura('${esc(contoId)}')">Salva</button>
     </div>`);
 }
 
@@ -5239,7 +5315,7 @@ function prvRenderTariffe(puo) {
   const righe = PRV_STORICO ? PRV_TARIFFE : Provvigioni.vigenti(PRV_TARIFFE, prvOggi());
   const testa = `<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px">
       <b style="font-size:13px">Tariffe${PRV_STORICO ? ' · con lo storico' : ' in vigore'}</b>
-      <button class="f-b" type="button" style="padding:4px 10px;font-size:12px" onclick="PRV_STORICO=!PRV_STORICO;prvRender()">
+      <button class="d-btn" type="button" style="padding:4px 10px;font-size:12px" onclick="PRV_STORICO=!PRV_STORICO;prvRender()">
         ${PRV_STORICO ? 'Nascondi lo storico' : 'Mostra lo storico'}</button></div>`;
   if (!righe.length) {
     box.innerHTML = testa + `<div class="cl-sub" style="padding:14px 0">Nessuna tariffa. ${puo ? 'Comincia dalle compagnie che hai in portafoglio: le trovi elencate qui sopra.' : 'Le scrive un amministratore.'}</div>`;
@@ -5397,9 +5473,9 @@ function prvApriTariffa(id, pre) {
       </div>
       <div class="cnt-avv" style="margin-top:10px">L’aliquota <b>non corregge</b> la provvigione che la compagnia dichiara sulla rata: quella vince sempre. Serve a calcolarla dove la compagnia non la dichiara, e a segnalarti gli scostamenti dove la dichiara.</div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-        <button class="f-b pri" type="button" onclick="prvSalvaTariffa('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
-        <button class="f-b" type="button" onclick="prvChiudi()">Annulla</button>
-        ${id ? `<button class="f-b" type="button" style="margin-left:auto;color:#ef4444" onclick="prvChiudiTariffa('${esc(id)}')"><i class="ti ti-archive"></i> Chiudi la tariffa</button>` : ''}
+        <button class="d-btn primario" type="button" onclick="prvSalvaTariffa('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
+        <button class="d-btn" type="button" onclick="prvChiudi()">Annulla</button>
+        ${id ? `<button class="d-btn" type="button" style="margin-left:auto;color:#ef4444" onclick="prvChiudiTariffa('${esc(id)}')"><i class="ti ti-archive"></i> Chiudi la tariffa</button>` : ''}
       </div>
     </div>`);
 }
@@ -5474,9 +5550,9 @@ function prvApriOverride(id) {
       </div>
       <div class="cl-sub" style="margin-top:8px">Più campi compili, più l’accordo è specifico: quello più specifico vince su quello generale, e tutti e due vincono sul default della tariffa.</div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-        <button class="f-b pri" type="button" onclick="prvSalvaOverride('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
-        <button class="f-b" type="button" onclick="prvChiudi()">Annulla</button>
-        ${id ? `<button class="f-b" type="button" style="margin-left:auto;color:#ef4444" onclick="prvChiudiOverride('${esc(id)}')"><i class="ti ti-archive"></i> Chiudi l’accordo</button>` : ''}
+        <button class="d-btn primario" type="button" onclick="prvSalvaOverride('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
+        <button class="d-btn" type="button" onclick="prvChiudi()">Annulla</button>
+        ${id ? `<button class="d-btn" type="button" style="margin-left:auto;color:#ef4444" onclick="prvChiudiOverride('${esc(id)}')"><i class="ti ti-archive"></i> Chiudi l’accordo</button>` : ''}
       </div>
     </div>`);
 }
@@ -5551,18 +5627,18 @@ function prvApriGruppo(id) {
       ${id ? `<div class="fsec" style="margin-top:12px"><div class="fsec-title">Membri</div>
         ${membri.length ? membri.map(m => `<div class="cnt-r"><div><div class="cnt-nome">${esc(prvNome(m.collaboratore_id))}</div>
             <div class="cnt-sotto">${m.indiretto != null ? 'indiretto suo ' + Provvigioni.perc(m.indiretto) : 'indiretto del gruppo'}</div></div>
-          <button class="f-b" type="button" style="margin-left:auto;padding:4px 10px;font-size:12px" onclick="prvTogliMembro('${esc(m.id)}','${esc(id)}')">Togli</button></div>`).join('')
+          <button class="d-btn" type="button" style="margin-left:auto;padding:4px 10px;font-size:12px" onclick="prvTogliMembro('${esc(m.id)}','${esc(id)}')">Togli</button></div>`).join('')
           : '<div class="cl-sub">Nessun membro. Un gruppo senza membri non produce nessun indiretto.</div>'}
         <div style="display:flex;gap:8px;margin-top:10px">
           <select id="prv-g-nuovo-membro" style="flex:1"><option value="">— aggiungi una persona —</option>${liberi.map(p => `<option value="${esc(p.id)}">${esc(p.nominativo || '—')}</option>`).join('')}</select>
           <input type="text" id="prv-g-nuovo-perc" placeholder="% sua" style="width:90px" inputmode="decimal">
-          <button class="f-b" type="button" onclick="prvAggiungiMembro('${esc(id)}')">Aggiungi</button>
+          <button class="d-btn" type="button" onclick="prvAggiungiMembro('${esc(id)}')">Aggiungi</button>
         </div>
         <div class="cl-sub" style="margin-top:6px">Chi è già in un altro gruppo non compare: una persona sola in due gruppi vorrebbe dire due capi pagati sulla stessa produzione.</div>
       </div>` : '<div class="cl-sub" style="margin-top:10px">I membri si aggiungono dopo aver salvato il gruppo.</div>'}
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-        <button class="f-b pri" type="button" onclick="prvSalvaGruppo('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
-        <button class="f-b" type="button" onclick="prvChiudi()">Annulla</button>
+        <button class="d-btn primario" type="button" onclick="prvSalvaGruppo('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
+        <button class="d-btn" type="button" onclick="prvChiudi()">Annulla</button>
       </div>
     </div>`);
 }

@@ -1,9 +1,18 @@
 {
-  "versione": "0.3.0",
-  "nome": "Prima nota e quadratura",
+  "versione": "0.3.1",
+  "nome": "La grafica di IAM su tutte le schermate",
   "data": "2026-09-20",
-
   "storia": [
+    {
+      "v": "0.3.1",
+      "data": "2026-09-20",
+      "nome": "La grafica di IAM su tutte le schermate",
+      "voci": [
+        "Conti e causali, Gestione compagnie, Provvigioni, Prima nota e Quadratura conti hanno ora la stessa grafica della Scrivania: titolo, sottotitolo, bottoni bianco e verde, schede.",
+        "Il kit grafico era scritto per la sola Scrivania: adesso vale su tutta IAM, quindi una schermata nuova nasce già con l'aspetto giusto invece di reinventarselo.",
+        "La schermata di accesso e la Scrivania non cambiano di un pixel: verificato con le fotografie prima e dopo."
+      ]
+    },
     {
       "v": "0.3.0",
       "data": "2026-09-20",
@@ -41,7 +50,6 @@
       ]
     }
   ],
-
   "_perche": [
     "LA FONTE UNICA DEL NUMERO DI VERSIONE. Un posto solo: i due documenti se lo",
     "annotano e una prova controlla che dicano la stessa cosa di questo file.",

@@ -1,6 +1,8 @@
-id: prem-1789914146  exit: 0  2026-09-20 14:23:56
+id: menu-1789915551  exit: 0  2026-09-20 14:47:26
 ----
-76c7f2a Blocco 1 · punto 1: il premio delle frazionate non è più un trattino (#216)
-<meta name="app-versione" content="0.7.0">
--- pfPremio servito:
+0ea87d9 Blocco 1 · punti 5, 12, 13 e 11: il menu riordinato (#217)
+<meta name="app-versione" content="0.8.0">
+-- la scocca servita ha i due cassetti:
 2
+-- e il nome ambiguo non c'e' piu':
+1

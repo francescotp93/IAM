@@ -6200,6 +6200,39 @@ const avvio = async () => {
       return 'cinque casi';
     });
 
+    await prova('portafoglio: la colonna PREMIO non mostra piu\' un trattino muto', async () => {
+      /* Brief IAM, punto 1 (20/09/2026): su TUTTE le semestrali la colonna
+         mostrava «—». Adesso o c'è l'annuo (ricavato dalle rate che la
+         compagnia ha emesso), o c'è la rata DETTA per quello che è, col
+         motivo per cui l'annuo non si è potuto ricavare: un trattino non dice
+         se il premio non c'è o se il sistema non l'ha trovato (§12, §18). */
+      const r = await page.evaluate(() => {
+        const fatto = (extra) => Object.assign({
+          id: 'x', numero: 1, numero_polizza: 'NP-X', cliente: 'ROSSI', compagnia: 'PRIMA',
+          prodotto: 'RC Auto', modulo: 'rcauto', data_effetto: '2026-09-16', data_scadenza: '2027-09-16',
+          stato_pagamento: 'pagato', dati: {}
+        }, extra);
+        return {
+          ricavato: window.pfPremio(fatto({ premio_annuo: 220, premio_rata: 110 })) +
+                    window.pfPremioSotto(fatto({ premio_annuo: 220, premio_rata: 110, frazionamento: 'Semestrale',
+                                                 dati: { ssf: { premio_annuo_da: 'titoli', premio_annuo_rate: 2 } } })),
+          senza: window.pfPremio(fatto({ premio_annuo: null, premio_rata: 110 })) +
+                 window.pfPremioSotto(fatto({ premio_annuo: null, premio_rata: 110, frazionamento: 'Semestrale',
+                                              dati: { ssf: { premio_annuo_manca: 'la compagnia ha mandato 1 rata: non coprono l\u2019annualità' } } })),
+          nudo: window.pfPremio(fatto({ premio_annuo: null, premio_rata: null }))
+        };
+      });
+      deve(/220,00/.test(r.ricavato), 'l\'annuo ricavato non si vede: ' + r.ricavato);
+      deve(/dalle 2 rate emesse/.test(r.ricavato), 'non dice da dove viene l\'annuo: ' + r.ricavato);
+      deve(!/—/.test(r.senza), 'senza annuo torna il trattino muto: ' + r.senza);
+      deve(/110,00/.test(r.senza) && /di rata/.test(r.senza),
+        'la rata non è detta per quello che è: sommata in fondo alla pagina farebbe mele e pere — ' + r.senza);
+      deve(/non ricavabile/.test(r.senza), 'non dice perché l\'annuo non c\'è: ' + r.senza);
+      /* Un trattino resta solo dove non c'è NESSUN numero: lì è la verità. */
+      deve(r.nudo === '—', 'senza nessun premio non mostra il trattino: ' + r.nudo);
+      return 'annuo ricavato, rata dichiarata, trattino solo dove non c\'è niente';
+    });
+
     await prova('portafoglio: il numero di compagnia si puo\' finalmente inserire', async () => {
       /* La colonna esisteva, si leggeva in sei schermate e si esportava — ma
          nessuna riga di codice la scriveva. La tabella diceva «numero di
@@ -8632,10 +8665,17 @@ const avvio = async () => {
       deve(r.pol.every(p => p.fonte === 'ssf' && p.fonte_id), 'una polizza senza chiave di provenienza: al prossimo caricamento diventa un doppione');
       deve(r.pol.every(p => p.cliente_id), 'una polizza senza cliente_id');
       const semestrale = r.pol.find(p => p.numero_polizza === 'NP-0002');
-      deve(semestrale.premio_rata === 110 && semestrale.premio_annuo === null, 'la semestrale scrive annuo ' + semestrale.premio_annuo + ': il portafoglio risulterebbe dimezzato');
-      /* Tre rate: due le manda la compagnia (T1, T2), la terza la deduciamo
-         noi dal frazionamento di NP-0008, che la compagnia non ha mandato. */
-      deve(r.tit.length === 3, 'rate scritte: ' + r.tit.length);
+      /* Il premio di RATA resta la rata: scriverci dentro l'annuo
+         raddoppierebbe il portafoglio, e il contrario lo dimezzerebbe.
+         L'annuo invece dal 20/09 si ricava dalle due rate che la compagnia ha
+         emesso — 110 + 110 — e non è una stima: sono due righe sue. */
+      deve(semestrale.premio_rata === 110, 'la semestrale scrive rata ' + semestrale.premio_rata);
+      deve(semestrale.premio_annuo === 220, 'la semestrale scrive annuo ' + semestrale.premio_annuo + ' invece di 220');
+      deve(semestrale.premio_annuo !== semestrale.premio_rata, 'annuo e rata coincidono: il portafoglio risulterebbe dimezzato');
+      /* Quattro rate: tre le manda la compagnia (T1, T2, T8), la quarta la
+         deduciamo noi dal frazionamento di NP-0008, che la compagnia non ha
+         mandato. */
+      deve(r.tit.length === 4, 'rate scritte: ' + r.tit.length);
       deve(r.tit.every(t => t.polizza_id && t.fonte_id), 'una rata senza polizza o senza provenienza');
       const dedotta = r.tit.find(t => /:RATA:/.test(t.fonte_id));
       deve(dedotta, 'la rata dedotta dal frazionamento non viene scritta: il cliente la deve e nessuno la vede');
@@ -8691,12 +8731,12 @@ const avvio = async () => {
          a mano dichiara rotto un codice giusto. */
       deve(/<option value="99999999-9999-4999-8999-999999999999" selected(="")?>Neri Anna<\/option>/.test(r.anteprima),
            'l\'anteprima non dice a chi andranno le rate di quel codice');
-      deve(r.tit.length === 3, 'rate scritte: ' + r.tit.length);
+      deve(r.tit.length === 4, 'rate scritte: ' + r.tit.length);
       deve(r.tit.every(t => t.collaboratore_id === '99999999-9999-4999-8999-999999999999'),
            'una rata è nata senza padrone: ' + JSON.stringify(r.tit.map(t => t.collaboratore_id)));
-      deve(r.reg[0].conteggi.titoli_assegnati === 3, 'il verbale non conta le assegnate: ' + JSON.stringify(r.reg[0].conteggi));
+      deve(r.reg[0].conteggi.titoli_assegnati === 4, 'il verbale non conta le assegnate: ' + JSON.stringify(r.reg[0].conteggi));
       deve(/già assegnat/.test(r.esito), 'l\'esito non dice quante sono nate già di qualcuno');
-      return '3 rate su 3 nate di Neri Anna, e il verbale lo scrive';
+      return '4 rate su 4 nate di Neri Anna, e il verbale lo scrive';
     });
 
     await prova('flusso: il codice produttore si abbina da qui, e le evidenze non si perdono', async () => {
@@ -8877,8 +8917,8 @@ const avvio = async () => {
         /* Anche la rata DEDOTTA deve riconoscersi al secondo giro: la sua
            chiave e' costruita apposta per essere sempre la stessa. */
         window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [
-          { id: 't1', fonte_id: 'T1' }, { id: 't2', fonte_id: 'T2' },
-          { id: 't8', fonte_id: 'P8:RATA:2027-01-01' }], error: null };
+          { id: 't1', fonte_id: 'T1' }, { id: 't2', fonte_id: 'T2' }, { id: 't8', fonte_id: 'T8' },
+          { id: 'td', fonte_id: 'P8:RATA:2027-01-01' }], error: null };
         const testi = window.__CAMPIONE;
         const files = Object.keys(testi).map(n => new File([testi[n]], n, { type: 'text/csv' }));
         window.__COLLAUDO.db = [];

@@ -97,10 +97,27 @@ prova('REGOLA 2 · il premio della polizza è la RATA, e l\'annuo non si stima',
   const annuale = cerca('NP-0001'), semestrale = cerca('NP-0002');
   deve(annuale.premio_rata === 300 && annuale.premio_annuo === 300, 'annuale: rata ' + annuale.premio_rata + ' annuo ' + annuale.premio_annuo);
   deve(semestrale.premio_rata === 110, 'semestrale, rata: ' + semestrale.premio_rata);
-  deve(semestrale.premio_annuo === null, 'semestrale, annuo: ' + semestrale.premio_annuo + ' — non si sa, e si scrive che non si sa');
   deve(semestrale.frazionamento === 'Semestrale', 'frazionamento tradotto in: ' + semestrale.frazionamento);
   deve(semestrale.dati.ssf.rate_anno === 2, 'le rate all\'anno non sono annotate');
-  return 'annuale 300/300, semestrale 110/da confermare';
+
+  /* AGGIORNATA IL 20/09/2026 (brief IAM, punto 1). Prima questa prova
+     pretendeva `premio_annuo === null` sulla semestrale, e il campione aveva
+     una sola delle due rate. Dal 20/09 l'annuo si RICAVA quando le rate della
+     compagnia coprono l'anno — non è una stima, è la somma di due righe che
+     ha scritto la compagnia. La regola da sorvegliare resta la stessa e va
+     detta meglio: **l'annuo non è mai la rata moltiplicata**. */
+  deve(semestrale.premio_annuo === 220, 'la somma delle due rate vere non arriva: ' + semestrale.premio_annuo);
+  deve(semestrale.dati.ssf.premio_annuo_da === 'titoli', 'l\'annuo non dice da dove viene');
+  deve(semestrale.premio_annuo !== semestrale.premio_rata, 'l\'annuo è rimasto la rata: il portafoglio varrebbe la metà');
+
+  /* E la prova che la moltiplicazione non è tornata: NP-0008 è semestrale e
+     la compagnia non ne ha mandato nessuna rata. `rata × 2` farebbe 220 — un
+     numero credibile e inventato. Deve restare vuoto, col motivo. */
+  const senzaRate = cerca('NP-0008');
+  deve(senzaRate.dati.ssf.rate_anno === 2, 'NP-0008 non è la semestrale che serve a questa prova');
+  deve(senzaRate.premio_annuo == null, 'l\'annuo si stima moltiplicando: ' + senzaRate.premio_annuo);
+  deve(senzaRate.dati.ssf.premio_annuo_manca, 'non dice perché l\'annuo non c\'è');
+  return 'annuale 300/300; semestrale 110 di rata e 220 di annuo dalle sue due rate; senza rate resta vuoto';
 });
 
 prova('REGOLA 3 · un\'offerta di rinnovo non è una polizza', () => {
@@ -488,8 +505,11 @@ prova('il codice produttore e il RUI arrivano, e sono due cose diverse dal codic
 
 prova('si sa chi ha prodotto che cosa, e non si aggancia nessuno da solo', () => {
   const c = A.collaboratori.find(x => x.codice === 'U90001');
-  deve(c.polizze === 2, 'titoli attribuiti: ' + c.polizze + ' (attesi 2)');
-  deve(Math.abs(c.provvigioni - 41) < 0.01, 'provvigioni: ' + c.provvigioni + ' (attese 41,00)');
+  /* Tre dal 20/09/2026: al campione si è aggiunta la prima semestralità di
+     NP-0002, che è la forma del file vero (le due rate dell'anno ci sono
+     tutte e due). Il numero misura il campione, la regola no. */
+  deve(c.polizze === 3, 'titoli attribuiti: ' + c.polizze + ' (attesi 3)');
+  deve(Math.abs(c.provvigioni - 52) < 0.01, 'provvigioni: ' + c.provvigioni + ' (attese 52,00: 41 piu\' gli 11 della rata aggiunta al campione)');
   /* Il piano dice se quell'email e' gia' una persona in agenzia, ma non crea
      e non aggancia niente: il registro unico delle persone e' un'altra cosa,
      e agganciare a occhio su un'email fa i doppioni che quel lavoro ha tolto. */
@@ -498,7 +518,7 @@ prova('si sa chi ha prodotto che cosa, e non si aggancia nessuno da solo', () =>
   deve(r.riconosciuto === true && r.persona_id === 'persona-1', 'chi c\'e\' gia\' non viene riconosciuto');
   const sconosciuto = p.collaboratori.find(x => x.codice === 'U90002');
   deve(sconosciuto.riconosciuto === false && sconosciuto.persona_id === null, 'a chi non c\'e\' viene inventata una persona');
-  deve(Math.abs(p.provvigioni - 41) < 0.01, 'provvigioni del flusso: ' + p.provvigioni);
+  deve(Math.abs(p.provvigioni - 52) < 0.01, 'provvigioni del flusso: ' + p.provvigioni);
   return '2 titoli e 41,00 a U90001; 1 riconosciuto, 1 no, 0 creati';
 });
 
@@ -567,15 +587,23 @@ prova('una rata scoperta si deduce dal frazionamento, con l\'importo della rata 
 });
 
 prova('quello che la compagnia ha gia\' mandato non si duplica', () => {
-  /* NP-0002 e' semestrale come NP-0008, ma la sua seconda rata (T2, SE,
-     16/03/2027) sta gia' nel flusso: la regola deve stare zitta. */
+  /* NP-0002 e' semestrale come NP-0008, ma le sue rate stanno gia' nel
+     flusso: la regola deve stare zitta. La cosa da misurare non e' QUANTE
+     rate ha (quello dipende dal campione, e dal 20/09/2026 sono due), ma che
+     nessuna di quelle rate l'abbiamo generata noi. */
   const sue = A.titoli.filter(t => t._polizza === 'P2');
-  deve(sue.length === 1, 'rate su NP-0002: ' + sue.length + ' — la seconda e\' stata duplicata');
-  deve(sue[0]._fonte_id === 'T2' && !sue[0]._generato, 'la rata di NP-0002 non e\' piu\' quella della compagnia');
-  /* E il conto di chi guarda: due rate da incassare in tutto — quella che
-     manda la compagnia e quella che deduciamo noi. */
-  deve(P.titoli.daIncassare.length === 2, 'rate da incassare: ' + P.titoli.daIncassare.length + ' (attese 2)');
-  return 'NP-0002 resta con la sua rata sola; 2 da incassare in tutto';
+  const nostre = sue.filter(t => t._generato || /:RATA:/.test(t._fonte_id || ''));
+  deve(!nostre.length, 'su NP-0002 abbiamo generato ' + nostre.length + ' rate che la compagnia aveva gia\' mandato');
+  deve(sue.length === 2, 'rate su NP-0002: ' + sue.length + ' (attese 2, tutte e due della compagnia)');
+  deve(sue.every(t => !t._generato), 'una rata di NP-0002 non e\' piu\' quella della compagnia');
+  /* E il conto di chi guarda: le rate ancora da incassare. Il numero segue il
+     campione (dal 20/09 la prima semestralita' di NP-0002 c'e' e risulta
+     pagata); quello che conta e' che ne sia dedotta UNA SOLA, quella di
+     NP-0008, e che le altre le abbia mandate la compagnia. */
+  const dedotte = P.titoli.daIncassare.filter(t => /:RATA:/.test(t._fonte_id || ''));
+  deve(dedotte.length === 1, 'rate dedotte da noi: ' + dedotte.length + ' (attesa 1, quella di NP-0008)');
+  deve(P.titoli.daIncassare.length === 3, 'rate da incassare: ' + P.titoli.daIncassare.length + ' (attese 3)');
+  return 'su NP-0002 non deduciamo niente; una sola rata dedotta in tutto il flusso';
 });
 
 prova('un pezzo scoperto piu\' corto di una rata non diventa un importo inventato', () => {
@@ -685,6 +713,67 @@ prova('aggiungere un tipo e\' una riga sola, e quel tipo entra davvero', () => {
     deve(!dopo.titoliIgnoti.some(x => x.tipo_share === 'PS'), 'resta anche fra gli ignoti');
   } finally { delete F.TIPO_TITOLO.PS; }
   return 'PS fuori senza la riga, dentro con la riga';
+});
+
+/* ═══ IL PREMIO ANNUO DELLE FRAZIONATE (20/09/2026) ═════════════════════════
+   Segnalato da Francesco: in portafoglio la colonna PREMIO mostrava «—» su
+   TUTTE le semestrali. Non era il frontend — il dato è vuoto, ed è vuoto
+   apposta (regola 2). Ma un numero vero c'è: la somma delle rate che la
+   compagnia HA MANDATO, quando coprono l'annualità. */
+
+prova('il premio annuo si ricava dalle rate della compagnia, non moltiplicando', () => {
+  const pol = { data_effetto: '2026-09-16', data_scadenza: '2027-09-16', premio_rata: 110 };
+  const due = [
+    { _fonte_id: 'A', data_decorrenza: '2026-09-16', data_scadenza: '2027-03-16', importo_lordo: 110 },
+    { _fonte_id: 'B', data_decorrenza: '2027-03-16', data_scadenza: '2027-09-16', importo_lordo: 110 }
+  ];
+  const r = F.premioAnnuo(pol, due);
+  deve(r.importo === 220 && r.fonte === 'titoli' && r.rate === 2, 'due semestrali non fanno 220: ' + JSON.stringify(r));
+  /* Quello che la compagnia dichiara vince sempre: sulle annuali LORDO_TOTALE
+     È il premio dell'anno, e non si ricalcola. */
+  const dich = F.premioAnnuo({ premio_annuo: 262.98, data_effetto: '2026-01-01', data_scadenza: '2027-01-01' }, []);
+  deve(dich.importo === 262.98 && dich.fonte === 'dichiarato', 'il premio dichiarato non vince: ' + JSON.stringify(dich));
+  return '220,00 da due rate vere; il dichiarato resta dichiarato';
+});
+
+prova('NON si somma quello che non copre l\'anno, ne\' quello che abbiamo dedotto noi', () => {
+  const pol = { data_effetto: '2026-09-16', data_scadenza: '2027-09-16', premio_rata: 110 };
+  const prima = { _fonte_id: 'A', data_decorrenza: '2026-09-16', data_scadenza: '2027-03-16', importo_lordo: 110 };
+  /* Una rata sola: il premio annuo NON è 110, e non è nemmeno 220. Non si sa. */
+  const una = F.premioAnnuo(pol, [prima]);
+  deve(una.importo === null && /non coprono/.test(una.motivo), 'con una rata sola si inventa un annuo: ' + JSON.stringify(una));
+  /* La seconda rata DEDOTTA da noi (§16) non vale come rata della compagnia:
+     farla entrare vorrebbe dire che metà di quel numero l'abbiamo scritto
+     noi, e nessuno saprebbe quale metà. */
+  const dedotta = { _fonte_id: 'X:RATA:2027-03-16', _generato: true, data_decorrenza: '2027-03-16', data_scadenza: '2027-09-16', importo_lordo: 110 };
+  const conDedotta = F.premioAnnuo(pol, [prima, dedotta]);
+  deve(conDedotta.importo === null, 'una rata dedotta entra nel premio annuo: ' + JSON.stringify(conDedotta));
+  /* Un buco in mezzo: la somma sarebbe «quello che è arrivato», non l'anno. */
+  const buco = F.premioAnnuo(pol, [
+    { _fonte_id: 'A', data_decorrenza: '2026-09-16', data_scadenza: '2026-12-16', importo_lordo: 55 },
+    { _fonte_id: 'B', data_decorrenza: '2027-03-16', data_scadenza: '2027-09-16', importo_lordo: 110 }
+  ]);
+  deve(buco.importo === null && /manca un pezzo/.test(buco.motivo), 'con un buco somma lo stesso: ' + JSON.stringify(buco));
+  /* Una rata senza importo non si salta: rende il totale non calcolabile. */
+  const senza = F.premioAnnuo(pol, [prima, { _fonte_id: 'B', data_decorrenza: '2027-03-16', data_scadenza: '2027-09-16', importo_lordo: null }]);
+  deve(senza.importo === null && /importo/.test(senza.motivo), 'una rata senza importo viene saltata: ' + JSON.stringify(senza));
+  /* E in tutti i casi c'è il MOTIVO, che la schermata stampa al posto del
+     trattino: «—» non dice se il premio non c'è o se non si è trovato. */
+  for (const r of [una, conDedotta, buco, senza]) deve(r.motivo && r.motivo.length > 10, 'manca il motivo: ' + JSON.stringify(r));
+  return 'quattro modi di non saperlo, ognuno col suo motivo';
+});
+
+prova('l\'importazione scrive il premio annuo che ha ricavato, e dichiara quando non puo\'', () => {
+  /* Non basta che la funzione esista: deve essere CHIAMATA dall'analisi,
+     altrimenti è il guasto numero uno di questo repository (§1). */
+  const a = F.analizza(RACCOLTA.record);
+  deve(a.polizze.filter(p => p.premio_annuo != null).length >= 1, 'nessuna polizza esce con un premio annuo');
+  const daTitoli = a.polizze.filter(p => p.dati && p.dati.ssf && p.dati.ssf.premio_annuo_da === 'titoli');
+  const senza = a.polizze.filter(p => p.premio_annuo == null);
+  for (const p of senza) {
+    deve(p.dati.ssf.premio_annuo_manca, 'la polizza ' + p.numero_polizza + ' non dice perché non ha il premio annuo');
+  }
+  return daTitoli.length + ' ricavate dalle rate, ' + senza.length + ' dichiarate';
 });
 
 console.log('\n══ FLUSSO DI PORTAFOGLIO (SSF) ══');

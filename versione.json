@@ -1,8 +1,20 @@
 {
-  "versione": "0.6.1",
-  "nome": "Gestione compagnie si riapre",
+  "versione": "0.7.0",
+  "nome": "Il premio delle frazionate",
   "data": "2026-09-20",
   "storia": [
+    {
+      "v": "0.7.0",
+      "data": "2026-09-20",
+      "nome": "Il premio delle frazionate",
+      "voci": [
+        "Portafoglio: la colonna PREMIO non mostra più un trattino sulle polizze semestrali. Il premio annuo si ricava dalla somma delle rate che la compagnia ha emesso — non è una stima, sono righe sue.",
+        "Dove le rate non coprono l'anno la colonna mostra la rata, detta per quello che è, e dice perché l'annuo non si è potuto ricavare: un trattino non distingue «il premio non c'è» da «non l'ho trovato».",
+        "L'annuo non si stima mai moltiplicando la rata per il frazionamento: su una polizza allineata a una scadenza diversa il numero sarebbe sbagliato, e credibile.",
+        "Le polizze già caricate sono state sistemate: due semestrali hanno ora il loro premio annuo (220,00 e 400,04); le altre dicono cosa manca.",
+        "L'export Excel porta le stesse cifre della lista, con una colonna per il premio di rata e una che dice da dove viene l'annuo."
+      ]
+    },
     {
       "v": "0.6.1",
       "data": "2026-09-20",

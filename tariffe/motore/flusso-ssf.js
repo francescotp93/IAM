@@ -489,6 +489,25 @@ function mezzoDa(codice) {
       titoli.push(r.titolo);
     });
 
+    /* ── Il premio annuo delle frazionate ─────────────────────────────────
+       Si ricava DOPO (la funzione salta comunque le rate dedotte, ma l'ordine
+       dice che cosa guarda: le rate della compagnia, non le nostre). Dove non
+       si può, la polizza resta senza premio annuo e si porta dietro il MOTIVO
+       fin dentro la schermata: un «—» non dice se il premio non c'è o se il
+       sistema non l'ha trovato. */
+    polizze.forEach(function (p) {
+      if (p.premio_annuo != null) return;
+      var pa = premioAnnuo(p, perPolizza[p._fonte_id]);
+      if (!pa) return;
+      if (pa.importo != null) {
+        p.premio_annuo = pa.importo;
+        p.dati.ssf.premio_annuo_da = 'titoli';
+        p.dati.ssf.premio_annuo_rate = pa.rate;
+      } else {
+        p.dati.ssf.premio_annuo_manca = pa.motivo;
+      }
+    });
+
     var prodotti = righe['100'].map(function (r) {
       return { compagnia: testo(r.COMPAGNIA_EXP), ania: testo(r.COMPAGNIA_ANIA), ramo: testo(r.RAMO),
                codice: testo(r.CODICE_PRODOTTO), descrizione: testo(r.DESCRIZIONE_PRODOTTO) };
@@ -838,6 +857,97 @@ function mezzoDa(codice) {
     };
   }
 
+  /* ══ IL PREMIO ANNUO DELLE FRAZIONATE ═════════════════════════════════════
+     Segnalato da Francesco il 20/09/2026: in portafoglio la colonna PREMIO
+     mostrava «—» su TUTTE le semestrali. Non era il frontend: `premio_annuo`
+     è vuoto nel dato, e lo è **apposta** — nel tracciato `LORDO_TOTALE` è il
+     premio DI RATA, e moltiplicarlo per il frazionamento sarebbe una stima
+     (regola 2). Una stima in un portafoglio diventa un dato dopo due
+     settimane.
+
+     Ma un numero vero c'è, e non è una stima: **la somma delle rate che la
+     compagnia ha emesso**, quando coprono l'annualità. Sul file vero due
+     semestrali da 110,00 fanno 220,00, e quelle due righe le ha scritte la
+     compagnia, non noi.
+
+     TRE CONDIZIONI, e nessuna è decorativa:
+
+     1. **Solo le rate che ha mandato la compagnia.** Le rate DEDOTTE (§16,
+        `:RATA:`) sono un nostro ragionamento: farle entrare nel premio annuo
+        vorrebbe dire che metà di quel numero l'abbiamo inventato noi, e
+        nessuno saprebbe quale metà.
+     2. **Devono ricoprire l'annualità senza buchi.** Ordinate, la prima parte
+        dall'effetto e l'ultima arriva a scadenza, e fra una e l'altra non
+        c'è spazio. Con un buco in mezzo la somma non è il premio dell'anno:
+        è la somma di quello che è arrivato.
+     3. **Ognuna deve avere un importo.** Una rata senza importo non si salta:
+        rende il totale non calcolabile, e lo si dice.
+
+     Quando non si può, torna il MOTIVO — che la schermata stampa al posto del
+     trattino muto: «—» non dice a nessuno se il premio non c'è o se il
+     sistema non l'ha trovato (§12, §18). */
+  var GIORNO = 86400000;
+
+  function giorniFra(a, b) {
+    if (!a || !b) return null;
+    return Math.round((new Date(String(b).slice(0, 10)) - new Date(String(a).slice(0, 10))) / GIORNO);
+  }
+
+  function premioAnnuo(p, titoliDellaPolizza) {
+    if (!p) return null;
+    /* Quello che la compagnia dichiara vince sempre: sulle annuali
+       `LORDO_TOTALE` È il premio dell'anno. */
+    if (p.premio_annuo != null) {
+      return { importo: Number(p.premio_annuo), fonte: 'dichiarato', rate: null, motivo: null };
+    }
+    var inizio = p.data_effetto, fine = p.data_scadenza;
+    if (!inizio || !fine) {
+      return { importo: null, fonte: null, rate: 0,
+               motivo: 'la polizza non dice da quando a quando corre' };
+    }
+    /* Condizione 1: solo le rate della compagnia, dentro l'annualità. */
+    var righe = (titoliDellaPolizza || []).filter(function (t) {
+      if (!t || t._generato) return false;
+      if (String(t._fonte_id || t.fonte_id || '').indexOf(':RATA:') >= 0) return false;
+      var d = t.data_decorrenza;
+      return d && d >= inizio && d < fine;
+    }).sort(function (a, b) { return String(a.data_decorrenza).localeCompare(String(b.data_decorrenza)); });
+
+    if (!righe.length) {
+      return { importo: null, fonte: null, rate: 0,
+               motivo: 'la compagnia non ha mandato nessuna rata di questa annualità' };
+    }
+    /* Condizione 3: un importo che manca non si salta. */
+    var senzaImporto = righe.filter(function (t) { return t.importo_lordo == null || !isFinite(Number(t.importo_lordo)); });
+    if (senzaImporto.length) {
+      return { importo: null, fonte: null, rate: righe.length,
+               motivo: senzaImporto.length + ' rate su ' + righe.length + ' non dicono l\'importo' };
+    }
+    /* Condizione 2: devono ricoprire l'annualità, senza buchi. Tre giorni di
+       tolleranza perché le date di rata seguono il calendario, non il
+       cronometro. */
+    var TOLL = 3;
+    if (Math.abs(giorniFra(inizio, righe[0].data_decorrenza)) > TOLL) {
+      return { importo: null, fonte: null, rate: righe.length,
+               motivo: 'la prima rata non parte dall\'effetto della polizza' };
+    }
+    var ultima = righe[righe.length - 1];
+    if (ultima.data_scadenza && Math.abs(giorniFra(ultima.data_scadenza, fine)) > TOLL) {
+      return { importo: null, fonte: null, rate: righe.length,
+               motivo: 'la compagnia ha mandato ' + righe.length + ' ' +
+                       (righe.length === 1 ? 'rata' : 'rate') + ': non coprono l\'annualità' };
+    }
+    for (var i = 1; i < righe.length; i++) {
+      var prec = righe[i - 1].data_scadenza;
+      if (!prec || Math.abs(giorniFra(prec, righe[i].data_decorrenza)) > TOLL) {
+        return { importo: null, fonte: null, rate: righe.length,
+                 motivo: 'fra le rate della compagnia manca un pezzo di anno' };
+      }
+    }
+    var tot = righe.reduce(function (s, t) { return s + Number(t.importo_lordo); }, 0);
+    return { importo: Math.round(tot * 100) / 100, fonte: 'titoli', rate: righe.length, motivo: null };
+  }
+
   /* ══ 6. IL PIANO ══════════════════════════════════════════════════════════
      Che cosa succederebbe a scrivere questo flusso, detto PRIMA di scriverlo.
      È la parte che rende l'importazione una cosa che si può guardare invece
@@ -1037,7 +1147,7 @@ function mezzoDa(codice) {
     leggiCsv: leggiCsv, tipoDaNome: tipoDaNome, raccogli: raccogli,
     data: data, numero: numero,
     versoAnagrafica: versoAnagrafica, versoPolizza: versoPolizza, versoTitolo: versoTitolo,
-    aggiungiMesi: aggiungiMesi, rataDaIncassare: rataDaIncassare,
+    aggiungiMesi: aggiungiMesi, rataDaIncassare: rataDaIncassare, premioAnnuo: premioAnnuo,
     analizza: analizza, piano: piano,
     apriZip: apriZip
   };

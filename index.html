@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.6.1">
-<meta name="app-versione-nome" content="Gestione compagnie si riapre">
+<meta name="app-versione" content="0.7.0">
+<meta name="app-versione-nome" content="Il premio delle frazionate">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -15543,6 +15543,49 @@ async function pfCambiaMezzo(id) {
   } catch (e) { alert('Non riesco a salvare: ' + (e.message || e)); }
 }
 
+/* ══ LA COLONNA PREMIO (brief IAM punto 1, 20/09/2026) ═══════════════════════
+
+   Segnalato da Francesco: su TUTTE le semestrali la colonna mostrava «—».
+   Non era la schermata: `premio_annuo` è vuoto nel dato, ed è vuoto apposta —
+   nel tracciato della compagnia il premio della polizza è quello DI RATA, e
+   moltiplicarlo sarebbe una stima (§14, regola 2).
+
+   Dal 20/09 l'annuo si RICAVA quando le rate emesse dalla compagnia coprono
+   l'anno: non è una stima, è la somma di righe che ha scritto la compagnia.
+   Dove non si può, qui non compare un trattino muto ma il MOTIVO — «—» non
+   dice a nessuno se il premio non c'è o se il sistema non l'ha trovato
+   (§12, §18).
+
+   La colonna resta il PREMIO ANNUO, che è quello che rende sommabile il
+   portafoglio: due polizze con la stessa rata possono valere il doppio l'una
+   dell'altra. La rata sta sotto, con il frazionamento. */
+function pfPremio(p) {
+  if (p.premio_annuo != null) return pfEuro(p.premio_annuo);
+  /* Senza annuo si mostra la rata, che è un numero vero, ma DETTA per quello
+     che è: scriverla nella colonna dell'annuo senza dirlo farebbe sommare
+     mele e pere in fondo alla pagina. */
+  return p.premio_rata != null
+    ? `<span style="font-weight:600">${pfEuro(p.premio_rata)}</span><span style="font-weight:400;font-size:11px"> di rata</span>`
+    : '—';
+}
+
+function pfPremioSotto(p) {
+  const fraz = p.frazionamento && String(p.frazionamento).toLowerCase() !== 'annuale'
+    ? `${esc(p.frazionamento)} · ${pfEuro(p.premio_rata)}` : '';
+  const ssf = (p.dati && p.dati.ssf) || {};
+  let nota = '';
+  if (p.premio_annuo != null && ssf.premio_annuo_da === 'titoli') {
+    nota = `annuo dalle ${esc(String(ssf.premio_annuo_rate || ''))} rate emesse`;
+  } else if (p.premio_annuo == null) {
+    nota = ssf.premio_annuo_manca
+      ? 'annuo non ricavabile: ' + esc(ssf.premio_annuo_manca)
+      : 'annuo non dichiarato dalla compagnia';
+  }
+  const righe = [fraz, nota].filter(Boolean);
+  if (!righe.length) return '';
+  return `<div style="font-size:11px;color:var(--muted);margin-top:2px">${righe.join('<br>')}</div>`;
+}
+
 function pfRender() {
   const body = document.getElementById('pf-body');
   if (!body) return;
@@ -15591,9 +15634,8 @@ function pfRender() {
         <div style="font-size:11px;color:var(--muted);margin-top:2px" class="pf-em">${p.data_emissione ? 'emessa il ' + pfData(p.data_emissione) : 'emissione da indicare'}</div></td>
       <td><a href="#" onclick="event.preventDefault();event.stopPropagation();polPagamento('${p.id}')"
              title="Il pagamento: rate, mezzo, stato — e si corregge"
-             style="color:var(--blue);font-weight:700;text-decoration:underline">${pfEuro(p.premio_annuo)}</a>
-        ${p.frazionamento && String(p.frazionamento).toLowerCase() !== 'annuale'
-          ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.frazionamento)} · ${pfEuro(p.premio_rata)}</div>` : ''}</td>
+             style="color:var(--blue);font-weight:700;text-decoration:underline">${pfPremio(p)}</a>
+        ${pfPremioSotto(p)}</td>
       <td>${pfMezzo(p)}</td>
       <td style="font-size:13px">${esc(p.creato_nome || '—')}
         <div style="margin-top:5px"><button class="rin-az" onclick="event.stopPropagation();pdocApri('${p.id}')" title="Documenti della pratica e cosa manca per perfezionarla">
@@ -15623,6 +15665,9 @@ function pfExportExcel() {
       <td>${pfData(p.data_effetto)}</td><td>${p.data_scadenza ? pfData(p.data_scadenza) : 'da confermare'}</td>
       <td>${esc(p.frazionamento || '')}</td>
       <td class="soldi">${p.premio_annuo != null ? Number(p.premio_annuo).toFixed(2) : ''}</td>
+      <td class="soldi">${p.premio_rata != null ? Number(p.premio_rata).toFixed(2) : ''}</td>
+      <td>${p.premio_annuo == null ? esc(((p.dati && p.dati.ssf) || {}).premio_annuo_manca || 'annuo non dichiarato dalla compagnia')
+            : (((p.dati && p.dati.ssf) || {}).premio_annuo_da === 'titoli' ? 'ricavato dalle rate emesse' : 'dichiarato dalla compagnia')}</td>
       <td>${(PF_PAG[p.stato_pagamento] || [''])[0]}</td>
       <td>${esc(pfMezzoNome(p.mezzo_pagamento) || '')}</td>
       <td>${p.perfezionata ? 'sì' : 'no'}</td><td>${p.rendicontata ? 'sì' : 'no'}</td>
@@ -15632,7 +15677,7 @@ function pfExportExcel() {
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
     + '<head><meta charset="utf-8"><style>table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;font:12px sans-serif}th{background:#f6f8fa;font-weight:700}</style></head><body>'
     + '<table><thead><tr><th>Polizza</th><th>Cliente</th><th>Prodotto</th><th>Compagnia</th><th>Emissione</th><th>Effetto</th>'
-    + '<th>Scadenza</th><th>Frazionamento</th><th>Premio annuo</th><th>Stato pagamento</th><th>Mezzo di pagamento</th><th>Perfezionata</th>'
+    + '<th>Scadenza</th><th>Frazionamento</th><th>Premio annuo</th><th>Premio di rata</th><th>Da dove viene l&rsquo;annuo</th><th>Stato pagamento</th><th>Mezzo di pagamento</th><th>Perfezionata</th>'
     + '<th>Rendicontata</th><th>Copertura</th><th>Operatore</th></tr></thead><tbody>' + righe + '</tbody></table></body></html>';
   const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
   const url = URL.createObjectURL(blob);

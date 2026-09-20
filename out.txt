@@ -1,11 +1,21 @@
-id: 1789856847  exit: 0  2026-09-19 22:27:46
+id: prova-1789899405  exit: 0  2026-09-20 10:17:41
 ----
-=== commit ===
-e622ac7 Un numero di versione che non può mentire: 0.1.0 (#208)
-=== versione.json servito ===
-=== versione annotata: IAM ===
-name="app-versione" content="0.1.0"
-name="app-versione-nome" content="Conti e causali"
-=== versione annotata: preventivatore ===
-name="app-versione" content="0.1.0"
-name="app-versione-nome" content="Conti e causali"
+== ora
+2026-09-20 10:17:15 UTC
+== groupama e' acceso o spento?
+active
+{"running":false,"step":"pronto","since":1789835098034,"msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_chiesto_il":0}
+== quando e' stato fermato / riacceso
+  2026-09-19T12:10:42  Stopped
+  2026-09-19T12:10:42  Started
+  2026-09-19T12:32:40  Stopped
+  2026-09-19T12:32:40  Started
+  2026-09-19T12:32:41  Stopped
+  2026-09-19T12:32:41  Started
+  2026-09-19T16:16:51  Stopped
+  2026-09-19T16:24:51  Started
+
+== LE MAIL DI GROUPAMA NELLE ULTIME 24 ORE
+  totale nelle ultime 24 ore: 78
+  PRIMA che fermassi groupama (fino alle 16:16:51 del 19/09): 78
+  DOPO, con groupama fermo: 0

@@ -1,14 +1,13 @@
-id: m6b-1789910638  exit: 0  2026-09-20 13:24:05
+id: m6c-1789912062  exit: 0  2026-09-20 13:49:22
 ----
-== da dove prende l'ambiente il backend ==
-Environment=PORT=3000
-EnvironmentFiles=/opt/withus-backend/server/.env (ignore_errors=no)
-
-== indirizzi delle caselle configurate (mai le password) ==
--- /opt/withus-backend/server/.env
-MAIL_ALLOWED_EMAILS=francesco.oddo199307@gmail.com
-MAIL_USER=amministrazione@withusassicurazioni.it
-MAIL_USER_2=contabilita@withusassicurazioni.it
-MAIL_USER_3=intermediari@withusassicurazioni.it
-NOTIFY_FROM=noreply@withusassicurazioni.it
-NOTIFY_NAME="With Us Assicurazioni"
+0d6785c Brief #02 · M6: l'estratto conto che esce di casa (#214)
+<meta name="app-versione" content="0.6.0">
+<meta name="app-versione-nome" content="L'estratto conto che esce di casa">
+<meta name="app-versione" content="0.6.0">
+<meta name="app-versione-nome" content="L'estratto conto che esce di casa">
+{
+  "versione": "0.6.0",
+  "nome": "L'estratto conto che esce di casa",
+  "data": "2026-09-20",
+motore estratto-conto: 200
+1

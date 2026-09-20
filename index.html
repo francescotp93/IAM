@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.7.0">
-<meta name="app-versione-nome" content="Il premio delle frazionate">
+<meta name="app-versione" content="0.8.0">
+<meta name="app-versione-nome" content="Il menu riordinato">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -854,8 +854,53 @@ button{font-family:inherit}
 .rq-mini{padding:7px 11px;font-family:inherit;font-size:12px;color:var(--muted);background:#fff;
   border:1px solid var(--line);border-radius:4px;cursor:pointer;white-space:nowrap}
 .rq-mini:hover{color:var(--ink)}
+/* Spento finche' non c'e' niente da azzerare: un bottone che non fa niente e
+   sembra attivo si clicca, e chi lo clicca crede di aver sbagliato lui. */
+.rq-mini:disabled{opacity:.45;cursor:default}
+.rq-mini:disabled:hover{color:var(--muted)}
 .rq-conta{font-size:12.5px;color:var(--muted);margin:0 0 8px}
 .rq-conta b{color:var(--ink)}
+/* La testata: titolo a sinistra, azione primaria a destra, su una riga sola.
+   Dentro la griglia dei filtri quel bottone mandava fuori squadra tutta la
+   riga, e l'etichetta andava a capo. */
+.rq-testa{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.rq-primaria{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:0 0 auto;
+  padding:9px 16px;border:none;border-radius:4px;background:var(--acc,#02984e);color:#fff;
+  font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.rq-primaria:hover{filter:brightness(.94)}
+.rq-azioni{display:flex;justify-content:flex-end;gap:8px;margin:0 0 10px}
+/* Il riepilogo diventa una fila di pastiglie cliccabili: i numeri si leggevano
+   e non si potevano usare. */
+.rq-chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.rq-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;font-family:inherit;font-size:12.5px;color:var(--ink)}
+.rq-chip b{font-weight:700}
+.rq-chip:hover{border-color:var(--muted)}
+.rq-chip.on{border-color:transparent;font-weight:700}
+.rq-chip.on.st-nuova{background:#eef2ff;color:#3b5bfd}
+.rq-chip.on.st-lav{background:#fff4e6;color:#b06a00}
+.rq-chip.on.st-att{background:#f2f4f7;color:#4a5568}
+.rq-chip.on.st-chiusa{background:var(--blue-bg);color:#016b38}
+.rq-chip.on.st-tutte{background:var(--ink);color:#fff}
+/* Il menu di stato della riga: larghezza fissa, cosi' la colonna non balla da
+   una riga all'altra, e il colore dello stato addosso. */
+.rq-sel{width:190px}
+.rq-sel.st-nuova{border-color:#c3ccff;background:#eef2ff;color:#3b5bfd}
+.rq-sel.st-lav{border-color:#f2d6b8;background:#fff4e6;color:#b06a00}
+.rq-sel.st-att{border-color:#dfe3e8;background:#f2f4f7;color:#4a5568}
+.rq-sel.st-chiusa{border-color:#b9e3cb;background:var(--blue-bg);color:#016b38}
+/* Su telefono i filtri si richiudono. Il tasto esiste solo li'. */
+.rq-tog{display:none}
+@media(max-width:760px){
+  .rq-tog{display:inline-flex;align-items:center;gap:6px;margin:10px 0 0;padding:8px 13px;
+    border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink);
+    font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .rq-tog span{background:var(--acc,#02984e);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px}
+  .rq-filtri{display:none}
+  .rq-filtri.aperti{display:grid}
+  .rq-primaria{width:100%;justify-content:center}
+  .rq-sel{width:100%}
+}
 .rq-tipo{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px}
 .rq-tipo-preventivo{background:#eef2ff;color:#3b5bfd} .rq-tipo-emissione{background:var(--blue-bg);color:#016b38}
 .rq-tipo-supporto{background:#fff4e6;color:#b06a00}
@@ -3007,28 +3052,59 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
          chiesto le apriva tutte e tre e teneva il conto a mente. Qui c'è una
          coda sola, con la Tipologia come filtro invece che come schermata.
          (deciso il 28/08/2026) -->
-    <div class="page" id="page-richieste">
-      <div class="page-title">Richieste</div>
-      <div class="page-sub">Tutto quello che i collaboratori chiedono all'agenzia — preventivi, emissioni e supporto — in una coda sola</div>
+    <!-- ── RICHIESTE ────────────────────────────────────────────────────────
+         Rifatta il 20/09/2026 (Blocco 1 · punto 13). Prima «Azzera» e
+         «Aggiungi richiesta» stavano DENTRO la griglia dei filtri: altezze
+         diverse dai select, larghezze diverse fra loro, l'etichetta su due
+         righe. Una griglia di filtri con dentro due azioni non è una griglia:
+         è un posto dove le cose stanno perché ci sono finite.
 
-      <div class="rq-filtri">
-        <div class="rq-f"><label>ID richiesta</label><input id="rq-id" placeholder="QT-2026-0031, TK-12…" oninput="rqRender()"></div>
-        <div class="rq-f"><label>Nominativo</label><input id="rq-nome" placeholder="cliente o collaboratore" oninput="rqRender()"></div>
-        <div class="rq-f"><label>Tipologia</label><select id="rq-tipo" onchange="rqRender()">
-          <option value="">Tutte</option><option value="preventivo">Preventivo</option><option value="emissione">Emissione</option><option value="supporto">Supporto</option><option value="convenzione">Convenzione</option></select></div>
-        <div class="rq-f"><label>Assegnata a</label><select id="rq-ass" onchange="rqRender()">
-          <option value="">Tutte</option><option value="__mie">Le mie</option><option value="__nessuno">Non assegnate</option></select></div>
-        <div class="rq-f"><label>Stato</label><select id="rq-stato" onchange="rqRender()">
-          <option value="">Tutti</option><option value="nuova">Nuova</option><option value="in_lavorazione">In lavorazione</option><option value="in_attesa">In attesa del collaboratore</option><option value="chiusa">Chiusa</option></select></div>
-        <div class="rq-f"><label>Data da</label><input id="rq-da" type="date" onchange="rqRender()"></div>
-        <div class="rq-f"><label>Data a</label><input id="rq-a" type="date" onchange="rqRender()"></div>
-        <div class="rq-f rq-f-az">
-          <button class="rq-mini" onclick="rqAzzera()"><i class="ti ti-filter-off"></i> Azzera</button>
-          <button class="btn-emetti" onclick="showPage('ticket')"><i class="ti ti-plus"></i> Aggiungi richiesta</button>
+         L'impostazione — azione primaria in testata, griglia di soli filtri,
+         Cerca e Azzera sotto a destra — è quella dello standard delle liste
+         (M2 del brief #01) e da qui si riusa in Portafoglio e Clienti. -->
+    <div class="page" id="page-richieste">
+      <div class="rq-testa">
+        <div>
+          <div class="page-title">Richieste</div>
+          <div class="page-sub">Tutto quello che i collaboratori chiedono all'agenzia — preventivi, emissioni e supporto — in una coda sola</div>
         </div>
+        <button class="rq-primaria" onclick="showPage('ticket')"><i class="ti ti-plus"></i> Aggiungi richiesta</button>
       </div>
 
-      <div class="rq-conta" id="rq-conta"></div>
+      <!-- Su telefono i sette filtri occupano uno schermo intero: si
+           richiudono, e il numero dice quanti ne restano applicati — un
+           pannello chiuso che nasconde un filtro attivo fa cercare per mezz'ora
+           delle righe che ci sono. -->
+      <button class="rq-tog" id="rq-tog" onclick="rqApriFiltri()" aria-expanded="false">
+        <i class="ti ti-filter"></i> Filtri<span id="rq-tog-n"></span></button>
+
+      <div class="rq-filtri" id="rq-filtri">
+        <div class="rq-f"><label>ID richiesta</label><input id="rq-id" placeholder="QT-2026-0031, TK-12…"></div>
+        <div class="rq-f"><label>Nominativo</label><input id="rq-nome" placeholder="cliente o collaboratore"></div>
+        <div class="rq-f"><label>Tipologia</label><select id="rq-tipo">
+          <option value="">Tutte</option><option value="preventivo">Preventivo</option><option value="emissione">Emissione</option><option value="supporto">Supporto</option><option value="convenzione">Convenzione</option></select></div>
+        <div class="rq-f"><label>Assegnata a</label><select id="rq-ass">
+          <option value="">Tutte</option><option value="__mie">Le mie</option><option value="__nessuno">Non assegnate</option></select></div>
+        <div class="rq-f"><label>Stato</label><select id="rq-stato">
+          <option value="">Tutti</option><option value="nuova">Nuova</option><option value="in_lavorazione">In lavorazione</option><option value="in_attesa">In attesa del collaboratore</option><option value="chiusa">Chiusa</option></select></div>
+        <div class="rq-f"><label>Data da</label><input id="rq-da" type="date"></div>
+        <div class="rq-f"><label>Data a</label><input id="rq-a" type="date"></div>
+      </div>
+
+      <!-- Le azioni stanno SOTTO la griglia e a destra: dentro la griglia
+           facevano saltare l'allineamento di tutta la riga. «Azzera» è spento
+           finché non c'è niente da azzerare — un bottone che non fa niente e
+           sembra attivo si clicca, e chi lo clicca crede di aver sbagliato. -->
+      <div class="rq-azioni">
+        <button class="pf-cerca" onclick="rqRender()"><i class="ti ti-search"></i> Cerca</button>
+        <button class="rq-mini" id="rq-azzera" onclick="rqAzzera()" disabled><i class="ti ti-filter-off"></i> Azzera</button>
+      </div>
+
+      <!-- Il riepilogo era una riga di testo: i numeri si leggevano e non si
+           potevano usare. Adesso sono pastiglie che applicano il filtro di
+           stato — la domanda «quante ne ho da lavorare» e l'azione «fammele
+           vedere» erano a due clic di distanza, e ora sono lo stesso clic. -->
+      <div class="rq-chips" id="rq-chips"></div>
 
       <div class="table-wrap">
         <table class="storico-table">
@@ -14888,10 +14964,66 @@ function rqRighe(){
   return righe.sort((a, b) => new Date(b.data) - new Date(a.data));
 }
 
+/* I sette filtri, in un posto solo: contarli e azzerarli sono la stessa
+   domanda, e due elenchi scritti a mano divergono al primo filtro aggiunto. */
+const RQ_FILTRI = ['rq-id', 'rq-nome', 'rq-tipo', 'rq-ass', 'rq-stato', 'rq-da', 'rq-a'];
+
 function rqAzzera(){
-  ['rq-id','rq-nome','rq-da','rq-a'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
-  ['rq-tipo','rq-stato','rq-ass'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
+  RQ_FILTRI.forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
   rqRender();
+}
+
+function rqAttivi(){
+  return RQ_FILTRI.filter(i => (document.getElementById(i)?.value || '').trim() !== '').length;
+}
+
+/* Su telefono i sette filtri sono uno schermo intero. Il numero sul tasto non
+   è decorazione: un pannello chiuso che nasconde un filtro attivo fa cercare
+   per mezz'ora delle righe che ci sono. */
+function rqApriFiltri(){
+  const box = document.getElementById('rq-filtri');
+  const tog = document.getElementById('rq-tog');
+  if (!box) return;
+  const aperti = box.classList.toggle('aperti');
+  if (tog) tog.setAttribute('aria-expanded', aperti ? 'true' : 'false');
+}
+
+function rqSegnaFiltri(){
+  const n = rqAttivi();
+  const azz = document.getElementById('rq-azzera');
+  if (azz) azz.disabled = n === 0;
+  const seg = document.getElementById('rq-tog-n');
+  if (seg) seg.textContent = n ? String(n) : '';
+  if (seg) seg.style.display = n ? '' : 'none';
+}
+
+/* Il riepilogo è una fila di pastiglie che APPLICANO il filtro di stato: la
+   domanda «quante ne ho da lavorare» e l'azione «fammele vedere» erano a due
+   clic di distanza, e adesso sono lo stesso clic. */
+const RQ_CHIP = { '': 'st-tutte', nuova: 'st-nuova', in_lavorazione: 'st-lav', in_attesa: 'st-att', chiusa: 'st-chiusa' };
+
+function rqFiltraStato(st){
+  const e = document.getElementById('rq-stato');
+  if (e) e.value = st;
+  rqRender();
+}
+
+function rqChips(tutte, mostrate){
+  const box = document.getElementById('rq-chips');
+  if (!box) return;
+  const ora = document.getElementById('rq-stato')?.value || '';
+  const n = st => tutte.filter(r => r.stato === st).length;
+  const voci = [['', 'Tutte', tutte.length],
+                ['nuova', 'Nuove', n('nuova')],
+                ['in_lavorazione', 'In lavorazione', n('in_lavorazione')],
+                ['in_attesa', 'In attesa', n('in_attesa')],
+                ['chiusa', 'Chiuse', n('chiusa')]];
+  box.innerHTML = voci.map(([k, l, q]) =>
+    `<button class="rq-chip ${RQ_CHIP[k]}${ora === k ? ' on' : ''}" onclick="rqFiltraStato('${k}')">${l} <b>${q}</b></button>`
+  ).join('')
+  /* Quante ne stai guardando davvero: con gli altri sei filtri applicati, il
+     conto per stato non è quello che hai sullo schermo. */
+  + (mostrate !== tutte.length ? `<span class="rq-conta" style="margin:5px 0 0 4px"><b>${mostrate}</b> mostrate con i filtri</span>` : '');
 }
 
 function rqRender(){
@@ -14918,14 +15050,10 @@ function rqRender(){
   if (a) righe = righe.filter(r => new Date(r.data) <= new Date(a + 'T23:59:59'));
 
   /* Il conto per stato sta sopra la tabella e non dentro un filtro: la domanda
-     «quante ne ho da lavorare» viene prima di «fammele vedere». */
-  const conta = document.getElementById('rq-conta');
-  if (conta) {
-    const tutte = rqRighe();
-    const n = st => tutte.filter(r => r.stato === st).length;
-    conta.innerHTML = `<b>${righe.length}</b> richieste mostrate su ${tutte.length} · `
-      + `${n('nuova')} nuove · ${n('in_lavorazione')} in lavorazione · ${n('in_attesa')} in attesa del collaboratore · ${n('chiusa')} chiuse`;
-  }
+     «quante ne ho da lavorare» viene prima di «fammele vedere». Dal 20/09/2026
+     è anche l'azione: le pastiglie applicano il filtro di stato. */
+  rqChips(rqRighe(), righe.length);
+  rqSegnaFiltri();
 
   if (!righe.length) {
     body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Nessuna richiesta con questi filtri.</div></td></tr>';
@@ -14936,7 +15064,7 @@ function rqRender(){
   body.innerHTML = righe.map(r => {
     const st = RQ_STATI[r.stato] || RQ_STATI.nuova;
     const tendina = (puoCambiare && !r.bloccata)
-      ? `<select class="rq-sel" onchange="rqCambiaStato('${r.fonte}','${r.id}',this.value)" onclick="event.stopPropagation()">`
+      ? `<select class="rq-sel ${RQ_CHIP[r.stato] || ''}" onchange="rqCambiaStato('${r.fonte}','${r.id}',this.value)" onclick="event.stopPropagation()">`
         + Object.entries(RQ_STATI).map(([k, s]) => `<option value="${k}" ${r.stato === k ? 'selected' : ''}>${s.label}</option>`).join('')
         + '</select>'
       : `<span class="tk-badge ${st.cls}">${st.label}</span>`

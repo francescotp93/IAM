@@ -3260,3 +3260,103 @@ prova diventa rossa per un motivo che non è il suo.
 
 L'annuo stimato moltiplicando la rata → rossa la prova della regola 2. Le rate
 dedotte da noi ammesse nel conto → rossa la prova che le esclude.
+
+---
+
+## 37. Brief IAM — Blocco 1: menu, Richieste, segnale del rilascio (20/09/2026)
+
+Tre punti che sembrano di forma e non lo sono, più **un guasto vivo trovato
+mappando prima di scrivere**.
+
+### Il guasto: «Conti e causali» non si apriva più
+
+`goTab` controlla l'elenco delle sotto-schede di Contabilità **prima** di
+cercare il pannello. La sotto-scheda della quadratura dei conti si chiamava
+`conti` — e `conti` è anche il pannello di **Strumenti › Conti e causali**.
+Risultato: la voce di menu apriva la Contabilità, e la schermata dove si
+configurano i conti era irraggiungibile. L'avevo introdotto io con la M3, il
+giorno prima.
+
+> **Un nome usato per due cose, in due elenchi diversi, e il primo vince in
+> silenzio.** È la malattia dei nomi globali di §6a applicata alle rotte: non
+> c'è nessun errore, nessuna pagina bianca — solo una schermata che si apre al
+> posto di un'altra.
+
+La sotto-scheda adesso si chiama `quadconti`. Due prove: una legge l'elenco in
+`goTab` e diventa rossa se il nome ambiguo torna, l'altra fa girare
+`selContabTab` davvero e pretende che resti accesa **una** schermata sola.
+
+### Punto 5 — Contabilità, cinque voci
+
+Prima nota, Quadratura conti e Incassi da accreditare **esistevano da giorni e
+non erano nel menu**: si raggiungevano solo dalla striscia dentro Contabilità,
+cioè passando da un'altra schermata. È il guasto §1 in versione menu — una
+pagina che non ha una voce, per chi lavora, non esiste.
+
+«Carica documenti» e «Conto» tolte, come chiede il brief. **Niente di
+cancellato**: i due caricamenti stanno dentro Sospesi (la schermata che li
+usa), e il saldo ricostruito con gli estratti della banca sta dentro Quadratura
+conti — sono il **ricostruito** e il **dichiarato** della stessa quadratura, e
+stavano in due voci diverse: il confronto si faceva guardando due schermate.
+I due vecchi nomi restano nell'istradamento e portano dove il contenuto è
+andato (§6b).
+
+**Quadratura di giornata e Storico restano**: sono i 68 giorni già scritti,
+l'unica contabilità che l'agenzia ha finché i numeri del ricostruito non
+saranno stati confrontati con i suoi (§17, §33).
+
+### Punto 12 — Strumenti, due cassetti
+
+`Preventivatore` (Fonti e collegamenti, Stato collegamenti, **Parametri
+previdenziali**, spostata da Agenzia) e `Gestionale` (Collaboratori, Conti e
+causali, Gestione compagnie, Provvigioni). Sono gruppi di navigazione, non
+pagine: **le rotte non cambiano**, quindi ogni vecchio collegamento continua a
+funzionare — e una prova lo misura, rotta per rotta. Cambiata anche la briciola
+dei parametri: dire «Agenzia» in alto su una pagina che sta in Strumenti manda
+a cercarla dove non è.
+
+### Punto 13 — Richieste, e lo standard delle liste
+
+«Azzera» e «Aggiungi richiesta» stavano **dentro** la griglia dei filtri.
+Adesso: azione primaria in testata su una riga sola, sette filtri di forma
+identica, Cerca e Azzera sotto a destra.
+
+Tre cose che valgono più del riordino:
+
+- **«Azzera» è spento finché non c'è niente da azzerare.** Un bottone che non
+  fa niente e sembra attivo si clicca, e chi lo clicca crede di aver sbagliato
+  lui.
+- **Il riepilogo si clicca.** Era una riga di testo: i numeri si leggevano e
+  non si potevano usare. «Quante ne ho da lavorare» e «fammele vedere» erano a
+  due clic di distanza, ora sono lo stesso clic.
+- **Su telefono i filtri si richiudono, e il numero dice quanti sono
+  applicati.** Un pannello chiuso che nasconde un filtro attivo fa cercare per
+  mezz'ora delle righe che ci sono.
+
+I sette filtri stanno in **un elenco solo** (`RQ_FILTRI`): contarli e azzerarli
+sono la stessa domanda, e due elenchi scritti a mano divergono al primo filtro
+aggiunto.
+
+### Punto 11 — il segnale del rilascio
+
+**La regola è «non letto», non «diverso».** «C'è una versione nuova» resterebbe
+vero per sempre, e un pallino che non si spegne mai smette di voler dire
+qualcosa — è la targhetta ferma da tre mesi che §27 ha tolto, in un'altra
+forma. Si ricorda la **versione letta** (non la data: le date cambiano anche
+quando non cambia niente per chi lavora), e al **primissimo avvio non si
+accende**: chi apre IAM la prima volta non ha novità non lette.
+
+Se `versione.json` non risponde non si accende **niente**: un pallino «per
+sicurezza» manderebbe a leggere novità che non sappiamo se esistono (§12, §18).
+
+Sta in due posti — l'avatar, che si vede sempre, e la targhetta, che si vede
+solo col menu aperto: *un segnale visibile solo dentro il posto in cui sta non
+è un segnale*.
+
+### Una prova rotta da un nome nuovo
+
+`ui-test.mjs` ritagliava la riga della tabella fino a `'function rqApri'`. Da
+oggi esiste anche `rqApriFiltri`, che viene **prima**: la fetta diventava
+vuota, e la prova dichiarava rotto un codice giusto. L'ancora adesso è la
+funzione intera, con la parentesi — ed è la stessa trappola delle fette già
+presa in §12 e nella M6.

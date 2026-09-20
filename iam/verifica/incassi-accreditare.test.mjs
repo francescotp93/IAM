@@ -136,7 +136,7 @@ prova('si annulla col motivo, e non si cancella', () => {
 prova('la linguetta esiste, si avvia, e ha la grafica di IAM', () => {
   deve(/id="ctab-incassi"/.test(H), 'manca la linguetta');
   deve(/id="contab-panel-incassi"/.test(H), 'manca il pannello');
-  deve(/'quadratura','primanota','conti','incassi'/.test(H), 'selContabTab non conosce la linguetta');
+  deve(/'quadratura','primanota','quadconti','incassi'/.test(H), 'selContabTab non conosce la linguetta');
   deve(/if \(sub==='incassi'\) incCarica\(\);/.test(H), 'la linguetta non carica niente (§6b)');
   /* §31: la grafica di IAM, non una inventata qui. */
   const i = H.indexOf('id="contab-panel-incassi"');

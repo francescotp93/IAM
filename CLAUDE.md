@@ -2704,3 +2704,108 @@ controllo contro la riga buttata lì.
 **E la stessa disciplina della targhetta**: se la prima voce di `storia` non è
 la versione corrente, la prova diventa rossa. Mostrare le novità del rilascio
 prima è il modo più educato di mentire.
+
+---
+
+## 31. La grafica di IAM, su tutte le schermate (20/09/2026)
+
+> «Tutte le schermate di IAM devono avere la grafica di IAM» — Francesco.
+
+Aveva ragione, e la causa non era una scelta estetica sbagliata: era **il kit
+chiuso a chiave dentro una schermata sola**.
+
+### Misurato prima di toccare qualcosa
+
+| | |
+|---|---|
+| regole del kit scritte `#panel-dashboard .qualcosa` | **26** |
+| gettoni (`--w1-*`) dichiarati dentro quel pannello | **15** |
+| usi di quei nomi **fuori** dalla Scrivania | **0** |
+| famiglie di classi che fanno lo stesso lavoro | `f-*` (fonti), `cl-*` (collegamenti), `slbl`/`card` (storiche), `cnt-*` (brief #02) |
+| `style="…"` scritti a mano dentro un pannello solo | **1.798** (Analisi), 222 (Performance) |
+
+Il kit c'era, ed era anche buono: testata con occhiello, titolo e sottotitolo,
+bottone bianco e bottone verde, schede con intestazione e pittogramma. Solo che
+la Scrivania se lo teneva. **Ogni schermata scritta dopo ha dovuto
+reinventarselo, e ognuna se l'è inventato diverso.**
+
+E il risultato non era «una grafica diversa»: era **nessuna grafica**. Un `<h1>`
+che nessuna regola tocca esce col carattere di sistema, grande il doppio e nero;
+un `<button>` senza regole è il bottone grigio del browser. Le schermate del
+brief #02 si aprivano così, e si vedeva a occhio nudo — è il **guasto §1 in
+versione grafica**: una cosa buona esiste e nessun altro la può raggiungere.
+
+### Che cosa si è fatto
+
+| pezzo | dove |
+|---|---|
+| il kit, adesso valido su tutta IAM | blocco «IL KIT GRAFICO DI IAM» nel `<style>` di `iam/index.html` |
+| le cinque schermate portate sopra | `#panel-conti`, `#panel-compagnie`, `#panel-provvigioni`, `#contab-panel-primanota`, `#contab-panel-conti` |
+| il guardiano | `iam/verifica/kit-schermate.test.mjs` — 7 |
+
+Una schermata nuova adesso si scrive così, e basta:
+
+```html
+<section class="page-head">
+  <div><div class="eyebrow">Sezione</div><h1>Titolo</h1>
+       <div class="subtitle">A che serve.</div></div>
+  <div class="head-actions">
+    <button class="d-btn">Secondaria</button>
+    <button class="d-btn primario">Azione principale</button>
+  </div>
+</section>
+<div class="d-card">
+  <div class="card-head"><div class="card-title">
+    <span class="pictogram"><i class="ti ti-x"></i></span> Titolo</div></div>
+  <div class="card-body">…</div>
+</div>
+```
+
+Le tre cose che il kit non aveva restano accanto col prefisso `cnt-`: la tessera
+di riepilogo, la riga di elenco e la pastiglia di stato. Sono le uniche, e usano
+i gettoni — non `#fff` scritto a mano.
+
+### La prova della Scrivania aveva ragione, e ha corretto il lavoro
+
+Promuovere le regole non bastava: senza i gettoni, `var(--w1-raggio)` non
+risolve, la proprietà **viene ignorata in silenzio** e una scheda perde gli
+angoli senza che nessun errore lo dica. Quindi sono stati promossi anche i
+gettoni — su `:root`.
+
+E lì `scrivania.test.mjs` è diventata rossa, con una frase scritta mesi fa:
+*«è una superficie chiara fissa: lasciata libera sfonderebbe il tema scuro in
+tutto il resto del gestionale»*. Era giusto: IAM ha un tema scuro, e una
+tavolozza chiara su `:root` lo avrebbe sfondato ovunque.
+
+La correzione non è stata aggiornare quella prova per farla tacere: i gettoni
+stanno sull'**elenco dichiarato** delle schermate portate sul kit. L'elenco
+cresce quando una schermata ci passa, e chi lo allunga sa che sta portando lì
+anche la tavolozza. *Una prova che si oppone a un lavoro va letta prima di
+essere aggiornata: a volte sa una cosa che chi scrive non sa.*
+
+Lo **sfondo** per la stessa ragione non è su `:root`: la schermata di accesso e
+la splash sono dichiarate intoccabili (`iam/CLAUDE.md`, «BLOCCHI»), e metterlo
+lì le avrebbe ridipinte senza che nessuno l'avesse chiesto. Verificato con le
+fotografie: accesso e Scrivania identici prima e dopo, al pixel.
+
+### La trappola dei commenti, settima volta — e l'ha presa la prova nuova
+
+Il commento che spiega la promozione **conteneva il selettore che la prova
+cerca**, e la prova ha dichiarato rotto un codice giusto. È §10, §12, §18, §26 e
+§29. Stavolta però è stata la prova stessa a prenderla nello stesso minuto in
+cui è nata: il filtro toglie i commenti a inizio riga, ma un commento su più
+righe le cui righe interne cominciano con altro passa lo stesso. **Il rimedio
+definitivo non è un filtro più furbo: è non scrivere la parola vietata dentro il
+file che la vieta.**
+
+### Cosa resta aperto
+
+- **Le altre schermate non sono ancora sul kit**: Fonti, Stato collegamenti,
+  Analisi (1.798 stili a mano), Performance, Operativa, Utenti, Diario. Ognuna è
+  un lavoro a sé, e l'elenco `SUL_KIT` nella prova dice a che punto siamo —
+  cresce, non cala.
+- **La soglia degli stili scritti a mano** per le cinque schermate portate è nel
+  guardiano: cala quando se ne tolgono, non sale mai.
+- **Il tema scuro sulle schermate del kit non c'è**: prendono la tavolozza
+  chiara della Scrivania. Farle rispondere al tema è un lavoro vero — vuol dire
+  dare ai gettoni due valori — e va fatto per tutte insieme, non una alla volta.

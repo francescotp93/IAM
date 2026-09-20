@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.1.0">
-<meta name="app-versione-nome" content="Conti e causali">
+<meta name="app-versione" content="0.2.0">
+<meta name="app-versione-nome" content="Compagnie e provvigioni">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -38,6 +38,8 @@
 <!-- I conti e le causali (brief #02 M1). Stesso file del preventivatore, per lo
      stesso motivo: il vocabolario della contabilità dev'essere uno solo. -->
 <script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260919"></script>
+<!-- Le provvigioni (brief #02 M2): stesso file del preventivatore. -->
+<script src="/nuovo-preventivo/tariffe/motore/provvigioni.js?v=20260920"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -3471,6 +3473,95 @@ input[type=file]{display:none;}
   </div>
 </div>
 
+<!-- ══ GESTIONE COMPAGNIE: LE TARIFFE DI AGENZIA ════════════════════════
+     Brief #02 · M2.1. Compagnia > Ramo > provvigione di agenzia e
+     retrocessione di default.
+
+     LA CHIAVE È COMPAGNIA + RAMO, non il nome del prodotto. Misurato sulle
+     polizze vere: i nomi dei prodotti sono testo libero e sporco («BLACK»,
+     «CASA_E_FAMIGLIA», «RC Vita Privata · HDI» — cinque prodotti, tre
+     convenzioni di scrittura), mentre il `modulo` è pulito e chiuso. Una
+     tariffa agganciata al nome del prodotto non troverebbe mai la sua
+     polizza. Il prodotto resta come AFFINAMENTO facoltativo, e quando c'è
+     vince sulla riga di ramo.
+
+     E MODIFICARE UN'ALIQUOTA NON È UN UPDATE: si chiude la riga vigente e se
+     ne apre una nuova da oggi. Gli estratti conto già mandati devono
+     continuare a dire lo stesso numero. -->
+<div class="panel" id="panel-compagnie" style="overflow-y:auto;">
+  <section class="f-head">
+    <div>
+      <h1>Gestione compagnie</h1>
+      <p>Quanto riconosce ogni compagnia, e quanto ne gira al collaboratore.</p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="f-b" type="button" onclick="prvCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <button class="f-b pri" type="button" id="prv-nuova-tariffa" onclick="prvApriTariffa(null)"><i class="ti ti-plus"></i> Nuova tariffa</button>
+    </div>
+  </section>
+
+  <section class="cnt-somma" id="prv-somma"></section>
+  <section class="cnt-lista" id="prv-copertura"></section>
+  <section class="cnt-lista" id="prv-tariffe"><div class="cl-sub">Carico le tariffe…</div></section>
+</div>
+
+<!-- ══ PANNELLO PROVVIGIONI ══════════════════════════════════════════════
+     Brief #02 · M2.2. Sta separato dalle tariffe perché risponde a un'altra
+     domanda: le tariffe dicono l'accordo con la COMPAGNIA, qui c'è l'accordo
+     con la PERSONA — e quello varia da collaboratore a collaboratore.
+
+     Tre linguette, e la terza è quella che il brief chiede per l'accettazione:
+     un simulatore che, data una polizza di prova, mostra chi prende che cosa
+     e perché. Serve a vedere una configurazione PRIMA che produca un
+     estratto conto, che è l'unico momento in cui correggerla costa poco. -->
+<div class="panel" id="panel-provvigioni" style="overflow-y:auto;">
+  <section class="f-head">
+    <div>
+      <h1>Provvigioni</h1>
+      <p>Gli accordi con le persone, i gruppi produttivi e la prova del calcolo.</p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="f-b" type="button" onclick="prvCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <button class="f-b pri" type="button" id="prv-nuovo" onclick="prvNuovo()"><i class="ti ti-plus"></i> Nuovo</button>
+    </div>
+  </section>
+
+  <div class="ptabs">
+    <button class="ptab act" id="prvt-override" onclick="prvTab('override')">Accordi per collaboratore</button>
+    <button class="ptab" id="prvt-gruppi" onclick="prvTab('gruppi')">Gruppi produttivi</button>
+    <button class="ptab" id="prvt-simula" onclick="prvTab('simula')">Prova il calcolo</button>
+  </div>
+
+  <div id="prvp-override"><section class="cnt-lista" id="prv-override"><div class="cl-sub">Carico gli accordi…</div></section></div>
+  <div id="prvp-gruppi" style="display:none"><section class="cnt-lista" id="prv-gruppi"><div class="cl-sub">Carico i gruppi…</div></section></div>
+  <div id="prvp-simula" style="display:none">
+    <div class="modal-body" style="padding:14px 16px">
+      <div class="cl-sub" style="margin-bottom:10px">Metti i dati di una rata e guarda chi prende che cosa. Non salva niente: serve a vedere una configurazione prima che produca un estratto conto.</div>
+      <div class="fgrid">
+        <div class="fld"><label>Compagnia</label><select id="prv-s-compagnia"></select></div>
+        <div class="fld"><label>Ramo</label><select id="prv-s-ramo"></select></div>
+        <div class="fld"><label>Prodotto (facoltativo)</label><input type="text" id="prv-s-prodotto" placeholder="es. BLACK"></div>
+        <div class="fld"><label>Collaboratore</label><select id="prv-s-collab"></select></div>
+        <div class="fld"><label>Premio della rata (€)</label><input type="text" id="prv-s-premio" value="390" inputmode="decimal"></div>
+        <div class="fld"><label>Provvigione dichiarata (€)</label><input type="text" id="prv-s-provv" placeholder="vuoto = la compagnia non l&#39;ha dichiarata"></div>
+        <div class="fld"><label>Data della rata</label><input type="date" id="prv-s-data"></div>
+      </div>
+      <button class="f-b pri" type="button" style="margin-top:12px" onclick="prvSimula()"><i class="ti ti-calculator"></i> Calcola</button>
+      <div id="prv-s-esito" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- Una finestra sola per tariffe, accordi e gruppi: il contenuto lo scrive
+       il codice. Tre moduli scritti a mano diventano tre regole diverse su
+       quello che si può salvare. -->
+  <div id="prv-ov" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);
+       backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px"
+       onclick="if(event.target===this)prvChiudi()">
+    <div id="prv-box" style="background:var(--surf);border-radius:var(--r);width:min(560px,100%);
+         max-height:88vh;overflow:auto;box-shadow:var(--shd2)"></div>
+  </div>
+</div>
+
 <!-- ══ STATO COLLEGAMENTI ═══════════════════════════════════════════════
      Che cosa è, e perché non è la stessa cosa di «Fonti compagnie».
 
@@ -4404,6 +4495,530 @@ async function cntEliminaCausale(id) {
   } catch (e) { cntMsg({ errori: ['Non riesco a eliminare: ' + (e.message || e)] }); }
 }
 
+/* ══ TARIFFE, ACCORDI E GRUPPI (brief #02 · M2, 20/09/2026) ══════════════════
+   La parte che tocca il database e il DOM. Tutte le REGOLE del calcolo — quale
+   tariffa vince, come si risolve il nome di una compagnia, che cosa succede
+   quando la compagnia non dichiara la provvigione, chi prende l'indiretto —
+   stanno nel motore condiviso `Provvigioni`, provato in Node.
+
+   QUI NON C'È NESSUNA FORMULA. Anche il simulatore chiama il motore: se
+   calcolasse per conto suo, mostrerebbe un numero che l'estratto conto poi
+   non conferma, ed è il modo più veloce per far perdere fiducia a una
+   schermata che serve proprio a dare fiducia.
+
+   LA COSA DA NON ROMPERE: modificare un'aliquota NON è un update. Si chiude la
+   riga vigente (`al` = ieri) e se ne apre una nuova da oggi. Gli estratti
+   conto già mandati sono documenti su cui si è litigato, e devono continuare a
+   dire lo stesso numero (brief, punto aperto 1). */
+let PRV_TARIFFE = [];
+let PRV_OVERRIDE = [];
+let PRV_GRUPPI = [];
+let PRV_MEMBRI = [];
+let PRV_CATALOGO = [];
+let PRV_PERSONE = [];
+let PRV_POLIZZE = [];
+let PRV_VISTA = 'override';
+/* Lo storico si mostra solo se qualcuno lo chiede: in una schermata di
+   configurazione le righe chiuse sono rumore finché non servono. */
+let PRV_STORICO = false;
+
+function prvPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
+function prvOggi() { return window.Provvigioni ? Provvigioni.oggiIso() : new Date().toISOString().slice(0, 10); }
+function prvIeri() { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); }
+function prvNome(id) { const p = PRV_PERSONE.find(x => x.id === id); return p ? (p.nominativo || p.nome || '—') : '—'; }
+
+function prvTab(v) {
+  PRV_VISTA = v;
+  ['override', 'gruppi', 'simula'].forEach(k => {
+    document.getElementById('prvt-' + k)?.classList.toggle('act', k === v);
+    const p = document.getElementById('prvp-' + k);
+    if (p) p.style.display = k === v ? '' : 'none';
+  });
+  const n = document.getElementById('prv-nuovo');
+  if (n) n.style.display = v === 'simula' ? 'none' : '';
+  if (n) n.innerHTML = '<i class="ti ti-plus"></i> ' + (v === 'gruppi' ? 'Nuovo gruppo' : 'Nuovo accordo');
+}
+
+async function prvCarica(forza) {
+  if (!db) return;
+  if (forza) {
+    const t = document.getElementById('prv-tariffe');
+    if (t) t.innerHTML = '<div class="cl-sub">Carico le tariffe…</div>';
+  }
+  try {
+    const [ta, ov, gr, me, ca, pe, po] = await Promise.all([
+      db.from('iam_provvigioni_tariffa').select('*').order('compagnia').order('ramo'),
+      db.from('iam_provvigioni_collaboratore').select('*').order('creato_il'),
+      db.from('iam_gruppi').select('*').order('nome'),
+      db.from('iam_gruppi_membri').select('*'),
+      db.from('quote_compagnie').select('nome,alias,attiva').order('nome'),
+      db.from('quote_collaboratori').select('id,nominativo,stato').order('nominativo'),
+      db.from('quote_polizze').select('compagnia,modulo,prodotto')
+    ]);
+    for (const r of [ta, ov, gr, me, ca, pe]) if (r.error) throw r.error;
+    PRV_TARIFFE = ta.data || []; PRV_OVERRIDE = ov.data || [];
+    PRV_GRUPPI = gr.data || [];  PRV_MEMBRI = me.data || [];
+    PRV_CATALOGO = ca.data || []; PRV_PERSONE = pe.data || [];
+    /* Le polizze servono alla COPERTURA: senza, chi configura scrive le
+       tariffe a memoria invece che guardando il portafoglio. Se non si
+       leggono si tace su quella sezione, non si blocca il resto. */
+    PRV_POLIZZE = po.error ? [] : (po.data || []);
+    prvRender();
+  } catch (e) {
+    /* «Non si è potuto leggere» non è «non ce n'è» (§12, §18). L'avviso va in
+       tutti i contenitori: le letture partono insieme e cadono insieme. */
+    const avviso = `<div class="cnt-err">Non riesco a leggere le tariffe e gli accordi.<br>
+      <small>${esc(e.message || e)} — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerli.</small></div>`;
+    ['prv-tariffe', 'prv-override', 'prv-gruppi'].forEach(id => {
+      const b = document.getElementById(id); if (b) b.innerHTML = avviso;
+    });
+  }
+}
+
+function prvRender() {
+  const puo = prvPuoScrivere();
+  ['prv-nuova-tariffa', 'prv-nuovo'].forEach(id => {
+    const b = document.getElementById(id); if (b) b.style.display = puo ? '' : 'none';
+  });
+  prvRenderSomma();
+  prvRenderCopertura(puo);
+  prvRenderTariffe(puo);
+  prvRenderOverride(puo);
+  prvRenderGruppi(puo);
+  prvRiempiSimulatore();
+}
+
+function prvRenderSomma() {
+  const box = document.getElementById('prv-somma');
+  if (!box || !window.Provvigioni) return;
+  const cop = Provvigioni.copertura(PRV_POLIZZE, PRV_TARIFFE, { catalogo: PRV_CATALOGO, data: prvOggi() });
+  const scoperte = cop.filter(c => !c.coperta);
+  const polScoperte = scoperte.reduce((s, c) => s + c.polizze, 0);
+  const vig = Provvigioni.vigenti(PRV_TARIFFE, prvOggi()).length;
+  box.innerHTML = `
+    <div class="cnt-card"><div class="cnt-k">Tariffe in vigore</div>
+      <div class="cnt-v">${vig}</div>
+      <div class="cnt-s">${PRV_TARIFFE.length - vig} chiuse nello storico</div></div>
+    <div class="cnt-card"><div class="cnt-k">Portafoglio scoperto</div>
+      <div class="cnt-v" style="color:${scoperte.length ? '#f59e0b' : '#22c55e'}">${scoperte.length}</div>
+      <div class="cnt-s">${scoperte.length ? polScoperte + ' polizze su compagnie e rami senza tariffa' : 'ogni compagnia e ramo del portafoglio ha la sua tariffa'}</div></div>
+    <div class="cnt-card"><div class="cnt-k">Accordi e gruppi</div>
+      <div class="cnt-v">${Provvigioni.vigenti(PRV_OVERRIDE, prvOggi()).length} · ${Provvigioni.vigenti(PRV_GRUPPI, prvOggi()).length}</div>
+      <div class="cnt-s">accordi per collaboratore · gruppi produttivi</div></div>`;
+}
+
+/* La lista di lavoro di chi configura: che cosa il portafoglio ha e la
+   configurazione non copre. In cima quelle che pesano di più. */
+function prvRenderCopertura(puo) {
+  const box = document.getElementById('prv-copertura');
+  if (!box || !window.Provvigioni) return;
+  const cop = Provvigioni.copertura(PRV_POLIZZE, PRV_TARIFFE, { catalogo: PRV_CATALOGO, data: prvOggi() });
+  const scoperte = cop.filter(c => !c.coperta);
+  if (!scoperte.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="cnt-avv">
+    <b>Queste compagnie e rami sono in portafoglio e non hanno una tariffa.</b>
+    Finché manca, su quelle polizze la provvigione si calcola solo dove la compagnia la dichiara, e la quota del collaboratore non si calcola affatto.
+    </div>` + scoperte.map(c => `
+    <div class="cnt-r" ${puo ? `onclick="prvApriTariffa(null,{compagnia:'${esc(c.compagnia)}',ramo:'${esc(c.ramo)}'})" style="cursor:pointer"` : ''}>
+      <div><div class="cnt-nome">${esc(c.compagnia)} · ${esc(c.ramo_l)}</div>
+        <div class="cnt-sotto">${c.polizze} polizz${c.polizze === 1 ? 'a' : 'e'}${c.prodotti.length ? ' · ' + c.prodotti.slice(0, 3).map(esc).join(', ') : ''}</div></div>
+      <div class="cnt-saldo" style="font-size:12px;color:#f59e0b">senza tariffa</div>
+    </div>`).join('');
+}
+
+function prvRenderTariffe(puo) {
+  const box = document.getElementById('prv-tariffe');
+  if (!box || !window.Provvigioni) return;
+  const righe = PRV_STORICO ? PRV_TARIFFE : Provvigioni.vigenti(PRV_TARIFFE, prvOggi());
+  const testa = `<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px">
+      <b style="font-size:13px">Tariffe${PRV_STORICO ? ' · con lo storico' : ' in vigore'}</b>
+      <button class="f-b" type="button" style="padding:4px 10px;font-size:12px" onclick="PRV_STORICO=!PRV_STORICO;prvRender()">
+        ${PRV_STORICO ? 'Nascondi lo storico' : 'Mostra lo storico'}</button></div>`;
+  if (!righe.length) {
+    box.innerHTML = testa + `<div class="cl-sub" style="padding:14px 0">Nessuna tariffa. ${puo ? 'Comincia dalle compagnie che hai in portafoglio: le trovi elencate qui sopra.' : 'Le scrive un amministratore.'}</div>`;
+    return;
+  }
+  box.innerHTML = testa + righe.map(t => {
+    const chiusa = !!t.al;
+    const ramo = Provvigioni.etichettaRamo(t.ramo);
+    return `<div class="cnt-r ${chiusa ? 'cnt-spento' : ''}" ${puo && !chiusa ? `onclick="prvApriTariffa('${esc(t.id)}')" style="cursor:pointer"` : ''}>
+      <div>
+        <div class="cnt-nome">${esc(t.compagnia)} · ${esc(ramo)}
+          ${t.prodotto ? `<span class="cnt-tag">${esc(t.prodotto)}</span>` : ''}
+          ${chiusa ? '<span class="cnt-tag">chiusa</span>' : ''}</div>
+        <div class="cnt-sotto">dal ${esc(t.dal)}${t.al ? ' al ' + esc(t.al) : ''}${t.note ? ' · ' + esc(t.note) : ''}</div>
+      </div>
+      <div class="cnt-saldo">${Provvigioni.perc(t.aliquota_agenzia)}
+        <div class="cnt-sotto" style="font-weight:400">al collaboratore ${Provvigioni.perc(t.retrocessione_default)}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function prvRenderOverride(puo) {
+  const box = document.getElementById('prv-override');
+  if (!box || !window.Provvigioni) return;
+  const righe = PRV_STORICO ? PRV_OVERRIDE : Provvigioni.vigenti(PRV_OVERRIDE, prvOggi());
+  if (!righe.length) {
+    box.innerHTML = `<div class="cl-sub" style="padding:18px 0">Nessun accordo specifico. Vale per tutti la retrocessione di default della tariffa, che si imposta in Gestione compagnie.</div>`;
+    return;
+  }
+  box.innerHTML = righe.map(o => {
+    const dove = [o.compagnia ? esc(o.compagnia) : null,
+                  o.ramo ? esc(Provvigioni.etichettaRamo(o.ramo)) : null,
+                  o.prodotto ? esc(o.prodotto) : null].filter(Boolean).join(' · ');
+    return `<div class="cnt-r ${o.al ? 'cnt-spento' : ''}" ${puo && !o.al ? `onclick="prvApriOverride('${esc(o.id)}')" style="cursor:pointer"` : ''}>
+      <div><div class="cnt-nome">${esc(prvNome(o.collaboratore_id))}</div>
+        <div class="cnt-sotto">${dove || 'su tutto'} · dal ${esc(o.dal)}${o.al ? ' al ' + esc(o.al) : ''}</div></div>
+      <div class="cnt-saldo">${Provvigioni.perc(o.retrocessione)}</div>
+    </div>`;
+  }).join('');
+}
+
+function prvRenderGruppi(puo) {
+  const box = document.getElementById('prv-gruppi');
+  if (!box || !window.Provvigioni) return;
+  const righe = PRV_STORICO ? PRV_GRUPPI : Provvigioni.vigenti(PRV_GRUPPI, prvOggi());
+  if (!righe.length) {
+    box.innerHTML = `<div class="cl-sub" style="padding:18px 0">Nessun gruppo produttivo. Un gruppo serve a far prendere al capo una percentuale sulla produzione dei suoi.</div>`;
+    return;
+  }
+  box.innerHTML = righe.map(g => {
+    const membri = Provvigioni.vigenti(PRV_MEMBRI, prvOggi()).filter(m => m.gruppo_id === g.id);
+    const nomi = membri.map(m => esc(prvNome(m.collaboratore_id)) + (m.indiretto != null ? ' (' + Provvigioni.perc(m.indiretto) + ')' : ''));
+    return `<div class="cnt-r ${g.attivo === false ? 'cnt-spento' : ''}" ${puo ? `onclick="prvApriGruppo('${esc(g.id)}')" style="cursor:pointer"` : ''}>
+      <div><div class="cnt-nome">${esc(g.nome)}
+        ${g.capo_id ? `<span class="cnt-tag utile">capo: ${esc(prvNome(g.capo_id))}</span>`
+                    : '<span class="cnt-tag transito">senza capo gruppo</span>'}</div>
+        <div class="cnt-sotto">${membri.length ? membri.length + ' membri · ' + nomi.slice(0, 4).join(', ') : 'nessun membro'}</div></div>
+      <div class="cnt-saldo">${Provvigioni.perc(g.indiretto)}
+        <div class="cnt-sotto" style="font-weight:400">indiretto</div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ─── Il simulatore: chiama il motore, non ricalcola ──────────────────────── */
+function prvRiempiSimulatore() {
+  if (!window.Provvigioni) return;
+  const sel = (id, opts, vuoto) => {
+    const e = document.getElementById(id);
+    if (!e) return;
+    const prima = e.value;
+    e.innerHTML = (vuoto ? `<option value="">${vuoto}</option>` : '') + opts;
+    if (prima) e.value = prima;
+  };
+  sel('prv-s-compagnia', PRV_CATALOGO.map(c => `<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join(''), '— scegli —');
+  sel('prv-s-ramo', Provvigioni.RAMI.map(r => `<option value="${esc(r.k)}">${esc(r.l)}</option>`).join(''), '— scegli —');
+  sel('prv-s-collab', PRV_PERSONE.map(p => `<option value="${esc(p.id)}">${esc(p.nominativo || '—')}</option>`).join(''), 'Nessuno (produzione diretta)');
+  const d = document.getElementById('prv-s-data');
+  if (d && !d.value) d.value = prvOggi();
+}
+
+function prvSimula() {
+  const box = document.getElementById('prv-s-esito');
+  if (!box || !window.Provvigioni) return;
+  const val = (k) => document.getElementById(k)?.value || '';
+  const r = Provvigioni.calcola({
+    compagnia: val('prv-s-compagnia'), ramo: val('prv-s-ramo'), prodotto: val('prv-s-prodotto'),
+    collaboratore_id: val('prv-s-collab') || null,
+    premio: Provvigioni.numero(val('prv-s-premio')),
+    provvigione_dichiarata: Provvigioni.numero(val('prv-s-provv')),
+    data: val('prv-s-data') || prvOggi(),
+    tariffe: PRV_TARIFFE, override: PRV_OVERRIDE, gruppi: PRV_GRUPPI, membri: PRV_MEMBRI,
+    catalogo: PRV_CATALOGO
+  });
+  const riga = (k, v, nota) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--bord)">
+    <span>${esc(k)}${nota ? ` <span class="cl-sub">${esc(nota)}</span>` : ''}</span><b>${esc(v)}</b></div>`;
+  let h = '';
+  if (r.motivi.length) h += '<div class="cnt-avv">' + r.motivi.map(esc).join('<br>') + '</div>';
+  h += riga('Premio della rata', Provvigioni.euro(r.premio));
+  h += riga('Provvigione di agenzia', Provvigioni.euro(r.provvigione_agenzia),
+            r.provvigione_agenzia == null ? 'non calcolabile' : (r.stimata ? 'PREVISTA con l’aliquota, la compagnia non l’ha dichiarata' : 'dichiarata dalla compagnia'));
+  if (r.scostamento) {
+    h += riga('Scostamento dal pattuito', Provvigioni.euro(r.scostamento.delta),
+              'previsto ' + Provvigioni.euro(r.scostamento.previsto));
+  }
+  if (r.quota_collaboratore != null) h += riga('Al collaboratore', Provvigioni.euro(r.quota_collaboratore), Provvigioni.perc(r.perc_retrocessione) + ' · ' + (r.fonte_retrocessione === 'collaboratore' ? 'accordo suo' : 'default della tariffa'));
+  if (r.indiretto != null) h += riga('Indiretto al capo gruppo', Provvigioni.euro(r.indiretto), Provvigioni.perc(r.perc_indiretto) + ' · ' + prvNome(r.capo_id));
+  h += riga('Resta all’agenzia', Provvigioni.euro(r.margine_agenzia), 'per differenza');
+  box.innerHTML = h;
+}
+
+/* ─── Le finestre ────────────────────────────────────────────────────────── */
+function prvChiudi() { const o = document.getElementById('prv-ov'); if (o) o.style.display = 'none'; }
+function prvNuovo() { if (PRV_VISTA === 'gruppi') prvApriGruppo(null); else prvApriOverride(null); }
+
+function prvApri(html) {
+  if (!prvPuoScrivere()) return;
+  const ov = document.getElementById('prv-ov'), box = document.getElementById('prv-box');
+  if (!ov || !box) return;
+  box.innerHTML = html;
+  ov.style.display = 'flex';
+}
+
+function prvMsg(errori) {
+  const b = document.getElementById('prv-msg');
+  if (b) b.innerHTML = errori && errori.length ? '<div class="cnt-err">' + errori.map(esc).join('<br>') + '</div>' : '';
+}
+
+function prvOpzRami(sel) {
+  return Provvigioni.RAMI.map(r => `<option value="${esc(r.k)}" ${r.k === sel ? 'selected' : ''}>${esc(r.l)}</option>`).join('');
+}
+function prvOpzCompagnie(sel) {
+  return PRV_CATALOGO.map(c => `<option value="${esc(c.nome)}" ${c.nome === sel ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
+}
+function prvOpzPersone(sel) {
+  return PRV_PERSONE.map(p => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(p.nominativo || '—')}</option>`).join('');
+}
+
+function prvApriTariffa(id, pre) {
+  const t = PRV_TARIFFE.find(x => x.id === id) || pre || {};
+  prvApri(`
+    <div style="padding:18px 18px 0"><div style="font-size:17px;font-weight:800">${id ? 'Modifica tariffa' : 'Nuova tariffa'}</div>
+      <div class="cl-sub" style="margin-top:3px">${id
+        ? 'La modifica vale <b>da oggi</b>: la riga di adesso si chiude e ne nasce una nuova. Quello che è già stato calcolato non cambia.'
+        : 'L’aliquota è la percentuale sul premio che la compagnia riconosce all’agenzia. La retrocessione è la percentuale <b>su quella provvigione</b>, mai sul premio.'}</div></div>
+    <div class="modal-body" style="padding:14px 18px">
+      <div id="prv-msg"></div>
+      <div class="fgrid">
+        <div class="fld"><label>Compagnia *</label><select id="prv-t-compagnia"><option value="">— scegli —</option>${prvOpzCompagnie(t.compagnia)}</select></div>
+        <div class="fld"><label>Ramo *</label><select id="prv-t-ramo"><option value="">— scegli —</option>${prvOpzRami(t.ramo)}</select></div>
+        <div class="fld ffull"><label>Prodotto (facoltativo)</label><input type="text" id="prv-t-prodotto" value="${esc(t.prodotto || '')}" placeholder="vuoto = vale per tutto il ramo">
+          <div class="cl-sub">Serve solo se su un prodotto l’accordo è diverso dal resto del ramo. Quando c’è, vince sulla riga di ramo.</div></div>
+        <div class="fld"><label>Provvigione di agenzia (%)</label><input type="text" id="prv-t-aliquota" value="${esc(t.aliquota_agenzia != null ? String(t.aliquota_agenzia) : '')}" inputmode="decimal"></div>
+        <div class="fld"><label>Retrocessione di default (%)</label><input type="text" id="prv-t-retro" value="${esc(t.retrocessione_default != null ? String(t.retrocessione_default) : '')}" inputmode="decimal"></div>
+        <div class="fld ffull"><label>Note</label><input type="text" id="prv-t-note" value="${esc(t.note || '')}"></div>
+      </div>
+      <div class="cnt-avv" style="margin-top:10px">L’aliquota <b>non corregge</b> la provvigione che la compagnia dichiara sulla rata: quella vince sempre. Serve a calcolarla dove la compagnia non la dichiara, e a segnalarti gli scostamenti dove la dichiara.</div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="f-b pri" type="button" onclick="prvSalvaTariffa('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
+        <button class="f-b" type="button" onclick="prvChiudi()">Annulla</button>
+        ${id ? `<button class="f-b" type="button" style="margin-left:auto;color:#ef4444" onclick="prvChiudiTariffa('${esc(id)}')"><i class="ti ti-archive"></i> Chiudi la tariffa</button>` : ''}
+      </div>
+    </div>`);
+}
+
+/* LA STORICIZZAZIONE, in pratica. Salvare una modifica NON aggiorna la riga:
+   chiude quella vigente a ieri e ne inserisce una nuova da oggi. Così una rata
+   di marzo continua a calcolarsi con l'aliquota di marzo. */
+async function prvSalvaTariffa(id) {
+  const val = (k) => document.getElementById(k)?.value || '';
+  const riga = {
+    compagnia: val('prv-t-compagnia').trim(),
+    ramo: val('prv-t-ramo'),
+    prodotto: val('prv-t-prodotto').trim() || null,
+    aliquota_agenzia: Provvigioni.numero(val('prv-t-aliquota')),
+    retrocessione_default: Provvigioni.numero(val('prv-t-retro')),
+    note: val('prv-t-note').trim() || null,
+    dal: prvOggi()
+  };
+  const e = [];
+  if (!riga.compagnia) e.push('Scegli la compagnia.');
+  if (!riga.ramo) e.push('Scegli il ramo.');
+  if (riga.aliquota_agenzia == null && riga.retrocessione_default == null) e.push('Metti almeno una delle due percentuali: senza, questa riga non dice niente.');
+  [['aliquota_agenzia', 'La provvigione di agenzia'], ['retrocessione_default', 'La retrocessione']].forEach(([k, l]) => {
+    const v = riga[k];
+    if (v != null && (v < 0 || v > 100)) e.push(l + ' deve stare fra 0 e 100.');
+  });
+  prvMsg(e);
+  if (e.length) return;
+  try {
+    if (id) {
+      /* Prima si chiude, poi si apre. Se cade in mezzo resta una riga chiusa e
+         nessuna aperta: si vede subito, invece di due righe vigenti che si
+         contraddicono. */
+      const { error: e1 } = await db.from('iam_provvigioni_tariffa').update({ al: prvIeri() }).eq('id', id);
+      if (e1) throw e1;
+    }
+    const { data, error } = await db.from('iam_provvigioni_tariffa').insert(riga).select('id').single();
+    if (error) throw error;
+    logMovimento('Tariffa ' + (id ? 'modificata' : 'creata') + ' · ' + riga.compagnia + ' ' + riga.ramo,
+                 'tariffa', 'agenzia ' + riga.aliquota_agenzia + '% · retro ' + riga.retrocessione_default + '%', data?.id);
+    prvChiudi();
+    await prvCarica();
+  } catch (err) { prvMsg(['Non riesco a salvare: ' + (err.message || err)]); }
+}
+
+async function prvChiudiTariffa(id) {
+  const t = PRV_TARIFFE.find(x => x.id === id);
+  if (!confirm('Chiudere la tariffa ' + (t ? t.compagnia + ' · ' + t.ramo : '') + '?\n\nDa domani su quella compagnia e quel ramo non ci sarà più un accordo: le rate già calcolate non cambiano.')) return;
+  try {
+    const { error } = await db.from('iam_provvigioni_tariffa').update({ al: prvOggi() }).eq('id', id);
+    if (error) throw error;
+    logMovimento('Tariffa chiusa · ' + (t ? t.compagnia + ' ' + t.ramo : ''), 'tariffa', '', id);
+    prvChiudi();
+    await prvCarica();
+  } catch (e) { prvMsg(['Non riesco a chiudere: ' + (e.message || e)]); }
+}
+
+function prvApriOverride(id) {
+  const o = PRV_OVERRIDE.find(x => x.id === id) || {};
+  prvApri(`
+    <div style="padding:18px 18px 0"><div style="font-size:17px;font-weight:800">${id ? 'Modifica accordo' : 'Nuovo accordo'}</div>
+      <div class="cl-sub" style="margin-top:3px">La percentuale si applica alla <b>provvigione di agenzia</b>, mai al premio. Lasciare vuoti compagnia e ramo vuol dire «su tutto».</div></div>
+    <div class="modal-body" style="padding:14px 18px">
+      <div id="prv-msg"></div>
+      <div class="fgrid">
+        <div class="fld ffull"><label>Collaboratore *</label><select id="prv-o-collab"><option value="">— scegli —</option>${prvOpzPersone(o.collaboratore_id)}</select></div>
+        <div class="fld"><label>Compagnia</label><select id="prv-o-compagnia"><option value="">tutte</option>${prvOpzCompagnie(o.compagnia)}</select></div>
+        <div class="fld"><label>Ramo</label><select id="prv-o-ramo"><option value="">tutti</option>${prvOpzRami(o.ramo)}</select></div>
+        <div class="fld"><label>Prodotto</label><input type="text" id="prv-o-prodotto" value="${esc(o.prodotto || '')}" placeholder="tutti"></div>
+        <div class="fld"><label>Retrocessione (%) *</label><input type="text" id="prv-o-perc" value="${esc(o.retrocessione != null ? String(o.retrocessione) : '')}" inputmode="decimal"></div>
+        <div class="fld ffull"><label>Note</label><input type="text" id="prv-o-note" value="${esc(o.note || '')}"></div>
+      </div>
+      <div class="cl-sub" style="margin-top:8px">Più campi compili, più l’accordo è specifico: quello più specifico vince su quello generale, e tutti e due vincono sul default della tariffa.</div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="f-b pri" type="button" onclick="prvSalvaOverride('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
+        <button class="f-b" type="button" onclick="prvChiudi()">Annulla</button>
+        ${id ? `<button class="f-b" type="button" style="margin-left:auto;color:#ef4444" onclick="prvChiudiOverride('${esc(id)}')"><i class="ti ti-archive"></i> Chiudi l’accordo</button>` : ''}
+      </div>
+    </div>`);
+}
+
+async function prvSalvaOverride(id) {
+  const val = (k) => document.getElementById(k)?.value || '';
+  const riga = {
+    collaboratore_id: val('prv-o-collab') || null,
+    compagnia: val('prv-o-compagnia') || null,
+    ramo: val('prv-o-ramo') || null,
+    prodotto: val('prv-o-prodotto').trim() || null,
+    retrocessione: Provvigioni.numero(val('prv-o-perc')),
+    note: val('prv-o-note').trim() || null,
+    dal: prvOggi()
+  };
+  const e = [];
+  if (!riga.collaboratore_id) e.push('Scegli il collaboratore.');
+  /* ZERO È UN ACCORDO e si salva; VUOTO non è un accordo e si rifiuta. È la
+     stessa distinzione dell'estratto conto (§17), e qui decide se una riga
+     entra nei totali o ne esce col motivo. */
+  if (riga.retrocessione == null) e.push('Metti la percentuale. Uno zero è un accordo e si scrive; un campo vuoto non è un accordo.');
+  else if (riga.retrocessione < 0 || riga.retrocessione > 100) e.push('La retrocessione deve stare fra 0 e 100.');
+  prvMsg(e);
+  if (e.length) return;
+  try {
+    if (id) {
+      const { error: e1 } = await db.from('iam_provvigioni_collaboratore').update({ al: prvIeri() }).eq('id', id);
+      if (e1) throw e1;
+    }
+    const { data, error } = await db.from('iam_provvigioni_collaboratore').insert(riga).select('id').single();
+    if (error) throw error;
+    logMovimento('Accordo provvigionale · ' + prvNome(riga.collaboratore_id), 'collaboratore',
+                 riga.retrocessione + '%' + (riga.compagnia ? ' su ' + riga.compagnia : ''), riga.collaboratore_id);
+    prvChiudi();
+    await prvCarica();
+  } catch (err) { prvMsg(['Non riesco a salvare: ' + (err.message || err)]); }
+}
+
+async function prvChiudiOverride(id) {
+  if (!confirm('Chiudere questo accordo?\n\nDa domani vale il default della tariffa. Quello che è già stato calcolato non cambia.')) return;
+  try {
+    const { error } = await db.from('iam_provvigioni_collaboratore').update({ al: prvOggi() }).eq('id', id);
+    if (error) throw error;
+    const o = PRV_OVERRIDE.find(x => x.id === id);
+    logMovimento('Accordo provvigionale chiuso · ' + prvNome(o?.collaboratore_id), 'collaboratore', '', o?.collaboratore_id);
+    prvChiudi();
+    await prvCarica();
+  } catch (e) { prvMsg(['Non riesco a chiudere: ' + (e.message || e)]); }
+}
+
+function prvApriGruppo(id) {
+  const g = PRV_GRUPPI.find(x => x.id === id) || {};
+  const membri = id ? Provvigioni.vigenti(PRV_MEMBRI, prvOggi()).filter(m => m.gruppo_id === id) : [];
+  /* Chi è già in un altro gruppo non si può aggiungere qui: il database lo
+     vieta con un indice unico, e mostrarlo nella tendina vorrebbe dire far
+     cliccare una cosa che poi fallisce. */
+  const occupati = {};
+  Provvigioni.vigenti(PRV_MEMBRI, prvOggi()).forEach(m => { if (m.gruppo_id !== id) occupati[m.collaboratore_id] = true; });
+  const liberi = PRV_PERSONE.filter(p => !occupati[p.id] && !membri.find(m => m.collaboratore_id === p.id));
+  prvApri(`
+    <div style="padding:18px 18px 0"><div style="font-size:17px;font-weight:800">${id ? 'Gruppo produttivo' : 'Nuovo gruppo produttivo'}</div>
+      <div class="cl-sub" style="margin-top:3px">Il capo gruppo prende una percentuale sulla <b>provvigione di agenzia</b> della produzione dei suoi. Sulla propria produzione non prende indiretto.</div></div>
+    <div class="modal-body" style="padding:14px 18px">
+      <div id="prv-msg"></div>
+      <div class="fgrid">
+        <div class="fld ffull"><label>Nome del gruppo *</label><input type="text" id="prv-g-nome" value="${esc(g.nome || '')}" placeholder="es. Squadra Nord"></div>
+        <div class="fld"><label>Capo gruppo</label><select id="prv-g-capo"><option value="">— nessuno —</option>${prvOpzPersone(g.capo_id)}</select></div>
+        <div class="fld"><label>Indiretto (%)</label><input type="text" id="prv-g-indiretto" value="${esc(g.indiretto != null ? String(g.indiretto) : '')}" inputmode="decimal"></div>
+        <div class="fld ffull"><label><input type="checkbox" id="prv-g-attivo" ${g.attivo === false ? '' : 'checked'}> Gruppo attivo</label></div>
+        <div class="fld ffull"><label>Note</label><input type="text" id="prv-g-note" value="${esc(g.note || '')}"></div>
+      </div>
+      ${id ? `<div class="fsec" style="margin-top:12px"><div class="fsec-title">Membri</div>
+        ${membri.length ? membri.map(m => `<div class="cnt-r"><div><div class="cnt-nome">${esc(prvNome(m.collaboratore_id))}</div>
+            <div class="cnt-sotto">${m.indiretto != null ? 'indiretto suo ' + Provvigioni.perc(m.indiretto) : 'indiretto del gruppo'}</div></div>
+          <button class="f-b" type="button" style="margin-left:auto;padding:4px 10px;font-size:12px" onclick="prvTogliMembro('${esc(m.id)}','${esc(id)}')">Togli</button></div>`).join('')
+          : '<div class="cl-sub">Nessun membro. Un gruppo senza membri non produce nessun indiretto.</div>'}
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <select id="prv-g-nuovo-membro" style="flex:1"><option value="">— aggiungi una persona —</option>${liberi.map(p => `<option value="${esc(p.id)}">${esc(p.nominativo || '—')}</option>`).join('')}</select>
+          <input type="text" id="prv-g-nuovo-perc" placeholder="% sua" style="width:90px" inputmode="decimal">
+          <button class="f-b" type="button" onclick="prvAggiungiMembro('${esc(id)}')">Aggiungi</button>
+        </div>
+        <div class="cl-sub" style="margin-top:6px">Chi è già in un altro gruppo non compare: una persona sola in due gruppi vorrebbe dire due capi pagati sulla stessa produzione.</div>
+      </div>` : '<div class="cl-sub" style="margin-top:10px">I membri si aggiungono dopo aver salvato il gruppo.</div>'}
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="f-b pri" type="button" onclick="prvSalvaGruppo('${esc(id || '')}')"><i class="ti ti-device-floppy"></i> Salva</button>
+        <button class="f-b" type="button" onclick="prvChiudi()">Annulla</button>
+      </div>
+    </div>`);
+}
+
+async function prvSalvaGruppo(id) {
+  const val = (k) => document.getElementById(k)?.value || '';
+  const riga = {
+    nome: val('prv-g-nome').trim(),
+    capo_id: val('prv-g-capo') || null,
+    indiretto: Provvigioni.numero(val('prv-g-indiretto')),
+    attivo: !!document.getElementById('prv-g-attivo')?.checked,
+    note: val('prv-g-note').trim() || null
+  };
+  const e = [];
+  if (!riga.nome) e.push('Il gruppo deve avere un nome.');
+  if (riga.indiretto != null && (riga.indiretto < 0 || riga.indiretto > 100)) e.push('L’indiretto deve stare fra 0 e 100.');
+  if (riga.capo_id && riga.indiretto == null) e.push('C’è un capo gruppo ma non la percentuale di indiretto: così non prenderebbe niente, e non si capirebbe perché.');
+  prvMsg(e);
+  if (e.length) return;
+  try {
+    if (id) {
+      const { error } = await db.from('iam_gruppi').update(riga).eq('id', id);
+      if (error) throw error;
+      logMovimento('Gruppo produttivo modificato · ' + riga.nome, 'gruppo', riga.indiretto + '%', id);
+    } else {
+      riga.dal = prvOggi();
+      const { data, error } = await db.from('iam_gruppi').insert(riga).select('id').single();
+      if (error) throw error;
+      logMovimento('Gruppo produttivo creato · ' + riga.nome, 'gruppo', riga.indiretto + '%', data?.id);
+    }
+    prvChiudi();
+    await prvCarica();
+  } catch (err) { prvMsg(['Non riesco a salvare: ' + (err.message || err)]); }
+}
+
+async function prvAggiungiMembro(gruppoId) {
+  const pid = document.getElementById('prv-g-nuovo-membro')?.value;
+  if (!pid) return;
+  const perc = Provvigioni.numero(document.getElementById('prv-g-nuovo-perc')?.value);
+  try {
+    const { error } = await db.from('iam_gruppi_membri').insert({
+      gruppo_id: gruppoId, collaboratore_id: pid, indiretto: perc, dal: prvOggi()
+    });
+    if (error) throw error;
+    logMovimento('Aggiunto al gruppo · ' + prvNome(pid), 'gruppo', '', gruppoId);
+    await prvCarica();
+    prvApriGruppo(gruppoId);
+  } catch (e) { prvMsg(['Non riesco ad aggiungere: ' + (e.message || e)]); }
+}
+
+async function prvTogliMembro(membroId, gruppoId) {
+  try {
+    /* Si CHIUDE, non si cancella: la produzione di ieri è stata fatta dentro
+       quel gruppo, e l'estratto conto di ieri deve continuare a dirlo. */
+    const { error } = await db.from('iam_gruppi_membri').update({ al: prvOggi() }).eq('id', membroId);
+    if (error) throw error;
+    const m = PRV_MEMBRI.find(x => x.id === membroId);
+    logMovimento('Tolto dal gruppo · ' + prvNome(m?.collaboratore_id), 'gruppo', '', gruppoId);
+    await prvCarica();
+    prvApriGruppo(gruppoId);
+  } catch (e) { prvMsg(['Non riesco a togliere: ' + (e.message || e)]); }
+}
+
 function initDB() {
   try {
     if (window.supabase && window.SUPABASE_URL && window.SUPABASE_KEY) {
@@ -5178,6 +5793,11 @@ function goTab(t) {
        negherebbero comunque, lasciandogli una pagina vuota che sembra un
        guasto. Il cancello vero è là, questo è per non mostrargli la porta. */
     conti:   () => !!PERMESSI[PROFILO?.ruolo]?.conto,
+    /* Tariffe e accordi provvigionali: sotto c'è quanto prende ognuno.
+       Stessa soglia dei conti, e il cancello vero è nelle politiche del
+       database — un collaboratore non legge nemmeno la tabella. */
+    compagnie:   () => !!PERMESSI[PROFILO?.ruolo]?.conto,
+    provvigioni: () => !!PERMESSI[PROFILO?.ruolo]?.conto,
   };
   if (RISERVATE[t] && !RISERVATE[t]()) { if (t !== 'profilo') goTab('profilo'); return; }
   // Le voci di Contabilità aprono il pannello con la loro sotto-scheda
@@ -5226,6 +5846,8 @@ function goTab(t) {
   if (t === 'performance') { mostraResiduiKPI(); selPerfTab(PERF_CUR || 'gare'); loadREFromDB(); }
   if (t === 'azienda')     { loadAzienda(); }
   if (t === 'conti')       { cntTab(CNT_VISTA); cntCarica(true); }
+  if (t === 'compagnie')   { prvCarica(true); }
+  if (t === 'provvigioni') { prvTab(PRV_VISTA); prvCarica(true); }
   if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); }   // Blocco B
   if (t === 'agenti')    { loadAgentiAI(); }
   if (t === 'quoto') {
@@ -19043,8 +19665,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: e32bbb82 — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260919a"></script>
+<!-- impronta withus-one.js: 35eabd48 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260920a"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

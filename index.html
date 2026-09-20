@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.5.0">
-<meta name="app-versione-nome" content="La contabilità si ricostruisce da sé">
+<meta name="app-versione" content="0.6.0">
+<meta name="app-versione-nome" content="L'estratto conto che esce di casa">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -75,7 +75,12 @@
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
 <script src="tariffe/motore/flusso-ssf.js?v=20260918"></script>
-<script src="tariffe/motore/estratto-conto.js?v=20260918"></script>
+<script src="tariffe/motore/estratto-conto.js?v=20260920"></script>
+<!-- Le coordinate su cui i collaboratori versano stanno sui conti, e i conti
+     li conosce il motore della contabilità: il controllo dell'IBAN è già lì
+     (con la tabella delle lunghezze per paese), e riscriverlo qui vorrebbe
+     dire averne due — quello sbagliato sarebbe quello che nessuno guarda. -->
+<script src="tariffe/motore/contabilita.js?v=20260920"></script>
 <script src="tariffe/motore/registro.js?v=20260919"></script>
 <script src="tariffe/motore/assegnazione.js?v=20260919"></script>
 <script src="tariffe/motore/anagrafica.js?v=20260919"></script>
@@ -890,6 +895,26 @@ button{font-family:inherit}
 .pdoc-x{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px}
 .pdoc-x:hover{color:var(--ink)}
 .pdoc-bd{padding:14px 18px;overflow:auto}
+/* L'estratto conto che esce di casa (brief #02 · M6). Tutto col prefisso del
+   blocco: nel foglio di stile i nomi sono globali, e il guardiano delle
+   collisioni misura quelli che QUOTO e IAM hanno in comune.
+   E il nome di un file NON si scrive qui dentro: un nome con dei punti, in un
+   foglio di stile, viene letto come una catena di selettori — quel guardiano
+   ha appena contato due classi che non esistono. È la trappola dei commenti
+   (§10, §12, §18, §26, §29, §31, §33) nella sua versione CSS. */
+.ecp-f{margin-bottom:12px}
+.ecp-f label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.ecp-f input,.ecp-f textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:4px;
+  font-size:13px;font-family:inherit;color:var(--ink);background:#fff}
+.ecp-f textarea{resize:vertical;line-height:1.5}
+.ecp-nota{font-size:11.5px;color:var(--muted);line-height:1.6;margin:8px 0}
+.ecp-avv{background:#fdeede;border:1px solid #f2d6b8;color:#8a4b00;border-radius:4px;
+  padding:9px 11px;font-size:12px;line-height:1.5;margin:8px 0}
+.ecp-riga{display:flex;gap:12px;align-items:flex-start;padding:9px 2px;border-top:1px solid var(--line);font-size:12.5px}
+.ecp-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.ecp-ok{font-size:10.5px;font-weight:700;color:#016b38;background:#eaf7f0;border-radius:8px;padding:1px 7px;margin-left:4px}
+.ecp-ko{font-size:10.5px;font-weight:700;color:#8a2b20;background:#fff1ef;border-radius:8px;padding:1px 7px;margin-left:4px}
+.pf-exp.ecp-sel{border-color:var(--acc);color:var(--acc);font-weight:600}
 /* L'esito in testa: la prima cosa che si legge è se la pratica è a posto */
 .pdoc-esito{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:4px;
   font-size:12.5px;margin-bottom:12px;border:1px solid}
@@ -3049,6 +3074,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         </div>
         <div id="ecp-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
         <div id="ecp-body"></div>
+        <!-- Il registro dei documenti usciti (M6): «io non l'ho ricevuto»
+             arriva mesi dopo, e la risposta non può essere a memoria. -->
+        <div id="ecp-invii" style="margin-top:18px"></div>
       </div>
 
       <div id="ecq-vista" style="display:none">
@@ -10415,7 +10443,7 @@ function showPage(name) {
   if (name === 'emissioni') loadStorico();
   if (name === 'richieste') loadRichieste();   // coda unica: preventivi + ticket
   if (name === 'parametri') loadParametri();
-  if (name === 'estratto') { loadEstrattoConto(); loadEstrattoCollab(); }
+  if (name === 'estratto') { loadEstrattoConto(); loadEstrattoCollab(); ecpCaricaInvii(); }
   if (name === 'sinistri') loadSinistri();
   if (name === 'tutela') renderTutela();
   if (name === 'persona') renderPersona();
@@ -12992,41 +13020,212 @@ function ecpExportExcel() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1500);
 }
 
-/* L'email parte dal server, con la casella dell'agenzia, e porta il foglio in
-   allegato: `/mail/send` sa allegare (`{name, content}` in base64). Il corpo
-   ripete i numeri che contano, perché un allegato che nessuno apre non ha
-   detto niente. */
+/* ══ L'ESTRATTO CONTO CHE ESCE DI CASA (brief #02 · M6, 20/09/2026) ══════════
+
+   Prima: un `prompt` per l'indirizzo, un testo composto a mano qui dentro, la
+   casella scelta dal server (la PRIMA dell'elenco — misurata: parte da
+   `amministrazione@`, non dalla contabilità), e un `alert` alla fine. Un
+   documento che si manda a una persona con cui si fanno i conti merita più di
+   così, e quattro cose mancavano davvero:
+
+     1. LA CASELLA. `contabilita@withusassicurazioni.it` esiste sul server
+        (MAIL_USER_2) e nessuno la sceglieva. Un estratto conto che arriva da
+        `amministrazione@` fa rispondere alla casella sbagliata.
+     2. IL TESTO. Sta nel motore (§5), con due modelli, e qui si vede PRIMA di
+        partire e si corregge — come per il foglio pensione: la pagina mostra
+        il testo, lo lascia correggere e lo manda.
+     3. LE COORDINATE. Le dice il conto delle rimesse, non una costante.
+     4. LA RIGA DI REGISTRO. «Io non l'ho ricevuto» arriva mesi dopo, e la
+        risposta dev'essere a chi, quando, con quali numeri, e se è partito.
+
+   E il SEGNAPOSTO non si sceglie: `EC_CASELLA` è una costante di questo
+   blocco. Se quella casella non è assegnata all'utente, NON si ripiega su
+   un'altra — un estratto conto spedito dalla casella sbagliata è peggio di un
+   estratto conto non spedito, perché la risposta del collaboratore finisce
+   dove non la legge nessuno. */
+/* `var` e non `const`: una costante dichiarata così NON finisce su `window`,
+   e una prova che controlla da quale casella parte l'estratto conto leggerebbe
+   `undefined` restando verde quando la casella è sbagliata. È la stessa
+   trappola del banco già scritta per le variabili di stato (§17), dall'altro
+   lato — qui non si inietta, si legge. */
+var EC_CASELLA = 'contabilita@withusassicurazioni.it';
+var ECP_CONTI = [];          // i conti, per le coordinate delle rimesse
+var ECP_INVII = [];          // le ultime righe di registro
+var ECP_MODELLO = 'a';
+
+async function ecpCaricaConti() {
+  if (!db) return;
+  try {
+    const { data, error } = await db.from('iam_conti').select('id,nome,natura,attivo,iban,bic,intestatario,rimesse');
+    if (error) throw error;
+    ECP_CONTI = data || [];
+  } catch (e) { ECP_CONTI = []; console.warn('conti per le coordinate:', e.message || e); }
+}
+
+async function ecpCaricaInvii() {
+  if (!db) return;
+  try {
+    const { data, error } = await db.from('iam_invii_estratto')
+      .select('*').order('creato_il', { ascending: false }).limit(30);
+    if (error) throw error;
+    ECP_INVII = data || [];
+  } catch (e) { ECP_INVII = null; console.warn('registro invii:', e.message || e); }
+  ecpRenderInvii();
+}
+
+function ecpRenderInvii() {
+  const box = document.getElementById('ecp-invii');
+  if (!box) return;
+  /* «Non risponde» e «non c'è niente» sono due cose diverse (§18): un elenco
+     vuoto su una lettura fallita farebbe credere che non sia mai uscito
+     niente. */
+  if (ECP_INVII === null) {
+    box.innerHTML = `<div class="ecp-nota">Il registro degli invii non risponde. Non vuol dire che non sia uscito niente:
+      vuol dire che non si è potuto leggerlo.</div>`;
+    return;
+  }
+  if (!ECP_INVII.length) { box.innerHTML = `<div class="ecp-nota">Nessun estratto conto mandato da qui, per ora.</div>`; return; }
+  box.innerHTML = `<div class="ecp-nota"><b>Ultimi estratti conto usciti</b></div>` +
+    ECP_INVII.map(r => `<div class="ecp-riga">
+      <div style="flex:1;min-width:0">
+        <div><b>${esc(r.nome || '')}</b> · ${r.tipo === 'provvigioni' ? 'provvigionale' : 'da versare'}
+          ${r.esito === 'errore' ? '<span class="ecp-ko">non partito</span>' : '<span class="ecp-ok">mandato</span>'}</div>
+        <div class="ecp-sub">${esc(r.destinatario || '')} · ${polData((r.creato_il || '').slice(0, 10)) || ''}
+          ${r.dal || r.al ? ' · ' + (polData(r.dal) || '…') + ' → ' + (polData(r.al) || '…') : ''}
+          ${r.casella ? ' · da ' + esc(r.casella) : ''} · modello ${esc(r.modello || '')}</div>
+        ${r.esito === 'errore' ? `<div class="ecp-sub" style="color:var(--red-txt)">${esc(r.errore || '')}</div>` : ''}
+      </div>
+      <div style="text-align:right"><b>${r.totale == null ? '—' : pfEuro(r.totale)}</b>
+        <div class="ecp-sub">${r.righe == null ? '' : r.righe + ' righe'}</div></div>
+    </div>`).join('');
+}
+
+/* Il totale che si annota nel registro è quello che il documento DICEVA:
+   sul provvigionale la quota del collaboratore, sui sospesi l'importo. Le
+   rate cambiano — una viene incassata, una si riassegna — e rileggere
+   l'estratto conto di agosto oggi darebbe un altro numero. */
+function ecpTotaleDocumento(v) {
+  if (!v || !v.totali) return null;
+  return v.tipo === 'provvigioni' ? v.totali.quota_collaboratore : v.totali.importo;
+}
+
 async function ecpInvia() {
   const v = ECP_VISTA;
-  const html = ecpDocHTML();
-  if (!v || !html) { alert('Scegli un collaboratore prima di mandare l\'estratto conto.'); return; }
+  if (!v || !ecpDocHTML()) { alert('Scegli un collaboratore prima di mandare l\'estratto conto.'); return; }
+  if (!window.EstrattoConto || !window.Contabilita) { alert('I motori dell\'estratto conto non sono caricati.'); return; }
+  await ecpCaricaConti();
   const c = TIT_COLLAB.find(x => TIT_COLLAB_NOMI[x.id] === v.nome);
-  const a = prompt('Email del collaboratore', (c && c.email) || '');
-  if (!a) return;
-  const periodo = (v.dal || v.al) ? `dal ${polData(v.dal) || '…'} al ${polData(v.al) || '…'}` : '';
-  const oggetto = (v.tipo === 'provvigioni' ? 'Estratto conto provvigionale' : 'Rate da versare') + (periodo ? ' — ' + periodo : '');
-  const corpo = v.tipo === 'provvigioni'
-    ? `<p>Ciao ${esc(v.nome || '')},</p><p>in allegato l'estratto conto provvigionale ${esc(periodo)}.</p>
-       <p><b>${v.totali.conteggiate}</b> rate incassate · provvigioni di compagnia <b>${pfEuro(v.totali.provvigione_compagnia)}</b> ·
-       <b>spetta a te ${pfEuro(v.totali.quota_collaboratore)}</b>.</p>
-       ${v.daConfermare.length ? `<p>${v.daConfermare.length} rate non sono nel totale: manca la provvigione della compagnia o la percentuale concordata. Le vediamo insieme.</p>` : ''}`
-    : `<p>Ciao ${esc(v.nome || '')},</p><p>in allegato le rate a tuo carico non ancora incassate ${esc(periodo)}.</p>
-       <p><b>${v.totali.righe}</b> rate per <b>${pfEuro(v.totali.importo)}</b>, di cui <b>${v.totali.scadute}</b> già scadute
-       per <b>${pfEuro(v.totali.importo_scaduto)}</b>.</p>`;
+  document.getElementById('ecp-ov')?.remove();
+  document.body.insertAdjacentHTML('beforeend',
+    `<div id="ecp-ov" class="pdoc-ov" onclick="if(event.target.id==='ecp-ov')this.remove()">
+      <div class="pdoc-box">
+        <div class="pdoc-hd">
+          <div><b>Manda l'estratto conto</b>
+            <div class="pdoc-sub">Si legge prima di partire: è un documento su cui si fanno i conti</div></div>
+          <button class="pdoc-x" onclick="document.getElementById('ecp-ov').remove()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="pdoc-bd" id="ecp-inv-bd"></div>
+      </div></div>`);
+  ECP_MODELLO = 'a';
+  ecpInvRender((c && c.email) || '');
+}
+
+function ecpInvRender(email) {
+  const box = document.getElementById('ecp-inv-bd');
+  const v = ECP_VISTA;
+  if (!box || !v) return;
+  const M = window.EstrattoConto;
+  /* Le coordinate le dà il motore della contabilità, che possiede i conti e
+     il controllo dell'IBAN: qui arriva il risultato. */
+  const coord = window.Contabilita ? Contabilita.coordinateRimesse(ECP_CONTI)
+                                   : { ok: false, motivo: 'Il motore della contabilità non è caricato: le coordinate non si possono leggere.' };
+  const t = M.testiInvio(v, { modello: ECP_MODELLO, coordinate: coord });
+  const dest = email == null ? (document.getElementById('ecp-inv-a') || {}).value || '' : email;
+  if (!t) { box.innerHTML = '<div class="empty-state">Niente da mandare.</div>'; return; }
+  if (t.bloccante) {
+    box.innerHTML = `<div class="ecp-avv">${esc(t.avvisi[0])}</div>`;
+    return;
+  }
+  box.innerHTML = `
+    <div class="ecp-f"><label>A chi</label>
+      <input id="ecp-inv-a" type="email" value="${esc(dest)}" placeholder="email del collaboratore"></div>
+    <div class="ecp-f"><label>Modello</label>
+      <div style="display:flex;gap:8px">
+        <button class="pf-exp${ECP_MODELLO === 'a' ? ' ecp-sel' : ''}" onclick="ecpInvModello('a')">Disteso</button>
+        <button class="pf-exp${ECP_MODELLO === 'b' ? ' ecp-sel' : ''}" onclick="ecpInvModello('b')">Asciutto</button>
+      </div></div>
+    <div class="ecp-f"><label>Oggetto</label><input id="ecp-inv-og" value="${esc(t.oggetto)}"></div>
+    <div class="ecp-f"><label>Testo (si corregge)</label>
+      <textarea id="ecp-inv-tx" rows="9">${esc(t.corpo)}</textarea></div>
+    ${t.avvisi.map(a => `<div class="ecp-avv">${esc(a)}</div>`).join('')}
+    <div class="ecp-nota">Parte dalla casella <b>${esc(EC_CASELLA)}</b>, con il foglio in allegato
+      (${esc(ecpNomeFile('xls'))}).${coord.ok ? ' Coordinate dal conto «' + esc(coord.conto) + '».' : ''}</div>
+    <div id="ecp-inv-msg"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button class="pf-exp" onclick="document.getElementById('ecp-ov').remove()">Annulla</button>
+      <button class="pf-cerca" id="ecp-inv-go" onclick="ecpInvManda()"><i class="ti ti-mail"></i> Manda</button>
+    </div>`;
+}
+
+function ecpInvModello(m) {
+  ECP_MODELLO = m;
+  /* Il testo si ridisegna dal motore: una correzione a mano sul modello di
+     prima non si porta dietro, altrimenti si manderebbe un testo misto che
+     nessuno ha riletto. */
+  ecpInvRender(null);
+}
+
+async function ecpInvManda() {
+  const v = ECP_VISTA;
+  const a = (document.getElementById('ecp-inv-a') || {}).value || '';
+  const og = (document.getElementById('ecp-inv-og') || {}).value || '';
+  const tx = (document.getElementById('ecp-inv-tx') || {}).value || '';
+  const msg = document.getElementById('ecp-inv-msg');
+  const dice = (s, ko) => { if (msg) msg.innerHTML = `<div class="${ko ? 'ecp-avv' : 'ecp-nota'}">${esc(s)}</div>`; };
+  if (!/.+@.+\..+/.test(a)) { dice('Manca l\'indirizzo del collaboratore.', true); return; }
+  if (!og.trim()) { dice('Manca l\'oggetto.', true); return; }
+  const go = document.getElementById('ecp-inv-go');
+  if (go) { go.disabled = true; go.textContent = 'Mando…'; }
+  const c = TIT_COLLAB.find(x => TIT_COLLAB_NOMI[x.id] === v.nome);
+  const riga = {
+    collaboratore_id: (c && c.id) || null,
+    nome: v.nome || a, destinatario: a, casella: EC_CASELLA,
+    tipo: v.tipo === 'provvigioni' ? 'provvigioni' : 'versare',
+    modello: ECP_MODELLO, dal: v.dal || null, al: v.al || null,
+    righe: (v.totali && (v.tipo === 'provvigioni' ? v.totali.conteggiate : v.totali.righe)) ?? null,
+    totale: ecpTotaleDocumento(v), oggetto: og, allegato: ecpNomeFile('xls'),
+    creato_da: (currentUser && currentUser.id) || null
+  };
   try {
-    const b64 = btoa(unescape(encodeURIComponent(html)));
+    const b64 = btoa(unescape(encodeURIComponent(ecpDocHTML())));
     const r = await payFetch('/mail/send', {
-      to: a, subject: oggetto, html: corpo,
+      to: a, subject: og, html: tx, casella: EC_CASELLA,
       attachments: [{ name: ecpNomeFile('xls'), content: b64 }]
     });
     if (r && r.error) throw new Error(r.error);
-    alert('Mandato a ' + a + '.');
-    logMovimento('Estratto conto ' + v.tipo + ' mandato a ' + (v.nome || a), 'collaboratore', v.nome || '');
+    await ecpRegistra({ ...riga, esito: 'inviato' });
+    logMovimento('Estratto conto ' + v.tipo + ' mandato a ' + (v.nome || a), 'collaboratore', a, (c && c.id) || null);
+    document.getElementById('ecp-ov')?.remove();
+    await ecpCaricaInvii();
   } catch (e) {
-    alert(/casella/i.test(String(e.message || e))
-      ? 'Il tuo utente non ha una casella di posta dell\'agenzia assegnata: l\'estratto conto si può scaricare in Excel e mandare a mano.'
-      : 'Non riesco a mandarlo: ' + (e.message || e));
+    /* Un invio fallito lascia la sua riga: «non gliel'ho mandato» e «gliel'ho
+       mandato e non gli è arrivato» sono due lavori diversi. */
+    const testo = String(e.message || e);
+    await ecpRegistra({ ...riga, esito: 'errore', errore: testo.slice(0, 500) });
+    await ecpCaricaInvii();
+    if (go) { go.disabled = false; go.innerHTML = '<i class="ti ti-mail"></i> Manda'; }
+    dice(/casella/i.test(testo)
+      ? 'La casella ' + EC_CASELLA + ' non è assegnata al tuo utente. Non mando da un\'altra: un estratto conto che arriva dalla casella sbagliata fa rispondere dove non legge nessuno. Chiedi l\'accesso, oppure scarica l\'Excel e mandalo a mano.'
+      : 'Non è partito: ' + testo, true);
   }
+}
+
+async function ecpRegistra(riga) {
+  if (!db) return;
+  try {
+    const { error } = await db.from('iam_invii_estratto').insert(riga);
+    if (error) throw error;
+  } catch (e) { console.warn('registro invii:', e.message || e); }
 }
 
 async function loadEstrattoConto(){

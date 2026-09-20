@@ -13,6 +13,9 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const E = require('../../tariffe/motore/estratto-conto.js');
+/* Le coordinate su cui si versa le dà il motore della contabilità, che
+   possiede i conti e il controllo dell'IBAN: il documento riceve il risultato. */
+const C = require('../../tariffe/motore/contabilita.js');
 
 const esiti = [];
 const prova = (nome, fn) => esiti.push({ nome, fn });
@@ -245,6 +248,72 @@ prova('M4.2 · la rata incassata DAL collaboratore è un credito dell\'agenzia v
   deve(!g.find(x => !x.assegnato).credito.importo_aperto, 'le rate non assegnate hanno un credito: verso chi?');
   return 'c1: 120 aperto (80 rimesso), c2: 50; il cliente e la rata aperta non contano';
 });
+
+/* ═══ M6 — IL DOCUMENTO CHE ESCE DI CASA (20/09/2026) ═══════════════════════
+   Il testo dell'email stava dentro `index.html`, scritto a mano. Sta nel
+   motore per la stessa ragione dei testi previdenziali (§5): l'unica cosa che
+   esce di casa è l'unica che va provata. */
+
+prova('IL CASO LO DECIDE IL RISULTATO: non si manda un sollecito a chi non deve niente', () => {
+  const vuotoV = E.testiInvio({ tipo: 'versare', nome: 'Anna', totali: { righe: 0, importo: 0 } }, {});
+  deve(vuotoV.bloccante && !vuotoV.corpo, 'un sollecito senza sospesi esce lo stesso');
+  const vuotoP = E.testiInvio({ tipo: 'provvigioni', nome: 'Anna', totali: { conteggiate: 0 }, daConfermare: [] }, {});
+  deve(vuotoP.bloccante && !vuotoP.corpo, 'un provvigionale vuoto esce lo stesso');
+  /* E i casi veri si distinguono da soli: con le scadute e senza. */
+  deve(E.casoInvio({ tipo: 'versare', totali: { righe: 2, scadute: 1 } }) === 'scadute', 'le scadute non si riconoscono');
+  deve(E.casoInvio({ tipo: 'versare', totali: { righe: 2, scadute: 0 } }) === 'in-corso', 'senza scadute il caso è sbagliato');
+  deve(E.casoInvio({ tipo: 'provvigioni', totali: { conteggiate: 3 }, daConfermare: [] }) === 'tutto', 'caso «tutto» sbagliato');
+  deve(E.casoInvio({ tipo: 'provvigioni', totali: { conteggiate: 3 }, daConfermare: [{}] }) === 'parziale', 'caso «parziale» sbagliato');
+  return 'due bloccanti, quattro casi veri';
+});
+
+prova('IL MODELLO CORTO NON SI MANGIA LA PARTE SCOMODA', () => {
+  /* È la regola per cui i due modelli si possono avere senza pericolo: `b` è
+     asciutto, non reticente. Le righe fuori dal totale sono esattamente la
+     cosa che un testo breve sarebbe tentato di togliere — e toglierla vuol
+     dire mandare «ti spettano 72,30» facendo credere che siano tutte. */
+  const v = { tipo: 'provvigioni', nome: 'Anna', totali: { conteggiate: 3, provvigione_compagnia: 120.5, quota_collaboratore: 72.3 }, daConfermare: [{}, {}] };
+  for (const m of E.MODELLI) {
+    const r = E.testiInvio(v, { modello: m });
+    deve(/2<\/b> rate non sono in questo totale/.test(r.corpo), 'il modello ' + m + ' non dice quante restano fuori');
+    deve(/72,30/.test(r.corpo), 'il modello ' + m + ' non dice quanto spetta');
+    deve(r.avvisi.length === 1, 'il modello ' + m + ' non avvisa chi sta mandando');
+  }
+  /* E il numero che si nomina è quello delle rate CONTEGGIATE, mai il totale
+     delle righe: «ti spettano X» con dentro delle stime è la lite che si
+     perde (§17). */
+  const a = E.testiInvio(v, { modello: 'a' });
+  deve(!/5<\/b> rate incassate/.test(a.corpo), 'il testo conta anche le righe da confermare fra le incassate');
+  return 'due modelli, la stessa parte scomoda';
+});
+
+prova('il documento che chiede dei soldi non inventa un IBAN', () => {
+  const v = { tipo: 'versare', nome: 'Anna', totali: { righe: 2, importo: 300, scadute: 1, importo_scaduto: 150 } };
+  const senza = E.testiInvio(v, { modello: 'b', coordinate: C.coordinateRimesse([{ nome: 'A', attivo: true }]) });
+  deve(!/IT\d\d/.test(senza.corpo), 'senza coordinate il testo si inventa un IBAN');
+  deve(senza.avvisi.length === 1 && /spunta/.test(senza.avvisi[0]), 'chi sta mandando non viene avvisato: ' + JSON.stringify(senza.avvisi));
+  deve(/a parte/.test(senza.corpo), 'il testo non dice al collaboratore come farà ad avere le coordinate');
+  const con = E.testiInvio(v, { modello: 'b', coordinate: C.coordinateRimesse([{ nome: 'R', attivo: true, rimesse: true, iban: 'IT60X0542811101000000123456', intestatario: 'Agenzia' }]) });
+  deve(/IT60 X054 2811 1010 0000 0123 456/.test(con.corpo) && /Agenzia/.test(con.corpo), 'con le coordinate non le scrive: ' + con.corpo);
+  deve(!con.avvisi.length, 'avvisa anche quando è tutto a posto');
+  /* Nessuna data di pagamento promessa: non l'ha decisa nessuno. */
+  const p = E.testiInvio({ tipo: 'provvigioni', nome: 'A', totali: { conteggiate: 1, provvigione_compagnia: 10, quota_collaboratore: 6 }, daConfermare: [] }, {});
+  deve(!/entro il|entro \d/.test(p.corpo), 'il testo promette una data di pagamento che nessuno ha deciso');
+  return 'IBAN solo se c\'è, e nessuna data promessa';
+});
+
+prova('un documento che esce di casa non scrive «1 rate»', () => {
+  /* Chi lo riceve legge un programma invece di un'agenzia, e su un documento
+     su cui si litiga la forma è metà della credibilità. */
+  const uno = E.testiInvio({ tipo: 'versare', nome: 'A', totali: { righe: 1, importo: 150, scadute: 1, importo_scaduto: 150 } }, { modello: 'b' });
+  deve(/1<\/b> rata per/.test(uno.corpo) && /1<\/b> già scaduta/.test(uno.corpo), 'singolare sbagliato: ' + uno.corpo);
+  const tanti = E.testiInvio({ tipo: 'versare', nome: 'A', totali: { righe: 3, importo: 150, scadute: 2, importo_scaduto: 150 } }, { modello: 'b' });
+  deve(/3<\/b> rate per/.test(tanti.corpo) && /2<\/b> già scadute/.test(tanti.corpo), 'plurale sbagliato: ' + tanti.corpo);
+  const p1 = E.testiInvio({ tipo: 'provvigioni', nome: 'A', totali: { conteggiate: 1, provvigione_compagnia: 10, quota_collaboratore: 6 }, daConfermare: [{}] }, { modello: 'b' });
+  deve(/1<\/b> rata incassata/.test(p1.corpo) && /1<\/b> rata non è/.test(p1.corpo), 'singolare sbagliato sul provvigionale: ' + p1.corpo);
+  return 'singolare e plurale, nei due documenti';
+});
+
 
 console.log('\n══ ESTRATTO CONTO DEL COLLABORATORE ══');
 let ko = 0;

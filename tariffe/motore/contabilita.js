@@ -287,6 +287,22 @@
     if (c.tipologia === 'cassa' && testo(c.iban)) avvisi.push('Una cassa contanti di solito non ha un IBAN: controlla di non aver compilato la riga sbagliata.');
     if (c.tipologia === 'banca' && !testo(c.iban)) avvisi.push('Un conto bancario senza IBAN non si può usare per una distinta o un bonifico.');
 
+    /* M6: il conto delle rimesse è UNO. Il divieto vero è un indice unico sul
+       database — la schermata è una delle strade, non l'unica — ma un vincolo
+       che scatta dopo il salvataggio arriva come un errore che nessuno sa
+       leggere. Qui si dice prima, e si dice quale. */
+    if (c.rimesse === true && altri) {
+      for (var k = 0; k < altri.length; k++) {
+        var g = altri[k];
+        if (!g || g.id === c.id || g.rimesse !== true || g.attivo === false) continue;
+        e.push('«' + (testo(g.nome) || 'Un altro conto') + '» è già il conto delle rimesse: toglilo da lì prima, o i collaboratori riceverebbero due IBAN diversi.');
+        break;
+      }
+    }
+    if (c.rimesse === true && !testo(c.iban)) {
+      avvisi.push('Questo è il conto delle rimesse ma non ha l’IBAN: finché manca, l’estratto conto lo dichiara invece di scrivere le coordinate.');
+    }
+
     return { ok: e.length === 0, errori: e, avvisi: avvisi };
   }
 
@@ -510,6 +526,48 @@
     var n = (movimenti || []).filter(function (m) { return m && m.conto_id === (conto && conto.id); }).length;
     if (n) return { ok: false, motivo: 'Su questo conto ci sono ' + n + ' movimenti: sono storia e non si buttano. Spegnilo — esce dalle tendine e resta nei riepiloghi del passato.' };
     return { ok: true, motivo: null };
+  }
+
+  /* ═══ LE COORDINATE DELLE RIMESSE (brief #02 · M6, 20/09/2026) ════════════
+
+     Su quale conto versano i collaboratori. Lo dice il CONTO, con una spunta,
+     non una costante dentro un programma: il giorno in cui l'agenzia cambia
+     banca si cambia una riga in una schermata, e l'estratto conto del mese
+     dopo parte con l'IBAN giusto senza che nessuno se ne ricordi.
+
+     Sta qui e non nel motore dell'estratto conto perché i conti sono di
+     questo motore, e il controllo dell'IBAN pure: due controlli dello stesso
+     IBAN sarebbero due regole, e quella che sbaglia sarebbe quella che
+     nessuno guarda. Il documento che esce di casa riceve il RISULTATO.
+
+     E quando non ci sono, torna il MOTIVO, mai un IBAN indovinato: un
+     bonifico verso un IBAN inventato parte e non arriva (regola di casa
+     §8.1). */
+  function coordinateRimesse(conti) {
+    var attivi = (conti || []).filter(function (c) { return c && c.attivo !== false; });
+    var scelti = attivi.filter(function (c) { return c.rimesse === true; });
+    if (!scelti.length) {
+      return { ok: false, motivo: 'Nessun conto è segnato come conto delle rimesse: mettici la spunta in Strumenti › Conti e causali.' };
+    }
+    if (scelti.length > 1) {
+      /* Il database lo impedisce con un indice unico. Il motore però legge
+         dei dati che non ha scritto lui, e due IBAN sullo stesso documento
+         non si scelgono a caso: si dice che c'è da decidere. */
+      return { ok: false, motivo: scelti.length + ' conti dicono di ricevere le rimesse. Lasciane uno solo.' };
+    }
+    var c = scelti[0];
+    var iban = normalizzaIban(c.iban);
+    if (!iban) {
+      return { ok: false, conto: testo(c.nome) || '', motivo: 'Il conto «' + (testo(c.nome) || '') + '» riceve le rimesse ma non ha l’IBAN.' };
+    }
+    if (!ibanValido(iban)) {
+      return { ok: false, conto: testo(c.nome) || '', iban: ibanBello(iban),
+               motivo: 'L’IBAN del conto «' + (testo(c.nome) || '') + '» non supera il controllo: c’è un refuso.' };
+    }
+    return {
+      ok: true, conto: testo(c.nome) || '', iban: ibanBello(iban),
+      bic: testo(c.bic) || '', intestatario: testo(c.intestatario) || '', banca: testo(c.banca) || ''
+    };
   }
 
   function causaleEliminabile(causale, movimenti) {
@@ -1036,6 +1094,7 @@
     anomalie: anomalie,
     eliminabile: eliminabile, causaleEliminabile: causaleEliminabile,
     ibanValido: ibanValido, normalizzaIban: normalizzaIban, ibanBello: ibanBello,
+    coordinateRimesse: coordinateRimesse,
     etichetta: etichetta, segnoDi: segnoDi, cent: cent, numero: numero, euro: euro
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

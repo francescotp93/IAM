@@ -4736,6 +4736,113 @@ const avvio = async () => {
       return r.nome;
     });
 
+    /* ── M6 · l'estratto conto che esce di casa (20/09/2026) ───────────────
+       Il testo dell'email stava scritto a mano qui dentro; adesso lo fa il
+       motore e la pagina lo mostra prima di mandarlo. Queste prove guardano
+       le tre cose che, rompendosi, non si vedrebbero: la casella sbagliata,
+       un IBAN indovinato e un invio che non lascia traccia. */
+
+    await prova('M6 · l\'estratto conto parte dalla casella della contabilità, e da nessun\'altra', async () => {
+      /* Misurato sul server: le caselle configurate sono amministrazione@,
+         contabilita@ e intermediari@, e senza dire quale il server prende la
+         PRIMA. Un estratto conto che arriva da amministrazione@ fa rispondere
+         a una casella che quei conti non li tiene. */
+      const h = fs.readFileSync('index.html', 'utf8');
+      const i = h.indexOf('async function ecpInvManda');
+      const blocco = h.slice(i, h.indexOf('async function ecpRegistra', i));
+      const codice = blocco.split('\n').filter(r => !/^\s*(\/\*|\*|\/\/)/.test(r)).join('\n');
+      /* Si guarda dentro la CHIAMATA che manda, non nel blocco intero: la
+         stessa costante compare anche nella riga di registro, e la prima
+         stesura di questa prova leggeva quella — restava verde con l'email
+         che partiva dalla casella sbagliata E il registro che dichiarava la
+         casella giusta, cioè il difetto peggiore dei due. L'ha trovato la
+         controprova, non la rilettura. */
+      const invio = codice.slice(codice.indexOf("payFetch('/mail/send'"), codice.indexOf('});', codice.indexOf("payFetch('/mail/send'")));
+      deve(invio.length > 20, 'non trovo la chiamata che manda l\'email');
+      deve(/casella: EC_CASELLA/.test(invio), 'l\'invio non dice da quale casella deve partire: ' + invio);
+      deve(/contabilita@withusassicurazioni\.it/.test(h), 'la casella della contabilità non è dichiarata');
+      /* E NON si ripiega su un'altra: meglio non mandarlo che mandarlo da
+         dove il collaboratore non verrà mai letto. */
+      deve(!/casella:\s*(caselle|acc|'')/.test(codice), 'c\'è un ripiego su un\'altra casella');
+      const r = await page.evaluate(() => window.EC_CASELLA);
+      deve(r === 'contabilita@withusassicurazioni.it', 'la casella in pagina è un\'altra: ' + r);
+      return r;
+    });
+
+    await prova('M6 · il testo si vede prima di partire, e lo scrive il motore', async () => {
+      const r = await page.evaluate(async () => {
+        document.getElementById('ecp-collab').value = 'c-1';
+        window.ecpTab('provvigioni');
+        await window.ecpInvia();
+        const bd = document.getElementById('ecp-inv-bd');
+        const tx = document.getElementById('ecp-inv-tx');
+        const og = document.getElementById('ecp-inv-og');
+        const prima = tx && tx.value;
+        window.ecpInvModello('b');
+        const dopo = document.getElementById('ecp-inv-tx').value;
+        const out = { testo: bd.textContent, corpo: prima, corpoB: dopo, oggetto: og && og.value,
+                      modificabile: !!(tx && tx.tagName === 'TEXTAREA') };
+        document.getElementById('ecp-ov')?.remove();
+        return out;
+      });
+      deve(r.modificabile, 'il testo non si può correggere prima di mandarlo');
+      deve(/Rossi Mario/.test(r.corpo), 'il testo non nomina il collaboratore: ' + String(r.corpo).slice(0, 120));
+      deve(/24,73/.test(r.corpo), 'il testo non porta il numero che conta');
+      deve(/Estratto conto provvigionale/.test(r.oggetto), 'l\'oggetto non dice che cos\'è: ' + r.oggetto);
+      /* I due modelli sono diversi davvero, e tutti e due dicono il numero. */
+      deve(r.corpo !== r.corpoB, 'i due modelli producono lo stesso testo');
+      deve(/24,73/.test(r.corpoB), 'il modello asciutto si mangia il numero');
+      return 'anteprima correggibile, due modelli';
+    });
+
+    await prova('M6 · il documento che chiede dei soldi non si inventa un IBAN', async () => {
+      const r = await page.evaluate(async () => {
+        window.ecpTab('versare');
+        document.getElementById('ecp-collab').value = 'c-1';
+        window.ecpRender();
+        /* La finestra si apre davvero: `ecpInvRender` scrive dentro di lei, e
+           chiamarla senza vorrebbe dire misurare una funzione che esce subito. */
+        await window.ecpInvia();
+        /* Nessun conto delle rimesse: è lo stato vero dell'agenzia oggi. */
+        window.ECP_CONTI = [{ id: 'k1', nome: 'AZIENDALE', attivo: true }];
+        window.ecpInvRender('a@b.it');
+        const senza = document.getElementById('ecp-inv-bd').textContent;
+        /* Adesso c'è, con l'IBAN buono. */
+        window.ECP_CONTI = [{ id: 'k2', nome: 'RIMESSE', attivo: true, rimesse: true,
+                              iban: 'IT60X0542811101000000123456', intestatario: 'With Us' }];
+        window.ecpInvRender('a@b.it');
+        const con = document.getElementById('ecp-inv-bd').textContent;
+        document.getElementById('ecp-ov')?.remove();
+        return { senza, con };
+      });
+      deve(/spunta/.test(r.senza), 'senza conto delle rimesse non avvisa chi sta mandando: ' + r.senza.slice(0, 200));
+      deve(!/IT\d\d[A-Z0-9]/.test(r.senza), 'si è inventato un IBAN');
+      deve(/IT60 X054 2811 1010 0000 0123 456/.test(r.con), 'con le coordinate non le scrive: ' + r.con.slice(0, 200));
+      return 'prima il motivo, poi l\'IBAN vero';
+    });
+
+    await prova('M6 · un estratto conto uscito lascia una riga, e anche uno NON uscito', async () => {
+      /* «Io non l'ho ricevuto» arriva mesi dopo. E «non gliel'ho mandato» e
+         «gliel'ho mandato e non è arrivato» sono due lavori diversi: se solo
+         il successo lasciasse traccia, il secondo caso sparirebbe. */
+      const h = fs.readFileSync('index.html', 'utf8');
+      const i = h.indexOf('async function ecpInvManda');
+      const blocco = h.slice(i, h.indexOf('async function ecpRegistra', i));
+      const codice = blocco.split('\n').filter(r => !/^\s*(\/\*|\*|\/\/)/.test(r)).join('\n');
+      deve(/esito: 'inviato'/.test(codice), 'l\'invio riuscito non lascia una riga');
+      deve(/esito: 'errore'/.test(codice) && /errore: /.test(codice), 'l\'invio fallito non lascia una riga col motivo');
+      deve(/totale: ecpTotaleDocumento\(v\)/.test(codice), 'il registro non copia il totale che il documento diceva');
+      /* E i numeri si COPIANO: le rate cambiano, il documento già mandato no. */
+      const t = await page.evaluate(() => {
+        window.ecpTab('provvigioni');
+        document.getElementById('ecp-collab').value = 'c-1';
+        window.ecpRender();
+        return window.ecpTotaleDocumento(window.ECP_VISTA);
+      });
+      deve(typeof t === 'number' && t > 0, 'il totale da annotare non è un numero: ' + t);
+      return 'inviato ed errore, col totale di quel giorno';
+    });
+
     await prova('estratto conto: un collaboratore non vede l\'elenco della rete né i conti degli altri', async () => {
       /* Le politiche del database impediscono di leggere le rate degli altri,
          ma la tendina dei nomi no: lasciarla intera mostrerebbe a un

@@ -3001,3 +3001,120 @@ scrive quel nome.
 - **Le anomalie dei file caricati restano sotto**, separate da quelle della
   contabilità: sono due archivi diversi e mescolarli renderebbe impossibile
   dire da dove viene un problema.
+
+---
+
+## 34. Brief IAM #02 — M6: l'estratto conto che esce di casa (20/09/2026)
+
+La schermata c'era già (QUOTO, `#page-estratto`, §17 e §24): due linguette,
+«Da versare» e «Provvigioni», l'Excel e l'email. **Rifarla in IAM sarebbe stata
+la malattia di Utenti e Performance** (§10): la stessa schermata scritta due
+volte, e due numeri che un giorno direbbero cose diverse sulla stessa persona.
+Quello che mancava non era la schermata: era tutto ciò che succede quando quel
+foglio **esce**.
+
+| pezzo | dove |
+|---|---|
+| i testi, in due modelli, e i casi | `tariffe/motore/estratto-conto.js` — `testiInvio`, `casoInvio` |
+| le coordinate delle rimesse | `tariffe/motore/contabilita.js` — `coordinateRimesse` |
+| le due tabelle/colonne e il registro | `supabase/migrations/20260920_b02_m6_estratto_conto.sql` (applicata) |
+| l'anteprima, l'invio e il registro | blocco `ecp*` in `index.html` (`ecpInvia`, `ecpInvRender`, `ecpInvManda`, `ecpRegistra`) |
+| IBAN, BIC, intestatario e la spunta | `cntFormConto` / `cntSalvaConto` in `iam/index.html` |
+| prove | `estratto-conto.test.mjs` (19), `contabilita.test.mjs` (**36**), `conti-causali.test.mjs` (12), `ui-test.mjs` (**449**) |
+
+### Misurato prima di scrivere — e una misura ha cambiato il lavoro
+
+Sul database: **55 rate, 0 assegnate** a un collaboratore; **12 schede
+economiche, 0 con l'IBAN**. Oggi l'estratto conto di ognuno è vuoto, e questo
+lavoro non lo riempie — lo riempiono le decisioni dei codici produttore (§19).
+
+Sul server, leggendo l'ambiente del backend: le caselle configurate sono
+`amministrazione@`, **`contabilita@`** e `intermediari@`. La casella della
+contabilità **esisteva già**, e nessuno la sceglieva: `/mail/send` senza
+`casella` prende la **prima** dell'elenco. Gli estratti conto uscivano da
+`amministrazione@`, e le risposte finivano in una casella che quei conti non li
+tiene. Non si ripiega su un'altra: meglio non mandarlo che mandarlo da dove il
+collaboratore non verrà letto — la schermata dice che serve l'accesso, e
+propone l'Excel a mano.
+
+### Il testo esce dalla pagina e va nel motore
+
+Era scritto a mano dentro `index.html`. Sta nel motore per la stessa ragione dei
+testi previdenziali (§5): **l'unica cosa che esce di casa è l'unica che va
+provata**. Il **caso lo decide il risultato** (`casoInvio`), non chi scrive: un
+sollecito senza sospesi e un provvigionale vuoto non partono, e lo dicono.
+
+**I due modelli non sono «lungo» e «corto»**: `a` è disteso, `b` è asciutto. E
+la regola che li rende sicuri: **quello che NON cambia fra i due è l'avviso
+delle righe fuori dal totale**. È esattamente la parte che un testo breve
+sarebbe tentato di togliere, e toglierla vorrebbe dire mandare «a te spettano
+72,30» facendo credere che siano tutte. C'è una prova che gira i due modelli e
+pretende la stessa parte scomoda.
+
+Nessun testo promette una **data di pagamento**: non l'ha decisa nessuno, e una
+promessa in un testo automatico è una promessa che l'agenzia non sa di aver
+fatto.
+
+### Le coordinate le dice il conto — e il controllo dell'IBAN è uno solo
+
+Un IBAN scritto dentro un programma resta quello vecchio il giorno in cui
+l'agenzia cambia banca. Adesso è una **spunta sul conto** (`iam_conti.rimesse`,
+uno solo, con un **indice unico parziale**), e finché nessuno la mette il
+documento dichiara che le coordinate arriveranno a parte — mai un IBAN
+indovinato (§8.1).
+
+**Qui ho sbagliato e l'ha corretto la misura, non il ragionamento.** Avevo
+scritto `coordinate()` e il controllo dell'IBAN dentro `estratto-conto.js` —
+salvo che `contabilita.js` **ce l'aveva già**, e migliore (con la tabella delle
+lunghezze per paese). Due controlli dello stesso IBAN sono due regole, e quella
+che sbaglia è quella che nessuno guarda: la funzione è andata nel motore che
+possiede i conti, e il documento riceve il **risultato**. QUOTO adesso carica
+anche `contabilita.js`. Una prova legge il sorgente dell'altro motore e diventa
+rossa se il controllo ricompare in due posti.
+
+### Il registro dei documenti usciti
+
+«Io l'estratto conto non l'ho ricevuto» arriva mesi dopo, e `quote_log` diceva
+solo «mandato». `iam_invii_estratto` tiene destinatario, casella, periodo,
+**i totali di quel giorno** e l'esito.
+
+**I totali si copiano, e non è un doppione**: le rate cambiano (una viene
+incassata, una si riassegna) e rileggere l'estratto conto di agosto oggi
+darebbe numeri diversi da quelli che quella persona ha ricevuto.
+
+**E si registra anche l'errore**, col motivo obbligatorio: «non gliel'ho
+mandato» e «gliel'ho mandato e non è arrivato» sono due lavori diversi (§18).
+Il registro non si corregge e non si cancella (trigger), e dice chi ha mandato,
+quindi la firma è vera (`with check (creato_da = auth.uid())`).
+
+### Tre trappole, e una era la peggiore delle due
+
+1. **`const` non finisce su `window`.** `EC_CASELLA` era `const`: la prova che
+   controlla da quale casella parte l'estratto conto leggeva `undefined` e
+   sarebbe restata verde con la casella sbagliata. È la trappola di §17 vista
+   dall'altro lato — lì si inietta, qui si legge.
+2. **La controprova ha trovato un difetto peggiore di quello che cercava.**
+   Tolto `casella` dalla chiamata che manda, la prova restava **verde**: cercava
+   la stringa nel blocco intero, e la stessa costante compare anche nella riga
+   di registro. Cioè la prova avrebbe accettato un'email partita dalla casella
+   sbagliata **e** un registro che dichiarava quella giusta — un registro che
+   mente è peggio di un registro che manca. Adesso si guarda dentro la
+   chiamata.
+3. **Un nome di file non si scrive in un foglio di stile.** Il commento del
+   blocco CSS nominava `fusione-collisioni.test.mjs`, e il guardiano ha contato
+   due classi in comune che non esistono (`test`, `mjs`): in un CSS un nome con
+   dei punti è una catena di selettori. È la trappola dei commenti (§10, §12,
+   §18, §26, §29, §31, §33) nella sua **nona** occorrenza. Nello stesso giro ha
+   preso anche una classe `attiva` senza prefisso, che era una collisione vera.
+
+### Cosa resta aperto
+
+- **Il conto delle rimesse non è ancora scelto** e nessun conto ha l'IBAN: la
+  prima cosa da fare in schermata, altrimenti i fogli «da versare» escono senza
+  coordinate (e lo dicono).
+- **L'estratto conto legge ancora `iam_team.provv`** e non le tariffe della M2:
+  sono due letture della stessa cosa, e finché sono due vanno confrontate, non
+  fuse a occhio (§28).
+- **Gli allegati restano un Excel** (una tabella HTML che Excel apre): il PDF
+  con la carta intestata esiste già per il foglio cassa (§25) e si potrà usare
+  anche qui.

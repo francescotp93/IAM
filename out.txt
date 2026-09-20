@@ -1,21 +1,20 @@
-id: m5b-1789909953  exit: 0  2026-09-20 13:12:51
+id: m5c-1789909997  exit: 0  2026-09-20 13:13:31
 ----
-== commit ==
-6f4762a Brief #02 · M4: gli incassi da accreditare (#212)
-== versione.json ==
-{
-  "versione": "0.4.0",
-  "nome": "Incassi da accreditare",
-  "data": "2026-09-20",
-== meta IAM ==
-<meta name="app-versione" content="0.4.0">
-<meta name="app-versione-nome" content="Incassi da accreditare">
-== blocco gio* ==
-0
-== HTTP ==
-iam root: 200
-{
-  "versione": "0.4.0",
-  "nome": "Incassi da accreditare",
-  "data": "2026-09-20",
-  "storia": [
+Sun Sep 20 13:13:25 UTC 2026
+== commit locale ==
+6a9b877 Brief #02 · M5: la contabilità si ricostruisce da sé (#213)
+== remoto ==
+6a9b877 Brief #02 · M5: la contabilità si ricostruisce da sé (#213)
+== autopull ==
+Sep 20 13:10:36 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 5.030s CPU time over 5.461s wall clock time, 106.7M memory peak.
+Sep 20 13:11:41 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Sep 20 13:11:46 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 20 13:11:46 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 20 13:11:46 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 5.026s CPU time over 5.468s wall clock time, 106.6M memory peak.
+Sep 20 13:12:43 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Sep 20 13:12:51 vps-d6443a46 autopull.sh[3696640]: [autopull] 2026-09-20 13:12:51 aggiorno 6f4762a -> 6a9b877
+Sep 20 13:12:53 vps-d6443a46 autopull.sh[3696640]: [autopull] withus-backend riavviato ✅
+Sep 20 13:12:54 vps-d6443a46 autopull.sh[3696640]: [autopull] fatto.
+Sep 20 13:12:54 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 20 13:12:54 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 20 13:12:54 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 9.513s CPU time over 10.527s wall clock time, 84M memory peak.

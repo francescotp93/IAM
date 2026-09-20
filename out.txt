@@ -1,17 +1,16 @@
-id: m2b-1789900898  exit: 0  2026-09-20 10:41:51
+id: m2c-1789900936  exit: 0  2026-09-20 10:42:26
 ----
-e622ac7 Un numero di versione che non può mentire: 0.1.0 (#208)
---- meta IAM ---
-<meta name="app-versione" content="0.1.0">
-<meta name="app-versione-nome" content="Conti e causali">
---- meta QUOTO ---
-<meta name="app-versione" content="0.1.0">
-<meta name="app-versione-nome" content="Conti e causali">
---- motore provvigioni sul disco ---
-ls: cannot access 'tariffe/motore/provvigioni.js': No such file or directory
+atteso: 10s
+b74a512 Brief #02 · M2: gestione compagnie e pannello provvigioni (#209)
+--- meta IAM / QUOTO ---
+<meta name="app-versione" content="0.2.0">
+<meta name="app-versione-nome" content="Compagnie e provvigioni">
+<meta name="app-versione" content="0.2.0">
+<meta name="app-versione-nome" content="Compagnie e provvigioni">
 --- voci di menu nella scocca ---
-0
+2
 --- servito da Caddy ---
-<meta name="app-versione" content="0.1.0">
-<meta name="app-versione-nome" content="Conti e causali">
-provvigioni.js: 404
+<meta name="app-versione" content="0.2.0">
+<meta name="app-versione-nome" content="Compagnie e provvigioni">
+provvigioni.js: 200
+2

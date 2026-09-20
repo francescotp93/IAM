@@ -1,13 +1,7 @@
-id: m6c-1789912062  exit: 0  2026-09-20 13:49:22
+id: fix-1789912793  exit: 0  2026-09-20 14:01:37
 ----
-0d6785c Brief #02 · M6: l'estratto conto che esce di casa (#214)
-<meta name="app-versione" content="0.6.0">
-<meta name="app-versione-nome" content="L'estratto conto che esce di casa">
-<meta name="app-versione" content="0.6.0">
-<meta name="app-versione-nome" content="L'estratto conto che esce di casa">
-{
-  "versione": "0.6.0",
-  "nome": "L'estratto conto che esce di casa",
-  "data": "2026-09-20",
-motore estratto-conto: 200
+6fa2ddb Gestione compagnie non si apriva: una colonna sbagliata su sette letture (#215)
+<meta name="app-versione" content="0.6.1">
+-- la query corretta e' quella servita:
 1
+0

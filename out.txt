@@ -1,16 +1,21 @@
-id: m2c-1789900936  exit: 0  2026-09-20 10:42:26
+id: m3-1789902683  exit: 0  2026-09-20 11:12:02
 ----
-atteso: 10s
-b74a512 Brief #02 · M2: gestione compagnie e pannello provvigioni (#209)
---- meta IAM / QUOTO ---
-<meta name="app-versione" content="0.2.0">
-<meta name="app-versione-nome" content="Compagnie e provvigioni">
-<meta name="app-versione" content="0.2.0">
-<meta name="app-versione-nome" content="Compagnie e provvigioni">
---- voci di menu nella scocca ---
+atteso: 20s
+0dd1fd6 Brief #02 · M3: prima nota, quadratura dei conti e le novità del rilascio (#210)
+--- meta ---
+<meta name="app-versione" content="0.3.0">
+<meta name="app-versione-nome" content="Prima nota e quadratura">
+--- linguette nuove ---
 2
 --- servito da Caddy ---
-<meta name="app-versione" content="0.2.0">
-<meta name="app-versione-nome" content="Compagnie e provvigioni">
-provvigioni.js: 200
-2
+<meta name="app-versione" content="0.3.0">
+<meta name="app-versione-nome" content="Prima nota e quadratura">
+{
+  "versione": "0.3.0",
+  "nome": "Prima nota e quadratura",
+  "data": "2026-09-20",
+
+  "storia": [
+    {
+      "v": "0
+versione.json: 200

@@ -1,4 +1,4 @@
-id: m2-1789900875  exit: 0  2026-09-20 10:41:22
+id: m2b-1789900898  exit: 0  2026-09-20 10:41:51
 ----
 e622ac7 Un numero di versione che non può mentire: 0.1.0 (#208)
 --- meta IAM ---

@@ -3716,3 +3716,117 @@ nata già prefissata `rin-primario`. Adesso **6 su 6**, con scarto 0.
   `dati.catalogo_prodotto_id`, e l'aggancio vero è la migrazione futura di §39.
 - **La ricerca non copre i titoli**: una rata si cerca dalla sua polizza, e una
   sezione in più su una tendina già lunga andrebbe misurata prima.
+
+---
+
+## 41. Brief IAM — Blocco 3 · punti 3 e 6: le sospensioni e il fido (20/09/2026)
+
+Due cose nuove, e tutte e due toccano dei soldi. Misurato prima di scrivere:
+**nel repository la parola «sospensione» non compariva nemmeno una volta, e
+«fido» nemmeno.**
+
+| pezzo | dove |
+|---|---|
+| tutte le regole | `tariffe/motore/sospensione.js` |
+| prove in Node | `server/verifica/sospensione.test.mjs` — **14** |
+| le tre colonne, l'indice, il rollback | `supabase/migrations/20260920_sospensioni_e_fido.sql` (applicata) |
+| sospendi/riattiva, la scadenza vera, l'elenco | blocco `sos*` in `index.html`, `#rin-sospese` nello Scadenzario |
+| il fido nella scheda | blocco `fid*` e `#mc-fido` in `iam/index.html` |
+| il fido nel riepilogo d'agenzia | `ecpFidi` / `ecpFidoCella` in `index.html` |
+| prove | `iam/verifica/fido-persona.test.mjs` (8), blocco «Blocco 3» in `ui-test.mjs` (**473**) |
+
+### Punto 3 — la scadenza scritta e quella vera sono due date diverse
+
+Una RCA sospesa oggi non esisteva da nessuna parte: restava in portafoglio con
+la sua scadenza contrattuale, entrava nello scadenzario con **una data che non
+è più vera**, e il giorno in cui il cliente rimette in strada la macchina non
+se ne ricordava nessuno.
+
+> **La copertura sospesa si recupera.** I giorni fermi si aggiungono in fondo,
+> quindi la scadenza vera non è quella scritta sul contratto. Un'agenzia che
+> richiama sulla data contrattuale telefona nel giorno sbagliato, e chi ha
+> sospeso sei mesi se lo sente dire dal cliente.
+
+**La scadenza contrattuale non si riscrive: si tiene, e si somma.** Un dato
+sovrascritto è un dato di cui nessuno sa più quale fosse l'originale. Quella
+vera si **calcola** (`Sospensione.stato`), e compare accanto a quella scritta —
+ma solo quando le due non coincidono: un «(vera: la stessa)» su ogni polizza
+sarebbe rumore che si impara a saltare.
+
+**Le sospensioni sono un ELENCO, non due date.** Una polizza può essere sospesa
+più volte nella stessa annualità: con una coppia di colonne la seconda
+cancellerebbe la prima, e i giorni recuperati dal cliente sparirebbero.
+
+**Quanto può durare lo dichiara la compagnia**, e ogni compagnia ha il suo.
+Dove nessuno l'ha scritto, i giorni si contano e **il giudizio non si dà** —
+«non si sa» non è «va bene» (§12, §18, §20). Resta però un tetto che vale
+sempre, ed è una conseguenza del contratto: **una sospensione non può
+recuperare più copertura di quanta ne restava.** Fra due tetti vince il più
+stretto; non si fa la media.
+
+### Punto 6 — un credito senza tetto si scopre quando è troppo grande
+
+Il credito dell'agenzia verso ogni collaboratore esiste dal 19/09 (§24): sono
+le rate che ha incassato lui e non ha ancora rimesso. Il fido è il tetto.
+
+**Un fido non dichiarato non è un fido illimitato.** Chi non ce l'ha esce dai
+conti **con il motivo scritto**, e il suo credito **non entra nei totali**: una
+«esposizione oltre il fido» che comprende persone di cui non si sa il limite è
+un numero che non vuol dire niente. È la regola dell'estratto conto (§17)
+applicata a un limite invece che a una percentuale.
+
+**Uno zero invece è un accordo, e si conta**: questa persona non tiene denaro
+dell'agenzia. Nel modulo, un campo lasciato vuoto **toglie** il fido e non lo
+mette a zero — confonderli direbbe che una persona non può tenere niente
+quando invece nessuno ha deciso.
+
+**Il fido sta sulla PERSONA, non sulla scheda economica**, ed è una scelta
+misurata: il credito si calcola su chi ha **incassato**
+(`quote_titoli.pagatore_collaboratore_id`, che punta a `quote_collaboratori`),
+e chi ha incassato può non avere una scheda. Mettendolo su `iam_team`, una
+persona senza scheda sarebbe risultata **senza limite, in silenzio**.
+
+### La migrazione non semina niente
+
+Tre colonne, tutte nullable o con un default vuoto, e **nessuna colonna
+esistente toccata**. Scrivere un numero «ragionevole» qui dentro vorrebbe dire
+che da domani il sistema giudica dei crediti e delle scadenze su una soglia che
+nessuno ha deciso — e quel numero, dopo due settimane, diventa un dato (§8.1).
+Misurato dopo l'applicazione: **0 polizze sospese, 0 fidi, 0 limiti** su 17
+persone e 9 compagnie. È il punto: il sistema ha finito il suo lavoro quando ha
+chiesto.
+
+### La trappola dei commenti, decima volta
+
+Il commento della migrazione **nominava le due colonne che stava vietando**, e
+la prova che le cerca nel file è diventata rossa su una migrazione corretta. È
+§10, §12, §18, §26, §29, §31, §33, §34, §37. Due correzioni, come sempre: il
+commento non scrive quelle parole, **e** la prova legge solo le righe di
+codice, togliendo i `--` a inizio riga (mai una regex globale, §12).
+
+### Una controprova che non faceva diventare rossa nessuna prova
+
+Rimesso dentro «chiudi la PRIMA sospensione aperta» invece dell'ultima, tutto
+restava verde. La controprova era buona: **era la prova a essere debole.** Nel
+banco c'era una sola sospensione aperta, e lì i due comportamenti coincidono.
+E non è bastato aggiungerne una seconda: finché la prima aperta dell'elenco era
+*anche* la più recente, le due strade davano la stessa risposta. Serviva
+l'ordine in cui si separano — la più vecchia scritta per prima — che è
+esattamente quello che produce una scrittura andata male. Allora la prova
+diventa rossa.
+
+*Una controprova che non fa diventare rossa nessuna prova va guardata bene*
+(§15, §17, §18, §19): stavolta il guasto era un guasto, e il banco non lo
+vedeva.
+
+### Cosa resta aperto
+
+- **Nessuno ha ancora dichiarato niente**: né un fido, né un limite di
+  sospensione per compagnia. Finché è così il sistema conta e non giudica, e lo
+  dice — ma è la prima cosa da fare in schermata.
+- **Le sospensioni non toccano le rate.** Una polizza ferma continua ad avere i
+  suoi titoli con le decorrenze di prima: se durante la sospensione la rata non
+  si deve pagare, è una decisione che nessuno ha preso e che tocca la
+  contabilità.
+- **Il Blocco 3 non è finito**: restano i punti 7 (dettaglio conto), 12-bis
+  (monitor stato collegamenti), 10 (dashboard KPI) e 4 (filtri marketing).

@@ -1279,7 +1279,7 @@ const avvio = async () => {
       return v;
     });
 
-    await prova('registro: la copertura non scende — 38 movimenti su 59 sanno su che cosa sono', () => {
+    await prova('registro: la copertura non scende — 41 movimenti sanno su che cosa sono', () => {
       /* La soglia si ALZA, non si abbassa: è lo stesso meccanismo della prova
          sulle collisioni fra i due documenti, al contrario. Senza, un punto di
          chiamata scritto domani senza identificativo non lo nota nessuno, e il
@@ -1305,7 +1305,7 @@ const avvio = async () => {
         }
         return virgole >= 3;
       }).length;
-      const SOGLIA = 38;   // 19/09 (M1–M5): emissione, auguri, sinistro, credito e rimessa, cassa
+      const SOGLIA = 41;   // 20/09 (Blocco 2 e 3): polizza a mano, sospensione, riattivazione
       deve(chiamate.length >= 50, 'non ha letto i punti di chiamata: ' + chiamate.length);
       deve(conId >= SOGLIA, conId + ' movimenti su ' + chiamate.length + ' portano l\'identificativo: erano ' + SOGLIA + '. Un punto di chiamata ha perso l\'id, oppure ne è nato uno nuovo senza');
       deve(conId - SOGLIA < 3, 'adesso sono ' + conId + ': alza la soglia a ' + conId + ', altrimenti smette di sorvegliare');
@@ -9343,6 +9343,150 @@ const avvio = async () => {
       deve(r.soloMiei === 'none', 'il pallino si accende sui propri movimenti');
       deve(r.conAltri === 'flex', 'il pallino non si accende su quelli degli altri: ' + r.conAltri);
       return 'i tuoi non sono novità, quelli degli altri sì';
+    });
+
+    await prova('sospensione: il motore è caricato dalla pagina, non solo dal disco', async () => {
+      const r = await page.evaluate(() => ({
+        c: typeof window.Sospensione, v: window.Sospensione && window.Sospensione.VERSIONE
+      }));
+      deve(r.c === 'object', 'window.Sospensione non esiste: lo <script src> non c’è');
+      deve(/^sospensione-/.test(r.v || ''), 'versione: ' + r.v);
+      return r.v;
+    });
+
+    await prova('sospensione: la scadenza VERA si vede accanto a quella scritta', async () => {
+      /* È la regola per cui il cliente accetta di sospendere. Chi richiama
+         sulla data contrattuale telefona nel giorno sbagliato. */
+      const r = await page.evaluate(() => {
+        const senza = sosRigaScadenza({ data_scadenza: '2027-03-01', sospensioni: [] });
+        const con = sosRigaScadenza({ data_scadenza: '2027-03-01',
+          sospensioni: [{ dal: '2026-01-01', al: '2026-03-02' }] });
+        return { senza, con };
+      });
+      /* Su una polizza mai sospesa non compare NIENTE: un «(vera: la stessa)»
+         su ogni riga sarebbe rumore che si impara a saltare. */
+      deve(r.senza === '', 'compare anche dove non c’è stata nessuna sospensione: ' + r.senza);
+      deve(/30\/04\/2027/.test(r.con), 'la scadenza vera non si vede: ' + r.con);
+      deve(/\+60 gg/.test(r.con), 'non dice di quanto si è spostata');
+      return '60 giorni → 30/04/2027';
+    });
+
+    await prova('sospensione: il riquadro dice da quando è ferma, e offre di riattivarla', async () => {
+      const r = await page.evaluate(() => {
+        const ferma = sosRigaStato({ id: 'p1', compagnia: 'PRIMA', data_scadenza: '2027-03-01',
+          sospensioni: [{ dal: '2026-09-01', al: null }] });
+        const viva = sosRigaStato({ id: 'p2', compagnia: 'PRIMA', data_scadenza: '2027-03-01', sospensioni: [] });
+        return { ferma, viva };
+      });
+      deve(/Sospesa dal 01\/09\/2026/.test(r.ferma), 'non dice da quando: ' + r.ferma.slice(0, 200));
+      deve(/sosApri\('p1'\)/.test(r.ferma), 'non si può riattivare');
+      deve(/sosApri\('p2'\)/.test(r.viva), 'una polizza viva non si può sospendere');
+      return 'riattiva su quella ferma, sospendi su quella viva';
+    });
+
+    await prova('sospensione: scrive un ELENCO, e chiude l’ultima aperta', async () => {
+      /* Con due colonne la seconda sospensione cancellerebbe la prima, e i
+         giorni recuperati dal cliente sparirebbero. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: {
+          id: 'p9', compagnia: 'PRIMA', data_effetto: '2026-01-01', data_scadenza: '2027-01-01',
+          /* DUE aperte, e la più vecchia scritta per ULTIMA. Non dovrebbe
+             succedere, ed è esattamente quello che produce una scrittura
+             andata male: chiudere la prima che si trova sposterebbe i giorni
+             sul periodo sbagliato. Con una sola aperta questa prova non
+             misurava niente — l'ha detto la controprova, non il ragionamento. */
+          sospensioni: [{ dal: '2026-02-01', al: '2026-02-11' },
+                        { dal: '2026-03-01', al: null },
+                        { dal: '2026-06-01', al: null }]
+        }, error: null };
+        window.__COLLAUDO.db = [];
+        await sosApri('p9');
+        await new Promise(r => setTimeout(r, 200));
+        document.getElementById('sos-data').value = '2026-07-01';
+        await sosSalva('p9', true);
+        const up = window.__COLLAUDO.db.filter(x => x.operazione === 'update' && x.tabella === 'quote_polizze');
+        return { up: up.map(x => x.payload) };
+      });
+      deve(r.up.length === 1, 'aggiornamenti: ' + r.up.length);
+      const sos = r.up[0].sospensioni;
+      deve(Array.isArray(sos) && sos.length === 3, 'le sospensioni non sono un elenco di tre: ' + JSON.stringify(sos));
+      /* La prima resta com'era: chiudere quella sbagliata sposterebbe i giorni
+         sul periodo sbagliato. */
+      deve(sos[0].al === '2026-02-11', 'la sospensione già chiusa è stata toccata');
+      /* La più RECENTE fra le aperte è l'ultima dell'elenco, e la prima aperta
+         è un'altra: è l'unico ordine in cui «la prima che trovo» e «la più
+         recente» danno due risposte diverse. Con l'ordine sbagliato la prova
+         restava verde anche col difetto dentro. */
+      deve(sos[2].al === '2026-07-01', 'non ha chiuso la più RECENTE fra le aperte: ' + JSON.stringify(sos));
+      deve(sos[1].al === null, 'ha chiuso quella sbagliata: ' + JSON.stringify(sos));
+      /* E la scadenza contrattuale NON viene riscritta. */
+      deve(!('data_scadenza' in r.up[0]), 'ha riscritto la scadenza contrattuale');
+      return '3 sospensioni, chiusa la più recente fra le aperte, scadenza intatta';
+    });
+
+    await prova('sospensione: il motore rifiuta, e la schermata non ripete la regola', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: {
+          id: 'p8', compagnia: 'PRIMA', data_effetto: '2026-01-01', data_scadenza: '2026-06-01', sospensioni: []
+        }, error: null };
+        window.__COLLAUDO.db = [];
+        await sosApri('p8');
+        await new Promise(r => setTimeout(r, 200));
+        document.getElementById('sos-data').value = '2026-09-01';   // dopo la scadenza
+        await sosSalva('p8', false);
+        return {
+          msg: document.getElementById('sos-msg').innerHTML,
+          scritture: window.__COLLAUDO.db.filter(x => x.operazione === 'update').length
+        };
+      });
+      deve(r.scritture === 0, 'ha scritto ' + r.scritture + ' aggiornamenti su una polizza scaduta');
+      deve(/scaduta il/.test(r.msg), 'non dice perché ha rifiutato: ' + r.msg.slice(0, 200));
+      return 'rifiutata col motivo del motore';
+    });
+
+    await prova('sospensione: nello scadenzario stanno in cima, e un guasto non diventa «non ce ne sono»', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_compagnie:lista'] = { data: [
+          { nome: 'PRIMA', alias: [], sospensione_giorni_max: 90 }], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
+          { id: 's1', numero_polizza: 'A1', cliente: 'ROSSI', compagnia: 'PRIMA',
+            data_scadenza: '2027-03-01', sospensioni: [{ dal: '2026-09-10', al: null }] }], error: null };
+        await sosScadenzario();
+        const conDati = document.getElementById('rin-sospese').innerHTML;
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: null, error: { message: 'permission denied' } };
+        await sosScadenzario();
+        const conGuasto = document.getElementById('rin-sospese').innerHTML;
+        return { conDati, conGuasto };
+      });
+      deve(/da riattivare/.test(r.conDati), 'il riquadro non compare: ' + r.conDati.slice(0, 200));
+      deve(/A1/.test(r.conDati), 'la polizza sospesa non si vede');
+      /* §12, §18: un riquadro vuoto direbbe «non ce n'è nessuna». */
+      deve(/non si è potuto leggerle/.test(r.conGuasto), 'un guasto di lettura si legge come «nessuna sospensione»');
+      return 'elenco quando ci sono, motivo quando non si è potuto leggere';
+    });
+
+    await prova('fido: «non dichiarato» si vede, e non è «illimitato»', async () => {
+      const r = await page.evaluate(() => {
+        ECP_PERSONE_FIDO = [{ id: 'c1', nominativo: 'ROSSI', fido: 500 }, { id: 'c2', nominativo: 'VERDI', fido: null }];
+        const g = [
+          { assegnato: true, collaboratore_id: 'c1', nome: 'ROSSI', credito: { importo_aperto: 800, righe: 3 } },
+          { assegnato: true, collaboratore_id: 'c2', nome: 'VERDI', credito: { importo_aperto: 900, righe: 2 } }
+        ];
+        const f = ecpFidi(g);
+        return {
+          oltre: f.conteggi.oltre, senza: f.conteggi.senza_fido, oltreDi: f.conteggi.oltre_di,
+          conFido: f.conteggi.credito_con_fido,
+          cella1: ecpFidoCella('c1'), cella2: ecpFidoCella('c2')
+        };
+      });
+      deve(r.oltre === 1 && r.senza === 1, JSON.stringify(r));
+      deve(r.oltreDi === 300, 'esposizione oltre il fido: ' + r.oltreDi);
+      /* I 900 € di chi non ha un fido NON entrano nei totali: un'esposizione
+         che comprende persone di cui non si sa il limite non vuol dire niente. */
+      deve(r.conFido === 800, 'il credito senza fido è entrato nei totali: ' + r.conFido);
+      deve(/oltre di/.test(r.cella1), 'non dice di quanto ha sforato: ' + r.cella1);
+      deve(/non dichiarato/.test(r.cella2), 'il fido mancante si legge come un trattino: ' + r.cella2);
+      return '1 oltre di 300 €, 1 senza fido fuori dai totali';
     });
 
     await prova('blocco 2: nessun errore JavaScript', async () => {

@@ -1,8 +1,20 @@
 {
-  "versione": "0.10.0",
-  "nome": "Trovare, aprire, scrivere",
+  "versione": "0.11.0",
+  "nome": "Sospensioni e fido",
   "data": "2026-09-20",
   "storia": [
+    {
+      "v": "0.11.0",
+      "data": "2026-09-20",
+      "nome": "Sospensioni e fido",
+      "voci": [
+        "Una polizza si può sospendere e riattivare dal suo dettaglio. I giorni fermi non si perdono: si aggiungono in fondo, e accanto alla scadenza scritta sul contratto compare quella VERA — chi richiama sulla prima telefona nel giorno sbagliato.",
+        "Nello Scadenzario, in cima, le polizze sospese da riattivare: da quanto sono ferme, quanti giorni restano e quale scadenza hanno davvero. Non stanno in mezzo alle altre perché la loro data non è più quella scritta.",
+        "Quanto può durare una sospensione lo dichiara la compagnia, compagnia per compagnia. Finché nessuno lo scrive, i giorni si contano e il sistema NON dice se sono troppi: «non si sa» non è «va bene».",
+        "Nella scheda del collaboratore c'è il fido: quanto denaro dell'agenzia quella persona può tenere prima di rimetterlo. Nell'estratto conto d'agenzia una colonna dice chi è dentro e chi è oltre, e di quanto.",
+        "Un fido lasciato vuoto non vuol dire «illimitato»: vuol dire che nessuno ha deciso, e quel credito resta fuori dai totali col motivo scritto. Uno zero invece è un accordo, e si conta."
+      ]
+    },
     {
       "v": "0.10.0",
       "data": "2026-09-20",

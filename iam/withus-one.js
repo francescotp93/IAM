@@ -645,6 +645,14 @@
            piu' — stessa ragione per cui Fonti e Stato collegamenti sono due
            voci e non una. */
         { l: 'Conti e causali', i: 'i-bank', act: 'conti', go: function(){ vai('conti'); } },
+        /* Le due facce della configurazione provvigionale, e stanno separate
+           di proposito: «Gestione compagnie» e' l'accordo con la COMPAGNIA
+           (quanto riconosce, e quanto se ne gira di default), «Provvigioni» e'
+           l'accordo con la PERSONA — e quello varia da collaboratore a
+           collaboratore. Una schermata sola le confonderebbe, ed e' lo stesso
+           motivo per cui Fonti e Stato collegamenti sono due voci. */
+        { l: 'Gestione compagnie', i: 'i-shield', act: 'compagnie', go: function(){ vai('compagnie'); } },
+        { l: 'Provvigioni', i: 'i-euro', act: 'provvigioni', go: function(){ vai('provvigioni'); } },
         /* Materiale di consultazione dell'agenzia. Le tre categorie sono un
            sotto-elenco a fisarmonica DENTRO «Utility» (3° livello): un clic su
            Utility le apre, un clic sulla categoria porta il preventivatore già
@@ -707,6 +715,8 @@
        loro titolo da sé. */
     operativa:   ['Collaboratori', 'Strumenti'],
     conti:       ['Conti e causali', 'Strumenti'],
+    compagnie:   ['Gestione compagnie', 'Strumenti'],
+    provvigioni: ['Provvigioni', 'Strumenti'],
     pipeline:    ['Trattative', 'Clienti'],
     workdiary:   ['Diario di lavoro', 'Agenzia'],
     performance: ['KPI e gare', 'Agenzia'],
@@ -794,7 +804,7 @@
     workdiary: 'agenzia',
     performance: 'agenzia', pipeline: 'clienti',
     fonti: 'strumenti', analisi: 'marketing', collegamenti: 'strumenti',
-    posta: 'strumenti', conti: 'strumenti',
+    posta: 'strumenti', conti: 'strumenti', compagnie: 'strumenti', provvigioni: 'strumenti',
     utenti: 'admin', azienda: 'admin', agenti: 'admin', quoto: 'quoto'
   };
 

@@ -2452,3 +2452,119 @@ quello che la seconda prova prende.
 questo numero non descrive quello che è stato fatto prima, comincia a contare
 dal giorno in cui si è cominciato a contare. Quello che c'era prima sta in
 questo file, paragrafo per paragrafo, con le date.
+
+---
+
+## 28. Brief IAM #02 — M2: le compagnie e le provvigioni (20/09/2026)
+
+Due schermate, perché sono due domande diverse: **Gestione compagnie** dice
+l'accordo con la COMPAGNIA (quanto riconosce, e quanto se ne gira di default),
+**Provvigioni** dice l'accordo con la PERSONA, che varia da collaboratore a
+collaboratore. Metterle insieme avrebbe fatto credere che cambiando la tariffa
+si cambia quello che prende Tizio — e non è vero, perché Tizio può avere il suo.
+
+| pezzo | dove |
+|---|---|
+| tutte le regole | `tariffe/motore/provvigioni.js` |
+| prove in Node | `server/verifica/provvigioni.test.mjs` — 12 |
+| le quattro tabelle, le politiche, gli indici | `supabase/migrations/20260920_b02_m2_provvigioni.sql` (applicata) |
+| le due schermate | `#panel-compagnie`, `#panel-provvigioni` e il blocco `prv*` in `iam/index.html` |
+| le due voci di menu | `iam/withus-one.js` (`MEGA`, `TITOLI`, `TAB2MENU`) |
+| prove sulle schermate | `iam/verifica/compagnie-provvigioni.test.mjs` — 10 |
+
+### La misura che ha deciso tutto il resto
+
+Presa sul portafoglio vero **prima** di scrivere una riga: su **13 rate** dello
+stesso prodotto della stessa compagnia ci sono **12 aliquote distinte**. Una
+percentuale configurata non è mai la verità su una rata: la verità è quello che
+la compagnia ha dichiarato nel flusso.
+
+Da qui la regola che comanda su tutte:
+
+> **La provvigione dichiarata vince sempre. L'aliquota configurata PREVEDE, non
+> decide.**
+
+Dove la compagnia dichiara (Prima), il calcolo parte da quel numero e l'aliquota
+serve solo a segnalare lo **scostamento** — che è l'unica cosa utile da fare con
+una percentuale pattuita: accorgersi che non è stata rispettata. Dove non
+dichiara (HDI: **38 rate su 38** senza provvigione), il numero si dice
+**previsto** e si porta dietro l'etichetta fino al simulatore. Un numero
+previsto e un numero dichiarato che si somigliano non si mescolano: `stimata` li
+tiene separati, ed è la stessa regola dell'estratto conto (§17) — quello che non
+si sa non entra nei totali.
+
+### Modificare una percentuale non è un update
+
+**È la cosa che, rompendosi, non si vede.** Gli estratti conto già mandati sono
+documenti su cui si è litigato: devono continuare a dire lo stesso numero. Un
+`update` sull'aliquota riscriverebbe il passato in silenzio, e ce ne si
+accorgerebbe il giorno in cui un collaboratore contesta un foglio di sei mesi fa.
+
+Quindi le quattro tabelle hanno `dal` e `al`, e modificare vuol dire **chiudere
+la riga vigente** (`al` = ieri) e **aprirne una nuova** da oggi. Prima si chiude,
+poi si apre: se cade in mezzo resta una riga chiusa e nessuna aperta — si vede
+subito, invece di due righe vigenti che si contraddicono. Togliere qualcuno da
+un gruppo è la stessa cosa: la produzione di ieri è stata fatta dentro quel
+gruppo. **Nel pannello non c'è nemmeno una `.delete()`**, e c'è una prova che lo
+misura.
+
+### La base di calcolo è la provvigione, non il premio
+
+Richiesta esplicita del brief, e vale la pena scriverla col numero: il 60% dei
+**41,21 €** che la compagnia riconosce, non il 60% dei **390 €** pagati dal
+cliente, che farebbe **234 €** — un numero credibile e sei volte più grande di
+quello che l'agenzia incassa davvero. È la decisione 2 di §17, qui applicata
+alla configurazione invece che al rendiconto.
+
+Il margine dell'agenzia si ricava **per differenza** (§17): due arrotondamenti
+separati fanno comparire il centesimo che nessuno sa spiegare.
+
+### L'indiretto, e le due cose che non fa
+
+`iam_gruppi` (capo, percentuale) + `iam_gruppi_membri` (con override per
+persona). Due regole, ognuna col suo motivo:
+
+- **Il capo non prende l'indiretto sulla propria produzione.** Altrimenti una
+  rata sua pagherebbe due volte la stessa persona.
+- **Una persona non può stare in due gruppi vivi**, e il divieto è un **indice
+  unico parziale** (`where al is null`), non un controllo nella tendina: la
+  schermata è una delle strade, non l'unica (c'è la console, c'è PostgREST).
+  Con due gruppi, l'indiretto si pagherebbe due volte sulla stessa rata.
+
+### Il simulatore è l'accettazione del brief
+
+La terza linguetta prende una rata di prova e mostra **chi prende che cosa e
+perché**: dichiarata o prevista, accordo suo o default della tariffa, quale capo
+gruppo, e il margine per differenza. Non salva niente — serve a vedere una
+configurazione **prima** che produca un estratto conto, che è l'unico momento in
+cui correggerla costa poco.
+
+### La copertura: le tariffe si scrivono guardando il portafoglio
+
+La schermata delle compagnie legge `quote_polizze` e dice **quali compagnie e
+rami del portafoglio non hanno ancora una tariffa**, con quante polizze ci sono
+sotto. Senza, si configura a memoria e si scopre il buco quando un estratto
+conto esce vuoto. È l'unica delle sette letture che può cadere senza rendere la
+schermata inutile: se cade si tace su quella sezione, non si perde tutto.
+
+### Un difetto che ha trovato la prova del motore, e non era piccolo
+
+`calcola` non risolveva gli **alias** delle compagnie: sulla polizza è scritto
+«HDI Assicurazioni», nella tariffa «HDI», e quella tariffa non si trovava mai.
+Nessun errore, nessuna schermata rotta — solo una provvigione che non si calcola
+mai, e un «da confermare» che sembra una configurazione mancante. È la stessa
+trappola degli alias documentali (§11), e la correzione sta **dentro il motore**
+perché chi chiama non se ne possa dimenticare.
+
+### Cosa resta aperto
+
+- **Le tariffe non ci sono ancora**: la tabella nasce vuota, e niente seed —
+  inventare un'aliquota è la regola §8.1 violata sul denaro. La copertura dice
+  da dove cominciare.
+- **L'estratto conto (§17) legge ancora `iam_team.provv`**, che è una
+  percentuale per prodotto senza date. Le due strade convivono finché la M6 non
+  sposta l'estratto conto su questo motore: sono due letture della stessa cosa,
+  e finché sono due vanno confrontate, non fuse a occhio.
+- **Lo scostamento si mostra e non si registra**: sapere che una compagnia ha
+  riconosciuto meno del pattuito è una contestazione da fare, e dove si scrive
+  è una decisione che non è stata presa.

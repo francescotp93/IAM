@@ -88,9 +88,10 @@ prova('i punti di chiamata ci sono, e non scendono', () => {
      sulle collisioni, al contrario. Senza, un punto di chiamata scritto domani
      senza registrare niente non lo nota nessuno, e IAM torna muta. */
   const chiamate = (H.match(/logMovimento\(/g) || []).length - 1; // la definizione non conta
-  /* 13 il 19/09/2026 al mattino; 21 col brief #02 M1, che ne ha aggiunti otto
-     su conti e causali — sotto un conto e sotto una causale ci sono dei soldi. */
-  const SOGLIA = 21;
+  /* 13 il 19/09/2026 al mattino; 21 col brief #02 M1 (conti e causali);
+     29 con la M2, che ne aggiunge otto su tariffe, accordi e gruppi — e lì
+     sotto c'è quanto prende ognuno. */
+  const SOGLIA = 29;
   deve(chiamate >= SOGLIA, 'movimenti registrati da IAM: ' + chiamate + ' (erano ' + SOGLIA + ')');
   deve(chiamate - SOGLIA < 3, 'adesso sono ' + chiamate + ': alza la soglia, altrimenti smette di sorvegliare');
   /* E riguardano le cose che la gente chiede mesi dopo. */

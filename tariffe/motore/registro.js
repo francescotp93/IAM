@@ -91,6 +91,11 @@
        il motivo per cui questo registro esiste (§18). */
     conto:         { l: 'Conto',         i: 'ti-building-bank',   tabella: 'iam_conti', id: 'uuid' },
     causale:       { l: 'Causale',       i: 'ti-tags',            tabella: 'iam_causali', id: 'uuid' },
+    /* Brief #02 M2. Una tariffa e un gruppo decidono quanto prende una
+       persona: «chi ha cambiato questa percentuale, e quando» è la domanda
+       che arriva quando un estratto conto non torna. */
+    tariffa:       { l: 'Tariffa',       i: 'ti-percentage',      tabella: 'iam_provvigioni_tariffa', id: 'uuid' },
+    gruppo:        { l: 'Gruppo',        i: 'ti-users-group',     tabella: 'iam_gruppi', id: 'uuid' },
     azienda:       { l: 'Agenzia',       i: 'ti-building',        tabella: null }
   };
 

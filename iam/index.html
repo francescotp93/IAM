@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.8.0">
-<meta name="app-versione-nome" content="Il menu riordinato">
+<meta name="app-versione" content="0.8.1">
+<meta name="app-versione-nome" content="La pagina che si accorge di essere vecchia">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -187,6 +187,19 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .nov-nuovo::after{content:'';position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;
   background:#ef4444;border:2px solid var(--surf,#fff);box-sizing:content-box}
 #um-versione.nov-nuovo{display:inline-block;left:50%;transform:translateX(-50%)}
+/* L'avviso «la pagina che stai usando è vecchia». Il pallino qui sopra dice
+   una cosa («c'è un rilascio che non hai letto»); questa fascia ne dice
+   un'altra, e piu' urgente: «quello che hai davanti non e' quello che c'e'
+   sul server». Sta in basso per non coprire la fascia del nome. */
+#nov-vecchia{display:none;position:fixed;left:0;right:0;bottom:0;z-index:760;
+  background:#1d4ed8;color:#fff;padding:10px 14px;font-size:13px;line-height:1.35;
+  align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+  box-shadow:0 -4px 14px rgba(0,0,0,.2)}
+#nov-vecchia.on{display:flex}
+#nov-vecchia button{border:0;border-radius:8px;padding:6px 13px;font-size:13px;
+  font-weight:700;cursor:pointer;background:#fff;color:#1d4ed8}
+#nov-vecchia button.dopo{background:transparent;color:#dbeafe;font-weight:600;
+  text-decoration:underline}
 .umenu{position:absolute;top:66px;right:12px;background:var(--surf);border-radius:var(--r);box-shadow:var(--shd2);padding:6px;min-width:230px;z-index:500;border:1px solid var(--bord2);}
 .umenu-hdr{padding:12px 12px 10px;border-bottom:.5px solid var(--bord);margin-bottom:4px;}
 .umenu-name{font-size:13px;font-weight:700;}
@@ -1899,6 +1912,13 @@ input[type=file]{display:none;}
        onclick="if(event.target===this)chiudiNovita()">
     <div id="nov-box" style="background:var(--surf);border-radius:var(--r);width:min(560px,100%);
          max-height:88vh;overflow:auto;box-shadow:var(--shd2)"></div>
+  </div>
+
+  <!-- «La pagina che stai usando è vecchia»: la riempie novVecchia(). -->
+  <div id="nov-vecchia">
+    <span id="nov-vecchia-txt"></span>
+    <button type="button" onclick="location.reload()">Ricarica</button>
+    <button type="button" class="dopo" onclick="novVecchiaVia()">Più tardi</button>
   </div>
 
   <div id="pnt-ov" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);
@@ -4286,7 +4306,46 @@ function novSegnale(acceso) {
   if (av) av.classList.toggle('nov-nuovo', !!acceso);
 }
 
+/* ══ «LA PAGINA CHE STAI USANDO È VECCHIA» (20/09/2026) ═════════════════════
+   Segnalazione di Francesco: «molti degli aggiornamenti che ti ho richiesto
+   non li vedo online». Misurato prima di toccare qualsiasi cosa: il server
+   aveva tutto — IAM, il preventivatore e versione.json dicevano tutti e tre
+   0.8.0, e l'autopull gira ogni minuto. A NON averlo era la scheda del
+   browser.
+
+   IAM è un'applicazione a pagina sola: una scheda lasciata aperta non
+   richiede mai di nuovo la pagina, per quanti rilasci passino. Nessun header
+   può rimediarci — `no-cache` fa rileggere la pagina QUANDO la si chiede, e
+   una scheda aperta non la chiede mai. È §12 in una forma che la cache non
+   spiega.
+
+   Il confronto è fra due strade diverse APPOSTA, ed è lo stesso motivo per
+   cui la targhetta legge il `<meta>` e le novità leggono il file (§30): il
+   `<meta>` dice che cosa sta GIRANDO, il fetch dice che cosa il server ha
+   ADESSO. Se non coincidono, la copia in uso è vecchia — ed è l'unica cosa
+   che una pagina può sapere di sé. */
+function novVecchia(pubblicata) {
+  const bar = document.getElementById('nov-vecchia');
+  if (!bar) return false;
+  const inUso = versioneApp().numero;
+  /* Senza uno dei due numeri non si confronta niente e non si avvisa:
+     «non lo so» non è «sei vecchio» (§12, §18). */
+  if (!pubblicata || !inUso || pubblicata === inUso) { bar.classList.remove('on'); return false; }
+  const t = document.getElementById('nov-vecchia-txt');
+  if (t) t.textContent = 'Stai usando IAM ' + inUso + ' ma è pubblicata la ' + pubblicata
+    + ': ricarica per vedere le modifiche.';
+  bar.classList.add('on');
+  return true;
+}
+function novVecchiaVia() {
+  const b = document.getElementById('nov-vecchia');
+  if (b) b.classList.remove('on');
+}
+
+var NOV_ULTIMO = 0;   /* var e non let: §17 — le prove leggono window.NOV_ULTIMO */
+
 async function novControlla() {
+  NOV_ULTIMO = Date.now();
   let pubblicata = null;
   try {
     const r = await fetch('/nuovo-preventivo/versione.json?t=' + Date.now(), { cache: 'no-store' });
@@ -4299,11 +4358,27 @@ async function novControlla() {
     return null;
   }
   if (!pubblicata) return null;
+  /* Due segnali, due domande: la fascia dice che la copia in uso è vecchia,
+     il pallino che c'è un rilascio da leggere. Si può essere aggiornati e non
+     aver letto, e si può aver letto restando su una pagina vecchia. */
+  novVecchia(pubblicata);
   const letta = novLetta();
   if (letta === null) { novRicorda(pubblicata); novSegnale(false); return pubblicata; }
   novSegnale(letta !== pubblicata);
   return pubblicata;
 }
+
+/* La scheda aperta si richiede da sé. Ogni cinque minuti, e ogni volta che si
+   torna su questa scheda — che è il momento in cui la si guarda davvero. Il
+   controllo costa una riga di JSON; non farlo mai è quello che è costato
+   cinque rilasci non visti. Il freno di un minuto c'è perché passare fra le
+   schede dieci volte non sono dieci richieste. */
+setInterval(function () { novControlla(); }, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState !== 'visible') return;
+  if (Date.now() - NOV_ULTIMO < 60000) return;
+  novControlla();
+});
 
 async function apriNovita() {
   const ov = document.getElementById('nov-ov'), box = document.getElementById('nov-box');

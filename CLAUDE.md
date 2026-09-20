@@ -3360,3 +3360,73 @@ oggi esiste anche `rqApriFiltri`, che viene **prima**: la fetta diventava
 vuota, e la prova dichiarava rotto un codice giusto. L'ancora adesso è la
 funzione intera, con la parentesi — ed è la stessa trappola delle fette già
 presa in §12 e nella M6.
+
+---
+
+## 38. «Non li vedo online»: la scheda lasciata aperta (20/09/2026)
+
+> «Molte degli aggiornamenti che ti ho richiesto non li vedo online, per favore
+> metti tutto online e visibile» — Francesco.
+
+**Misurato prima di toccare qualsiasi cosa, e il deploy non c'entrava.**
+
+| controllo | esito |
+|---|---|
+| `main` | `0ea87d9`, tutte le PR da #208 a #217 fuse |
+| commit vivo sul VPS (canale comandi) | **lo stesso**, `0ea87d9` |
+| `iam.withusassicurazioni.it/` | `app-versione 0.8.0` |
+| `quoto.withusassicurazioni.it/` | `app-versione 0.8.0` |
+| `/nuovo-preventivo/versione.json` | `0.8.0` |
+| header delle due pagine | `cache-control: no-cache`, con `etag` |
+| autopull | gira, ogni minuto |
+
+Era pubblicato tutto. A non averlo era **la scheda del browser**.
+
+> **IAM è un'applicazione a pagina sola: una scheda lasciata aperta non
+> richiede mai di nuovo la pagina.** Per quanti rilasci passino, resta quella
+> di quando è stata aperta.
+
+È il guasto §12 in una forma che **nessun header può risolvere**: `no-cache`
+fa rileggere la pagina *quando la si chiede*, e una scheda aperta non la chiede
+mai. Il 18/09 si erano sistemati gli header e il contrassegno del riquadro, e
+tutti e due risolvono il ricaricamento; nessuno dei due parla a chi non
+ricarica.
+
+Il segnale c'era già a metà: il pallino del §37 dice «c'è un rilascio che non
+hai letto», e la finestra delle novità (§30) confronta la versione pubblicata
+con quella in uso. Ma quel confronto stava **dentro** la finestra: bisognava
+aprirla per sapere che bisognava aprirla.
+
+| pezzo | dove |
+|---|---|
+| la fascia e il tasto «Ricarica» | `#nov-vecchia`, `novVecchia` / `novVecchiaVia` in `iam/index.html` |
+| il ricontrollo da sé | `setInterval` 5 minuti + `visibilitychange` in fondo a `novControlla` |
+| prove | `iam/verifica/versione-app.test.mjs` — **10** (erano 8) |
+
+**Due segnali, due domande diverse.** Il pallino: «c'è un rilascio da
+leggere». La fascia: «quello che hai davanti non è quello che c'è sul server».
+Si può essere aggiornati e non aver letto, e si può aver letto restando su una
+pagina vecchia.
+
+**Il confronto è fra due strade diverse apposta**, come in §30: il `<meta>`
+dice che cosa sta **girando**, il `fetch` dice che cosa il server ha **adesso**.
+È l'unica cosa che una pagina può sapere di sé.
+
+**E tace quando non sa.** Senza uno dei due numeri — il server che non risponde,
+il `<meta>` assente — non si accusa niente: «non lo so» non è «sei vecchio»
+(§12, §18). C'è una prova che fa girare il codice davvero nei quattro casi, e
+la controprova (via il controllo sul numero in pagina) la fa diventare rossa.
+
+**Il rientro sulla scheda è il momento che conta**, più dei cinque minuti: è
+quando la si guarda davvero. Con un freno di un minuto, perché passare fra le
+schede dieci volte non sono dieci richieste.
+
+### Cosa resta aperto
+
+- **`quoto.` a pagina intera non ha la fascia**: la usa solo il collaboratore
+  «solo QUOTO» (§10). Dentro IAM il riquadro segue il ricaricamento della
+  scocca, che rilegge l'`ETag` del preventivatore (§12).
+- **Il tasto «Ricarica» fa un ricaricamento normale**, che con `no-cache` basta:
+  la pagina si rilegge e l'`ETag` decide. Se un giorno non bastasse, il passo
+  dopo è aggiungere un contrassegno all'indirizzo — ma prima va misurato, non
+  supposto.

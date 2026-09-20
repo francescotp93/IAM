@@ -24,6 +24,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 import fs from 'fs';
 import path from 'path';
+import vm from 'vm';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
@@ -207,6 +208,79 @@ prova('il segnale del rilascio si accende su quello NON letto, e si spegne legge
   return 'non letto → acceso, letto → spento, e due posti';
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA SCHEDA LASCIATA APERTA (20/09/2026)
+
+   «Molti degli aggiornamenti che ti ho richiesto non li vedo online» —
+   Francesco. Misurato: il server aveva tutto. A non averlo era la scheda del
+   browser: IAM è un'applicazione a pagina sola, e una scheda aperta non
+   richiede mai di nuovo la pagina, per quanti rilasci passino.
+
+   Nessun header rimedia a questo — `no-cache` fa rileggere la pagina QUANDO
+   la si chiede. Quindi è la pagina che deve chiedere, e dirlo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+prova('la scheda lasciata aperta dice da sé che è vecchia, e come rimediare', () => {
+  const H = fs.readFileSync(IAM, 'utf8');
+  deve(/id="nov-vecchia"/.test(H), 'manca la fascia dell’avviso');
+  deve(/#nov-vecchia\.on\{display:flex\}/.test(H), 'la fascia non ha uno stile: resterebbe invisibile');
+  deve(/onclick="location\.reload\(\)"/.test(H),
+    'l’avviso non offre di ricaricare: dire «sei vecchio» senza il rimedio è metà lavoro');
+  /* §1: qualcuno la chiama davvero. E la chiama la STESSA lettura che accende
+     il pallino — una richiesta sola per due segnali diversi. */
+  const f = H.slice(H.indexOf('async function novControlla'), H.indexOf('async function apriNovita'));
+  deve(/\n  novVecchia\(pubblicata\);/.test(f), 'novVecchia non la chiama nessuno');
+  /* E la scheda si richiede da sé: senza, l’avviso comparirebbe solo dopo un
+     ricaricamento — cioè solo dopo aver fatto la cosa che deve suggerire. */
+  deve(/setInterval\(function \(\) \{ novControlla\(\); \}/.test(f), 'la pagina aperta non ricontrolla mai');
+  deve(/visibilitychange/.test(f), 'tornare sulla scheda non fa ricontrollare niente');
+  deve(/Date\.now\(\) - NOV_ULTIMO < 60000/.test(f),
+    'passare fra le schede dieci volte diventano dieci richieste');
+  return 'fascia + ricarica, ogni 5 minuti e al rientro sulla scheda';
+});
+
+prova('l’avviso tace quando non ha due numeri da confrontare', () => {
+  const H = fs.readFileSync(IAM, 'utf8');
+  /* Si fa girare il codice davvero, non si legge: la regola che conta qui è
+     «non lo so» ≠ «sei vecchio» (§12, §18), e una regex non la misura. */
+  const codice =
+    H.slice(H.indexOf('function versioneApp()'), H.indexOf('async function mostraVersioneInUso')) +
+    H.slice(H.indexOf('function novVecchia('), H.indexOf('function novVecchiaVia'));
+  const stato = { on: false, testo: '' };
+  const el = {
+    'nov-vecchia': { classList: { add: () => { stato.on = true; }, remove: () => { stato.on = false; } } },
+    'nov-vecchia-txt': { set textContent(v) { stato.testo = v; }, get textContent() { return stato.testo; } },
+  };
+  const pagina = { numero: '0.8.0' };
+  const ctx = {
+    document: {
+      getElementById: (id) => el[id] || null,
+      querySelector: (s) => (s.includes('app-versione-nome')
+        ? { getAttribute: () => 'nome' }
+        : (pagina.numero === null ? null : { getAttribute: () => pagina.numero })),
+    },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(codice, ctx);
+
+  deve(ctx.novVecchia('0.9.0') === true, 'con due numeri diversi la fascia non compare');
+  deve(stato.on, 'la fascia non si è accesa');
+  deve(stato.testo.includes('0.8.0') && stato.testo.includes('0.9.0'),
+    'l’avviso non dice quale numero hai e quale è pubblicato: ' + stato.testo);
+
+  ctx.novVecchia('0.8.0');
+  deve(!stato.on, 'la fascia resta accesa su una pagina che è già quella pubblicata');
+
+  ctx.novVecchia('0.9.0');
+  ctx.novVecchia(null);
+  deve(!stato.on, 'senza risposta dal server la fascia accusa lo stesso');
+
+  ctx.novVecchia('0.9.0');
+  pagina.numero = null;
+  ctx.novVecchia('0.9.0');
+  deve(!stato.on, 'senza il numero in pagina non c’è niente da confrontare, e invece accusa');
+  return 'diverse → avvisa, uguali o mancanti → tace';
+});
 
 console.log('\n══ LA VERSIONE PUBBLICATA ══');
 let ko = 0;

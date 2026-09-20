@@ -1,10 +1,10 @@
 cd /opt/withus-backend || exit 1
-echo "== meta IAM sul disco =="; grep -m2 'app-versione' iam/index.html
-echo "== blocco M5 presente =="; grep -c 'gio-oggi\|gioRenderGiornata\|gio-anomalie' iam/index.html
-R='--resolve iam.withusassicurazioni.it:443:127.0.0.1'
-echo "== servito da Caddy =="
-curl -s https://iam.withusassicurazioni.it/ $R | grep -m2 'app-versione'
-curl -s -o /dev/null -w "iam root: %{http_code}  cache-control: " https://iam.withusassicurazioni.it/ $R
-curl -sI https://iam.withusassicurazioni.it/ $R | grep -i '^cache-control'
-curl -s https://iam.withusassicurazioni.it/nuovo-preventivo/versione.json $R | head -4
-curl -s -o /dev/null -w "motore contabilita.js: %{http_code}\n" https://iam.withusassicurazioni.it/nuovo-preventivo/tariffe/motore/contabilita.js $R
+echo "== quali caselle sono configurate (solo gli INDIRIZZI, mai le password) =="
+for f in /etc/withus-backend.env /opt/withus-backend/.env; do
+  [ -f "$f" ] && grep -oE '^MAIL_USER(_[0-9])?=.*' "$f" | sed 's/=/ = /'
+done
+echo "== NOTIFY_FROM / STAFF_EMAIL =="
+for f in /etc/withus-backend.env /opt/withus-backend/.env; do
+  [ -f "$f" ] && grep -oE '^(NOTIFY_FROM|STAFF_EMAIL|NOTIFY_NAME)=.*' "$f"
+done
+echo "== commit =="; git log --oneline -1

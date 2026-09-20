@@ -1,8 +1,20 @@
 {
-  "versione": "0.8.1",
-  "nome": "La pagina che si accorge di essere vecchia",
+  "versione": "0.9.0",
+  "nome": "Il catalogo prodotti",
   "data": "2026-09-20",
   "storia": [
+    {
+      "v": "0.9.0",
+      "data": "2026-09-20",
+      "nome": "Il catalogo prodotti",
+      "voci": [
+        "Strumenti › Catalogo prodotti: l'anagrafica delle compagnie e, sotto ognuna, i prodotti che vende. Prima compagnie e prodotti esistevano solo come testo scritto sulle polizze, e due modi di scrivere lo stesso nome erano due cose diverse.",
+        "Una libreria standard dice il nostro vocabolario — RC Auto, RC Moto, RC Autocarri, Casa e Famiglia, Casa, Infortuni — e da lì si aggiungono i prodotti a una compagnia in blocco, dando a ognuno il nome con cui quella compagnia lo chiama (PRIMA chiama «BLACK» la sua RC Auto).",
+        "Un prodotto non si elimina: si disattiva. Esce dalle tendine e resta sulle polizze che ci sono sotto, che sono storia. Due doppioni si fondono, e il nome scartato diventa un alias: le polizze già scritte continuano a ritrovarlo.",
+        "L'importazione del portafoglio non si ferma più su una compagnia o un prodotto che non conosce: li crea marcandoli «da verificare», e dice prima di scrivere quanti e quali. La coda di quello che è nato così si guarda in una linguetta sua.",
+        "«Il portafoglio che non ritrova il suo prodotto» dice quante righe sono già coperte e quali no, con quante polizze ci sono sotto: si configura guardando il portafoglio, non a memoria."
+      ]
+    },
     {
       "v": "0.8.1",
       "data": "2026-09-20",

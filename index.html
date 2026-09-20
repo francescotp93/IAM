@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.8.1">
-<meta name="app-versione-nome" content="La pagina che si accorge di essere vecchia">
+<meta name="app-versione" content="0.9.0">
+<meta name="app-versione-nome" content="Il catalogo prodotti">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -84,6 +84,10 @@
 <script src="tariffe/motore/registro.js?v=20260919"></script>
 <script src="tariffe/motore/assegnazione.js?v=20260919"></script>
 <script src="tariffe/motore/anagrafica.js?v=20260919"></script>
+<!-- Il catalogo prodotti: l'importazione riconosce compagnie e prodotti con
+     le stesse regole con cui li mostra IAM. Due riconoscimenti sarebbero due
+     cataloghi della stessa agenzia. -->
+<script src="tariffe/motore/catalogo.js?v=20260920"></script>
 <script src="tariffe/motore/foglio-cassa.js?v=20260919"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
@@ -18255,7 +18259,37 @@ async function fluScelto(files) {
     Assegnazione.proposteDaFlusso(FLU_PIANO.collaboratori || [], TIT_COLLAB, FLU_PIANO.testata.emittente)
       .forEach(x => { if (x.chiave) FLU_PROPOSTE[x.chiave] = x; });
   } catch (e) { FLU_CODICI = {}; FLU_PROPOSTE = {}; }
+  /* Il catalogo: quali compagnie e quali prodotti di questo file il sistema
+     non conosce ancora. Si GUARDA PRIMA DI SCRIVERE, come tutto il resto
+     (§14) — e se la lettura non riesce non si ferma niente, si dichiara: una
+     importazione che si ferma perché non ha potuto leggere un catalogo
+     lascerebbe fuori un portafoglio per una tabella di contorno. */
+  FLU_PIANO._catalogo = await fluCatalogo(FLU_PIANO);
   fluMostra();
+}
+
+/* Le righe che il catalogo deve riconoscere sono le polizze del file — quelle
+   nuove E quelle che c'erano già: il prodotto di una polizza vecchia può non
+   essere mai entrato in catalogo, e sarebbe proprio quello che manca. */
+async function fluCatalogo(piano) {
+  if (!window.Catalogo) return { errore: 'il motore del catalogo non si è caricato' };
+  const righe = [].concat(piano.polizze.nuove || [], piano.polizze.gia || [])
+    .map(x => ({ compagnia: x.compagnia, ramo: x.modulo, prodotto: x.prodotto }));
+  try {
+    const [co, pr, st] = await Promise.all([
+      db.from('quote_compagnie').select('id,nome,alias,attiva'),
+      db.from('iam_compagnia_prodotti').select('id,compagnia_id,ramo,nome,alias,attivo'),
+      db.from('iam_prodotti_standard').select('id,ramo,nome,codice,attivo')
+    ]);
+    if (co.error) throw co.error;
+    if (pr.error) throw pr.error;
+    if (st.error) throw st.error;
+    return Catalogo.pianoCatalogo({
+      righe, compagnie: co.data || [], prodotti: pr.data || [], standard: st.data || []
+    });
+  } catch (e) {
+    return { errore: e.message || String(e) };
+  }
 }
 
 /* Che cosa il gestionale ha già. Si chiede SOLO quello che serve a
@@ -18325,6 +18359,7 @@ function fluMostra() {
     </div>
     ${p.polizze.gia.length ? `<div class="pdoc-esito ok" style="margin-top:12px"><i class="ti ti-circle-check"></i>
       <b>${p.polizze.gia.length}</b> polizz${p.polizze.gia.length === 1 ? 'a' : 'e'} già importat${p.polizze.gia.length === 1 ? 'a' : 'e'}: non si riscrivono. Lo stesso file si può ricaricare senza far danni.</div>` : ''}
+    ${fluCatalogoHTML(p._catalogo)}
     ${(p.titoli.daIncassare || []).length ? (() => {
       /* Le rate che dopo il caricamento restano da incassare. Sono due cose
          diverse messe vicine apposta: quelle che manda la compagnia (già
@@ -18451,6 +18486,71 @@ async function fluAbbina(chiave, valore) {
 /* Di chi è una rata, secondo la decisione presa sul codice della sua polizza.
    `null` quando il codice non c'è o non è stato deciso: non c'è un ripiego, e
    non deve esserci (`tariffe/motore/assegnazione.js`, regola 1). */
+/* Scrive quello che l'anteprima ha dichiarato. Prima le compagnie, poi i
+   prodotti: i prodotti vogliono il `compagnia_id` vero, e il segnaposto del
+   piano non è un id. Se cade in mezzo, quello che è scritto resta e il
+   ricaricamento dello stesso file lo ritrova (§14). */
+async function fluScriviCatalogo(cat) {
+  const mappa = {};
+  let compagnie = 0, prodotti = 0;
+  for (const c of (cat.compagnie.daCreare || [])) {
+    const { data, error } = await db.from('quote_compagnie')
+      .insert({ nome: c.nome, alias: [], attiva: true }).select('id').single();
+    if (error) throw error;
+    mappa[c.id] = data.id;
+    compagnie++;
+  }
+  const righe = (cat.prodotti.daCreare || []).map(x => ({
+    compagnia_id: mappa[x.compagnia_id] || x.compagnia_id,
+    prodotto_standard_id: x.prodotto_standard_id,
+    ramo: x.ramo, nome: x.nome,
+    origine: 'import', da_verificare: true, attivo: true
+  })).filter(x => !String(x.compagnia_id).startsWith('nuova:'));
+  if (righe.length) {
+    const { error } = await db.from('iam_compagnia_prodotti').insert(righe);
+    if (error) throw error;
+    prodotti = righe.length;
+  }
+  return { compagnie, prodotti };
+}
+
+/* L'anteprima del catalogo. Dice che cosa VERREBBE creato, prima di scrivere:
+   un'importazione che si fa vedere dopo è una cosa che si subisce.
+
+   E dichiara le ambiguità invece di risolverle: due compagnie in anagrafica
+   che si riducono allo stesso nome non producono niente, perché sceglierne una
+   vuol dire attribuire un portafoglio alla compagnia sbagliata (§19). */
+function fluCatalogoHTML(cat) {
+  if (!cat) return '';
+  if (cat.errore) {
+    return `<div class="flu-senza"><b>Il catalogo non si è potuto leggere.</b>
+      Non vuol dire che sia a posto: vuol dire che non si è potuto controllare.
+      <div class="cl-sub">${esc(cat.errore)}</div>
+      L'importazione va avanti lo stesso: compagnie e prodotti si sistemano dopo, da IAM.</div>`;
+  }
+  const c = cat.conteggi || {};
+  const nuoveC = (cat.compagnie && cat.compagnie.daCreare) || [];
+  const nuoviP = (cat.prodotti && cat.prodotti.daCreare) || [];
+  const amb = (cat.compagnie && cat.compagnie.ambigue) || [];
+  if (!nuoveC.length && !nuoviP.length && !amb.length) {
+    return `<div class="pdoc-esito ok" style="margin-top:12px"><i class="ti ti-circle-check"></i>
+      Compagnia e prodotti di questo file sono già in catalogo: non si crea niente.</div>`;
+  }
+  const el = (x) => `<li><b>${esc(x.nome)}</b>${x.compagnia ? ' · ' + esc(x.compagnia) : ''}${
+    x.ramo ? ' · ' + esc(x.ramo) : ''}${
+    x.standard ? ' · standard: ' + esc(x.standard) : (x.compagnia ? ' · nessuno standard proposto' : '')}${
+    x.ramo_sconosciuto ? ' · <b>ramo fuori vocabolario</b>' : ''} — ${x.righe} ${x.righe === 1 ? 'riga' : 'righe'}</li>`;
+  return `<div class="flu-senza" style="margin-top:12px">
+    <b>Catalogo: ${c.compagnie_da_creare || 0} compagnie e ${c.prodotti_da_creare || 0} prodotti nuovi.</b>
+    Nascono marcati <b>da verificare</b>: il sistema registra che cosa ha trovato, e a dire se va bene è una persona.
+    ${nuoveC.length ? '<ul>' + nuoveC.map(el).join('') + '</ul>' : ''}
+    ${nuoviP.length ? '<ul>' + nuoviP.map(el).join('') + '</ul>' : ''}
+    ${amb.length ? '<div class="cl-sub">Non si crea e non si aggancia niente sotto: '
+      + amb.map(a => esc(a.nome)).join(', ')
+      + ' — in anagrafica somiglia a più di una compagnia, e sceglierne una vuol dire attribuire un portafoglio a quella sbagliata.</div>' : ''}
+  </div>`;
+}
+
 function fluChiDi(polizza, mappaCodici) {
   if (!polizza) return null;
   const c = Assegnazione.codiceDi(polizza);
@@ -18468,7 +18568,8 @@ async function fluConferma() {
     + ' polizze e ' + p.titoli.nuovi.length + ' rate.\n\nI clienti che ci sono già NON vengono toccati. Procedo?')) return;
   box.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="flu-attesa">Scrivo…</div>');
   const idPerChiave = Object.assign({}, p.clienti.idPerChiave);
-  const fatti = { clienti: 0, polizze: 0, titoli: 0, dedotte: 0, assegnate: 0 };
+  const fatti = { clienti: 0, polizze: 0, titoli: 0, dedotte: 0, assegnate: 0,
+                  compagnie: 0, prodotti: 0, catalogoKo: null };
   const mio = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : null;
 
   /* Le decisioni già prese su chi è ogni codice collaboratore (§ «Assegna il
@@ -18487,6 +18588,21 @@ async function fluConferma() {
      nuove — è lo stesso flusso che le descrive. */
   const polPerFonte = {};
   [].concat(p.polizze.nuove || [], p.polizze.gia || []).forEach(x => { polPerFonte[x._fonte_id] = x; });
+
+  /* 0. Il catalogo. Sta FUORI dal try che scrive il portafoglio, e non è un
+     dettaglio: se la creazione di una compagnia non riesce, l'importazione
+     deve andare avanti lo stesso — il portafoglio è il lavoro, il catalogo è
+     la sua etichetta. Un'importazione che si ferma su una tabella di
+     contorno lascia fuori delle polizze vere.
+     Quello che nasce qui è marcato `da_verificare`: il sistema registra che
+     cosa ha trovato, e a dire se va bene è una persona. */
+  if (p._catalogo && !p._catalogo.errore) {
+    const esito = await fluScriviCatalogo(p._catalogo);
+    fatti.compagnie = esito.compagnie;
+    fatti.prodotti = esito.prodotti;
+  } else if (p._catalogo && p._catalogo.errore) {
+    fatti.catalogoKo = p._catalogo.errore;
+  }
 
   try {
     /* 1. I clienti nuovi. `fonte`/`fonte_id` dicono da dove arrivano; il
@@ -18601,7 +18717,12 @@ async function fluConferma() {
            che nessun codice è stato deciso, ed è un'informazione utile a
            distinguerlo da «nessuno ha prodotto niente». */
         titoli_assegnati: fatti.assegnate,
-        offerte: p.offerte.length, polizze_senza_cliente: p.polizze.senzaCliente.length
+        offerte: p.offerte.length, polizze_senza_cliente: p.polizze.senzaCliente.length,
+        /* Le creazioni in catalogo finiscono nel verbale e nella vista «da
+           verificare»: un'anagrafica cresciuta da sola senza che il registro
+           lo dica è un'anagrafica che nessuno sa più com'è cresciuta. */
+        compagnie_create: fatti.compagnie, prodotti_creati: fatti.prodotti,
+        catalogo_errore: fatti.catalogoKo
       },
       avvisi: p.avvisi, collaboratori: p.collaboratori, creato_nome: mio
     });
@@ -18620,7 +18741,9 @@ async function fluConferma() {
   box.innerHTML = `<div class="pdoc-esito ok"><i class="ti ti-circle-check"></i>
       Fatto: <b>${fatti.clienti}</b> client${fatti.clienti === 1 ? 'e' : 'i'}, <b>${fatti.polizze}</b> polizz${fatti.polizze === 1 ? 'a' : 'e'} e <b>${fatti.titoli}</b> rat${fatti.titoli === 1 ? 'a' : 'e'} in archivio.
       ${fatti.titoli ? `<br><small>${fatti.assegnate} rat${fatti.assegnate === 1 ? 'a è nata' : 'e sono nate'} già assegnat${fatti.assegnate === 1 ? 'a' : 'e'} dalle decisioni sui codici${
-        fatti.assegnate < fatti.titoli ? `; le altre ${fatti.titoli - fatti.assegnate} aspettano che si decida di chi è il loro codice (Titoli › «Assegna il pregresso»)` : ''}.</small>` : ''}</div>`;
+        fatti.assegnate < fatti.titoli ? `; le altre ${fatti.titoli - fatti.assegnate} aspettano che si decida di chi è il loro codice (Titoli › «Assegna il pregresso»)` : ''}.</small>` : ''}
+      ${fatti.compagnie + fatti.prodotti ? `<br><small>In catalogo sono nat${fatti.compagnie + fatti.prodotti === 1 ? 'o' : 'i'} ${fatti.compagnie} compagni${fatti.compagnie === 1 ? 'a' : 'e'} e ${fatti.prodotti} prodott${fatti.prodotti === 1 ? 'o' : 'i'}, marcat${fatti.prodotti === 1 ? 'o' : 'i'} «da verificare»: si confermano da IAM › Strumenti › Catalogo prodotti.</small>` : ''}
+      ${fatti.catalogoKo ? `<br><small>Il catalogo non si è potuto aggiornare (${esc(fatti.catalogoKo)}). Il portafoglio è entrato lo stesso: compagnie e prodotti si sistemano da IAM.</small>` : ''}</div>`;
   if (typeof loadPortafoglio === 'function') loadPortafoglio();
   await fluRegistro();
 }

@@ -45,7 +45,8 @@ const SUL_KIT = [
   'contab-panel-incassi',     // brief #02 M4
   'contab-panel-quadratura',  // brief #02 M5
   'contab-panel-anomalie',    // brief #02 M5
-  'contab-panel-storico'      // brief #02 M5
+  'contab-panel-storico',     // brief #02 M5
+  'panel-catalogo'            // catalogo prodotti (20/09/2026)
   /* «contab-panel-conto» non c'è più: il saldo ricostruito e gli estratti
      caricati dalla banca sono i due numeri della quadratura, e dal 20/09/2026
      stanno dentro «Quadratura conti» (Blocco 1 · punto 5). */

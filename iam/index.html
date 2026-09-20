@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.5.0">
-<meta name="app-versione-nome" content="La contabilità si ricostruisce da sé">
+<meta name="app-versione" content="0.6.0">
+<meta name="app-versione-nome" content="L'estratto conto che esce di casa">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -4687,6 +4687,10 @@ function cntFormConto(id) {
         <div class="fld ffull"><div class="cl-sub">I premi sono soldi dei clienti in transito verso la compagnia: l'art. 117 CAP li vuole su un conto separato dal patrimonio dell'agenzia. La natura decide quali causali si potranno registrare qui.</div></div>
         <div class="fld"><label>Banca</label><input type="text" id="cnt-banca" value="${esc(c.banca || '')}"></div>
         <div class="fld"><label>IBAN</label><input type="text" id="cnt-iban" value="${esc(c.iban ? Contabilita.ibanBello(c.iban) : '')}" placeholder="IT60 X054 ..."></div>
+        <div class="fld"><label>BIC / SWIFT</label><input type="text" id="cnt-bic" value="${esc(c.bic || '')}"></div>
+        <div class="fld ffull"><label>Intestato a</label><input type="text" id="cnt-intestatario" value="${esc(c.intestatario || '')}" placeholder="la ragione sociale che legge chi fa il bonifico"></div>
+        <div class="fld ffull"><label><input type="checkbox" id="cnt-rimesse" ${c.rimesse ? 'checked' : ''}> È il conto su cui i collaboratori versano</label>
+          <div class="cl-sub">Queste coordinate finiscono sull'estratto conto «da versare» che esce dal preventivatore. Uno solo può esserlo: due IBAN su due estratti conto dello stesso giorno non si spiegano. Se manca l'IBAN, o se non supera il controllo, il documento lo dice invece di stamparne uno indovinato.</div></div>
         <div class="fld"><label>Saldo iniziale (€)</label><input type="text" id="cnt-saldo" value="${esc(c.saldo_iniziale != null ? String(c.saldo_iniziale) : '0')}" inputmode="decimal"></div>
         <div class="fld"><label>Ordine</label><input type="number" id="cnt-ordine" value="${esc(String(c.ordine || 0))}"></div>
         <div class="fld ffull"><label><input type="checkbox" id="cnt-attivo" ${c.attivo === false ? '' : 'checked'}> Conto attivo</label>
@@ -4764,6 +4768,9 @@ async function cntSalvaConto(id) {
     natura: val('cnt-natura'),
     banca: val('cnt-banca').trim() || null,
     iban: Contabilita.normalizzaIban(val('cnt-iban')) || null,
+    bic: val('cnt-bic').trim().toUpperCase() || null,
+    intestatario: val('cnt-intestatario').trim() || null,
+    rimesse: !!document.getElementById('cnt-rimesse')?.checked,
     saldo_iniziale: Contabilita.numero(val('cnt-saldo')) ?? 0,
     ordine: parseInt(val('cnt-ordine'), 10) || 0,
     attivo: !!document.getElementById('cnt-attivo')?.checked,

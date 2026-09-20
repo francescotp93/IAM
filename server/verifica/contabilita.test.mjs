@@ -647,6 +647,54 @@ prova('le anomalie dei conti mai verificati arrivano dalla quadratura, non da un
   return 'una regola sola, e il silenzio quando i dati non ci sono';
 });
 
+/* ═══ M6 — LE COORDINATE DELLE RIMESSE (20/09/2026) ═════════════════════════ */
+
+prova('le coordinate su cui si versa le dice il CONTO, e quando non ci sono si dice perché', () => {
+  /* Il giorno in cui l'agenzia cambia banca si cambia una riga in una
+     schermata: un IBAN scritto dentro un programma resta quello vecchio, e
+     l'estratto conto del mese dopo manda dei bonifici a un conto chiuso. */
+  const buono = { nome: 'RIMESSE', attivo: true, rimesse: true, iban: 'IT60 X054 2811 1010 0000 0123 456', intestatario: 'Agenzia' };
+  const ok = C.coordinateRimesse([{ nome: 'AZIENDALE', attivo: true }, buono]);
+  deve(ok.ok && ok.intestatario === 'Agenzia', 'il conto delle rimesse non si trova: ' + JSON.stringify(ok));
+  deve(/^IT60 X054 /.test(ok.iban), 'l\'IBAN non esce a gruppi di quattro, come lo stampano le banche: ' + ok.iban);
+  /* Quattro modi di non averle, e ognuno dice una cosa diversa da fare. */
+  const senza = C.coordinateRimesse([{ nome: 'A', attivo: true }]);
+  deve(!senza.ok && /spunta/.test(senza.motivo), 'nessun conto segnato: ' + JSON.stringify(senza));
+  const vuoto = C.coordinateRimesse([{ nome: 'A', attivo: true, rimesse: true }]);
+  deve(!vuoto.ok && /IBAN/.test(vuoto.motivo), 'conto segnato senza IBAN: ' + JSON.stringify(vuoto));
+  /* Vuoto si vede, sbagliato no: un IBAN col refuso manda una persona a fare
+     un bonifico che non arriva, e non se ne accorge nessuno finché non lo
+     cerca. Il controllo è quello dello standard, e c'era già. */
+  const storto = C.coordinateRimesse([{ nome: 'A', attivo: true, rimesse: true, iban: 'IT60X0542811101000000123457' }]);
+  deve(!storto.ok && /refuso/.test(storto.motivo), 'un IBAN col refuso passa: ' + JSON.stringify(storto));
+  deve(!storto.iban || storto.iban.indexOf('IT60') === 0, 'l\'IBAN sbagliato non si mostra nemmeno per correggerlo');
+  /* Due conti che dicono «i soldi vengono a me» non si scelgono a caso: il
+     database lo impedisce con un indice unico, ma il motore legge dei dati
+     che non ha scritto lui. */
+  const due = C.coordinateRimesse([buono, { nome: 'B', attivo: true, rimesse: true, iban: 'DE89370400440532013000' }]);
+  deve(!due.ok && /uno solo/.test(due.motivo), 'con due conti ne sceglie uno: ' + JSON.stringify(due));
+  /* E un conto SPENTO non decide più dove vanno i soldi. */
+  deve(!C.coordinateRimesse([{ nome: 'A', attivo: false, rimesse: true, iban: 'DE89370400440532013000' }]).ok,
+    'un conto spento detta ancora le coordinate');
+  return 'uno buono, e quattro modi di non averle, ognuno col suo motivo';
+});
+
+prova('il controllo dell\'IBAN è UNO, e sta qui', () => {
+  /* La regola non si riscrive nel motore dell'estratto conto: due controlli
+     dello stesso IBAN sono due regole, e quella che sbaglia è quella che
+     nessuno guarda. Questa prova lo misura sul SORGENTE dell'altro motore. */
+  const altro = readFileSync(join(RADICE, 'tariffe', 'motore', 'estratto-conto.js'), 'utf8');
+  const codice = altro.split('\n').filter(r => !/^\s*(\/\*|\*|\/\/)/.test(r)).join('\n');
+  deve(!/function ibanValido/.test(codice), 'il controllo dell\'IBAN è tornato in due posti');
+  deve(!/% 97/.test(codice), 'l\'aritmetica del controllo IBAN è stata ricopiata nell\'altro motore');
+  /* E il controllo vero fa il suo mestiere. */
+  deve(C.ibanValido('IT60X0542811101000000123456') && C.ibanValido('DE89370400440532013000'), 'un IBAN valido viene rifiutato');
+  deve(!C.ibanValido('IT60X0542811101000000123457'), 'una cifra cambiata passa il controllo');
+  deve(!C.ibanValido('IT60X05428111010000001234'), 'un IBAN italiano troncato passa il controllo');
+  return 'una regola sola, e fa il suo mestiere';
+});
+
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

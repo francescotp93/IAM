@@ -27,6 +27,7 @@ const RADICE = path.join(QUI, '..', '..');
 const H = fs.readFileSync(IAM, 'utf8');
 const SCOCCA = fs.readFileSync(path.join(QUI, '..', 'withus-one.js'), 'utf8');
 const SQL = fs.readFileSync(path.join(RADICE, 'supabase', 'migrations', '20260919_b02_m1_conti_e_causali.sql'), 'utf8');
+const SQL6 = fs.readFileSync(path.join(RADICE, 'supabase', 'migrations', '20260920_b02_m6_estratto_conto.sql'), 'utf8');
 const require = createRequire(import.meta.url);
 const C = require(path.join(RADICE, 'tariffe', 'motore', 'contabilita.js'));
 
@@ -157,6 +158,57 @@ prova('il saldo non si scrive da nessuna parte: la colonna non esiste', () => {
   deve(!/\.update\(\{[^}]*saldo:/.test(b) && !/saldo:\s*[^_]/.test(b.replace(/saldo: s\.saldo/g, '')), 'il pannello scrive un saldo nel database');
   return 'solo saldo_iniziale, il resto si calcola';
 });
+
+/* ═══ M6 — LE COORDINATE DELLE RIMESSE (20/09/2026) ═════════════════════════ */
+
+prova('il conto dice dove i collaboratori versano, e la schermata lo salva', () => {
+  /* L'IBAN su cui si riceve non si scrive dentro un programma: il giorno in
+     cui l'agenzia cambia banca, un IBAN nel codice resta quello vecchio e i
+     bonifici del mese dopo vanno su un conto chiuso. */
+  const b = blocco();
+  for (const campo of ['cnt-iban', 'cnt-bic', 'cnt-intestatario', 'cnt-rimesse']) {
+    deve(b.includes("id=\"" + campo + "\""), 'il modulo del conto non ha ' + campo);
+  }
+  /* E si SALVANO: un campo che si compila e non si scrive è peggio di un
+     campo che non c'è — chi lo riempie crede di aver fatto. */
+  const salva = b.slice(b.indexOf('async function cntSalvaConto'), b.indexOf('async function cntSalvaCausale'));
+  for (const col of ['bic:', 'intestatario:', 'rimesse:']) {
+    deve(salva.includes(col), 'il salvataggio del conto non scrive ' + col);
+  }
+  deve(/rimesse: !!document\.getElementById\('cnt-rimesse'\)/.test(salva), 'la spunta delle rimesse non si legge dal modulo');
+  return '4 campi, tutti salvati';
+});
+
+prova('il conto delle rimesse è UNO, e lo si scopre prima di salvare', () => {
+  /* Il divieto vero è un indice unico sul database — la schermata è una delle
+     strade, non l'unica — ma un vincolo che scatta dopo il salvataggio arriva
+     come un errore che nessuno sa leggere. */
+  deve(/create unique index if not exists iam_conti_rimesse_uno/.test(SQL6),
+    'manca l\'indice unico sul conto delle rimesse');
+  deve(/where rimesse and attivo/.test(SQL6), 'l\'indice non guarda solo i conti vivi');
+  const altri = [{ id: '1', nome: 'RIMESSE', rimesse: true, attivo: true, iban: 'IT60X0542811101000000123456' }];
+  const doppio = C.validaConto({ id: '2', nome: 'ALTRO', natura: 'aziendale', tipologia: 'banca', rimesse: true }, altri);
+  deve(!doppio.ok && /RIMESSE/.test(doppio.errori.join(' ')), 'due conti delle rimesse passano: ' + JSON.stringify(doppio.errori));
+  /* Ma lo stesso conto che si risalva non è un doppione di se stesso. */
+  const suo = C.validaConto({ id: '1', nome: 'RIMESSE', natura: 'premi', tipologia: 'banca', rimesse: true, iban: 'IT60X0542811101000000123456' }, altri);
+  deve(suo.ok, 'il conto delle rimesse non si può più risalvare: ' + JSON.stringify(suo.errori));
+  return 'indice nel database, motivo nella schermata';
+});
+
+prova('il registro degli invii non si corregge e non si cancella', () => {
+  /* Un registro che si può riscrivere non è un registro (§18, §29). */
+  deve(/create trigger iam_invii_estratto_no_update_trg/.test(SQL6), 'manca il trigger che impedisce di cambiarlo');
+  deve(/before update or delete on public\.iam_invii_estratto/.test(SQL6), 'il divieto non copre sia la modifica sia la cancellazione');
+  /* E dice CHI ha mandato, quindi deve essere vero. */
+  deve(/with check \(creato_da = auth\.uid\(\)\)/.test(SQL6), 'chiunque può scrivere una riga firmata con l\'identificativo di un altro');
+  /* Un errore senza il motivo non spiega niente: è metà del valore di questo
+     registro. */
+  deve(/esito <> 'errore' or coalesce\(btrim\(errore\)/.test(SQL6), 'si può registrare un errore senza dire quale');
+  /* E niente seed: nessun IBAN scritto dentro una migrazione. */
+  deve(!/insert into public\.iam_conti/.test(SQL6), 'la migrazione scrive dei conti');
+  return 'trigger, firma, motivo obbligatorio, zero seed';
+});
+
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 function blocco() {

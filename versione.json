@@ -1,8 +1,21 @@
 {
-  "versione": "0.5.0",
-  "nome": "La contabilità si ricostruisce da sé",
+  "versione": "0.6.0",
+  "nome": "L'estratto conto che esce di casa",
   "data": "2026-09-20",
   "storia": [
+    {
+      "v": "0.6.0",
+      "data": "2026-09-20",
+      "nome": "L'estratto conto che esce di casa",
+      "voci": [
+        "L'estratto conto del collaboratore parte dalla casella della contabilità (contabilita@withusassicurazioni.it): prima usciva da amministrazione@, e le risposte finivano nella casella sbagliata.",
+        "Il testo dell'email si legge e si corregge PRIMA di mandarlo, e lo scrive il sistema in due modelli: disteso per chi lo riceve la prima volta, asciutto per chi lo riceve ogni mese.",
+        "Sul foglio «da versare» compaiono le coordinate su cui il collaboratore deve pagare. Le dichiara il conto in Strumenti › Conti e causali, con la spunta «è il conto su cui i collaboratori versano»: finché manca, il documento lo dice invece di stampare un IBAN indovinato.",
+        "Un IBAN con un refuso non si stampa: il controllo è quello dello standard, e un bonifico verso un IBAN sbagliato parte e non arriva.",
+        "Ogni estratto conto uscito lascia una riga con a chi, quando, da quale casella e con quali numeri — e anche quelli NON partiti, col motivo: «non gliel'ho mandato» e «gliel'ho mandato e non è arrivato» sono due lavori diversi.",
+        "Sul conto si possono scrivere IBAN, BIC e intestatario."
+      ]
+    },
     {
       "v": "0.5.0",
       "data": "2026-09-20",

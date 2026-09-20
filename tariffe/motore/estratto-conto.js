@@ -76,6 +76,11 @@
     return s === '' ? null : s;
   }
 
+  /* `testo` restituisce `null` sul vuoto: serve alle righe, dove «vuoto» e
+     «assente» sono la stessa cosa. Nei TESTI no — un `null` concatenato
+     diventa la parola «null» dentro un documento che esce di casa. */
+  function str(v) { return testo(v) || ''; }
+
   /* Confronto fra il nome del prodotto sulla polizza e quello scritto nella
      scheda del collaboratore. Si normalizzano spazi e maiuscole e basta:
      NON si fa corrispondenza parziale («RC Auto» che prende «RC Auto Storico»
@@ -362,11 +367,167 @@
     });
   }
 
+  /* ══ IL DOCUMENTO CHE ESCE DI CASA (brief #02 · M6, 20/09/2026) ═══════════
+
+     Fino a oggi il testo dell'email era scritto dentro `index.html`, a mano.
+     Va tolto di lì per la stessa ragione per cui i testi previdenziali stanno
+     nel motore (§5 di CLAUDE.md): **l'unica cosa che esce di casa è l'unica
+     che va provata**, e una frase composta in una schermata non si può provare
+     senza aprire un browser.
+
+     Il CASO lo decide il risultato, non chi scrive (`casoInvio`): non esiste
+     un modo di mandare per sbaglio un sollecito a chi non deve niente, né di
+     scrivere «ti spettano X» quando X comprende righe che nessuno ha
+     confermato.
+
+     I MODELLI SONO DUE, e non sono «lungo» e «corto»:
+       · `a` — disteso: spiega che cos'è il documento e che cosa fare;
+       · `b` — asciutto: i numeri e la riga d'azione, per chi li riceve ogni
+               mese e non ha bisogno che gli si spieghi di nuovo.
+     Quello che NON cambia fra i due è l'avviso delle righe fuori dal totale:
+     un modello «corto» che se lo mangia sarebbe il modo più comodo di
+     nascondere una cosa scomoda, e c'è una prova che lo impedisce. */
+
+  var MODELLI = ['a', 'b'];
+
+  function casoInvio(vista) {
+    if (!vista) return null;
+    if (vista.tipo === 'provvigioni') {
+      var t = vista.totali || {};
+      if (!t.conteggiate && !(vista.daConfermare || []).length) return 'nessuna';
+      return (vista.daConfermare || []).length ? 'parziale' : 'tutto';
+    }
+    var v = vista.totali || {};
+    if (!v.righe) return 'nessuna';
+    return v.scadute ? 'scadute' : 'in-corso';
+  }
+
+  /* Le COORDINATE su cui si versa non si calcolano qui: le dà
+     `Contabilita.coordinateRimesse`, che possiede i conti e il controllo
+     dell'IBAN (con la tabella delle lunghezze per paese). Qui arriva il
+     RISULTATO — {ok, iban, intestatario, banca, motivo} — perché due
+     controlli dello stesso IBAN sarebbero due regole, e quella che sbaglia
+     sarebbe quella che nessuno guarda. Lo stesso mestiere di
+     `EstrattoConto.rigaProvvigionale` cercata dal foglio cassa (§25). */
+
+  /* Un documento che esce di casa non scrive «1 rate»: chi lo riceve legge un
+     programma, non un'agenzia. */
+  function plur(n, uno, molti) { return (n === 1 ? uno : molti); }
+
+  function euro(n) {
+    if (n == null || !isFinite(n)) return '—';
+    return '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function giorno(d) {
+    var s = str(d).slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.slice(8) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) : s;
+  }
+
+  function periodoTesto(vista) {
+    if (!vista.dal && !vista.al) return '';
+    return 'dal ' + (giorno(vista.dal) || '…') + ' al ' + (giorno(vista.al) || '…');
+  }
+
+  /* `vista`  — quello che la schermata sta mostrando: {tipo, nome, dal, al,
+                totali, daConfermare}
+     `opz`    — {modello, coordinate, agenzia, firma} */
+  function testiInvio(vista, opz) {
+    var o = opz || {};
+    var modello = MODELLI.indexOf(o.modello) >= 0 ? o.modello : 'a';
+    var caso = casoInvio(vista);
+    if (!caso) return null;
+
+    var nome = str(vista.nome);
+    var per = periodoTesto(vista);
+    var t = vista.totali || {};
+    var avvisi = [];
+    var righe = [];
+    var p = function (s) { righe.push('<p>' + s + '</p>'); };
+
+    if (caso === 'nessuna') {
+      /* Non si manda un sollecito a chi non deve niente, e non si manda un
+         estratto conto provvigionale vuoto: sono due documenti che chi li
+         riceve legge come un errore, e a ragione. */
+      return {
+        caso: caso, modello: modello, bloccante: true,
+        avvisi: [vista.tipo === 'provvigioni'
+          ? 'In questo periodo non c’è nessuna rata incassata a suo nome: un estratto conto vuoto non si manda.'
+          : 'In questo periodo non ha nessuna rata da versare: un sollecito senza sospesi non si manda.'],
+        oggetto: '', corpo: ''
+      };
+    }
+
+    if (vista.tipo === 'provvigioni') {
+      var oggetto = 'Estratto conto provvigionale' + (per ? ' — ' + per : '');
+      p('Ciao ' + (nome || '') + ',');
+      if (modello === 'a') {
+        p('in allegato l’estratto conto provvigionale ' + (per || 'del periodo') +
+          ': sono le rate incassate in questo periodo e la quota che ti spetta su ognuna.');
+      }
+      p('<b>' + t.conteggiate + '</b> ' + plur(t.conteggiate, 'rata incassata', 'rate incassate') +
+        ' · provvigioni riconosciute dalla compagnia <b>' +
+        euro(t.provvigione_compagnia) + '</b> · <b>a te spettano ' + euro(t.quota_collaboratore) + '</b>.');
+      if (caso === 'parziale') {
+        /* Questo avviso c'è in TUTTI E DUE i modelli: è la parte scomoda, ed è
+           esattamente quella che un modello «corto» sarebbe tentato di
+           togliere. Una prova lo impedisce. */
+        var q = (vista.daConfermare || []).length;
+        p('<b>' + q + '</b> ' + plur(q, 'rata non è', 'rate non sono') + ' in questo totale: manca la provvigione ' +
+          'dichiarata dalla compagnia oppure la percentuale concordata. Non ' +
+          plur(q, 'l’abbiamo stimata', 'le abbiamo stimate') + ' — ' + plur(q, 'la vediamo', 'le vediamo') +
+          ' insieme e poi ' + plur(q, 'rientra', 'rientrano') + '.');
+        avvisi.push(q + ' rate restano fuori dal totale, e il testo lo dice.');
+      }
+      if (modello === 'a') {
+        p('Se qualcosa non torna, scrivimi prima di fatturare: correggerlo adesso costa meno.');
+      }
+      /* Nessuna data di pagamento: nessuno l'ha decisa, e una data promessa in
+         un testo automatico è una promessa che l'agenzia non sa di aver
+         fatto. */
+      if (o.firma) p(str(o.firma));
+      return { caso: caso, modello: modello, bloccante: false, avvisi: avvisi,
+               oggetto: oggetto, corpo: righe.join('\n') };
+    }
+
+    // ── Da versare ──────────────────────────────────────────────────────────
+    var ogg = 'Rate da versare' + (per ? ' — ' + per : '');
+    p('Ciao ' + (nome || '') + ',');
+    if (modello === 'a') {
+      p('in allegato l’elenco delle rate a tuo carico che non risultano ancora incassate' + (per ? ' ' + per : '') + '.');
+    }
+    p('<b>' + t.righe + '</b> ' + plur(t.righe, 'rata', 'rate') + ' per <b>' + euro(t.importo) + '</b>' +
+      (t.scadute ? ', di cui <b>' + t.scadute + '</b> già ' + plur(t.scadute, 'scaduta', 'scadute') +
+                   ' per <b>' + euro(t.importo_scaduto) + '</b>' : '') + '.');
+
+    var co = o.coordinate;
+    if (co && co.ok) {
+      p('Il versamento va su <b>' + co.iban + '</b>' +
+        (co.intestatario ? ', intestato a ' + co.intestatario : '') +
+        (co.banca ? ' (' + co.banca + ')' : '') + '.');
+    } else {
+      /* Un documento che chiede dei soldi senza dire dove versarli fa tornare
+         indietro una telefonata. Non si inventa un IBAN: si dice a chi sta
+         mandando che manca, PRIMA che parta. */
+      avvisi.push((co && co.motivo) || 'Non ci sono coordinate da scrivere sul documento.');
+      p('Le coordinate per il versamento te le confermo a parte.');
+    }
+    if (modello === 'a') {
+      p('Se una di queste rate l’hai già incassata o versata, dimmelo: la sistemo io, non rifare il bonifico.');
+    }
+    if (o.firma) p(str(o.firma));
+    return { caso: caso, modello: modello, bloccante: false, avvisi: avvisi,
+             oggetto: ogg, corpo: righe.join('\n') };
+  }
+
   var API = {
     VERSIONE: VERSIONE,
     cent: cent, percentualeDi: percentualeDi, rigaProvvigionale: rigaProvvigionale,
     dentro: dentro, provvigionale: provvigionale, daVersare: daVersare,
-    perCollaboratore: perCollaboratore, creditoAgenzia: creditoAgenzia
+    perCollaboratore: perCollaboratore, creditoAgenzia: creditoAgenzia,
+    /* M6 */
+    MODELLI: MODELLI, casoInvio: casoInvio, testiInvio: testiInvio, plur: plur,
+    euro: euro
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.EstrattoConto = API;

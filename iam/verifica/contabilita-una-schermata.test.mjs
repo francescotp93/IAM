@@ -10,8 +10,20 @@
 //  Chi apriva «Carica documenti» si trovava davanti anche la cassa, e chi
 //  cercava la quadratura doveva scorrere oltre i caricamenti.
 //
-//  Ora sono due schermate separate: «Quadratura di giornata» e «Carica
-//  documenti». Queste prove sorvegliano che restino separate.
+//  Sono diventate due schermate separate: «Quadratura di giornata» e «Carica
+//  documenti».
+//
+//  AGGIORNATO IL 20/09/2026 (brief #02 · M5). Il brief chiede di togliere la
+//  linguetta «Carica documenti», e va tolta — ma cancellare i due caricamenti
+//  avrebbe spento quattro schermate: quei file sono l'unica strada da cui
+//  arrivano i sospesi della compagnia, gli incassi, le anomalie e il contatore
+//  della Scrivania. Quindi si sono spostati DENTRO Sospesi, che è la schermata
+//  che li usa.
+//
+//  Si è aggiornata la REGOLA, non il numero (§15, §16): quello che Francesco
+//  aveva chiesto non era «due linguette», era «non farmi trovare la cassa
+//  quando cerco i file». Quella regola vale identica adesso — i caricamenti
+//  stanno dove servono, e la quadratura non ne ha nessuno.
 // ═══════════════════════════════════════════════════════════════════════════════
 import fs from 'fs';
 import path from 'path';
@@ -43,24 +55,27 @@ function riquadro(sorgente, id) {
 }
 
 // ── 1. Le due schermate esistono e non si sovrappongono ─────────────────────
-e.prova('la quadratura e i caricamenti sono due schermate distinte', () => {
-  for (const id of ['contab-panel-quadratura', 'contab-panel-caricafile']) {
-    deve(riquadro(src, id), 'manca la schermata «' + id + '»');
-  }
-  return 'due schermate';
+e.prova('la quadratura e i caricamenti restano due lavori distinti', () => {
+  deve(riquadro(src, 'contab-panel-quadratura'), 'manca la schermata «contab-panel-quadratura»');
+  /* Dal 20/09/2026 i caricamenti non hanno più una linguetta loro: stanno
+     dentro Sospesi, che è la schermata che li usa. Sparire non potevano —
+     sono l'unica strada da cui arrivano quei dati. */
+  deve(riquadro(src, 'contab-panel-sospesi'), 'manca la schermata «contab-panel-sospesi»');
+  deve(!/id="ctab-caricafile"/.test(src), '«Carica documenti» è tornata a essere una linguetta');
+  return 'i numeri di qua, i file dove servono';
 });
 
-e.prova('«Carica documenti» contiene i file e nient\'altro', () => {
-  const q = riquadro(src, 'contab-panel-caricafile');
+e.prova('i caricamenti stanno dentro la schermata che li usa, e niente cassa', () => {
+  const q = riquadro(src, 'contab-panel-sospesi');
   deve(/id="f-sosp"/.test(q) && /id="f-inc"/.test(q),
-    'i caricamenti non sono più nella loro schermata');
-  /* La controprova del difetto segnalato: se i campi della giornata tornassero
-     qui dentro, chi apre «Carica documenti» rivedrebbe cassa e POS. */
+    'i caricamenti non sono dentro Sospesi: quattro schermate restano senza dati');
+  /* La controprova del difetto segnalato il 01/08/2026: se i campi della
+     giornata finissero qui dentro, chi cerca i file rivedrebbe cassa e POS. */
   for (const campo of ['i-cassa', 'i-vers', 'i-fondo', 'i-pos-bianco', 'i-pos-nero']) {
     deve(!q.includes('id="' + campo + '"'),
-      'dentro «Carica documenti» si vede ancora «' + campo + '»: è tornato tutto insieme');
+      'dentro i caricamenti si vede ancora «' + campo + '»: è tornato tutto insieme');
   }
-  return 'solo i file';
+  return 'solo i file, accanto a chi li legge';
 });
 
 e.prova('«Quadratura» contiene i numeri della giornata e nessun caricamento', () => {
@@ -78,7 +93,7 @@ e.prova('«Quadratura» contiene i numeri della giornata e nessun caricamento', 
 function apparecchia() {
   const visibili = {};
   const attivi = {};
-  const chiavi = ['quadratura', 'caricafile', 'anomalie', 'sospesi', 'storico', 'conto'];
+  const chiavi = ['quadratura', 'primanota', 'conti', 'incassi', 'anomalie', 'sospesi', 'storico', 'conto'];
   chiavi.forEach(k => { visibili[k] = ''; attivi[k] = false; });
   const ctx = {
     document: {
@@ -94,18 +109,23 @@ function apparecchia() {
     sessionStorage: { setItem() {}, getItem: () => null },
     setUltimoTab() {}, getUltimoTab: () => null, // dove-eri-rimasto: qui non serve ricordarlo
     buildStorico() {}, loadContoDB() {},
+    /* Gli inizializzatori delle schermate nate dopo (§6b): qui interessa solo
+       QUALE riquadro resta acceso, non che cosa ci scrivono dentro. */
+    pntCarica() {}, incCarica() {}, gioCarica() {},
   };
   vm.createContext(ctx);
   vm.runInContext(ritaglia(src, 'selContabTab'), ctx);
   return { ctx, visibili, attivi, chiavi };
 }
 
-e.prova('aprendo «Carica documenti» si vede solo quella', () => {
+e.prova('chi cercava «Carica documenti» trova i file, non un riquadro vuoto', () => {
+  /* §6b: il vecchio nome può ancora essere in `iam_last_tab`. Adesso porta
+     dove i due caricamenti sono andati a stare. */
   const { ctx, visibili, chiavi } = apparecchia();
   ctx.selContabTab('caricafile');
   const aperte = chiavi.filter(k => visibili[k] !== 'none');
-  deve(aperte.length === 1 && aperte[0] === 'caricafile',
-    'aperte anche: ' + aperte.join(', '));
+  deve(aperte.length === 1 && aperte[0] === 'sospesi',
+    'aperte: ' + (aperte.join(', ') || 'nessuna'));
 });
 
 e.prova('aprendo la quadratura si vede solo la quadratura', () => {

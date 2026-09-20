@@ -42,7 +42,11 @@ const SUL_KIT = [
   'panel-provvigioni',        // brief #02 M2
   'contab-panel-primanota',   // brief #02 M3
   'contab-panel-conti',       // brief #02 M3
-  'contab-panel-incassi'      // brief #02 M4
+  'contab-panel-incassi',     // brief #02 M4
+  'contab-panel-quadratura',  // brief #02 M5
+  'contab-panel-anomalie',    // brief #02 M5
+  'contab-panel-storico',     // brief #02 M5
+  'contab-panel-conto'        // brief #02 M5
 ];
 
 /* Le regole del kit si cercano nel CSS SENZA i commenti che cominciano a
@@ -148,7 +152,13 @@ prova('una schermata nuova non si scrive gli stili a mano', () => {
   const conta = (id) => (pannello(id).match(/style="/g) || []).length;
   const soglie = {
     'panel-conti': 6, 'panel-compagnie': 4, 'panel-provvigioni': 12,
-    'contab-panel-primanota': 8, 'contab-panel-conti': 4
+    'contab-panel-primanota': 8, 'contab-panel-conti': 4,
+    /* Le quattro schermate della M5 sono VECCHIE: la testata e il riquadro
+       ricostruito sono nuovi, il modulo a mano sotto e' quello di sempre e i
+       suoi stili si tolgono quando quel modulo si spegne (§17: non prima che i
+       due numeri tornino). La soglia e' quella misurata oggi. */
+    'contab-panel-quadratura': 13, 'contab-panel-anomalie': 4,
+    'contab-panel-storico': 5, 'contab-panel-conto': 13
   };
   for (const [id, max] of Object.entries(soglie)) {
     const n = conta(id);

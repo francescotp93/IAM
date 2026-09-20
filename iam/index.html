@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.4.0">
-<meta name="app-versione-nome" content="Incassi da accreditare">
+<meta name="app-versione" content="0.5.0">
+<meta name="app-versione-nome" content="La contabilità si ricostruisce da sé">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -757,7 +757,11 @@ input[type=file]{display:none;}
 #panel-provvigioni,
 #contab-panel-primanota,
 #contab-panel-conti,
-#contab-panel-incassi {
+#contab-panel-incassi,
+#contab-panel-quadratura,
+#contab-panel-anomalie,
+#contab-panel-storico,
+#contab-panel-conto {
   --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
   --w1-sfondo:#f3f5f7; --w1-bordo:#e3e8ec;
   --w1-testo:#1f2a37; --w1-testo2:#5a6b7c; --w1-testo3:#8b9aa9;
@@ -1559,7 +1563,6 @@ input[type=file]{display:none;}
     <button class="ptab"     id="ctab-primanota" onclick="selContabTab('primanota')">Prima nota</button>
     <button class="ptab"     id="ctab-conti"     onclick="selContabTab('conti')">Quadratura conti</button>
     <button class="ptab"     id="ctab-incassi"   onclick="selContabTab('incassi')">Incassi da accreditare</button>
-    <button class="ptab"     id="ctab-caricafile" onclick="selContabTab('caricafile')">Carica documenti</button>
     <button class="ptab"     id="ctab-anomalie" onclick="selContabTab('anomalie')">Anomalie<span class="nbadge" id="n-anom-tab" style="display:none;position:static;margin-left:4px;"></span></button>
     <button class="ptab"     id="ctab-sospesi"  onclick="selContabTab('sospesi')">Sospesi</button>
     <button class="ptab"     id="ctab-storico"  onclick="selContabTab('storico')">Storico</button>
@@ -1570,27 +1573,26 @@ input[type=file]{display:none;}
        Prima stava insieme ai dati della giornata: chi apriva «Carica
        documenti» si trovava davanti anche la cassa, il POS e lo scostamento.
        (01/08/2026) -->
-  <div id="contab-panel-caricafile" style="display:none;">
-    <div class="slbl">File da caricare</div>
-    <div class="uarea">
-      <button class="ubtn" onclick="document.getElementById('f-sosp').click()">
-        <i class="ti ti-file-spreadsheet"></i>
-        <div><div class="ublbl">Sospesi (Excel)</div><div class="ubsub" id="sub-sosp">Nominativo, Polizza, Importo Sospeso, Compagnia…</div><div class="ubok" id="ok-sosp" style="display:none"></div></div>
-      </button>
-      <button class="ubtn" onclick="document.getElementById('f-inc').click()">
-        <i class="ti ti-file-euro"></i>
-        <div><div class="ublbl">Incassi sospesi (Excel o Word)</div><div class="ubsub" id="sub-inc">Report incassi del giorno precedente</div><div class="ubok" id="ok-inc" style="display:none"></div></div>
-      </button>
-      <input type="file" id="f-sosp" accept=".xlsx,.xls,.csv" onchange="loadSospesi(this)">
-      <input type="file" id="f-inc" accept=".xlsx,.xls,.csv,.docx" onchange="loadIncassi(this)">
-    </div>
-    <div style="height:16px;"></div>
-  </div>
-
   <!-- SUB: Quadratura di giornata — solo i numeri della giornata -->
   <div id="contab-panel-quadratura">
-    <div class="slbl">Dati giornalieri</div>
-    <div style="padding:0 12px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>La giornata</h1>
+        <div class="subtitle">Sopra, la giornata ricostruita dai movimenti registrati. Sotto, quella digitata a mano. Il semaforo dice se vanno d'accordo — e quando non c'è niente da confrontare lo dice invece di mostrare verde.</div>
+      </div>
+    </section>
+
+    <!-- Il ricostruito (M5): lo scrive gioRenderGiornata, e sta SOPRA perché è
+         quello che nessuno deve digitare. -->
+    <section id="gio-oggi"></section>
+
+    <div class="d-card">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-pencil"></i></span> La giornata dichiarata a mano</div>
+        <span class="cl-sub">68 giorni scritti così: non si spegne finché i due numeri non tornano</span></div>
+      <div class="card-body">
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="fld">
           <label>Data riferimento</label>
@@ -1634,15 +1636,32 @@ input[type=file]{display:none;}
       <div class="fld"><label>Note cassa</label><textarea id="i-note" rows="2" placeholder="es. versamento banca, rimborso..."></textarea></div>
     </div>
     <div id="savemsg"></div>
-    <button class="btn sec" onclick="salvaDatiGiornalieri()"><i class="ti ti-device-floppy"></i> Salva dati giornalieri</button>
-    <button class="btn" onclick="doAnalisi()"><i class="ti ti-brain"></i> Analizza ora</button>
-
+        <div class="head-actions">
+          <button class="d-btn" onclick="salvaDatiGiornalieri()"><i class="ti ti-device-floppy"></i> Salva dati giornalieri</button>
+          <button class="d-btn primario" onclick="doAnalisi()"><i class="ti ti-brain"></i> Analizza ora</button>
+        </div>
+      </div>
+    </div>
     <div style="height:16px;"></div>
   </div>
 
   <!-- SUB: Anomalie -->
   <div id="contab-panel-anomalie" style="display:none;">
-    <div id="a-empty" class="empty" style="margin-top:50px;"><i class="ti ti-shield-check"></i><p>Nessuna anomalia rilevata</p></div>
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>Anomalie</h1>
+        <div class="subtitle">Quello che non torna nella contabilità registrata, e sotto quello che non torna nei file caricati. Ogni riga dice il verbo: che cosa c'è da fare.</div>
+      </div>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="gioCarica(true)"><i class="ti ti-refresh"></i> Ricontrolla</button>
+      </div>
+    </section>
+
+    <!-- Le anomalie della contabilità ricostruita (M5). -->
+    <section id="gio-anomalie"></section>
+
+    <div id="a-empty" class="empty" style="margin-top:50px;"><i class="ti ti-shield-check"></i><p>Nessuna anomalia nei file caricati</p></div>
     <div id="a-content" style="display:none;">
       <div class="slbl">Alert rilevati</div>
       <div class="card" id="a-alerts"></div>
@@ -1654,6 +1673,31 @@ input[type=file]{display:none;}
 
   <!-- SUB: Sospesi -->
   <div id="contab-panel-sospesi" style="display:none;">
+    <!-- I due caricamenti stavano in una linguetta loro, «Carica documenti».
+         Il brief chiede di toglierla, e va tolta — ma cancellarli avrebbe
+         spento QUATTRO schermate: questi due file sono l'unica strada da cui
+         arrivano i sospesi della compagnia, gli incassi, le anomalie e il
+         contatore della Scrivania. Quindi non si cancellano: si spostano DOVE
+         SERVONO, cioè dentro la schermata che li usa. Una linguetta in meno,
+         niente di spento. -->
+<div>
+    <div class="slbl">File da caricare</div>
+    <div class="uarea">
+      <button class="ubtn" onclick="document.getElementById('f-sosp').click()">
+        <i class="ti ti-file-spreadsheet"></i>
+        <div><div class="ublbl">Sospesi (Excel)</div><div class="ubsub" id="sub-sosp">Nominativo, Polizza, Importo Sospeso, Compagnia…</div><div class="ubok" id="ok-sosp" style="display:none"></div></div>
+      </button>
+      <button class="ubtn" onclick="document.getElementById('f-inc').click()">
+        <i class="ti ti-file-euro"></i>
+        <div><div class="ublbl">Incassi sospesi (Excel o Word)</div><div class="ubsub" id="sub-inc">Report incassi del giorno precedente</div><div class="ubok" id="ok-inc" style="display:none"></div></div>
+      </button>
+      <input type="file" id="f-sosp" accept=".xlsx,.xls,.csv" onchange="loadSospesi(this)">
+      <input type="file" id="f-inc" accept=".xlsx,.xls,.csv,.docx" onchange="loadIncassi(this)">
+    </div>
+    <div style="height:16px;"></div>
+  </div>
+
+  
     <div id="s-empty" class="empty" style="margin-top:50px;"><i class="ti ti-list"></i><p>Carica il file sospesi</p></div>
     <div id="s-content" style="display:none;">
       <div style="padding:10px 12px 4px;display:flex;gap:8px;">
@@ -1679,6 +1723,21 @@ input[type=file]{display:none;}
 
   <!-- SUB: Storico -->
   <div id="contab-panel-storico" style="display:none;">
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>Storico</h1>
+        <div class="subtitle">Una riga per giornata, col semaforo. Un clic apre quel giorno nella Quadratura, col dichiarato già dentro.</div>
+      </div>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="gioCarica(true)"><i class="ti ti-refresh"></i> Ricalcola</button>
+      </div>
+    </section>
+
+    <!-- Le giornate ricostruite (M5), sopra lo storico dei file caricati. -->
+    <section id="gio-storico"></section>
+    <div style="height:12px;"></div>
+
     <div id="st-empty" class="empty" style="margin-top:50px;"><i class="ti ti-history"></i><p>Nessuno storico ancora salvato</p></div>
     <div id="st-content" style="display:none;">
       <div class="card" id="st-list"></div>
@@ -1688,7 +1747,21 @@ input[type=file]{display:none;}
 
   <!-- SUB: Conto -->
   <div id="contab-panel-conto" style="display:none;">
-    <div class="slbl">Conti correnti</div>
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>Conto</h1>
+        <div class="subtitle">Il saldo ricostruito dai movimenti, conto per conto. Sotto restano gli estratti conto caricati da file, che sono l'altra metà del confronto.</div>
+      </div>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="gioCarica(true)"><i class="ti ti-refresh"></i> Ricalcola</button>
+      </div>
+    </section>
+
+    <!-- Il conto ricostruito (M5). -->
+    <section id="gio-conto"></section>
+
+    <div class="slbl">Estratti conto caricati</div>
     <div class="conto-tabs">
       <button class="ctab act" id="ct-hdi" onclick="selConto('hdi')">Conto HDI</button>
       <button class="ctab" id="ct-pluri" onclick="selConto('pluri')">Plurimandato</button>
@@ -5216,6 +5289,237 @@ async function pntSalvaQuadratura(contoId) {
   } catch (err) { pntMsg(['Non riesco a salvare: ' + (err.message || err)]); }
 }
 
+/* ══ LA CONTABILITÀ CHE SI RICOSTRUISCE DA SÉ (brief #02 · M5, 20/09/2026) ════
+
+   Fino a oggi la giornata si DIGITAVA: contanti, versamenti, spese, fondo
+   cassa, POS bianco e nero. Sessantotto giorni così, a mano. Adesso che i
+   movimenti esistono (M3) e che gli incassi ci arrivano (M4), la stessa
+   giornata si può ricostruire — e le due cose messe una accanto all'altra
+   sono la quadratura applicata al giorno invece che al conto.
+
+   QUELLO CHE NON SI FA, ED È LA DECISIONE PIÙ IMPORTANTE.
+   Il modulo a mano NON si spegne. I 68 giorni già scritti sono l'unica
+   contabilità che questa agenzia ha, e il ricostruito oggi è vuoto perché i
+   movimenti cominciano adesso. Si spegne una schermata quando i suoi numeri
+   sono stati confrontati con quelli nuovi e tornano — non perché ne è nata
+   una migliore (§17, la linguetta «Rimesse da preventivo»). Fino ad allora il
+   ricostruito sta SOPRA e il dichiarato sotto, e il semaforo dice se vanno
+   d'accordo.
+
+   IL SEMAFORO HA TRE LUCI. Verde: coincidono. Rosso: non coincidono, e la
+   differenza si legge con il suo verso. **Grigio: non si può dire** — o non
+   c'è nessun movimento quel giorno, o nessuno ha dichiarato niente. Il grigio
+   non è un verde prudente: mostrare verde quando non c'è niente da
+   confrontare è la stessa bugia del conto mai verificato (§29). */
+var GIO_MOVIMENTI = [];
+var GIO_CONTI = [];
+var GIO_CAUSALI = [];
+var GIO_SOSPESI = [];
+var GIO_QUADRATURE = [];
+var GIO_TITOLI = [];
+var GIO_SESSIONI = [];
+var GIO_CARICATO = false;
+
+function gioData() {
+  const e = document.getElementById('i-data');
+  return (e && e.value) || new Date().toISOString().slice(0, 10);
+}
+
+async function gioCarica(forza) {
+  if (!db) return;
+  if (forza) GIO_CARICATO = false;
+  if (GIO_CARICATO) { gioRender(); return; }
+  try {
+    const [mo, co, ca, so, qu, se] = await Promise.all([
+      db.from('iam_movimenti').select('*').order('data', { ascending: false }).limit(2000),
+      db.from('iam_conti').select('*').order('ordine').order('nome'),
+      db.from('iam_causali').select('*').order('ordine'),
+      db.from('iam_sospesi').select('*'),
+      db.from('iam_quadrature').select('*').order('data', { ascending: false }),
+      db.from('sessioni_giornaliere').select('data_riferimento,contanti,versamenti,spese,fondo_cassa,pos_bianco,pos_nero')
+        .order('data_riferimento', { ascending: false }).limit(120)
+    ]);
+    for (const r of [mo, co, ca, so, qu]) if (r.error) throw r.error;
+    GIO_MOVIMENTI = mo.data || []; GIO_CONTI = co.data || [];
+    GIO_CAUSALI = ca.data || []; GIO_SOSPESI = so.data || [];
+    GIO_QUADRATURE = qu.data || []; GIO_SESSIONI = se.error ? [] : (se.data || []);
+    const ti = await db.from('quote_titoli').select('id,importo_lordo,incassato_il')
+      .eq('stato', 'incassato').not('incassato_il', 'is', null).limit(500);
+    GIO_TITOLI = ti.error ? [] : (ti.data || []);
+    GIO_CARICATO = true;
+    gioRender();
+  } catch (e) {
+    /* «Non si è potuto leggere» non è «va tutto bene»: su una schermata di
+       anomalie sarebbe la bugia peggiore possibile. */
+    const avviso = `<div class="cnt-err">Non riesco a ricostruire la contabilità.<br>
+      <small>${esc(e.message || e)} — non vuol dire che sia tutto a posto: vuol dire che non si è potuto controllare.</small></div>`;
+    ['gio-oggi', 'gio-anomalie', 'gio-storico', 'gio-conto'].forEach(id => {
+      const b = document.getElementById(id); if (b) b.innerHTML = avviso;
+    });
+  }
+}
+
+function gioRender() {
+  gioRenderGiornata();
+  gioRenderAnomalie();
+  gioRenderStorico();
+  gioRenderConto();
+}
+
+/* ─── La giornata, ricostruita ───────────────────────────────────────────── */
+function gioRenderGiornata() {
+  const box = document.getElementById('gio-oggi');
+  if (!box || !window.Contabilita) return;
+  const g = gioData();
+  const ric = Contabilita.giornata(g, GIO_MOVIMENTI, GIO_CONTI, { causali: GIO_CAUSALI });
+  const sess = GIO_SESSIONI.find(x => x.data_riferimento === g);
+  /* Il dichiarato della vecchia quadratura: contanti + POS meno le spese. È
+     la stessa somma che quel modulo faceva a mano, letta dalle sue colonne. */
+  const dich = sess
+    ? (Contabilita.numero(sess.contanti) || 0) + (Contabilita.numero(sess.pos_bianco) || 0)
+      + (Contabilita.numero(sess.pos_nero) || 0) - (Contabilita.numero(sess.spese) || 0)
+    : null;
+  const sem = Contabilita.semaforoGiornata(ric, dich);
+  const fondo = Contabilita.fondoCassa(GIO_CONTI, GIO_MOVIMENTI, { causali: GIO_CAUSALI, al: g });
+  const luce = sem.stato === 'verde' ? '<span class="cnt-tag utile">quadra</span>'
+             : sem.stato === 'rosso' ? '<span class="cnt-tag uscita">non quadra</span>'
+             : '<span class="cnt-tag">non si può dire</span>';
+  box.innerHTML = `
+    <div class="d-card" style="margin-bottom:12px">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-calculator"></i></span> La giornata del ${esc(pntData(g))} ${luce}</div>
+        <button class="d-btn" type="button" onclick="gioCarica(true)"><i class="ti ti-refresh"></i> Ricalcola</button></div>
+      <div class="card-body">
+        <div class="cnt-somma" style="padding:0">
+          <div class="cnt-card"><div class="cnt-k">Entrate</div><div class="cnt-v">${Contabilita.euro(ric.entrate)}</div>
+            <div class="cnt-s">${ric.righe} movimenti registrati</div></div>
+          <div class="cnt-card"><div class="cnt-k">Uscite</div><div class="cnt-v">${Contabilita.euro(ric.uscite)}</div></div>
+          <div class="cnt-card"><div class="cnt-k">Ricostruito</div><div class="cnt-v">${Contabilita.euro(ric.saldo)}</div>
+            <div class="cnt-s">dai movimenti, non digitato</div></div>
+          <div class="cnt-card"><div class="cnt-k">Fondo cassa</div><div class="cnt-v">${Contabilita.euro(fondo.totale)}</div>
+            <div class="cnt-s">${fondo.quante ? fondo.quante + ' casse, saldo a fine giornata' : 'nessuna cassa contanti fra i conti'}</div></div>
+        </div>
+        ${sem.motivo ? `<div class="${sem.stato === 'rosso' ? 'cnt-err' : 'cnt-avv'}" style="margin-top:10px">${esc(sem.motivo)}${
+          sem.dichiarato != null ? `<br><small>Dichiarato a mano ${Contabilita.euro(sem.dichiarato)}, ricostruito ${Contabilita.euro(sem.ricostruito)}.</small>` : ''}</div>` : ''}
+        ${ric.per_conto.length ? `<div style="margin-top:12px">${ric.per_conto.map(c => `
+          <div class="cnt-r"><div style="flex:1">
+            <div class="cnt-nome">${esc(c.nome)}</div>
+            <div class="cnt-sotto">+${Contabilita.euro(c.entrate)} · −${Contabilita.euro(c.uscite)} · ${c.righe} movimenti</div>
+          </div><div style="text-align:right">
+            <div class="cnt-saldo">${Contabilita.euro(c.saldo_fine)}</div>
+            <div class="cnt-sotto">a fine giornata</div></div></div>`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+/* ─── Le anomalie ────────────────────────────────────────────────────────── */
+function gioRenderAnomalie() {
+  const box = document.getElementById('gio-anomalie');
+  if (!box || !window.Contabilita) return;
+  const a = Contabilita.anomalie({
+    conti: GIO_CONTI, movimenti: GIO_MOVIMENTI, causali: GIO_CAUSALI,
+    sospesi: GIO_SOSPESI, titoli: GIO_TITOLI, quadrature: GIO_QUADRATURE, oggi: gioData()
+  });
+  if (!a.length) {
+    box.innerHTML = `<div class="d-card" style="margin-bottom:12px"><div class="card-body">
+      <div class="cnt-nome">Niente da sistemare nella contabilità ricostruita.</div>
+      <div class="cl-sub">Conti configurati, incassi arrivati nei tempi, nessun movimento senza causale.</div></div></div>`;
+    return;
+  }
+  box.innerHTML = `<div class="d-card" style="margin-bottom:12px">
+    <div class="card-head"><div class="card-title">
+      <span class="pictogram"><i class="ti ti-alert-triangle"></i></span> Da sistemare</div>
+      <span class="cl-sub">${a.filter(x => x.gravita === 'rosso').length} rossi · ${a.filter(x => x.gravita === 'giallo').length} gialli</span></div>
+    <div class="card-body" style="padding:0">` +
+    a.map(x => `<div class="cnt-r">
+      <div style="flex:1;min-width:0">
+        <div class="cnt-nome">${esc(x.titolo)}
+          <span class="cnt-tag ${x.gravita === 'rosso' ? 'uscita' : ''}">${x.quanti}</span></div>
+        <div class="cnt-sotto">${esc(x.dafare)}</div>
+      </div>
+      ${x.importo != null ? `<div class="cnt-saldo">${Contabilita.euro(x.importo)}</div>` : ''}
+    </div>`).join('') + `</div></div>`;
+}
+
+/* ─── Lo storico, giornata per giornata ──────────────────────────────────── */
+function gioRenderStorico() {
+  const box = document.getElementById('gio-storico');
+  if (!box || !window.Contabilita) return;
+  /* I giorni che hanno qualcosa: o dei movimenti, o una giornata dichiarata.
+     Un giorno senza né l'uno né l'altro non è una riga: è un giorno in cui non
+     è successo niente, e un elenco pieno di quelli non si legge. */
+  const giorni = new Set();
+  Contabilita.vivi(GIO_MOVIMENTI).forEach(m => { if (m.data) giorni.add(m.data); });
+  GIO_SESSIONI.forEach(s => { if (s.data_riferimento) giorni.add(s.data_riferimento); });
+  const elenco = [...giorni].sort().reverse().slice(0, 60);
+  if (!elenco.length) {
+    box.innerHTML = `<div class="d-card"><div class="card-body"><div class="cl-sub">Nessuna giornata da mostrare.</div></div></div>`;
+    return;
+  }
+  box.innerHTML = `<div class="d-card">
+    <div class="card-head"><div class="card-title">
+      <span class="pictogram"><i class="ti ti-history"></i></span> Le giornate</div>
+      <span class="cl-sub">${elenco.length}</span></div>
+    <div class="card-body" style="padding:0">` +
+    elenco.map(g => {
+      const ric = Contabilita.giornata(g, GIO_MOVIMENTI, GIO_CONTI, { causali: GIO_CAUSALI });
+      const s = GIO_SESSIONI.find(x => x.data_riferimento === g);
+      const dich = s ? (Contabilita.numero(s.contanti) || 0) + (Contabilita.numero(s.pos_bianco) || 0)
+        + (Contabilita.numero(s.pos_nero) || 0) - (Contabilita.numero(s.spese) || 0) : null;
+      const sem = Contabilita.semaforoGiornata(ric, dich);
+      const luce = sem.stato === 'verde' ? '<span class="cnt-tag utile">quadra</span>'
+                 : sem.stato === 'rosso' ? '<span class="cnt-tag uscita">non quadra</span>'
+                 : '<span class="cnt-tag">non si può dire</span>';
+      return `<div class="cnt-r" style="cursor:pointer" onclick="gioApriGiorno('${esc(g)}')">
+        <div style="flex:1">
+          <div class="cnt-nome">${esc(pntData(g))} ${luce}</div>
+          <div class="cnt-sotto">${ric.righe ? ric.righe + ' movimenti · ricostruito ' + Contabilita.euro(ric.saldo) : 'nessun movimento registrato'}${
+            dich != null ? ' · dichiarato ' + Contabilita.euro(dich) : ''}</div>
+        </div>
+        ${sem.differenza ? `<div class="cnt-saldo">${Contabilita.euro(sem.differenza)}</div>` : ''}
+      </div>`;
+    }).join('') + `</div></div>`;
+}
+
+function gioApriGiorno(g) {
+  const e = document.getElementById('i-data');
+  if (e) { e.value = g; if (typeof caricaDatiPerData === 'function') caricaDatiPerData(g); }
+  selContabTab('quadratura');
+  gioRenderGiornata();
+}
+
+/* ─── Il conto ricostruito ───────────────────────────────────────────────── */
+function gioRenderConto() {
+  const box = document.getElementById('gio-conto');
+  if (!box || !window.Contabilita) return;
+  const attivi = GIO_CONTI.filter(c => c.attivo !== false);
+  if (!attivi.length) {
+    box.innerHTML = `<div class="d-card" style="margin-bottom:12px"><div class="card-body">
+      <div class="cnt-avv">Nessun conto. Si creano in Strumenti › Conti e causali.</div></div></div>`;
+    return;
+  }
+  const nat = Contabilita.perNatura(GIO_CONTI, GIO_MOVIMENTI, { causali: GIO_CAUSALI });
+  box.innerHTML = `<div class="d-card" style="margin-bottom:12px">
+    <div class="card-head"><div class="card-title">
+      <span class="pictogram"><i class="ti ti-building-bank"></i></span> Il conto, ricostruito dai movimenti</div>
+      <span class="cl-sub">premi ${Contabilita.euro(nat.premi)} · agenzia ${Contabilita.euro(nat.aziendale)}</span></div>
+    <div class="card-body" style="padding:0">` +
+    attivi.map(c => {
+      const s = Contabilita.saldo(c, GIO_MOVIMENTI, { causali: GIO_CAUSALI });
+      const ult = Contabilita.progressivo(c, GIO_MOVIMENTI, { causali: GIO_CAUSALI }).slice(-3).reverse();
+      return `<div class="cnt-r">
+        <div style="flex:1;min-width:0">
+          <div class="cnt-nome">${esc(c.nome)}
+            <span class="cnt-tag ${c.natura === 'premi' ? 'premi' : 'aziendale'}">${esc(c.natura || '')}</span></div>
+          <div class="cnt-sotto">${s.movimenti} movimenti · saldo iniziale ${Contabilita.euro(s.iniziale)}</div>
+          ${ult.map(r => `<div class="cnt-sotto">${esc(pntData(r.movimento.data))} · ${
+            r.verso < 0 ? '−' : '+'} ${Contabilita.euro(Math.abs(r.delta))} → ${Contabilita.euro(r.saldo)}</div>`).join('')}
+        </div>
+        <div class="cnt-saldo">${Contabilita.euro(s.saldo)}</div>
+      </div>`;
+    }).join('') + `</div></div>`;
+}
+
 /* ══ INCASSI DA ACCREDITARE (brief #02 · M4, 20/09/2026) ═════════════════════
 
    Il pezzo che mancava fra l'incasso di una rata (§17, §24) e la prima nota
@@ -6614,7 +6918,11 @@ function selContabTab(sub) {
   /* Ogni voce di Contabilità apre la sua schermata e basta: «Carica documenti»
      mostra i file, «Quadratura» i numeri della giornata. (01/08/2026) */
   if (sub === 'carica') sub = 'quadratura';   // vecchio nome rimasto in memoria
-  ['quadratura','primanota','conti','incassi','caricafile','anomalie','sospesi','storico','conto'].forEach(s => {
+  /* «Carica documenti» non e' piu' una linguetta (M5): i due caricamenti sono
+     dentro Sospesi, che e' la schermata che li usa. Chi ha quel nome salvato
+     in memoria ci finisce, invece di aprire un riquadro vuoto (§6b). */
+  if (sub === 'caricafile') sub = 'sospesi';
+  ['quadratura','primanota','conti','incassi','anomalie','sospesi','storico','conto'].forEach(s => {
     const btn = document.getElementById('ctab-'+s);
     const pnl = document.getElementById('contab-panel-'+s);
     if (btn) btn.classList.toggle('act', s===sub);
@@ -6627,6 +6935,10 @@ function selContabTab(sub) {
      inizializzatore, altrimenti la linguetta apre un riquadro vuoto. */
   if (sub==='primanota' || sub==='conti') pntCarica();
   if (sub==='incassi') incCarica();
+  /* La contabilità ricostruita (M5) sta SOPRA quattro schermate che esistevano
+     già: la giornata, le anomalie, lo storico e il conto. Una lettura sola le
+     serve tutte e quattro, e non si ripete se è già stata fatta. */
+  if (['quadratura','anomalie','storico','conto'].includes(sub)) gioCarica();
 }
 
 async function caricaDatiPerData(dataSelezionata) {
@@ -6655,6 +6967,10 @@ async function caricaDatiPerData(dataSelezionata) {
       showSavemsg('<i class="ti ti-calendar-event"></i> Nuova giornata — nessun dato precedente');
     }
   } catch(e) { console.warn('caricaDatiPerData:', e); }
+  /* Cambiata la data, il ricostruito deve parlare dello STESSO giorno di quello
+     dichiarato: due riquadri uno sopra l'altro che si riferiscono a due giorni
+     diversi sono un confronto falso. */
+  if (typeof gioRenderGiornata === 'function') gioRenderGiornata();
 }
 
 // ─── PONTE IAM → QUOTO ────────────────────────────────────────────────────────
@@ -6778,7 +7094,7 @@ function ripristinaScheda() {
   RIPRISTINO_IN_CORSO = true;
   try {
     if (!lastTab) { goTab('dashboard'); return; }
-    const contabSub = ['quadratura','caricafile','anomalie','sospesi','storico','conto'];
+    const contabSub = ['quadratura','primanota','conti','incassi','caricafile','anomalie','sospesi','storico','conto'];
     if (contabSub.includes(lastTab)) { goTab('carica'); selContabTab(lastTab); }
     else if (lastTab === 'quoto') goTab('dashboard');
     /* «lab» era la vecchia pagina-hub, ora rimossa (Marketing vive nel riquadro,
@@ -6841,7 +7157,7 @@ function goTab(t) {
   };
   if (RISERVATE[t] && !RISERVATE[t]()) { if (t !== 'profilo') goTab('profilo'); return; }
   // Le voci di Contabilità aprono il pannello con la loro sotto-scheda
-  const contabSub = ['quadratura','caricafile','anomalie','sospesi','storico','conto'];
+  const contabSub = ['quadratura','primanota','conti','incassi','caricafile','anomalie','sospesi','storico','conto'];
   if (contabSub.includes(t)) {
     goTab('carica');
     selContabTab(t);

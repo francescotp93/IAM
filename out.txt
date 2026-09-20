@@ -1,15 +1,15 @@
-id: catalogo-rilascio-1789941636  exit: 0  2026-09-20 22:01:07
+id: catalogo-rilascio2-1789941689  exit: 0  2026-09-20 22:01:41
 ----
 == commit vivo
-2567d81 La pagina si accorge di essere vecchia: 0.8.1 (#218)
+90f2d94 Il catalogo prodotti: anagrafica compagnie e prodotti di compagnia (#219)
 == IAM servito
-name="app-versione" content="0.8.1">
-name="app-versione-nome" content="La pagina che si accorge di essere vecchia">
+name="app-versione" content="0.9.0">
+name="app-versione-nome" content="Il catalogo prodotti">
 == il motore del catalogo e' raggiungibile
-HTTP/2 404 
+HTTP/2 200 
 == la voce di menu c'e' nella scocca servita
-0
+2
 == versione.json
 {
-  "versione": "0.8.1",
-  "nome": "La pagina che si accorge di essere vecchia",
+  "versione": "0.9.0",
+  "nome": "Il catalogo prodotti",

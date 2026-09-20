@@ -1,8 +1,17 @@
 {
-  "versione": "0.8.0",
-  "nome": "Il menu riordinato",
+  "versione": "0.8.1",
+  "nome": "La pagina che si accorge di essere vecchia",
   "data": "2026-09-20",
   "storia": [
+    {
+      "v": "0.8.1",
+      "data": "2026-09-20",
+      "nome": "La pagina che si accorge di essere vecchia",
+      "voci": [
+        "Se la pagina che hai aperta è più vecchia di quella pubblicata, IAM te lo dice con una fascia in basso e un tasto «Ricarica». Prima quell'avviso c'era solo dentro la finestra delle novità: bisognava aprirla per sapere che bisognava aprirla.",
+        "IAM è un'applicazione a pagina sola: una scheda del browser lasciata aperta non richiede mai di nuovo la pagina, e restava quella di quando l'avevi aperta anche dopo cinque rilasci. Adesso ricontrolla da sé ogni cinque minuti e ogni volta che torni su quella scheda."
+      ]
+    },
     {
       "v": "0.8.0",
       "data": "2026-09-20",

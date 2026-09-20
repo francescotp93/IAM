@@ -1,7 +1,6 @@
-id: fix-1789912793  exit: 0  2026-09-20 14:01:37
+id: prem-1789914146  exit: 0  2026-09-20 14:23:56
 ----
-6fa2ddb Gestione compagnie non si apriva: una colonna sbagliata su sette letture (#215)
-<meta name="app-versione" content="0.6.1">
--- la query corretta e' quella servita:
-1
-0
+76c7f2a Blocco 1 · punto 1: il premio delle frazionate non è più un trattino (#216)
+<meta name="app-versione" content="0.7.0">
+-- pfPremio servito:
+2

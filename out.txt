@@ -1,14 +1,14 @@
-id: rilascio811-1789939936  exit: 0  2026-09-20 21:32:26
+id: rilascio811b-1789940014  exit: 0  2026-09-20 21:34:06
 ----
 == commit vivo
-0ea87d9 Blocco 1 · punti 5, 12, 13 e 11: il menu riordinato (#217)
+2567d81 La pagina si accorge di essere vecchia: 0.8.1 (#218)
 == IAM servito
-name="app-versione" content="0.8.0">
-name="app-versione-nome" content="Il menu riordinato">
+name="app-versione" content="0.8.1">
+name="app-versione-nome" content="La pagina che si accorge di essere vecchia">
 == versione.json
 {
-  "versione": "0.8.0",
-  "nome": "Il menu riordinato",
+  "versione": "0.8.1",
+  "nome": "La pagina che si accorge di essere vecchia",
   "data": "2026-09-20",
 == la fascia c'e' nella pagina servita
-0
+1

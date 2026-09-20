@@ -1,12 +1,12 @@
-id: b3-1789945916  exit: 0  2026-09-20 23:12:26
+id: b3b-1789945971  exit: 0  2026-09-20 23:13:01
 ----
 == commit vivo
-c156f78 Blocco 2: la polizza a mano, la ricerca che trova, le attività recenti (#220)
+055ea0c Blocco 3 · punti 3 e 6: le sospensioni e il fido (#221)
 == IAM servito
-name="app-versione" content="0.10.0">
-name="app-versione-nome" content="Trovare, aprire, scrivere">
+name="app-versione" content="0.11.0">
+name="app-versione-nome" content="Sospensioni e fido">
 == i motori nuovi rispondono
-sospensione    HTTP/2 404 
+sospensione    HTTP/2 200 
 catalogo       HTTP/2 200 
 == QUOTO servito
-2
+3

@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.7.0">
-<meta name="app-versione-nome" content="Il premio delle frazionate">
+<meta name="app-versione" content="0.8.0">
+<meta name="app-versione-nome" content="Il menu riordinato">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -180,6 +180,13 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .hdr-ico:hover{background:var(--surf2);}
 .uavatar{width:34px;height:34px;border-radius:50%;border:2px solid var(--bord2);cursor:pointer;background:linear-gradient(135deg,var(--acc),var(--acc2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;transition:transform .15s;}
 .uavatar:hover{transform:scale(1.05);}
+/* Il pallino del rilascio non letto. Sta sull'avatar (che si vede sempre) e
+   sulla targhetta della versione (che si vede col menu aperto): un segnale
+   visibile solo dentro il posto in cui sta non è un segnale. */
+.nov-nuovo{position:relative}
+.nov-nuovo::after{content:'';position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;
+  background:#ef4444;border:2px solid var(--surf,#fff);box-sizing:content-box}
+#um-versione.nov-nuovo{display:inline-block;left:50%;transform:translateX(-50%)}
 .umenu{position:absolute;top:66px;right:12px;background:var(--surf);border-radius:var(--r);box-shadow:var(--shd2);padding:6px;min-width:230px;z-index:500;border:1px solid var(--bord2);}
 .umenu-hdr{padding:12px 12px 10px;border-bottom:.5px solid var(--bord);margin-bottom:4px;}
 .umenu-name{font-size:13px;font-weight:700;}
@@ -756,7 +763,7 @@ input[type=file]{display:none;}
 #panel-compagnie,
 #panel-provvigioni,
 #contab-panel-primanota,
-#contab-panel-conti,
+#contab-panel-quadconti,
 #contab-panel-incassi,
 #contab-panel-quadratura,
 #contab-panel-anomalie,
@@ -1561,12 +1568,11 @@ input[type=file]{display:none;}
   <div class="ptabs" id="contab-tabs">
     <button class="ptab act" id="ctab-quadratura" onclick="selContabTab('quadratura')">Quadratura</button>
     <button class="ptab"     id="ctab-primanota" onclick="selContabTab('primanota')">Prima nota</button>
-    <button class="ptab"     id="ctab-conti"     onclick="selContabTab('conti')">Quadratura conti</button>
+    <button class="ptab"     id="ctab-quadconti" onclick="selContabTab('quadconti')">Quadratura conti</button>
     <button class="ptab"     id="ctab-incassi"   onclick="selContabTab('incassi')">Incassi da accreditare</button>
     <button class="ptab"     id="ctab-anomalie" onclick="selContabTab('anomalie')">Anomalie<span class="nbadge" id="n-anom-tab" style="display:none;position:static;margin-left:4px;"></span></button>
     <button class="ptab"     id="ctab-sospesi"  onclick="selContabTab('sospesi')">Sospesi</button>
     <button class="ptab"     id="ctab-storico"  onclick="selContabTab('storico')">Storico</button>
-    <button class="ptab"     id="ctab-conto"    onclick="selContabTab('conto')">Conto</button>
   </div>
 
   <!-- SUB: Carica documenti — qui dentro ci sono solo i file da caricare.
@@ -1745,54 +1751,7 @@ input[type=file]{display:none;}
     </div>
   </div>
 
-  <!-- SUB: Conto -->
-  <div id="contab-panel-conto" style="display:none;">
-    <section class="page-head">
-      <div>
-        <div class="eyebrow">Contabilità</div>
-        <h1>Conto</h1>
-        <div class="subtitle">Il saldo ricostruito dai movimenti, conto per conto. Sotto restano gli estratti conto caricati da file, che sono l'altra metà del confronto.</div>
-      </div>
-      <div class="head-actions">
-        <button class="d-btn" type="button" onclick="gioCarica(true)"><i class="ti ti-refresh"></i> Ricalcola</button>
-      </div>
-    </section>
-
-    <!-- Il conto ricostruito (M5). -->
-    <section id="gio-conto"></section>
-
-    <div class="slbl">Estratti conto caricati</div>
-    <div class="conto-tabs">
-      <button class="ctab act" id="ct-hdi" onclick="selConto('hdi')">Conto HDI</button>
-      <button class="ctab" id="ct-pluri" onclick="selConto('pluri')">Plurimandato</button>
-    </div>
-    <div id="cu-hdi">
-      <div class="uarea" style="margin:0 12px 10px;">
-        <button class="ubtn" onclick="document.getElementById('f-hdi').click()">
-          <i class="ti ti-file-spreadsheet"></i>
-          <div><div class="ublbl">Estratto conto HDI</div><div class="ubsub">Data, Descrizione, Dare, Avere, Saldo</div><div class="ubok" id="ok-hdi" style="display:none"></div></div>
-        </button>
-        <input type="file" id="f-hdi" accept=".xlsx,.xls,.csv" onchange="loadConto(this,'hdi')">
-        <button onclick="resetConto('hdi')" style="margin-top:6px;padding:6px 12px;background:var(--red-bg);color:var(--red-txt);border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="ti ti-trash" style="vertical-align:-2px;"></i> Svuota estratto HDI</button>
-      </div>
-    </div>
-    <div id="cu-pluri" style="display:none;">
-      <div class="uarea" style="margin:0 12px 10px;">
-        <button class="ubtn" onclick="document.getElementById('f-pluri').click()">
-          <i class="ti ti-file-spreadsheet"></i>
-          <div><div class="ublbl">Estratto conto Plurimandato</div><div class="ubsub">Data, Descrizione, Dare, Avere, Saldo</div><div class="ubok" id="ok-pluri" style="display:none"></div></div>
-        </button>
-        <input type="file" id="f-pluri" accept=".xlsx,.xls,.csv" onchange="loadConto(this,'pluri')">
-        <button onclick="resetConto('pluri')" style="margin-top:6px;padding:6px 12px;background:var(--red-bg);color:var(--red-txt);border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="ti ti-trash" style="vertical-align:-2px;"></i> Svuota estratto Plurimandato</button>
-      </div>
-    </div>
-    <div id="co-empty" class="empty"><i class="ti ti-building-bank"></i><p>Carica l'estratto conto</p></div>
-    <div id="co-content" style="display:none;"></div>
-    <div id="co-sospeso" style="display:none;"></div>
-    <div style="height:16px;"></div>
-  </div>
-
-  <!-- ══ SUB: PRIMA NOTA ═══════════════════════════════════════════════════
+    <!-- ══ SUB: PRIMA NOTA ═══════════════════════════════════════════════════
        Brief #02 · M3.1. Qui si REGISTRA un movimento; in Strumenti › Conti e
        causali si configura DOVE sta il denaro e come si chiamano i movimenti.
        Sono due cose diverse e stanno in due posti diversi, come «Fonti
@@ -1852,7 +1811,7 @@ input[type=file]{display:none;}
        «Non e' mai stata fatta» NON e' «quadra»: un conto mai verificato che
        si mostra in verde e' la bugia piu' comoda che un sistema di
        contabilita' possa raccontare. -->
-  <div id="contab-panel-conti" style="display:none;">
+  <div id="contab-panel-quadconti" style="display:none;">
     <section class="page-head">
       <div>
         <div class="eyebrow">Contabilità</div>
@@ -1865,6 +1824,45 @@ input[type=file]{display:none;}
     </section>
     <section class="cnt-somma" id="pnt-q-somma"></section>
     <section class="cnt-lista" id="pnt-q-lista"><div class="cl-sub">Carico i conti…</div></section>
+
+    <!-- ── Quello che stava nella voce «Conto», che il brief chiede di togliere
+         (Blocco 1 · punto 5). Non si cancella: sono due cose che servono
+         proprio QUI. Il saldo ricostruito dai movimenti e l'estratto conto
+         caricato dalla banca sono i DUE NUMERI della quadratura — il secondo è
+         il «dichiarato». Tenerli in una voce a parte voleva dire fare il
+         confronto guardando due schermate. ─────────────────────────────── -->
+<!-- Il conto ricostruito (M5). -->
+    <section id="gio-conto"></section>
+
+    <div class="slbl">Estratti conto caricati</div>
+    <div class="conto-tabs">
+      <button class="ctab act" id="ct-hdi" onclick="selConto('hdi')">Conto HDI</button>
+      <button class="ctab" id="ct-pluri" onclick="selConto('pluri')">Plurimandato</button>
+    </div>
+    <div id="cu-hdi">
+      <div class="uarea" style="margin:0 12px 10px;">
+        <button class="ubtn" onclick="document.getElementById('f-hdi').click()">
+          <i class="ti ti-file-spreadsheet"></i>
+          <div><div class="ublbl">Estratto conto HDI</div><div class="ubsub">Data, Descrizione, Dare, Avere, Saldo</div><div class="ubok" id="ok-hdi" style="display:none"></div></div>
+        </button>
+        <input type="file" id="f-hdi" accept=".xlsx,.xls,.csv" onchange="loadConto(this,'hdi')">
+        <button onclick="resetConto('hdi')" style="margin-top:6px;padding:6px 12px;background:var(--red-bg);color:var(--red-txt);border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="ti ti-trash" style="vertical-align:-2px;"></i> Svuota estratto HDI</button>
+      </div>
+    </div>
+    <div id="cu-pluri" style="display:none;">
+      <div class="uarea" style="margin:0 12px 10px;">
+        <button class="ubtn" onclick="document.getElementById('f-pluri').click()">
+          <i class="ti ti-file-spreadsheet"></i>
+          <div><div class="ublbl">Estratto conto Plurimandato</div><div class="ubsub">Data, Descrizione, Dare, Avere, Saldo</div><div class="ubok" id="ok-pluri" style="display:none"></div></div>
+        </button>
+        <input type="file" id="f-pluri" accept=".xlsx,.xls,.csv" onchange="loadConto(this,'pluri')">
+        <button onclick="resetConto('pluri')" style="margin-top:6px;padding:6px 12px;background:var(--red-bg);color:var(--red-txt);border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="ti ti-trash" style="vertical-align:-2px;"></i> Svuota estratto Plurimandato</button>
+      </div>
+    </div>
+    <div id="co-empty" class="empty"><i class="ti ti-building-bank"></i><p>Carica l'estratto conto</p></div>
+    <div id="co-content" style="display:none;"></div>
+    <div id="co-sospeso" style="display:none;"></div>
+    <div style="height:16px;"></div>
   </div>
 
   <!-- ══ SUB: INCASSI DA ACCREDITARE ══════════════════════════════════════
@@ -4222,6 +4220,10 @@ async function mostraVersioneInUso() {
     const q = lm ? versioneQuando(new Date(lm)) : null;
     if (q) box.textContent = box.textContent + ' · preventivatore del ' + q;
   } catch (e) { /* offline o percorso assente: la versione di IAM basta */ }
+  /* E si guarda se c'è un rilascio da leggere: la targhetta dice QUALE
+     versione stai usando, il pallino dice che ne è uscita una che non hai
+     ancora letto. Due domande diverse, due segnali diversi. */
+  novControlla();
 }
 
 /* ══ LE NOVITÀ DEL RILASCIO (20/09/2026, chiesto da Francesco) ══════════════
@@ -4241,6 +4243,68 @@ async function mostraVersioneInUso() {
 
    Se il file non si legge non si inventa un elenco: si dice che non si è
    potuto leggere, che non è la stessa cosa di «non ci sono novità». */
+/* ══ IL SEGNALE DEL RILASCIO (Blocco 1 · punto 11, 20/09/2026) ══════════════
+
+   «Dopo un rilascio, un segnale sulla voce di menu.»
+
+   La regola è una sola, e si può dire in una riga: **il segnale si accende
+   quando è uscito un rilascio che questa persona non ha ancora letto.** Non
+   «quando c'è una versione nuova» — quella condizione resterebbe vera per
+   sempre, e un pallino che non si spegne mai smette di voler dire qualcosa,
+   come la targhetta ferma da tre mesi che questo lavoro ha tolto (§27).
+
+   QUELLO CHE SI RICORDA È LA VERSIONE LETTA, non la data: le versioni sono
+   poche e hanno un nome, le date cambiano a ogni pubblicazione anche quando
+   non è cambiato niente per chi lavora.
+
+   E AL PRIMISSIMO AVVIO il pallino NON si accende: chi apre IAM per la prima
+   volta non ha «novità non lette», ha solo delle cose che non ha mai visto.
+   Un pallino lì dentro è un allarme che non chiede niente.
+
+   Sta nel browser (`localStorage`) apposta: è un promemoria per persona e per
+   dispositivo, non un dato dell'agenzia. Se lo storage non risponde (finestra
+   anonima, dati bloccati) il pallino semplicemente non compare — e non è un
+   guasto: la finestra delle novità si apre lo stesso. */
+const NOV_LETTA = 'iam_novita_letta';
+
+function novRicorda(v) {
+  try { if (v) localStorage.setItem(NOV_LETTA, String(v)); } catch (e) { /* storage chiuso: pazienza */ }
+}
+function novLetta() {
+  try { return localStorage.getItem(NOV_LETTA); } catch (e) { return null; }
+}
+
+/* Accende o spegne il pallino. Vive in due posti perché sono due strade verso
+   la stessa cosa: la targhetta in fondo al menu (che si vede solo col menu
+   aperto) e l'avatar della fascia (che si vede sempre, ed è quello che fa
+   aprire il menu). Un segnale che si vede solo dopo aver aperto il posto in
+   cui sta non è un segnale. */
+function novSegnale(acceso) {
+  const t = document.getElementById('um-versione');
+  if (t) t.classList.toggle('nov-nuovo', !!acceso);
+  const av = document.getElementById('w1-av');
+  if (av) av.classList.toggle('nov-nuovo', !!acceso);
+}
+
+async function novControlla() {
+  let pubblicata = null;
+  try {
+    const r = await fetch('/nuovo-preventivo/versione.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    pubblicata = (await r.json()).versione || null;
+  } catch (e) {
+    /* Non si è potuto chiedere: non si accende niente e non si spegne niente.
+       Un pallino acceso «per sicurezza» manderebbe a leggere delle novità che
+       non sappiamo se esistono (§12, §18). */
+    return null;
+  }
+  if (!pubblicata) return null;
+  const letta = novLetta();
+  if (letta === null) { novRicorda(pubblicata); novSegnale(false); return pubblicata; }
+  novSegnale(letta !== pubblicata);
+  return pubblicata;
+}
+
 async function apriNovita() {
   const ov = document.getElementById('nov-ov'), box = document.getElementById('nov-box');
   if (!ov || !box) return;
@@ -4258,6 +4322,10 @@ async function apriNovita() {
     if (!r.ok) throw new Error('il server risponde ' + r.status);
     dati = await r.json();
   } catch (e) { errore = e.message || String(e); }
+  /* Lette. Si ricorda la versione PUBBLICATA, non quella in uso: se stai
+     guardando una copia in cache, il pallino deve spegnersi lo stesso —
+     l'elenco l'hai letto, ed è quello che il pallino chiedeva. */
+  if (dati && dati.versione) { novRicorda(dati.versione); novSegnale(false); }
 
   const testa = `<div style="padding:18px 18px 0">
       <div style="font-size:17px;font-weight:800">Che cosa c'è di nuovo</div>
@@ -6969,7 +7037,12 @@ function selContabTab(sub) {
      dentro Sospesi, che e' la schermata che li usa. Chi ha quel nome salvato
      in memoria ci finisce, invece di aprire un riquadro vuoto (§6b). */
   if (sub === 'caricafile') sub = 'sospesi';
-  ['quadratura','primanota','conti','incassi','anomalie','sospesi','storico','conto'].forEach(s => {
+  /* E «Conto» non è più una linguetta (Blocco 1 · punto 5): il saldo
+     ricostruito e gli estratti caricati dalla banca sono i due numeri della
+     quadratura, e stanno dentro di lei. Chi ha il vecchio nome in memoria
+     finisce là, non su un riquadro vuoto (§6b). */
+  if (sub === 'conto') sub = 'quadconti';
+  ['quadratura','primanota','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
     const btn = document.getElementById('ctab-'+s);
     const pnl = document.getElementById('contab-panel-'+s);
     if (btn) btn.classList.toggle('act', s===sub);
@@ -6977,15 +7050,15 @@ function selContabTab(sub) {
   });
   setUltimoTab(sub);
   if (sub==='storico') buildStorico();
-  if (sub==='conto') loadContoDB(); // ricarica estratto + note condivise dal database
+  if (sub==='quadconti') loadContoDB(); // ricarica estratto + note condivise dal database
   /* §6b: una schermata il cui contenuto lo scrive il codice deve avere il suo
      inizializzatore, altrimenti la linguetta apre un riquadro vuoto. */
-  if (sub==='primanota' || sub==='conti') pntCarica();
+  if (sub==='primanota' || sub==='quadconti') pntCarica();
   if (sub==='incassi') incCarica();
   /* La contabilità ricostruita (M5) sta SOPRA quattro schermate che esistevano
      già: la giornata, le anomalie, lo storico e il conto. Una lettura sola le
      serve tutte e quattro, e non si ripete se è già stata fatta. */
-  if (['quadratura','anomalie','storico','conto'].includes(sub)) gioCarica();
+  if (['quadratura','anomalie','storico','quadconti'].includes(sub)) gioCarica();
 }
 
 async function caricaDatiPerData(dataSelezionata) {
@@ -7141,7 +7214,7 @@ function ripristinaScheda() {
   RIPRISTINO_IN_CORSO = true;
   try {
     if (!lastTab) { goTab('dashboard'); return; }
-    const contabSub = ['quadratura','primanota','conti','incassi','caricafile','anomalie','sospesi','storico','conto'];
+    const contabSub = ['quadratura','primanota','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
     if (contabSub.includes(lastTab)) { goTab('carica'); selContabTab(lastTab); }
     else if (lastTab === 'quoto') goTab('dashboard');
     /* «lab» era la vecchia pagina-hub, ora rimossa (Marketing vive nel riquadro,
@@ -7203,9 +7276,18 @@ function goTab(t) {
     provvigioni: () => !!PERMESSI[PROFILO?.ruolo]?.conto,
   };
   if (RISERVATE[t] && !RISERVATE[t]()) { if (t !== 'profilo') goTab('profilo'); return; }
-  // Le voci di Contabilità aprono il pannello con la loro sotto-scheda
-  const contabSub = ['quadratura','primanota','conti','incassi','caricafile','anomalie','sospesi','storico','conto'];
-  if (contabSub.includes(t)) {
+  /* Le voci di Contabilità aprono il pannello con la loro sotto-scheda.
+
+     `conti` NON è in questo elenco, ed è la correzione di un guasto vivo:
+     `conti` è il pannello di Strumenti › Conti e causali, e da quando la
+     quadratura dei conti si chiamava anche lei `conti` questo controllo la
+     intercettava PRIMA della ricerca del pannello — cioè «Conti e causali»
+     apriva la Contabilità e non si raggiungeva più. Un nome usato per due
+     cose, in due elenchi diversi, e il primo vince in silenzio.
+     La sotto-scheda adesso si chiama `quadconti`; `conto`, il vecchio nome
+     della voce tolta, porta dove il contenuto è andato. */
+  const CONTAB_SUB = ['quadratura','primanota','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
+  if (CONTAB_SUB.includes(t)) {
     goTab('carica');
     selContabTab(t);
     return;
@@ -21068,8 +21150,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: 35eabd48 — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260920a"></script>
+<!-- impronta withus-one.js: 84b4765f — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260920b"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

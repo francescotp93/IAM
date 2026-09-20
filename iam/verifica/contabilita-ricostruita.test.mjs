@@ -78,7 +78,7 @@ prova('GUASTO N.1: gioCarica è CHIAMATA dalle linguette, non solo definita', ()
   const chiamata = f.indexOf('gioCarica()');
   deve(chiamata >= 0, 'selContabTab non fa partire la contabilità ricostruita: quattro linguette aprono un riquadro vuoto');
   const riga = f.slice(f.lastIndexOf('\n', chiamata), chiamata);
-  for (const sub of ['quadratura', 'anomalie', 'storico', 'conto']) {
+  for (const sub of ['quadratura', 'anomalie', 'storico', 'quadconti']) {
     deve(riga.includes("'" + sub + "'"), 'la linguetta ' + sub + ' non fa partire la contabilità ricostruita');
   }
   return '4 linguette';

@@ -175,6 +175,39 @@ prova('la finestra delle novità esiste, si apre dalla targhetta e non inventa n
   return 'targhetta → finestra, indirizzo giusto, confronto e errore distinto';
 });
 
+prova('il segnale del rilascio si accende su quello NON letto, e si spegne leggendolo', () => {
+  const H = fs.readFileSync(IAM, 'utf8');
+  /* Blocco 1 · punto 11: «dopo un rilascio, un segnale sulla voce di menu».
+     La regola è «non letto», non «diverso»: un pallino che non si spegne mai
+     smette di voler dire qualcosa — è la targhetta ferma da tre mesi che
+     questo lavoro ha tolto, in un'altra forma. */
+  deve(/const NOV_LETTA = 'iam_novita_letta'/.test(H), 'non si ricorda quale rilascio è stato letto');
+  const f = H.slice(H.indexOf('async function novControlla'), H.indexOf('async function apriNovita'));
+  deve(/novSegnale\(letta !== pubblicata\)/.test(f), 'il segnale non guarda la versione LETTA');
+  /* Al primissimo avvio non si accende: chi apre IAM la prima volta non ha
+     novità non lette, ha cose che non ha mai visto. */
+  deve(/if \(letta === null\) \{ novRicorda\(pubblicata\); novSegnale\(false\)/.test(f),
+    'al primo avvio il pallino si accende su un rilascio che nessuno ha saltato');
+  /* E se il server non risponde non si accende NIENTE: un pallino «per
+     sicurezza» manda a leggere novità che non sappiamo se esistono (§12). */
+  deve(/return null;\n  \}\n  if \(!pubblicata\) return null;/.test(f),
+    'quando la lettura fallisce il segnale decide lo stesso');
+  /* Leggendo si spegne, e si ricorda la versione PUBBLICATA: se stai
+     guardando una copia in cache l'elenco l'hai letto comunque. */
+  const ap = H.slice(H.indexOf('async function apriNovita'), H.indexOf('function novChiudiHTML'));
+  deve(/novRicorda\(dati\.versione\); novSegnale\(false\)/.test(ap), 'aprendo le novità il pallino non si spegne');
+  /* Il segnale sta in DUE posti: l'avatar si vede sempre, la targhetta solo
+     col menu aperto — e un segnale visibile solo dentro il posto in cui sta
+     non è un segnale. */
+  const seg = H.slice(H.indexOf('function novSegnale'), H.indexOf('async function novControlla'));
+  deve(/um-versione/.test(seg) && /w1-av/.test(seg), 'il segnale si vede in un posto solo: ' + seg.slice(0, 200));
+  deve(/\.nov-nuovo::after\{/.test(H), 'il pallino non ha uno stile: non si vedrebbe');
+  /* E qualcuno lo chiama davvero (§1). */
+  deve(/\n  novControlla\(\);/.test(H), 'novControlla non la chiama nessuno');
+  return 'non letto → acceso, letto → spento, e due posti';
+});
+
+
 console.log('\n══ LA VERSIONE PUBBLICATA ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

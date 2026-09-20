@@ -41,12 +41,14 @@ const SUL_KIT = [
   'panel-compagnie',          // brief #02 M2
   'panel-provvigioni',        // brief #02 M2
   'contab-panel-primanota',   // brief #02 M3
-  'contab-panel-conti',       // brief #02 M3
+  'contab-panel-quadconti',       // brief #02 M3
   'contab-panel-incassi',     // brief #02 M4
   'contab-panel-quadratura',  // brief #02 M5
   'contab-panel-anomalie',    // brief #02 M5
-  'contab-panel-storico',     // brief #02 M5
-  'contab-panel-conto'        // brief #02 M5
+  'contab-panel-storico'      // brief #02 M5
+  /* «contab-panel-conto» non c'è più: il saldo ricostruito e gli estratti
+     caricati dalla banca sono i due numeri della quadratura, e dal 20/09/2026
+     stanno dentro «Quadratura conti» (Blocco 1 · punto 5). */
 ];
 
 /* Le regole del kit si cercano nel CSS SENZA i commenti che cominciano a
@@ -129,7 +131,7 @@ prova('i bottoni delle schermate sul kit sono quelli del kit', () => {
   for (const id of SUL_KIT) {
     const seg = pannello(id);
     deve(!/class="f-b/.test(seg), id + ': usa ancora i bottoni della famiglia «fonti»');
-    deve(/class="d-btn/.test(seg) || id === 'contab-panel-conti', id + ': non usa i bottoni del kit');
+    deve(/class="d-btn/.test(seg) || id === 'contab-panel-quadconti', id + ': non usa i bottoni del kit');
   }
   /* E anche l'HTML scritto dal codice, non solo quello in pagina: le righe
      degli elenchi hanno i loro bottoni, e sono la meta' dei bottoni che una
@@ -152,13 +154,18 @@ prova('una schermata nuova non si scrive gli stili a mano', () => {
   const conta = (id) => (pannello(id).match(/style="/g) || []).length;
   const soglie = {
     'panel-conti': 6, 'panel-compagnie': 4, 'panel-provvigioni': 12,
-    'contab-panel-primanota': 8, 'contab-panel-conti': 4,
+    'contab-panel-primanota': 8, 'contab-panel-quadconti': 4,
     /* Le quattro schermate della M5 sono VECCHIE: la testata e il riquadro
        ricostruito sono nuovi, il modulo a mano sotto e' quello di sempre e i
        suoi stili si tolgono quando quel modulo si spegne (§17: non prima che i
        due numeri tornino). La soglia e' quella misurata oggi. */
     'contab-panel-quadratura': 13, 'contab-panel-anomalie': 4,
-    'contab-panel-storico': 5, 'contab-panel-conto': 13
+    'contab-panel-storico': 5,
+    /* «Quadratura conti» ha inglobato il contenuto della voce «Conto»
+       (Blocco 1 · punto 5): con lui sono arrivati i suoi stili scritti a
+       mano. La soglia sale UNA VOLTA perché il pannello è un altro, e da qui
+       torna a calare soltanto. */
+    'contab-panel-quadconti': 17
   };
   for (const [id, max] of Object.entries(soglie)) {
     const n = conta(id);

@@ -541,12 +541,30 @@
 
     { key: 'carica', l: 'Contabilità', i: 'i-calc', mirror: 'nb-carica',
       go: function () { vai('carica'); },
+      /* Cinque voci, una per lavoro (Blocco 1 · punto 5, 20/09/2026). Prima
+         Prima nota, Quadratura conti e Incassi da accreditare ESISTEVANO ma
+         non erano nel menu: si raggiungevano solo dalla striscia dentro
+         Contabilità, cioè passando da un'altra schermata. Una pagina che non
+         ha una voce qui, per chi lavora, non esiste.
+
+         «Carica documenti» e «Conto» non ci sono più, come chiede il brief: i
+         due caricamenti sono dentro Sospesi (la schermata che li usa), e il
+         conto ricostruito con gli estratti della banca è dentro Quadratura
+         conti — sono i DUE numeri della quadratura, e stavano in due voci
+         diverse. Niente di spento: i vecchi nomi portano dove il contenuto è
+         andato. */
       sub: [
-        { l: 'Quadratura di giornata', i: 'i-check', act: 'carica', go: function () { vai('quadratura'); } },   // ha sostituito «Carica documenti» (03/08/2026)
+        { l: 'Prima nota', i: 'i-list', act: 'carica', go: function () { vai('primanota'); } },
+        { l: 'Quadratura conti', i: 'i-bank', go: function () { vai('quadconti'); } },
+        { l: 'Incassi da accreditare', i: 'i-hour', go: function () { vai('incassi'); } },
         { l: 'Anomalie', i: 'i-warn', go: function () { vai('anomalie'); } },
-        { l: 'Sospesi', i: 'i-hour', go: function () { vai('sospesi'); } },
+        { l: 'Sospesi', i: 'i-fold', go: function () { vai('sospesi'); } },
+        { hr: true },
+        /* Il foglio di cassa a mano e il suo storico restano: sono i 68 giorni
+           già scritti, l'unica contabilità che questa agenzia ha finché i
+           numeri del ricostruito non saranno stati confrontati con i suoi. */
+        { l: 'Quadratura di giornata', i: 'i-check', go: function () { vai('quadratura'); } },
         { l: 'Storico movimenti', i: 'i-list', go: function () { vai('storico'); } },
-        { l: 'Conto', i: 'i-bank', go: function () { vai('conto'); } },
         { l: 'Link di pagamento', i: 'i-euro', act: 'pagamenti', go: function () { vai('pagamenti'); } },
         { hr: true },
         { l: 'Estratto conto', i: 'i-dl', go: function () { tryCall('openEstrattoConto'); } }
@@ -570,12 +588,11 @@
            dentro IAM la barra di QUOTO non si vede, quindi una pagina che non
            ha una voce QUI, per chi lavora, non esiste. (02/09/2026) */
         { l: 'Convenzioni', i: 'i-users', go: Q('convenzioni', ['Convenzioni', 'Agenzia']) },
-        /* I numeri di legge con cui si calcola la pensione (coefficienti,
-           aliquote, tetto di deducibilita'): stanno in una schermata perche'
-           cambiano da soli, per decreto, senza che nessuno ce lo dica. La
-           pallina accanto alla voce conta quelli da ricontrollare: e' l'unico
-           promemoria che si vede senza andarla a cercare. (03/09/2026) */
-        { l: 'Parametri previdenziali', i: 'i-scale', go: Q('parametri', ['Parametri previdenziali', 'Agenzia']) },
+        /* «Parametri previdenziali» e' passata a Strumenti › Preventivatore
+           il 20/09/2026 (Blocco 1 · punto 12): sono i numeri con cui QUOTA, e
+           stavano in Agenzia insieme a cose che non c'entrano. La pagina e' la
+           stessa e la rotta pure: ogni vecchio collegamento continua a
+           funzionare. */
         /* L'analisi previdenziale: quanta pensione avra' il cliente, quanto gli
            manca, quanto serve versare, e il report da consegnare. La schermata
            esisteva gia' dentro Vita e non la trovava nessuno; i numeri con cui
@@ -619,44 +636,50 @@
       go: function () { aprireQuoto('richieste', { menu: 'richieste', titolo: ['Richieste', 'Richieste'] }); } },
 
     { key: 'strumenti', l: 'Strumenti', i: 'i-cog', go: function(){ vai('fonti'); },
+      /* DUE GRUPPI DI NAVIGAZIONE (Blocco 1 · punto 12, 20/09/2026).
+         Non sono pagine: sono due cassetti, perche' «Strumenti» teneva insieme
+         due mestieri diversi — quello che serve a QUOTARE e quello che serve a
+         far camminare l'agenzia — e per trovare una voce bisognava gia' sapere
+         dov'era. Le pagine non si riscrivono: cambia il posto nel menu.
+         I nomi delle rotte restano gli stessi, quindi ogni vecchio
+         collegamento continua a funzionare. */
       sub: [
-        /* Le fonti stanno in IAM, non nel preventivatore: sono credenziali dei
-           portali, cioe' amministrazione. Prima questa voce apriva il riquadro
-           del preventivatore (IAM.md §4). */
-        { l: 'Fonti e collegamenti compagnie', i: 'i-plug', go: function(){ vai('fonti'); } },
-        /* Due voci e non una, di proposito: qui si GUARDA come stanno i
-           collegamenti, nelle Fonti si SCRIVONO le credenziali. La schermata
-           che fa tutte e due le cose e' quella che nessuno capisce piu'.
-           Campagne email e Analisi dei bisogni sono passate sotto Marketing. */
-        { l: 'Stato collegamenti', i: 'i-plug', act: 'collegamenti', go: function(){ vai('collegamenti'); } },
-        /* Operativa: l'elenco dei collaboratori dell'agenzia. Un tempo una pagina
-           a quattro schede (§11.7), poi un sotto-menu; il 28/08/2026 le «Richieste»
-           (preventivi, emissioni, supporto) sono uscite in un menu di primo
-           livello (voce «Richieste», qui sopra), e qui restava solo Collaboratori
-           — un sotto-menu con una voce sola è un sotto-menu di troppo. Torna una
-           voce diretta. */
-        /* Dal 17/09/2026 «Collaboratori», il registro unico delle persone (era
-           «Operativa»). La chiave act resta 'operativa': e' l'id del pannello. */
-        { l: 'Collaboratori', i: 'i-users', act: 'operativa', go: function(){ vai('operativa'); } },
-        /* Conti e causali (brief #02 · M1, 19/09/2026). Sta fra gli Strumenti e
-           non in Contabilità di proposito: qui si CONFIGURA dove sta il denaro
-           e come si chiamano i movimenti, in Contabilità si REGISTRA. La
-           schermata che fa tutte e due le cose e' quella che nessuno capisce
-           piu' — stessa ragione per cui Fonti e Stato collegamenti sono due
-           voci e non una. */
-        { l: 'Conti e causali', i: 'i-bank', act: 'conti', go: function(){ vai('conti'); } },
-        /* Le due facce della configurazione provvigionale, e stanno separate
-           di proposito: «Gestione compagnie» e' l'accordo con la COMPAGNIA
-           (quanto riconosce, e quanto se ne gira di default), «Provvigioni» e'
-           l'accordo con la PERSONA — e quello varia da collaboratore a
-           collaboratore. Una schermata sola le confonderebbe, ed e' lo stesso
-           motivo per cui Fonti e Stato collegamenti sono due voci. */
-        { l: 'Gestione compagnie', i: 'i-shield', act: 'compagnie', go: function(){ vai('compagnie'); } },
-        { l: 'Provvigioni', i: 'i-euro', act: 'provvigioni', go: function(){ vai('provvigioni'); } },
+        { l: 'Preventivatore', i: 'i-calc', sub: [
+          /* Le fonti stanno in IAM e non nel preventivatore: sono credenziali
+             dei portali, cioe' amministrazione (IAM.md §4). Ma servono a
+             QUOTARE, ed e' per questo che stanno in questo cassetto. */
+          { l: 'Fonti e collegamenti', i: 'i-plug', act: 'fonti', go: function(){ vai('fonti'); } },
+          /* Due voci e non una, di proposito: qui si GUARDA come stanno i
+             collegamenti, nelle Fonti si SCRIVONO le credenziali. La schermata
+             che fa tutte e due le cose e' quella che nessuno capisce piu'. */
+          { l: 'Stato collegamenti', i: 'i-plug', act: 'collegamenti', go: function(){ vai('collegamenti'); } },
+          /* Spostata da Agenzia (Blocco 1 · punto 12): sono i numeri di legge
+             con cui il preventivatore calcola la pensione — cambiano da soli,
+             per decreto, e la pallina conta quelli da ricontrollare. */
+          { l: 'Parametri previdenziali', i: 'i-scale', go: Q('parametri', ['Parametri previdenziali', 'Strumenti']) },
+        ] },
+        { l: 'Gestionale', i: 'i-cog', sub: [
+          /* Dal 17/09/2026 «Collaboratori», il registro unico delle persone
+             (era «Operativa»). La chiave act resta 'operativa': e' l'id del
+             pannello. */
+          { l: 'Collaboratori', i: 'i-users', act: 'operativa', go: function(){ vai('operativa'); } },
+          /* Conti e causali (brief #02 · M1): qui si CONFIGURA dove sta il
+             denaro e come si chiamano i movimenti, in Contabilita' si
+             REGISTRA. Stessa ragione per cui Fonti e Stato collegamenti sono
+             due voci. */
+          { l: 'Conti e causali', i: 'i-bank', act: 'conti', go: function(){ vai('conti'); } },
+          /* Le due facce della configurazione provvigionale, separate di
+             proposito: «Gestione compagnie» e' l'accordo con la COMPAGNIA,
+             «Provvigioni» quello con la PERSONA — e quello varia da
+             collaboratore a collaboratore. */
+          { l: 'Gestione compagnie', i: 'i-shield', act: 'compagnie', go: function(){ vai('compagnie'); } },
+          { l: 'Provvigioni', i: 'i-euro', act: 'provvigioni', go: function(){ vai('provvigioni'); } },
+        ] },
+        { hr: true },
         /* Materiale di consultazione dell'agenzia. Le tre categorie sono un
-           sotto-elenco a fisarmonica DENTRO «Utility» (3° livello): un clic su
-           Utility le apre, un clic sulla categoria porta il preventivatore già
-           su quella scheda (page «utility:<categoria>»). */
+           sotto-elenco a fisarmonica DENTRO «Utility»: un clic su Utility le
+           apre, un clic sulla categoria porta il preventivatore gia' su quella
+           scheda (page «utility:<categoria>»). */
         { l: 'Utility', i: 'i-fold', sub: [
           { l: 'Note informative', i: 'i-file', go: Q('utility:nota') },
           { l: 'Documenti utili',  i: 'i-file', go: Q('utility:documento') },
@@ -730,11 +753,17 @@
        precedente, e la briciola diceva un posto in cui non eri più.
        (bug del 30/07/2026) */
     quadratura:  ['Quadratura di giornata', 'Contabilità'],
-    caricafile:  ['Carica documenti', 'Contabilità'],
+    primanota:   ['Prima nota', 'Contabilità'],
+    quadconti:   ['Quadratura conti', 'Contabilità'],
+    incassi:     ['Incassi da accreditare', 'Contabilità'],
     anomalie:    ['Anomalie', 'Contabilità'],
     sospesi:     ['Sospesi', 'Contabilità'],
     storico:     ['Storico movimenti', 'Contabilità'],
-    conto:       ['Conto', 'Contabilità'],
+    /* «Carica documenti» e «Conto» non sono più voci (Blocco 1 · punto 5), ma
+       i loro titoli restano: chi arriva da un vecchio collegamento vede il
+       nome giusto in alto mentre viene portato dove il contenuto è andato. */
+    caricafile:  ['Sospesi', 'Contabilità'],
+    conto:       ['Quadratura conti', 'Contabilità'],
     pagamenti:   ['Link di pagamento', 'Contabilità'],
     ticket:      ['Ticket', 'Richieste'],
     posta:       ['Posta', 'Strumenti'],
@@ -789,7 +818,7 @@
     performance: ['Performance', 'Agenzia'],
     estratto:    ['Estratto conto', 'Contabilità'],
     convenzioni: ['Convenzioni', 'Agenzia'],
-    parametri:   ['Parametri previdenziali', 'Agenzia'],
+    parametri:   ['Parametri previdenziali', 'Strumenti'],
     /* La pagina di QUOTO si chiama «previdenza» e non «analisi»: in IAM
        «analisi» e' gia' l'Analisi dei bisogni, in Marketing. */
     previdenza:  ['Analisi previdenziale', 'Agenzia'],
@@ -799,12 +828,14 @@
   /* Da quale voce di menu dipende una scheda di IAM */
   var TAB2MENU = {
     dashboard: 'dashboard', carica: 'carica', anomalie: 'carica', sospesi: 'carica',
-    quadratura: 'carica', caricafile: 'carica',
+    quadratura: 'carica', caricafile: 'carica', primanota: 'carica', quadconti: 'carica',
+    incassi: 'carica',
     storico: 'carica', conto: 'carica', team: 'strumenti', operativa: 'strumenti',
     workdiary: 'agenzia',
     performance: 'agenzia', pipeline: 'clienti',
     fonti: 'strumenti', analisi: 'marketing', collegamenti: 'strumenti',
     posta: 'strumenti', conti: 'strumenti', compagnie: 'strumenti', provvigioni: 'strumenti',
+    parametri: 'strumenti',
     utenti: 'admin', azienda: 'admin', agenti: 'admin', quoto: 'quoto'
   };
 

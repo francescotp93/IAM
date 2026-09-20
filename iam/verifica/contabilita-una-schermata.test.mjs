@@ -93,7 +93,7 @@ e.prova('«Quadratura» contiene i numeri della giornata e nessun caricamento', 
 function apparecchia() {
   const visibili = {};
   const attivi = {};
-  const chiavi = ['quadratura', 'primanota', 'conti', 'incassi', 'anomalie', 'sospesi', 'storico', 'conto'];
+  const chiavi = ['quadratura', 'primanota', 'quadconti', 'incassi', 'anomalie', 'sospesi', 'storico'];
   chiavi.forEach(k => { visibili[k] = ''; attivi[k] = false; });
   const ctx = {
     document: {
@@ -111,7 +111,7 @@ function apparecchia() {
     buildStorico() {}, loadContoDB() {},
     /* Gli inizializzatori delle schermate nate dopo (§6b): qui interessa solo
        QUALE riquadro resta acceso, non che cosa ci scrivono dentro. */
-    pntCarica() {}, incCarica() {}, gioCarica() {},
+    pntCarica() {}, incCarica() {}, gioCarica() {}, loadContoDB() {},
   };
   vm.createContext(ctx);
   vm.runInContext(ritaglia(src, 'selContabTab'), ctx);

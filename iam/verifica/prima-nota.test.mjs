@@ -130,16 +130,22 @@ prova('il cancello dell\'admin esiste ED È CHIAMATO', () => {
 prova('le due linguette esistono e hanno il loro inizializzatore', () => {
   /* §6b: una schermata il cui contenuto lo scrive il codice, senza una riga
      che lo avvii, apre un riquadro vuoto. */
-  deve(/id="ctab-primanota"/.test(H) && /id="ctab-conti"/.test(H), 'mancano le due linguette');
-  deve(/id="contab-panel-primanota"/.test(H) && /id="contab-panel-conti"/.test(H), 'mancano i due sotto-pannelli');
-  deve(/\['quadratura','primanota','conti',/.test(H), 'selContabTab non conosce le due linguette nuove');
-  deve(/if \(sub==='primanota' \|\| sub==='conti'\) pntCarica\(\);/.test(H), 'le due linguette non caricano niente');
+  deve(/id="ctab-primanota"/.test(H) && /id="ctab-quadconti"/.test(H), 'mancano le due linguette');
+  deve(/id="contab-panel-primanota"/.test(H) && /id="contab-panel-quadconti"/.test(H), 'mancano i due sotto-pannelli');
+  /* La sotto-scheda della quadratura dei conti si chiama `quadconti` e non
+     `conti` dal 20/09/2026: `conti` è il pannello di Strumenti › Conti e
+     causali, e finché i due nomi coincidevano l'elenco qui sotto lo
+     intercettava prima — «Conti e causali» apriva la Contabilità e non si
+     raggiungeva più. */
+  deve(/\['quadratura','primanota','quadconti',/.test(H), 'selContabTab non conosce le due linguette nuove');
+  deve(!/\['quadratura','primanota','conti',/.test(H), 'il nome ambiguo è tornato: «Conti e causali» non si aprirebbe più');
+  deve(/if \(sub==='primanota' \|\| sub==='quadconti'\) pntCarica\(\);/.test(H), 'le due linguette non caricano niente');
   return 'due linguette, due pannelli, una riga in selContabTab';
 });
 
 prova('la ricerca parte al clic, non mentre si digita', () => {
   const b = blocco();
-  const pannello = H.slice(H.indexOf('id="contab-panel-primanota"'), H.indexOf('id="contab-panel-conti"'));
+  const pannello = H.slice(H.indexOf('id="contab-panel-primanota"'), H.indexOf('id="contab-panel-quadconti"'));
   /* Brief #01 M2, e vale anche qui: su una lista che può essere lunga, filtrare
      a ogni tasto è un ricalcolo per lettera. */
   deve(!/oninput=/.test(pannello), 'un filtro della prima nota ricalcola mentre si digita');

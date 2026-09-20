@@ -2846,7 +2846,12 @@ const avvio = async () => {
       const pan = await (await page.request.get(BASE + '/index.html')).text();
       deve(/id="rq-ass"/.test(pan), 'non si puo\' filtrare per assegnatario: si guarda sempre la coda di tutti');
       deve(/__mie/.test(pan) && /__nessuno/.test(pan), 'mancano «le mie» o «non assegnate»');
-      const r = pan.slice(pan.indexOf('body.innerHTML = righe.map(r =>'), pan.indexOf('function rqApri'));
+      /* L'ancora è la funzione INTERA, con la parentesi: dal 20/09/2026
+         esiste anche `rqApriFiltri`, che viene prima — e una fetta che parte
+         dopo la sua ancora è una fetta vuota, cioè una prova che dichiara
+         rotto un codice giusto. */
+      const r = pan.slice(pan.indexOf('body.innerHTML = righe.map(r =>'), pan.indexOf('function rqApri(fonte, id)'));
+      deve(r.length > 100, 'la fetta della riga è vuota: l\'ancora non è più quella giusta');
       /* Non «nomeOperatore»: l'assegnatario puo' stare in due tabelle, e da qui
          si passa dalla funzione che sa in quale guardare. */
       deve(/nomeInCoda\(r\.assegnata\)/.test(r), 'nella riga non si vede a chi e\' assegnata');
@@ -2854,6 +2859,90 @@ const avvio = async () => {
       deve(/assegnato_tipo,assegnato_nome/.test(l), 'legge l\'id senza il tipo: non saprebbe dove cercare il nome');
       deve(/\.select\('fonte,riferimento/.test(l), 'chiede le assegnazioni una richiesta per volta');
       return 'si vede nella riga, e si filtra';
+    });
+
+    /* ── Blocco 1 · punto 13: l'impostazione della pagina Richieste ────────
+       «Azzera» e «Aggiungi richiesta» stavano DENTRO la griglia dei filtri,
+       con altezze diverse dai select e l'etichetta su due righe. Una griglia
+       di filtri con dentro due azioni non è una griglia: è un posto dove le
+       cose stanno perché ci sono finite. */
+
+    await prova('richieste: la griglia contiene solo filtri, e l\'azione primaria sta in testata', async () => {
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const i = pan.indexOf('<div class="rq-filtri" id="rq-filtri">');
+      const griglia = pan.slice(i, pan.indexOf('</div>\n\n', i));
+      deve(i >= 0, 'la griglia dei filtri non c\'è più');
+      deve(!/Aggiungi richiesta/.test(griglia), 'l\'azione primaria è di nuovo dentro la griglia dei filtri');
+      deve(!/rqAzzera/.test(griglia), '«Azzera» è di nuovo dentro la griglia dei filtri');
+      /* Sette filtri, tutti con la stessa forma: `label` + campo dentro un
+         `.rq-f`. Una cella scritta in un altro modo è la colonna che balla. */
+      const celle = (griglia.match(/<div class="rq-f">/g) || []).length;
+      deve(celle === 7, 'celle di filtro: ' + celle + ' (attese 7, tutte della stessa forma)');
+      /* E l'azione primaria è in testata, su una riga sola. */
+      const testa = pan.slice(pan.indexOf('<div class="rq-testa">'), i);
+      deve(/class="rq-primaria"/.test(testa) && /Aggiungi richiesta/.test(testa), 'l\'azione primaria non è in testata');
+      deve(/white-space:nowrap/.test(pan.slice(pan.indexOf('.rq-primaria{'), pan.indexOf('.rq-primaria:hover'))),
+        'l\'etichetta dell\'azione primaria può andare a capo');
+      return '7 filtri, azione fuori';
+    });
+
+    await prova('richieste: «Azzera» è spento finché non c\'è niente da azzerare', async () => {
+      const r = await page.evaluate(() => {
+        window.showPage('richieste');
+        const azz = document.getElementById('rq-azzera');
+        window.rqAzzera();
+        const prima = { off: azz.disabled, n: window.rqAttivi() };
+        document.getElementById('rq-tipo').value = 'preventivo';
+        window.rqRender();
+        const dopo = { off: azz.disabled, n: window.rqAttivi(), segno: document.getElementById('rq-tog-n').textContent };
+        window.rqAzzera();
+        const poi = { off: azz.disabled, n: window.rqAttivi(), tipo: document.getElementById('rq-tipo').value };
+        return { prima, dopo, poi };
+      });
+      deve(r.prima.off === true && r.prima.n === 0, 'senza filtri «Azzera» è acceso: si clicca e non fa niente');
+      deve(r.dopo.off === false && r.dopo.n === 1, 'con un filtro applicato «Azzera» resta spento');
+      /* Il numero sul tasto dei filtri conta quelli applicati: su telefono il
+         pannello è chiuso, e un filtro nascosto fa cercare righe che ci sono. */
+      deve(r.dopo.segno === '1', 'il numero dei filtri attivi non compare: ' + r.dopo.segno);
+      deve(r.poi.off === true && r.poi.n === 0 && r.poi.tipo === '', '«Azzera» non azzera tutti i sette filtri');
+      return 'spento → acceso → spento, e il numero sul tasto';
+    });
+
+    await prova('richieste: il riepilogo si clicca e filtra lo stato', async () => {
+      /* Prima era una riga di testo: i numeri si leggevano e non si potevano
+         usare. La domanda «quante ne ho da lavorare» e l'azione «fammele
+         vedere» erano a due clic di distanza. */
+      const r = await page.evaluate(() => {
+        window.showPage('richieste');
+        window.rqAzzera();
+        const chips = [...document.querySelectorAll('#rq-chips .rq-chip')];
+        const etichette = chips.map(c => c.textContent.trim());
+        const accesa = () => document.querySelector('#rq-chips .rq-chip.on')?.textContent.trim();
+        const primaAccesa = accesa();
+        window.rqFiltraStato('nuova');
+        return { etichette, primaAccesa, dopo: accesa(), stato: document.getElementById('rq-stato').value,
+                 cliccabili: chips.every(c => c.tagName === 'BUTTON') };
+      });
+      deve(r.etichette.length === 5, 'pastiglie: ' + r.etichette.length + ' (attese 5: tutte + i quattro stati)');
+      deve(r.cliccabili, 'le pastiglie non sono cliccabili');
+      deve(/^Tutte/.test(r.primaAccesa || ''), 'senza filtro non è accesa «Tutte»: ' + r.primaAccesa);
+      deve(/^Nuove/.test(r.dopo || ''), 'cliccando «Nuove» non si accende lei: ' + r.dopo);
+      deve(r.stato === 'nuova', 'la pastiglia non applica il filtro di stato: ' + r.stato);
+      return r.etichette.join(' · ');
+    });
+
+    await prova('richieste: i filtri non cercano mentre si digita', async () => {
+      /* Lo standard delle liste (M2): la ricerca parte al clic su Cerca. Su
+         una coda di 127 righe, ricalcolare a ogni tasto fa saltare il cursore
+         e rende la pagina lenta proprio mentre si scrive. */
+      const pan = await (await page.request.get(BASE + '/index.html')).text();
+      const i = pan.indexOf('<div class="rq-filtri" id="rq-filtri">');
+      const griglia = pan.slice(i, pan.indexOf('</div>\n\n', i));
+      deve(!/oninput=/.test(griglia) && !/onchange=/.test(griglia),
+        'un filtro delle richieste ricalcola mentre si digita');
+      const az = pan.slice(pan.indexOf('<div class="rq-azioni">'), pan.indexOf('<div class="rq-chips"'));
+      deve(/rqRender\(\)/.test(az), 'manca il tasto Cerca');
+      return 'nessun oninput, un tasto Cerca';
     });
 
     await prova('chi assegna lascia traccia, e il filtro non si azzera da solo', async () => {

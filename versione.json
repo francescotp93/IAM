@@ -1,8 +1,21 @@
 {
-  "versione": "0.7.0",
-  "nome": "Il premio delle frazionate",
+  "versione": "0.8.0",
+  "nome": "Il menu riordinato",
   "data": "2026-09-20",
   "storia": [
+    {
+      "v": "0.8.0",
+      "data": "2026-09-20",
+      "nome": "Il menu riordinato",
+      "voci": [
+        "Contabilità ha cinque voci di menu, una per lavoro: Prima nota, Quadratura conti, Incassi da accreditare, Anomalie, Sospesi. Le prime tre esistevano da giorni ma non erano nel menu: si raggiungevano solo passando da un'altra schermata.",
+        "«Carica documenti» e «Conto» non sono più voci: i due file si caricano dentro Sospesi, e il saldo ricostruito con gli estratti della banca sta dentro Quadratura conti — sono i due numeri della stessa quadratura, e stavano in due posti diversi. I vecchi collegamenti portano dove il contenuto è andato.",
+        "Corretto un guasto vivo: Strumenti › Conti e causali non si apriva più, perché la quadratura dei conti aveva lo stesso nome interno e la intercettava.",
+        "Strumenti è diviso in due cassetti: Preventivatore (Fonti e collegamenti, Stato collegamenti, Parametri previdenziali) e Gestionale (Collaboratori, Conti e causali, Gestione compagnie, Provvigioni). Le pagine sono le stesse e i vecchi collegamenti funzionano.",
+        "Richieste: «Aggiungi richiesta» è in alto a destra sulla riga del titolo, i sette filtri sono una griglia regolare, e la riga di riepilogo è diventata una fila di pastiglie che filtrano lo stato con un clic. «Azzera» è spento finché non c'è niente da azzerare; su telefono i filtri si richiudono e il numero dice quanti ne restano applicati.",
+        "Dopo un rilascio, un pallino sull'avatar dice che ci sono novità da leggere. Si spegne quando le apri."
+      ]
+    },
     {
       "v": "0.7.0",
       "data": "2026-09-20",

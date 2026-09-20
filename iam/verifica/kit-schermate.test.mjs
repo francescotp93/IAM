@@ -41,7 +41,8 @@ const SUL_KIT = [
   'panel-compagnie',          // brief #02 M2
   'panel-provvigioni',        // brief #02 M2
   'contab-panel-primanota',   // brief #02 M3
-  'contab-panel-conti'        // brief #02 M3
+  'contab-panel-conti',       // brief #02 M3
+  'contab-panel-incassi'      // brief #02 M4
 ];
 
 /* Le regole del kit si cercano nel CSS SENZA i commenti che cominciano a

@@ -93,8 +93,10 @@ prova('i punti di chiamata ci sono, e non scendono', () => {
      sotto c'è quanto prende ognuno; 33 con la M3, che registra ogni movimento
      della prima nota, il suo annullamento, la riapertura e il saldo
      dichiarato di un conto: su una contabilità «chi ha scritto questa riga»
-     è la prima domanda che arriva, e arriva mesi dopo. */
-  const SOGLIA = 33;
+     è la prima domanda che arriva, e arriva mesi dopo; 38 con la M4, dove
+     ogni incasso portato in contabilità, accreditato o annullato lascia la
+     sua riga — è denaro che entra, e si deve sapere chi l'ha detto. */
+  const SOGLIA = 37;
   deve(chiamate >= SOGLIA, 'movimenti registrati da IAM: ' + chiamate + ' (erano ' + SOGLIA + ')');
   deve(chiamate - SOGLIA < 3, 'adesso sono ' + chiamate + ': alza la soglia, altrimenti smette di sorvegliare');
   /* E riguardano le cose che la gente chiede mesi dopo. */

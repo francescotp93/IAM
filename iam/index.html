@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.3.1">
-<meta name="app-versione-nome" content="La grafica di IAM su tutte le schermate">
+<meta name="app-versione" content="0.4.0">
+<meta name="app-versione-nome" content="Incassi da accreditare">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -756,7 +756,8 @@ input[type=file]{display:none;}
 #panel-compagnie,
 #panel-provvigioni,
 #contab-panel-primanota,
-#contab-panel-conti {
+#contab-panel-conti,
+#contab-panel-incassi {
   --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
   --w1-sfondo:#f3f5f7; --w1-bordo:#e3e8ec;
   --w1-testo:#1f2a37; --w1-testo2:#5a6b7c; --w1-testo3:#8b9aa9;
@@ -1557,6 +1558,7 @@ input[type=file]{display:none;}
     <button class="ptab act" id="ctab-quadratura" onclick="selContabTab('quadratura')">Quadratura</button>
     <button class="ptab"     id="ctab-primanota" onclick="selContabTab('primanota')">Prima nota</button>
     <button class="ptab"     id="ctab-conti"     onclick="selContabTab('conti')">Quadratura conti</button>
+    <button class="ptab"     id="ctab-incassi"   onclick="selContabTab('incassi')">Incassi da accreditare</button>
     <button class="ptab"     id="ctab-caricafile" onclick="selContabTab('caricafile')">Carica documenti</button>
     <button class="ptab"     id="ctab-anomalie" onclick="selContabTab('anomalie')">Anomalie<span class="nbadge" id="n-anom-tab" style="display:none;position:static;margin-left:4px;"></span></button>
     <button class="ptab"     id="ctab-sospesi"  onclick="selContabTab('sospesi')">Sospesi</button>
@@ -1790,6 +1792,34 @@ input[type=file]{display:none;}
     </section>
     <section class="cnt-somma" id="pnt-q-somma"></section>
     <section class="cnt-lista" id="pnt-q-lista"><div class="cl-sub">Carico i conti…</div></section>
+  </div>
+
+  <!-- ══ SUB: INCASSI DA ACCREDITARE ══════════════════════════════════════
+       Brief #02 · M4. Il pezzo che collega l'incasso di una rata alla prima
+       nota: fino a oggi una rata incassata restava dentro il portafoglio e il
+       conto dell'agenzia non lo sapeva.
+
+       PERCHE' NON SI CHIAMA «SOSPESI», che e' la parola del brief. In agenzia
+       «sospeso» e' gia' il premio che il cliente NON ha pagato — ed e' la
+       linguetta qui accanto, che legge il file della compagnia. Questo e'
+       l'opposto: il cliente ha pagato, e il denaro non e' ancora sul conto.
+       Due cose diverse con lo stesso nome sono due elenchi che non si
+       incrociano (§18): due nomi diversi. -->
+  <div id="contab-panel-incassi" style="display:none;">
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>Incassi da accreditare</h1>
+        <div class="subtitle">Il cliente ha pagato, il denaro non è ancora sul conto. I contanti entrano in cassa lo stesso giorno; POS, bonifici e assegni arrivano dopo.</div>
+      </div>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="incCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      </div>
+    </section>
+
+    <section class="cnt-somma" id="inc-somma"></section>
+    <section class="cnt-lista" id="inc-daportare"></section>
+    <section class="cnt-lista" id="inc-lista"><div class="cl-sub">Carico gli incassi…</div></section>
   </div>
 
   <!-- La finestra del movimento e della dichiarazione di saldo. -->
@@ -4588,6 +4618,11 @@ function cntFormConto(id) {
         <div class="fld"><label>Ordine</label><input type="number" id="cnt-ordine" value="${esc(String(c.ordine || 0))}"></div>
         <div class="fld ffull"><label><input type="checkbox" id="cnt-attivo" ${c.attivo === false ? '' : 'checked'}> Conto attivo</label>
           <div class="cl-sub">Un conto spento esce dalle tendine e resta nei riepiloghi del passato: i movimenti che ci sono passati sono storia.</div></div>
+        <div class="fld ffull"><label>Che cosa arriva su questo conto</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">${
+            Contabilita.MEZZI.map(m => `<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600">
+              <input type="checkbox" class="cnt-mezzo" value="${esc(m.k)}" ${(c.mezzi || []).includes(m.k) ? 'checked' : ''}> ${esc(m.l)}</label>`).join('')}</div>
+          <div class="cl-sub" style="margin-top:5px">Serve agli incassi (Contabilità › Incassi da accreditare): senza, il sistema non sa dove far arrivare un POS o un bonifico, e lo dice invece di sceglierlo a caso. Lo stesso mezzo su due conti è un'ambiguità: lascialo su uno solo.</div></div>
         <div class="fld ffull"><label>Note</label><textarea id="cnt-note" rows="2">${esc(c.note || '')}</textarea></div>
       </div>
       ${id ? `<div id="cnt-storia" style="margin-top:10px"></div>` : ''}
@@ -4659,6 +4694,9 @@ async function cntSalvaConto(id) {
     saldo_iniziale: Contabilita.numero(val('cnt-saldo')) ?? 0,
     ordine: parseInt(val('cnt-ordine'), 10) || 0,
     attivo: !!document.getElementById('cnt-attivo')?.checked,
+    /* Si legge SOLO quello che il pannello ha mostrato: un elenco vuoto vuol
+       dire «nessun mezzo arriva qui», ed e' un'informazione vera. */
+    mezzi: [...document.querySelectorAll('.cnt-mezzo:checked')].map(e => e.value),
     note: val('cnt-note').trim() || null
   };
   const v = Contabilita.validaConto(Object.assign({ id: id || null }, riga, { iban: val('cnt-iban') }), CNT_CONTI);
@@ -5176,6 +5214,321 @@ async function pntSalvaQuadratura(contoId) {
     pntChiudi();
     await pntCarica();
   } catch (err) { pntMsg(['Non riesco a salvare: ' + (err.message || err)]); }
+}
+
+/* ══ INCASSI DA ACCREDITARE (brief #02 · M4, 20/09/2026) ═════════════════════
+
+   Il pezzo che mancava fra l'incasso di una rata (§17, §24) e la prima nota
+   (§29): fino a oggi una rata incassata restava dentro il portafoglio e il
+   conto dell'agenzia non lo sapeva.
+
+   LE TRE COSE CHE QUESTA SCHERMATA NON FA.
+
+   1. **Non decide dove finiscono i soldi.** Lo dice il conto, con l'elenco dei
+      mezzi che riceve (Strumenti › Conti e causali). Se nessun conto dichiara
+      di ricevere un POS, qui si legge «non si sa» e si va a configurarlo —
+      scegliere il primo conto che passa vorrebbe dire sbagliare meta' delle
+      volte e indovinare l'altra meta'.
+
+   2. **Non inventa il mezzo.** Nove rate incassate su quindici, sul database
+      vero, non dicono come sono state pagate: non si puo' sapere se quei soldi
+      sono in cassa o in arrivo. Restano da sistemare, e si vedono.
+
+   3. **Non scrive niente da sola.** Ogni riga si porta in contabilita' con un
+      clic, e si vede prima che cosa produrra': un movimento oggi (contanti) o
+      un incasso da accreditare (tutto il resto).
+
+   Il verso del tempo, che e' la ragione di tutto: un incasso non e' un
+   accredito. Trattarli uguale fa dire al saldo di avere dei soldi che
+   arriveranno fra tre giorni — e la quadratura (§29) troverebbe la differenza
+   senza saper dire da dove viene. */
+/* `var` e non `let`, ed e' una regola di casa (§17): con `let` la variabile del
+   modulo e `window.INC_SOSPESI` sono due cose diverse, e una prova che inietta
+   dei dati finti scriverebbe in una mentre il codice legge l'altra — restando
+   verde senza aver misurato niente. */
+var INC_SOSPESI = [];
+var INC_CONTI = [];
+var INC_CAUSALI = [];
+var INC_TITOLI = [];
+var INC_MOVIMENTI = [];
+var INC_CARICATO = false;
+
+function incPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
+function incOggi() { return new Date().toISOString().slice(0, 10); }
+function incConto(id) { return INC_CONTI.find(c => c.id === id) || null; }
+
+async function incCarica(forza) {
+  if (!db) return;
+  if (forza || !INC_CARICATO) {
+    const l = document.getElementById('inc-lista');
+    if (l) l.innerHTML = '<div class="cl-sub">Carico gli incassi…</div>';
+  }
+  try {
+    const [so, co, ca, mo] = await Promise.all([
+      db.from('iam_sospesi').select('*').order('data_incasso', { ascending: false }),
+      db.from('iam_conti').select('*').order('ordine').order('nome'),
+      db.from('iam_causali').select('*').order('ordine'),
+      db.from('iam_movimenti').select('id,titolo_id,sospeso_id,annullato_il')
+    ]);
+    for (const r of [so, co, ca, mo]) if (r.error) throw r.error;
+    INC_SOSPESI = so.data || []; INC_CONTI = co.data || [];
+    INC_CAUSALI = ca.data || []; INC_MOVIMENTI = mo.data || [];
+    /* Le rate incassate le legge il portafoglio, che e' di QUOTO: qui servono
+       solo quelle con una data di incasso — senza, non c'e' niente da portare
+       in contabilita'. */
+    const ti = await db.from('quote_titoli')
+      .select('id,importo_lordo,mezzo_pagamento,incassato_il,stato,polizza_id,collaboratore_id')
+      .eq('stato', 'incassato').not('incassato_il', 'is', null)
+      .order('incassato_il', { ascending: false }).limit(500);
+    INC_TITOLI = ti.error ? [] : (ti.data || []);
+    INC_CARICATO = true;
+    incRender();
+  } catch (e) {
+    /* «Non si e' potuto leggere» non e' «non ce n'e'» (§12, §18, §26, §29). */
+    const avviso = `<div class="cnt-err">Non riesco a leggere gli incassi.<br>
+      <small>${esc(e.message || e)} — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerli.</small></div>`;
+    ['inc-lista', 'inc-daportare'].forEach(id => {
+      const b = document.getElementById(id); if (b) b.innerHTML = avviso;
+    });
+  }
+}
+
+/* Le rate incassate che non sono ancora entrate in contabilità: nessun
+   movimento e nessun incasso da accreditare le nomina. È l'elenco che dice
+   quanto lavoro c'è, e da cui si parte. */
+function incDaPortare() {
+  const conMov = new Set(INC_MOVIMENTI.filter(m => !m.annullato_il && m.titolo_id).map(m => m.titolo_id));
+  const conSosp = new Set(INC_SOSPESI.filter(s => s.stato !== 'annullato' && s.titolo_id).map(s => s.titolo_id));
+  return INC_TITOLI.filter(t => !conMov.has(t.id) && !conSosp.has(t.id));
+}
+
+function incRender() {
+  const puo = incPuoScrivere();
+  incRenderSomma();
+  incRenderDaPortare(puo);
+  incRenderLista(puo);
+}
+
+function incRenderSomma() {
+  const box = document.getElementById('inc-somma');
+  if (!box || !window.Contabilita) return;
+  const r = Contabilita.riepilogoSospesi(INC_SOSPESI, { oggi: incOggi() });
+  const da = incDaPortare();
+  const senzaMezzo = da.filter(t => !t.mezzo_pagamento).length;
+  box.innerHTML = `
+    <div class="cnt-card"><div class="cnt-k">Per strada</div>
+      <div class="cnt-v">${Contabilita.euro(r.totale)}</div>
+      <div class="cnt-s">${r.righe} incassi già fatti, non ancora sul conto</div></div>
+    <div class="cnt-card"><div class="cnt-k">In ritardo</div>
+      <div class="cnt-v">${Contabilita.euro(r.totale_ritardo)}</div>
+      <div class="cnt-s">${r.in_ritardo} fermi da più del previsto${
+        r.piu_vecchio ? ` · il più vecchio da ${r.giorni_max} giorni` : ''}</div></div>
+    <div class="cnt-card"><div class="cnt-k">Da portare in contabilità</div>
+      <div class="cnt-v">${da.length}</div>
+      <div class="cnt-s">rate incassate che il conto non sa ancora${
+        senzaMezzo ? ` · ${senzaMezzo} non dicono con che mezzo` : ''}</div></div>
+    ${r.senza_conto ? `<div class="cnt-card"><div class="cnt-k">Senza un conto</div>
+      <div class="cnt-v">${r.senza_conto}</div>
+      <div class="cnt-s">nessuno ha detto dove arriveranno: si configura in Strumenti › Conti e causali</div></div>` : ''}`;
+}
+
+function incRenderDaPortare(puo) {
+  const box = document.getElementById('inc-daportare');
+  if (!box) return;
+  const da = incDaPortare();
+  if (!da.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="d-card" style="margin-bottom:12px">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-arrow-bar-to-down"></i></span> Da portare in contabilità</div>
+        <span class="cl-sub">${da.length} rate incassate</span></div>
+      <div class="card-body" style="padding:0">` +
+    da.slice(0, 50).map(t => {
+      const d = Contabilita.destinoIncasso(t, INC_CONTI);
+      const eti = d.tipo === 'cassa' ? '<span class="cnt-tag utile">in cassa oggi</span>'
+                : d.tipo === 'sospeso' ? '<span class="cnt-tag transito">arriva dopo</span>'
+                : '<span class="cnt-tag">non si sa</span>';
+      return `<div class="cnt-r">
+        <div style="flex:1;min-width:0">
+          <div class="cnt-nome">${Contabilita.euro(Contabilita.numero(t.importo_lordo))} ${eti}
+            ${d.etichetta ? `<span class="cnt-tag">${esc(d.etichetta)}</span>` : ''}</div>
+          <div class="cnt-sotto">Incassata il ${esc(pntData(t.incassato_il))}${
+            d.conto ? ' · ' + esc(d.conto.nome) : ''}</div>
+          ${d.motivo ? `<div class="cnt-sotto">${esc(d.motivo)}</div>` : ''}
+        </div>
+        <div style="text-align:right">
+          ${puo && d.tipo !== 'non-si-sa'
+            ? `<button class="d-btn primario" type="button" style="padding:3px 9px;font-size:11px"
+                 onclick="incPorta('${esc(t.id)}')">${d.tipo === 'cassa' ? 'Registra in cassa' : 'Metti fra gli incassi'}</button>`
+            : ''}
+        </div>
+      </div>`;
+    }).join('') +
+    (da.length > 50 ? `<div class="cl-sub" style="padding:10px 12px">…e altre ${da.length - 50}.</div>` : '') +
+    `</div></div>`;
+}
+
+function incRenderLista(puo) {
+  const box = document.getElementById('inc-lista');
+  if (!box) return;
+  const aperti = Contabilita.sospesiAperti(INC_SOSPESI);
+  if (!INC_SOSPESI.length) {
+    box.innerHTML = `<div class="cnt-avv">Nessun incasso da accreditare.<br>
+      <small>Ci finiscono i pagamenti con POS, bonifico, assegno e carte: il cliente ha pagato, il denaro arriva sul conto dopo. I contanti no, quelli entrano in cassa lo stesso giorno.</small></div>`;
+    return;
+  }
+  if (!aperti.length) {
+    box.innerHTML = '<div class="cl-sub" style="padding:14px">Nessun incasso aperto: tutto quello che era per strada è arrivato.</div>';
+    return;
+  }
+  box.innerHTML = `<div class="d-card">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-clock-dollar"></i></span> Aperti</div>
+        <span class="cl-sub">${aperti.length}</span></div>
+      <div class="card-body" style="padding:0">` +
+    aperti.map(s => {
+      const rit = Contabilita.inRitardo(s, incOggi());
+      const g = Contabilita.giorniDa(s.data_incasso, incOggi());
+      const m = Contabilita.mezzo(s.mezzo);
+      return `<div class="cnt-r">
+        <div style="flex:1;min-width:0">
+          <div class="cnt-nome">${Contabilita.euro(Contabilita.numero(s.importo))}
+            <span class="cnt-tag">${esc(m ? m.l : s.mezzo)}</span>
+            ${rit ? '<span class="cnt-tag uscita">in ritardo</span>' : ''}</div>
+          <div class="cnt-sotto">Incassato il ${esc(pntData(s.data_incasso))}${
+            g != null ? ` · ${g} giorni fa` : ''} · ${esc(incConto(s.conto_id)?.nome || 'conto da dire')}</div>
+          ${s.descrizione ? `<div class="cnt-sotto">${esc(s.descrizione)}</div>` : ''}
+        </div>
+        <div style="text-align:right">
+          ${puo ? `<button class="d-btn primario" type="button" style="padding:3px 9px;font-size:11px"
+               onclick="incApriAccredito('${esc(s.id)}')">Accredita</button>` : ''}
+        </div>
+      </div>`;
+    }).join('') + `</div></div>`;
+}
+
+/* ─── Portare una rata in contabilità ────────────────────────────────────── */
+async function incPorta(titoloId) {
+  const t = INC_TITOLI.find(x => x.id === titoloId);
+  if (!t) return;
+  const d = Contabilita.destinoIncasso(t, INC_CONTI);
+  if (d.tipo === 'non-si-sa') { alert(d.motivo); return; }
+  const inc = INC_CAUSALI.find(c => c.codice === Contabilita.CAUSALE_INCASSO);
+  if (!inc) { alert('Manca la causale «Incasso premi»: si ricrea in Strumenti › Conti e causali.'); return; }
+  try {
+    if (d.tipo === 'cassa') {
+      /* Contanti: il denaro è in mano, il conto si muove oggi. */
+      const { data, error } = await db.from('iam_movimenti').insert({
+        data: t.incassato_il, conto_id: d.conto.id, causale_id: inc.id,
+        importo: Contabilita.numero(t.importo_lordo), titolo_id: t.id, origine: 'titolo',
+        descrizione: 'Incasso in contanti'
+      }).select('id').single();
+      if (error) throw error;
+      logMovimento('Incasso registrato in cassa', 'movimento',
+                   Contabilita.euro(Contabilita.numero(t.importo_lordo)) + ' su ' + d.conto.nome, data?.id);
+    } else {
+      /* Tutto il resto: il denaro è per strada. Nessun movimento finché non
+         arriva — scriverlo adesso farebbe dire al saldo di avere dei soldi
+         che non ci sono ancora. */
+      const { data, error } = await db.from('iam_sospesi').insert({
+        titolo_id: t.id, importo: Contabilita.numero(t.importo_lordo),
+        mezzo: d.mezzo, data_incasso: t.incassato_il, conto_id: d.conto.id
+      }).select('id').single();
+      if (error) throw error;
+      logMovimento('Incasso da accreditare', 'movimento',
+                   Contabilita.euro(Contabilita.numero(t.importo_lordo)) + ' · ' + (d.etichetta || d.mezzo), data?.id);
+    }
+    await incCarica(true);
+  } catch (e) { alert('Non riesco a registrare: ' + (e.message || e)); }
+}
+
+/* ─── L'accredito ────────────────────────────────────────────────────────── */
+function incChiudi() { const o = document.getElementById('pnt-ov'); if (o) o.style.display = 'none'; }
+
+function incApriAccredito(id) {
+  if (!incPuoScrivere()) return;
+  const s = INC_SOSPESI.find(x => x.id === id);
+  if (!s) return;
+  const ov = document.getElementById('pnt-ov'), box = document.getElementById('pnt-box');
+  if (!ov || !box) return;
+  const m = Contabilita.mezzo(s.mezzo);
+  box.innerHTML = `
+    <div style="padding:18px 18px 0">
+      <div style="font-size:17px;font-weight:800">Accredita ${Contabilita.euro(Contabilita.numero(s.importo))}</div>
+      <div class="cl-sub" style="margin-top:3px">Incassato il ${esc(pntData(s.data_incasso))} con ${esc(m ? m.l : s.mezzo)}.
+        Metti il giorno in cui il denaro è arrivato sul conto: da lì in poi il saldo lo conta.</div>
+    </div>
+    <div class="modal-body" style="padding:14px 18px">
+      <div id="pnt-msg"></div>
+      <div class="fgrid">
+        <div class="fld"><label>Arrivato il</label><input type="date" id="inc-a-data" value="${esc(incOggi())}"></div>
+        <div class="fld"><label>Sul conto</label><select id="inc-a-conto">
+          <option value="">— scegli —</option>
+          ${INC_CONTI.filter(c => c.attivo !== false).map(c =>
+            `<option value="${esc(c.id)}" ${c.id === s.conto_id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}
+        </select></div>
+      </div>
+      <div class="fld" style="margin-top:8px"><label>Nota</label>
+        <input type="text" id="inc-a-nota" value="${esc(s.nota || '')}"></div>
+      <div class="cl-sub" style="margin-top:12px">Se invece questo incasso non arriverà mai — uno storno, una
+        contestazione — si annulla: la riga resta e dice perché.</div>
+      <div class="fld" style="margin-top:6px"><label>Motivo dell'annullamento</label>
+        <input type="text" id="inc-a-perche" placeholder="es. POS stornato dalla banca"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:0 18px 18px">
+      <button class="d-btn" type="button" onclick="incChiudi()">Chiudi</button>
+      <button class="d-btn" type="button" onclick="incAnnulla('${esc(id)}')">Annulla l'incasso</button>
+      <button class="d-btn primario" type="button" onclick="incAccredita('${esc(id)}')">È arrivato</button>
+    </div>`;
+  ov.style.display = 'flex';
+}
+
+async function incAccredita(id) {
+  const s = INC_SOSPESI.find(x => x.id === id);
+  if (!s) return;
+  const dati = {
+    accreditato_il: document.getElementById('inc-a-data')?.value || '',
+    conto_id: document.getElementById('inc-a-conto')?.value || ''
+  };
+  const e = Contabilita.validaAccredito(s, dati, { conti: INC_CONTI });
+  pntMsg(e);
+  if (e.length) return;
+  const inc = INC_CAUSALI.find(c => c.codice === Contabilita.CAUSALE_INCASSO);
+  if (!inc) { pntMsg(['Manca la causale «Incasso premi».']); return; }
+  try {
+    /* Prima il movimento, poi la chiusura: se cade in mezzo resta un movimento
+       senza il suo sospeso chiuso — si vede, e si rifà. Nell'ordine opposto
+       resterebbe un incasso «arrivato» che sul conto non c'è. */
+    const { data, error } = await db.from('iam_movimenti').insert({
+      data: dati.accreditato_il, conto_id: dati.conto_id, causale_id: inc.id,
+      importo: Contabilita.numero(s.importo), titolo_id: s.titolo_id || null,
+      sospeso_id: s.id, origine: 'sospeso',
+      descrizione: 'Accredito ' + (Contabilita.mezzo(s.mezzo)?.l || s.mezzo)
+    }).select('id').single();
+    if (error) throw error;
+    const { error: e2 } = await db.from('iam_sospesi').update({
+      stato: 'accreditato', accreditato_il: dati.accreditato_il,
+      conto_id: dati.conto_id, movimento_id: data.id,
+      nota: document.getElementById('inc-a-nota')?.value.trim() || null
+    }).eq('id', id);
+    if (e2) throw e2;
+    logMovimento('Incasso accreditato', 'movimento',
+                 Contabilita.euro(Contabilita.numero(s.importo)) + ' su ' + (incConto(dati.conto_id)?.nome || ''), data.id);
+    incChiudi();
+    await incCarica(true);
+  } catch (err) { pntMsg(['Non riesco ad accreditare: ' + (err.message || err)]); }
+}
+
+async function incAnnulla(id) {
+  const perche = (document.getElementById('inc-a-perche')?.value || '').trim();
+  if (!perche) { pntMsg(['Per annullare serve il motivo: uno storno e un errore di battitura non sono la stessa cosa.']); return; }
+  try {
+    const { error } = await db.from('iam_sospesi')
+      .update({ stato: 'annullato', annullato_perche: perche }).eq('id', id);
+    if (error) throw error;
+    logMovimento('Incasso da accreditare annullato', 'movimento', perche, id);
+    incChiudi();
+    await incCarica(true);
+  } catch (e) { pntMsg(['Non riesco ad annullare: ' + (e.message || e)]); }
 }
 
 /* ══ TARIFFE, ACCORDI E GRUPPI (brief #02 · M2, 20/09/2026) ══════════════════
@@ -6261,7 +6614,7 @@ function selContabTab(sub) {
   /* Ogni voce di Contabilità apre la sua schermata e basta: «Carica documenti»
      mostra i file, «Quadratura» i numeri della giornata. (01/08/2026) */
   if (sub === 'carica') sub = 'quadratura';   // vecchio nome rimasto in memoria
-  ['quadratura','primanota','conti','caricafile','anomalie','sospesi','storico','conto'].forEach(s => {
+  ['quadratura','primanota','conti','incassi','caricafile','anomalie','sospesi','storico','conto'].forEach(s => {
     const btn = document.getElementById('ctab-'+s);
     const pnl = document.getElementById('contab-panel-'+s);
     if (btn) btn.classList.toggle('act', s===sub);
@@ -6273,6 +6626,7 @@ function selContabTab(sub) {
   /* §6b: una schermata il cui contenuto lo scrive il codice deve avere il suo
      inizializzatore, altrimenti la linguetta apre un riquadro vuoto. */
   if (sub==='primanota' || sub==='conti') pntCarica();
+  if (sub==='incassi') incCarica();
 }
 
 async function caricaDatiPerData(dataSelezionata) {

@@ -1,8 +1,20 @@
 {
-  "versione": "0.3.1",
-  "nome": "La grafica di IAM su tutte le schermate",
+  "versione": "0.4.0",
+  "nome": "Incassi da accreditare",
   "data": "2026-09-20",
   "storia": [
+    {
+      "v": "0.4.0",
+      "data": "2026-09-20",
+      "nome": "Incassi da accreditare",
+      "voci": [
+        "Contabilità › Incassi da accreditare: le rate incassate entrano in contabilità con un clic. I contanti vanno in cassa lo stesso giorno; POS, bonifici e assegni restano in attesa finché il denaro non arriva sul conto.",
+        "Il saldo non conta più soldi che devono ancora arrivare: un incasso e un accredito sono due momenti diversi, e adesso il sistema li tiene separati.",
+        "Ogni incasso in attesa dice da quanti giorni è fermo, e quali sono in ritardo per il loro mezzo di pagamento.",
+        "In Strumenti › Conti e causali ogni conto dichiara quali mezzi riceve: senza, il sistema dice «non si sa» invece di scegliere un conto a caso.",
+        "Un incasso che non arriverà mai (uno storno, una contestazione) si annulla col motivo: la riga resta e dice perché."
+      ]
+    },
     {
       "v": "0.3.1",
       "data": "2026-09-20",

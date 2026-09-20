@@ -203,6 +203,194 @@ prova('gli importi si leggono nelle due forme, e un verso sconosciuto non si ind
   return 'due forme di importo, verso mai indovinato';
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA PRIMA NOTA E LA QUADRATURA — brief #02 · M3 (20/09/2026)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const inc = byCod('incasso_premi').id;      // entrata, premi, non incide sull'utile
+const aff = byCod('affitti').id;            // uscita,  aziendale, incide sull'utile
+const ban = byCod('spese_bancarie').id;     // uscita,  natura null: vale su tutti
+
+prova('un movimento ANNULLATO esce da ogni totale, e resta a vedersi', () => {
+  /* La regola 5. Se un solo posto che somma si dimentica di escluderlo, il
+     saldo comincia a non tornare e nessuno sa dire da dove. */
+  const righe = [
+    M({ id: 'a', causale_id: inc, importo: 300 }),
+    M({ id: 'b', causale_id: inc, importo: 200, annullato_il: '2026-09-11T10:00:00Z', annullato_perche: 'doppione' })
+  ];
+  const s = C.saldo(PREMI, righe, { causali: CAU });
+  deve(s.saldo === 1300, 'il saldo conta un movimento annullato: ' + s.saldo);
+  deve(s.movimenti === 1, 'il conteggio dei movimenti include l\'annullato: ' + s.movimenti);
+
+  const p = C.progressivo(PREMI, righe, { causali: CAU });
+  deve(p.length === 1, 'il progressivo mostra la riga annullata: ' + p.length);
+
+  const ce = C.contoEconomico(righe, CAU);
+  deve(ce.transito_entrate === 300, 'il conto economico conta l\'annullato: ' + ce.transito_entrate);
+
+  const r = C.riepilogo(righe, { causali: CAU });
+  deve(r.entrate === 300 && r.righe === 1, 'il riepilogo conta l\'annullato: ' + JSON.stringify(r));
+  /* E lo dice: «12 movimenti» quando tre sono annullati è un numero che non
+     torna con l'elenco che si sta guardando. */
+  deve(r.annullati === 1, 'il riepilogo non dice quanti sono annullati');
+
+  const pc = C.perCausale(righe, CAU);
+  deve(pc.length === 1 && pc[0].totale === 300, 'il riepilogo per causale conta l\'annullato');
+  return 'fuori da saldo, progressivo, conto economico, riepilogo e per-causale';
+});
+
+prova('l\'importo si scrive positivo: il verso lo dice la causale', () => {
+  /* La regola 6. Un «-50» su «Incasso premi» è un'uscita travestita da
+     entrata: dentro un totale non si vede più. */
+  const e = C.validaMovimento({ data: '2026-09-10', conto_id: 'k1', causale_id: inc, importo: -50 },
+                              { conti: CONTI, causali: CAU });
+  deve(e.length === 1 && /sempre positivo/.test(e[0]), 'un importo negativo è passato: ' + JSON.stringify(e));
+  deve(C.validaMovimento({ data: '2026-09-10', conto_id: 'k1', causale_id: inc, importo: 0 },
+                         { conti: CONTI, causali: CAU }).length === 1, 'lo zero è passato come movimento');
+  /* E il verso non si può scrivere a mano contro la causale: il motore lo
+     prende dalla causale, che è l'unica fonte. */
+  deve(C.versoDi({ causale_id: inc }, C.vivi ? Object.fromEntries(CAU.map(c => [c.id, c])) : null) === 1,
+    'il verso di un incasso non è un\'entrata');
+  return 'negativo e zero rifiutati, verso dalla causale';
+});
+
+prova('art. 117 anche in prima nota: la schermata lo dice PRIMA del salvataggio', () => {
+  /* L'affitto sul conto premi è esattamente la confusione che la norma vieta.
+     Il controllo vero è nel trigger; questo serve a dirlo con parole umane
+     invece di far fallire un insert. */
+  const e = C.validaMovimento({ data: '2026-09-10', conto_id: 'k1', causale_id: aff, importo: 500 },
+                              { conti: CONTI, causali: CAU });
+  deve(e.length === 1, 'l\'affitto è passato sul conto premi: ' + JSON.stringify(e));
+  /* La spesa bancaria invece passa su tutti e due: il bollo lo addebita anche
+     la banca del conto premi, e vietarlo vorrebbe dire non poter registrare
+     un fatto accaduto. */
+  deve(C.validaMovimento({ data: '2026-09-10', conto_id: 'k1', causale_id: ban, importo: 2 },
+                         { conti: CONTI, causali: CAU }).length === 0, 'la spesa bancaria rifiutata sul conto premi');
+  deve(C.validaMovimento({ data: '2026-09-10', conto_id: 'k2', causale_id: ban, importo: 2 },
+                         { conti: CONTI, causali: CAU }).length === 0, 'la spesa bancaria rifiutata sul conto aziendale');
+  /* E su un conto spento non si registra più niente. */
+  const spento = CONTI.map(c => c.id === 'k2' ? Object.assign({}, c, { attivo: false }) : c);
+  const e2 = C.validaMovimento({ data: '2026-09-10', conto_id: 'k2', causale_id: aff, importo: 500 },
+                               { conti: spento, causali: CAU });
+  deve(e2.some(x => /spento/.test(x)), 'si registra su un conto spento: ' + JSON.stringify(e2));
+  return 'natura, conto spento, e la spesa bancaria che vale su tutti';
+});
+
+prova('annullare senza dire perché non si può', () => {
+  const e = C.validaMovimento({ data: '2026-09-10', conto_id: 'k1', causale_id: inc, importo: 100,
+                                annullato_il: '2026-09-11T09:00:00Z' }, { conti: CONTI, causali: CAU });
+  deve(e.some(x => /motivo/.test(x)), 'annullato senza motivo è passato: ' + JSON.stringify(e));
+  return 'il motivo è obbligatorio, ed è l\'unica cosa che spiega quel buco fra sei mesi';
+});
+
+prova('QUADRATURA: «non è mai stata fatta» non è «quadra»', () => {
+  /* La regola 7, e il motivo per cui `quadra` ha tre valori. Un conto mai
+     verificato che si mostra come quadrato è la bugia più comoda che un
+     sistema di contabilità possa raccontare. */
+  const righe = [M({ id: 'a', causale_id: inc, importo: 300 })];
+  const q = C.quadratura(PREMI, righe, [], { causali: CAU, al: '2026-09-20' });
+  deve(q.quadra === null, 'senza dichiarazione dice che quadra: ' + q.quadra);
+  deve(q.dichiarato === null && q.differenza === null, 'inventa un saldo dichiarato');
+  deve(/mai stata fatta|Nessun saldo dichiarato/.test(q.motivo || ''), 'non spiega perché');
+  deve(q.ricostruito === 1300, 'il ricostruito è sbagliato: ' + q.ricostruito);
+  return 'quadra: null, e il motivo scritto';
+});
+
+prova('QUADRATURA: il confronto si fa alla data dell\'estratto conto, non a oggi', () => {
+  /* Un estratto conto del 31/08 non sa niente dei movimenti di settembre:
+     confrontarlo col saldo di oggi produrrebbe una differenza inventata, e
+     qualcuno andrebbe a cercare un errore che non c'è. */
+  const righe = [
+    M({ id: 'a', causale_id: inc, importo: 300, data: '2026-08-10' }),
+    M({ id: 'b', causale_id: inc, importo: 999, data: '2026-09-05' })   // dopo l'estratto conto
+  ];
+  const dich = [{ conto_id: 'k1', data: '2026-08-31', saldo_dichiarato: 1300 }];
+  const q = C.quadratura(PREMI, righe, dich, { causali: CAU, al: '2026-09-20' });
+  deve(q.al === '2026-08-31', 'il confronto non è alla data dichiarata: ' + q.al);
+  deve(q.ricostruito === 1300 && q.differenza === 0 && q.quadra === true,
+    'il conto non quadra pur essendo giusto: ' + JSON.stringify(q));
+  /* E il saldo di oggi resta leggibile: serve a sapere quanti soldi ci sono. */
+  deve(q.saldo_oggi === 2299, 'il saldo di oggi non c\'è o è sbagliato: ' + q.saldo_oggi);
+  /* Una dichiarazione nel futuro rispetto alla data guardata non si usa. */
+  const q2 = C.quadratura(PREMI, righe, dich, { causali: CAU, al: '2026-08-15' });
+  deve(q2.quadra === null, 'ha usato una dichiarazione più recente della data guardata');
+  return 'confronto alla data dichiarata, saldo di oggi a parte';
+});
+
+prova('QUADRATURA: la differenza dice da che parte sta, e la tolleranza è un centesimo', () => {
+  const righe = [M({ id: 'a', causale_id: inc, importo: 300, data: '2026-08-10' })];
+  /* Il sistema ha di più: un movimento registrato due volte, o uno mai uscito. */
+  const q1 = C.quadratura(PREMI, righe, [{ conto_id: 'k1', data: '2026-08-31', saldo_dichiarato: 1250 }], { causali: CAU });
+  deve(q1.quadra === false && q1.differenza === 50 && /in più della banca/.test(q1.motivo),
+    'non riconosce il verso della differenza: ' + JSON.stringify(q1));
+  /* La banca ha di più: c'è un movimento che non è stato registrato. */
+  const q2 = C.quadratura(PREMI, righe, [{ conto_id: 'k1', data: '2026-08-31', saldo_dichiarato: 1350 }], { causali: CAU });
+  deve(q2.quadra === false && q2.differenza === -50 && /banca ha/.test(q2.motivo), 'verso opposto sbagliato');
+  /* Un centesimo passa (è un arrotondamento), due no. */
+  deve(C.quadratura(PREMI, righe, [{ conto_id: 'k1', data: '2026-08-31', saldo_dichiarato: 1299.99 }], { causali: CAU }).quadra === true,
+    'un centesimo di arrotondamento fa fallire la quadratura');
+  deve(C.quadratura(PREMI, righe, [{ conto_id: 'k1', data: '2026-08-31', saldo_dichiarato: 1299.98 }], { causali: CAU }).quadra === false,
+    'due centesimi passano: la tolleranza è diventata una scusa');
+  return 'verso della differenza + tolleranza di 0,01';
+});
+
+prova('QUADRATURA: un movimento annullato sposta il saldo ricostruito', () => {
+  /* Le due regole insieme, ed è il caso vero: si annulla un doppione e il
+     conto torna a quadrare. Se l'annullato restasse nei totali, si andrebbe a
+     cercare l'errore in banca. */
+  const doppione = { id: 'b', conto_id: 'k1', data: '2026-08-10', causale_id: inc, importo: 300 };
+  const righe = [M({ id: 'a', causale_id: inc, importo: 300, data: '2026-08-10' }), doppione];
+  const dich = [{ conto_id: 'k1', data: '2026-08-31', saldo_dichiarato: 1300 }];
+  deve(C.quadratura(PREMI, righe, dich, { causali: CAU }).quadra === false, 'col doppione quadrava già');
+  doppione.annullato_il = '2026-09-01T08:00:00Z';
+  doppione.annullato_perche = 'registrato due volte';
+  deve(C.quadratura(PREMI, righe, dich, { causali: CAU }).quadra === true, 'annullato il doppione non quadra');
+  return 'annulla il doppione e il conto torna';
+});
+
+prova('il riepilogo per causale non nasconde quello che non conosce', () => {
+  const righe = [
+    M({ id: 'a', causale_id: inc, importo: 300 }),
+    M({ id: 'b', causale_id: aff, importo: 800, conto_id: 'k2' }),
+    M({ id: 'c', causale_id: 'sparita', importo: 50 })
+  ];
+  const pc = C.perCausale(righe, CAU);
+  deve(pc.length === 3, 'ha perso una causale per strada: ' + pc.length);
+  deve(pc[0].totale === 800, 'non è ordinato per importo: la prima riga è quella che interessa');
+  const ign = pc.find(r => r.ignota);
+  deve(ign && ign.totale === 50, 'una causale sconosciuta è sparita in silenzio');
+  /* Sparire in silenzio vorrebbe dire che un refuso toglie dei soldi da un
+     riepilogo e non se ne accorge nessuno. */
+  deve(ign.nome === 'Causale sconosciuta', 'la riga ignota non si dichiara');
+  return '3 righe, ordinate, e l\'ignota che si vede';
+});
+
+prova('le tabelle della M3 esistono nella migrazione, con i divieti nel DATABASE', () => {
+  const sql = readFileSync(join(RADICE, 'supabase/migrations/20260920_b02_m3_prima_nota.sql'), 'utf8');
+  deve(/create table if not exists public\.iam_movimenti/.test(sql), 'manca iam_movimenti');
+  deve(/create table if not exists public\.iam_quadrature/.test(sql), 'manca iam_quadrature');
+  /* Regola 6 nel database, non solo in pagina. */
+  deve(/importo\s+numeric\(14,2\) not null check \(importo > 0\)/.test(sql), 'l\'importo può essere negativo o zero');
+  /* Regola 5: il divieto di cancellare è un trigger, perché la schermata è una
+     delle strade e non l'unica. */
+  deve(/create trigger iam_movimenti_no_delete_trg/.test(sql), 'manca il trigger che vieta la cancellazione');
+  deve(/annullato_il is null or coalesce\(btrim\(annullato_perche\), ''\) <> ''/.test(sql), 'si può annullare senza motivo');
+  /* Regola 2 nel database. */
+  deve(/n_causale <> n_conto then[\s\S]{0,200}raise exception/.test(sql), 'la natura non è controllata dal database');
+  /* Regola 4 della M1, adesso col vincolo vero. */
+  deve(/references public\.iam_conti\(id\)\s+on delete restrict/.test(sql), 'un conto con movimenti si può cancellare');
+  /* Una rata genera un movimento solo, e lo dice Postgres. */
+  deve(/create unique index if not exists iam_movimenti_titolo_uno[\s\S]{0,160}annullato_il is null/.test(sql),
+    'una rata può generare due movimenti');
+  /* Chi scrive è l'admin: qui si dice dove sono finiti dei soldi. */
+  deve(/create policy movimenti_write[\s\S]{0,160}iam_is_admin\(\)/.test(sql), 'la prima nota non è chiusa all\'admin');
+  deve(/create policy movimenti_select[\s\S]{0,120}iam_is_staff\(\)/.test(sql), 'la prima nota non si legge nemmeno allo staff');
+  /* E niente seed: inventare movimenti vorrebbe dire scrivere nella
+     contabilità dell'agenzia dei fatti che non sono successi. */
+  deve(!/insert into public\.iam_movimenti/.test(sql), 'la migrazione inventa dei movimenti');
+  return 'due tabelle, tre trigger/vincoli, RLS, zero seed';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

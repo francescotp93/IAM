@@ -96,6 +96,10 @@
        che arriva quando un estratto conto non torna. */
     tariffa:       { l: 'Tariffa',       i: 'ti-percentage',      tabella: 'iam_provvigioni_tariffa', id: 'uuid' },
     gruppo:        { l: 'Gruppo',        i: 'ti-users-group',     tabella: 'iam_gruppi', id: 'uuid' },
+    /* La prima nota (brief #02 M3). Un movimento non si corregge di nascosto:
+       chi l'ha scritto, chi l'ha corretto e chi l'ha annullato si leggono
+       dalla riga stessa, come per una polizza. */
+    movimento:     { l: 'Movimento',     i: 'ti-arrows-exchange',  tabella: 'iam_movimenti', id: 'uuid' },
     azienda:       { l: 'Agenzia',       i: 'ti-building',        tabella: null }
   };
 

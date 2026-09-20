@@ -31,7 +31,9 @@
    │ denaro in transito: muovono il conto, non il risultato.                   │
    └───────────────────────────────────────────────────────────────────────────┘
 
-   LE QUATTRO REGOLE CHE QUESTO MOTORE FA RISPETTARE
+   LE SETTE REGOLE CHE QUESTO MOTORE FA RISPETTARE
+   (le prime quattro sono della M1, le altre tre sono arrivate con la prima
+   nota: sono in fondo, sotto la loro riga)
 
    1. **Il saldo non si scrive, si calcola.** L'unico numero scritto a mano è
       il saldo iniziale, quello del giorno in cui il conto entra nel sistema.
@@ -56,6 +58,24 @@
       sono storia: cancellare il conto li renderebbe orfani. Un conto spento
       esce dalle tendine e resta nei riepiloghi del passato.
 
+   ─── AGGIUNTO CON LA M3 (20/09/2026): LA PRIMA NOTA E LA QUADRATURA ─────────
+
+   5. **Un movimento non si cancella: si annulla, con il motivo.** Una riga
+      cancellata lascia un buco che nessuno sa più spiegare, e in un registro
+      di denaro «non c'è» e «è stato tolto» sono due cose diverse. La riga
+      annullata resta, esce da OGNI totale (saldo, progressivo, conto
+      economico, riepiloghi) e si legge nello storico col suo perché.
+
+   6. **L'importo è sempre positivo: il verso lo dice la causale.** Un «-50» in
+      una riga «Incasso premi» è un'uscita travestita da entrata, e dentro un
+      totale non si vede più. Chi digita sceglie la causale, non il segno.
+
+   7. **«Quadra» e «non è stata fatta la quadratura» sono due cose diverse.**
+      Il saldo RICOSTRUITO lo sa il sistema (iniziale + movimenti); quello VERO
+      lo sa la banca, o chi ha contato la cassa. Senza un saldo dichiarato non
+      si dice che un conto quadra: si dice che nessuno l'ha ancora verificato.
+      È la stessa distinzione fra «non risponde» e «non c'è niente».
+
    Il motore NON tocca il database e NON disegna: calcola e valida. Lo
    caricano IAM (`iam/index.html`) e il preventivatore, dallo stesso indirizzo
    e dallo stesso file — due copie del vocabolario dei conti vorrebbero dire
@@ -64,7 +84,7 @@
 (function () {
   'use strict';
 
-  var VERSIONE = '2026-09-19';
+  var VERSIONE = '2026-09-20';
 
   /* ═══ VOCABOLARI ══════════════════════════════════════════════════════════ */
 
@@ -323,6 +343,14 @@
     return m;
   }
 
+  /* Regola 5. Un movimento annullato non è un movimento: esce da OGNI totale.
+     Sta in una funzione sola perché i posti che sommano sono cinque, e cinque
+     controlli scritti a mano sono cinque occasioni di dimenticarne uno — che
+     è il modo in cui un saldo comincia a non tornare senza che nessuno capisca
+     perché. `vivi()` è la porta: chi somma passa di qui. */
+  function vivo(m) { return !!m && !m.annullato_il; }
+  function vivi(movimenti) { return (movimenti || []).filter(vivo); }
+
   /* Il saldo di un conto = saldo iniziale + tutto quello che ci è passato.
      Niente colonna memorizzata: vedi la regola 1 in testa al file.
 
@@ -336,7 +364,7 @@
     var tot = numero(conto && conto.saldo_iniziale) || 0;
     var n = 0;
     (movimenti || []).forEach(function (m) {
-      if (!m) return;
+      if (!vivo(m)) return;                 /* regola 5 */
       if (conto && m.conto_id !== conto.id) return;
       if (opz.al) { if (!m.data || m.data > opz.al) return; }
       if (opz.dal && m.data && m.data < opz.dal) return;
@@ -357,7 +385,7 @@
   function progressivo(conto, movimenti, opz) {
     opz = opz || {};
     var causali = opz.causali ? indice(opz.causali) : null;
-    var righe = (movimenti || []).filter(function (m) { return m && (!conto || m.conto_id === conto.id); });
+    var righe = vivi(movimenti).filter(function (m) { return !conto || m.conto_id === conto.id; });
     righe.sort(function (a, b) {
       var da = testo(a.data), db = testo(b.data);
       if (da !== db) return da < db ? -1 : 1;
@@ -411,7 +439,7 @@
     var idx = indice(causali);
     var r = { ricavi: 0, costi: 0, utile: 0, transito_entrate: 0, transito_uscite: 0, righe: 0, senza_causale: 0 };
     (movimenti || []).forEach(function (m) {
-      if (!m) return;
+      if (!vivo(m)) return;                 /* regola 5 */
       if (opz.dal && (!m.data || m.data < opz.dal)) return;
       if (opz.al && (!m.data || m.data > opz.al)) return;
       var c = m.causale_id ? idx[m.causale_id] : null;
@@ -456,6 +484,180 @@
     return (v < 0 ? '-' : '') + '€ ' + Math.abs(v).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  /* ═══ LA PRIMA NOTA (M3) ══════════════════════════════════════════════════ */
+
+  /* Che cosa deve avere un movimento per poter essere scritto. Le stesse
+     regole del database, dette prima e con parole che si capiscono: il
+     controllo vero sta nei trigger e nei check (la schermata è una delle
+     strade, non l'unica), ma far fallire un `insert` per dire a una persona
+     che ha sbagliato un campo è il modo peggiore di dirglielo. */
+  function validaMovimento(m, opz) {
+    opz = opz || {};
+    m = m || {};
+    var e = [];
+    var conto   = opz.conti   ? indice(opz.conti)[m.conto_id]     : opz.conto;
+    var causale = opz.causali ? indice(opz.causali)[m.causale_id] : opz.causale;
+
+    if (!testo(m.data)) e.push('Metti la data del movimento: è il giorno in cui il denaro si è mosso, non quello in cui lo stai scrivendo.');
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(testo(m.data))) e.push('La data non è in una forma che il sistema sappia leggere.');
+
+    if (!m.conto_id) e.push('Scegli il conto.');
+    else if (opz.conti && !conto) e.push('Quel conto non esiste più.');
+    else if (conto && conto.attivo === false) e.push('Il conto «' + testo(conto.nome) + '» è spento: non ci si registra più niente. Riaccendilo, o scegline un altro.');
+
+    if (!m.causale_id) e.push('Scegli la causale: è lei che dice se è un’entrata o un’uscita.');
+    else if (opz.causali && !causale) e.push('Quella causale non esiste più.');
+    else if (causale && causale.attiva === false) e.push('La causale «' + testo(causale.nome) + '» è spenta.');
+
+    /* Regola 6: importo positivo, e lo zero non è un movimento. */
+    var imp = numero(m.importo);
+    if (imp == null) e.push('Metti l’importo.');
+    else if (imp <= 0) e.push('L’importo si scrive sempre positivo: entrata o uscita lo decide la causale, non il segno. Un «meno» qui è un’uscita travestita da entrata.');
+
+    /* Regola 2, detta prima del salvataggio. */
+    if (conto && causale) {
+      var c = compatibile(conto, causale);
+      if (!c.ok) e.push(c.motivo);
+    }
+
+    /* Regola 5: annullare vuol dire dire perché. */
+    if (m.annullato_il && !testo(m.annullato_perche)) {
+      e.push('Per annullare un movimento serve il motivo: fra sei mesi è l’unica cosa che spiega quel buco.');
+    }
+    return e;
+  }
+
+  /* Entrate, uscite e differenza su un mucchio di movimenti già filtrato dalla
+     schermata. Serve alla barra della prima nota. Gli annullati si contano a
+     parte: dire «12 movimenti» quando tre sono annullati è un numero che non
+     torna con l'elenco che si sta guardando. */
+  function riepilogo(movimenti, opz) {
+    opz = opz || {};
+    var causali = opz.causali ? indice(opz.causali) : null;
+    var r = { entrate: 0, uscite: 0, saldo: 0, righe: 0, annullati: 0, senza_verso: 0 };
+    (movimenti || []).forEach(function (m) {
+      if (!m) return;
+      if (m.annullato_il) { r.annullati++; return; }
+      var imp = numero(m.importo);
+      if (imp == null) return;
+      var v = versoDi(m, causali);
+      if (!v) { r.senza_verso++; return; }   /* non si indovina */
+      r.righe++;
+      if (v > 0) r.entrate = cent(r.entrate + Math.abs(imp));
+      else       r.uscite  = cent(r.uscite  + Math.abs(imp));
+    });
+    r.saldo = cent(r.entrate - r.uscite);
+    return r;
+  }
+
+  /* Quanto è passato da ogni causale nel periodo. È il riepilogo che risponde
+     alla domanda «dove sono finiti i soldi questo mese», ed è ordinato per
+     importo perché la prima riga è quella che interessa. */
+  function perCausale(movimenti, causali, opz) {
+    opz = opz || {};
+    var idx = indice(causali);
+    var acc = {};
+    vivi(movimenti).forEach(function (m) {
+      if (opz.dal && (!m.data || m.data < opz.dal)) return;
+      if (opz.al  && (!m.data || m.data > opz.al))  return;
+      var imp = numero(m.importo);
+      if (imp == null) return;
+      var c = idx[m.causale_id];
+      var k = m.causale_id || '—';
+      if (!acc[k]) {
+        acc[k] = {
+          causale_id: m.causale_id || null,
+          nome: c ? c.nome : 'Causale sconosciuta',
+          codice: c ? c.codice : null,
+          segno: c ? c.segno : null,
+          incide_su_utile: c ? !!c.incide_su_utile : null,
+          totale: 0, righe: 0,
+          /* Una causale che il sistema non conosce si VEDE: sparire in
+             silenzio vorrebbe dire che un refuso toglie dei soldi da un
+             riepilogo e non se ne accorge nessuno. */
+          ignota: !c
+        };
+      }
+      acc[k].totale = cent(acc[k].totale + Math.abs(imp));
+      acc[k].righe++;
+    });
+    return Object.keys(acc).map(function (k) { return acc[k]; })
+      .sort(function (a, b) { return b.totale - a.totale; });
+  }
+
+  /* ═══ LA QUADRATURA DEI CONTI (M3) ════════════════════════════════════════ */
+
+  /* Regola 7. Due numeri e la loro differenza:
+       ricostruito = saldo iniziale + tutti i movimenti vivi fino a quella data
+       dichiarato  = quello che dice la banca, o chi ha contato la cassa
+
+     `quadra` ha TRE valori, non due: true, false e **null**. `null` vuol dire
+     che nessuno ha ancora dichiarato un saldo per quel conto — e un conto mai
+     verificato che si mostra come «quadra» è la bugia più comoda che un
+     sistema di contabilità possa raccontare.
+
+     La tolleranza esiste ed è UN CENTESIMO, non «qualche euro»: serve solo
+     agli arrotondamenti, non a far passare una differenza vera. */
+  var TOLLERANZA = 0.01;
+
+  function quadratura(conto, movimenti, dichiarazioni, opz) {
+    opz = opz || {};
+    var al = testo(opz.al) || null;
+    /* L'ultima dichiarazione utile: la più recente che non sta nel futuro
+       rispetto alla data a cui si sta guardando. */
+    var mie = (dichiarazioni || []).filter(function (d) {
+      return d && conto && d.conto_id === conto.id && testo(d.data) && (!al || d.data <= al);
+    }).sort(function (a, b) { return a.data < b.data ? 1 : a.data > b.data ? -1 : 0; });
+    var d = mie[0] || null;
+
+    /* Il confronto si fa ALLA DATA DELLA DICHIARAZIONE, non a oggi: un
+       estratto conto del 31/08 non sa niente dei movimenti di settembre, e
+       confrontarlo col saldo di oggi produrrebbe una differenza inventata. */
+    var alConfronto = d ? d.data : al;
+    var s = saldo(conto, movimenti, { causali: opz.causali, al: alConfronto });
+
+    var out = {
+      conto_id: conto ? conto.id : null,
+      nome: conto ? conto.nome : null,
+      natura: conto ? conto.natura : null,
+      al: alConfronto || null,
+      ricostruito: s.saldo,
+      movimenti: s.movimenti,
+      dichiarato: null,
+      differenza: null,
+      quadra: null,
+      dichiarata_il: null,
+      nota: null,
+      /* Il saldo di OGGI resta comunque leggibile: è quello che serve a sapere
+         quanti soldi ci sono, indipendentemente dall'ultima verifica. */
+      saldo_oggi: saldo(conto, movimenti, { causali: opz.causali, al: al }).saldo
+    };
+    if (!d) {
+      out.motivo = 'Nessun saldo dichiarato per questo conto: non è mai stata fatta una quadratura. Non vuol dire che quadri.';
+      return out;
+    }
+    var dich = numero(d.saldo_dichiarato);
+    if (dich == null) {
+      out.motivo = 'Il saldo dichiarato non si legge come un numero.';
+      return out;
+    }
+    out.dichiarato = cent(dich);
+    out.differenza = cent(out.ricostruito - out.dichiarato);
+    out.quadra = Math.abs(out.differenza) <= TOLLERANZA;
+    out.dichiarata_il = d.data;
+    out.nota = d.nota || null;
+    if (!out.quadra) {
+      out.motivo = out.differenza > 0
+        ? 'Il sistema ha ' + euro(Math.abs(out.differenza)) + ' in più della banca: o c’è un movimento registrato due volte, o uno che non è mai uscito.'
+        : 'La banca ha ' + euro(Math.abs(out.differenza)) + ' in più del sistema: c’è un movimento che non è stato registrato.';
+    }
+    return out;
+  }
+
+  function quadrature(conti, movimenti, dichiarazioni, opz) {
+    return (conti || []).map(function (c) { return quadratura(c, movimenti, dichiarazioni, opz); });
+  }
+
   var API = {
     VERSIONE: VERSIONE,
     TIPOLOGIE: TIPOLOGIE, NATURE: NATURE, SEGNI: SEGNI,
@@ -465,6 +667,10 @@
     compatibile: compatibile, causaliPerConto: causaliPerConto,
     saldo: saldo, saldi: saldi, progressivo: progressivo,
     perNatura: perNatura, contoEconomico: contoEconomico,
+    /* M3 — la prima nota e la quadratura */
+    validaMovimento: validaMovimento, riepilogo: riepilogo, perCausale: perCausale,
+    quadratura: quadratura, quadrature: quadrature,
+    vivo: vivo, vivi: vivi, versoDi: versoDi, TOLLERANZA: TOLLERANZA,
     eliminabile: eliminabile, causaleEliminabile: causaleEliminabile,
     ibanValido: ibanValido, normalizzaIban: normalizzaIban, ibanBello: ibanBello,
     etichetta: etichetta, segnoDi: segnoDi, cent: cent, numero: numero, euro: euro

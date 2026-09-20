@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.2.0">
-<meta name="app-versione-nome" content="Compagnie e provvigioni">
+<meta name="app-versione" content="0.3.0">
+<meta name="app-versione-nome" content="Prima nota e quadratura">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1393,7 +1393,8 @@ input[type=file]{display:none;}
        è vecchia la copia in cache, e si vede subito (§12 — «è pubblicato» non
        vuol dire «è quello che la gente sta usando»). Non c'è niente da
        ricordarsi di aggiornare. -->
-  <div id="um-versione" style="text-align:center;font-size:10px;color:var(--txt3);padding:8px 0 2px;">IAM</div>
+  <div id="um-versione" onclick="apriNovita()" title="Che cosa c'è di nuovo"
+       style="text-align:center;font-size:10px;color:var(--txt3);padding:8px 0 2px;cursor:pointer;">IAM</div>
 </div>
 
 <!-- Settings overlay -->
@@ -1489,6 +1490,8 @@ input[type=file]{display:none;}
   <!-- Sotto-tab Contabilità -->
   <div class="ptabs" id="contab-tabs">
     <button class="ptab act" id="ctab-quadratura" onclick="selContabTab('quadratura')">Quadratura</button>
+    <button class="ptab"     id="ctab-primanota" onclick="selContabTab('primanota')">Prima nota</button>
+    <button class="ptab"     id="ctab-conti"     onclick="selContabTab('conti')">Quadratura conti</button>
     <button class="ptab"     id="ctab-caricafile" onclick="selContabTab('caricafile')">Carica documenti</button>
     <button class="ptab"     id="ctab-anomalie" onclick="selContabTab('anomalie')">Anomalie<span class="nbadge" id="n-anom-tab" style="display:none;position:static;margin-left:4px;"></span></button>
     <button class="ptab"     id="ctab-sospesi"  onclick="selContabTab('sospesi')">Sospesi</button>
@@ -1647,6 +1650,88 @@ input[type=file]{display:none;}
     <div id="co-content" style="display:none;"></div>
     <div id="co-sospeso" style="display:none;"></div>
     <div style="height:16px;"></div>
+  </div>
+
+  <!-- ══ SUB: PRIMA NOTA ═══════════════════════════════════════════════════
+       Brief #02 · M3.1. Qui si REGISTRA un movimento; in Strumenti › Conti e
+       causali si configura DOVE sta il denaro e come si chiamano i movimenti.
+       Sono due cose diverse e stanno in due posti diversi, come «Fonti
+       compagnie» e «Stato collegamenti».
+
+       Non e' il foglio di cassa della giornata (linguetta «Quadratura»), che
+       resta dov'e': quello e' una riga al giorno e non sa su quale conto sia
+       finito il denaro. La riorganizzazione dei due e' la M5. -->
+  <div id="contab-panel-primanota" style="display:none;">
+    <section class="f-head">
+      <div>
+        <h1>Prima nota</h1>
+        <p>Ogni movimento dei conti dell'agenzia, con la sua causale. Il saldo dei conti si calcola da qui.</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="f-b" type="button" onclick="pntCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+        <button class="f-b pri" type="button" id="pnt-nuovo" onclick="pntApriMovimento(null)"><i class="ti ti-plus"></i> Nuovo movimento</button>
+      </div>
+    </section>
+
+    <!-- La ricerca parte al clic su Cerca, mai mentre si digita (brief #01 M2). -->
+    <section class="cnt-lista" style="padding:12px">
+      <div class="fgrid" style="align-items:end">
+        <div class="fld"><label>Dal</label><input type="date" id="pnt-dal"></div>
+        <div class="fld"><label>Al</label><input type="date" id="pnt-al"></div>
+        <div class="fld"><label>Conto</label><select id="pnt-f-conto"></select></div>
+        <div class="fld"><label>Causale</label><select id="pnt-f-causale"></select></div>
+        <div class="fld"><label>Cerca nel testo</label><input type="text" id="pnt-f-testo" placeholder="controparte, riferimento, descrizione"></div>
+        <div class="fld"><label>Annullati</label><select id="pnt-f-annullati">
+          <option value="no">Nascondi gli annullati</option>
+          <option value="si">Mostra anche gli annullati</option>
+        </select></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="f-b pri" type="button" onclick="pntRender()"><i class="ti ti-search"></i> Cerca</button>
+        <button class="f-b" type="button" onclick="pntAzzera()">Azzera filtri</button>
+      </div>
+    </section>
+
+    <section class="cnt-somma" id="pnt-somma"></section>
+    <section class="cnt-lista" id="pnt-lista"><div class="cl-sub">Carico i movimenti…</div></section>
+    <section class="cnt-lista" id="pnt-causali"></section>
+  </div>
+
+  <!-- ══ SUB: QUADRATURA CONTI ═════════════════════════════════════════════
+       Brief #02 · M3.2. Due numeri e la loro differenza: quello che dice il
+       sistema (saldo iniziale + movimenti) e quello che dice la banca. Sono
+       due fonti diverse, e la quadratura serve proprio a non confonderle.
+
+       «Non e' mai stata fatta» NON e' «quadra»: un conto mai verificato che
+       si mostra in verde e' la bugia piu' comoda che un sistema di
+       contabilita' possa raccontare. -->
+  <div id="contab-panel-conti" style="display:none;">
+    <section class="f-head">
+      <div>
+        <h1>Quadratura conti</h1>
+        <p>Il saldo che risulta dai movimenti, a confronto con quello che dice la banca o la conta della cassa.</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="f-b" type="button" onclick="pntCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      </div>
+    </section>
+    <section class="cnt-somma" id="pnt-q-somma"></section>
+    <section class="cnt-lista" id="pnt-q-lista"><div class="cl-sub">Carico i conti…</div></section>
+  </div>
+
+  <!-- La finestra del movimento e della dichiarazione di saldo. -->
+  <div id="nov-ov" style="display:none;position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.55);
+       backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px"
+       onclick="if(event.target===this)chiudiNovita()">
+    <div id="nov-box" style="background:var(--surf);border-radius:var(--r);width:min(560px,100%);
+         max-height:88vh;overflow:auto;box-shadow:var(--shd2)"></div>
+  </div>
+
+  <div id="pnt-ov" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);
+       backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px"
+       onclick="if(event.target===this)pntChiudi()">
+    <div id="pnt-box" style="background:var(--surf);border-radius:var(--r);width:min(620px,100%);
+         max-height:88vh;overflow:auto;box-shadow:var(--shd2)"></div>
   </div>
 </div>
 
@@ -3957,6 +4042,91 @@ async function mostraVersioneInUso() {
   } catch (e) { /* offline o percorso assente: la versione di IAM basta */ }
 }
 
+/* ══ LE NOVITÀ DEL RILASCIO (20/09/2026, chiesto da Francesco) ══════════════
+   «Magari mettiamo una parte release, dove cliccando dice le ultime modifiche
+   effettuate.»
+
+   La targhetta dice UN numero; qui c'è che cosa c'è dentro, rilascio per
+   rilascio, con parole che si capiscono senza aprire il codice.
+
+   PERCHÉ QUESTA LEGGE COL `fetch` MENTRE LA TARGHETTA LEGGE IL <meta>, ED È
+   VOLUTO. La targhetta deve descrivere LA COPIA IN USO, quindi non può
+   chiedere niente al server. Questa invece chiede `versione.json`, cioè quello
+   che il server ha ADESSO — e proprio perché i due numeri arrivano da due
+   strade diverse, confrontarli dice la cosa più utile di tutte: «stai
+   guardando una pagina vecchia, ricarica». È il problema che ci ha fatto
+   perdere tre giorni (§12), trasformato in un avviso.
+
+   Se il file non si legge non si inventa un elenco: si dice che non si è
+   potuto leggere, che non è la stessa cosa di «non ci sono novità». */
+async function apriNovita() {
+  const ov = document.getElementById('nov-ov'), box = document.getElementById('nov-box');
+  if (!ov || !box) return;
+  const inUso = versioneApp();
+  box.innerHTML = '<div style="padding:22px"><div class="cl-sub">Leggo le novità…</div></div>';
+  ov.style.display = 'flex';
+  let dati = null, errore = null;
+  try {
+    /* L'indirizzo passa da /nuovo-preventivo/ e NON è un refuso: IAM è
+       servito dalla cartella `iam/` del repository, `versione.json` sta alla
+       RADICE, e la radice del repository sulla stessa origine è
+       /nuovo-preventivo/ (deploy/caddy/iam.caddy). Un `/versione.json` qui
+       risponderebbe 404, e l'elenco non si aprirebbe mai. */
+    const r = await fetch('/nuovo-preventivo/versione.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('il server risponde ' + r.status);
+    dati = await r.json();
+  } catch (e) { errore = e.message || String(e); }
+
+  const testa = `<div style="padding:18px 18px 0">
+      <div style="font-size:17px;font-weight:800">Che cosa c'è di nuovo</div>
+      <div class="cl-sub" style="margin-top:3px">Stai usando <b>IAM ${esc(inUso.numero || '—')}</b>${
+        inUso.nome ? ' · ' + esc(inUso.nome) : ''}, pagina del ${esc(versioneQuando(new Date(document.lastModified)) || '—')}.</div>
+    </div>`;
+
+  if (errore) {
+    box.innerHTML = testa + `<div class="modal-body" style="padding:14px 18px">
+        <div class="cnt-err">Non riesco a leggere l'elenco delle novità.<br>
+          <small>${esc(errore)} — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerlo.</small></div>
+      </div>${novChiudiHTML()}`;
+    return;
+  }
+
+  const storia = Array.isArray(dati && dati.storia) ? dati.storia : [];
+  /* Il confronto che vale più dell'elenco: se il server ha una versione più
+     nuova di quella che sta girando, questa pagina è una copia in cache. */
+  const vecchia = dati && dati.versione && inUso.numero && dati.versione !== inUso.numero;
+  const avviso = vecchia
+    ? `<div class="cnt-avv"><b>La pagina che stai guardando è vecchia.</b><br>
+         Pubblicata c'è la <b>${esc(dati.versione)}</b>${dati.nome ? ' · ' + esc(dati.nome) : ''},
+         tu stai usando la ${esc(inUso.numero)}. Ricarica la pagina (Ctrl+F5) per vederla.</div>`
+    : '';
+
+  box.innerHTML = testa + `<div class="modal-body" style="padding:14px 18px">
+      ${avviso}
+      ${storia.length ? storia.map(r => `
+        <div style="margin-bottom:16px">
+          <div class="cnt-nome">${esc(r.v || '')}${r.nome ? ' · ' + esc(r.nome) : ''}
+            ${r.v === inUso.numero ? '<span class="cnt-tag utile">la tua</span>' : ''}</div>
+          <div class="cnt-sotto">${esc(novData(r.data))}</div>
+          <ul style="margin:6px 0 0 18px;padding:0;font-size:12.5px;line-height:1.6">
+            ${(r.voci || []).map(v => '<li>' + esc(v) + '</li>').join('')}
+          </ul>
+        </div>`).join('')
+        : '<div class="cl-sub">Nessuna novità registrata.</div>'}
+    </div>${novChiudiHTML()}`;
+}
+
+function novData(d) {
+  if (!d) return '';
+  const p = String(d).slice(0, 10).split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(d);
+}
+function novChiudiHTML() {
+  return `<div style="display:flex;justify-content:flex-end;padding:0 18px 18px">
+      <button class="f-b pri" type="button" onclick="chiudiNovita()">Chiudi</button></div>`;
+}
+function chiudiNovita() { const o = document.getElementById('nov-ov'); if (o) o.style.display = 'none'; }
+
 /* ══ IL REGISTRO DEI MOVIMENTI, ANCHE DI QUA (19/09/2026) ══════════════════
    Fino a oggi IAM non scriveva nel registro NEMMENO UNA VOLTA: fatture,
    permessi, schede economiche, cassa, gare — niente lasciava traccia. La
@@ -4493,6 +4663,443 @@ async function cntEliminaCausale(id) {
     cntChiudi();
     await cntCarica();
   } catch (e) { cntMsg({ errori: ['Non riesco a eliminare: ' + (e.message || e)] }); }
+}
+
+/* ══ PRIMA NOTA E QUADRATURA DEI CONTI (brief #02 · M3, 20/09/2026) ══════════
+
+   Qui si REGISTRA un movimento. Dove sta il denaro e come si chiamano i
+   movimenti si configura in Strumenti › Conti e causali (M1): due domande
+   diverse, due posti diversi.
+
+   LE TRE COSE CHE QUESTA SCHERMATA NON FA, ED È IL MOTIVO PER CUI ESISTE.
+
+   1. **Non cancella un movimento.** Si annulla, col motivo, e la riga resta
+      visibile. Una riga sparita lascia un buco che nessuno sa più spiegare, e
+      in un registro di denaro «non c'è» e «è stato tolto» sono due cose
+      diverse. Il divieto vero è un trigger del database: la schermata è una
+      delle strade, non l'unica.
+
+   2. **Non chiede il segno.** L'importo si scrive positivo e il verso lo dice
+      la causale. Un «-50» su «Incasso premi» è un'uscita travestita da
+      entrata, e dentro un totale non si vede più.
+
+   3. **Non dice che un conto quadra se nessuno l'ha verificato.** La
+      quadratura ha tre stati e non due: quadra, non quadra, e «non è mai stata
+      fatta». Il terzo si vede in grigio e non in verde.
+
+   Nessuna formula in pagina: tutto passa da `Contabilita`, che è lo stesso
+   file che carica il preventivatore. */
+let PNT_MOVIMENTI = [];
+let PNT_CONTI = [];
+let PNT_CAUSALI = [];
+let PNT_QUADRATURE = [];
+let PNT_CARICATO = false;
+
+function pntPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
+function pntOggi() { return new Date().toISOString().slice(0, 10); }
+function pntVal(id) { const e = document.getElementById(id); return e ? e.value : ''; }
+function pntConto(id) { return PNT_CONTI.find(c => c.id === id) || null; }
+function pntCausale(id) { return PNT_CAUSALI.find(c => c.id === id) || null; }
+
+async function pntCarica(forza) {
+  if (!db) return;
+  if (forza || !PNT_CARICATO) {
+    const l = document.getElementById('pnt-lista');
+    if (l) l.innerHTML = '<div class="cl-sub">Carico i movimenti…</div>';
+  }
+  try {
+    const [mo, co, ca, qu] = await Promise.all([
+      db.from('iam_movimenti').select('*').order('data', { ascending: false }).limit(1000),
+      db.from('iam_conti').select('*').order('ordine').order('nome'),
+      db.from('iam_causali').select('*').order('ordine'),
+      db.from('iam_quadrature').select('*').order('data', { ascending: false })
+    ]);
+    for (const r of [mo, co, ca, qu]) if (r.error) throw r.error;
+    PNT_MOVIMENTI = mo.data || [];
+    PNT_CONTI = co.data || [];
+    PNT_CAUSALI = ca.data || [];
+    PNT_QUADRATURE = qu.data || [];
+    PNT_CARICATO = true;
+    pntRiempiFiltri();
+    pntRender();
+    pntRenderQuadrature();
+  } catch (e) {
+    /* «Non si è potuto leggere» non è «non ce n'è» (§12, §18, §26): su una
+       contabilità far credere che non ci siano movimenti è la cosa peggiore. */
+    const avviso = `<div class="cnt-err">Non riesco a leggere la prima nota.<br>
+      <small>${esc(e.message || e)} — non vuol dire che non ci siano movimenti: vuol dire che non si è potuto leggerli.</small></div>`;
+    ['pnt-lista', 'pnt-q-lista'].forEach(id => {
+      const b = document.getElementById(id); if (b) b.innerHTML = avviso;
+    });
+  }
+}
+
+function pntRiempiFiltri() {
+  const sel = (id, html, primo) => {
+    const e = document.getElementById(id); if (!e) return;
+    const v = e.value;
+    e.innerHTML = `<option value="">${primo}</option>` + html;
+    if (v) e.value = v;
+  };
+  sel('pnt-f-conto', PNT_CONTI.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join(''), 'Tutti i conti');
+  sel('pnt-f-causale', PNT_CAUSALI.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join(''), 'Tutte le causali');
+}
+
+function pntAzzera() {
+  ['pnt-dal', 'pnt-al', 'pnt-f-conto', 'pnt-f-causale', 'pnt-f-testo'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.value = '';
+  });
+  const a = document.getElementById('pnt-f-annullati'); if (a) a.value = 'no';
+  pntRender();
+}
+
+/* I filtri si applicano al clic su Cerca, mai mentre si digita (brief #01 M2). */
+function pntFiltrati() {
+  const dal = pntVal('pnt-dal'), al = pntVal('pnt-al');
+  const kConto = pntVal('pnt-f-conto'), kCau = pntVal('pnt-f-causale');
+  const testo = pntVal('pnt-f-testo').trim().toLowerCase();
+  const annullati = pntVal('pnt-f-annullati') === 'si';
+  return PNT_MOVIMENTI.filter(m => {
+    if (!annullati && m.annullato_il) return false;
+    if (dal && (!m.data || m.data < dal)) return false;
+    if (al && (!m.data || m.data > al)) return false;
+    if (kConto && m.conto_id !== kConto) return false;
+    if (kCau && m.causale_id !== kCau) return false;
+    if (testo) {
+      const s = [m.descrizione, m.controparte, m.riferimento, m.nota].filter(Boolean).join(' ').toLowerCase();
+      if (!s.includes(testo)) return false;
+    }
+    return true;
+  });
+}
+
+function pntRender() {
+  const puo = pntPuoScrivere();
+  const b = document.getElementById('pnt-nuovo'); if (b) b.style.display = puo ? '' : 'none';
+  const righe = pntFiltrati();
+  pntRenderSomma(righe);
+  pntRenderLista(righe, puo);
+  pntRenderCausali(righe);
+}
+
+function pntRenderSomma(righe) {
+  const box = document.getElementById('pnt-somma');
+  if (!box || !window.Contabilita) return;
+  const r = Contabilita.riepilogo(righe, { causali: PNT_CAUSALI });
+  const ce = Contabilita.contoEconomico(righe, PNT_CAUSALI);
+  box.innerHTML = `
+    <div class="cnt-card"><div class="cnt-k">Entrate</div>
+      <div class="cnt-v">${Contabilita.euro(r.entrate)}</div>
+      <div class="cnt-s">${r.righe} movimenti nel periodo</div></div>
+    <div class="cnt-card"><div class="cnt-k">Uscite</div>
+      <div class="cnt-v">${Contabilita.euro(r.uscite)}</div></div>
+    <div class="cnt-card"><div class="cnt-k">Differenza</div>
+      <div class="cnt-v">${Contabilita.euro(r.saldo)}</div>
+      <div class="cnt-s">quanto è entrato meno quanto è uscito</div></div>
+    <div class="cnt-card"><div class="cnt-k">Risultato dell'agenzia</div>
+      <div class="cnt-v">${Contabilita.euro(ce.utile)}</div>
+      <div class="cnt-s">ricavi ${Contabilita.euro(ce.ricavi)} · costi ${Contabilita.euro(ce.costi)}<br>
+        i premi in transito (${Contabilita.euro(ce.in_transito)}) non ci sono dentro: non sono soldi dell'agenzia</div></div>
+    ${r.annullati ? `<div class="cnt-card"><div class="cnt-k">Annullati</div>
+      <div class="cnt-v">${r.annullati}</div>
+      <div class="cnt-s">fuori da tutti i totali qui sopra</div></div>` : ''}`;
+}
+
+function pntRenderLista(righe, puo) {
+  const box = document.getElementById('pnt-lista');
+  if (!box) return;
+  if (!PNT_MOVIMENTI.length) {
+    box.innerHTML = `<div class="cnt-avv">Nessun movimento registrato.<br>
+      <small>I saldi dei conti sono ancora quelli iniziali dichiarati. Il primo movimento si scrive con «Nuovo movimento».</small></div>`;
+    return;
+  }
+  if (!righe.length) {
+    box.innerHTML = '<div class="cl-sub" style="padding:14px">Nessun movimento con questi filtri.</div>';
+    return;
+  }
+  box.innerHTML = righe.map(m => {
+    const c = pntConto(m.conto_id), k = pntCausale(m.causale_id);
+    const verso = Contabilita.versoDi(m, Object.fromEntries(PNT_CAUSALI.map(x => [x.id, x])));
+    const ann = !!m.annullato_il;
+    return `<div class="cnt-r${ann ? ' cnt-spento' : ''}">
+      <div style="flex:1;min-width:0">
+        <div class="cnt-nome">${esc(k ? k.nome : 'Causale sconosciuta')}
+          ${ann ? '<span class="cnt-tag">annullato</span>' : ''}
+          ${m.origine !== 'manuale' ? `<span class="cnt-tag">${esc(m.origine)}</span>` : ''}</div>
+        <div class="cnt-sotto">${esc(pntData(m.data))} · ${esc(c ? c.nome : 'conto sconosciuto')}${
+          m.controparte ? ' · ' + esc(m.controparte) : ''}${
+          m.riferimento ? ' · rif. ' + esc(m.riferimento) : ''}</div>
+        ${m.descrizione ? `<div class="cnt-sotto">${esc(m.descrizione)}</div>` : ''}
+        ${ann ? `<div class="cnt-sotto">Annullato: ${esc(m.annullato_perche || '—')}</div>` : ''}
+      </div>
+      <div style="text-align:right">
+        <div class="cnt-saldo">${verso < 0 ? '−' : '+'} ${Contabilita.euro(Math.abs(Contabilita.numero(m.importo) || 0))}</div>
+        ${puo && !ann ? `<button class="f-b" type="button" style="padding:3px 9px;font-size:11px;margin-top:4px"
+             onclick="pntApriMovimento('${esc(m.id)}')">Apri</button>` : ''}
+        ${puo && ann ? `<button class="f-b" type="button" style="padding:3px 9px;font-size:11px;margin-top:4px"
+             onclick="pntRiapri('${esc(m.id)}')">Riapri</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pntData(d) {
+  if (!d) return '—';
+  const p = String(d).slice(0, 10).split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(d);
+}
+
+function pntRenderCausali(righe) {
+  const box = document.getElementById('pnt-causali');
+  if (!box || !window.Contabilita) return;
+  const per = Contabilita.perCausale(righe, PNT_CAUSALI);
+  if (!per.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div style="padding:10px 12px 4px"><b style="font-size:13px">Dove sono finiti i soldi</b>
+      <div class="cl-sub">Nel periodo filtrato, causale per causale. Gli annullati non ci sono.</div></div>` +
+    per.map(r => `<div class="cnt-r">
+      <div style="flex:1"><div class="cnt-nome">${esc(r.nome)}
+        ${r.ignota ? '<span class="cnt-tag">tipo sconosciuto</span>' :
+          `<span class="cnt-tag ${r.segno === 'entrata' ? 'entrata' : 'uscita'}">${esc(r.segno || '')}</span>
+           <span class="cnt-tag ${r.incide_su_utile ? 'utile' : 'transito'}">${r.incide_su_utile ? 'sul risultato' : 'in transito'}</span>`}</div>
+        <div class="cnt-sotto">${r.righe} movimenti</div></div>
+      <div class="cnt-saldo">${Contabilita.euro(r.totale)}</div>
+    </div>`).join('');
+}
+
+/* ─── La finestra del movimento ──────────────────────────────────────────── */
+function pntChiudi() { const o = document.getElementById('pnt-ov'); if (o) o.style.display = 'none'; }
+function pntApri(html) {
+  if (!pntPuoScrivere()) return;
+  const ov = document.getElementById('pnt-ov'), box = document.getElementById('pnt-box');
+  if (!ov || !box) return;
+  box.innerHTML = html;
+  ov.style.display = 'flex';
+}
+function pntMsg(errori) {
+  const b = document.getElementById('pnt-msg');
+  if (b) b.innerHTML = errori && errori.length ? '<div class="cnt-err">' + errori.map(esc).join('<br>') + '</div>' : '';
+}
+
+/* La tendina delle causali mostra SOLO quelle compatibili col conto scelto: la
+   stessa funzione che poi rifiuta (`compatibile`). Due strade separate
+   diventerebbero una schermata che propone quello che il salvataggio respinge. */
+function pntOpzCausali(contoId, scelta) {
+  const conto = pntConto(contoId);
+  const elenco = conto ? Contabilita.causaliPerConto(PNT_CAUSALI, conto) : PNT_CAUSALI.filter(c => c.attiva !== false);
+  return elenco.map(c => `<option value="${esc(c.id)}" ${c.id === scelta ? 'selected' : ''}>${
+    esc(c.nome)} (${esc(c.segno)})</option>`).join('');
+}
+
+function pntCambiaConto() {
+  const sel = document.getElementById('pnt-m-causale');
+  if (sel) sel.innerHTML = '<option value="">— scegli —</option>' + pntOpzCausali(pntVal('pnt-m-conto'), sel.value);
+}
+
+function pntApriMovimento(id) {
+  const m = PNT_MOVIMENTI.find(x => x.id === id) || {};
+  const auto = m.origine && m.origine !== 'manuale';
+  pntApri(`
+    <div style="padding:18px 18px 0">
+      <div style="font-size:17px;font-weight:800">${id ? 'Movimento' : 'Nuovo movimento'}</div>
+      <div class="cl-sub" style="margin-top:3px">L'importo si scrive sempre positivo: entrata o uscita lo dice la causale.</div>
+    </div>
+    <div class="modal-body" style="padding:14px 18px">
+      <div id="pnt-msg"></div>
+      ${auto ? `<div class="cnt-avv">Questo movimento non è stato scritto a mano: viene da «${esc(m.origine)}».
+        Si corregge dove è nato, non qui — altrimenti la prima nota e la rata direbbero due cose diverse.</div>` : ''}
+      <div class="fgrid">
+        <div class="fld"><label>Data del movimento</label>
+          <input type="date" id="pnt-m-data" value="${esc(m.data || pntOggi())}" ${auto ? 'disabled' : ''}></div>
+        <div class="fld"><label>Importo (€)</label>
+          <input type="text" id="pnt-m-importo" inputmode="decimal" value="${m.importo != null ? esc(String(m.importo).replace('.', ',')) : ''}" ${auto ? 'disabled' : ''}></div>
+        <div class="fld"><label>Conto</label>
+          <select id="pnt-m-conto" onchange="pntCambiaConto()" ${auto ? 'disabled' : ''}>
+            <option value="">— scegli —</option>
+            ${PNT_CONTI.filter(c => c.attivo !== false || c.id === m.conto_id).map(c =>
+              `<option value="${esc(c.id)}" ${c.id === m.conto_id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}
+          </select></div>
+        <div class="fld"><label>Causale</label>
+          <select id="pnt-m-causale" ${auto ? 'disabled' : ''}>
+            <option value="">— scegli —</option>${pntOpzCausali(m.conto_id, m.causale_id)}
+          </select></div>
+        <div class="fld"><label>Controparte</label>
+          <input type="text" id="pnt-m-controparte" value="${esc(m.controparte || '')}" placeholder="chi ha pagato, o chi è stato pagato"></div>
+        <div class="fld"><label>Riferimento</label>
+          <input type="text" id="pnt-m-riferimento" value="${esc(m.riferimento || '')}" placeholder="n. polizza, fattura, bonifico"></div>
+      </div>
+      <div class="fld" style="margin-top:8px"><label>Descrizione</label>
+        <input type="text" id="pnt-m-descrizione" value="${esc(m.descrizione || '')}"></div>
+      ${id ? `<div class="cl-sub" style="margin-top:12px">Un movimento non si cancella: si annulla, e il motivo resta scritto.</div>
+        <div class="fld" style="margin-top:6px"><label>Motivo dell'annullamento</label>
+          <input type="text" id="pnt-m-perche" placeholder="es. registrato due volte"></div>` : ''}
+      <div id="pnt-storia" style="margin-top:12px"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:0 18px 18px">
+      <button class="f-b" type="button" onclick="pntChiudi()">Chiudi</button>
+      ${id ? `<button class="f-b" type="button" onclick="pntAnnulla('${esc(id)}')">Annulla il movimento</button>` : ''}
+      ${auto ? '' : `<button class="f-b pri" type="button" onclick="pntSalva(${id ? "'" + esc(id) + "'" : 'null'})">Salva</button>`}
+    </div>`);
+  if (id && typeof regInstalla === 'function') regInstalla('pnt-storia', 'movimento', id);
+}
+
+async function pntSalva(id) {
+  const riga = {
+    data: pntVal('pnt-m-data'),
+    conto_id: pntVal('pnt-m-conto') || null,
+    causale_id: pntVal('pnt-m-causale') || null,
+    importo: Contabilita.numero(pntVal('pnt-m-importo')),
+    controparte: pntVal('pnt-m-controparte').trim() || null,
+    riferimento: pntVal('pnt-m-riferimento').trim() || null,
+    descrizione: pntVal('pnt-m-descrizione').trim() || null
+  };
+  const e = Contabilita.validaMovimento(riga, { conti: PNT_CONTI, causali: PNT_CAUSALI });
+  pntMsg(e);
+  if (e.length) return;
+  try {
+    let movId = id;
+    if (id) {
+      const { error } = await db.from('iam_movimenti').update(riga).eq('id', id);
+      if (error) throw error;
+    } else {
+      const { data, error } = await db.from('iam_movimenti').insert(riga).select('id').single();
+      if (error) throw error;
+      movId = data?.id;
+    }
+    const k = pntCausale(riga.causale_id);
+    logMovimento('Movimento ' + (id ? 'corretto' : 'registrato') + ' · ' + (k ? k.nome : ''),
+                 'movimento', Contabilita.euro(riga.importo) + ' su ' + (pntConto(riga.conto_id)?.nome || ''), movId);
+    pntChiudi();
+    await pntCarica();
+  } catch (err) { pntMsg(['Non riesco a salvare: ' + (err.message || err)]); }
+}
+
+/* Regola 5. In questo blocco non si toglie mai una riga dal database: si
+   annulla, e la riga resta. C'è una prova che lo misura — e alla prima stesura
+   diventava rossa su QUESTO commento, perché nominava la chiamata che stava
+   vietando. È la trappola già scritta in CLAUDE.md §10, §12, §18 e §26: si
+   cerca la chiamata, non la parola, e non si scrive la parola. */
+async function pntAnnulla(id) {
+  const perche = (pntVal('pnt-m-perche') || '').trim();
+  if (!perche) { pntMsg(['Per annullare serve il motivo: fra sei mesi è l’unica cosa che spiega quel buco.']); return; }
+  try {
+    const { error } = await db.from('iam_movimenti')
+      .update({ annullato_il: new Date().toISOString(), annullato_da: ME?.id || null, annullato_perche: perche })
+      .eq('id', id);
+    if (error) throw error;
+    logMovimento('Movimento annullato', 'movimento', perche, id);
+    pntChiudi();
+    await pntCarica();
+  } catch (e) { pntMsg(['Non riesco ad annullare: ' + (e.message || e)]); }
+}
+
+async function pntRiapri(id) {
+  if (!confirm('Riaprire questo movimento?\n\nTorna a contare nei saldi e nei riepiloghi.')) return;
+  try {
+    const { error } = await db.from('iam_movimenti')
+      .update({ annullato_il: null, annullato_da: null, annullato_perche: null }).eq('id', id);
+    if (error) throw error;
+    logMovimento('Movimento riaperto', 'movimento', '', id);
+    await pntCarica();
+  } catch (e) { alert('Non riesco a riaprire: ' + (e.message || e)); }
+}
+
+/* ─── La quadratura dei conti ────────────────────────────────────────────── */
+function pntRenderQuadrature() {
+  const somma = document.getElementById('pnt-q-somma');
+  const box = document.getElementById('pnt-q-lista');
+  if (!box || !window.Contabilita) return;
+  const puo = pntPuoScrivere();
+  const q = Contabilita.quadrature(PNT_CONTI.filter(c => c.attivo !== false), PNT_MOVIMENTI, PNT_QUADRATURE,
+                                   { causali: PNT_CAUSALI, al: pntOggi() });
+  const nat = Contabilita.perNatura(PNT_CONTI, PNT_MOVIMENTI, { causali: PNT_CAUSALI });
+  const daVerificare = q.filter(r => r.quadra === null).length;
+  const storti = q.filter(r => r.quadra === false).length;
+
+  if (somma) somma.innerHTML = `
+    <div class="cnt-card"><div class="cnt-k">Premi dei clienti</div>
+      <div class="cnt-v">${Contabilita.euro(nat.premi)}</div>
+      <div class="cnt-s">${nat.conti_premi} conti · in transito verso la compagnia, non sono dell'agenzia</div></div>
+    <div class="cnt-card"><div class="cnt-k">Soldi dell'agenzia</div>
+      <div class="cnt-v">${Contabilita.euro(nat.aziendale)}</div>
+      <div class="cnt-s">${nat.conti_aziendale} conti</div></div>
+    <div class="cnt-card"><div class="cnt-k">Conti che non quadrano</div>
+      <div class="cnt-v">${storti}</div>
+      <div class="cnt-s">${daVerificare} non sono mai stati verificati</div></div>`;
+
+  if (!PNT_CONTI.length) {
+    box.innerHTML = `<div class="cnt-avv">Nessun conto. Si creano in Strumenti › Conti e causali.</div>`;
+    return;
+  }
+  box.innerHTML = q.map(r => {
+    const stato = r.quadra === true ? '<span class="cnt-tag utile">quadra</span>'
+                : r.quadra === false ? '<span class="cnt-tag uscita">non quadra</span>'
+                : '<span class="cnt-tag">mai verificato</span>';
+    return `<div class="cnt-r">
+      <div style="flex:1;min-width:0">
+        <div class="cnt-nome">${esc(r.nome || '—')} ${stato}
+          <span class="cnt-tag ${r.natura === 'premi' ? 'premi' : 'aziendale'}">${esc(r.natura || '')}</span></div>
+        <div class="cnt-sotto">Saldo di oggi: <b>${Contabilita.euro(r.saldo_oggi)}</b> · ${r.movimenti} movimenti fino al confronto</div>
+        ${r.dichiarato != null
+          ? `<div class="cnt-sotto">Al ${esc(pntData(r.al))}: il sistema dice ${Contabilita.euro(r.ricostruito)},
+               la banca ${Contabilita.euro(r.dichiarato)} — differenza ${Contabilita.euro(r.differenza)}</div>`
+          : ''}
+        ${r.motivo ? `<div class="cnt-sotto">${esc(r.motivo)}</div>` : ''}
+      </div>
+      <div style="text-align:right">
+        ${puo ? `<button class="f-b" type="button" style="padding:3px 9px;font-size:11px"
+             onclick="pntApriQuadratura('${esc(r.conto_id)}')">Dichiara il saldo</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pntApriQuadratura(contoId) {
+  const c = pntConto(contoId);
+  const storiche = PNT_QUADRATURE.filter(q => q.conto_id === contoId).slice(0, 8);
+  pntApri(`
+    <div style="padding:18px 18px 0">
+      <div style="font-size:17px;font-weight:800">Dichiara il saldo · ${esc(c ? c.nome : '')}</div>
+      <div class="cl-sub" style="margin-top:3px">Quello che dice l'estratto conto, o quello che si è contato in cassa.
+        Vale per la data che metti, non per oggi: un estratto conto del 31/08 non sa niente di settembre.</div>
+    </div>
+    <div class="modal-body" style="padding:14px 18px">
+      <div id="pnt-msg"></div>
+      <div class="fgrid">
+        <div class="fld"><label>Data del saldo</label><input type="date" id="pnt-q-data" value="${esc(pntOggi())}"></div>
+        <div class="fld"><label>Saldo dichiarato (€)</label><input type="text" id="pnt-q-saldo" inputmode="decimal"></div>
+      </div>
+      <div class="fld" style="margin-top:8px"><label>Nota</label>
+        <input type="text" id="pnt-q-nota" placeholder="es. estratto conto di agosto"></div>
+      ${storiche.length ? `<div style="margin-top:14px"><b style="font-size:12px">Le ultime dichiarazioni</b>${
+        storiche.map(s => `<div class="cnt-sotto">${esc(pntData(s.data))} · ${Contabilita.euro(Contabilita.numero(s.saldo_dichiarato))}${
+          s.nota ? ' · ' + esc(s.nota) : ''}</div>`).join('')}</div>` : ''}
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:0 18px 18px">
+      <button class="f-b" type="button" onclick="pntChiudi()">Chiudi</button>
+      <button class="f-b pri" type="button" onclick="pntSalvaQuadratura('${esc(contoId)}')">Salva</button>
+    </div>`);
+}
+
+async function pntSalvaQuadratura(contoId) {
+  const data = pntVal('pnt-q-data');
+  const saldo = Contabilita.numero(pntVal('pnt-q-saldo'));
+  const e = [];
+  if (!data) e.push('Metti la data a cui si riferisce il saldo.');
+  /* Uno ZERO è un saldo dichiarato e si scrive; un campo vuoto non è una
+     dichiarazione. È la stessa distinzione dell'estratto conto (§17). */
+  if (saldo == null) e.push('Metti il saldo. Uno zero è un saldo e si scrive; un campo vuoto non dichiara niente.');
+  pntMsg(e);
+  if (e.length) return;
+  try {
+    const { error } = await db.from('iam_quadrature')
+      .upsert({ conto_id: contoId, data, saldo_dichiarato: saldo, nota: pntVal('pnt-q-nota').trim() || null },
+              { onConflict: 'conto_id,data' });
+    if (error) throw error;
+    logMovimento('Saldo dichiarato · ' + (pntConto(contoId)?.nome || ''), 'conto',
+                 pntData(data) + ' · ' + Contabilita.euro(saldo), contoId);
+    pntChiudi();
+    await pntCarica();
+  } catch (err) { pntMsg(['Non riesco a salvare: ' + (err.message || err)]); }
 }
 
 /* ══ TARIFFE, ACCORDI E GRUPPI (brief #02 · M2, 20/09/2026) ══════════════════
@@ -5578,7 +6185,7 @@ function selContabTab(sub) {
   /* Ogni voce di Contabilità apre la sua schermata e basta: «Carica documenti»
      mostra i file, «Quadratura» i numeri della giornata. (01/08/2026) */
   if (sub === 'carica') sub = 'quadratura';   // vecchio nome rimasto in memoria
-  ['quadratura','caricafile','anomalie','sospesi','storico','conto'].forEach(s => {
+  ['quadratura','primanota','conti','caricafile','anomalie','sospesi','storico','conto'].forEach(s => {
     const btn = document.getElementById('ctab-'+s);
     const pnl = document.getElementById('contab-panel-'+s);
     if (btn) btn.classList.toggle('act', s===sub);
@@ -5587,6 +6194,9 @@ function selContabTab(sub) {
   setUltimoTab(sub);
   if (sub==='storico') buildStorico();
   if (sub==='conto') loadContoDB(); // ricarica estratto + note condivise dal database
+  /* §6b: una schermata il cui contenuto lo scrive il codice deve avere il suo
+     inizializzatore, altrimenti la linguetta apre un riquadro vuoto. */
+  if (sub==='primanota' || sub==='conti') pntCarica();
 }
 
 async function caricaDatiPerData(dataSelezionata) {

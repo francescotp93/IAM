@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.10.0">
-<meta name="app-versione-nome" content="Trovare, aprire, scrivere">
+<meta name="app-versione" content="0.11.0">
+<meta name="app-versione-nome" content="Sospensioni e fido">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -88,6 +88,9 @@
      le stesse regole con cui li mostra IAM. Due riconoscimenti sarebbero due
      cataloghi della stessa agenzia. -->
 <script src="tariffe/motore/catalogo.js?v=20260920"></script>
+<!-- Sospensioni e fido (Blocco 3): la scadenza vera di una polizza sospesa e
+     il tetto al denaro che un collaboratore puo' tenere. -->
+<script src="tariffe/motore/sospensione.js?v=20260920"></script>
 <script src="tariffe/motore/foglio-cassa.js?v=20260919"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
@@ -3015,6 +3018,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     <div class="page" id="page-scadenzario">
       <div class="page-title">Scadenzario e rinnovi</div>
       <div class="page-sub">Non un elenco di date: per ogni polizza si vede se il rinnovo è già stato lavorato</div>
+
+      <!-- Blocco 3 · punto 3: le sospese in cima, e non in mezzo alle altre.
+           Una polizza sospesa non ha la scadenza che dice il contratto: nello
+           scadenzario normale comparirebbe con una data falsa. -->
+      <div id="rin-sospese"></div>
 
       <div class="rin-fasce" id="rin-fasce"></div>
 
@@ -12917,6 +12925,9 @@ async function loadEstrattoCollab() {
     ECP_TITOLI = (tit || []).filter(t => ECP_POLIZZE[t.polizza_id]);
 
     await caricaCollaboratori();
+    /* I fidi dichiarati: servono al riepilogo d'agenzia, e si leggono insieme
+       al resto (§1: la funzione esiste E la chiama qualcuno). */
+    await ecpCaricaFidi();
     await ecpCaricaSchemi();
     /* CHI VEDE CHI. Le politiche del database già impediscono di leggere le
        rate degli altri, ma la tendina dei nomi no: lasciarla intera
@@ -13024,25 +13035,87 @@ function ecpCard(n, l, d) {
     <div class="cdoc-l">${l}</div><div class="cdoc-d">${d}</div></div>`;
 }
 
+/* ── IL FIDO DEL COLLABORATORE (Blocco 3 · punto 6) ─────────────────────────
+   Le regole stanno nel motore (`Sospensione.fidi`, quattro prove in Node): la
+   sola cosa che succede qui è leggere il limite dichiarato sulle persone e
+   passarlo. `var` e non `let`: le prove leggono `window.ECP_FIDI` (§17). */
+var ECP_FIDI = null;        // l'ultimo calcolo, per la cella della tabella
+var ECP_PERSONE_FIDO = [];  // { id, nominativo, fido } da quote_collaboratori
+
+async function ecpCaricaFidi() {
+  if (!db) return;
+  try {
+    const { data, error } = await db.from('quote_collaboratori').select('id,nome,cognome,fido');
+    if (error) throw error;
+    ECP_PERSONE_FIDO = (data || []).map(p => ({
+      id: p.id, fido: p.fido,
+      nominativo: [p.cognome, p.nome].filter(Boolean).join(' ').trim() || null
+    }));
+  } catch (e) {
+    /* Senza i fidi il riepilogo funziona lo stesso e NON giudica: è il
+       comportamento giusto, non un ripiego — un «tutti dentro il limite»
+       calcolato senza i limiti sarebbe la bugia peggiore. */
+    ECP_PERSONE_FIDO = [];
+    console.warn('fidi:', e.message || e);
+  }
+}
+
+function ecpFidi(gruppi) {
+  const M = window.Sospensione;
+  if (!M) { ECP_FIDI = null; return null; }
+  const crediti = (gruppi || []).filter(x => x.assegnato && x.credito).map(x => ({
+    collaboratore_id: x.collaboratore_id, nominativo: x.nome,
+    importo: x.credito.importo_aperto || 0, rate: x.credito.righe
+  }));
+  ECP_FIDI = M.fidi(crediti, ECP_PERSONE_FIDO);
+  return ECP_FIDI;
+}
+
+function ecpFidoCella(id) {
+  if (!ECP_FIDI || !id) return '<span class="cl-sub">—</span>';
+  const r = ECP_FIDI.righe.find(x => x.collaboratore_id === id);
+  if (r) {
+    return r.superato
+      ? `<span class="tk-badge st-scaduto" title="${esc(r.motivo)}">oltre di ${ecpEuro(r.credito - r.fido)}</span>`
+      : `<span class="cl-sub" title="${esc(r.motivo)}">${r.quota != null ? r.quota + '% di ' : ''}${ecpEuro(r.fido)}</span>`;
+  }
+  const senza = ECP_FIDI.senzaFido.find(x => x.collaboratore_id === id);
+  /* «Non dichiarato» si VEDE: un trattino farebbe pensare a un dato mancante
+     senza conseguenze, e invece vuol dire che su quel credito nessuno può
+     dire se è troppo. */
+  if (senza) return '<span class="tk-badge st-aperto" title="Nessun fido dichiarato per questa persona">non dichiarato</span>';
+  return '<span class="cl-sub">—</span>';
+}
+
 function ecpRiepilogo(body, sum, dal, al) {
   const g = EstrattoConto.perCollaboratore(ECP_TITOLI, ECP_POLIZZE, TIT_COLLAB_NOMI,
     { schemi: ECP_SCHEMI, dal, al, dalSospesi: null, alSospesi: al });
   ECP_VISTA = null;
   const nonAss = g.find(x => !x.assegnato);
+  /* IL FIDO (Blocco 3 · punto 6). Il credito verso ogni collaboratore c'è dal
+     19/09 (§24); quello che mancava è il TETTO. Un credito senza tetto si
+     scopre quando è troppo grande.
+     Il motore tiene fuori dai totali chi un fido non ce l'ha, col motivo
+     scritto: «non dichiarato» non è «illimitato». */
+  const fid = ecpFidi(g);
   sum.innerHTML = ecpCard(g.filter(x => x.assegnato).length, 'Collaboratori', 'con almeno una rata')
     + ecpCard(pfEuro(g.reduce((s, x) => s + (x.provvigioni.quota_collaboratore || 0), 0)), 'Da pagare in tutto', 'nel periodo scelto')
     + ecpCard(pfEuro(g.reduce((s, x) => s + (x.daVersare.importo || 0), 0)), 'Da versare in tutto', 'rate non incassate')
     + ecpCard(pfEuro(g.reduce((s, x) => s + ((x.credito || {}).importo_aperto || 0), 0)), 'Da rimettere in tutto', 'incassato dai collaboratori, non ancora in agenzia')
+    + (fid ? ecpCard(fid.conteggi.oltre, 'Oltre il fido',
+        fid.conteggi.oltre ? 'per ' + pfEuro(fid.conteggi.oltre_di) + ' in tutto'
+                           : (fid.conteggi.senza_fido ? fid.conteggi.senza_fido + ' senza fido dichiarato' : 'tutti dentro il limite')) : '')
     + (nonAss ? ecpCard(nonAss.provvigioni.righe + nonAss.daVersare.righe, 'Rate senza collaboratore', 'da assegnare nella pagina Titoli') : '');
   body.innerHTML = `<div class="cl-sub" style="margin-bottom:8px">Scegli un collaboratore per vedere il suo estratto conto e mandarglielo.</div>
     <div class="table-wrap"><table class="storico-table">
-    <thead><tr><th>Collaboratore</th><th class="soldi">Da versare</th><th class="soldi">Da rimettere</th><th class="soldi">Provvigioni di compagnia</th>
+    <thead><tr><th>Collaboratore</th><th class="soldi">Da versare</th><th class="soldi">Da rimettere</th><th>Fido</th><th class="soldi">Provvigioni di compagnia</th>
       <th class="soldi">Spetta a lui</th><th class="soldi">Resta all'agenzia</th><th>Da confermare</th></tr></thead>
     <tbody>${g.map(x => `<tr${x.assegnato ? ` style="cursor:pointer" onclick="ecpScegli('${esc(x.collaboratore_id)}')"` : ''}>
       <td>${x.assegnato ? `<strong>${esc(x.nome || 'collaboratore rimosso')}</strong>`
           : '<span class="cl-sub">Rate non assegnate a nessuno</span>'}</td>
       <td class="soldi">${ecpEuro(x.daVersare.importo)}</td>
       <td class="soldi">${x.credito && x.credito.importo_aperto ? '<b>' + ecpEuro(x.credito.importo_aperto) + '</b>' : '—'}</td>
+      <td>${ecpFidoCella(x.collaboratore_id)}</td>
       <td class="soldi">${ecpEuro(x.provvigioni.provvigione_compagnia)}</td>
       <td class="soldi"><b>${ecpEuro(x.provvigioni.quota_collaboratore)}</b></td>
       <td class="soldi">${ecpEuro(x.provvigioni.margine_agenzia)}</td>
@@ -15489,7 +15562,8 @@ async function polDettaglio(id) {
       ${riga('Prodotto', esc(p.prodotto || p.modulo || '—'))}
       ${riga('Emissione', `<input type="date" id="pol-emissione" value="${esc(p.data_emissione || '')}" onchange="polSalvaEmissione('${esc(p.id)}')" style="font:inherit;border:1px solid var(--line);border-radius:4px;padding:2px 4px">`
           + (p.data_emissione ? '' : ' <span class="cl-sub">da indicare</span>'))}
-      ${riga('Effetto → scadenza', polData(p.data_effetto) + ' → ' + (p.data_scadenza ? polData(p.data_scadenza) : '<span class="tk-badge st-aperto">da confermare</span>'))}
+      ${riga('Effetto → scadenza', polData(p.data_effetto) + ' → ' + (p.data_scadenza ? polData(p.data_scadenza) : '<span class="tk-badge st-aperto">da confermare</span>') + sosRigaScadenza(p))}
+      ${sosRigaStato(p)}
       ${riga('Coperta fino al', ssf.scadenza_incassato ? polData(ssf.scadenza_incassato) : (p.copertura_al ? polData(p.copertura_al) : '—'))}
       ${riga('Frazionamento', esc(p.frazionamento || '—') + (p.tacito_rinnovo ? ' · tacito rinnovo' : ' · senza tacito rinnovo'))}
       ${riga('Premio', (p.premio_annuo != null ? 'annuo ' + pfEuro(p.premio_annuo) : '<span class="cl-sub">annuo da confermare</span>')
@@ -15529,6 +15603,183 @@ async function polDettaglio(id) {
 /* Le rate ancora da incassare, la più vicina per prima. Una rata annullata o
    stornata non «scade»: non entra. Se non ce n'è nessuna aperta lo si dice —
    una sezione vuota sembra un dato mancante, non un dato buono. */
+/* ═══════════════════════════════════════════════════════════════════════════
+   LE SOSPENSIONI  (Blocco 3 · punto 3, 20/09/2026)
+
+   Le REGOLE stanno nel motore (`tariffe/motore/sospensione.js`) e hanno le
+   loro quattordici prove in Node. Qui c'è solo quello che un motore non può
+   avere: il database e il DOM.
+
+   La cosa da non perdere di vista: **la scadenza scritta sul contratto e
+   quella vera sono due date diverse** appena c'è stata una sospensione. Chi
+   richiama sulla prima telefona nel giorno sbagliato.
+
+   `var` e non `let`: le prove leggono `window.SOS_*` (§17).
+   ═══════════════════════════════════════════════════════════════════════════ */
+var SOS_LIMITI = {};   // compagnia normalizzata → giorni massimi dichiarati
+
+function sosM() { return window.Sospensione || null; }
+
+/* La riga accanto alla scadenza contrattuale. Compare SOLO quando le due
+   date non coincidono: un «(vera: la stessa)» su ogni polizza sarebbe rumore
+   che si impara a saltare. */
+function sosRigaScadenza(p) {
+  const M = sosM();
+  if (!M || !p || !p.data_scadenza) return '';
+  const st = M.stato(p);
+  if (!st.giorniTotali) return '';
+  return ` <span class="tk-badge st-aperto" title="La copertura sospesa si recupera: i giorni fermi si aggiungono in fondo">`
+    + `vera: ${polData(st.scadenzaEffettiva)} (+${st.giorniTotali} gg)</span>`;
+}
+
+/* Il riquadro «questa polizza è ferma», con il tasto per riattivarla. */
+function sosRigaStato(p) {
+  const M = sosM();
+  if (!M || !p) return '';
+  const st = M.stato(p);
+  const puo = typeof isStaff === 'function' && isStaff();
+  if (!st.sospesa) {
+    if (!puo) return '';
+    return `<div style="margin-top:8px"><button class="rin-az" onclick="sosApri('${esc(p.id)}')">
+      <i class="ti ti-player-pause"></i> Sospendi la copertura</button></div>`;
+  }
+  const lim = M.limite(p, { limiteGiorni: SOS_LIMITI[String(p.compagnia || '').toLowerCase()] });
+  const grave = lim.superato === true;
+  return `<div class="pdoc-esito ${grave ? 'ko' : 'ok'}" style="margin-top:8px">
+      <i class="ti ti-player-pause"></i>
+      <b>Sospesa dal ${polData(st.dal)}</b> — ${st.giorniAperti} giorni.
+      <div class="cl-sub">${esc(lim.motivo || '')}</div>
+      ${puo ? `<div style="margin-top:6px"><button class="rin-az rin-primario" onclick="sosApri('${esc(p.id)}')">
+        <i class="ti ti-player-play"></i> Riattiva</button></div>` : ''}
+    </div>`;
+}
+
+/* I limiti per compagnia si leggono una volta e si tengono: sono pochi, non
+   cambiano durante una sessione, e senza di loro il motore conta i giorni e
+   non dà il giudizio — che è il comportamento giusto, non un ripiego. */
+async function sosLimiti() {
+  if (!db) return SOS_LIMITI;
+  try {
+    const { data, error } = await db.from('quote_compagnie').select('nome,alias,sospensione_giorni_max');
+    if (error) throw error;
+    SOS_LIMITI = {};
+    (data || []).forEach(c => {
+      if (c.sospensione_giorni_max == null) return;
+      SOS_LIMITI[String(c.nome || '').toLowerCase()] = c.sospensione_giorni_max;
+      (c.alias || []).forEach(a => { SOS_LIMITI[String(a || '').toLowerCase()] = c.sospensione_giorni_max; });
+    });
+  } catch (e) { /* senza limiti il motore non giudica, e lo dice da sé */ }
+  return SOS_LIMITI;
+}
+
+async function sosApri(polizzaId) {
+  if (typeof isStaff === 'function' && !isStaff()) return;
+  let p;
+  try { p = await polLeggi(polizzaId); } catch (e) { alert(e.message || e); return; }
+  if (!p) return;
+  const M = sosM();
+  if (!M) { alert('Il motore delle sospensioni non si è caricato.'); return; }
+  const st = M.stato(p);
+  const oggi = new Date().toISOString().slice(0, 10);
+  polPannello(st.sospesa ? 'Riattiva la copertura' : 'Sospendi la copertura',
+    esc(p.numero_polizza || p.prodotto || ''), `
+    <div id="sos-msg"></div>
+    ${st.sospesa
+      ? `<div class="cl-sub">Sospesa dal <b>${polData(st.dal)}</b>. Riattivando, i
+           <b>${st.giorniAperti} giorni</b> fermi si aggiungono in fondo alla copertura.</div>
+         <div style="margin-top:10px"><label>Riattiva dal</label>
+           <input id="sos-data" type="date" value="${oggi}" min="${st.dal}" style="width:100%"></div>`
+      : `<div class="cl-sub">I giorni di sospensione non si perdono: si aggiungono in fondo,
+           e la scadenza vera si sposta in avanti.</div>
+         <div style="margin-top:10px"><label>Ferma dal</label>
+           <input id="sos-data" type="date" value="${oggi}" style="width:100%"></div>`}
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="rin-az" onclick="polDettaglio('${esc(p.id)}')">Annulla</button>
+      <button class="rin-az rin-primario" onclick="sosSalva('${esc(p.id)}',${st.sospesa})">
+        ${st.sospesa ? 'Riattiva' : 'Sospendi'}</button>
+    </div>`);
+}
+
+async function sosSalva(polizzaId, chiudere) {
+  const M = sosM();
+  const msg = document.getElementById('sos-msg');
+  const d = (document.getElementById('sos-data') || {}).value || '';
+  let p;
+  try { p = await polLeggi(polizzaId); } catch (e) { if (msg) msg.innerHTML = `<div class="pdoc-esito ko">${esc(e.message || e)}</div>`; return; }
+  /* Il motore decide se si può, e dice perché no: la schermata non ripete la
+     regola — due copie della stessa regola diventano due regole. */
+  const esito = chiudere ? M.chiudibile(p, d) : M.apribile(p, d);
+  if (!esito.ok) { if (msg) msg.innerHTML = `<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> ${esc(esito.motivo)}</div>`; return; }
+
+  const elenco = (p.sospensioni || []).slice();
+  if (chiudere) {
+    /* Si chiude l'ULTIMA aperta, non la prima trovata: con più sospensioni
+       chiudere quella sbagliata sposterebbe i giorni sul periodo sbagliato. */
+    let idx = -1;
+    elenco.forEach((x, i) => { if (x && !x.al && (idx < 0 || x.dal > elenco[idx].dal)) idx = i; });
+    if (idx < 0) { if (msg) msg.innerHTML = '<div class="pdoc-esito ko">Non c’è nessuna sospensione aperta.</div>'; return; }
+    elenco[idx] = { dal: elenco[idx].dal, al: esito.al };
+  } else {
+    elenco.push(esito.sospensione);
+  }
+  try {
+    const { error } = await db.from('quote_polizze')
+      .update({ sospensioni: elenco, aggiornato_il: new Date().toISOString() }).eq('id', polizzaId);
+    if (error) throw error;
+    try {
+      logMovimento(chiudere ? 'riattivazione' : 'sospensione', 'polizza',
+        chiudere ? ('riattivata dal ' + esito.al + ', ' + esito.giorni + ' giorni recuperati')
+                 : ('sospesa dal ' + esito.sospensione.dal), polizzaId);
+    } catch (e) {}
+    if (typeof loadPortafoglio === 'function') loadPortafoglio();
+    polDettaglio(polizzaId);
+  } catch (e) { if (msg) msg.innerHTML = `<div class="pdoc-esito ko">${esc(e.message || e)}</div>`; }
+}
+
+/* ── L'ELENCO NELLO SCADENZARIO ─────────────────────────────────────────────
+   Una polizza sospesa non ha la scadenza che dice il contratto: nello
+   scadenzario normale comparirebbe con una data falsa. Sta in un riquadro
+   suo, in cima, perché è gente da richiamare — e chi ha meno giorni davanti
+   viene prima. */
+async function sosScadenzario() {
+  const box = document.getElementById('rin-sospese');
+  if (!box) return;
+  const M = sosM();
+  if (!M || !db) { box.innerHTML = ''; return; }
+  await sosLimiti();
+  let righe = [];
+  try {
+    const { data, error } = await db.from('quote_polizze')
+      .select('id,numero_polizza,cliente,cliente_id,compagnia,prodotto,data_effetto,data_scadenza,sospensioni')
+      .neq('sospensioni', '[]');
+    if (error) throw error;
+    righe = M.daRiattivare(data || [], { limitiPerCompagnia: SOS_LIMITI });
+  } catch (e) {
+    /* §12, §18: un riquadro vuoto direbbe «non c'è nessuna polizza sospesa»,
+       che è un'altra cosa. */
+    box.innerHTML = `<div class="rin-fascia urg"><b>Non si è potuto leggere le sospensioni.</b>
+      <div class="rin-gg">Non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerle.</div></div>`;
+    return;
+  }
+  if (!righe.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="rin-fascia urg" style="margin-bottom:10px">
+      <b>${righe.length} polizz${righe.length === 1 ? 'a sospesa' : 'e sospese'} da riattivare</b>
+      <div class="rin-gg">La loro scadenza non è quella scritta: i giorni fermi si recuperano in fondo.</div>
+    </div>
+    <div class="table-wrap" style="margin-bottom:14px"><table class="storico-table">
+      <thead><tr><th>Polizza</th><th>Cliente</th><th>Ferma dal</th><th>Giorni</th><th>Scadenza vera</th><th>Limite</th></tr></thead>
+      <tbody>${righe.map(r => `<tr style="cursor:pointer" onclick="polDettaglio('${esc(r.id)}')">
+        <td><strong>${esc(r.numero || r.prodotto || '—')}</strong><div class="cl-sub">${esc(r.compagnia || '')}</div></td>
+        <td>${esc(r.cliente || '—')}</td>
+        <td>${polData(r.dal)}</td>
+        <td>${r.giorni}</td>
+        <td>${r.scadenzaEffettiva ? polData(r.scadenzaEffettiva) : '<span class="cl-sub">senza scadenza</span>'}</td>
+        <td>${r.superato === true ? '<span class="tk-badge st-scaduto">oltre</span>'
+            : (r.superato === false ? esc((r.giorniRimasti != null ? r.giorniRimasti : '—') + ' gg')
+            : '<span class="cl-sub">non dichiarato</span>')}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+}
+
 function polRateInScadenza(rate) {
   const oggi = new Date().toISOString().slice(0, 10);
   const aperte = (rate || [])
@@ -19283,6 +19534,11 @@ async function loadScadenzario() {
     const { data, error } = await q;
     if (error) throw error;
     RIN_ROWS = data || [];
+    /* Le sospese stanno in un riquadro suo, in cima, e si leggono da
+       `quote_polizze`: la vista dello scadenzario non le conosce, e la loro
+       scadenza non è quella scritta (§1: qui si CHIAMA, non basta che la
+       funzione esista). */
+    sosScadenzario();
     [['rin-prodotto', 'prodotto'], ['rin-compagnia', 'compagnia']].forEach(([id, campo]) => {
       const sel = document.getElementById(id);
       if (!sel) return;

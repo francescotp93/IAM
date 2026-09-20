@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.10.0">
-<meta name="app-versione-nome" content="Trovare, aprire, scrivere">
+<meta name="app-versione" content="0.11.0">
+<meta name="app-versione-nome" content="Sospensioni e fido">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -43,6 +43,9 @@
 <!-- Il catalogo prodotti: stesso file del preventivatore, perché l'import
      deve riconoscere compagnie e prodotti con le stesse regole. -->
 <script src="/nuovo-preventivo/tariffe/motore/catalogo.js?v=20260920"></script>
+<!-- Sospensioni e fido (Blocco 3): stesso file del preventivatore, perche'
+     il tetto al credito di una persona non puo' avere due regole. -->
+<script src="/nuovo-preventivo/tariffe/motore/sospensione.js?v=20260920"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -3361,6 +3364,19 @@ input[type=file]{display:none;}
           Abbinarlo qui vuol dire che le sue rate, da stanotte in poi, nascono già sue.</div>
         <div id="mc-codici"></div>
       </div>
+      <!-- IL FIDO (Blocco 3 · punto 6, 20/09/2026). Il credito dell'agenzia
+           verso questa persona — le rate che ha incassato e non ha ancora
+           rimesso — si vede nell'estratto conto dal 19/09. Qui c'è il TETTO,
+           e un credito senza tetto si scopre quando è troppo grande.
+           Sta sulla PERSONA e non sulla scheda economica: il credito si
+           calcola su chi ha incassato, e chi ha incassato può non avere una
+           scheda — lì sarebbe risultato senza limite, in silenzio. -->
+      <div class="fsec"><div class="fsec-title">Fido</div>
+        <div class="cl-sub" style="margin-bottom:8px">Quanto denaro dell'agenzia questa persona può tenere
+          prima di rimetterlo. Lasciandolo vuoto non si dice «illimitato»: si dice che
+          <b>nessuno ha deciso</b>, e il suo credito resta fuori dai conti con il motivo scritto.</div>
+        <div id="mc-fido"></div>
+      </div>
       <div class="fsec"><div class="fsec-title">Chi e quando</div>
         <div id="mc-storia"></div>
       </div>
@@ -4589,10 +4605,96 @@ let CCP_PERSONA = null;  // la persona di cui si sta guardando la scheda
    sicura — e sarebbe sicura di niente. */
 let CCP_PERSONE = [];
 
+/* ═══ IL FIDO DELLA PERSONA (Blocco 3 · punto 6, 20/09/2026) ════════════════
+   Un campo solo, e tre regole che lo rendono onesto:
+    · vuoto NON vuol dire illimitato — vuol dire che nessuno ha deciso, e il
+      credito di quella persona resta fuori dai conti col motivo scritto
+      (§17: quello che non si sa non entra nei totali);
+    · ZERO è una decisione, e si conta: questa persona non tiene denaro
+      dell'agenzia;
+    · lo decide l'admin, come i codici: qui si decide quanto denaro può
+      restare in mano a qualcuno. */
+let FID_PERSONA = null;
+
+function fidPuo() { return PROFILO?.ruolo === 'admin'; }
+
+async function fidInstalla(personaId) {
+  FID_PERSONA = personaId || null;
+  const box = document.getElementById('mc-fido');
+  if (!box) return;
+  if (!personaId) {
+    box.innerHTML = '<div class="cl-sub">Questa scheda non è ancora agganciata a una persona del registro: il fido si dichiara da lì.</div>';
+    return;
+  }
+  box.innerHTML = '<div class="cl-sub" style="padding:6px 0">Leggo il fido…</div>';
+  try {
+    const { data, error } = await db.from('quote_collaboratori').select('fido').eq('id', personaId).single();
+    if (error) throw error;
+    fidRender(data ? data.fido : null);
+  } catch (e) {
+    /* §18: «non si è potuto leggere» non è «non c'è un fido». */
+    box.innerHTML = `<div class="cl-sub">Non riesco a leggere il fido.<br>
+      <small>${esc(e.message || e)} — non vuol dire che non ce ne sia uno: vuol dire che non si è potuto leggerlo.</small></div>`;
+  }
+}
+
+function fidRender(valore) {
+  const box = document.getElementById('mc-fido');
+  if (!box) return;
+  const puo = fidPuo();
+  const v = (valore === null || valore === undefined) ? '' : String(valore);
+  box.innerHTML = `<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:0 0 180px"><label class="cl-sub">Fido (€)</label>
+        <input id="mc-fido-v" type="number" min="0" step="0.01" value="${esc(v)}"
+               placeholder="non dichiarato" ${puo ? '' : 'disabled'} style="width:100%"></div>
+      ${puo ? '<button class="d-btn primario" type="button" onclick="fidSalva()">Salva</button>' +
+              (v !== '' ? '<button class="d-btn" type="button" onclick="fidSalva(true)">Togli il fido</button>' : '') : ''}
+    </div>
+    <div class="cl-sub" style="margin-top:6px">${v === ''
+      ? 'Nessun fido dichiarato: il credito di questa persona non si può giudicare.'
+      : (Number(v) === 0
+         ? 'Fido a zero: questa persona non tiene denaro dell\'agenzia. È un accordo, e si conta.'
+         : 'Oltre questa cifra il credito compare fra quelli da rientrare.')}</div>
+    <div id="mc-fido-msg"></div>`;
+}
+
+async function fidSalva(togli) {
+  if (!fidPuo() || !FID_PERSONA) return;
+  const msg = document.getElementById('mc-fido-msg');
+  const raw = (document.getElementById('mc-fido-v') || {}).value;
+  let valore = null;
+  if (!togli) {
+    const n = parseFloat(raw);
+    /* Un campo vuoto TOGLIE il fido, e non lo mette a zero: sono due cose
+       diverse, e confonderle direbbe che una persona non può tenere niente
+       quando invece nessuno ha deciso. */
+    if (String(raw || '').trim() !== '') {
+      if (!isFinite(n) || n < 0) {
+        if (msg) msg.innerHTML = '<div class="cnt-err">Il fido non può essere negativo.</div>';
+        return;
+      }
+      valore = n;
+    }
+  }
+  try {
+    const { error } = await db.from('quote_collaboratori').update({ fido: valore }).eq('id', FID_PERSONA);
+    if (error) throw error;
+    logMovimento(valore === null ? 'fido tolto' : 'fido', 'collaboratore',
+      valore === null ? 'nessun fido dichiarato' : (valore + ' €'), FID_PERSONA);
+    fidRender(valore);
+  } catch (e) {
+    if (msg) msg.innerHTML = `<div class="cnt-err">${esc(e.message || e)}</div>`;
+  }
+}
+
 function ccpPuoDecidere() { return PROFILO?.ruolo === 'admin'; }
 
 async function ccpInstalla(personaId) {
   CCP_PERSONA = personaId || null;
+  /* Il fido si installa insieme ai codici: sono due cose della stessa
+     persona, e due letture separate su due aperture diverse sarebbero due
+     occasioni di dimenticarne una. */
+  fidInstalla(personaId);
   const box = document.getElementById('mc-codici');
   if (!box) return;
   if (!personaId) {

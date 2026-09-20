@@ -9044,6 +9044,65 @@ const avvio = async () => {
       return 'niente piano, niente scritture';
     });
 
+    await prova('flusso: dice quali compagnie e prodotti creerebbe, prima di scrivere', async () => {
+      /* Parte D del brief. L'importazione non si ferma su una compagnia che
+         non conosce: la crea, marcata. Ma lo dice PRIMA — un'importazione
+         che si fa vedere dopo è una cosa che si subisce (§14). */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_codici_collaboratore:lista'] = { data: [], error: null };
+        /* L'anagrafica non conosce la compagnia del campione, e il catalogo
+           è vuoto: è il caso in cui tutto è da creare. */
+        window.__COLLAUDO.risposte['quote_compagnie:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['iam_compagnia_prodotti:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['iam_prodotti_standard:lista'] = { data: [
+          { id: 's-rca', ramo: 'rca', nome: 'RC Auto', codice: 'RCA', attivo: true }], error: null };
+        const files = Object.keys(window.__CAMPIONE).map(n => new File([window.__CAMPIONE[n]], n, { type: 'text/csv' }));
+        window.__COLLAUDO.db = [];
+        await fluScelto(files);
+        return {
+          html: document.getElementById('flu-esito').innerHTML,
+          cat: FLU_PIANO ? FLU_PIANO._catalogo : null,
+          /* Il piano non deve aver scritto NIENTE. */
+          scritture: window.__COLLAUDO.db.filter(x => x.operazione === 'insert').length
+        };
+      });
+      deve(r.cat && !r.cat.errore, 'il piano del catalogo non si costruisce: ' + JSON.stringify(r.cat));
+      deve(r.cat.conteggi.compagnie_da_creare >= 1, 'non propone nessuna compagnia nuova');
+      deve(r.cat.conteggi.prodotti_da_creare >= 1, 'non propone nessun prodotto nuovo');
+      deve(/da verificare/.test(r.html), 'non dice che quello che nasce è marcato da verificare');
+      deve(/Catalogo: /.test(r.html), 'l\'anteprima non nomina il catalogo: ' + r.html.slice(0, 200));
+      deve(r.scritture === 0, 'l\'anteprima ha scritto ' + r.scritture + ' righe');
+      return r.cat.conteggi.compagnie_da_creare + ' compagnie e ' + r.cat.conteggi.prodotti_da_creare + ' prodotti dichiarati';
+    });
+
+    await prova('flusso: se il catalogo non si scrive, il portafoglio entra lo stesso', async () => {
+      /* «L'import non si ferma mai» (brief, Parte D). Il portafoglio è il
+         lavoro, il catalogo è la sua etichetta: fermarsi su una tabella di
+         contorno lascerebbe fuori delle polizze vere. */
+      const r = await page.evaluate(async () => {
+        window.confirm = () => true;
+        window.__COLLAUDO.db = [];
+        /* La scrittura in catalogo fallisce. Tutto il resto deve andare. */
+        window.__COLLAUDO.risposte['quote_compagnie:single'] =
+          { data: null, error: { message: 'permission denied' } };
+        await fluConferma();
+        const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
+        return {
+          html: document.getElementById('flu-esito').innerHTML,
+          pol: ins.filter(x => x.tabella === 'quote_polizze').length,
+          anag: ins.filter(x => x.tabella === 'quote_anagrafiche').length
+        };
+      });
+      deve(r.anag > 0 && r.pol > 0, 'il portafoglio non è entrato: ' + r.anag + ' clienti, ' + r.pol + ' polizze');
+      /* E lo dichiara, invece di far credere che sia andato tutto. */
+      deve(/non si è potuto aggiornare/.test(r.html),
+        'non dice che il catalogo è rimasto indietro: ' + r.html.slice(0, 300));
+      return r.anag + ' clienti e ' + r.pol + ' polizze scritte comunque';
+    });
+
     await prova('flusso: nessun errore JavaScript in tutto il blocco', async () => {
       deve(erroriFlu.length === 0, erroriFlu.slice(0, 3).join(' | '));
     });

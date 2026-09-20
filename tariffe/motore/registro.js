@@ -100,6 +100,13 @@
        chi l'ha scritto, chi l'ha corretto e chi l'ha annullato si leggono
        dalla riga stessa, come per una polizza. */
     movimento:     { l: 'Movimento',     i: 'ti-arrows-exchange',  tabella: 'iam_movimenti', id: 'uuid' },
+    /* Il catalogo prodotti (20/09/2026). Due voci e non una: un prodotto di
+       compagnia e un prodotto STANDARD vivono in due tabelle, e una voce sola
+       aprirebbe la riga sbagliata la meta' delle volte — un id che apre la
+       cosa di qualcun altro e' peggio di un id assente (§18, regola 1). */
+    compagnia:     { l: 'Compagnia',     i: 'ti-shield',          tabella: 'quote_compagnie', id: 'uuid' },
+    prodotto:      { l: 'Prodotto',      i: 'ti-package',         tabella: 'iam_compagnia_prodotti', id: 'uuid' },
+    prodotto_standard: { l: 'Prodotto standard', i: 'ti-library', tabella: 'iam_prodotti_standard', id: 'uuid' },
     azienda:       { l: 'Agenzia',       i: 'ti-building',        tabella: null }
   };
 

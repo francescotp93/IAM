@@ -674,6 +674,11 @@
              collaboratore a collaboratore. */
           { l: 'Gestione compagnie', i: 'i-shield', act: 'compagnie', go: function(){ vai('compagnie'); } },
           { l: 'Provvigioni', i: 'i-euro', act: 'provvigioni', go: function(){ vai('provvigioni'); } },
+          /* Il catalogo prodotti (20/09/2026) e' una terza domanda ancora:
+             non quanto una compagnia riconosce, ma CHE COSA vende — e con
+             quale nome. Le compagnie e i loro prodotti stavano scritti solo
+             come stringhe sulle polizze: qui hanno un'anagrafica. */
+          { l: 'Catalogo prodotti', i: 'i-fold', act: 'catalogo', go: function(){ vai('catalogo'); } },
         ] },
         { hr: true },
         /* Materiale di consultazione dell'agenzia. Le tre categorie sono un
@@ -740,6 +745,7 @@
     conti:       ['Conti e causali', 'Strumenti'],
     compagnie:   ['Gestione compagnie', 'Strumenti'],
     provvigioni: ['Provvigioni', 'Strumenti'],
+    catalogo:    ['Catalogo prodotti', 'Strumenti'],
     pipeline:    ['Trattative', 'Clienti'],
     workdiary:   ['Diario di lavoro', 'Agenzia'],
     performance: ['KPI e gare', 'Agenzia'],
@@ -835,6 +841,7 @@
     performance: 'agenzia', pipeline: 'clienti',
     fonti: 'strumenti', analisi: 'marketing', collegamenti: 'strumenti',
     posta: 'strumenti', conti: 'strumenti', compagnie: 'strumenti', provvigioni: 'strumenti',
+    catalogo: 'strumenti',
     parametri: 'strumenti',
     utenti: 'admin', azienda: 'admin', agenti: 'admin', quoto: 'quoto'
   };

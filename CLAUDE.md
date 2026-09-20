@@ -3430,3 +3430,141 @@ schede dieci volte non sono dieci richieste.
   la pagina si rilegge e l'`ETag` decide. Se un giorno non bastasse, il passo
   dopo è aggiungere un contrassegno all'indirizzo — ma prima va misurato, non
   supposto.
+
+---
+
+## 39. Il catalogo prodotti (20/09/2026)
+
+Brief «Anagrafica compagnie e catalogo prodotti». Il brief parla di React e
+Supabase: la seconda sì, il primo no (§9, §21). E come al solito la prima cosa
+è stata misurare, non leggere.
+
+| misurato il 20/09/2026 | |
+|---|---|
+| `quote_compagnie` | **9 compagnie**, alias solo su HDI e Prima |
+| catalogo prodotti | **non esisteva**, né standard né per compagnia |
+| `iam_provvigioni_tariffa` | **0 righe** |
+| `iam_provvigioni_collaboratore` | **0 righe** |
+| `quote_polizze` | 30 righe, **5** coppie (compagnia, prodotto) |
+| `quote_pratiche` | 2 righe, 1 coppia |
+
+I nomi veri: `PRIMA/rca/BLACK` (23), `HDI Assicurazioni/persona/RC Vita Privata
+· HDI` (3), `HDI Assicurazioni/beni/Rischi Catastrofali Abitazione (HDI)` (2),
+`PRIMA/beni/CASA_E_FAMIGLIA` (1), `PRIMA/beni/FAMIGLIA` (1).
+
+| pezzo | dove |
+|---|---|
+| tutte le regole | `tariffe/motore/catalogo.js` |
+| prove in Node | `server/verifica/catalogo.test.mjs` — **21** |
+| le due tabelle, gli indici, le politiche, il seme, il rollback | `supabase/migrations/20260920_catalogo_prodotti.sql` (applicata) |
+| la schermata | `#panel-catalogo` e il blocco `cat*` in `iam/index.html` |
+| prove sulla schermata | `iam/verifica/catalogo-prodotti.test.mjs` — 10 |
+| l'importazione che crea | `fluCatalogo`, `fluCatalogoHTML`, `fluScriviCatalogo` in `index.html` |
+| prove nella pagina | blocco «flusso» in `ui-test.mjs` — **456** |
+
+### La misura che ha deciso il riallaccio
+
+**Nelle tariffe non c'era niente da rompere**: zero righe. Le stringhe che
+contano sono le 32 di portafoglio. Quindi le due tabelle nascono **accanto**, e
+**nessuna colonna diventa `prodotto_id` oggi**: il catalogo si riempie (a mano e
+dall'importazione), una **copertura** dice quante righe hanno già trovato il
+loro prodotto, e solo quando è piena si valuta la colonna.
+
+Convertire subito vorrebbe dire mettere una chiave esterna verso una tabella
+**vuota** su 32 righe che funzionano: rompere quello che c'è per agganciarlo a
+quello che non c'è ancora. E il riallaccio non si perde per strada — la chiave
+di ricerca (compagnia normalizzata + ramo + nome normalizzato, con gli alias) è
+la stessa del motore, quindi **una polizza scritta ieri ritrova il suo prodotto
+il giorno in cui il prodotto esiste**, senza riscrivere la polizza.
+
+### Il ramo non è una parola nuova
+
+È la chiave dei moduli che tutta la casa usa già (`MODULES` in `index.html`,
+`quote_polizze.modulo`): `rca`, `beni`, `vita`, `persona`, `tutela`, `impresa`,
+`rcprof`, `cauzioni`, `salute`, `animali`, `viaggio`. Inventarne un secondo
+vocabolario sarebbero due elenchi che non si incrociano (§18, «storico»).
+
+E **il ramo lo decide la libreria, non il nome commerciale**: il nome è della
+compagnia, il ramo è di casa nostra. Con una conseguenza che la prova ha
+corretto: il ramo del file vale come filtro **solo se è una parola che
+conosciamo**. Se la compagnia scrive «auto» dove noi scriviamo «rca»,
+restringere a «auto» non troverebbe mai niente, e il prodotto nascerebbe
+scollegato dalla libreria **proprio nel caso in cui la libreria serve di più**.
+Dove il ramo non è uno dei nostri decide il nome, e il ramo lo porta lo standard
+trovato.
+
+### Le regole che, saltando, producono un catalogo credibile e sbagliato
+
+1. **Aggancia solo se è una.** Due compagnie che si riducono alla stessa forma
+   («Nord Assicurazioni» e «Nord S.p.A.») non producono **niente**: sceglierne
+   una vuol dire attribuire un portafoglio alla compagnia sbagliata. È la
+   regola dei codici collaboratore (§19) applicata alle compagnie. E sotto una
+   compagnia ambigua non si aggancia e non si crea nessun prodotto.
+2. **«Casa» di HDI e «Casa» di Prima sono due prodotti.** La chiave è la coppia
+   compagnia+ramo: su una chiave a nome solo la seconda mangerebbe la prima, in
+   silenzio.
+3. **Lo standard si PROPONE.** «BLACK» non somiglia a «RC Auto» in nessun modo
+   che un programma possa vedere: l'aggancio lo decide una persona (§8.1).
+4. **Non si elimina, si disattiva** (§26): sotto ci sono polizze, e sono storia.
+   Nel pannello non c'è nemmeno una `.delete()`, e c'è una prova che lo misura.
+5. **Fondere mette il nome scartato fra gli ALIAS.** È l'unica cosa che fa
+   funzionare la fusione la notte dopo: senza, l'importazione ricreerebbe lo
+   scartato come nuovo e la fusione sarebbe da rifare ogni notte.
+6. **L'importazione non si ferma mai.** Ogni riga finisce in uno di tre posti —
+   agganciata, da creare, o dichiarata impossibile col motivo — e nessuno dei
+   tre blocca il resto. Un'importazione che si ferma sulla riga 400 lascia un
+   portafoglio scritto a metà, e nessuno sa quale metà. Nel codice questo è un
+   `try` **attorno al solo catalogo**: il portafoglio è il lavoro, il catalogo è
+   la sua etichetta.
+
+### La normalizzazione sta in due posti, e devono dire la stessa cosa
+
+`iam_nome_norm` in Postgres è la copia esatta di `norm()` nel motore. **Se le
+due divergono, l'indice unico accetta un doppione che il codice credeva
+impossibile** — ed è il modo in cui un catalogo comincia a contenere due volte
+lo stesso prodotto senza che nessuno se ne accorga. C'è una prova che legge la
+tabella degli accenti dalla migrazione e pretende di ritrovarla, carattere per
+carattere, nel motore.
+
+### Chi legge e chi scrive, e l'eccezione dichiarata
+
+**Leggere: chiunque abbia un accesso.** Un catalogo di prodotti non è un dato su
+una persona — quei nomi stanno già sulle polizze che un collaboratore vede.
+Tenerlo allo staff vorrebbe dire che il giorno in cui le tendine lo leggono, a
+un collaboratore esce una tendina vuota. È la stessa scelta di
+`quote_compagnie`.
+
+**Scrivere: l'admin** (§19, §26). Con una sola eccezione, e scritta in faccia
+nelle politiche: **l'importazione la lancia lo staff, e deve poter registrare
+quello che ha trovato** — quindi lo staff può inserire una riga *solo* se nasce
+`origine='import'` e `da_verificare=true`. Non può decidere niente e non può
+correggere niente. Il permesso di gestione resta all'amministrazione.
+
+### Due voci nel registro, non una
+
+`prodotto` (→ `iam_compagnia_prodotti`) e `prodotto_standard` (→
+`iam_prodotti_standard`) vivono in due tabelle: una voce sola aprirebbe la riga
+sbagliata la metà delle volte, e **un id che apre la cosa di qualcun altro è
+peggio di un id assente** (§18, regola 1).
+
+### Controprove
+
+- Tolta la regola «aggancia solo se è una» → **tre** prove del motore rosse.
+- Tolto il `try` attorno alla scrittura del catalogo → rossa la prova nella
+  pagina «se il catalogo non si scrive, il portafoglio entra lo stesso».
+
+### Cosa resta aperto
+
+- **Il catalogo dei prodotti di compagnia nasce vuoto**, ed è voluto: i prodotti
+  esistono davvero sul portafoglio, e portarli dentro è una cosa che si
+  **guarda prima di scrivere** (§14). Lo fa il tasto «Guarda che cosa
+  creerebbe», nella linguetta «Da verificare».
+- **Le tendine di quotazione non leggono ancora il catalogo**: il preventivatore
+  continua a usare `PRODOTTI_DIRETTI`, che è il contratto col menu di IAM
+  (`INTERFACCIA-QUOTO-IAM.md` §2.6). Collegarli è un lavoro a sé, e va fatto
+  quando la copertura è piena.
+- **`prodotto_id` sulle polizze e sulle tariffe** resta una migrazione futura,
+  con il suo backfill. Oggi sarebbe una chiave esterna verso il vuoto.
+- **Gli alias delle compagnie sono ancora solo su HDI e Prima** (§20): un flusso
+  il cui emittente non corrisponde crea una compagnia nuova invece di ritrovare
+  quella che c'è. Adesso però la crea marcata, e si vede.

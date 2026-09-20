@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.8.1">
-<meta name="app-versione-nome" content="La pagina che si accorge di essere vecchia">
+<meta name="app-versione" content="0.9.0">
+<meta name="app-versione-nome" content="Il catalogo prodotti">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -40,6 +40,9 @@
 <script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260919"></script>
 <!-- Le provvigioni (brief #02 M2): stesso file del preventivatore. -->
 <script src="/nuovo-preventivo/tariffe/motore/provvigioni.js?v=20260920"></script>
+<!-- Il catalogo prodotti: stesso file del preventivatore, perché l'import
+     deve riconoscere compagnie e prodotti con le stesse regole. -->
+<script src="/nuovo-preventivo/tariffe/motore/catalogo.js?v=20260920"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -781,6 +784,7 @@ input[type=file]{display:none;}
 #contab-panel-quadratura,
 #contab-panel-anomalie,
 #contab-panel-storico,
+#panel-catalogo,
 #contab-panel-conto {
   --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
   --w1-sfondo:#f3f5f7; --w1-bordo:#e3e8ec;
@@ -3847,6 +3851,66 @@ input[type=file]{display:none;}
   </div>
 </div>
 
+<!-- ══ CATALOGO PRODOTTI ═════════════════════════════════════════════════
+     Brief «Anagrafica compagnie e catalogo prodotti» (20/09/2026).
+
+     Perché è una schermata a sé e non una linguetta di Gestione compagnie:
+     lì si configura QUANTO una compagnia riconosce, qui CHE COSA vende. La
+     prima è una domanda di soldi, la seconda di prodotto — e chi apre la
+     seconda non sta facendo il lavoro della prima.
+
+     Due livelli, e non è una gerarchia decorativa:
+      · la LIBRERIA STANDARD è il nostro vocabolario — «RC Auto» è RC Auto
+        per chiunque, e il ramo lo decide lei;
+      · il PRODOTTO DI COMPAGNIA è come quella compagnia lo chiama: PRIMA
+        chiama «BLACK» la sua RC Auto. Il nome commerciale è suo, il ramo
+        resta quello della libreria.
+
+     Niente si elimina: si disattiva. Le polizze che ci sono sotto sono
+     storia, e cancellare il prodotto le renderebbe orfane (§26). -->
+<div class="panel" id="panel-catalogo" style="overflow-y:auto;">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow">Strumenti</div>
+      <h1>Catalogo prodotti</h1>
+      <div class="subtitle">Le compagnie, e come ognuna chiama i suoi prodotti.</div>
+    </div>
+    <div class="head-actions">
+      <button class="d-btn" type="button" onclick="catCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <button class="d-btn primario" type="button" id="cat-nuovo" onclick="catNuovo()"><i class="ti ti-plus"></i> Nuova compagnia</button>
+    </div>
+  </section>
+
+  <div class="ptabs">
+    <button class="ptab act" id="catt-compagnie" onclick="catTab('compagnie')">Compagnie</button>
+    <button class="ptab" id="catt-verifica" onclick="catTab('verifica')">Da verificare</button>
+    <button class="ptab" id="catt-libreria" onclick="catTab('libreria')">Libreria standard</button>
+  </div>
+
+  <!-- Che cosa non si è potuto leggere, sopra quello che invece c'è: con
+       cinque letture, «qualcosa è andato storto» non dice dove guardare
+       (§35). -->
+  <section id="cat-guasti" style="display:none"></section>
+
+  <div id="catp-compagnie">
+    <section class="cnt-somma" id="cat-somma"></section>
+    <section class="cnt-lista" id="cat-lista"><div class="cl-sub">Carico le compagnie…</div></section>
+  </div>
+  <div id="catp-verifica" style="display:none">
+    <section class="cnt-lista" id="cat-verifica"></section>
+  </div>
+  <div id="catp-libreria" style="display:none">
+    <section class="cnt-lista" id="cat-libreria"></section>
+  </div>
+
+  <div id="cat-ov" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);
+       backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px"
+       onclick="if(event.target===this)catChiudi()">
+    <div id="cat-box" style="background:var(--surf);border-radius:var(--r);width:min(620px,100%);
+         max-height:88vh;overflow:auto;box-shadow:var(--shd2)"></div>
+  </div>
+</div>
+
 <!-- ══ STATO COLLEGAMENTI ═══════════════════════════════════════════════
      Che cosa è, e perché non è la stessa cosa di «Fonti compagnie».
 
@@ -6571,6 +6635,689 @@ function initDB() {
   } catch(e) { console.warn('DB init error:', e); }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   CATALOGO PRODOTTI — brief «Anagrafica compagnie e catalogo prodotti»
+   (20/09/2026)
+
+   Tutte le REGOLE stanno nel motore `/nuovo-preventivo/tariffe/motore/catalogo.js`,
+   che è lo stesso file che carica il preventivatore: due vocabolari dei
+   prodotti sarebbero due cataloghi della stessa agenzia (§10, §18). Qui c'è
+   solo quello che un motore non può avere — il database e il DOM.
+
+   `var` e non `let` sulle variabili di stato: con `let` la variabile del
+   blocco e `window.CAT_*` sono due cose diverse, e una prova che inietta un
+   catalogo finto scriverebbe in una mentre il codice legge l'altra, restando
+   verde senza aver misurato niente (§17).
+   ═══════════════════════════════════════════════════════════════════════════ */
+var CAT_COMPAGNIE = [];   // quote_compagnie
+var CAT_PRODOTTI  = [];   // iam_compagnia_prodotti
+var CAT_STANDARD  = [];   // iam_prodotti_standard
+var CAT_PORTAFOGLIO = []; // quote_polizze + quote_pratiche, per la copertura
+var CAT_VISTA = 'compagnie';
+var CAT_APERTA = null;    // id della compagnia di cui si sta guardando il catalogo
+
+function catM() { return window.Catalogo || null; }
+/* Qui si decide che cosa si vende, e su quel nome sono scritte le regole
+   documentali e le tariffe: è la stessa soglia dei conti (§26) e dei codici
+   collaboratore (§19). Il cancello VERO sta nelle politiche del database; il
+   bottone nascosto serve solo a non mostrare una porta chiusa. */
+function catPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
+
+function catTab(v) {
+  CAT_VISTA = v;
+  ['compagnie', 'verifica', 'libreria'].forEach(k => {
+    document.getElementById('catt-' + k)?.classList.toggle('act', k === v);
+    const p = document.getElementById('catp-' + k);
+    if (p) p.style.display = k === v ? '' : 'none';
+  });
+  const n = document.getElementById('cat-nuovo');
+  if (n) {
+    n.style.display = v === 'verifica' ? 'none' : '';
+    n.innerHTML = '<i class="ti ti-plus"></i> ' +
+      (v === 'libreria' ? 'Nuovo prodotto standard' : (CAT_APERTA ? 'Nuovo prodotto' : 'Nuova compagnia'));
+  }
+}
+
+async function catCarica(forza) {
+  if (!db) return;
+  if (forza) {
+    const l = document.getElementById('cat-lista');
+    if (l) l.innerHTML = '<div class="cl-sub">Carico le compagnie…</div>';
+  }
+  /* Ogni lettura sta in piedi da sola (§35): la copertura può cadere senza
+     rendere inutile la schermata, e se cade si tace su quella sezione — non
+     si perde tutto. */
+  const guasti = [];
+  const leggi = async (nome, q, vuoto) => {
+    try { const r = await q; if (r.error) throw r.error; return r.data || vuoto; }
+    catch (e) { guasti.push({ nome, motivo: e.message || String(e) }); return vuoto; }
+  };
+  const [co, pr, st, po, pa] = await Promise.all([
+    leggi('l\'anagrafica delle compagnie', db.from('quote_compagnie').select('*').order('nome'), []),
+    leggi('il catalogo dei prodotti', db.from('iam_compagnia_prodotti').select('*').order('nome'), []),
+    leggi('la libreria standard', db.from('iam_prodotti_standard').select('*').order('ordine').order('nome'), []),
+    leggi('il portafoglio (serve alla copertura)', db.from('quote_polizze').select('compagnia,modulo,prodotto'), []),
+    leggi('le pratiche in lavorazione', db.from('quote_pratiche').select('compagnia,modulo,prodotto'), [])
+  ]);
+  CAT_COMPAGNIE = co; CAT_PRODOTTI = pr; CAT_STANDARD = st;
+  CAT_PORTAFOGLIO = (po || []).concat(pa || []).filter(r => r && r.compagnia);
+  catRender();
+  catGuasti(guasti);
+}
+
+function catGuasti(guasti) {
+  const box = document.getElementById('cat-guasti');
+  if (!box) return;
+  if (!guasti || !guasti.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  box.innerHTML = '<div style="padding:0 16px"><div class="cnt-err">' +
+    '<b>Non si è potuto leggere ' + guasti.length + (guasti.length === 1 ? ' cosa' : ' cose') + '.</b> ' +
+    'Non vuol dire che non ci sia niente: vuol dire che non si è potuto leggerlo.<br>' +
+    guasti.map(g => '<small>· ' + esc(g.nome) + ' — ' + esc(g.motivo) + '</small>').join('<br>') +
+    '</div></div>';
+}
+
+function catRender() {
+  const puo = catPuoScrivere();
+  if (CAT_APERTA) catRenderCatalogo(puo); else { catRenderSomma(); catRenderCompagnie(puo); }
+  catRenderVerifica(puo);
+  catRenderLibreria(puo);
+  catTab(CAT_VISTA);
+}
+
+/* ── Le tessere di riepilogo ───────────────────────────────────────────── */
+function catRenderSomma() {
+  const box = document.getElementById('cat-somma');
+  if (!box) return;
+  const M = catM();
+  const attivi = CAT_PRODOTTI.filter(p => p.attivo !== false).length;
+  const daVer = CAT_PRODOTTI.filter(p => p.da_verificare).length;
+  const cop = M ? M.copertura(CAT_PORTAFOGLIO, CAT_COMPAGNIE, CAT_PRODOTTI) : null;
+  const card = (k, v, s) => '<div class="cnt-card"><div class="cnt-k">' + k + '</div>' +
+    '<div class="cnt-v">' + v + '</div><div class="cnt-s">' + s + '</div></div>';
+  box.innerHTML =
+    card('Compagnie', CAT_COMPAGNIE.length, CAT_COMPAGNIE.filter(c => c.attiva !== false).length + ' attive') +
+    card('Prodotti in catalogo', attivi, CAT_PRODOTTI.length + ' in tutto, spenti compresi') +
+    card('Da verificare', daVer, daVer ? 'nati da un’importazione, mai guardati' : 'niente in coda') +
+    card('Portafoglio coperto', cop ? cop.dentro + '/' + cop.totale : '—',
+      cop && cop.fuori.length ? cop.fuori.length + ' da mettere in catalogo' : 'tutte le righe ritrovano il loro prodotto');
+}
+
+/* ── L'elenco delle compagnie ──────────────────────────────────────────── */
+function catRenderCompagnie(puo) {
+  const box = document.getElementById('cat-lista');
+  if (!box) return;
+  if (!CAT_COMPAGNIE.length) {
+    box.innerHTML = '<div class="cl-sub">Nessuna compagnia in anagrafica.</div>';
+    return;
+  }
+  box.innerHTML = CAT_COMPAGNIE.map(c => {
+    const suoi = CAT_PRODOTTI.filter(p => p.compagnia_id === c.id);
+    const viv = suoi.filter(p => p.attivo !== false).length;
+    const ver = suoi.filter(p => p.da_verificare).length;
+    const al = (c.alias || []).length;
+    return '<div class="cnt-r' + (c.attiva === false ? ' cnt-spento' : '') + '" style="cursor:pointer" ' +
+      'onclick="catApriCompagnia(\'' + c.id + '\')">' +
+      '<div style="min-width:0"><div class="cnt-nome">' + esc(c.nome) +
+        (c.attiva === false ? ' <span class="cnt-tag">spenta</span>' : '') +
+        (ver ? ' <span class="cnt-tag transito">' + ver + ' da verificare</span>' : '') + '</div>' +
+      '<div class="cnt-sotto">' + viv + ' prodotti attivi' +
+        (suoi.length !== viv ? ' · ' + (suoi.length - viv) + ' spenti' : '') +
+        (al ? ' · ' + al + ' alias' : ' · nessun alias') + '</div></div>' +
+      '<div class="cnt-saldo" style="font-size:12px;font-weight:600">' +
+      (puo ? '<button class="d-btn" type="button" onclick="event.stopPropagation();catApriAnagrafica(\'' + c.id + '\')">Modifica</button> ' : '') +
+      '<i class="ti ti-chevron-right"></i></div></div>';
+  }).join('');
+}
+
+function catApriCompagnia(id) { CAT_APERTA = id; CAT_VISTA = 'compagnie'; catRender(); }
+function catIndietro() { CAT_APERTA = null; catRender(); }
+function catCompagnia(id) { return CAT_COMPAGNIE.find(c => c.id === id) || null; }
+function catStd(id) { return CAT_STANDARD.find(s => s.id === id) || null; }
+
+/* ── Il catalogo di UNA compagnia ──────────────────────────────────────── */
+function catRenderCatalogo(puo) {
+  const box = document.getElementById('cat-lista');
+  const somma = document.getElementById('cat-somma');
+  if (somma) somma.innerHTML = '';
+  if (!box) return;
+  const c = catCompagnia(CAT_APERTA);
+  if (!c) { CAT_APERTA = null; catRender(); return; }
+  const suoi = CAT_PRODOTTI.filter(p => p.compagnia_id === c.id)
+    .sort((a, b) => (a.ramo + a.nome).toLowerCase() < (b.ramo + b.nome).toLowerCase() ? -1 : 1);
+  const oggi = new Date().toISOString().slice(0, 10);
+  const M = catM();
+
+  let h = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">' +
+    '<button class="d-btn" type="button" onclick="catIndietro()"><i class="ti ti-arrow-left"></i> Tutte le compagnie</button>' +
+    '<div style="font-size:17px;font-weight:800">' + esc(c.nome) + '</div>' +
+    ((c.alias || []).length ? '<div class="cl-sub">anche: ' + (c.alias || []).map(esc).join(', ') + '</div>' : '') +
+    (puo ? '<div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="d-btn" type="button" onclick="catApriLibreriaScelta()"><i class="ti ti-library-plus"></i> Aggiungi dalla libreria</button>' +
+      '<button class="d-btn primario" type="button" onclick="catApriProdotto(null)"><i class="ti ti-plus"></i> Nuovo prodotto</button></div>' : '') +
+    '</div>';
+
+  if (!suoi.length) {
+    h += '<div class="cl-sub">Questa compagnia non ha ancora prodotti in catalogo. ' +
+      'Si aggiungono dalla libreria standard — e si personalizza il nome, che è quello con cui la compagnia li chiama.</div>';
+  } else {
+    h += suoi.map(p => {
+      const st = catStd(p.prodotto_standard_id);
+      const vend = M ? M.vendibile(p, oggi) : p.attivo !== false;
+      const val = (p.dal ? 'dal ' + catData(p.dal) : '') + (p.al ? ' al ' + catData(p.al) : '');
+      return '<div class="cnt-r' + (vend ? '' : ' cnt-spento') + '">' +
+        '<div style="min-width:0;flex:1">' +
+        '<div class="cnt-nome">' + esc(p.nome) +
+          (p.da_verificare ? ' <span class="cnt-tag transito">da verificare</span>' : '') +
+          (p.attivo === false ? ' <span class="cnt-tag">spento</span>' : (!vend ? ' <span class="cnt-tag">fuori validità</span>' : '')) +
+          '</div>' +
+        '<div class="cnt-sotto">' + esc(p.ramo) + ' · ' +
+          (st ? 'standard: ' + esc(st.nome)
+              : '<span style="color:#f59e0b">non collegato a un prodotto standard</span>') +
+          (p.codice ? ' · codice ' + esc(p.codice) : '') +
+          (val ? ' · ' + esc(val.trim()) : '') +
+          ' · ' + (p.origine === 'import' ? 'arrivato da un’importazione' : 'inserito a mano') +
+          ((p.alias || []).length ? ' · anche: ' + (p.alias || []).map(esc).join(', ') : '') +
+        '</div></div>' +
+        (puo ? '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
+          '<button class="d-btn" type="button" onclick="catApriProdotto(\'' + p.id + '\')">Modifica</button>' +
+          (suoi.length > 1 ? '<button class="d-btn" type="button" onclick="catApriFusione(\'' + p.id + '\')">Fondi</button>' : '') +
+          '<button class="d-btn" type="button" onclick="catSpegni(\'' + p.id + '\',' + (p.attivo === false) + ')">' +
+            (p.attivo === false ? 'Riattiva' : 'Disattiva') + '</button>' +
+        '</div>' : '') +
+        '</div>';
+    }).join('');
+    /* Si dice a parole, perché è la cosa che chi guarda sta per sbagliare:
+       «disattiva» somiglia a «elimina», e non lo è. */
+    h += '<div class="cl-sub" style="margin-top:10px">Un prodotto non si elimina: si disattiva. ' +
+      'Esce dalle tendine e resta sulle polizze che ci sono sotto, che sono storia.</div>';
+  }
+  box.innerHTML = h;
+}
+
+function catData(d) {
+  if (!d) return '';
+  const p = String(d).slice(0, 10).split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(d);
+}
+
+/* ── La coda «da verificare», e il portafoglio da portare dentro ───────── */
+function catRenderVerifica(puo) {
+  const box = document.getElementById('cat-verifica');
+  if (!box) return;
+  const M = catM();
+  const coda = CAT_PRODOTTI.filter(p => p.da_verificare);
+  const cop = M ? M.copertura(CAT_PORTAFOGLIO, CAT_COMPAGNIE, CAT_PRODOTTI) : null;
+
+  let h = '<div style="font-size:15px;font-weight:800;margin-bottom:6px">Nati da un’importazione, mai guardati</div>';
+  if (!coda.length) {
+    h += '<div class="cl-sub" style="margin-bottom:18px">Niente in coda.</div>';
+  } else {
+    h += '<div class="cl-sub" style="margin-bottom:10px">L’importazione non si ferma mai: quello che non riconosce lo crea e lo marca, invece di scartarlo. Qui si conferma o si corregge.</div>';
+    h += coda.map(p => {
+      const c = catCompagnia(p.compagnia_id), st = catStd(p.prodotto_standard_id);
+      return '<div class="cnt-r"><div style="min-width:0;flex:1">' +
+        '<div class="cnt-nome">' + esc(p.nome) + '</div>' +
+        '<div class="cnt-sotto">' + esc(c ? c.nome : '(compagnia sconosciuta)') + ' · ' + esc(p.ramo) +
+          ' · ' + (st ? 'standard: ' + esc(st.nome) : '<span style="color:#f59e0b">nessuno standard</span>') +
+        '</div></div>' +
+        (puo ? '<div style="display:flex;gap:6px">' +
+          '<button class="d-btn" type="button" onclick="catApriProdotto(\'' + p.id + '\')">Guarda</button>' +
+          '<button class="d-btn primario" type="button" onclick="catConferma(\'' + p.id + '\')">Va bene</button></div>' : '') +
+        '</div>';
+    }).join('');
+  }
+
+  h += '<div style="font-size:15px;font-weight:800;margin:20px 0 6px">Il portafoglio che non ritrova il suo prodotto</div>';
+  if (!cop) {
+    h += '<div class="cnt-err">Il motore del catalogo non si è caricato: la copertura non si può calcolare.</div>';
+  } else if (!cop.fuori.length) {
+    h += '<div class="cl-sub">Tutte le ' + cop.totale + ' righe di portafoglio ritrovano il loro prodotto.</div>';
+  } else {
+    h += '<div class="cl-sub" style="margin-bottom:10px">' + cop.dentro + ' righe su ' + cop.totale +
+      ' ritrovano il loro prodotto. Le altre no, e in cima ci sono quelle che pesano di più.</div>' +
+      cop.fuori.map(f => '<div class="cnt-r"><div style="min-width:0;flex:1">' +
+        '<div class="cnt-nome">' + esc(f.prodotto || '(senza prodotto)') + '</div>' +
+        '<div class="cnt-sotto">' + esc(f.compagnia) + ' · ' + esc(f.ramo || 'senza ramo') +
+        ' · ' + f.n + (f.n === 1 ? ' riga' : ' righe') + ' · ' + esc(f.motivo) + '</div></div></div>').join('') +
+      (puo ? '<div style="margin-top:10px"><button class="d-btn primario" type="button" onclick="catApriPiano()">' +
+        '<i class="ti ti-eye"></i> Guarda che cosa creerebbe</button></div>' : '');
+  }
+  box.innerHTML = h;
+}
+
+/* ── La libreria standard ──────────────────────────────────────────────── */
+function catRenderLibreria(puo) {
+  const box = document.getElementById('cat-libreria');
+  if (!box) return;
+  if (!CAT_STANDARD.length) {
+    box.innerHTML = '<div class="cl-sub">La libreria è vuota.</div>';
+    return;
+  }
+  box.innerHTML =
+    '<div class="cl-sub" style="margin-bottom:10px">Il nostro vocabolario: «RC Auto» è RC Auto per chiunque. ' +
+    'Il <b>ramo</b> lo decide la libreria; il nome commerciale è della compagnia.</div>' +
+    CAT_STANDARD.map(s => {
+      const usi = CAT_PRODOTTI.filter(p => p.prodotto_standard_id === s.id).length;
+      return '<div class="cnt-r' + (s.attivo === false ? ' cnt-spento' : '') + '">' +
+        '<div style="min-width:0;flex:1"><div class="cnt-nome">' + esc(s.nome) +
+          (s.attivo === false ? ' <span class="cnt-tag">spento</span>' : '') + '</div>' +
+        '<div class="cnt-sotto">' + esc(s.ramo) + (s.codice ? ' · codice ' + esc(s.codice) : '') +
+          ' · ' + usi + (usi === 1 ? ' prodotto di compagnia collegato' : ' prodotti di compagnia collegati') + '</div></div>' +
+        (puo ? '<div style="display:flex;gap:6px">' +
+          '<button class="d-btn" type="button" onclick="catApriStandard(\'' + s.id + '\')">Modifica</button>' +
+          '<button class="d-btn" type="button" onclick="catSpegniStandard(\'' + s.id + '\',' + (s.attivo === false) + ')">' +
+          (s.attivo === false ? 'Riattiva' : 'Disattiva') + '</button></div>' : '') +
+        '</div>';
+    }).join('');
+}
+
+/* ── Le finestre ───────────────────────────────────────────────────────── */
+function catApri(html) {
+  const ov = document.getElementById('cat-ov'), box = document.getElementById('cat-box');
+  if (!ov || !box) return;
+  box.innerHTML = html;
+  ov.style.display = 'flex';
+}
+function catChiudi() { const o = document.getElementById('cat-ov'); if (o) o.style.display = 'none'; }
+function catNuovo() {
+  if (CAT_VISTA === 'libreria') catApriStandard(null);
+  else if (CAT_APERTA) catApriProdotto(null);
+  else catApriAnagrafica(null);
+}
+function catMsg(errori) {
+  const m = document.getElementById('cat-msg');
+  if (m) m.innerHTML = (errori || []).map(e => '<div class="cnt-err">' + esc(e) + '</div>').join('');
+}
+function catVal(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+function catOpzRami(sel) {
+  const M = catM();
+  const rami = M ? M.RAMI : [];
+  return rami.map(r => '<option value="' + r + '"' + (r === sel ? ' selected' : '') + '>' + r + '</option>').join('');
+}
+
+/* L'anagrafica della compagnia: nome, alias, attiva. Gli alias non sono un
+   vezzo — sulle polizze è scritto «HDI Assicurazioni» e nel catalogo «HDI»,
+   e senza l'alias quel portafoglio non ritrova la sua compagnia (§11). */
+function catApriAnagrafica(id) {
+  const c = id ? catCompagnia(id) : null;
+  catApri('<div style="padding:18px">' +
+    '<div style="font-size:16px;font-weight:800;margin-bottom:12px">' + (c ? 'Compagnia' : 'Nuova compagnia') + '</div>' +
+    '<div id="cat-msg"></div>' +
+    '<label class="cl-sub">Nome</label><input id="cat-c-nome" class="d-inp" value="' + esc(c ? c.nome : '') + '">' +
+    '<label class="cl-sub" style="display:block;margin-top:10px">Altri nomi con cui compare (uno per riga)</label>' +
+    '<textarea id="cat-c-alias" class="d-inp" rows="3">' + esc(((c && c.alias) || []).join('\n')) + '</textarea>' +
+    '<div class="cl-sub" style="margin-top:4px">Sulle polizze è scritto «HDI Assicurazioni», nel catalogo «HDI»: senza questi nomi quelle polizze non ritrovano la loro compagnia.</div>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px">' +
+      '<input type="checkbox" id="cat-c-attiva"' + (!c || c.attiva !== false ? ' checked' : '') + '> Attiva</label>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+      '<button class="d-btn" type="button" onclick="catChiudi()">Annulla</button>' +
+      '<button class="d-btn primario" type="button" onclick="catSalvaCompagnia(' + (c ? '\'' + c.id + '\'' : 'null') + ')">Salva</button>' +
+    '</div></div>');
+}
+
+async function catSalvaCompagnia(id) {
+  const nome = catVal('cat-c-nome');
+  if (!nome) { catMsg(['Il nome non può restare vuoto.']); return; }
+  const M = catM();
+  /* Un doppione di compagnia è peggio di un doppione di prodotto: le polizze
+     si dividono fra le due, e nessuna delle due dice il portafoglio vero. */
+  const altre = CAT_COMPAGNIE.filter(c => c.id !== id);
+  if (M && M.risolviCompagnia(nome, altre)?.compagnia) {
+    catMsg(['«' + nome + '» è già in anagrafica (anche come alias di un’altra compagnia).']); return;
+  }
+  const alias = (document.getElementById('cat-c-alias')?.value || '')
+    .split('\n').map(s => s.trim()).filter(Boolean);
+  const attiva = !!document.getElementById('cat-c-attiva')?.checked;
+  try {
+    if (id) {
+      const r = await db.from('quote_compagnie').update({ nome, alias, attiva }).eq('id', id);
+      if (r.error) throw r.error;
+      logMovimento('modifica', 'compagnia', nome, id);
+    } else {
+      const r = await db.from('quote_compagnie').insert({ nome, alias, attiva }).select('id').single();
+      if (r.error) throw r.error;
+      logMovimento('creazione', 'compagnia', nome, r.data?.id);
+    }
+    catChiudi(); catCarica(true);
+  } catch (e) { catMsg([e.message || String(e)]); }
+}
+
+/* Il prodotto di compagnia. Il ramo è preselezionato da quello dello
+   standard: il ramo lo decide la libreria, non il nome commerciale. */
+function catApriProdotto(id) {
+  const p = id ? CAT_PRODOTTI.find(x => x.id === id) : null;
+  const compId = p ? p.compagnia_id : CAT_APERTA;
+  const c = catCompagnia(compId);
+  if (!c) return;
+  const opzStd = '<option value="">— nessuno, per ora —</option>' +
+    CAT_STANDARD.filter(s => s.attivo !== false || (p && p.prodotto_standard_id === s.id))
+      .map(s => '<option value="' + s.id + '"' + (p && p.prodotto_standard_id === s.id ? ' selected' : '') +
+        '>' + esc(s.nome) + ' (' + esc(s.ramo) + ')</option>').join('');
+  catApri('<div style="padding:18px">' +
+    '<div style="font-size:16px;font-weight:800">' + (p ? 'Prodotto' : 'Nuovo prodotto') + '</div>' +
+    '<div class="cl-sub" style="margin-bottom:12px">' + esc(c.nome) + '</div>' +
+    '<div id="cat-msg"></div>' +
+    '<label class="cl-sub">Nome commerciale — come lo chiama la compagnia</label>' +
+    '<input id="cat-p-nome" class="d-inp" value="' + esc(p ? p.nome : '') + '" placeholder="es. BLACK">' +
+    '<label class="cl-sub" style="display:block;margin-top:10px">Prodotto standard</label>' +
+    '<select id="cat-p-std" class="d-inp" onchange="catStdCambiato()">' + opzStd + '</select>' +
+    '<label class="cl-sub" style="display:block;margin-top:10px">Ramo</label>' +
+    '<select id="cat-p-ramo" class="d-inp">' + catOpzRami(p ? p.ramo : '') + '</select>' +
+    '<div class="cl-sub" style="margin-top:4px">Se il prodotto è collegato a uno standard, il ramo è quello della libreria.</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">' +
+      '<div><label class="cl-sub">Codice (facoltativo)</label><input id="cat-p-cod" class="d-inp" value="' + esc(p ? (p.codice || '') : '') + '"></div>' +
+      '<div><label class="cl-sub">Altri nomi (uno per riga)</label><textarea id="cat-p-alias" class="d-inp" rows="2">' + esc(((p && p.alias) || []).join('\n')) + '</textarea></div>' +
+      '<div><label class="cl-sub">Valido dal</label><input type="date" id="cat-p-dal" class="d-inp" value="' + esc(p ? (p.dal || '') : '') + '"></div>' +
+      '<div><label class="cl-sub">Valido fino al</label><input type="date" id="cat-p-al" class="d-inp" value="' + esc(p ? (p.al || '') : '') + '"></div>' +
+    '</div>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px">' +
+      '<input type="checkbox" id="cat-p-attivo"' + (!p || p.attivo !== false ? ' checked' : '') + '> Attivo (compare nelle tendine)</label>' +
+    (p && p.da_verificare ? '<div class="cnt-avv" style="margin-top:10px">Questo prodotto è nato da un’importazione e non l’ha ancora guardato nessuno. Salvando, smette di essere «da verificare».</div>' : '') +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+      '<button class="d-btn" type="button" onclick="catChiudi()">Annulla</button>' +
+      '<button class="d-btn primario" type="button" onclick="catSalvaProdotto(' + (p ? '\'' + p.id + '\'' : 'null') + ',\'' + compId + '\')">Salva</button>' +
+    '</div></div>');
+}
+
+function catStdCambiato() {
+  const s = catStd(catVal('cat-p-std'));
+  const r = document.getElementById('cat-p-ramo');
+  if (s && r) r.value = s.ramo;
+}
+
+async function catSalvaProdotto(id, compagniaId) {
+  const M = catM();
+  const riga = {
+    id: id || undefined,
+    compagnia_id: compagniaId,
+    nome: catVal('cat-p-nome'),
+    ramo: catVal('cat-p-ramo'),
+    codice: catVal('cat-p-cod') || null,
+    prodotto_standard_id: catVal('cat-p-std') || null,
+    dal: catVal('cat-p-dal') || null,
+    al: catVal('cat-p-al') || null,
+    attivo: !!document.getElementById('cat-p-attivo')?.checked,
+    alias: (document.getElementById('cat-p-alias')?.value || '').split('\n').map(s => s.trim()).filter(Boolean)
+  };
+  /* Le stesse regole che la prova misura in Node: il motore le sa, questa
+     schermata le chiede. Due validazioni scritte a mano sarebbero due regole,
+     e quella che sbaglia sarebbe quella che nessuno guarda. */
+  if (M) {
+    const v = M.valida(riga, { prodotti: CAT_PRODOTTI, standard: CAT_STANDARD });
+    if (!v.ok) { catMsg(v.errori); return; }
+    if (v.avvisi.length) catMsg(v.avvisi);
+  }
+  const dati = Object.assign({}, riga, { da_verificare: false });
+  delete dati.id;
+  try {
+    if (id) {
+      dati.aggiornato_il = new Date().toISOString();
+      const r = await db.from('iam_compagnia_prodotti').update(dati).eq('id', id);
+      if (r.error) throw r.error;
+      logMovimento('modifica', 'prodotto', riga.nome, id);
+    } else {
+      dati.origine = 'manuale';
+      const r = await db.from('iam_compagnia_prodotti').insert(dati).select('id').single();
+      if (r.error) throw r.error;
+      logMovimento('creazione', 'prodotto', riga.nome, r.data?.id);
+    }
+    catChiudi(); catCarica(true);
+  } catch (e) { catMsg([e.message || String(e)]); }
+}
+
+async function catSpegni(id, eraSpento) {
+  const p = CAT_PRODOTTI.find(x => x.id === id);
+  if (!p) return;
+  try {
+    const r = await db.from('iam_compagnia_prodotti')
+      .update({ attivo: !!eraSpento, aggiornato_il: new Date().toISOString() }).eq('id', id);
+    if (r.error) throw r.error;
+    logMovimento(eraSpento ? 'riattivazione' : 'disattivazione', 'prodotto', p.nome, id);
+    catCarica(true);
+  } catch (e) { alert(e.message || String(e)); }
+}
+
+async function catConferma(id) {
+  const p = CAT_PRODOTTI.find(x => x.id === id);
+  if (!p) return;
+  try {
+    const r = await db.from('iam_compagnia_prodotti')
+      .update({ da_verificare: false, aggiornato_il: new Date().toISOString() }).eq('id', id);
+    if (r.error) throw r.error;
+    logMovimento('conferma', 'prodotto', p.nome, id);
+    catCarica(true);
+  } catch (e) { alert(e.message || String(e)); }
+}
+
+/* ── Aggiungere in blocco dalla libreria ───────────────────────────────── */
+function catApriLibreriaScelta() {
+  const c = catCompagnia(CAT_APERTA);
+  if (!c) return;
+  const suoi = CAT_PRODOTTI.filter(p => p.compagnia_id === c.id);
+  const liberi = CAT_STANDARD.filter(s => s.attivo !== false &&
+    !suoi.some(p => p.prodotto_standard_id === s.id));
+  catApri('<div style="padding:18px">' +
+    '<div style="font-size:16px;font-weight:800">Aggiungi dalla libreria</div>' +
+    '<div class="cl-sub" style="margin-bottom:12px">' + esc(c.nome) +
+      ' — spunta quelli che questa compagnia vende. Il nome commerciale si corregge dopo, prodotto per prodotto.</div>' +
+    '<div id="cat-msg"></div>' +
+    (liberi.length
+      ? liberi.map(s => '<label style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px;border-top:1px solid var(--line)">' +
+          '<input type="checkbox" class="cat-sel" value="' + s.id + '">' +
+          '<span style="flex:1"><b>' + esc(s.nome) + '</b> <span class="cl-sub">' + esc(s.ramo) + '</span></span>' +
+          '<input class="d-inp cat-nome-comm" data-std="' + s.id + '" style="max-width:200px" placeholder="nome commerciale (facoltativo)">' +
+        '</label>').join('')
+      : '<div class="cl-sub">Questa compagnia ha già tutti i prodotti della libreria.</div>') +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+      '<button class="d-btn" type="button" onclick="catChiudi()">Annulla</button>' +
+      (liberi.length ? '<button class="d-btn primario" type="button" onclick="catAggiungiDaLibreria()">Aggiungi</button>' : '') +
+    '</div></div>');
+}
+
+async function catAggiungiDaLibreria() {
+  const c = catCompagnia(CAT_APERTA);
+  if (!c) return;
+  const scelti = Array.from(document.querySelectorAll('.cat-sel')).filter(x => x.checked).map(x => x.value);
+  if (!scelti.length) { catMsg(['Non hai spuntato niente.']); return; }
+  const righe = scelti.map(sid => {
+    const s = catStd(sid);
+    const inp = document.querySelector('.cat-nome-comm[data-std="' + sid + '"]');
+    const comm = inp && inp.value.trim();
+    return {
+      compagnia_id: c.id, prodotto_standard_id: sid,
+      /* Il ramo è quello dello standard, sempre: è il brief, e ha una
+         ragione — il nome commerciale è della compagnia, il ramo è nostro. */
+      ramo: s.ramo,
+      nome: comm || s.nome,
+      origine: 'manuale', da_verificare: false, attivo: true
+    };
+  });
+  try {
+    const r = await db.from('iam_compagnia_prodotti').insert(righe);
+    if (r.error) throw r.error;
+    logMovimento('creazione', 'prodotto', righe.length + ' prodotti per ' + c.nome, c.id);
+    catChiudi(); catCarica(true);
+  } catch (e) { catMsg([e.message || String(e)]); }
+}
+
+/* ── Fondere due doppioni ──────────────────────────────────────────────── */
+function catApriFusione(id) {
+  const p = CAT_PRODOTTI.find(x => x.id === id);
+  if (!p) return;
+  const altri = CAT_PRODOTTI.filter(x => x.compagnia_id === p.compagnia_id && x.id !== id &&
+    catM() && catM().norm(x.ramo) === catM().norm(p.ramo));
+  catApri('<div style="padding:18px">' +
+    '<div style="font-size:16px;font-weight:800">Fondi due doppioni</div>' +
+    '<div class="cl-sub" style="margin-bottom:12px">Si tiene <b>' + esc(p.nome) +
+      '</b>; l’altro si spegne e il suo nome diventa un alias di questo.</div>' +
+    '<div id="cat-msg"></div>' +
+    (altri.length
+      ? '<label class="cl-sub">Quale prodotto è lo stesso?</label>' +
+        '<select id="cat-f-altro" class="d-inp"><option value="">— scegli —</option>' +
+        altri.map(x => '<option value="' + x.id + '">' + esc(x.nome) + '</option>').join('') + '</select>' +
+        '<div class="cnt-avv" style="margin-top:10px">Le polizze già scritte continuano a dire il nome scartato: ' +
+        'l’alias è quello che le fa ritrovare. Niente viene riscritto.</div>'
+      : '<div class="cl-sub">Non c’è nessun altro prodotto di questa compagnia sullo stesso ramo.</div>') +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+      '<button class="d-btn" type="button" onclick="catChiudi()">Annulla</button>' +
+      (altri.length ? '<button class="d-btn primario" type="button" onclick="catFondi(\'' + id + '\')">Fondi</button>' : '') +
+    '</div></div>');
+}
+
+async function catFondi(tenutoId) {
+  const M = catM();
+  const tenuto = CAT_PRODOTTI.find(x => x.id === tenutoId);
+  const scartato = CAT_PRODOTTI.find(x => x.id === catVal('cat-f-altro'));
+  if (!scartato) { catMsg(['Scegli quale prodotto è lo stesso.']); return; }
+  const f = M ? M.fondi(tenuto, scartato) : null;
+  if (!f || !f.ok) { catMsg([f ? f.motivo : 'il motore del catalogo non si è caricato']); return; }
+  try {
+    /* Prima si allarga il tenuto, poi si spegne lo scartato. Se cade in
+       mezzo resta un prodotto con un alias in più e due righe vive: si vede,
+       e si rifà. Nell'ordine opposto resterebbe un nome spento che non
+       ritrova più niente. */
+    let r = await db.from('iam_compagnia_prodotti').update({
+      alias: f.tenuto.alias, prodotto_standard_id: f.tenuto.prodotto_standard_id,
+      aggiornato_il: new Date().toISOString()
+    }).eq('id', f.tenuto.id);
+    if (r.error) throw r.error;
+    r = await db.from('iam_compagnia_prodotti').update({
+      attivo: false, aggiornato_il: new Date().toISOString(),
+      note: 'Fuso in «' + tenuto.nome + '» il ' + catData(new Date().toISOString())
+    }).eq('id', f.scartato.id);
+    if (r.error) throw r.error;
+    logMovimento('fusione', 'prodotto', scartato.nome + ' → ' + tenuto.nome, tenuto.id);
+    catChiudi(); catCarica(true);
+  } catch (e) { catMsg([e.message || String(e)]); }
+}
+
+/* ── La libreria standard: modifica e spegnimento ──────────────────────── */
+function catApriStandard(id) {
+  const s = id ? catStd(id) : null;
+  catApri('<div style="padding:18px">' +
+    '<div style="font-size:16px;font-weight:800;margin-bottom:12px">' + (s ? 'Prodotto standard' : 'Nuovo prodotto standard') + '</div>' +
+    '<div id="cat-msg"></div>' +
+    '<label class="cl-sub">Nome standard</label><input id="cat-s-nome" class="d-inp" value="' + esc(s ? s.nome : '') + '">' +
+    '<label class="cl-sub" style="display:block;margin-top:10px">Ramo</label>' +
+    '<select id="cat-s-ramo" class="d-inp">' + catOpzRami(s ? s.ramo : '') + '</select>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">' +
+      '<div><label class="cl-sub">Codice</label><input id="cat-s-cod" class="d-inp" value="' + esc(s ? (s.codice || '') : '') + '"></div>' +
+      '<div><label class="cl-sub">Ordine</label><input type="number" id="cat-s-ord" class="d-inp" value="' + (s ? s.ordine : 100) + '"></div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+      '<button class="d-btn" type="button" onclick="catChiudi()">Annulla</button>' +
+      '<button class="d-btn primario" type="button" onclick="catSalvaStandard(' + (s ? '\'' + s.id + '\'' : 'null') + ')">Salva</button>' +
+    '</div></div>');
+}
+
+async function catSalvaStandard(id) {
+  const nome = catVal('cat-s-nome'), ramo = catVal('cat-s-ramo');
+  if (!nome || !ramo) { catMsg(['Nome e ramo non possono restare vuoti.']); return; }
+  const M = catM();
+  const gia = CAT_STANDARD.filter(s => s.id !== id && M && M.norm(s.ramo) === M.norm(ramo) && M.norm(s.nome) === M.norm(nome));
+  if (gia.length) { catMsg(['La libreria ha già «' + gia[0].nome + '» su questo ramo.']); return; }
+  const dati = { nome, ramo, codice: catVal('cat-s-cod') || null, ordine: Number(catVal('cat-s-ord')) || 100 };
+  try {
+    if (id) {
+      dati.aggiornato_il = new Date().toISOString();
+      const r = await db.from('iam_prodotti_standard').update(dati).eq('id', id);
+      if (r.error) throw r.error;
+      logMovimento('modifica', 'prodotto_standard', nome, id);
+    } else {
+      const r = await db.from('iam_prodotti_standard').insert(dati).select('id').single();
+      if (r.error) throw r.error;
+      logMovimento('creazione', 'prodotto_standard', nome, r.data?.id);
+    }
+    catChiudi(); catCarica(true);
+  } catch (e) { catMsg([e.message || String(e)]); }
+}
+
+async function catSpegniStandard(id, eraSpento) {
+  const s = catStd(id);
+  if (!s) return;
+  try {
+    const r = await db.from('iam_prodotti_standard')
+      .update({ attivo: !!eraSpento, aggiornato_il: new Date().toISOString() }).eq('id', id);
+    if (r.error) throw r.error;
+    logMovimento(eraSpento ? 'riattivazione' : 'disattivazione', 'prodotto_standard', s.nome, id);
+    catCarica(true);
+  } catch (e) { alert(e.message || String(e)); }
+}
+
+/* ── Portare dentro il portafoglio: si GUARDA PRIMA DI SCRIVERE ────────── */
+function catApriPiano() {
+  const M = catM();
+  if (!M) return;
+  const piano = M.pianoCatalogo({
+    righe: CAT_PORTAFOGLIO.map(r => ({ compagnia: r.compagnia, ramo: r.modulo, prodotto: r.prodotto })),
+    compagnie: CAT_COMPAGNIE, prodotti: CAT_PRODOTTI, standard: CAT_STANDARD
+  });
+  const c = piano.conteggi;
+  const el = (t, righe) => righe.length
+    ? '<div style="font-weight:700;font-size:13px;margin:12px 0 6px">' + t + '</div>' +
+      righe.map(x => '<div class="cnt-r"><div style="min-width:0;flex:1">' +
+        '<div class="cnt-nome">' + esc(x.nome) + '</div>' +
+        '<div class="cnt-sotto">' + esc(x.compagnia || '') +
+        (x.ramo ? ' · ' + esc(x.ramo) : '') +
+        (x.standard ? ' · standard proposto: ' + esc(x.standard) : ' · nessuno standard proposto') +
+        (x.ramo_sconosciuto ? ' · <span style="color:#f59e0b">ramo fuori vocabolario</span>' : '') +
+        ' · ' + x.righe + (x.righe === 1 ? ' riga' : ' righe') + '</div></div></div>').join('')
+    : '';
+  catApri('<div style="padding:18px">' +
+    '<div style="font-size:16px;font-weight:800">Che cosa verrebbe creato</div>' +
+    '<div class="cl-sub" style="margin-bottom:12px">Niente è stato scritto. Questo è il piano: si guarda, e poi si decide.</div>' +
+    '<div id="cat-msg"></div>' +
+    '<div class="cnt-somma" style="padding:0;margin-bottom:8px">' +
+      '<div class="cnt-card"><div class="cnt-k">Compagnie nuove</div><div class="cnt-v">' + c.compagnie_da_creare + '</div></div>' +
+      '<div class="cnt-card"><div class="cnt-k">Prodotti nuovi</div><div class="cnt-v">' + c.prodotti_da_creare + '</div></div>' +
+    '</div>' +
+    (c.compagnie_ambigue ? '<div class="cnt-avv">' + c.compagnie_ambigue +
+      ' nomi di compagnia somigliano a più d’una: non si aggancia e non si crea niente sotto di loro. ' +
+      piano.compagnie.ambigue.map(a => esc(a.nome)).join(', ') + '</div>' : '') +
+    (c.prodotti_senza_ramo ? '<div class="cnt-avv">' + c.prodotti_senza_ramo +
+      ' righe non dicono la compagnia o il ramo: restano fuori.</div>' : '') +
+    el('Compagnie', piano.compagnie.daCreare) +
+    el('Prodotti', piano.prodotti.daCreare) +
+    '<div class="cl-sub" style="margin-top:12px">Quello che nasce qui è marcato <b>da verificare</b>: ' +
+      'il sistema registra che cosa ha trovato, e a dire se va bene è una persona.</div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+      '<button class="d-btn" type="button" onclick="catChiudi()">Annulla</button>' +
+      (c.compagnie_da_creare + c.prodotti_da_creare
+        ? '<button class="d-btn primario" type="button" onclick="catScriviPiano()">Crea</button>' : '') +
+    '</div></div>');
+  window.CAT_PIANO = piano;
+}
+
+async function catScriviPiano() {
+  const piano = window.CAT_PIANO;
+  if (!piano) return;
+  const mappa = {};   /* id segnaposto → id vero */
+  try {
+    /* L'ordine non è estetica: i prodotti vogliono il `compagnia_id` vero,
+       quindi le compagnie si scrivono per prime. Se cade in mezzo, quello
+       che è scritto resta e si rifà: il secondo giro le ritrova (§14). */
+    for (const c of piano.compagnie.daCreare) {
+      const r = await db.from('quote_compagnie').insert({ nome: c.nome, alias: [], attiva: true })
+        .select('id').single();
+      if (r.error) throw r.error;
+      mappa[c.id] = r.data.id;
+      logMovimento('creazione', 'compagnia', c.nome + ' (dal portafoglio)', r.data.id);
+    }
+    const righe = piano.prodotti.daCreare.map(p => ({
+      compagnia_id: mappa[p.compagnia_id] || p.compagnia_id,
+      prodotto_standard_id: p.prodotto_standard_id, ramo: p.ramo, nome: p.nome,
+      origine: 'import', da_verificare: true, attivo: true
+    }));
+    if (righe.length) {
+      const r = await db.from('iam_compagnia_prodotti').insert(righe);
+      if (r.error) throw r.error;
+      logMovimento('creazione', 'prodotto', righe.length + ' prodotti dal portafoglio');
+    }
+    catChiudi(); catCarica(true);
+  } catch (e) { catMsg([e.message || String(e)]); }
+}
+
 function showReset() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('reset-screen').style.display = 'flex';
@@ -7408,6 +8155,7 @@ function goTab(t) {
   if (t === 'conti')       { cntTab(CNT_VISTA); cntCarica(true); }
   if (t === 'compagnie')   { prvCarica(true); }
   if (t === 'provvigioni') { prvTab(PRV_VISTA); prvCarica(true); }
+  if (t === 'catalogo')    { catTab(CAT_VISTA); catCarica(true); }
   if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); }   // Blocco B
   if (t === 'agenti')    { loadAgentiAI(); }
   if (t === 'quoto') {
@@ -21225,8 +21973,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: 84b4765f — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260920b"></script>
+<!-- impronta withus-one.js: 304b666c — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260920c"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

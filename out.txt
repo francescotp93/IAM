@@ -1,21 +1,10 @@
-id: m3-1789902683  exit: 0  2026-09-20 11:12:02
+id: kit-1789906065  exit: 0  2026-09-20 12:08:16
 ----
 atteso: 20s
-0dd1fd6 Brief #02 · M3: prima nota, quadratura dei conti e le novità del rilascio (#210)
---- meta ---
-<meta name="app-versione" content="0.3.0">
-<meta name="app-versione-nome" content="Prima nota e quadratura">
---- linguette nuove ---
-2
---- servito da Caddy ---
-<meta name="app-versione" content="0.3.0">
-<meta name="app-versione-nome" content="Prima nota e quadratura">
-{
-  "versione": "0.3.0",
-  "nome": "Prima nota e quadratura",
-  "data": "2026-09-20",
-
-  "storia": [
-    {
-      "v": "0
-versione.json: 200
+384076b Tutte le schermate di IAM hanno la grafica di IAM (#211)
+<meta name="app-versione" content="0.3.1">
+<meta name="app-versione-nome" content="La grafica di IAM su tutte le schermate">
+--- il kit e' aperto (0 = nessuna regola richiusa) ---
+0
+--- le cinque schermate usano la testata del kit ---
+7

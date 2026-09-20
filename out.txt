@@ -1,6 +1,14 @@
-id: m6-1789910596  exit: 0  2026-09-20 13:23:31
+id: m6b-1789910638  exit: 0  2026-09-20 13:24:05
 ----
-== quali caselle sono configurate (solo gli INDIRIZZI, mai le password) ==
-== NOTIFY_FROM / STAFF_EMAIL ==
-== commit ==
-6a9b877 Brief #02 · M5: la contabilità si ricostruisce da sé (#213)
+== da dove prende l'ambiente il backend ==
+Environment=PORT=3000
+EnvironmentFiles=/opt/withus-backend/server/.env (ignore_errors=no)
+
+== indirizzi delle caselle configurate (mai le password) ==
+-- /opt/withus-backend/server/.env
+MAIL_ALLOWED_EMAILS=francesco.oddo199307@gmail.com
+MAIL_USER=amministrazione@withusassicurazioni.it
+MAIL_USER_2=contabilita@withusassicurazioni.it
+MAIL_USER_3=intermediari@withusassicurazioni.it
+NOTIFY_FROM=noreply@withusassicurazioni.it
+NOTIFY_NAME="With Us Assicurazioni"

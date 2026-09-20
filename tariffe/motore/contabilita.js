@@ -31,9 +31,9 @@
    │ denaro in transito: muovono il conto, non il risultato.                   │
    └───────────────────────────────────────────────────────────────────────────┘
 
-   LE SETTE REGOLE CHE QUESTO MOTORE FA RISPETTARE
-   (le prime quattro sono della M1, le altre tre sono arrivate con la prima
-   nota: sono in fondo, sotto la loro riga)
+   LE DIECI REGOLE CHE QUESTO MOTORE FA RISPETTARE
+   (le prime quattro sono della M1, le altre sono arrivate con la prima nota
+   e con gli incassi da accreditare: sono in fondo, ognuna sotto la sua riga)
 
    1. **Il saldo non si scrive, si calcola.** L'unico numero scritto a mano è
       il saldo iniziale, quello del giorno in cui il conto entra nel sistema.
@@ -76,6 +76,24 @@
       si dice che un conto quadra: si dice che nessuno l'ha ancora verificato.
       È la stessa distinzione fra «non risponde» e «non c'è niente».
 
+   ─── AGGIUNTO CON LA M4 (20/09/2026): GLI INCASSI DA ACCREDITARE ────────────
+
+   8. **Un incasso non e' un accredito.** Contanti sono denaro in mano; POS,
+      bonifico, assegno e carte sono denaro che il cliente ha pagato e che sul
+      conto arrivera' dopo. Trattarli uguale fa dire al saldo di avere dei
+      soldi che non ci sono ancora — e la quadratura (regola 7) troverebbe la
+      differenza senza saper dire perche'.
+
+   9. **Dove finisce il denaro lo dice il CONTO, non il codice.** `iam_conti.mezzi`
+      elenca i mezzi che arrivano su quel conto. Nessuno lo dichiara, o due lo
+      dichiarano: si dice, non si sceglie il primo che passa — meta' delle
+      volte si sbaglierebbe, e l'altra meta' sarebbe un caso.
+
+  10. **«Non si sa» e' una risposta, e va data.** Un incasso senza mezzo non e'
+      ne' in cassa ne' in arrivo: sul database vero sono NOVE rate incassate su
+      quindici. Metterle da una parte a caso vorrebbe dire scrivere in
+      contabilita' un fatto che nessuno ha verificato.
+
    Il motore NON tocca il database e NON disegna: calcola e valida. Lo
    caricano IAM (`iam/index.html`) e il preventivatore, dallo stesso indirizzo
    e dallo stesso file — due copie del vocabolario dei conti vorrebbero dire
@@ -84,7 +102,7 @@
 (function () {
   'use strict';
 
-  var VERSIONE = '2026-09-20';
+  var VERSIONE = '2026-09-20b';
 
   /* ═══ VOCABOLARI ══════════════════════════════════════════════════════════ */
 
@@ -101,6 +119,31 @@
   var NATURE = [
     { k: 'premi',     l: 'Premi (soldi dei clienti)', i: 'ti-users',    nota: 'Conto separato, art. 117 CAP: i premi in transito verso la compagnia non sono patrimonio dell’agenzia.' },
     { k: 'aziendale', l: 'Aziendale (soldi dell’agenzia)', i: 'ti-building', nota: 'Provvigioni incassate, affitto, stipendi, utenze, provvigioni pagate alla rete.' }
+  ];
+
+  /* ═══ I MEZZI DI PAGAMENTO, E IL TEMPO CHE CI METTONO (M4) ════════════════
+
+     La colonna che conta e' `immediato`. Non e' una sfumatura: dice se il
+     denaro e' gia' dell'agenzia o se e' ancora per strada.
+
+     · CONTANTI  — in mano subito: entrano in cassa, e il conto si muove oggi.
+     · POS, BONIFICO, ASSEGNO, CARTE — il cliente ha pagato, l'accredito arriva
+       dopo. In mezzo c'e' un tempo in cui l'incasso e' avvenuto e il conto non
+       si e' mosso: e' li' che vive un «incasso da accreditare».
+
+     Trattarli tutti come immediati farebbe dire al saldo di avere dei soldi
+     che non sono ancora arrivati — un numero credibile e falso, e la
+     quadratura (regola 7) lo troverebbe sbagliato senza saper dire perche'. */
+  var MEZZI = [
+    { k: 'contanti',      l: 'Contanti',            immediato: true,  i: 'ti-cash' },
+    { k: 'pos',           l: 'POS',                 immediato: false, i: 'ti-credit-card', giorni: 2 },
+    { k: 'bonifico',      l: 'Bonifico',            immediato: false, i: 'ti-building-bank', giorni: 3 },
+    { k: 'assegno',       l: 'Assegno',             immediato: false, i: 'ti-file-invoice', giorni: 7 },
+    { k: 'carta_credito', l: 'Carta di credito',    immediato: false, i: 'ti-credit-card', giorni: 3 },
+    { k: 'prepagata',     l: 'Prepagata',           immediato: false, i: 'ti-credit-card', giorni: 3 },
+    { k: 'paypal',        l: 'PayPal',              immediato: false, i: 'ti-brand-paypal', giorni: 3 },
+    { k: 'rid',           l: 'SDD / RID',           immediato: false, i: 'ti-repeat', giorni: 5 },
+    { k: 'altro',         l: 'Altro',               immediato: false, i: 'ti-dots' }
   ];
 
   var SEGNI = [
@@ -484,6 +527,147 @@
     return (v < 0 ? '-' : '') + '€ ' + Math.abs(v).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  /* ═══ GLI INCASSI DA ACCREDITARE (M4) ═════════════════════════════════════ */
+
+  function mezzo(k) {
+    var t = testo(k).toLowerCase();
+    for (var i = 0; i < MEZZI.length; i++) if (MEZZI[i].k === t) return MEZZI[i];
+    return null;
+  }
+
+  /* Su quale conto arriva un certo mezzo. Lo dice il CONTO (`mezzi`), non il
+     codice: il giorno in cui l'agenzia cambia banca per il POS, si cambia una
+     riga in una schermata e non una riga di programma.
+
+     Se nessun conto lo dichiara torna `null`, e chi chiama lo deve dire —
+     non scegliere il primo conto che passa. Se piu' d'uno lo dichiara e'
+     un'ambiguita' vera: due conti che ricevono lo stesso mezzo vogliono dire
+     che l'accredito potrebbe finire su tutti e due, e a indovinare si sbaglia
+     meta' delle volte. */
+  function contoPerMezzo(conti, k) {
+    var t = testo(k).toLowerCase();
+    var ok = (conti || []).filter(function (c) {
+      if (!c || c.attivo === false) return false;
+      return (c.mezzi || []).some(function (m) { return testo(m).toLowerCase() === t; });
+    });
+    if (ok.length === 1) return { conto: ok[0], ok: true };
+    if (!ok.length) return { conto: null, ok: false, motivo: 'Nessun conto dichiara di ricevere «' + (mezzo(t) ? mezzo(t).l : t) + '». Scegli il conto in Strumenti › Conti e causali.' };
+    return { conto: null, ok: false, ambiguo: ok, motivo: ok.length + ' conti dicono di ricevere «' + (mezzo(t) ? mezzo(t).l : t) + '»: non si puo' + '\u2019 sapere dove arriva. Lascialo su uno solo.' };
+  }
+
+  /* CHE FINE FA un incasso. Tre risposte, e la terza e' quella che tiene in
+     piedi tutto il resto:
+
+       'cassa'     — mezzo immediato: il movimento si registra oggi;
+       'sospeso'   — il cliente ha pagato, l'accredito arrivera': nasce una
+                     riga da accreditare;
+       'non-si-sa' — manca il mezzo, o nessun conto lo riceve. NON si sceglie
+                     per somiglianza: si dice, e chi guarda decide.
+
+     Le 9 rate su 15 che nel database non dicono con che mezzo sono state
+     incassate finiscono tutte nella terza, ed e' giusto cosi'. */
+  function destinoIncasso(riga, conti) {
+    riga = riga || {};
+    var k = testo(riga.mezzo_pagamento || riga.mezzo).toLowerCase();
+    var imp = numero(riga.importo_lordo != null ? riga.importo_lordo : riga.importo);
+    var out = { mezzo: k || null, importo: imp, data: riga.incassato_il || riga.data_incasso || null };
+
+    if (!k) { out.tipo = 'non-si-sa'; out.motivo = 'Non e\u2019 detto con che mezzo e\u2019 stato incassato: senza quello non si sa se il denaro e\u2019 in cassa o in arrivo.'; return out; }
+    var m = mezzo(k);
+    if (!m) { out.tipo = 'non-si-sa'; out.motivo = 'Il mezzo «' + k + '» non e\u2019 nel vocabolario: non si indovina quanto ci mette ad arrivare.'; return out; }
+    out.etichetta = m.l;
+    if (imp == null || imp <= 0) { out.tipo = 'non-si-sa'; out.motivo = 'L\u2019importo non si legge.'; return out; }
+
+    var d = contoPerMezzo(conti, k);
+    if (!d.ok) { out.tipo = 'non-si-sa'; out.motivo = d.motivo; out.ambiguo = d.ambiguo || null; return out; }
+    out.conto = d.conto;
+    out.tipo = m.immediato ? 'cassa' : 'sospeso';
+    out.giorni_attesi = m.immediato ? 0 : (m.giorni || null);
+    return out;
+  }
+
+  /* Da quanti giorni un incasso e' fermo. Il numero che fa alzare il telefono:
+     un POS di tre giorni fa e' normale, uno di trenta e' un problema. */
+  function giorniDa(data, oggi) {
+    var a = testo(data), b = testo(oggi) || new Date().toISOString().slice(0, 10);
+    if (!a) return null;
+    var d1 = new Date(a + 'T00:00:00Z'), d2 = new Date(b + 'T00:00:00Z');
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return null;
+    return Math.round((d2 - d1) / 86400000);
+  }
+
+  /* In ritardo = fermo da piu' giorni di quelli che quel mezzo ci mette. Sul
+     mezzo che non dichiara un'attesa (`altro`) non si inventa una soglia: non
+     e' mai «in ritardo», perche' nessuno sa quanto dovrebbe metterci. */
+  function inRitardo(s, oggi) {
+    if (!s || s.stato !== 'aperto') return false;
+    var m = mezzo(s.mezzo);
+    if (!m || !m.giorni) return false;
+    var g = giorniDa(s.data_incasso, oggi);
+    return g != null && g > m.giorni;
+  }
+
+  function sospesiAperti(righe, opz) {
+    opz = opz || {};
+    return (righe || []).filter(function (s) {
+      if (!s || s.stato !== 'aperto') return false;
+      if (opz.conto_id && s.conto_id !== opz.conto_id) return false;
+      if (opz.mezzo && testo(s.mezzo).toLowerCase() !== testo(opz.mezzo).toLowerCase()) return false;
+      if (opz.dal && (!s.data_incasso || s.data_incasso < opz.dal)) return false;
+      if (opz.al && (!s.data_incasso || s.data_incasso > opz.al)) return false;
+      return true;
+    });
+  }
+
+  /* Quanto denaro e' per strada, da quanto, e per quale mezzo. */
+  function riepilogoSospesi(righe, opz) {
+    opz = opz || {};
+    var oggi = testo(opz.oggi) || new Date().toISOString().slice(0, 10);
+    var r = { totale: 0, righe: 0, in_ritardo: 0, totale_ritardo: 0, piu_vecchio: null, giorni_max: null, per_mezzo: [], senza_conto: 0 };
+    var acc = {};
+    sospesiAperti(righe, opz).forEach(function (s) {
+      var imp = numero(s.importo);
+      if (imp == null) return;
+      r.righe++;
+      r.totale = cent(r.totale + Math.abs(imp));
+      if (!s.conto_id) r.senza_conto++;
+      var g = giorniDa(s.data_incasso, oggi);
+      if (g != null && (r.giorni_max == null || g > r.giorni_max)) { r.giorni_max = g; r.piu_vecchio = s; }
+      if (inRitardo(s, oggi)) { r.in_ritardo++; r.totale_ritardo = cent(r.totale_ritardo + Math.abs(imp)); }
+      var k = testo(s.mezzo).toLowerCase() || '—';
+      if (!acc[k]) acc[k] = { mezzo: k, etichetta: mezzo(k) ? mezzo(k).l : k, totale: 0, righe: 0 };
+      acc[k].totale = cent(acc[k].totale + Math.abs(imp));
+      acc[k].righe++;
+    });
+    r.per_mezzo = Object.keys(acc).map(function (k) { return acc[k]; })
+      .sort(function (a, b) { return b.totale - a.totale; });
+    return r;
+  }
+
+  /* Che cosa serve per accreditare. La data dell'accredito non puo' venire
+     PRIMA dell'incasso: sarebbe il conto che si muove prima che il cliente
+     paghi, e da li' in poi la quadratura racconterebbe una storia sbagliata. */
+  function validaAccredito(s, dati, opz) {
+    s = s || {}; dati = dati || {}; opz = opz || {};
+    var e = [];
+    if (s.stato === 'accreditato') e.push('Questo incasso e\u2019 gia\u2019 stato accreditato.');
+    if (s.stato === 'annullato') e.push('Questo incasso e\u2019 stato annullato: non si accredita.');
+    var d = testo(dati.accreditato_il);
+    if (!d) e.push('Metti la data dell\u2019accredito: e\u2019 il giorno in cui il denaro e\u2019 arrivato sul conto.');
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) e.push('La data dell\u2019accredito non si legge.');
+    else if (s.data_incasso && d < s.data_incasso) {
+      e.push('L\u2019accredito non puo\u2019 essere precedente all\u2019incasso (' + s.data_incasso + '): il conto si sarebbe mosso prima che il cliente pagasse.');
+    }
+    var conto = dati.conto_id || s.conto_id;
+    if (!conto) e.push('Manca il conto su cui e\u2019 arrivato il denaro.');
+    if (opz.conti && conto) {
+      var c = indice(opz.conti)[conto];
+      if (!c) e.push('Quel conto non esiste piu\u2019.');
+      else if (c.attivo === false) e.push('Il conto «' + testo(c.nome) + '» e\u2019 spento.');
+    }
+    return e;
+  }
+
   /* ═══ LA PRIMA NOTA (M3) ══════════════════════════════════════════════════ */
 
   /* Che cosa deve avere un movimento per poter essere scritto. Le stesse
@@ -671,6 +855,10 @@
     validaMovimento: validaMovimento, riepilogo: riepilogo, perCausale: perCausale,
     quadratura: quadratura, quadrature: quadrature,
     vivo: vivo, vivi: vivi, versoDi: versoDi, TOLLERANZA: TOLLERANZA,
+    /* M4 — gli incassi da accreditare */
+    MEZZI: MEZZI, mezzo: mezzo, contoPerMezzo: contoPerMezzo, destinoIncasso: destinoIncasso,
+    giorniDa: giorniDa, inRitardo: inRitardo, sospesiAperti: sospesiAperti,
+    riepilogoSospesi: riepilogoSospesi, validaAccredito: validaAccredito,
     eliminabile: eliminabile, causaleEliminabile: causaleEliminabile,
     ibanValido: ibanValido, normalizzaIban: normalizzaIban, ibanBello: ibanBello,
     etichetta: etichetta, segnoDi: segnoDi, cent: cent, numero: numero, euro: euro

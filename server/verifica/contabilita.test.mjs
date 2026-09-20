@@ -391,6 +391,135 @@ prova('le tabelle della M3 esistono nella migrazione, con i divieti nel DATABASE
   return 'due tabelle, tre trigger/vincoli, RLS, zero seed';
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLI INCASSI DA ACCREDITARE — brief #02 · M4 (20/09/2026)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Due conti che dichiarano che cosa ricevono: e' la configurazione che la M4
+   chiede, e che sul database vero non c'e' ancora. */
+const CASSA_C = { id: 'kc', nome: 'Cassa', natura: 'premi', attivo: true, mezzi: ['contanti'] };
+const BANCA_C = { id: 'kb', nome: 'Banca premi', natura: 'premi', attivo: true, mezzi: ['pos', 'bonifico', 'carta_credito'] };
+const CONTI_M4 = [CASSA_C, BANCA_C];
+
+prova('i CONTANTI entrano in cassa, tutto il resto e\' denaro per strada', () => {
+  /* Regola 8. E' la distinzione su cui poggia tutta la M4: se cade, il saldo
+     del conto dice di avere dei soldi che arriveranno fra tre giorni. */
+  const c = C.destinoIncasso({ mezzo_pagamento: 'contanti', importo_lordo: 100, incassato_il: '2026-09-20' }, CONTI_M4);
+  deve(c.tipo === 'cassa', 'i contanti non entrano in cassa: ' + c.tipo);
+  deve(c.conto.id === 'kc', 'i contanti non vanno sulla cassa');
+  deve(c.giorni_attesi === 0, 'i contanti hanno un tempo di attesa');
+  for (const m of ['pos', 'bonifico', 'assegno', 'carta_credito', 'paypal', 'rid']) {
+    const r = C.destinoIncasso({ mezzo_pagamento: m, importo_lordo: 100 }, [CASSA_C, BANCA_C, { id: 'kx', nome: 'Altro', attivo: true, mezzi: ['assegno', 'paypal', 'rid'] }]);
+    deve(r.tipo === 'sospeso', m + ' non produce un incasso da accreditare: ' + r.tipo);
+  }
+  /* E il vocabolario dice solo dei CONTANTI che sono immediati. */
+  deve(C.MEZZI.filter(m => m.immediato).length === 1, 'piu\u2019 di un mezzo e\u2019 dichiarato immediato');
+  return 'contanti in cassa, sei mezzi per strada';
+});
+
+prova('«non si sa» e\' una risposta, e non si sceglie un conto a caso', () => {
+  /* Regola 10, ed e' il caso di NOVE rate su quindici sul database vero. */
+  const senza = C.destinoIncasso({ importo_lordo: 100 }, CONTI_M4);
+  deve(senza.tipo === 'non-si-sa', 'un incasso senza mezzo e\u2019 stato collocato lo stesso: ' + senza.tipo);
+  deve(!senza.conto, 'ha scelto un conto pur non sapendo il mezzo');
+  deve(/con che mezzo/.test(senza.motivo), 'non dice perche\u2019');
+
+  /* Regola 9: nessun conto lo riceve. */
+  const nessuno = C.destinoIncasso({ mezzo_pagamento: 'assegno', importo_lordo: 100 }, CONTI_M4);
+  deve(nessuno.tipo === 'non-si-sa' && /Nessun conto/.test(nessuno.motivo), 'un assegno che nessun conto riceve e\u2019 stato collocato');
+
+  /* Due conti che ricevono lo stesso mezzo: e\u2019 un\u2019ambiguita\u2019 vera, non si
+     prende il primo. */
+  const due = C.destinoIncasso({ mezzo_pagamento: 'pos', importo_lordo: 100 },
+    [BANCA_C, { id: 'kb2', nome: 'Altra banca', attivo: true, mezzi: ['pos'] }]);
+  deve(due.tipo === 'non-si-sa' && due.ambiguo && due.ambiguo.length === 2, 'con due conti sullo stesso mezzo ne ha scelto uno');
+
+  /* Un mezzo fuori vocabolario non si indovina. */
+  const ignoto = C.destinoIncasso({ mezzo_pagamento: 'criptovaluta', importo_lordo: 100 }, CONTI_M4);
+  deve(ignoto.tipo === 'non-si-sa', 'un mezzo sconosciuto e\u2019 stato collocato');
+  /* E un conto SPENTO non riceve piu\u2019 niente. */
+  const spento = C.destinoIncasso({ mezzo_pagamento: 'contanti', importo_lordo: 100 },
+    [Object.assign({}, CASSA_C, { attivo: false })]);
+  deve(spento.tipo === 'non-si-sa', 'un conto spento riceve ancora incassi');
+  return 'mezzo assente, conto assente, due conti, mezzo ignoto, conto spento';
+});
+
+prova('il ritardo si misura sul mezzo, e su quello che non dichiara un\'attesa non si inventa', () => {
+  /* Un POS fermo da tre giorni e\u2019 un problema; un «altro» fermo da tre giorni
+     non si sa, perche\u2019 nessuno ha detto quanto dovrebbe metterci. */
+  const pos = { stato: 'aperto', mezzo: 'pos', data_incasso: '2026-09-10', importo: 100 };
+  deve(C.inRitardo(pos, '2026-09-20') === true, 'un POS di dieci giorni non risulta in ritardo');
+  deve(C.inRitardo(pos, '2026-09-11') === false, 'un POS di un giorno risulta gia\u2019 in ritardo');
+  const altro = { stato: 'aperto', mezzo: 'altro', data_incasso: '2026-01-01', importo: 100 };
+  deve(C.inRitardo(altro, '2026-09-20') === false, 'su «altro» si e\u2019 inventata una soglia');
+  /* E quello gia\u2019 accreditato non e\u2019 in ritardo per definizione. */
+  deve(C.inRitardo({ stato: 'accreditato', mezzo: 'pos', data_incasso: '2026-01-01' }, '2026-09-20') === false,
+    'un incasso gia\u2019 accreditato risulta in ritardo');
+  deve(C.giorniDa('2026-09-10', '2026-09-20') === 10, 'il conto dei giorni non torna');
+  return 'soglia per mezzo, nessuna soglia inventata';
+});
+
+prova('il riepilogo dice quanto e\' per strada, da quanto, e quanto non ha un conto', () => {
+  const righe = [
+    { stato: 'aperto', mezzo: 'pos', data_incasso: '2026-09-18', importo: 100, conto_id: 'kb' },
+    { stato: 'aperto', mezzo: 'pos', data_incasso: '2026-08-01', importo: 250, conto_id: 'kb' },   // vecchio
+    { stato: 'aperto', mezzo: 'bonifico', data_incasso: '2026-09-19', importo: 500, conto_id: null }, // senza conto
+    { stato: 'accreditato', mezzo: 'pos', data_incasso: '2026-09-01', importo: 999, conto_id: 'kb' },
+    { stato: 'annullato', mezzo: 'pos', data_incasso: '2026-09-01', importo: 888, conto_id: 'kb' }
+  ];
+  const r = C.riepilogoSospesi(righe, { oggi: '2026-09-20' });
+  deve(r.righe === 3, 'conta anche gli accreditati o gli annullati: ' + r.righe);
+  deve(r.totale === 850, 'il totale per strada e\u2019 sbagliato: ' + r.totale);
+  deve(r.in_ritardo === 1 && r.totale_ritardo === 250, 'il ritardo non e\u2019 misurato: ' + JSON.stringify(r));
+  deve(r.giorni_max === 50 && r.piu_vecchio.importo === 250, 'il piu\u2019 vecchio non e\u2019 quello giusto');
+  /* Quante righe nessuno sa dove faranno arrivare il denaro: e\u2019 la voce che
+     dice a chi configura che c\u2019e\u2019 un buco. */
+  deve(r.senza_conto === 1, 'non conta le righe senza conto');
+  deve(r.per_mezzo[0].mezzo === 'bonifico' && r.per_mezzo[0].totale === 500, 'il per-mezzo non e\u2019 ordinato per importo');
+  return '850 per strada, 1 in ritardo, 1 senza conto';
+});
+
+prova('l\'accredito non puo\' venire PRIMA dell\'incasso', () => {
+  /* Sarebbe il conto che si muove prima che il cliente paghi: da li\u2019 in poi la
+     quadratura racconterebbe una storia sbagliata, e nessuno saprebbe da dove
+     comincia. */
+  const s = { stato: 'aperto', mezzo: 'pos', importo: 100, data_incasso: '2026-09-18', conto_id: 'kb' };
+  const e = C.validaAccredito(s, { accreditato_il: '2026-09-10' }, { conti: CONTI_M4 });
+  deve(e.some(x => /precedente all/.test(x)), 'un accredito precedente all\u2019incasso e\u2019 passato: ' + JSON.stringify(e));
+  deve(C.validaAccredito(s, { accreditato_il: '2026-09-20' }, { conti: CONTI_M4 }).length === 0, 'un accredito valido e\u2019 stato rifiutato');
+  /* Senza data e senza conto non si accredita. */
+  deve(C.validaAccredito({ stato: 'aperto', importo: 100, data_incasso: '2026-09-18' }, {}, { conti: CONTI_M4 }).length === 2,
+    'si accredita senza data e senza conto');
+  /* E quello gia\u2019 chiuso non si riapre da qui. */
+  deve(C.validaAccredito(Object.assign({}, s, { stato: 'accreditato' }), { accreditato_il: '2026-09-20' }, { conti: CONTI_M4 }).length > 0,
+    'un incasso gia\u2019 accreditato si accredita una seconda volta');
+  deve(C.validaAccredito(Object.assign({}, s, { stato: 'annullato' }), { accreditato_il: '2026-09-20' }, { conti: CONTI_M4 }).length > 0,
+    'un incasso annullato si accredita');
+  return 'data obbligatoria, mai prima dell\u2019incasso, e niente doppio accredito';
+});
+
+prova('la tabella della M4 esiste, e i divieti stanno nel DATABASE', () => {
+  const sql = readFileSync(join(RADICE, 'supabase/migrations/20260920_b02_m4_sospesi.sql'), 'utf8');
+  deve(/create table if not exists public\.iam_sospesi/.test(sql), 'manca iam_sospesi');
+  /* Il sospeso PUNTA alla rata e non la ricopia: una rata, un sospeso vivo. */
+  deve(/create unique index if not exists iam_sospesi_titolo_uno[\s\S]{0,160}stato <> 'annullato'/.test(sql),
+    'una rata puo\u2019 generare due incassi da accreditare');
+  /* Un accredito registrato due volte e\u2019 denaro che nel sistema c\u2019e\u2019 e in
+     banca no. */
+  deve(/create unique index if not exists iam_movimenti_sospeso_uno/.test(sql), 'un sospeso puo\u2019 generare due movimenti');
+  deve(/origine in \('manuale', 'titolo', 'flusso', 'sospeso'\)/.test(sql), 'il movimento non sa di venire da un accredito');
+  /* Accreditato senza dire quando e senza il suo movimento e\u2019 uno stato che
+     mente: esce dagli aperti e il conto non si e\u2019 mosso. */
+  deve(/stato <> 'accreditato' or \(accreditato_il is not null and movimento_id is not null\)/.test(sql),
+    'si puo\u2019 marcare accreditato senza movimento');
+  deve(/create trigger iam_sospesi_no_delete_trg/.test(sql), 'un incasso da accreditare si puo\u2019 cancellare');
+  deve(/alter table public\.iam_conti add column if not exists mezzi text\[\]/.test(sql), 'i conti non dichiarano che mezzi ricevono');
+  deve(/create policy sospesi_write[\s\S]{0,160}iam_is_admin\(\)/.test(sql), 'la scrittura non e\u2019 chiusa all\u2019admin');
+  /* Niente backfill inventato sulle rate gia\u2019 incassate. */
+  deve(!/insert into public\.iam_sospesi/.test(sql), 'la migrazione inventa degli incassi da accreditare');
+  return 'tabella, due indici unici, due trigger, RLS, zero seed';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

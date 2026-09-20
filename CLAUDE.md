@@ -2809,3 +2809,93 @@ file che la vieta.**
 - **Il tema scuro sulle schermate del kit non c'è**: prendono la tavolozza
   chiara della Scrivania. Farle rispondere al tema è un lavoro vero — vuol dire
   dare ai gettoni due valori — e va fatto per tutte insieme, non una alla volta.
+
+---
+
+## 32. Brief IAM #02 — M4: gli incassi da accreditare (20/09/2026)
+
+Il pezzo che mancava fra l'incasso di una rata (§17, §24) e la prima nota
+(§29): fino a oggi una rata incassata restava dentro il portafoglio e **il
+conto dell'agenzia non lo sapeva**.
+
+| pezzo | dove |
+|---|---|
+| le regole (stesso motore della M1 e della M3) | `tariffe/motore/contabilita.js` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **27** (erano 21) |
+| la tabella, i trigger, la colonna `mezzi` sui conti | `supabase/migrations/20260920_b02_m4_sospesi.sql` (applicata) |
+| la linguetta | `#contab-panel-incassi` e il blocco `inc*` in `iam/index.html` |
+| prove sul pannello | `iam/verifica/incassi-accreditare.test.mjs` — 10 |
+
+### Misurato prima di scrivere
+
+| | |
+|---|---|
+| rate incassate | **15** — 4 carta di credito, 2 bonifico, **9 senza mezzo** |
+| rate aperte | 40, nessuna col mezzo |
+| incassi in contanti | **zero** |
+| conti | 2 (aziendale e plurimandatario), **nessuna cassa contanti** |
+
+Due conseguenze, e nessuna si aggira indovinando: senza una cassa contanti un
+incasso in contanti non ha dove andare, e **nove rate su quindici** non dicono
+come sono state pagate — quindi di quei soldi non si può sapere se sono in
+cassa o in arrivo.
+
+### La regola che regge tutto: un incasso non è un accredito
+
+**Contanti** sono denaro in mano: entrano in cassa, e il conto si muove lo
+stesso giorno. **POS, bonifico, assegno, carte** no: il cliente ha pagato, e
+l'accredito arriva dopo. In mezzo c'è un tempo in cui l'incasso è avvenuto e il
+conto non si è mosso — ed è lì che vive questa tabella.
+
+Trattarli uguale farebbe dire al saldo di avere dei soldi che arriveranno fra
+tre giorni: **un numero credibile e falso**, e la quadratura (§29) troverebbe la
+differenza senza saper dire da dove viene.
+
+### Le altre tre decisioni
+
+**Il sospeso punta alla rata, non la ricopia.** `titolo_id` con un indice unico
+sulle righe vive: importo e mezzo restano una cosa sola con la rata. Ricopiarli
+avrebbe creato il secondo archivio degli incassi, che è esattamente quello che
+il foglio cassa ha evitato (§25).
+
+**Dove finiscono i soldi lo dice il CONTO, non il codice.** `iam_conti.mezzi`
+elenca i mezzi che arrivano su quel conto. Se nessuno lo dichiara, o se due lo
+dichiarano, il sistema scrive «non si sa» e manda a configurarlo: scegliere il
+primo conto che passa vorrebbe dire sbagliare metà delle volte e indovinare
+l'altra metà. Il giorno in cui l'agenzia cambia banca per il POS si cambia una
+riga in una schermata, non una riga di programma.
+
+**L'accredito scrive prima il movimento, poi chiude l'incasso.** Se cade in
+mezzo resta un movimento senza il suo incasso chiuso — si vede, e si rifà.
+Nell'ordine opposto resterebbe un incasso «arrivato» che sul conto non c'è.
+E un accredito registrato due volte è denaro che nel sistema c'è e in banca no:
+lo impedisce un indice unico, non un controllo nel codice.
+
+### Perché non si chiama «Sospesi», che è la parola del brief
+
+In agenzia **«sospeso» è già il premio che il cliente NON ha pagato** — ed è la
+linguetta qui accanto, che legge il file della compagnia. Questo è l'opposto: il
+cliente ha pagato, e il denaro non è ancora sul conto. Due cose diverse con lo
+stesso nome sono due elenchi che non si incrociano (§18, «storico»): due nomi
+diversi, e la scelta è scritta accanto al pannello.
+
+### Una regola di casa applicata al banco
+
+Le variabili di stato del blocco sono **`var` e non `let`**, come dice §17: con
+`let` la variabile del modulo e `window.INC_SOSPESI` sono due cose diverse, e
+una prova che inietta dei dati finti scriverebbe in una mentre il codice legge
+l'altra — restando verde senza aver misurato niente. Se n'è accorta la
+fotografia: la prima schermata con i dati finti è uscita vuota.
+
+### Cosa resta aperto
+
+- **La configurazione è la prima cosa da fare**: nessuno dei due conti dichiara
+  ancora quali mezzi riceve, e finché è così ogni incasso legge «non si sa».
+  Serve anche una **cassa contanti**, che fra i conti non c'è.
+- **Le 15 rate già incassate non sono state portate dentro in automatico**: 9
+  non dicono il mezzo e per le altre 6 nessuno ha detto su quale conto sono
+  arrivate. Si portano a mano dalla schermata, che le elenca e chiede.
+- **L'incasso non nasce ancora da solo**: la rata si incassa nella pagina Titoli
+  di QUOTO e poi si porta in contabilità da qui, con un clic. Farlo scattare
+  all'incasso è un pezzo piccolo, e va deciso dove: il bottone sta in due
+  documenti diversi.

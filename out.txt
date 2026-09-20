@@ -1,21 +1,17 @@
-id: prova-1789899405  exit: 0  2026-09-20 10:17:41
+id: m2-1789900875  exit: 0  2026-09-20 10:41:22
 ----
-== ora
-2026-09-20 10:17:15 UTC
-== groupama e' acceso o spento?
-active
-{"running":false,"step":"pronto","since":1789835098034,"msg":"Pronto: avvia il login da Fonti per ricevere l'OTP","codice_chiesto_il":0}
-== quando e' stato fermato / riacceso
-  2026-09-19T12:10:42  Stopped
-  2026-09-19T12:10:42  Started
-  2026-09-19T12:32:40  Stopped
-  2026-09-19T12:32:40  Started
-  2026-09-19T12:32:41  Stopped
-  2026-09-19T12:32:41  Started
-  2026-09-19T16:16:51  Stopped
-  2026-09-19T16:24:51  Started
-
-== LE MAIL DI GROUPAMA NELLE ULTIME 24 ORE
-  totale nelle ultime 24 ore: 78
-  PRIMA che fermassi groupama (fino alle 16:16:51 del 19/09): 78
-  DOPO, con groupama fermo: 0
+e622ac7 Un numero di versione che non può mentire: 0.1.0 (#208)
+--- meta IAM ---
+<meta name="app-versione" content="0.1.0">
+<meta name="app-versione-nome" content="Conti e causali">
+--- meta QUOTO ---
+<meta name="app-versione" content="0.1.0">
+<meta name="app-versione-nome" content="Conti e causali">
+--- motore provvigioni sul disco ---
+ls: cannot access 'tariffe/motore/provvigioni.js': No such file or directory
+--- voci di menu nella scocca ---
+0
+--- servito da Caddy ---
+<meta name="app-versione" content="0.1.0">
+<meta name="app-versione-nome" content="Conti e causali">
+provvigioni.js: 404

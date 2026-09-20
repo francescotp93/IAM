@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.9.0">
-<meta name="app-versione-nome" content="Il catalogo prodotti">
+<meta name="app-versione" content="0.10.0">
+<meta name="app-versione-nome" content="Trovare, aprire, scrivere">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -675,8 +675,8 @@ button{font-family:inherit}
 .ana-carta span{font-size:14.5px;font-weight:700;color:var(--ink)}
 .ana-carta small{font-size:12px;color:var(--muted)}
 .ana-carta:hover{border-color:#c3cce8}
-.ana-carta.attiva{border-color:var(--blue);background:#f6f8ff;box-shadow:var(--ring)}
-.ana-carta.attiva i{color:var(--blue)}
+.ana-carta.ana-attiva{border-color:var(--blue);background:#f6f8ff;box-shadow:var(--ring)}
+.ana-carta.ana-attiva i{color:var(--blue)}
 
 .ana-indirizzo-riepilogo{margin-top:1rem;padding:11px 14px;background:#f7f8fc;border:1px solid var(--line);border-radius:10px;font-size:13.5px;color:var(--ink)}
 .ana-indirizzo-riepilogo .ana-ind-vuoto{color:var(--muted)}
@@ -783,6 +783,24 @@ button{font-family:inherit}
   border-radius:4px;background:#fff;color:var(--blue);font-family:inherit;font-size:11.5px;font-weight:600;
   cursor:pointer;white-space:nowrap}
 .rin-az:hover{background:var(--blue-bg);border-color:#b9e3cb}
+.rin-az.rin-primario{background:var(--blue,#2a7fd5);color:#fff;border-color:transparent;font-weight:700}
+.rin-az.rin-primario:hover{filter:brightness(1.06)}
+/* La griglia del modulo «nuova polizza». Due colonne su schermo largo, una
+   sola sul telefono: il brief chiede che ogni form resti usabile da mobile. */
+.pnu-griglia{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-top:6px}
+.pnu-griglia label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+.pnu-griglia input,.pnu-griglia select{width:100%}
+@media(max-width:640px){.pnu-griglia{grid-template-columns:1fr}}
+/* Le attività recenti: una riga per movimento, e si apre solo quella che
+   punta davvero a una riga. */
+.atr-r{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--line)}
+.atr-r:last-child{border-bottom:0}
+.atr-r.apri{cursor:pointer}
+.atr-r.apri:hover{background:var(--blue-bg,#eef5ff)}
+.atr-r i{font-size:15px;color:var(--muted);margin-top:2px;flex:0 0 auto}
+.atr-t{font-size:12.5px;font-weight:700}
+.atr-e{font-weight:600;color:var(--muted)}
+.atr-s{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
 
 /* ── Blocco D: campagne ───────────────────────────────────────────────────── */
 .cmp-griglia{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:18px;align-items:start}
@@ -1689,6 +1707,14 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <i class="ti ti-bell"></i>
         <span id="notif-badge" style="display:none;position:absolute;top:-3px;right:-3px;min-width:17px;height:17px;padding:0 4px;background:#e0392b;color:#fff;border-radius:9px;font-size:10px;font-weight:800;align-items:center;justify-content:center;border:2px solid #fff">0</span>
       </button>
+      <!-- Blocco 2 · punto 9: «che cosa è successo mentre non c'ero» è una
+           domanda da tre secondi, e la pagina «Attività» sta in fondo a una
+           barra da ventuno voci. Qui accanto alla campanella, perché è dove
+           si guarda. -->
+      <button class="btn-logout" id="atr-icona" onclick="atrApri()" title="Attività recenti" style="position:relative;display:none">
+        <i class="ti ti-history"></i>
+        <span id="atr-badge" style="display:none;position:absolute;top:-3px;right:-3px;min-width:17px;height:17px;padding:0 4px;background:#2a7fd5;color:#fff;border-radius:9px;font-size:10px;font-weight:800;align-items:center;justify-content:center;border:2px solid #fff">0</span>
+      </button>
       <button class="btn-logout" id="btn-back-iam" onclick="tornaAIam()" title="Torna a IAM" style="display:none"><i class="ti ti-arrow-back-up"></i></button>
       <button class="btn-logout" onclick="apri2FA()" title="Verifica in due passaggi (2FA)"><i class="ti ti-shield-lock"></i></button>
       <button class="btn-logout" onclick="doLogout()" title="Esci"><i class="ti ti-logout"></i></button>
@@ -1703,6 +1729,19 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       </span>
     </div>
     <div id="notif-list"></div>
+  </div>
+
+  <!-- Le attività recenti. Stessa forma della campanella: chi le ha già usate
+       non deve imparare niente di nuovo. -->
+  <div id="atr-pop" style="display:none;position:fixed;top:62px;right:16px;width:360px;max-width:92vw;max-height:72vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(20,30,70,.30);z-index:1300">
+    <div style="padding:12px 14px;font-weight:800;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+      <span>Attività recenti</span>
+      <span style="display:flex;gap:8px;align-items:center">
+        <button onclick="atrChiudi();showPage('log')" style="font-size:11px;font-weight:700;background:#eef5ff;color:var(--blue);border:1px solid #cfe0fb;border-radius:8px;padding:5px 9px;cursor:pointer;font-family:inherit">Tutte</button>
+        <button class="msg-x" onclick="atrChiudi()"><i class="ti ti-x"></i></button>
+      </span>
+    </div>
+    <div id="atr-lista"></div>
   </div>
 
   <!-- ── BARRA DI RICERCA GLOBALE ── -->
@@ -2610,6 +2649,15 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
            si cerca. Il tasto lo vede lo staff, come la voce di menu. -->
       <!-- M5 (19/09/2026): il foglio cassa sta DENTRO il Portafoglio, come
            chiede il brief: la porta è qui, in cima, dove si guarda. -->
+      <!-- Blocco 2 · punto 2 (20/09/2026): una polizza che non nasce da un
+           preventivo — arrivata per telefono, o fatta su un portale — non
+           aveva nessuna strada per entrare in portafoglio. La porta sta qui,
+           dove si guarda il portafoglio, non in una voce di menu da cercare
+           (§15). Il tasto lo vede lo staff, come «Importa». -->
+      <div id="pf-nuova" style="display:none;margin:-4px 0 10px">
+        <button class="rin-az rin-primario" onclick="pnuApri()"><i class="ti ti-plus"></i> Nuova polizza</button>
+        <span class="cl-sub" style="margin-left:8px">una polizza che non viene da un preventivo: le rate nascono con lei</span>
+      </div>
       <div style="margin:-4px 0 10px">
         <button class="rin-az" onclick="showPage('foglio-cassa')"><i class="ti ti-cash-register"></i> Foglio cassa</button>
         <span class="cl-sub" style="margin-left:8px">la produzione giorno per giorno: incassi, provvigioni, quadrature, Excel e PDF</span>
@@ -4252,6 +4300,9 @@ function initMain() {
   const navImp=document.getElementById('nav-import'); if(navImp) navImp.style.display = isStaff() ? 'flex' : 'none';
   /* La stessa porta dentro il Portafoglio, dove la gente la cerca davvero. */
   const pfImp=document.getElementById('pf-importa'); if(pfImp) pfImp.style.display = isStaff() ? 'block' : 'none';
+  /* Stessa soglia dell'importazione: qui si creano righe che finiscono in
+     contabilita' e nelle provvigioni (Blocco 2 · punto 2). */
+  const pfNuo=document.getElementById('pf-nuova'); if(pfNuo) pfNuo.style.display = isStaff() ? 'block' : 'none';
   document.getElementById('nav-utenti').style.display = currentUser.role === 'admin' ? 'flex' : 'none';
   document.getElementById('nav-reti').style.display   = 'none'; // Reti ora dentro Utenti
   document.getElementById('nav-log').style.display    = currentUser.role === 'admin' ? 'flex' : 'none';
@@ -14160,8 +14211,10 @@ function anaTipologia(t, zitta) {
   t = (t === 'giuridico') ? 'giuridico' : 'fisico';
   const h = document.getElementById('ans-tipologia_contraente'); if (h) h.value = t;
   const f = document.getElementById('ans-tc-fisico'), g = document.getElementById('ans-tc-giuridico');
-  if (f) f.classList.toggle('attiva', t === 'fisico');
-  if (g) g.classList.toggle('attiva', t === 'giuridico');
+  /* Il nome della classe porta il prefisso del suo blocco: `attiva` nudo e'
+     un nome GLOBALE del foglio di stile, e IAM ce l'ha gia' (§26). */
+  if (f) f.classList.toggle('ana-attiva', t === 'fisico');
+  if (g) g.classList.toggle('ana-attiva', t === 'giuridico');
   if (!zitta) { const err = document.getElementById('ans-errori'); if (err) err.style.display = 'none'; }
 }
 
@@ -15872,6 +15925,290 @@ async function loadPortafoglio() {
   } catch (e) {
     body.innerHTML = `<tr><td colspan="7"><div class="empty-state">Portafoglio non disponibile.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UNA POLIZZA SI PUÒ SCRIVERE A MANO  (Blocco 2 · punto 2, 20/09/2026)
+
+   Misurato prima di scrivere: in tutto il documento ci sono DUE scritture in
+   `quote_polizze`, e nessuna delle due la si comanda. Una nasce emettendo un
+   preventivo, l'altra dall'importazione della compagnia. Una polizza che
+   arriva per telefono, o che un collaboratore ha fatto su un portale, non
+   aveva nessuna strada per entrare in portafoglio — e finché non entra non
+   esiste per lo scadenzario, per i titoli, per l'estratto conto e per la
+   contabilità.
+
+   Quattro regole, e ognuna è una regola di casa già scritta:
+
+   1. IL CLIENTE VIENE DALL'ANAGRAFICA (§7, §11). Niente nominativi volanti:
+      senza `cliente_id` il fascicolo non si apre, il compleanno non si vede,
+      il diario non si scrive. Il componente è quello di tutta la casa
+      (`clpCerca`/`clpInstalla`), non un autocomplete nuovo.
+   2. IL PRODOTTO VIENE DAL CATALOGO (§39). È il primo consumatore vero delle
+      due tabelle nate ieri: si sceglie la compagnia, e i prodotti sono i suoi.
+      Dove il catalogo non copre quella compagnia il campo resta libero — ma
+      LO DICE, invece di far credere che quella stringa sia un prodotto
+      riconosciuto.
+   3. LE RATE NASCONO CON LA POLIZZA (`titGenera`). È la regola del Blocco A,
+      scritta accanto all'altra scrittura: «se le rate non nascono con la
+      polizza, gli insoluti non esistono e i soldi non si recuperano».
+   4. `fonte: 'manuale'`, come il flusso scrive `'ssf'`. Una riga di
+      portafoglio che non dice da dove viene è una riga di cui, il giorno in
+      cui i numeri non tornano, nessuno sa più niente.
+
+   `var` e non `let`: le prove leggono `window.PNU_*` (§17).
+   ═══════════════════════════════════════════════════════════════════════════ */
+var PNU_COMPAGNIE = [];   // quote_compagnie
+var PNU_PRODOTTI  = [];   // iam_compagnia_prodotti
+var PNU_CLIENTE   = null; // { id, nominativo } scelto dall'anagrafica
+
+function pnuPuo() {
+  /* Scrivere in portafoglio è la stessa soglia dell'importazione: qui si
+     creano righe che finiscono in contabilità e nelle provvigioni.
+     Si CHIAMA `isStaff()`, non si riscrive: due cancelli scritti a mano
+     divergono al primo ruolo nuovo, e quello che sbaglia è quello che nessuno
+     guarda. Il cancello vero resta nelle politiche del database. */
+  return isStaff();
+}
+
+async function pnuApri() {
+  if (!pnuPuo()) {
+    polPannello('Nuova polizza', '', '<div class="empty-state">Riservato allo staff.</div>');
+    return;
+  }
+  PNU_CLIENTE = null;
+  polPannello('Nuova polizza', 'Una polizza che non nasce da un preventivo: arrivata per telefono, o fatta su un portale.',
+    '<div class="empty-state">Carico compagnie e catalogo…</div>');
+  /* Le due letture stanno in piedi da sole (§35): senza il catalogo il modulo
+     funziona lo stesso, e lo dichiara — non si spegne una schermata perché
+     una tabella di contorno non risponde. */
+  let guasti = [];
+  try {
+    const r = await db.from('quote_compagnie').select('id,nome,alias,attiva').order('nome');
+    if (r.error) throw r.error;
+    PNU_COMPAGNIE = (r.data || []).filter(c => c.attiva !== false);
+  } catch (e) { PNU_COMPAGNIE = []; guasti.push('l\'anagrafica delle compagnie'); }
+  try {
+    const r = await db.from('iam_compagnia_prodotti').select('*').eq('attivo', true).order('nome');
+    if (r.error) throw r.error;
+    PNU_PRODOTTI = r.data || [];
+  } catch (e) { PNU_PRODOTTI = []; guasti.push('il catalogo dei prodotti'); }
+  pnuForm(guasti);
+}
+
+function pnuForm(guasti) {
+  const bd = document.getElementById('pol-bd');
+  if (!bd) return;
+  const oggi = new Date().toISOString().slice(0, 10);
+  const opzComp = '<option value="">— scegli —</option>' +
+    PNU_COMPAGNIE.map(c => `<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join('');
+  const opzRami = (window.Catalogo ? Catalogo.RAMI : [])
+    .map(r => `<option value="${r}">${r}</option>`).join('');
+  bd.innerHTML = `
+    ${(guasti || []).length ? `<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i>
+      Non si è potuto leggere ${guasti.join(' e ')}. Non vuol dire che non ci sia:
+      vuol dire che non si è potuto leggerlo. La polizza si può scrivere lo stesso.</div>` : ''}
+    <div id="pnu-msg"></div>
+
+    <div class="pdoc-sez">Il cliente</div>
+    <div class="geo-wrap" style="position:relative">
+      <input id="pnu-cliente-q" type="text" placeholder="cerca per nome, codice fiscale o partita IVA…"
+             oninput="clpCerca(this)" autocomplete="off" style="width:100%">
+    </div>
+    <div id="pnu-cliente-sel" class="cl-sub" style="margin-top:6px">Nessun cliente scelto: la polizza non si salva senza.</div>
+
+    <div class="pdoc-sez" style="margin-top:14px">Che cosa è</div>
+    <div class="pnu-griglia">
+      <div><label>Compagnia</label>
+        <select id="pnu-compagnia" onchange="pnuCompagniaCambiata()">${opzComp}</select></div>
+      <div><label>Prodotto</label>
+        <select id="pnu-prodotto" onchange="pnuProdottoCambiato()"><option value="">— scegli prima la compagnia —</option></select></div>
+      <div><label>Ramo</label><select id="pnu-ramo"><option value="">— scegli —</option>${opzRami}</select></div>
+      <div><label>Numero di polizza</label><input id="pnu-numero" type="text" placeholder="come lo scrive la compagnia"></div>
+    </div>
+    <div id="pnu-libero" class="cl-sub" style="margin-top:6px;display:none"></div>
+
+    <div class="pdoc-sez" style="margin-top:14px">Quando e quanto</div>
+    <div class="pnu-griglia">
+      <div><label>Data di emissione</label><input id="pnu-emissione" type="date" value="${oggi}"></div>
+      <div><label>Decorrenza</label><input id="pnu-effetto" type="date" value="${oggi}" onchange="pnuEffettoCambiato()"></div>
+      <div><label>Scadenza</label><input id="pnu-scadenza" type="date" value="${pnuPiuUnAnno(oggi)}"></div>
+      <div><label>Frazionamento</label><select id="pnu-fraz" onchange="pnuRicalcolaRata()">
+        <option value="Annuale">Annuale</option><option value="Semestrale">Semestrale</option>
+        <option value="Quadrimestrale">Quadrimestrale</option><option value="Trimestrale">Trimestrale</option>
+        <option value="Mensile">Mensile</option><option value="">non dichiarato</option></select></div>
+      <div><label>Premio annuo (€)</label><input id="pnu-annuo" type="number" step="0.01" min="0" oninput="pnuRicalcolaRata()"></div>
+      <div><label>Premio di rata (€)</label><input id="pnu-rata" type="number" step="0.01" min="0"></div>
+      <div><label>Come paga</label><select id="pnu-mezzo">
+        <option value="">non dichiarato</option><option value="bonifico">bonifico</option>
+        <option value="contanti">contanti</option><option value="pos">POS</option>
+        <option value="assegno">assegno</option><option value="carta_di_credito">carta di credito</option>
+        <option value="rid">RID / SDD</option><option value="paypal">PayPal</option>
+        <option value="prepagata">prepagata</option><option value="altro">altro</option></select></div>
+      <div><label>Stato del pagamento</label><select id="pnu-stato">
+        <option value="non_pagato">Non pagato</option><option value="pagato">Pagato</option>
+        <option value="sospeso">Sospeso</option></select></div>
+    </div>
+    <div><label>Note</label><input id="pnu-note" type="text" placeholder="facoltative"></div>
+
+    <div class="cl-sub" style="margin-top:12px">Salvando, le <b>rate nascono insieme alla polizza</b>:
+      senza rate non esistono gli insoluti, e i soldi non si recuperano.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="rin-az" onclick="document.getElementById('pol-ov').remove()">Annulla</button>
+      <button class="rin-az rin-primario" onclick="pnuSalva()"><i class="ti ti-device-floppy"></i> Crea la polizza</button>
+    </div>`;
+  /* Il componente cliente è quello di tutta la casa: registrato dopo che il
+     campo esiste, altrimenti `clpCerca` non trova le sue opzioni. */
+  clpInstalla('pnu-cliente-q', {
+    origine: 'nuova polizza',
+    onScelto: function (a) {
+      PNU_CLIENTE = a || null;
+      const el = document.getElementById('pnu-cliente-sel');
+      if (el) el.innerHTML = a
+        ? '<b>' + esc(a.nominativo || '') + '</b>' + (a.codice_fiscale ? ' · ' + esc(a.codice_fiscale) : '')
+        : 'Nessun cliente scelto: la polizza non si salva senza.';
+    }
+  });
+}
+
+function pnuPiuUnAnno(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().slice(0, 10);
+}
+function pnuEffettoCambiato() {
+  /* La scadenza si riempie a un anno dalla decorrenza, e SI VEDE nel campo:
+     chi la guarda la corregge. È una proposta scritta in chiaro, non una data
+     indovinata dietro le quinte (§8.1) — quella sarebbe finita in archivio
+     senza che nessuno l'avesse letta. */
+  const e = document.getElementById('pnu-effetto'), s = document.getElementById('pnu-scadenza');
+  if (e && s) s.value = pnuPiuUnAnno(e.value);
+}
+
+function pnuCompagniaCambiata() {
+  const nome = document.getElementById('pnu-compagnia')?.value || '';
+  const sel = document.getElementById('pnu-prodotto');
+  const avv = document.getElementById('pnu-libero');
+  if (!sel) return;
+  const comp = window.Catalogo ? Catalogo.risolviCompagnia(nome, PNU_COMPAGNIE) : null;
+  const id = comp && comp.compagnia ? comp.compagnia.id : null;
+  const suoi = id ? PNU_PRODOTTI.filter(p => p.compagnia_id === id) : [];
+  sel.innerHTML = '<option value="">— scegli —</option>' +
+    suoi.map(p => `<option value="${esc(p.nome)}" data-ramo="${esc(p.ramo)}" data-id="${p.id}">${esc(p.nome)}</option>`).join('') +
+    '<option value="__altro">altro (scrivo io)</option>';
+  if (avv) {
+    if (!nome) { avv.style.display = 'none'; avv.textContent = ''; }
+    else if (!suoi.length) {
+      /* Non si inventa un prodotto e non si blocca il lavoro: si dice com'è. */
+      avv.style.display = '';
+      avv.innerHTML = 'Questa compagnia non ha prodotti in catalogo. Puoi scriverne uno, ' +
+        'ma resta una stringa: per farlo diventare un prodotto vero si aggiunge in ' +
+        '<b>IAM › Strumenti › Catalogo prodotti</b>.';
+    } else { avv.style.display = 'none'; avv.textContent = ''; }
+  }
+}
+
+function pnuProdottoCambiato() {
+  const sel = document.getElementById('pnu-prodotto');
+  if (!sel) return;
+  const opt = sel.options[sel.selectedIndex];
+  if (sel.value === '__altro') {
+    /* «altro» diventa un campo di testo: il prodotto esiste davvero anche se
+       non è in catalogo, e rifiutarlo vorrebbe dire non poter scrivere una
+       polizza vera. */
+    sel.outerHTML = '<input id="pnu-prodotto" type="text" placeholder="nome del prodotto">';
+    document.getElementById('pnu-prodotto')?.focus();
+    return;
+  }
+  /* Il ramo lo porta il catalogo, come dice §39: il nome commerciale è della
+     compagnia, il ramo è di casa nostra. */
+  const ramo = opt ? opt.getAttribute('data-ramo') : '';
+  const r = document.getElementById('pnu-ramo');
+  if (r && ramo) r.value = ramo;
+}
+
+function pnuRicalcolaRata() {
+  const annuo = parseFloat(document.getElementById('pnu-annuo')?.value || '');
+  const fraz = (document.getElementById('pnu-fraz')?.value || '').toLowerCase();
+  const rata = document.getElementById('pnu-rata');
+  if (!rata || !isFinite(annuo)) return;
+  const n = { annuale: 1, semestrale: 2, quadrimestrale: 3, trimestrale: 4, mensile: 12 }[fraz];
+  /* Con un frazionamento non dichiarato non si divide per un numero inventato:
+     la rata resta com'è, e la scrive chi la sa. */
+  if (!n) return;
+  rata.value = (Math.round((annuo / n) * 100) / 100).toFixed(2);
+}
+
+function pnuMsg(errori) {
+  const m = document.getElementById('pnu-msg');
+  if (m) m.innerHTML = (errori || []).map(e =>
+    `<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> ${esc(e)}</div>`).join('');
+}
+function pnuVal(id) { const e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; }
+function pnuNum(id) { const v = parseFloat(pnuVal(id)); return isFinite(v) ? v : null; }
+
+async function pnuSalva() {
+  if (!pnuPuo()) return;
+  const errori = [];
+  if (!PNU_CLIENTE || !PNU_CLIENTE.id) errori.push('Scegli il cliente dall\'anagrafica: una polizza senza cliente non apre il fascicolo e non entra nel diario.');
+  const compagnia = pnuVal('pnu-compagnia');
+  const prodotto = pnuVal('pnu-prodotto');
+  const effetto = pnuVal('pnu-effetto');
+  if (!compagnia) errori.push('Manca la compagnia.');
+  if (!prodotto || prodotto === '__altro') errori.push('Manca il prodotto.');
+  if (!effetto) errori.push('Manca la decorrenza: è l\'unica data che il portafoglio pretende.');
+  const scadenza = pnuVal('pnu-scadenza');
+  if (scadenza && effetto && scadenza < effetto) errori.push('La scadenza viene prima della decorrenza.');
+  if (errori.length) { pnuMsg(errori); return; }
+
+  const sel = document.getElementById('pnu-prodotto');
+  const opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
+  const prodId = opt ? opt.getAttribute('data-id') : null;
+
+  const rec = {
+    cliente_id: PNU_CLIENTE.id,
+    cliente: PNU_CLIENTE.nominativo || null,
+    compagnia, prodotto,
+    modulo: pnuVal('pnu-ramo') || null,
+    numero_polizza: pnuVal('pnu-numero') || null,
+    data_emissione: pnuVal('pnu-emissione') || null,
+    data_effetto: effetto,
+    data_scadenza: scadenza || null,
+    tacito_rinnovo: !!scadenza,
+    frazionamento: pnuVal('pnu-fraz') || null,
+    premio_annuo: pnuNum('pnu-annuo'),
+    premio_rata: pnuNum('pnu-rata'),
+    mezzo_pagamento: pnuVal('pnu-mezzo') || null,
+    stato_pagamento: pnuVal('pnu-stato') || 'non_pagato',
+    motivo_emissione: 'nuova emissione',
+    note: pnuVal('pnu-note') || null,
+    /* Da dove viene questa riga. Il flusso scrive 'ssf'; qui 'manuale', e il
+       catalogo si annota quando c'è — serve il giorno in cui si aggancerà
+       `prodotto_id` sul serio (§39). */
+    fonte: 'manuale',
+    dati: prodId ? { catalogo_prodotto_id: prodId } : {},
+    creato_nome: (currentUser && currentUser.name) || null
+  };
+  pnuMsg([]);
+  try {
+    const { data, error } = await db.from('quote_polizze').insert(rec).select('id').single();
+    if (error) throw error;
+    const id = data.id;
+    try { logMovimento('creazione', 'polizza', (rec.numero_polizza || prodotto) + ' · ' + compagnia, id); } catch (e) {}
+    /* Le rate, subito. Se non nascono lo si DICE: una polizza senza rate non
+       si vede in nessun sospeso, e scoprirlo fra un mese è tardi. */
+    let rate = null;
+    try { rate = await titGenera(id); } catch (e) { rate = { creati: 0, motivo: e.message || String(e) }; }
+    document.getElementById('pol-ov')?.remove();
+    if (typeof loadPortafoglio === 'function') loadPortafoglio();
+    setTimeout(() => polDettaglio(id), 120);
+    if (!rate || !rate.creati) {
+      setTimeout(() => alert('La polizza è stata creata, ma le rate no: ' +
+        ((rate && rate.motivo) || 'motivo non dichiarato') +
+        '.\n\nSi generano dalla pagina Titoli, oppure si corregge il premio annuo e il frazionamento.'), 400);
+    }
+  } catch (e) { pnuMsg([e.message || String(e)]); }
 }
 
 /* ═══ BLOCCO D — CAMPAGNE ═════════════════════════════════════════════════════
@@ -19005,6 +19342,11 @@ async function loadNotifiche(){
     const br = document.getElementById('rich-badge');
     if (br){ br.textContent = nr; br.style.display = nr > 0 ? 'inline-flex' : 'none'; }
     loadNotifBell();
+    /* Le attività recenti si aggiornano insieme alle notifiche: è lo stesso
+       giro di lettura, e due timer separati per due pallini nella stessa
+       fascia sarebbero due richieste per la stessa domanda (§1: e qui si
+       chiama davvero, non basta che la funzione esista). */
+    atrControlla();
   } catch (e) {}
 }
 function notifLastSeen(){ return parseInt(localStorage.getItem('prevMsgSeen_'+(currentUser?.id||''))||'0',10); }
@@ -19060,6 +19402,8 @@ async function apriDaNotifica(id){
 document.addEventListener('click', e => {
   const pop=document.getElementById('notif-pop');
   if(pop && pop.style.display==='block' && !e.target.closest('#notif-pop') && !e.target.closest('#notif-bell')) pop.style.display='none';
+  const atr=document.getElementById('atr-pop');
+  if(atr && atr.style.display==='block' && !e.target.closest('#atr-pop') && !e.target.closest('#atr-icona')) atr.style.display='none';
 });
 
 let pvcTimer = null;
@@ -28847,6 +29191,36 @@ async function buildDestIndex(){
   return idx;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA RICERCA GLOBALE  (Blocco 2 · punto 8, 20/09/2026)
+
+   La barra c'era. Misurato sul database prima di toccarla, e il numero
+   spiega tutto:
+
+     polizze in portafoglio ............ 30
+     di cui SENZA un preventivo ........ 25   ← l'82%
+     con un numero di polizza .......... 25
+
+   La ricerca leggeva `quote_preventivi` filtrando `polizza_emessa`, e
+   chiamava «Polizze» quelle righe. Le venticinque arrivate dalla compagnia
+   non hanno un preventivo e **non si trovavano in nessun modo**: né per
+   cliente, né per prodotto, e nemmeno per il numero di polizza — che è
+   l'unica cosa che un cliente al telefono sa dirti.
+
+   È il guasto §1 in versione ricerca: una cosa esiste, e per l'82% del
+   portafoglio non serve a niente.
+
+   Tre correzioni, e la terza è quella che si sente di più:
+    1. si cerca in `quote_polizze` DAVVERO, e anche per numero di polizza e
+       per targa;
+    2. si cercano anche i sinistri e le pratiche in lavorazione;
+    3. il risultato APRE LA RIGA. Prima ogni polizza e ogni preventivo
+       portavano a `showPage('storico')`: trovavi la cosa e poi te la
+       cercavi a mano. Trovare e aprire erano due lavori.
+
+   E ogni lettura sta in piedi da sola (§35): una tabella che non risponde
+   toglie la sua sezione, non la tendina.
+   ═══════════════════════════════════════════════════════════════════════════ */
 async function globalSearch(q) {
   q = (q || '').trim();
   const box = document.getElementById('gs-results');
@@ -28856,32 +29230,248 @@ async function globalSearch(q) {
   box.innerHTML = '<div class="search-hint">Ricerca…</div>';
   gsTimer = setTimeout(async () => {
     const ql = q.toLowerCase();
+    const like = sbq(q);
+    const guasti = [];
+    /* Una lettura per sezione: quello che c'è si mostra, quello che non si è
+       potuto leggere si DICE col suo nome (§35). */
+    const leggi = async (nome, costruisci) => {
+      try { const r = await costruisci(); if (r.error) throw r.error; return r.data || []; }
+      catch (e) { guasti.push(nome); return []; }
+    };
+
     // Prodotti & professioni — indice deep-link (apre DIRETTAMENTE il preventivatore)
     const di = await buildDestIndex();
     window.__GSDST = di
       .filter(d => gsMatch(d.kw, ql))
       .sort((a, b) => (a.label.toLowerCase().startsWith(ql) ? 0 : 1) - (b.label.toLowerCase().startsWith(ql) ? 0 : 1))
       .slice(0, 8);
-    // Clienti + Preventivi/Polizze (Supabase)
-    let clienti = [], prev = [];
-    try { const r = await db.from('quote_anagrafiche').select('*').or(`nominativo.ilike.%${sbq(q)}%,codice_fiscale.ilike.%${sbq(q)}%,partita_iva.ilike.%${sbq(q)}%,telefono.ilike.%${sbq(q)}%,cellulare.ilike.%${sbq(q)}%`).limit(6); clienti = r.data || []; } catch {}
-    try { let pq = db.from('quote_preventivi').select('*').or(`cliente.ilike.%${sbq(q)}%,prodotto.ilike.%${sbq(q)}%`).order('creato_il', { ascending: false }).limit(10); const vids = await visibleUserIds(); if (vids) pq = pq.in('creato_da', vids); const r = await pq; prev = r.data || []; } catch {}
+
+    const clienti = await leggi('i clienti', () => db.from('quote_anagrafiche').select('*')
+      .or(`nominativo.ilike.%${like}%,codice_fiscale.ilike.%${like}%,partita_iva.ilike.%${like}%,telefono.ilike.%${like}%,cellulare.ilike.%${like}%`)
+      .limit(6));
+
+    /* LE POLIZZE VERE. `numero_polizza` per primo: è quello che il cliente
+       legge al telefono.
+       La TARGA è una lettura A PARTE, e non è pigrizia: sta dentro
+       `dati->ssf->veicolo`, cioè un percorso jsonb, e un percorso jsonb
+       sbagliato dentro un `or` fa fallire TUTTA la condizione — il
+       portafoglio intero sparirebbe dalla ricerca per un campo in più. Due
+       letture separate costano una richiesta e non si portano giù a vicenda
+       (§35). */
+    const COLPOL = 'id,numero_polizza,cliente,cliente_id,prodotto,compagnia,data_effetto,data_scadenza,dati';
+    const polizze = await leggi('il portafoglio', () => db.from('quote_polizze').select(COLPOL)
+      .or(`numero_polizza.ilike.%${like}%,cliente.ilike.%${like}%,prodotto.ilike.%${like}%,compagnia.ilike.%${like}%`)
+      .order('data_effetto', { ascending: false }).limit(8));
+    /* Una targa si cerca com'è scritta sul libretto: maiuscola e senza spazi.
+       Non si dichiara fra i guasti se non risponde — è un di più, e dirlo
+       farebbe credere che manchi mezzo portafoglio. */
+    let perTarga = [];
+    try {
+      const r = await db.from('quote_polizze').select(COLPOL)
+        .ilike('dati->ssf->veicolo->>targa', '%' + like.replace(/\s+/g, '') + '%').limit(5);
+      if (!r.error) perTarga = r.data || [];
+    } catch (e) { perTarga = []; }
+    perTarga.forEach(t => { if (!polizze.some(x => x.id === t.id)) polizze.push(t); });
+
+    const prev = await leggi('i preventivi', async () => {
+      let pq = db.from('quote_preventivi').select('*')
+        .or(`cliente.ilike.%${like}%,prodotto.ilike.%${like}%`)
+        .order('creato_il', { ascending: false }).limit(8);
+      const vids = await visibleUserIds();
+      if (vids) pq = pq.in('creato_da', vids);
+      return pq;
+    });
+
+    /* I nomi delle colonne sono quelli di QUESTA tabella, misurati: il
+       sinistro ha `contraente`, `numero_sx`, `n_polizza` e
+       `data_accadimento` — non `cliente`, `numero_sinistro`, `data_sinistro`,
+       che sono di altre tabelle. Una colonna copiata dalla tabella accanto è
+       un 400 di PostgREST, ed è il guasto che il 20/09 aveva spento una
+       schermata intera (§35). */
+    const sinistri = await leggi('i sinistri', () => db.from('quote_sinistri')
+      .select('id,numero_sx,n_polizza,contraente,compagnia,data_accadimento')
+      .or(`numero_sx.ilike.%${like}%,contraente.ilike.%${like}%,compagnia.ilike.%${like}%,n_polizza.ilike.%${like}%`)
+      .order('data_accadimento', { ascending: false }).limit(5));
+
+    const pratiche = await leggi('le pratiche', () => db.from('quote_pratiche')
+      .select('id,cliente,prodotto,compagnia,descrizione,stato')
+      .or(`cliente.ilike.%${like}%,prodotto.ilike.%${like}%,descrizione.ilike.%${like}%`)
+      .limit(5));
+
     window.__GSCLI = clienti;
+    window.__GSPOL = polizze;
+    window.__GSPRE = prev;
+
     let html = '';
     if (window.__GSDST.length) html += gsSection('Prodotti & professioni', window.__GSDST.map((d, i) => gsItem(d.icon || 'ti-box', esc(d.label), esc(d.sub), 'dst:' + i)));
     if (clienti.length) html += gsSection('Clienti', clienti.map(c => gsItem('ti-user', esc(c.nominativo), esc(c.codice_fiscale || c.partita_iva || c.cellulare || 'cliente'), 'cli:' + c.id)));
-    const pol = prev.filter(p => p.polizza_emessa), pre = prev.filter(p => !p.polizza_emessa);
-    if (pol.length) html += gsSection('Polizze', pol.map(p => gsItem('ti-file-check', esc(p.prodotto || 'Polizza'), esc(p.cliente || '') + ' · ' + new Date(p.creato_il).toLocaleDateString('it-IT'), 'sto')));
-    if (pre.length) html += gsSection('Preventivi', pre.map(p => gsItem('ti-file-invoice', esc(p.prodotto || 'Preventivo'), esc(p.cliente || '') + ' · ' + new Date(p.creato_il).toLocaleDateString('it-IT'), 'sto')));
-    box.innerHTML = html || `<div class="search-hint">Nessun risultato per "${esc(q)}"</div>`;
+    if (polizze.length) html += gsSection('Polizze in portafoglio', polizze.map(p => {
+      const targa = p.dati && p.dati.ssf && p.dati.ssf.veicolo && p.dati.ssf.veicolo.targa;
+      const sotto = [p.cliente, p.compagnia, targa, p.data_effetto ? 'dal ' + new Date(p.data_effetto).toLocaleDateString('it-IT') : '']
+        .filter(Boolean).join(' · ');
+      return gsItem('ti-file-check', esc(p.numero_polizza || p.prodotto || 'Polizza'), esc(sotto), 'pol:' + p.id);
+    }));
+    if (pratiche.length) html += gsSection('Pratiche in lavorazione', pratiche.map(p => gsItem('ti-folders',
+      esc(p.prodotto || p.descrizione || 'Pratica'),
+      esc([p.cliente, p.compagnia, p.stato].filter(Boolean).join(' · ')), 'pra:' + p.id)));
+    if (sinistri.length) html += gsSection('Sinistri', sinistri.map(x => gsItem('ti-alert-triangle',
+      esc(x.numero_sx || x.n_polizza || 'Sinistro'),
+      esc([x.contraente, x.compagnia, x.data_accadimento ? new Date(x.data_accadimento).toLocaleDateString('it-IT') : ''].filter(Boolean).join(' · ')),
+      'sin:' + x.id)));
+    /* I preventivi restano, e restano DISTINTI dalle polizze: un preventivo
+       emesso e una polizza in portafoglio sono due cose diverse, e metterle
+       nello stesso gruppo è quello che nascondeva il buco. */
+    if (prev.length) html += gsSection('Preventivi', prev.map(p => gsItem('ti-file-invoice',
+      esc(p.prodotto || 'Preventivo'),
+      esc(p.cliente || '') + ' · ' + new Date(p.creato_il).toLocaleDateString('it-IT'), 'pre:' + p.id)));
+
+    if (!html) html = `<div class="search-hint">Nessun risultato per "${esc(q)}"</div>`;
+    /* «Non si è potuto leggere» non è «non c'è» (§12, §18), e qui conta il
+       doppio: una ricerca che tace su una sezione caduta fa credere che quella
+       cosa non esista. */
+    if (guasti.length) html += `<div class="search-hint" style="color:#b06a00">Non si è potuto cercare fra ${esc(guasti.join(', '))}: non vuol dire che non ci sia niente.</div>`;
+    box.innerHTML = html;
   }, 280);
 }
+
+/* Trovare e aprire sono lo stesso gesto. Prima ogni polizza e ogni preventivo
+   portavano allo storico, e poi te li cercavi a mano. */
 function gsAct(token) {
   closeSearch();
   const i = document.getElementById('gs-input'); if (i) i.value = '';
   if (token.indexOf('dst:') === 0) { const d = (window.__GSDST || [])[+token.slice(4)]; if (d && d.open) d.open(); return; }
   if (token.indexOf('cli:') === 0) { showPage('anagrafiche'); const id = token.slice(4); setTimeout(() => apriAnagrafica(id), 250); return; }
+  if (token.indexOf('pol:') === 0) { const id = token.slice(4); showPage('portafoglio'); setTimeout(() => polDettaglio(id), 250); return; }
+  if (token.indexOf('pra:') === 0) { const id = token.slice(4); showPage('portafoglio'); setTimeout(() => pdocApriPratica(id), 250); return; }
+  if (token.indexOf('sin:') === 0) { showPage('sinistri'); return; }
+  if (token.indexOf('pre:') === 0) { showPage('storico'); return; }
   if (token === 'sto') showPage('storico');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LE ATTIVITÀ RECENTI, UN'ICONA  (Blocco 2 · punto 9, 20/09/2026)
+
+   Il registro dei movimenti c'è dal 19/09 (§18) e conta 236 righe. Si legge
+   però solo da una PAGINA — «Attività» — che sta in una barra da ventuno
+   voci, riservata allo staff e in fondo. È la stessa distanza che aveva fatto
+   perdere la voce «Importa» (§15): una cosa che esiste e che nessuno apre.
+
+   «Che cosa è successo qui dentro mentre non c'ero» è una domanda da tre
+   secondi, e va risposta in tre secondi: un'icona accanto alla campanella,
+   dodici righe, e ogni riga apre la cosa a cui punta.
+
+   Due regole, tutte e due già scritte:
+    · «non risponde» non è «non c'è niente» (§18). Il riquadro lo dice in
+      faccia invece di mostrare un elenco vuoto, che rassicura a sproposito;
+    · il pallino conta i movimenti PIÙ NUOVI dell'ultima apertura, **esclusi i
+      propri**: quello che hai fatto tu non è una novità, e un pallino che non
+      si spegne mai smette di voler dire qualcosa (§27, §37).
+
+   `var` e non `let`: le prove leggono `window.ATR_*` (§17).
+   ═══════════════════════════════════════════════════════════════════════════ */
+var ATR_VISTI = 'quoto_attivita_viste';
+var ATR_RIGHE = null;   // null = mai letto / non letto; [] = letto e vuoto
+
+function atrLetteFino() {
+  try { return localStorage.getItem(ATR_VISTI) || null; } catch (e) { return null; }
+}
+function atrRicorda(iso) {
+  try { if (iso) localStorage.setItem(ATR_VISTI, String(iso)); } catch (e) { /* storage chiuso: pazienza */ }
+}
+
+async function atrCarica() {
+  if (!db) return null;
+  try {
+    const { data, error } = await db.from('quote_log')
+      .select('*').order('creato_il', { ascending: false }).limit(12);
+    if (error) throw error;
+    ATR_RIGHE = data || [];
+    return ATR_RIGHE;
+  } catch (e) {
+    /* Si distingue apposta: `null` vuol dire «non si è potuto leggere». */
+    ATR_RIGHE = null;
+    return null;
+  }
+}
+
+function atrSegnale() {
+  const b = document.getElementById('atr-badge');
+  if (!b) return;
+  const righe = ATR_RIGHE || [];
+  const fino = atrLetteFino();
+  const mio = (currentUser && currentUser.id) || null;
+  /* Quello che hai fatto tu non è una novità. Senza questa riga il pallino si
+     accenderebbe a ogni salvataggio, e diventerebbe rumore in mezz'ora. */
+  const nuovi = righe.filter(r => (!fino || String(r.creato_il) > fino) && r.utente_id !== mio);
+  if (!nuovi.length) { b.style.display = 'none'; return; }
+  b.textContent = nuovi.length > 9 ? '9+' : String(nuovi.length);
+  b.style.display = 'flex';
+}
+
+async function atrControlla() {
+  const ic = document.getElementById('atr-icona');
+  if (ic) ic.style.display = 'inline-flex';
+  await atrCarica();
+  atrSegnale();
+}
+
+async function atrApri() {
+  const pop = document.getElementById('atr-pop');
+  if (!pop) return;
+  if (pop.style.display === 'block') { pop.style.display = 'none'; return; }
+  const lista = document.getElementById('atr-lista');
+  pop.style.display = 'block';
+  if (lista) lista.innerHTML = '<div class="search-hint">Leggo il registro…</div>';
+  const righe = await atrCarica();
+  if (lista) lista.innerHTML = atrHTML(righe);
+  /* Aperto vuol dire letto: si ricorda il più recente, non «adesso» — se fra
+     la lettura e il clic ne arriva un altro, quello resta non letto. */
+  if (righe && righe.length) atrRicorda(righe[0].creato_il);
+  atrSegnale();
+}
+function atrChiudi() { const p = document.getElementById('atr-pop'); if (p) p.style.display = 'none'; }
+
+function atrHTML(righe) {
+  if (righe === null) {
+    /* §18: confondere «non risponde» con «non è successo niente» rassicura a
+       sproposito, ed è lo stesso difetto del contatore documentale che
+       mostrava `0` su un archivio mai letto (§12). */
+    return '<div class="search-hint">Il registro non risponde. Non vuol dire che non sia successo niente: ' +
+      'vuol dire che non si è potuto leggerlo.</div>';
+  }
+  if (!righe.length) return '<div class="search-hint">Nessun movimento registrato.</div>';
+  const R = window.Registro;
+  return righe.map(r => {
+    const e = R ? R.etichetta(r.entita) : { l: r.entita || '—', i: null, tabella: null };
+    const quando = R && R.quandoBreve ? R.quandoBreve(r.creato_il) : new Date(r.creato_il).toLocaleString('it-IT');
+    /* Si apre solo quello che si PUÒ aprire: una voce senza tabella o senza
+       identificativo non è un collegamento, e fingere che lo sia porterebbe
+       su una pagina che non c'entra (§18, regola 1). */
+    const apribile = !!(e.tabella && r.entita_id);
+    return `<div class="atr-r${apribile ? ' apri' : ''}"${apribile
+        ? ` onclick="atrVai('${esc(r.entita)}','${esc(r.entita_id)}')"` : ''}>
+      <i class="ti ${e.i || 'ti-point'}"></i>
+      <div style="min-width:0">
+        <div class="atr-t">${esc(r.azione || '—')}<span class="atr-e"> · ${esc(e.l)}</span></div>
+        <div class="atr-s">${esc(r.dettaglio || '')}</div>
+        <div class="atr-s">${esc(r.utente_nome || '—')} · ${esc(quando)}</div>
+      </div></div>`;
+  }).join('');
+}
+
+/* Dove porta ogni tipo. È un elenco corto apposta: le voci che qui non
+   compaiono si leggono e non si aprono, invece di mandare su una pagina che
+   non c'entra. */
+function atrVai(entita, id) {
+  atrChiudi();
+  const k = String(entita || '').toLowerCase();
+  if (k === 'polizza') { showPage('portafoglio'); setTimeout(() => polDettaglio(id), 250); return; }
+  if (k === 'cliente') { showPage('anagrafiche'); setTimeout(() => apriAnagrafica(id), 250); return; }
+  if (k === 'pratica') { showPage('portafoglio'); setTimeout(() => pdocApriPratica(id), 250); return; }
+  if (k === 'titolo')  { showPage('titoli'); return; }
+  if (k === 'sinistro') { showPage('sinistri'); return; }
+  if (k === 'preventivo') { showPage('storico'); return; }
+  showPage('log');
 }
 
 /* ══════════ UTILITY (ex «Documenti») ══════════

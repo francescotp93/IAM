@@ -1,8 +1,21 @@
-id: m4-1789908816  exit: 0  2026-09-20 12:54:26
+id: m5-1789909929  exit: 0  2026-09-20 13:12:21
 ----
-atteso: 50s
+== commit ==
 6f4762a Brief #02 · M4: gli incassi da accreditare (#212)
+== versione.json ==
+{
+  "versione": "0.4.0",
+  "nome": "Incassi da accreditare",
+  "data": "2026-09-20",
+== meta IAM ==
 <meta name="app-versione" content="0.4.0">
 <meta name="app-versione-nome" content="Incassi da accreditare">
---- linguetta nuova ---
-1
+== blocco gio* ==
+0
+== HTTP ==
+iam root: 200
+{
+  "versione": "0.4.0",
+  "nome": "Incassi da accreditare",
+  "data": "2026-09-20",
+  "storia": [

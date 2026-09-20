@@ -137,20 +137,53 @@ prova('le due porte esistono: menu, titolo e riga in goTab', () => {
   return 'due voci, due titoli, TAB2MENU, goTab, RISERVATE';
 });
 
-prova('«non si e\' potuto leggere» non diventa «non ce ne sono»', () => {
+prova('«non si e\' potuto leggere» non diventa «non ce ne sono» — e non porta giu\' la pagina', () => {
   const b = blocco();
   /* La stessa regola del registro (§18), del contatore documentale (§12) e
      dei conti (§26): un elenco vuoto su un errore farebbe credere che non
      esistano accordi — e qui vorrebbe dire far credere che non si debba
-     niente a nessuno. */
-  deve(/non vuol dire che non ce ne siano/.test(b), 'l\'errore di lettura si confonde con l\'elenco vuoto');
+     niente a nessuno.
+
+     REGOLA AGGIORNATA IL 20/09/2026, dopo un guasto vero: le sette letture
+     stavano in una `Promise.all` con un `throw` sul primo errore, e UNA
+     colonna sbagliata (`nominativo`, che su `quote_collaboratori` non
+     esiste) spegneva la schermata intera — comprese le sei letture che
+     avevano funzionato. Chi la apriva non poteva creare nemmeno una
+     compagnia. La prova di prima pretendeva l'avviso in tutti e tre i
+     contenitori, cioe' misurava il mondo in cui cadevano tutte insieme.
+     Adesso ognuna sta in piedi da sola, e l'avviso dice QUALE manca. */
   deve(/class="cnt-err"/.test(b), 'l\'errore non si vede');
-  /* E l'avviso arriva in TUTTI i contenitori: le sette letture partono
-     insieme e cadono insieme, quindi una linguetta lasciata su «Carico…»
-     resterebbe li' per sempre. E' il difetto gia' corretto sui conti. */
-  deve(/\['prv-tariffe', 'prv-override', 'prv-gruppi'\]\.forEach/.test(b),
-    'l\'avviso di errore non raggiunge tutte e tre le liste');
-  return 'tre contenitori, due messaggi diversi per due cose diverse';
+  deve(/Non ho potuto leggere/.test(b), 'l\'errore di lettura si confonde con l\'elenco vuoto');
+  deve(/Il resto è quello che c’è davvero/.test(b),
+    'l\'avviso non dice che il resto della pagina e\' comunque vero');
+  /* Ogni lettura ha il suo nome: «qualcosa e' andato storto» con sette
+     richieste non dice a nessuno dove guardare. */
+  const codice = b.split('\n').filter(r => !/^\s*(\/\*|\*|\/\/)/.test(r)).join('\n');
+  const nomi = (codice.match(/leggi\('/g) || []).length;
+  deve(nomi >= 7, 'le letture non sono isolate una per una: ne ho contate ' + nomi);
+  deve(!/await Promise\.all\(\[\s*\n\s*db\.from/.test(codice),
+    'le letture sono tornate dentro una Promise.all che cade tutta insieme');
+  deve(/guasti\.push/.test(codice), 'una lettura caduta non viene raccolta');
+  return nomi + ' letture, ognuna in piedi da sola';
+});
+
+prova('GUASTO VERO · il nominativo di un collaboratore NON e\' una colonna', () => {
+  /* `quote_collaboratori` ha `nome` e `cognome`. `nominativo` esiste su
+     `quote_anagrafiche` e sulle controparti dei sinistri: la query era stata
+     copiata da li', e PostgREST risponde 400 su una colonna che non c'e'.
+     Costo: la schermata Gestione compagnie non si apriva. */
+  const b = blocco();
+  deve(!/quote_collaboratori'\)\.select\('[^']*nominativo/.test(b),
+    'si chiede di nuovo una colonna `nominativo` a quote_collaboratori');
+  deve(/quote_collaboratori'\)\.select\('id,nome,cognome,stato'\)/.test(b),
+    'la query non chiede le colonne che la tabella ha davvero');
+  deve(!/\.order\('nominativo'\)/.test(b), 'si ordina per una colonna che non esiste');
+  /* E il nominativo si compone in UN posto solo: due composizioni diverse
+     sono due modi di scrivere la stessa persona in due tendine. */
+  deve(/function prvNominativo\(/.test(b), 'manca la funzione che compone il nominativo');
+  const usi = (b.match(/p\.nominativo \|\| '—'/g) || []).length;
+  deve(usi === 0, usi + ' tendine leggono ancora un campo `nominativo` che non arriva');
+  return 'nome + cognome, composti in un posto solo';
 });
 
 prova('la COPERTURA guarda il portafoglio vero, e la sua assenza non blocca il resto', () => {
@@ -159,8 +192,10 @@ prova('la COPERTURA guarda il portafoglio vero, e la sua assenza non blocca il r
      delle polizze e' l'unica delle sette che puo' mancare senza rendere la
      schermata inutile: se cade si tace su quella sezione, non si perde tutto. */
   deve(/db\.from\('quote_polizze'\)/.test(b), 'la copertura non legge il portafoglio');
-  deve(/PRV_POLIZZE = po\.error \? \[\] : \(po\.data \|\| \[\]\)/.test(b),
-    'un errore sulle polizze fa cadere anche le tariffe');
+  /* La lettura delle polizze e' una delle sette, e come tutte le altre sta in
+     piedi da sola: prima era l'UNICA protetta (`po.error ? [] : ...`), ed era
+     proprio quella protezione a dire che le altre sei non lo erano. */
+  deve(/leggi\('il portafoglio/.test(b), 'un errore sulle polizze fa cadere anche le tariffe');
   deve(/Provvigioni\.copertura\(/.test(b), 'la copertura e\' calcolata in pagina');
   /* E il motore la calcola davvero: una compagnia scritta come la scrive la
      polizza («HDI Assicurazioni») deve ritrovare la sua tariffa («HDI»)

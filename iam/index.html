@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.6.0">
-<meta name="app-versione-nome" content="L'estratto conto che esce di casa">
+<meta name="app-versione" content="0.6.1">
+<meta name="app-versione-nome" content="Gestione compagnie si riapre">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -3763,6 +3763,9 @@ input[type=file]{display:none;}
     </div>
   </section>
 
+  <!-- Che cosa NON si è potuto leggere, sopra quello che invece c'è: con sette
+       letture, «qualcosa è andato storto» non dice a nessuno dove guardare. -->
+  <section id="prv-guasti" style="display:none"></section>
   <section class="cnt-somma" id="prv-somma"></section>
   <section class="cnt-lista" id="prv-copertura"></section>
   <section class="cnt-lista" id="prv-tariffe"><div class="cl-sub">Carico le tariffe…</div></section>
@@ -5872,7 +5875,19 @@ let PRV_STORICO = false;
 function prvPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
 function prvOggi() { return window.Provvigioni ? Provvigioni.oggiIso() : new Date().toISOString().slice(0, 10); }
 function prvIeri() { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); }
-function prvNome(id) { const p = PRV_PERSONE.find(x => x.id === id); return p ? (p.nominativo || p.nome || '—') : '—'; }
+/* IL NOMINATIVO NON È UNA COLONNA, È UNA COMPOSIZIONE.
+   `quote_collaboratori` ha `nome` e `cognome`; `nominativo` esiste su
+   `quote_anagrafiche` e sulle controparti dei sinistri, ed è da lì che la
+   query era stata copiata. PostgREST risponde 400 su una colonna che non
+   c'è — e un 400 dentro una `Promise.all` porta giù la schermata intera.
+   Si compone in un posto solo: due composizioni diverse sono due modi di
+   scrivere la stessa persona in due tendine. */
+function prvNominativo(p) {
+  if (!p) return '—';
+  const s = [p.cognome, p.nome].filter(Boolean).join(' ').trim();
+  return s || p.nominativo || p.email || '—';
+}
+function prvNome(id) { return prvNominativo(PRV_PERSONE.find(x => x.id === id)); }
 
 function prvTab(v) {
   PRV_VISTA = v;
@@ -5892,34 +5907,59 @@ async function prvCarica(forza) {
     const t = document.getElementById('prv-tariffe');
     if (t) t.innerHTML = '<div class="cl-sub">Carico le tariffe…</div>';
   }
-  try {
-    const [ta, ov, gr, me, ca, pe, po] = await Promise.all([
-      db.from('iam_provvigioni_tariffa').select('*').order('compagnia').order('ramo'),
-      db.from('iam_provvigioni_collaboratore').select('*').order('creato_il'),
-      db.from('iam_gruppi').select('*').order('nome'),
-      db.from('iam_gruppi_membri').select('*'),
-      db.from('quote_compagnie').select('nome,alias,attiva').order('nome'),
-      db.from('quote_collaboratori').select('id,nominativo,stato').order('nominativo'),
-      db.from('quote_polizze').select('compagnia,modulo,prodotto')
-    ]);
-    for (const r of [ta, ov, gr, me, ca, pe]) if (r.error) throw r.error;
-    PRV_TARIFFE = ta.data || []; PRV_OVERRIDE = ov.data || [];
-    PRV_GRUPPI = gr.data || [];  PRV_MEMBRI = me.data || [];
-    PRV_CATALOGO = ca.data || []; PRV_PERSONE = pe.data || [];
+  /* OGNI LETTURA STA IN PIEDI DA SOLA.
+     Prima erano sette dentro una `Promise.all` con un `throw` sul primo
+     errore: una colonna sbagliata in UNA query — `nominativo`, che su questa
+     tabella non esiste — e la schermata intera diceva «non riesco a leggere le
+     tariffe», comprese le cinque letture che avevano funzionato. Chi la
+     apriva non poteva creare nemmeno una compagnia.
+
+     Adesso le richieste partono insieme (è la stessa attesa) ma si
+     raccolgono una per una: quello che si è letto si mostra, e quello che
+     non si è letto lo DICE, col suo nome. «Non si è potuto leggere» non è
+     «non ce n'è» (§12, §18) — ma è vero per una sezione alla volta, non per
+     tutta la pagina. */
+  const guasti = [];
+  const leggi = async (nome, q, vuoto) => {
+    try {
+      const r = await q;
+      if (r.error) throw r.error;
+      return r.data || vuoto;
+    } catch (e) {
+      guasti.push({ nome: nome, motivo: e.message || String(e) });
+      return vuoto;
+    }
+  };
+  const [ta, ov, gr, me, ca, pe, po] = await Promise.all([
+    leggi('le tariffe di compagnia', db.from('iam_provvigioni_tariffa').select('*').order('compagnia').order('ramo'), []),
+    leggi('gli accordi con i collaboratori', db.from('iam_provvigioni_collaboratore').select('*').order('creato_il'), []),
+    leggi('i gruppi', db.from('iam_gruppi').select('*').order('nome'), []),
+    leggi('i membri dei gruppi', db.from('iam_gruppi_membri').select('*'), []),
+    leggi('il catalogo delle compagnie', db.from('quote_compagnie').select('nome,alias,attiva').order('nome'), []),
+    leggi('l\'elenco dei collaboratori', db.from('quote_collaboratori').select('id,nome,cognome,stato').order('cognome').order('nome'), []),
     /* Le polizze servono alla COPERTURA: senza, chi configura scrive le
-       tariffe a memoria invece che guardando il portafoglio. Se non si
-       leggono si tace su quella sezione, non si blocca il resto. */
-    PRV_POLIZZE = po.error ? [] : (po.data || []);
-    prvRender();
-  } catch (e) {
-    /* «Non si è potuto leggere» non è «non ce n'è» (§12, §18). L'avviso va in
-       tutti i contenitori: le letture partono insieme e cadono insieme. */
-    const avviso = `<div class="cnt-err">Non riesco a leggere le tariffe e gli accordi.<br>
-      <small>${esc(e.message || e)} — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerli.</small></div>`;
-    ['prv-tariffe', 'prv-override', 'prv-gruppi'].forEach(id => {
-      const b = document.getElementById(id); if (b) b.innerHTML = avviso;
-    });
-  }
+       tariffe a memoria invece che guardando il portafoglio. */
+    leggi('il portafoglio (serve alla copertura)', db.from('quote_polizze').select('compagnia,modulo,prodotto'), [])
+  ]);
+  PRV_TARIFFE = ta; PRV_OVERRIDE = ov;
+  PRV_GRUPPI = gr;  PRV_MEMBRI = me;
+  PRV_CATALOGO = ca; PRV_PERSONE = pe; PRV_POLIZZE = po;
+  prvRender();
+  prvGuasti(guasti);
+}
+
+/* L'avviso dice QUALE pezzo non ha risposto, non «qualcosa è andato storto»:
+   con sette letture, un messaggio generico non dice a nessuno che cosa
+   guardare. E sta in cima, sopra i dati che invece ci sono. */
+function prvGuasti(guasti) {
+  const box = document.getElementById('prv-guasti');
+  if (!box) return;
+  if (!guasti.length) { box.innerHTML = ''; box.style.display = 'none'; return; }
+  box.style.display = '';
+  box.innerHTML = `<div class="cnt-err">Non ho potuto leggere ${guasti.length === 1 ? 'una parte' : guasti.length + ' parti'} di questa schermata.
+    Il resto è quello che c’è davvero.
+    <ul style="margin:6px 0 0 18px;padding:0">${guasti.map(g =>
+      `<li><b>${esc(g.nome)}</b> — <small>${esc(g.motivo)}</small></li>`).join('')}</ul></div>`;
 }
 
 function prvRender() {
@@ -6055,7 +6095,7 @@ function prvRiempiSimulatore() {
   };
   sel('prv-s-compagnia', PRV_CATALOGO.map(c => `<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join(''), '— scegli —');
   sel('prv-s-ramo', Provvigioni.RAMI.map(r => `<option value="${esc(r.k)}">${esc(r.l)}</option>`).join(''), '— scegli —');
-  sel('prv-s-collab', PRV_PERSONE.map(p => `<option value="${esc(p.id)}">${esc(p.nominativo || '—')}</option>`).join(''), 'Nessuno (produzione diretta)');
+  sel('prv-s-collab', PRV_PERSONE.map(p => `<option value="${esc(p.id)}">${esc(prvNominativo(p))}</option>`).join(''), 'Nessuno (produzione diretta)');
   const d = document.getElementById('prv-s-data');
   if (d && !d.value) d.value = prvOggi();
 }
@@ -6114,7 +6154,7 @@ function prvOpzCompagnie(sel) {
   return PRV_CATALOGO.map(c => `<option value="${esc(c.nome)}" ${c.nome === sel ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
 }
 function prvOpzPersone(sel) {
-  return PRV_PERSONE.map(p => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(p.nominativo || '—')}</option>`).join('');
+  return PRV_PERSONE.map(p => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(prvNominativo(p))}</option>`).join('');
 }
 
 function prvApriTariffa(id, pre) {
@@ -6294,7 +6334,7 @@ function prvApriGruppo(id) {
           <button class="d-btn" type="button" style="margin-left:auto;padding:4px 10px;font-size:12px" onclick="prvTogliMembro('${esc(m.id)}','${esc(id)}')">Togli</button></div>`).join('')
           : '<div class="cl-sub">Nessun membro. Un gruppo senza membri non produce nessun indiretto.</div>'}
         <div style="display:flex;gap:8px;margin-top:10px">
-          <select id="prv-g-nuovo-membro" style="flex:1"><option value="">— aggiungi una persona —</option>${liberi.map(p => `<option value="${esc(p.id)}">${esc(p.nominativo || '—')}</option>`).join('')}</select>
+          <select id="prv-g-nuovo-membro" style="flex:1"><option value="">— aggiungi una persona —</option>${liberi.map(p => `<option value="${esc(p.id)}">${esc(prvNominativo(p))}</option>`).join('')}</select>
           <input type="text" id="prv-g-nuovo-perc" placeholder="% sua" style="width:90px" inputmode="decimal">
           <button class="d-btn" type="button" onclick="prvAggiungiMembro('${esc(id)}')">Aggiungi</button>
         </div>

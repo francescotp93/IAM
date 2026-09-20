@@ -1,8 +1,17 @@
 {
-  "versione": "0.6.0",
-  "nome": "L'estratto conto che esce di casa",
+  "versione": "0.6.1",
+  "nome": "Gestione compagnie si riapre",
   "data": "2026-09-20",
   "storia": [
+    {
+      "v": "0.6.1",
+      "data": "2026-09-20",
+      "nome": "Gestione compagnie si riapre",
+      "voci": [
+        "Strumenti › Gestione compagnie non si apriva più: diceva «non riesco a leggere le tariffe e gli accordi» e non lasciava creare niente. Una sola delle sette letture chiedeva al database una colonna che non esiste, e portava giù tutta la schermata.",
+        "Adesso ogni lettura sta in piedi da sola: quello che si è letto si vede, e in cima si legge quale pezzo non ha risposto e perché. Una parte che manca non nasconde più le altre sei."
+      ]
+    },
     {
       "v": "0.6.0",
       "data": "2026-09-20",

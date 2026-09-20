@@ -3181,3 +3181,82 @@ numero** (§15, §16, §33): pretendeva che l'avviso di errore arrivasse in *tut
 e tre* i contenitori, «perché le sette letture partono insieme e cadono
 insieme». Era la descrizione esatta del difetto, scritta come se fosse una
 garanzia.
+
+---
+
+## 36. Brief IAM — Blocco 1, punto 1: il premio delle frazionate (20/09/2026)
+
+> «In Portafoglio polizze la colonna PREMIO mostra `—` su tutte le polizze con
+> frazionamento semestrale.» — Francesco, con cinque polizze e i loro numeri.
+
+**Non era il frontend, e non era nemmeno un difetto: era una decisione che si
+vedeva.** Misurato sul database prima di toccare qualcosa:
+
+| polizza | frazionamento | `premio_annuo` | `premio_rata` | titoli | somma |
+|---|---|---|---|---|---|
+| BLP949872165 | Semestrale | **null** | 200,02 | 2 | **400,04** |
+| BLP223382783 | Semestrale | **null** | 110,00 | 2 | **220,00** |
+| BLP882392123 | Semestrale | **null** | 110,00 | **0** | — |
+| PCP12315940 | Annuale | 58,00 | 58,00 | 1 | 58,00 |
+
+Il lettore del flusso lascia `premio_annuo` vuoto sulle frazionate **apposta**
+(§14, regola 2): nel tracciato `LORDO_TOTALE` è il premio **di rata**, e
+moltiplicarlo sarebbe una stima.
+
+### Il numero vero c'era, e non è una stima
+
+**La somma delle rate che la compagnia ha emesso**, quando coprono l'annualità.
+Su BLP223382783 sono due righe da 110,00 con decorrenze 16/09/2026 e 16/03/2027
+che arrivano esattamente al 16/09/2027: **220,00 l'ha scritto la compagnia**.
+
+`Flusso.premioAnnuo(polizza, titoli)` con tre condizioni, nessuna decorativa:
+
+1. **solo le rate mandate dalla compagnia** — quelle dedotte da noi (§16,
+   `:RATA:`) sono un nostro ragionamento: farle entrare vorrebbe dire che metà
+   di quel numero l'abbiamo inventato, e nessuno saprebbe quale metà;
+2. **devono ricoprire l'annualità senza buchi** — la prima parte dall'effetto,
+   l'ultima arriva a scadenza, e la somma delle durate copre il periodo. Con un
+   buco in mezzo la somma non è il premio dell'anno: è la somma di quello che è
+   arrivato;
+3. **ognuna deve avere un importo** — una rata senza importo non si salta:
+   rende il totale non calcolabile, e lo si dice.
+
+Quando non si può, torna il **motivo**, e la schermata lo stampa al posto del
+trattino. Un `—` non dice a nessuno se il premio non c'è o se il sistema non
+l'ha trovato: è §12 e §18 applicati a una cella di tabella.
+
+Sul portafoglio vero: 30 polizze, 7 senza annuo, **2 ricavabili** (backfill
+applicato, `dati.ssf.premio_annuo_da = 'titoli'` per poterlo annullare), 5 che
+restano vuote e adesso dicono perché.
+
+### La colonna resta il premio ANNUO, e la rata si dichiara
+
+Scrivere la rata nella colonna dell'annuo senza dirlo farebbe sommare mele e
+pere nel totale in fondo alla pagina: due polizze con la stessa rata possono
+valere il doppio l'una dell'altra. Dove l'annuo non c'è, la cella mostra la
+rata **con scritto «di rata»**, e sotto il motivo.
+
+### Il campione conteneva metà del caso
+
+La semestrale di collaudo aveva **una sola** delle due rate: la prova non
+avrebbe mai potuto vedere la strada buona. Aggiunta la prima semestralità
+(com'è nel file vero), tre prove hanno cambiato numero — e ognuna è stata
+aggiornata **nella regola, non nel numero**:
+
+- «l'annuo non si stima» ora pretende che l'annuo sia 220 **e diverso dalla
+  rata**, e controlla su una seconda semestrale senza rate che non diventi
+  `rata × 2`: prima quella prova sarebbe rimasta verde con la moltiplicazione;
+- «non si duplica quello che la compagnia ha già mandato» non conta più le rate
+  della polizza (è il campione) ma pretende che **nessuna** di quelle rate
+  l'abbiamo generata noi;
+- il conto delle provvigioni e delle rate da incassare segue il campione, e la
+  regola guarda quante ne abbiamo **dedotte** (una sola).
+
+Lo zip di collaudo si rigenera insieme ai CSV: contiene una copia degli stessi
+file, e una prova confronta le due strade — se si aggiorna solo il CSV, quella
+prova diventa rossa per un motivo che non è il suo.
+
+### Due controprove
+
+L'annuo stimato moltiplicando la rata → rossa la prova della regola 2. Le rate
+dedotte da noi ammesse nel conto → rossa la prova che le esclude.

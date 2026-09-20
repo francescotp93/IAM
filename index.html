@@ -18597,9 +18597,11 @@ async function fluConferma() {
      Quello che nasce qui è marcato `da_verificare`: il sistema registra che
      cosa ha trovato, e a dire se va bene è una persona. */
   if (p._catalogo && !p._catalogo.errore) {
-    const esito = await fluScriviCatalogo(p._catalogo);
-    fatti.compagnie = esito.compagnie;
-    fatti.prodotti = esito.prodotti;
+    try {
+      const esito = await fluScriviCatalogo(p._catalogo);
+      fatti.compagnie = esito.compagnie;
+      fatti.prodotti = esito.prodotti;
+    } catch (e) { fatti.catalogoKo = e.message || String(e); }
   } else if (p._catalogo && p._catalogo.errore) {
     fatti.catalogoKo = p._catalogo.errore;
   }

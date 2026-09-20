@@ -1,8 +1,5 @@
 cd /opt/withus-backend || exit 1
-echo "== commit =="; git log --oneline -1
-echo "== versione.json =="; head -4 versione.json
-echo "== meta IAM =="; grep -m2 'app-versione' iam/index.html
-echo "== blocco gio* =="; grep -c 'gioRenderGiornata\|gio-oggi\|gio-anomalie' iam/index.html
-echo "== HTTP =="
-curl -s -o /dev/null -w "iam root: %{http_code}\n" https://iam.withusassicurazioni.it/ --resolve iam.withusassicurazioni.it:443:127.0.0.1
-curl -s -w "\nversione.json: %{http_code}\n" https://iam.withusassicurazioni.it/nuovo-preventivo/versione.json --resolve iam.withusassicurazioni.it:443:127.0.0.1 | head -5
+date
+echo "== commit locale =="; git log --oneline -1
+echo "== remoto =="; git fetch -q origin main 2>&1 | tail -2; git log --oneline -1 origin/main
+echo "== autopull =="; tail -12 /var/log/withus-autopull.log 2>/dev/null || journalctl -u withus-autopull -n 12 --no-pager 2>/dev/null || echo "nessun log noto"

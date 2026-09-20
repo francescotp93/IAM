@@ -3568,3 +3568,151 @@ peggio di un id assente** (§18, regola 1).
 - **Gli alias delle compagnie sono ancora solo su HDI e Prima** (§20): un flusso
   il cui emittente non corrisponde crea una compagnia nuova invece di ritrovare
   quella che c'è. Adesso però la crea marcata, e si vede.
+
+---
+
+## 40. Brief IAM — Blocco 2: la polizza a mano, la ricerca, le attività (20/09/2026)
+
+Tre punti con la stessa forma: **una cosa esisteva già e non serviva a chi
+lavora.** In tutti e tre il lavoro è cominciato misurando, e in tutti e tre la
+misura ha detto quanto era grosso il buco.
+
+| pezzo | dove |
+|---|---|
+| la polizza a mano | blocco `pnu*` in `index.html`, tasto in cima al Portafoglio |
+| la ricerca globale | `globalSearch` / `gsAct` in `index.html` |
+| le attività recenti | blocco `atr*` e `#atr-pop` in `index.html` |
+| prove | blocco «Blocco 2» in `ui-test.mjs` — **466** (erano 456) |
+
+### Punto 2 — una polizza si può scrivere a mano
+
+**Misurato: in tutto il documento ci sono DUE scritture in `quote_polizze`, e
+nessuna delle due la si comanda.** Una nasce emettendo un preventivo, l'altra
+dall'importazione della compagnia. Una polizza arrivata per telefono, o fatta
+da un collaboratore su un portale, non aveva **nessuna strada** per entrare in
+portafoglio — e finché non entra non esiste per lo scadenzario, per i titoli,
+per l'estratto conto e per la contabilità.
+
+Quattro regole, e ognuna è una regola di casa già scritta:
+
+1. **Il cliente viene dall'anagrafica** (§7, §11): senza `cliente_id` il
+   fascicolo non si apre e il diario non si scrive. Il componente è quello di
+   tutta la casa (`clpInstalla`), non un autocomplete nuovo.
+2. **Il prodotto viene dal catalogo** (§39). È il **primo consumatore vero**
+   delle due tabelle nate ieri: si sceglie la compagnia e i prodotti sono i
+   suoi, col ramo che porta la libreria. Dove il catalogo non copre quella
+   compagnia il campo resta libero — ma **lo dice**, invece di far credere che
+   quella stringa sia un prodotto riconosciuto.
+3. **Le rate nascono con la polizza** (`titGenera`): «se le rate non nascono
+   con la polizza, gli insoluti non esistono e i soldi non si recuperano». E
+   se non nascono **lo dice**: scoprirlo fra un mese è tardi.
+4. **`fonte: 'manuale'`**, come il flusso scrive `'ssf'`. Una riga di
+   portafoglio che non dice da dove viene è una riga di cui, il giorno in cui
+   i numeri non tornano, nessuno sa più niente.
+
+Due cose che **non** si indovinano: con un frazionamento non dichiarato la
+rata non si divide per un numero inventato (la scrive chi la sa), e la
+scadenza a un anno si scrive **nel campo**, visibile, perché chi la guarda la
+corregga — una data riempita dietro le quinte finisce in archivio senza che
+nessuno l'abbia letta (§8.1).
+
+Il cancello è `isStaff()`, **chiamato**, non riscritto: due cancelli scritti a
+mano divergono al primo ruolo nuovo.
+
+### Punto 8 — la ricerca trovava il 17% del portafoglio
+
+La barra c'era. Il numero spiega tutto:
+
+| | |
+|---|---|
+| polizze in portafoglio | **30** |
+| di cui **senza un preventivo** | **25** — l'83% |
+| con un numero di polizza | 25 |
+
+`globalSearch` leggeva `quote_preventivi` filtrando `polizza_emessa`, e
+chiamava «Polizze» quelle righe. Le venticinque arrivate dalla compagnia non
+hanno un preventivo e **non si trovavano in nessun modo**: né per cliente, né
+per prodotto, e nemmeno per il numero di polizza — che è l'unica cosa che un
+cliente al telefono sa dirti. È il **guasto §1 in versione ricerca**.
+
+Tre correzioni, e la terza è quella che si sente di più:
+
+1. si cerca in `quote_polizze` **davvero**, e anche per numero e per targa;
+2. si cercano anche **sinistri** e **pratiche in lavorazione**;
+3. **il risultato apre la riga.** Prima ogni polizza e ogni preventivo
+   portavano a `showPage('storico')`: trovavi la cosa e poi te la cercavi a
+   mano. Trovare e aprire erano due lavori.
+
+**La targa è una lettura a parte, e non è pigrizia.** Sta in un percorso jsonb
+(`dati->ssf->veicolo->>targa`), e un percorso sbagliato dentro un `or` fa
+fallire **tutta** la condizione: il portafoglio intero sparirebbe dalla
+ricerca per un campo in più. Due letture separate costano una richiesta e non
+si portano giù a vicenda (§35).
+
+**E ogni sezione sta in piedi da sola**: una tabella che non risponde toglie la
+sua sezione e **lo dichiara col suo nome** — «non si è potuto cercare fra i
+sinistri» non è «non ci sono sinistri» (§12, §18).
+
+> **Il difetto §35, ripetuto e preso dalla misura.** La prima stesura cercava
+> nei sinistri con `numero_sinistro`, `cliente` e `data_sinistro`: colonne di
+> *altre* tabelle. Il sinistro ha `numero_sx`, `contraente`, `n_polizza` e
+> `data_accadimento`. Su PostgREST è un 400, ed è esattamente la colonna
+> copiata dalla tabella accanto che il 20/09 aveva spento una schermata
+> intera. L'ha presa la lettura dello schema, non il ragionamento.
+
+### Punto 9 — le attività recenti, un'icona
+
+Il registro dei movimenti c'è dal 19/09 (§18) e conta **236 righe**. Si leggeva
+però solo da una **pagina**, «Attività», in fondo a una barra da ventuno voci e
+riservata allo staff: la stessa distanza che aveva fatto perdere «Importa»
+(§15). «Che cosa è successo mentre non c'ero» è una domanda da tre secondi.
+
+Due regole, tutte e due già scritte:
+
+- **«Non risponde» non è «non è successo niente»** (§18). Il riquadro lo dice
+  in faccia invece di mostrare un elenco vuoto, che rassicura a sproposito.
+- **Il pallino esclude i movimenti propri.** Quello che hai fatto tu non è una
+  novità, e un pallino che si accende a ogni salvataggio diventa rumore in
+  mezz'ora — è la targhetta ferma da tre mesi di §27, in un'altra forma.
+
+E **si apre solo quello che si può aprire**: una voce senza tabella o senza
+identificativo si legge e non si clicca, perché un id che apre la riga di
+qualcun altro è peggio di un id assente (§18, regola 1).
+
+### Un guardiano che era rosso su `main`
+
+`fusione-collisioni.test.mjs` misurava **18 classi in comune contro una soglia
+di 17**: rosso prima di questo lavoro, come `tracciabilita.test.mjs` in §21. Un
+guardiano permanentemente rosso insegna a ignorare i rossi, quindi si è
+chiuso: `.ana-carta.attiva` di QUOTO è diventata `.ana-attiva` (due regole CSS
+e due `classList.toggle`), e la classe `primario` che stavo per aggiungere è
+nata già prefissata `rin-primario`. Adesso **6 su 6**, con scarto 0.
+
+È la §26 di nuovo: *una classe dentro un discendente sembra al sicuro e non lo
+è — nel foglio di stile è un nome globale.*
+
+### Controprove
+
+- Tolto il controllo sul cliente dall'anagrafica → rossa «senza cliente non si
+  salva».
+- Spenta la sezione delle polizze vere → rosse **due** prove della ricerca.
+- Tolto il filtro sui movimenti propri → rossa la prova del pallino.
+
+### Due trappole del banco, annotate
+
+- **Il finto database deve restituire una polizza COMPLETA.** `titGenera`
+  rilegge la polizza appena scritta per sapere premio e frazionamento: con il
+  solo `id` le rate non potevano nascere, e la prova accusava il codice di un
+  difetto del banco.
+- **Il salvataggio riuscito apre il dettaglio dopo 120 ms**, e quello
+  rimpiazza il pannello: una prova che riapre il modulo subito dopo se lo vede
+  sovrascrivere mentre lo compila.
+
+### Cosa resta aperto
+
+- **La polizza a mano non crea il fascicolo documentale** (§11): i requisiti si
+  congelano aprendo il fascicolo dal Portafoglio, come per le altre.
+- **`prodotto_id` resta scollegato**: il catalogo si annota in
+  `dati.catalogo_prodotto_id`, e l'aggancio vero è la migrazione futura di §39.
+- **La ricerca non copre i titoli**: una rata si cerca dalla sua polizza, e una
+  sezione in più su una tendina già lunga andrebbe misurata prima.

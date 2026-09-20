@@ -1,8 +1,19 @@
 {
-  "versione": "0.9.0",
-  "nome": "Il catalogo prodotti",
+  "versione": "0.10.0",
+  "nome": "Trovare, aprire, scrivere",
   "data": "2026-09-20",
   "storia": [
+    {
+      "v": "0.10.0",
+      "data": "2026-09-20",
+      "nome": "Trovare, aprire, scrivere",
+      "voci": [
+        "Portafoglio › «Nuova polizza»: una polizza che non nasce da un preventivo — arrivata per telefono, o fatta su un portale — adesso si scrive a mano. Il cliente si prende dall'anagrafica e il prodotto dal catalogo della compagnia; le rate nascono insieme alla polizza, perché senza rate non esistono gli insoluti.",
+        "La ricerca in alto trova finalmente le polizze vere: prima cercava solo fra i preventivi, e venticinque polizze su trenta — quelle arrivate dalla compagnia — non si trovavano in nessun modo. Adesso si cerca anche per numero di polizza e per targa, e si trovano pratiche e sinistri.",
+        "Ogni risultato della ricerca APRE la cosa che hai trovato: prima polizze e preventivi portavano allo storico, e poi te li cercavi a mano.",
+        "Nuova icona accanto alla campanella: le ultime attività dell'agenzia, con chi ha fatto che cosa e quando, e un clic che apre la riga. Il pallino conta solo i movimenti degli altri: quello che hai fatto tu non è una novità."
+      ]
+    },
     {
       "v": "0.9.0",
       "data": "2026-09-20",

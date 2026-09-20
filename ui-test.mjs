@@ -9109,6 +9109,248 @@ const avvio = async () => {
 
     await context.close();
   }
+
+  /* ══ BLOCCO 2 — polizza a mano, ricerca globale, attività recenti ══════════
+     (20/09/2026)
+     Tre punti del brief che hanno una cosa in comune: qualcosa esisteva già e
+     non serviva a chi lavora. La polizza si poteva creare solo da un
+     preventivo; la ricerca cercava fra i preventivi e chiamava «Polizze» il
+     risultato; il registro dei movimenti si leggeva solo da una pagina in
+     fondo a una barra da ventuno voci.
+     ═══════════════════════════════════════════════════════════════════════ */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const erroriB2 = [];
+    page.on('pageerror', e => erroriB2.push(e.message));
+    await page.addInitScript(initScript(true));
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+
+    await prova('nuova polizza: la porta c\'è, e solo per lo staff', async () => {
+      /* §15: una voce che non si trova, per chi lavora, non esiste. La porta
+         sta nel Portafoglio, che è dove si guarda il portafoglio. */
+      const r = await page.evaluate(() => {
+        showPage('portafoglio');
+        const box = document.getElementById('pf-nuova');
+        const prima = box ? box.style.display : 'manca';
+        const vero = currentUser.role;
+        currentUser.role = 'collaboratore';
+        const puoCollab = pnuPuo();
+        currentUser.role = vero;
+        return { prima, puoCollab, puoStaff: pnuPuo(), esiste: !!box };
+      });
+      deve(r.esiste, 'il tasto «Nuova polizza» non c\'è nel Portafoglio');
+      deve(r.puoStaff === true, 'lo staff non può creare una polizza');
+      deve(r.puoCollab === false, 'un collaboratore può scrivere in portafoglio');
+      return 'tasto nel Portafoglio, cancello su isStaff()';
+    });
+
+    await prova('nuova polizza: senza cliente dall\'anagrafica non si salva', async () => {
+      /* La regola di §7: niente nominativi volanti. Senza `cliente_id` il
+         fascicolo non si apre e il diario non si scrive. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_compagnie:lista'] = { data: [
+          { id: 'c1', nome: 'PRIMA', alias: [], attiva: true }], error: null };
+        window.__COLLAUDO.risposte['iam_compagnia_prodotti:lista'] = { data: [
+          { id: 'p1', compagnia_id: 'c1', ramo: 'rca', nome: 'BLACK', attivo: true }], error: null };
+        await pnuApri();
+        await new Promise(r => setTimeout(r, 300));
+        window.__COLLAUDO.db = [];
+        document.getElementById('pnu-compagnia').value = 'PRIMA';
+        pnuCompagniaCambiata();
+        document.getElementById('pnu-prodotto').value = 'BLACK';
+        await pnuSalva();
+        return {
+          msg: document.getElementById('pnu-msg').innerHTML,
+          scritture: window.__COLLAUDO.db.filter(x => x.operazione === 'insert').length,
+          prodottiInTendina: document.getElementById('pnu-prodotto').innerHTML
+        };
+      });
+      deve(r.scritture === 0, 'ha scritto ' + r.scritture + ' righe senza cliente');
+      deve(/anagrafica/.test(r.msg), 'non dice perché si è fermata: ' + r.msg.slice(0, 200));
+      /* E il prodotto arriva DAL CATALOGO: è il primo consumatore vero delle
+         tabelle nate ieri (§39). */
+      deve(/BLACK/.test(r.prodottiInTendina), 'la tendina dei prodotti non legge il catalogo');
+      return 'nessuna scrittura, motivo detto, prodotti dal catalogo';
+    });
+
+    await prova('nuova polizza: col cliente scritto, le rate nascono con lei', async () => {
+      const r = await page.evaluate(async () => {
+        /* La stessa risposta serve a due cose: l'insert che torna l'id, e la
+           rilettura che `titGenera` fa per sapere premio e frazionamento. Con
+           il solo id le rate non potevano nascere, e la prova accusava il
+           codice di un difetto del banco. */
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { data: {
+          id: 'pol-x', data_effetto: '2026-09-20', premio_annuo: 400, frazionamento: 'Semestrale'
+        }, error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        window.__COLLAUDO.db = [];
+        PNU_CLIENTE = { id: 'cli-1', nominativo: 'ROSSI MARIO' };
+        document.getElementById('pnu-compagnia').value = 'PRIMA';
+        pnuCompagniaCambiata();
+        document.getElementById('pnu-prodotto').value = 'BLACK';
+        pnuProdottoCambiato();
+        document.getElementById('pnu-annuo').value = '400';
+        document.getElementById('pnu-fraz').value = 'Semestrale';
+        pnuRicalcolaRata();
+        const rata = document.getElementById('pnu-rata').value;
+        const ramo = document.getElementById('pnu-ramo').value;
+        await pnuSalva();
+        const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
+        return {
+          rata, ramo,
+          pol: ins.filter(x => x.tabella === 'quote_polizze').map(x => x.payload),
+          tit: ins.filter(x => x.tabella === 'quote_titoli').length
+        };
+      });
+      deve(r.pol.length === 1, 'polizze scritte: ' + r.pol.length);
+      const p = r.pol[0];
+      deve(p.cliente_id === 'cli-1', 'la polizza non è agganciata al cliente scelto');
+      deve(p.fonte === 'manuale', 'la riga non dice da dove viene: fonte=' + p.fonte);
+      /* Il ramo lo porta il catalogo, non il nome commerciale (§39). */
+      deve(r.ramo === 'rca', 'il ramo non arriva dal catalogo: ' + r.ramo);
+      /* La rata si divide per il frazionamento dichiarato, e non si inventa. */
+      deve(r.rata === '200.00', 'la rata semestrale di 400 è ' + r.rata);
+      /* Blocco A: «se le rate non nascono con la polizza, gli insoluti non
+         esistono e i soldi non si recuperano». */
+      deve(r.tit > 0, 'la polizza è nata senza rate');
+      return '1 polizza (fonte manuale), ramo dal catalogo, ' + r.tit + ' rate';
+    });
+
+    await prova('nuova polizza: il frazionamento non dichiarato non divide per un numero inventato', async () => {
+      const r = await page.evaluate(async () => {
+        /* Il salvataggio riuscito apre il dettaglio dopo 120 ms, e quello
+           RIMPIAZZA il pannello: si aspetta che sia arrivato, altrimenti il
+           modulo che si riapre viene sovrascritto mentre lo si compila. */
+        await new Promise(r => setTimeout(r, 500));
+        await pnuApri();
+        await new Promise(r => setTimeout(r, 400));
+        document.getElementById('pnu-annuo').value = '400';
+        document.getElementById('pnu-rata').value = '';
+        document.getElementById('pnu-fraz').value = '';
+        pnuRicalcolaRata();
+        return document.getElementById('pnu-rata').value;
+      });
+      deve(r === '', 'con frazionamento non dichiarato ha scritto una rata: ' + r);
+      return 'rata vuota, la scrive chi la sa';
+    });
+
+    await prova('ricerca globale: trova le polizze VERE, anche per numero e targa', async () => {
+      /* La misura che ha deciso il lavoro: 25 polizze su 30 non hanno un
+         preventivo, e la ricerca leggeva solo i preventivi. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_preventivi:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_pratiche:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
+          { id: 'pp1', numero_polizza: 'BLP223382783', cliente: 'ROSSI MARIO', prodotto: 'BLACK',
+            compagnia: 'PRIMA', data_effetto: '2026-09-16',
+            dati: { ssf: { veicolo: { targa: 'AB123CD' } } } }], error: null };
+        await globalSearch('BLP223');
+        await new Promise(r => setTimeout(r, 700));
+        return document.getElementById('gs-results').innerHTML;
+      });
+      deve(/Polizze in portafoglio/.test(r), 'non c\'è la sezione delle polizze vere: ' + r.slice(0, 300));
+      deve(/BLP223382783/.test(r), 'la polizza non si trova per numero');
+      deve(/AB123CD/.test(r), 'la targa non si vede nella riga');
+      /* E le due cose restano DISTINTE: un preventivo emesso e una polizza in
+         portafoglio non sono la stessa cosa, e confonderle nascondeva il buco. */
+      deve(/gsAct\('pol:pp1'\)/.test(r), 'il risultato non apre la polizza');
+      return 'trovata per numero, con la targa, e apre la riga';
+    });
+
+    await prova('ricerca globale: una sezione che cade non porta giù la tendina', async () => {
+      /* §35 applicato alla ricerca: prima una query sbagliata su sette spegneva
+         una schermata intera. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { data: null, error: { message: 'colonna inesistente' } };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [
+          { id: 'pp2', numero_polizza: 'X1', cliente: 'VERDI', prodotto: 'Casa', compagnia: 'HDI', dati: {} }], error: null };
+        await globalSearch('Verdi');
+        await new Promise(r => setTimeout(r, 700));
+        return document.getElementById('gs-results').innerHTML;
+      });
+      deve(/Polizze in portafoglio/.test(r), 'la sezione caduta ha portato giù anche le altre');
+      /* «non si è potuto cercare» non è «non c'è niente» (§12, §18). */
+      deve(/on si è potuto cercare fra/.test(r), 'la sezione caduta sparisce in silenzio: ' + r.slice(0, 300));
+      deve(/i sinistri/.test(r), 'non dice QUALE sezione non ha risposto');
+      return 'le altre restano, e la caduta si dichiara';
+    });
+
+    await prova('attività recenti: l\'icona c\'è, e la chiama qualcuno', async () => {
+      /* §1: una funzione che non chiama nessuno non serve a niente. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_log:lista'] = { data: [
+          { id: 'm1', azione: 'creazione', entita: 'polizza', dettaglio: 'BLP1 · PRIMA',
+            entita_id: 'pol-1', utente_nome: 'Anna', utente_id: 'u-anna', creato_il: '2026-09-20T10:00:00Z' },
+          { id: 'm2', azione: 'modifica', entita: 'impostazioni', dettaglio: 'niente da aprire',
+            entita_id: null, utente_nome: 'Anna', utente_id: 'u-anna', creato_il: '2026-09-20T09:00:00Z' }
+        ], error: null };
+        await atrControlla();
+        const icona = document.getElementById('atr-icona');
+        await atrApri();
+        await new Promise(r => setTimeout(r, 300));
+        return {
+          visibile: icona ? icona.style.display : 'manca',
+          html: document.getElementById('atr-lista').innerHTML
+        };
+      });
+      deve(r.visibile === 'inline-flex', 'l\'icona non compare: ' + r.visibile);
+      deve(/BLP1/.test(r.html), 'il movimento non si legge');
+      /* Si apre solo quello che punta davvero a una riga: un id che apre la
+         cosa di qualcun altro è peggio di un id assente (§18). */
+      deve(/atrVai\('polizza','pol-1'\)/.test(r.html), 'il movimento con identificativo non si apre');
+      deve(!/atrVai\('impostazioni'/.test(r.html), 'un movimento senza riga finge di essere un collegamento');
+      return '2 movimenti, 1 apribile';
+    });
+
+    await prova('attività recenti: «non risponde» non diventa «non è successo niente»', async () => {
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_log:lista'] = { data: null, error: { message: 'permission denied' } };
+        await atrCarica();
+        const conGuasto = atrHTML(ATR_RIGHE);
+        window.__COLLAUDO.risposte['quote_log:lista'] = { data: [], error: null };
+        await atrCarica();
+        const vuoto = atrHTML(ATR_RIGHE);
+        return { conGuasto, vuoto };
+      });
+      deve(/non si è potuto leggerlo/.test(r.conGuasto), 'un errore di lettura si legge come un elenco vuoto');
+      deve(/Nessun movimento registrato/.test(r.vuoto), 'un elenco vuoto non lo dice');
+      deve(r.conGuasto !== r.vuoto, 'le due risposte sono identiche: sono due cose diverse');
+      return 'due frasi diverse per due cose diverse';
+    });
+
+    await prova('attività recenti: il pallino non si accende su quello che hai fatto tu', async () => {
+      /* Un pallino che si accende a ogni salvataggio diventa rumore in
+         mezz'ora — è la targhetta ferma da tre mesi di §27, in un'altra forma. */
+      const r = await page.evaluate(async () => {
+        try { localStorage.removeItem(ATR_VISTI); } catch (e) {}
+        const mio = currentUser.id;
+        window.__COLLAUDO.risposte['quote_log:lista'] = { data: [
+          { id: 'a', azione: 'x', entita: 'polizza', entita_id: null, utente_id: mio, creato_il: '2026-09-20T12:00:00Z' }
+        ], error: null };
+        await atrCarica(); atrSegnale();
+        const soloMiei = document.getElementById('atr-badge').style.display;
+        window.__COLLAUDO.risposte['quote_log:lista'] = { data: [
+          { id: 'b', azione: 'x', entita: 'polizza', entita_id: null, utente_id: 'altro', creato_il: '2026-09-20T13:00:00Z' }
+        ], error: null };
+        await atrCarica(); atrSegnale();
+        const conAltri = document.getElementById('atr-badge').style.display;
+        return { soloMiei, conAltri };
+      });
+      deve(r.soloMiei === 'none', 'il pallino si accende sui propri movimenti');
+      deve(r.conAltri === 'flex', 'il pallino non si accende su quelli degli altri: ' + r.conAltri);
+      return 'i tuoi non sono novità, quelli degli altri sì';
+    });
+
+    await prova('blocco 2: nessun errore JavaScript', async () => {
+      deve(erroriB2.length === 0, erroriB2.slice(0, 3).join(' | '));
+    });
+
+    await context.close();
+  }
   await browser.close();
 };
 

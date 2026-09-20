@@ -1,15 +1,12 @@
-id: catalogo-rilascio2-1789941689  exit: 0  2026-09-20 22:01:41
+id: b3-1789945916  exit: 0  2026-09-20 23:12:26
 ----
 == commit vivo
-90f2d94 Il catalogo prodotti: anagrafica compagnie e prodotti di compagnia (#219)
+c156f78 Blocco 2: la polizza a mano, la ricerca che trova, le attività recenti (#220)
 == IAM servito
-name="app-versione" content="0.9.0">
-name="app-versione-nome" content="Il catalogo prodotti">
-== il motore del catalogo e' raggiungibile
-HTTP/2 200 
-== la voce di menu c'e' nella scocca servita
+name="app-versione" content="0.10.0">
+name="app-versione-nome" content="Trovare, aprire, scrivere">
+== i motori nuovi rispondono
+sospensione    HTTP/2 404 
+catalogo       HTTP/2 200 
+== QUOTO servito
 2
-== versione.json
-{
-  "versione": "0.9.0",
-  "nome": "Il catalogo prodotti",

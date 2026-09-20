@@ -1,14 +1,15 @@
-id: rilascio811b-1789940014  exit: 0  2026-09-20 21:34:06
+id: catalogo-rilascio-1789941636  exit: 0  2026-09-20 22:01:07
 ----
 == commit vivo
 2567d81 La pagina si accorge di essere vecchia: 0.8.1 (#218)
 == IAM servito
 name="app-versione" content="0.8.1">
 name="app-versione-nome" content="La pagina che si accorge di essere vecchia">
+== il motore del catalogo e' raggiungibile
+HTTP/2 404 
+== la voce di menu c'e' nella scocca servita
+0
 == versione.json
 {
   "versione": "0.8.1",
   "nome": "La pagina che si accorge di essere vecchia",
-  "data": "2026-09-20",
-== la fascia c'e' nella pagina servita
-1

@@ -90,8 +90,11 @@ prova('i punti di chiamata ci sono, e non scendono', () => {
   const chiamate = (H.match(/logMovimento\(/g) || []).length - 1; // la definizione non conta
   /* 13 il 19/09/2026 al mattino; 21 col brief #02 M1 (conti e causali);
      29 con la M2, che ne aggiunge otto su tariffe, accordi e gruppi — e lì
-     sotto c'è quanto prende ognuno. */
-  const SOGLIA = 29;
+     sotto c'è quanto prende ognuno; 33 con la M3, che registra ogni movimento
+     della prima nota, il suo annullamento, la riapertura e il saldo
+     dichiarato di un conto: su una contabilità «chi ha scritto questa riga»
+     è la prima domanda che arriva, e arriva mesi dopo. */
+  const SOGLIA = 33;
   deve(chiamate >= SOGLIA, 'movimenti registrati da IAM: ' + chiamate + ' (erano ' + SOGLIA + ')');
   deve(chiamate - SOGLIA < 3, 'adesso sono ' + chiamate + ': alza la soglia, altrimenti smette di sorvegliare');
   /* E riguardano le cose che la gente chiede mesi dopo. */

@@ -1,7 +1,47 @@
 {
-  "versione": "0.2.0",
-  "nome": "Compagnie e provvigioni",
+  "versione": "0.3.0",
+  "nome": "Prima nota e quadratura",
   "data": "2026-09-20",
+
+  "storia": [
+    {
+      "v": "0.3.0",
+      "data": "2026-09-20",
+      "nome": "Prima nota e quadratura",
+      "voci": [
+        "Contabilità › Prima nota: si registra ogni movimento dei conti, con la sua causale. Da qui i saldi dei conti smettono di essere quelli iniziali.",
+        "Contabilità › Quadratura conti: il saldo che risulta dai movimenti a confronto con quello che dice la banca, con la differenza e da che parte sta.",
+        "Un movimento non si cancella: si annulla col motivo, resta visibile e esce da tutti i totali.",
+        "L'importo si scrive sempre positivo: entrata o uscita lo decide la causale.",
+        "Un conto mai verificato non si mostra come «quadra»: dice che nessuno l'ha ancora controllato.",
+        "Questa finestra: cliccando la versione in fondo al menu del nome si leggono le novità, e si vede subito se la pagina aperta è vecchia."
+      ]
+    },
+    {
+      "v": "0.2.0",
+      "data": "2026-09-20",
+      "nome": "Compagnie e provvigioni",
+      "voci": [
+        "Strumenti › Gestione compagnie: la provvigione che riconosce ogni compagnia per ramo e prodotto, e quanto se ne gira al collaboratore.",
+        "Strumenti › Provvigioni: gli accordi con le singole persone, i gruppi produttivi col capo gruppo, e un simulatore che mostra chi prende che cosa e perché.",
+        "La provvigione dichiarata dalla compagnia vince sempre: l'aliquota configurata prevede e segnala lo scostamento.",
+        "Modificare una percentuale non riscrive il passato: la riga vecchia si chiude, la nuova parte da oggi.",
+        "Nella schermata compagnie si vede quali rami del portafoglio non hanno ancora una tariffa."
+      ]
+    },
+    {
+      "v": "0.1.0",
+      "data": "2026-09-19",
+      "nome": "Conti e causali",
+      "voci": [
+        "Strumenti › Conti e causali: l'elenco dei conti dell'agenzia (banca, cassa, conto assicurativo) e le causali dei movimenti.",
+        "I premi dei clienti e i soldi dell'agenzia non si mescolano: una causale dichiara su quale natura di conto si può registrare (art. 117 CAP).",
+        "Il saldo di un conto non si scrive: si calcola dal saldo iniziale più i movimenti.",
+        "Il numero di versione qui in fondo: da questo rilascio si conta, e una prova impedisce di dimenticare di alzarlo."
+      ]
+    }
+  ],
+
   "_perche": [
     "LA FONTE UNICA DEL NUMERO DI VERSIONE. Un posto solo: i due documenti se lo",
     "annotano e una prova controlla che dicano la stessa cosa di questo file.",
@@ -13,14 +53,27 @@
     "Le due domande sono diverse e servono tutte e due, quindi la targhetta in",
     "fondo al menu del nome le mostra insieme.",
     "",
-    "SI PARTE DA 0.1.0 OGGI, 19/09/2026. Non si finge una storia che non c'e':",
+    "`storia` E' LA PARTE CHE LEGGE UNA PERSONA (20/09/2026, chiesta da",
+    "Francesco). La targhetta dice UN numero; `storia` dice che cosa c'e'",
+    "dentro, rilascio per rilascio, con parole che si capiscono senza aprire il",
+    "codice. La finestra che la mostra la CHIEDE al server con un fetch — ed e'",
+    "voluto che sia diverso dalla targhetta, che invece legge il <meta> della",
+    "copia in uso: confrontando i due numeri la finestra sa dire «stai guardando",
+    "una pagina vecchia, ricarica», che e' la cosa piu' utile che possa dire.",
+    "",
+    "COME SI SCRIVE UNA VOCE. Che cosa cambia per chi lavora, non che cosa e'",
+    "cambiato nel codice. «Contabilita' > Prima nota: si registra ogni",
+    "movimento», non «aggiunta tabella iam_movimenti».",
+    "",
+    "SI PARTE DA 0.1.0 IL 19/09/2026. Non si finge una storia che non c'e':",
     "questo numero non descrive quello che e' stato fatto prima, comincia a",
     "contare dal giorno in cui si e' cominciato a contare. Quello che c'era prima",
     "sta in CLAUDE.md, paragrafo per paragrafo, con le date.",
     "",
     "COME SI ALZA. Ogni rilascio che tocca index.html o iam/index.html alza il",
     "numero di mezzo (0.1 -> 0.2) e riscrive `nome` con quello che il rilascio",
-    "porta. Una correzione piccola alza l'ultimo (0.1.0 -> 0.1.1).",
+    "porta, E aggiunge la sua voce in cima a `storia`. Una correzione piccola",
+    "alza l'ultimo (0.1.0 -> 0.1.1).",
     "Chi se ne dimentica lo scopre subito: `iam/verifica/versione-app.test.mjs`",
     "confronta la data dell'ultimo commit che ha toccato i documenti con quella",
     "dell'ultimo commit che ha toccato questo file, e diventa rossa se i",

@@ -119,6 +119,62 @@ prova('chi cambia i documenti senza alzare la versione lo scopre qui', () => {
   return 'versione allineata all’ultimo commit dei documenti';
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   LE NOVITÀ DEL RILASCIO (20/09/2026)
+
+   «Magari mettiamo una parte release, dove cliccando dice le ultime modifiche
+   effettuate» — Francesco. La targhetta dice UN numero; `storia` dice che cosa
+   c'è dentro. Vale come la targhetta: serve solo se non può restare indietro,
+   quindi la stessa disciplina — una prova che si arrabbia.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+prova('ogni rilascio ha la sua voce nelle novità, e la prima è quella in corso', () => {
+  const v = JSON.parse(fs.readFileSync(FILE_VERSIONE, 'utf8'));
+  deve(Array.isArray(v.storia) && v.storia.length, 'versione.json non ha l’elenco delle novità');
+  /* Se la prima voce non è la versione corrente, qualcuno ha alzato il numero
+     e non ha scritto che cosa c'è dentro: la finestra mostrerebbe le novità
+     del rilascio prima, che è il modo più educato di mentire. */
+  deve(v.storia[0].v === v.versione,
+    'la prima voce delle novità è ' + v.storia[0].v + ' ma la versione è ' + v.versione + ': scrivi che cosa porta questo rilascio');
+  deve(v.storia[0].nome === v.nome, 'il nome del rilascio non coincide con quello della prima voce');
+  const visti = {};
+  for (const r of v.storia) {
+    deve(/^\d+\.\d+\.\d+$/.test(String(r.v || '')), 'una voce senza numero di versione valido: ' + r.v);
+    deve(!visti[r.v], 'la versione ' + r.v + ' compare due volte nelle novità');
+    visti[r.v] = true;
+    deve(/^\d{4}-\d{2}-\d{2}$/.test(String(r.data || '')), r.v + ': manca la data');
+    deve(Array.isArray(r.voci) && r.voci.length, r.v + ': nessuna voce — un rilascio senza novità scritte non si è capito che cosa ha portato');
+    /* Le voci si scrivono per chi lavora, non per chi programma: una riga che
+       nomina una tabella o una funzione non dice niente a chi la legge. */
+    for (const t of r.voci) {
+      deve(String(t).length > 25, r.v + ': una voce troppo corta per dire qualcosa — «' + t + '»');
+    }
+  }
+  return v.storia.length + ' rilasci, ' + v.storia.reduce((n, r) => n + r.voci.length, 0) + ' novità';
+});
+
+prova('la finestra delle novità esiste, si apre dalla targhetta e non inventa niente', () => {
+  const h = fs.readFileSync(IAM, 'utf8');
+  /* §1: una funzione che non chiama nessuno non serve a niente. La porta è la
+     targhetta in fondo al menu del nome, ed è l'unica. */
+  deve(/id="um-versione"[^>]*onclick="apriNovita\(\)"/.test(h), 'la targhetta della versione non apre le novità');
+  deve(/async function apriNovita\(\)/.test(h), 'manca apriNovita');
+  deve(/id="nov-ov"/.test(h) && /id="nov-box"/.test(h), 'manca la finestra delle novità');
+  /* L'indirizzo passa da /nuovo-preventivo/: IAM è servito dalla cartella
+     `iam/` e `versione.json` sta alla radice del repository. Un `/versione.json`
+     risponderebbe 404 e l'elenco non si aprirebbe mai. */
+  const f = h.slice(h.indexOf('async function apriNovita'), h.indexOf('function novData'));
+  deve(/fetch\('\/nuovo-preventivo\/versione\.json/.test(f),
+    'le novità si chiedono a un indirizzo che su IAM non esiste');
+  /* Il confronto che vale più dell'elenco: se il server ha un numero diverso
+     da quello della copia in uso, questa pagina è vecchia e lo deve dire. */
+  deve(/dati\.versione !== inUso\.numero/.test(f), 'la finestra non confronta la versione pubblicata con quella in uso');
+  deve(/pagina che stai guardando è vecchia/.test(f), 'non avverte che la pagina è vecchia');
+  /* E «non si è potuto leggere» non diventa «non ci sono novità». */
+  deve(/non vuol dire che non ce ne siano/.test(f), 'un errore di lettura si confonde con un elenco vuoto');
+  return 'targhetta → finestra, indirizzo giusto, confronto e errore distinto';
+});
+
 console.log('\n══ LA VERSIONE PUBBLICATA ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

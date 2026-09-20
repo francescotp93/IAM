@@ -2568,3 +2568,139 @@ perché chi chiama non se ne possa dimenticare.
 - **Lo scostamento si mostra e non si registra**: sapere che una compagnia ha
   riconosciuto meno del pattuito è una contestazione da fare, e dove si scrive
   è una decisione che non è stata presa.
+
+---
+
+## 29. Brief IAM #02 — M3: la prima nota e la quadratura dei conti (20/09/2026)
+
+La M1 aveva lasciato una frase scritta in faccia nella schermata dei conti:
+«nessun movimento ancora: è il saldo iniziale dichiarato». Questo lavoro è la
+riga che la fa smettere di essere vera.
+
+| pezzo | dove |
+|---|---|
+| le regole (sono nello stesso motore della M1) | `tariffe/motore/contabilita.js` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **21** (erano 11) |
+| le due tabelle, i trigger, le politiche | `supabase/migrations/20260920_b02_m3_prima_nota.sql` (applicata) |
+| le due linguette | `#contab-panel-primanota`, `#contab-panel-conti` e il blocco `pnt*` in `iam/index.html` |
+| prove sul pannello | `iam/verifica/prima-nota.test.mjs` — 10 |
+
+### Misurato prima di scrivere
+
+`iam_movimenti` **non esisteva**. Quello che c'era è `sessioni_giornaliere`:
+**68 righe dal 25/05 al 16/09/2026**, cioè il foglio di cassa del giorno
+(contanti, versamenti, spese, fondo cassa, POS). Non è una prima nota e non
+poteva diventarlo: non sa su quale conto sia finito il denaro, non ha una
+causale, e un giorno è **una riga sola**. Resta dov'è — riorganizzarla è la M5 —
+e questo lavoro non la tocca.
+
+### Le tre regole nuove del motore, e che cosa impediscono
+
+5. **Un movimento non si cancella: si annulla, col motivo.** Una riga
+   cancellata lascia un buco che nessuno sa più spiegare, e in un registro di
+   denaro «non c'è» e «è stato tolto» sono due cose diverse. La riga resta,
+   esce da **ogni** totale e si legge nello storico. L'esclusione sta in **una
+   funzione sola** (`vivi`), perché i posti che sommano sono cinque e cinque
+   controlli scritti a mano sono cinque occasioni di dimenticarne uno — che è
+   il modo in cui un saldo comincia a non tornare senza che si capisca perché.
+   Il divieto vero è un **trigger**: la schermata è una delle strade, non
+   l'unica.
+6. **L'importo è sempre positivo: il verso lo dice la causale.** Un «−50» su
+   «Incasso premi» è un'uscita travestita da entrata, e dentro un totale non
+   si vede più. La finestra non ha un campo «entrata/uscita» ed è voluto; il
+   `check (importo > 0)` è nel database.
+7. **«Quadra» e «non è mai stata fatta la quadratura» sono due cose diverse.**
+   `quadra` ha **tre** valori, non due: `true`, `false` e **`null`**. Un conto
+   mai verificato che si mostra in verde è la bugia più comoda che un sistema
+   di contabilità possa raccontare.
+
+### La quadratura, e la data che conta
+
+Due numeri: il **ricostruito** (saldo iniziale + movimenti vivi) lo sa il
+sistema, il **dichiarato** lo sa la banca o chi ha contato la cassa
+(`iam_quadrature`, uno per conto e per giorno).
+
+**Il confronto si fa alla data della dichiarazione, non a oggi.** Un estratto
+conto del 31/08 non sa niente dei movimenti di settembre: confrontarlo col
+saldo di oggi produrrebbe una differenza inventata, e qualcuno andrebbe a
+cercare in banca un errore che non c'è. Il saldo di oggi resta comunque
+leggibile accanto, perché serve a un'altra domanda — quanti soldi ci sono.
+
+La **tolleranza è un centesimo**, non «qualche euro»: serve agli
+arrotondamenti, non a far passare una differenza vera. E la differenza dice da
+che parte sta: *il sistema ha X in più della banca* (un movimento registrato
+due volte, o uno mai uscito) è un lavoro diverso da *la banca ha X in più del
+sistema* (un movimento mai registrato).
+
+### Quello che non c'è ancora, ed è voluto
+
+Il movimento che nasce da solo quando si incassa una rata. `titolo_id` e
+`origine` ci sono già, con l'**indice unico** che impedisce di scriverlo due
+volte, ma a riempirli è la **M4**: è lì che si decide quale conto riceve un
+POS, un bonifico o dei contanti. Finché quella decisione non c'è, un movimento
+automatico sceglierebbe un conto a caso. La finestra però lo sa già: un
+movimento con `origine` diversa da `manuale` ha i campi bloccati e dice *«si
+corregge dove è nato, non qui»* — altrimenti la rata e la prima nota direbbero
+due cose diverse e nessuna delle due saprebbe di essere quella sbagliata.
+
+### La trappola dei commenti, presa per la sesta volta
+
+Il commento che spiegava la regola 5 **nominava la chiamata che stava
+vietando**, e la prova che cerca quella stringa nel sorgente è diventata rossa
+su un codice corretto. È §10, §12, §18 e §26, di nuovo. Due correzioni, non
+una: il commento non scrive più quella parola, **e** la prova adesso guarda
+solo le righe di codice, togliendo i commenti che cominciano a inizio riga —
+mai con una regex globale, che su `index.html` si mangia 450.000 caratteri
+(§12).
+
+### Cosa resta aperto
+
+- **La prima nota nasce vuota**, e deve: inventare dei movimenti per far vedere
+  una schermata piena vorrebbe dire scrivere nella contabilità dell'agenzia dei
+  fatti che non sono successi (§8.1).
+- **I due saldi iniziali dei conti sono a zero** (misurato): finché non si
+  scrivono quelli veri, il ricostruito parte da un numero che non è quello.
+- **La linguetta «Quadratura» (di giornata) e «Quadratura conti» convivono**:
+  la prima è il foglio di cassa, la seconda i conti. Si fondono nella M5, non
+  prima — e il nome doppio è dichiarato, non un refuso.
+
+---
+
+## 30. Le novità del rilascio, cliccando il numero (20/09/2026)
+
+> «Magari mettiamo una parte release, dove cliccando dice le ultime modifiche
+> effettuate» — Francesco.
+
+La targhetta di §27 dice **un numero**; `versione.json` adesso porta anche
+`storia`, cioè **che cosa c'è dentro**, rilascio per rilascio. Si clicca il
+numero in fondo al menu del nome e si legge.
+
+| pezzo | dove |
+|---|---|
+| l'elenco | `storia` in `versione.json` |
+| la finestra | `apriNovita` / `#nov-ov` in `iam/index.html` |
+| prove | `iam/verifica/versione-app.test.mjs` — **7** (erano 5) |
+
+**Questa finestra legge col `fetch`, la targhetta legge il `<meta>`, ed è
+voluto che siano due strade diverse.** La targhetta deve descrivere **la copia
+in uso**, quindi non può chiedere niente al server (§27). Questa invece chiede
+`versione.json`, cioè quello che il server ha **adesso** — e proprio perché i
+due numeri arrivano da due strade diverse, confrontarli dice la cosa più utile
+di tutte: **«la pagina che stai guardando è vecchia, ricarica»**. È il problema
+che è costato tre giorni a settembre (§12), trasformato in un avviso.
+
+**L'indirizzo passa da `/nuovo-preventivo/versione.json`, e non è un refuso.**
+IAM è servito dalla cartella `iam/`, `versione.json` sta alla radice del
+repository, e la radice sulla stessa origine è `/nuovo-preventivo/`
+(`deploy/caddy/iam.caddy`). Un `/versione.json` risponderebbe 404 e l'elenco
+non si aprirebbe mai.
+
+**Come si scrive una voce.** Che cosa cambia per chi lavora, non che cosa è
+cambiato nel codice: *«Contabilità › Prima nota: si registra ogni movimento»*,
+non *«aggiunta tabella iam_movimenti»*. Una prova pretende che ogni voce sia
+più lunga di venticinque caratteri — non è un controllo di qualità, è un
+controllo contro la riga buttata lì.
+
+**E la stessa disciplina della targhetta**: se la prima voce di `storia` non è
+la versione corrente, la prova diventa rossa. Mostrare le novità del rilascio
+prima è il modo più educato di mentire.

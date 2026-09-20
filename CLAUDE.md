@@ -3118,3 +3118,66 @@ quindi la firma è vera (`with check (creato_da = auth.uid())`).
 - **Gli allegati restano un Excel** (una tabella HTML che Excel apre): il PDF
   con la carta intestata esiste già per il foglio cassa (§25) e si potrà usare
   anche qui.
+
+---
+
+## 35. Il guasto che ha spento una schermata intera (20/09/2026)
+
+> «La pagina mostra "Non riesco a leggere le tariffe e gli accordi" e non
+> consente di inserire nulla» — Francesco, brief «Compagnie e catalogo
+> prodotti», Parte A.
+
+Aveva ragione, ed era **mio**, scritto il giorno prima nella M2 (§28).
+
+### La causa, in una riga
+
+```js
+db.from('quote_collaboratori').select('id,nominativo,stato').order('nominativo')
+```
+
+`quote_collaboratori` ha **`nome` e `cognome`**. `nominativo` esiste su
+`quote_anagrafiche` e su `quote_sinistro_controparti`: la query era stata
+copiata da lì. PostgREST risponde **400** su una colonna che non c'è.
+
+### Il moltiplicatore, ed è la parte da ricordare
+
+Le sette letture stavano in una `Promise.all` con un `for … if (r.error) throw`.
+**Una query sbagliata su sette ha spento la schermata intera**, comprese le sei
+che avevano funzionato: tariffe, accordi, gruppi, catalogo compagnie e
+portafoglio erano tutti leggibili, e nessuno li ha visti. Chi apriva Gestione
+compagnie non poteva creare nemmeno una compagnia.
+
+La cosa peggiore è che il messaggio era **giusto e inutile allo stesso tempo**:
+«non riesco a leggere le tariffe e gli accordi» è vero (non le aveva mostrate)
+ma indica il posto sbagliato — le tariffe si leggevano benissimo.
+
+> **Sette letture in una `Promise.all` che rilancia sono una schermata che si
+> spegne sette volte più spesso di quanto dovrebbe.** Ogni lettura sta in piedi
+> da sola: quello che c'è si mostra, e quello che manca si dichiara **col suo
+> nome**. `leggi(nome, query, vuoto)` raccoglie i guasti invece di rilanciarli,
+> e `prvGuasti` li elenca in cima, sopra i dati che invece ci sono.
+
+È §12 e §18 («non si è potuto leggere» ≠ «non ce n'è») applicati **per sezione**
+invece che per pagina: la distinzione c'era, ma era vera per la pagina intera,
+e una pagina intera dichiarata inservibile per una colonna sbagliata è una
+bugia grande quanto quella che voleva evitare.
+
+### Il nominativo si compone in un posto solo
+
+`prvNominativo(p)` = `cognome + nome`, con l'email come ultima risorsa. Tre
+tendine lo scrivevano ognuna per conto suo (`p.nominativo || '—'`): tre modi di
+scrivere la stessa persona, e nessuno se ne accorge finché due tendine non si
+guardano insieme.
+
+### Due prove e due controprove
+
+`compagnie-provvigioni.test.mjs` (11): una cerca la **chiamata** che chiede
+`nominativo` a quella tabella e diventa rossa se torna; l'altra conta le letture
+isolate e vieta il ritorno della `Promise.all` che cade tutta insieme.
+Rimettendo dentro il difetto, ognuna diventa rossa da sola.
+
+**Una prova che misurava il mondo di ieri, aggiornata nella regola e non nel
+numero** (§15, §16, §33): pretendeva che l'avviso di errore arrivasse in *tutti
+e tre* i contenitori, «perché le sette letture partono insieme e cadono
+insieme». Era la descrizione esatta del difetto, scritta come se fosse una
+garanzia.

@@ -96,7 +96,7 @@ prova('i punti di chiamata ci sono, e non scendono', () => {
      è la prima domanda che arriva, e arriva mesi dopo; 38 con la M4, dove
      ogni incasso portato in contabilità, accreditato o annullato lascia la
      sua riga — è denaro che entra, e si deve sapere chi l'ha detto. */
-  const SOGLIA = 54;   /* 21/09/2026: il periodo e la sospensione dei codici produttore ne hanno portati 2. La soglia sale, non scende. */
+  const SOGLIA = 57;   /* 21/09/2026: la Fase 1 della contabilità ne ha portati 3 — i conti minimi creati in blocco, lo storno e il movimento che nasce dallo storno. La soglia sale, non scende. */
   deve(chiamate >= SOGLIA, 'movimenti registrati da IAM: ' + chiamate + ' (erano ' + SOGLIA + ')');
   deve(chiamate - SOGLIA < 3, 'adesso sono ' + chiamate + ': alza la soglia, altrimenti smette di sorvegliare');
   /* E riguardano le cose che la gente chiede mesi dopo. */

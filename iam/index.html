@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.21.1">
-<meta name="app-versione-nome" content="L'archivio si prova all'avvio, non sul primo documento">
+<meta name="app-versione" content="0.22.0">
+<meta name="app-versione-nome" content="La contabilità a partita doppia: le fondamenta">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -3976,6 +3976,11 @@ input[type=file]{display:none;}
 
   <div id="cntp-conti">
     <section class="cnt-somma" id="cnt-somma"></section>
+    <!-- I dodici conti minimi: una PROPOSTA, non un seed. Scriverli dalla
+         migrazione vorrebbe dire mettere nella contabilità dodici conti che
+         nessuno ha deciso, tutti con saldo zero — e dopo due settimane quello
+         zero è un dato. Qui si vedono, si spuntano e li crea una persona. -->
+    <section id="cnt-minimi" style="padding:0 16px"></section>
     <section class="cnt-lista" id="cnt-lista"><div class="cl-sub">Carico i conti…</div></section>
   </div>
   <div id="cntp-causali" style="display:none">
@@ -5295,6 +5300,12 @@ let CNT_VISTA = 'conti';
 /* I movimenti: lista vuota finché la M3 non li porta. È una variabile e non
    un letterale sparso: quando la tabella arriva si riempie in un posto solo. */
 let CNT_MOVIMENTI = [];
+/* Fase 1: a chi si intesta un conto. Sono due letture che possono cadere da
+   sole senza portarsi giù la schermata (§35): se non arrivano, le due tendine
+   si spengono e lo dicono — non si perde tutto il resto. */
+let CNT_COMPAGNIE = [];
+let CNT_PERSONE = [];
+let CNT_INTEST_ERR = null;   /* il motivo, quando non si e' potuto leggere */
 
 function cntPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
 
@@ -5323,6 +5334,11 @@ async function cntCarica(forza) {
     CNT_CONTI = c.data || [];
     CNT_CAUSALI = k.data || [];
     cntRender();
+    /* Dopo, e a parte: un conto si intesta a una compagnia o a un
+       collaboratore, ma se quelle due letture non riescono la schermata resta
+       usabile. Metterle nella Promise.all di sopra vorrebbe dire spegnere
+       conti e causali per una tendina (§35). */
+    cntIntestazioni();
   } catch (e) {
     /* «Non si è potuto leggere» non è «non ce ne sono» (§12, §18): un elenco
        vuoto su un errore farebbe credere che l'agenzia non abbia conti.
@@ -5337,13 +5353,96 @@ async function cntCarica(forza) {
   }
 }
 
+/* A chi si intesta un conto. I collaboratori arrivano da `colCarica`, che è
+   la fonte unica di tutta la casa (§48): una seconda lettura qui vorrebbe dire
+   due elenchi delle stesse persone, e quello sbagliato sarebbe quello che
+   nessuno guarda. */
+async function cntIntestazioni() {
+  if (!db) return;
+  try { CNT_PERSONE = (await colCarica()) || []; } catch (e) { CNT_PERSONE = []; }
+  try {
+    const { data, error } = await db.from('quote_compagnie').select('id,nome').order('nome');
+    if (error) throw error;
+    CNT_COMPAGNIE = data || [];
+    CNT_INTEST_ERR = null;
+  } catch (e) {
+    /* Non si svuota quello che c'era: «non si è potuto leggere» non è «non ce
+       ne sono» (§12, §18). La finestra lo dice, e il resto resta usabile. */
+    CNT_INTEST_ERR = e.message || String(e);
+    console.warn('Conti · intestazioni:', CNT_INTEST_ERR);
+  }
+}
+
 function cntRender() {
   const puo = cntPuoScrivere();
   const nuovo = document.getElementById('cnt-nuovo');
   if (nuovo) nuovo.style.display = puo ? '' : 'none';
   cntRenderSomma();
+  cntRenderMinimi(puo);
   cntRenderConti(puo);
   cntRenderCausali(puo);
+}
+
+/* ── I DODICI CONTI MINIMI: UNA PROPOSTA, MAI UN SEED ─────────────────────
+
+   Le dieci causali della M1 sono seminate dalla migrazione perché sono un
+   VOCABOLARIO. Un conto no: è un posto dove stanno dei soldi, e ha un saldo.
+   Dodici saldi a zero che nessuno ha deciso, dopo due settimane, sono dodici
+   dati (regola di casa §8.1).
+
+   Quindi si mostrano, si spuntano, e a crearli è una persona. Chi ne crea sei
+   su dodici ne ha creati sei: non manca niente, mancano sei conti che a lui
+   non servono. */
+function cntMancanti() {
+  if (!window.Contabilita) return [];
+  const chiave = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const presi = new Set(CNT_CONTI.map(c => chiave(c.nome)));
+  return Contabilita.CONTI_MINIMI.filter(c => !presi.has(chiave(c.nome)));
+}
+
+function cntRenderMinimi(puo) {
+  const box = document.getElementById('cnt-minimi');
+  if (!box || !window.Contabilita) return;
+  const manca = cntMancanti();
+  if (!puo || !manca.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="cnt-avv" style="margin:0 0 12px">
+      <div style="font-weight:800;margin-bottom:4px">Mancano ${manca.length} dei conti minimi di una contabilità assicurativa</div>
+      <div style="margin-bottom:8px">Sono i posti in cui passa il denaro dei clienti fra quando lo pagano e quando arriva in compagnia.
+        Nessuno è obbligatorio: spunta quelli che ti servono. Nascono con saldo zero, e il saldo iniziale vero si scrive aprendoli.</div>
+      <div style="display:grid;gap:6px;margin-bottom:10px">
+        ${manca.map((c, i) => `<label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px">
+          <input type="checkbox" class="cnt-min" value="${i}" checked style="margin-top:3px">
+          <span><b>${esc(c.nome)}</b> — ${esc(c.note)}</span></label>`).join('')}
+      </div>
+      <button class="d-btn primario" type="button" onclick="cntCreaMinimi()"><i class="ti ti-plus"></i> Crea i conti spuntati</button>
+      <div id="cnt-min-msg" style="margin-top:8px"></div>
+    </div>`;
+}
+
+async function cntCreaMinimi() {
+  const manca = cntMancanti();
+  const scelti = [...document.querySelectorAll('.cnt-min:checked')].map(e => manca[parseInt(e.value, 10)]).filter(Boolean);
+  const msg = document.getElementById('cnt-min-msg');
+  if (!scelti.length) { if (msg) msg.innerHTML = '<div class="cnt-err">Non hai spuntato nessun conto.</div>'; return; }
+  const righe = scelti.map(c => ({
+    nome: c.nome, tipologia: c.tipologia, natura: c.natura, ordine: c.ordine,
+    e_mezzo_pagamento: c.e_mezzo_pagamento, e_conto_sospeso: c.e_conto_sospeso,
+    e_quadrabile: c.e_quadrabile, note: c.note,
+    /* Saldo iniziale zero e NESSUNA data di dichiarazione: zero è anche un
+       saldo vero, e la data è l'unica cosa che distingue «è zero» da
+       «nessuno l'ha mai scritto» (§43). Qui nessuno l'ha scritto. */
+    saldo_iniziale: 0, attivo: true
+  }));
+  try {
+    const { data, error } = await db.from('iam_conti').insert(righe).select('id,nome');
+    if (error) throw error;
+    (data || []).forEach(r => logMovimento('Conto creato · ' + r.nome, 'conto', 'dai conti minimi', r.id));
+    if (msg) msg.innerHTML = '';
+    await cntCarica();
+  } catch (e) {
+    if (msg) msg.innerHTML = '<div class="cnt-err">Non riesco a crearli: ' + esc(e.message || e) + '</div>';
+  }
 }
 
 function cntRenderSomma() {
@@ -5384,10 +5483,19 @@ function cntRenderConti(puo) {
     const pezzi = [esc(tip)];
     if (c.banca) pezzi.push(esc(c.banca));
     if (c.iban) pezzi.push(esc(Contabilita.ibanBello(c.iban)));
+    /* I tre flag si LEGGONO dalla riga: sono la differenza fra un conto che
+       si può scegliere quando si incassa e uno che non compare, e fra un
+       conto che si mette in quadratura e uno che non si può contare. Senza
+       leggerli bisogna aprirli uno per uno per sapere come sono. */
+    const segni = [];
+    if (c.e_mezzo_pagamento) segni.push('<span class="cnt-tag">si paga con questo</span>');
+    if (c.e_conto_sospeso) segni.push('<span class="cnt-tag">crediti</span>');
+    if (c.e_quadrabile === false) segni.push('<span class="cnt-tag">fuori quadratura</span>');
     return `<div class="cnt-r ${s.attivo ? '' : 'cnt-spento'}" ${puo ? `onclick="cntApri('${esc(c.id)}')" style="cursor:pointer"` : ''}>
       <div>
         <div class="cnt-nome">${esc(c.nome)}
           <span class="cnt-tag ${esc(c.natura)}">${c.natura === 'premi' ? 'Premi' : 'Aziendale'}</span>
+          ${segni.join('')}
           ${s.attivo ? '' : '<span class="cnt-tag">spento</span>'}</div>
         <div class="cnt-sotto">${pezzi.join(' · ')}</div>
       </div>
@@ -5410,6 +5518,7 @@ function cntRenderCausali(puo) {
           ${c.attiva === false ? '<span class="cnt-tag">spenta</span>' : ''}</div>
         <div class="cnt-sotto">
           <span class="cnt-tag ${c.incide_su_utile ? 'utile' : 'transito'}">${c.incide_su_utile ? 'incide sull\'utile' : 'denaro in transito'}</span>
+          ${c.genere && c.genere !== 'manuale' ? `<span class="cnt-tag">${esc(Contabilita.etichetta(Contabilita.GENERI, c.genere) || c.genere)}</span>` : ''}
           &nbsp;${esc(c.codice)}${c.di_sistema ? ' · di partenza' : ''}</div>
       </div>
     </div>`).join('');
@@ -5460,11 +5569,30 @@ function cntFormConto(id) {
         <div class="fld"><label>Ordine</label><input type="number" id="cnt-ordine" value="${esc(String(c.ordine || 0))}"></div>
         <div class="fld ffull"><label><input type="checkbox" id="cnt-attivo" ${c.attivo === false ? '' : 'checked'}> Conto attivo</label>
           <div class="cl-sub">Un conto spento esce dalle tendine e resta nei riepiloghi del passato: i movimenti che ci sono passati sono storia.</div></div>
+        <div class="fld ffull"><label><input type="checkbox" id="cnt-pagamento" ${c.e_mezzo_pagamento ? 'checked' : ''}> Si può usare per pagare un premio</label>
+          <div class="cl-sub">Compare fra le modalità di pagamento quando si incassa una rata. Spuntarlo senza dichiarare nessun mezzo qui sotto non intercetta niente: la spunta e i mezzi vanno insieme.</div></div>
         <div class="fld ffull"><label>Che cosa arriva su questo conto</label>
           <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">${
             Contabilita.MEZZI.map(m => `<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600">
               <input type="checkbox" class="cnt-mezzo" value="${esc(m.k)}" ${(c.mezzi || []).includes(m.k) ? 'checked' : ''}> ${esc(m.l)}</label>`).join('')}</div>
           <div class="cl-sub" style="margin-top:5px">Serve agli incassi (Contabilità › Incassi da accreditare): senza, il sistema non sa dove far arrivare un POS o un bonifico, e lo dice invece di sceglierlo a caso. Lo stesso mezzo su due conti è un'ambiguità: lascialo su uno solo.</div></div>
+        <div class="fld ffull"><label><input type="checkbox" id="cnt-sospeso" ${c.e_conto_sospeso ? 'checked' : ''}> È un conto di crediti (sospesi)</label>
+          <div class="cl-sub">Il premio è a copertura e il denaro non è ancora arrivato, dal cliente o dal collaboratore. Il saldo di un conto così non si conta: si legge nello scadenzario, riga per riga.</div></div>
+        <div class="fld ffull"><label><input type="checkbox" id="cnt-quadrabile" ${c.e_quadrabile === false ? '' : 'checked'}> Si mette in quadratura</label>
+          <div class="cl-sub">Spuntalo solo se c'è qualcosa di reale con cui confrontarlo: i contanti nel cassetto, gli assegni, l'estratto conto della banca. Quello che non si può contare non si quadra — e chiedere di quadrarlo vuol dire pretendere un numero che nessuno può verificare.</div></div>
+        <div class="fld"><label>Conto di una compagnia</label>
+          <select id="cnt-compagnia" ${CNT_COMPAGNIE.length ? '' : 'disabled'}>
+            <option value="">— nessuna —</option>
+            ${CNT_COMPAGNIE.map(x => `<option value="${esc(x.id)}" ${x.id === c.compagnia_id ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}
+          </select></div>
+        <div class="fld"><label>Conto di un collaboratore</label>
+          <select id="cnt-collaboratore" ${CNT_PERSONE.length ? '' : 'disabled'}>
+            <option value="">— nessuno —</option>
+            ${CNT_PERSONE.map(x => `<option value="${esc(x.id)}" ${x.id === c.collaboratore_id ? 'selected' : ''}>${esc(colNome(x))}</option>`).join('')}
+          </select></div>
+        <div class="fld ffull"><div class="cl-sub">${CNT_INTEST_ERR
+          ? 'Non riesco a leggere le compagnie: <b>' + esc(CNT_INTEST_ERR) + '</b>. Non vuol dire che non ce ne siano — vuol dire che non si è potuto leggerle, e finché è così questa tendina resta spenta.'
+          : 'Serve ai conti di debito e credito: «quanto devo a questa compagnia», «quanto mi deve questo collaboratore». Un conto si intesta a una compagnia <b>oppure</b> a un collaboratore, mai a tutti e due: lo stesso saldo finirebbe in due estratti conto diversi.'}</div></div>
         <div class="fld ffull"><label>Note</label><textarea id="cnt-note" rows="2">${esc(c.note || '')}</textarea></div>
       </div>
       ${id ? `<div id="cnt-storia" style="margin-top:10px"></div>` : ''}
@@ -5499,6 +5627,9 @@ function cntFormCausale(id) {
           <option value="premi" ${sel(c.natura, 'premi')}>Solo conti premi</option>
           <option value="aziendale" ${sel(c.natura, 'aziendale')}>Solo conti aziendali</option></select>
           <div class="cl-sub">Le spese bancarie restano su «tutti i conti» apposta: il bollo lo addebita anche la banca del conto premi, e vietarlo vorrebbe dire non poter registrare un fatto accaduto.</div></div>
+        <div class="fld ffull"><label>Da quale flusso nasce</label><select id="cnt-cgenere">
+          ${Contabilita.GENERI.map(g => `<option value="${esc(g.k)}" ${(c.genere || 'manuale') === g.k ? 'selected' : ''}>${esc(g.l)}</option>`).join('')}</select>
+          <div class="cl-sub">Il segno dice il <b>verso</b>, questo dice <b>chi scrive</b>. Serve a proporre la causale giusta nel flusso giusto, e a riconoscere un movimento che ha scritto il sistema: quello si corregge dove è nato, non dalla prima nota — altrimenti la rata e la contabilità direbbero due cose diverse, e nessuna delle due saprebbe di essere quella sbagliata.</div></div>
         <div class="fld"><label>Ordine</label><input type="number" id="cnt-cordine" value="${esc(String(c.ordine || 0))}"></div>
         <div class="fld"><label><input type="checkbox" id="cnt-cattiva" ${c.attiva === false ? '' : 'checked'}> Causale attiva</label></div>
         <div class="fld ffull"><label>Note</label><textarea id="cnt-cnote" rows="2">${esc(c.note || '')}</textarea></div>
@@ -5550,6 +5681,14 @@ async function cntSalvaConto(id) {
     /* Si legge SOLO quello che il pannello ha mostrato: un elenco vuoto vuol
        dire «nessun mezzo arriva qui», ed e' un'informazione vera. */
     mezzi: [...document.querySelectorAll('.cnt-mezzo:checked')].map(e => e.value),
+    /* Fase 1 · i tre flag e le due intestazioni. Si legge SOLO quello che il
+       pannello ha mostrato, come per i mezzi: una spunta che non c'è non
+       decide niente. */
+    e_mezzo_pagamento: !!document.getElementById('cnt-pagamento')?.checked,
+    e_conto_sospeso: !!document.getElementById('cnt-sospeso')?.checked,
+    e_quadrabile: !!document.getElementById('cnt-quadrabile')?.checked,
+    compagnia_id: val('cnt-compagnia') || null,
+    collaboratore_id: val('cnt-collaboratore') || null,
     note: val('cnt-note').trim() || null
   };
   /* `undefined` non si manda al database: lascerebbe la colonna com'era, che
@@ -5582,6 +5721,7 @@ async function cntSalvaCausale(id) {
     segno: val('cnt-csegno'),
     incide_su_utile: u === '1' ? true : u === '0' ? false : null,
     natura: val('cnt-cnatura') || null,
+    genere: val('cnt-cgenere') || 'manuale',
     ordine: parseInt(val('cnt-cordine'), 10) || 0,
     attiva: !!document.getElementById('cnt-cattiva')?.checked,
     note: val('cnt-cnote').trim() || null
@@ -5663,6 +5803,10 @@ let PNT_MOVIMENTI = [];
 let PNT_CONTI = [];
 let PNT_CAUSALI = [];
 let PNT_QUADRATURE = [];
+/* Le righe Dare/Avere (Fase 1). Stanno accanto ai movimenti e non dentro:
+   un movimento può averne due o dieci, e una lista sola si incrocia una volta
+   invece di fare una lettura per riga aperta. */
+let PNT_RIGHE = [];
 let PNT_CARICATO = false;
 
 function pntPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
@@ -5678,17 +5822,19 @@ async function pntCarica(forza) {
     if (l) l.innerHTML = '<div class="cl-sub">Carico i movimenti…</div>';
   }
   try {
-    const [mo, co, ca, qu] = await Promise.all([
+    const [mo, co, ca, qu, ri] = await Promise.all([
       db.from('iam_movimenti').select('*').order('data', { ascending: false }).limit(1000),
       db.from('iam_conti').select('*').order('ordine').order('nome'),
       db.from('iam_causali').select('*').order('ordine'),
-      db.from('iam_quadrature').select('*').order('data', { ascending: false })
+      db.from('iam_quadrature').select('*').order('data', { ascending: false }),
+      db.from('iam_movimenti_righe').select('*').order('ordine')
     ]);
-    for (const r of [mo, co, ca, qu]) if (r.error) throw r.error;
+    for (const r of [mo, co, ca, qu, ri]) if (r.error) throw r.error;
     PNT_MOVIMENTI = mo.data || [];
     PNT_CONTI = co.data || [];
     PNT_CAUSALI = ca.data || [];
     PNT_QUADRATURE = qu.data || [];
+    PNT_RIGHE = ri.data || [];
     PNT_CARICATO = true;
     pntRiempiFiltri();
     pntRender();
@@ -5793,8 +5939,9 @@ function pntRenderLista(righe, puo) {
     const ann = !!m.annullato_il;
     return `<div class="cnt-r${ann ? ' cnt-spento' : ''}">
       <div style="flex:1;min-width:0">
-        <div class="cnt-nome">${esc(k ? k.nome : 'Causale sconosciuta')}
+        <div class="cnt-nome">${m.numero != null ? '<span style="opacity:.55;font-weight:700">n. ' + esc(String(m.numero)) + '</span> ' : ''}${esc(k ? k.nome : 'Causale sconosciuta')}
           ${ann ? '<span class="cnt-tag">annullato</span>' : ''}
+          ${m.stato === 'stornato' ? '<span class="cnt-tag">stornato</span>' : ''}
           ${m.origine !== 'manuale' ? `<span class="cnt-tag">${esc(m.origine)}</span>` : ''}</div>
         <div class="cnt-sotto">${esc(pntData(m.data))} · ${esc(c ? c.nome : 'conto sconosciuto')}${
           m.controparte ? ' · ' + esc(m.controparte) : ''}${
@@ -5865,18 +6012,55 @@ function pntCambiaConto() {
   if (sel) sel.innerHTML = '<option value="">— scegli —</option>' + pntOpzCausali(pntVal('pnt-m-conto'), sel.value);
 }
 
+/* Le righe Dare/Avere di un movimento, così come si leggono. Un movimento
+   scritto prima della partita doppia ha un conto solo e la contropartita non
+   c'è: si DICHIARA, non si completa (§8.1). */
+function pntRigheHTML(m) {
+  if (!window.Contabilita || !m || !m.id) return '';
+  const r = Contabilita.righeDi(m, PNT_RIGHE, { causali: PNT_CAUSALI });
+  if (!r.righe.length) return `<div class="cnt-avv" style="margin-top:12px">${esc(r.nota || 'Questo movimento non ha righe.')}</div>`;
+  const cella = (v) => v ? esc(Contabilita.euro(v)) : '';
+  return `
+    <div style="margin-top:14px">
+      <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;opacity:.7;margin-bottom:6px">Dare e Avere</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <tr style="opacity:.65"><th style="text-align:left;padding:3px 0">Conto</th>
+          <th style="text-align:right;padding:3px 0">Dare</th><th style="text-align:right;padding:3px 0">Avere</th></tr>
+        ${r.righe.map(x => `<tr style="border-top:1px solid var(--bd)">
+          <td style="padding:5px 0">${esc(pntConto(x.conto_id)?.nome || '—')}${x.descrizione ? ' · <span style="opacity:.7">' + esc(x.descrizione) + '</span>' : ''}</td>
+          <td style="text-align:right;padding:5px 0">${cella(x.dare)}</td>
+          <td style="text-align:right;padding:5px 0">${cella(x.avere)}</td></tr>`).join('')}
+        <tr style="border-top:2px solid var(--bd);font-weight:800">
+          <td style="padding:5px 0">Totale</td>
+          <td style="text-align:right;padding:5px 0">${esc(Contabilita.euro(r.dare))}</td>
+          <td style="text-align:right;padding:5px 0">${esc(Contabilita.euro(r.avere))}</td></tr>
+      </table>
+      ${r.derivate ? `<div class="cnt-avv" style="margin-top:8px">${esc(r.nota || '')}</div>`
+        : (r.quadra ? '' : `<div class="cnt-err" style="margin-top:8px">${esc(r.motivo || 'Il movimento non quadra.')}</div>`)}
+    </div>`;
+}
+
 function pntApriMovimento(id) {
   const m = PNT_MOVIMENTI.find(x => x.id === id) || {};
   const auto = m.origine && m.origine !== 'manuale';
+  const contro = id && window.Contabilita ? Contabilita.contropartitaDi(m, PNT_RIGHE) : null;
+  /* Si può stornare? Lo decide il motore, e la stessa risposta accende il
+     bottone e spiega perché no: due controlli scritti a mano sarebbero due
+     regole, e quella sbagliata sarebbe quella che nessuno guarda. */
+  const st = id && window.Contabilita ? Contabilita.stornabile(m, PNT_RIGHE) : { ok: false, motivo: '' };
+  const origine = String(m.origine || '');
   pntApri(`
     <div style="padding:18px 18px 0">
-      <div style="font-size:17px;font-weight:800">${id ? 'Movimento' : 'Nuovo movimento'}</div>
+      <div style="font-size:17px;font-weight:800">${id ? ('Movimento' + (m.numero != null ? ' n. ' + esc(String(m.numero)) : '')) : 'Nuovo movimento'}</div>
       <div class="cl-sub" style="margin-top:3px">L'importo si scrive sempre positivo: entrata o uscita lo dice la causale.</div>
     </div>
     <div class="modal-body" style="padding:14px 18px">
       <div id="pnt-msg"></div>
-      ${auto ? `<div class="cnt-avv">Questo movimento non è stato scritto a mano: viene da «${esc(m.origine)}».
-        Si corregge dove è nato, non qui — altrimenti la prima nota e la rata direbbero due cose diverse.</div>` : ''}
+      ${m.stato === 'stornato' ? `<div class="cnt-avv">Questo movimento è stato <b>stornato</b>${m.storno_perche ? ': ' + esc(m.storno_perche) : '.'}
+        Resta a registro, e lo storno è un movimento suo — così si vede l'errore e si vede la correzione.</div>` : ''}
+      ${origine === 'storno' ? `<div class="cnt-avv">Questo è lo <b>storno</b> di un altro movimento: non si corregge, si legge. Se è sbagliato, si registra un movimento nuovo.</div>`
+        : (auto ? `<div class="cnt-avv">Questo movimento non è stato scritto a mano: viene da «${esc(origine)}».
+        Si corregge dove è nato, non qui — altrimenti la prima nota e la rata direbbero due cose diverse.</div>` : '')}
       <div class="fgrid">
         <div class="fld"><label>Data del movimento</label>
           <input type="date" id="pnt-m-data" value="${esc(m.data || pntOggi())}" ${auto ? 'disabled' : ''}></div>
@@ -5892,6 +6076,13 @@ function pntApriMovimento(id) {
           <select id="pnt-m-causale" ${auto ? 'disabled' : ''}>
             <option value="">— scegli —</option>${pntOpzCausali(m.conto_id, m.causale_id)}
           </select></div>
+        <div class="fld ffull"><label>Contropartita</label>
+          <select id="pnt-m-contro" ${auto || id ? 'disabled' : ''}>
+            <option value="">— scegli —</option>
+            ${PNT_CONTI.filter(c => c.attivo !== false || c.id === contro).map(c =>
+              `<option value="${esc(c.id)}" ${c.id === contro ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}
+          </select>
+          <div class="cl-sub">È l'altro conto: da dove il denaro arriva, o dove va a finire. Un incasso di premi entra in cassa <b>e</b> diventa un debito verso la compagnia: sono due fatti dello stesso evento, e registrarne uno solo lascia l'altro alla memoria di chi c'era.${id ? ' Su un movimento già registrato non si cambia: si storna.' : ''}</div></div>
         <div class="fld"><label>Controparte</label>
           <input type="text" id="pnt-m-controparte" value="${esc(m.controparte || '')}" placeholder="chi ha pagato, o chi è stato pagato"></div>
         <div class="fld"><label>Riferimento</label>
@@ -5899,15 +6090,19 @@ function pntApriMovimento(id) {
       </div>
       <div class="fld" style="margin-top:8px"><label>Descrizione</label>
         <input type="text" id="pnt-m-descrizione" value="${esc(m.descrizione || '')}"></div>
+      ${id ? pntRigheHTML(m) : ''}
       ${id ? `<div class="cl-sub" style="margin-top:12px">Un movimento non si cancella: si annulla, e il motivo resta scritto.</div>
-        <div class="fld" style="margin-top:6px"><label>Motivo dell'annullamento</label>
-          <input type="text" id="pnt-m-perche" placeholder="es. registrato due volte"></div>` : ''}
+        <div class="fld" style="margin-top:6px"><label>Motivo dell'annullamento o dello storno</label>
+          <input type="text" id="pnt-m-perche" placeholder="es. registrato due volte"></div>
+        ${st.ok ? `<div class="cl-sub" style="margin-top:6px"><b>Storno</b>: scrive un movimento nuovo con le righe rovesciate, che punta a questo. Il saldo torna quello di prima e restano a registro tutti e due i fatti — l'errore e la correzione.</div>`
+          : `<div class="cl-sub" style="margin-top:6px">Storno non possibile: ${esc(st.motivo || '')}</div>`}` : ''}
       <div id="pnt-storia" style="margin-top:12px"></div>
     </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;padding:0 18px 18px">
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:0 18px 18px;flex-wrap:wrap">
       <button class="d-btn" type="button" onclick="pntChiudi()">Chiudi</button>
       ${id ? `<button class="d-btn" type="button" onclick="pntAnnulla('${esc(id)}')">Annulla il movimento</button>` : ''}
-      ${auto ? '' : `<button class="d-btn primario" type="button" onclick="pntSalva(${id ? "'" + esc(id) + "'" : 'null'})">Salva</button>`}
+      ${id && st.ok ? `<button class="d-btn" type="button" onclick="pntStorna('${esc(id)}')"><i class="ti ti-rotate-2"></i> Storna</button>` : ''}
+      ${auto || m.stato === 'stornato' ? '' : `<button class="d-btn primario" type="button" onclick="pntSalva(${id ? "'" + esc(id) + "'" : 'null'})">Salva</button>`}
     </div>`);
   if (id && typeof regInstalla === 'function') regInstalla('pnt-storia', 'movimento', id);
 }
@@ -5950,6 +6145,20 @@ async function pntSalva(id) {
     descrizione: pntVal('pnt-m-descrizione').trim() || null
   };
   const e = Contabilita.validaMovimento(riga, { conti: PNT_CONTI, causali: PNT_CAUSALI });
+  /* Fase 1: un movimento nuovo nasce a partita doppia, quindi vuole la
+     contropartita. Su uno gi\u00e0 scritto non si tocca: si storna (regola 13). */
+  let righe = null;
+  if (!id) {
+    const r = Contabilita.righeSemplici(
+      Object.assign({}, riga, { contropartita_id: pntVal('pnt-m-contro') || null }),
+      { causali: PNT_CAUSALI });
+    if (!r.ok) e.push(r.motivo);
+    else {
+      righe = r.righe;
+      const er = Contabilita.validaRighe(righe, { conti: PNT_CONTI });
+      er.forEach(x => e.push(x));
+    }
+  }
   pntMsg(e);
   if (e.length) return;
   try {
@@ -5958,9 +6167,12 @@ async function pntSalva(id) {
       pntTocca(await db.from('iam_movimenti').update(riga).eq('id', id).select('id'),
                'Il movimento non e\u2019 stato corretto.');
     } else {
-      const { data, error } = await db.from('iam_movimenti').insert(riga).select('id').single();
+      /* Testata e righe sono due tabelle e sarebbero due richieste: cadendo
+         la seconda resterebbe un movimento con una gamba sola, che si legge e
+         sembra a posto. La garanzia \u00e8 Postgres, non questo codice (\u00a747). */
+      const { data, error } = await db.rpc('iam_movimento_registra', { p_movimento: riga, p_righe: righe });
       if (error) throw error;
-      movId = data?.id;
+      movId = data;
     }
     const k = pntCausale(riga.causale_id);
     logMovimento('Movimento ' + (id ? 'corretto' : 'registrato') + ' · ' + (k ? k.nome : ''),
@@ -5986,6 +6198,34 @@ async function pntAnnulla(id) {
     pntChiudi();
     await pntCarica();
   } catch (e) { pntMsg(['Non riesco ad annullare: ' + (e.message || e)]); }
+}
+
+/* Regola 13. Lo storno è un movimento NUOVO, con le righe rovesciate, che
+   punta all'originale. Il saldo torna quello di prima e restano a registro
+   tutti e due i fatti — quello sbagliato e la correzione. Le regole stanno nel
+   motore, la scrittura in una funzione del database: qui c'è solo la data di
+   oggi e chi firma, che il motore non può sapere. */
+async function pntStorna(id) {
+  const m = PNT_MOVIMENTI.find(x => x.id === id);
+  const perche = (pntVal('pnt-m-perche') || '').trim();
+  const s = Contabilita.storno(m, PNT_RIGHE, {
+    oggi: pntOggi(), perche: perche, utente: ME?.id || null, adesso: new Date().toISOString()
+  });
+  if (!s.ok) { pntMsg([s.motivo]); return; }
+  if (!confirm('Stornare il movimento' + (m?.numero != null ? ' n. ' + m.numero : '') + '?\n\n' +
+               'Non si cancella niente: nasce un movimento uguale e contrario, e tutti e due restano a registro.')) return;
+  try {
+    /* Il movimento dello storno e la marcatura dell'originale sono un fatto
+       solo: li scrive la stessa funzione, nella stessa transazione. Con due
+       richieste, cadendo la seconda, resterebbe uno storno che non storna
+       nulla — e il saldo sarebbe rovesciato due volte. */
+    const { data, error } = await db.rpc('iam_movimento_registra', { p_movimento: s.movimento, p_righe: s.righe });
+    if (error) throw error;
+    logMovimento('Movimento stornato', 'movimento', perche, id);
+    if (data) logMovimento('Storno registrato', 'movimento', 'storno del movimento ' + (m?.numero ?? ''), data);
+    pntChiudi();
+    await pntCarica(true);
+  } catch (e) { pntMsg(['Non riesco a stornare: ' + (e.message || e)]); }
 }
 
 async function pntRiapri(id) {

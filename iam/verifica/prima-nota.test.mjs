@@ -192,6 +192,75 @@ prova('la storia di un movimento sta nel registro unico', () => {
   return 'tracce + tipo nel vocabolario';
 });
 
+/* ═══ FASE 1 — LA PARTITA DOPPIA (21/09/2026) ═══════════════════════════════ */
+
+const SQL1 = fs.readFileSync(path.join(RADICE, 'supabase', 'migrations', '20260922_contab_partita_doppia.sql'), 'utf8')
+  .split('\n').filter(r => !/^\s*--/.test(r)).join('\n');
+
+prova('un movimento nuovo nasce a partita doppia: si chiede la CONTROPARTITA', () => {
+  const b = blocco();
+  /* Non si chiede una griglia Dare/Avere: si chiedono DUE conti, che è una
+     domanda a cui chi lavora sa già rispondere. Le due righe le fa il motore. */
+  deve(/id="pnt-m-contro"/.test(b), 'il modulo non chiede la contropartita');
+  deve(/Contabilita\.righeSemplici\(/.test(b), 'le righe non le fa il motore');
+  /* E la schermata non se le inventa: nessuna formula in pagina (§5). */
+  deve(!/dare:\s*\w+\s*>\s*0/.test(b), 'c\'è una regola Dare/Avere scritta dentro la schermata');
+  /* Su un movimento già registrato la contropartita non si cambia: si storna
+     (regola 13), e il campo è spento perché non si prometta il contrario. */
+  deve(/id="pnt-m-contro"[^>]*\$\{auto \|\| id \? 'disabled'/.test(b), 'la contropartita si può cambiare su un movimento registrato');
+  return 'due conti, due righe dal motore, e niente formule in pagina';
+});
+
+prova('testata e righe si scrivono in una transazione sola, non in due richieste', () => {
+  const b = blocco();
+  /* Due `insert` dalla pagina vorrebbero dire che, cadendo il secondo, resta
+     una testata SENZA righe: un movimento che c'è, che si legge, che sembra a
+     posto e che non dice da dove viene il denaro (§47). */
+  deve(/db\.rpc\('iam_movimento_registra'/.test(b), 'il movimento non passa dalla funzione del database');
+  deve(/create or replace function public\.iam_movimento_registra/.test(SQL1), 'la funzione non c\'è nella migrazione');
+  /* E la pagina non scrive MAI direttamente nelle righe: sarebbe la seconda
+     strada, quella che aggira la transazione. */
+  deve(!/from\('iam_movimenti_righe'\)\s*\.\s*insert/.test(b), 'la pagina scrive le righe per conto suo');
+  return 'una chiamata, una transazione';
+});
+
+prova('le righe Dare/Avere si LEGGONO, e un movimento vecchio lo dichiara', () => {
+  const b = blocco();
+  deve(/function pntRigheHTML\(/.test(b), 'il dettaglio non mostra le righe');
+  deve(/pntRigheHTML\(m\)/.test(b), 'la funzione c\'è e non la chiama nessuno');   /* §1 */
+  deve(/Contabilita\.righeDi\(/.test(b), 'le righe non passano dal motore');
+  /* Un movimento scritto prima della partita doppia ha un conto solo: la
+     contropartita non è persa, non è mai stata scritta. Si dichiara e non si
+     inventa (§8.1) — un «Conto compagnia» aggiunto dal programma sarebbe una
+     cosa che nessuno ha deciso, e fra sei mesi nessuno saprebbe chi l'ha
+     scritta. */
+  deve(/r\.derivate/.test(b), 'non si distingue un movimento senza righe da uno con le righe');
+  deve(/r\.nota/.test(b), 'non dichiara che la contropartita manca');
+  /* E le righe si leggono una volta sola, non una lettura per movimento aperto. */
+  deve(/from\('iam_movimenti_righe'\)\.select/.test(b), 'le righe non si leggono');
+  return 'tabella Dare/Avere, totali, e il vecchio che si dichiara';
+});
+
+prova('uno storno non si cancella niente: nasce un movimento uguale e contrario', () => {
+  const b = blocco();
+  deve(/async function pntStorna\(/.test(b), 'non si può stornare');
+  deve(/onclick="pntStorna\(/.test(b), 'la funzione c\'è e non la chiama nessuno');   /* §1 */
+  /* La decisione è UNA e sta nel motore: la stessa risposta accende il
+     bottone e spiega perché no. Due controlli scritti a mano sarebbero due
+     regole, e quella sbagliata sarebbe quella che nessuno guarda. */
+  deve(/Contabilita\.stornabile\(/.test(b), 'la schermata decide da sé se si può stornare');
+  deve(/Contabilita\.storno\(/.test(b), 'lo storno non lo costruisce il motore');
+  /* Lo storno e la marcatura dell'originale sono un fatto solo: li scrive la
+     stessa funzione, nella stessa transazione. */
+  const st = b.slice(b.indexOf('async function pntStorna'), b.indexOf('async function pntRiapri'));
+  deve(/db\.rpc\('iam_movimento_registra'/.test(st), 'lo storno non passa dalla funzione');
+  deve(!/from\('iam_movimenti'\)[\s\S]{0,80}update\(/.test(st), 'la pagina marca l\'originale per conto suo, fuori dalla transazione');
+  deve(/update public\.iam_movimenti[\s\S]{0,200}set stato = 'stornato'/.test(SQL1), 'la funzione non marca l\'originale');
+  /* E il registro dei movimenti lo sa. */
+  deve(/logMovimento\('Movimento stornato'/.test(b), 'uno storno non lascia traccia');
+  return 'motore per la regola, database per la scrittura, registro per la memoria';
+});
+
 console.log('\n══ PRIMA NOTA E QUADRATURA (IAM) ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

@@ -924,6 +924,384 @@ prova('le polizze senza nemmeno una rata sono un\'anomalia rossa, col verbo', ()
   return '1.700 righe con il premio e il verbo';
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   FASE 1 — LE FONDAMENTA A PARTITA DOPPIA (21/09/2026)
+
+   Le prove che, saltando, producono una contabilità che sembra giusta:
+   un movimento che non quadra e nessuno lo sa, uno storno fatto due volte che
+   rovescia il saldo dalla parte sbagliata, un movimento vecchio a cui il
+   sistema inventa la contropartita.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const MIGR1 = join(RADICE, 'supabase/migrations/20260922_contab_partita_doppia.sql');
+
+/* Le righe di CODICE della migrazione, senza i commenti che cominciano a
+   inizio riga. Il blocco del ROLLBACK è tutto commentato e nomina ogni cosa
+   che la migrazione crea: cercare lì dentro vorrebbe dire trovare sempre
+   quello che si cerca — è la trappola dei commenti (§10, §12, §29, §41), e
+   qui sarebbe particolarmente comoda perché il rollback è la fotografia
+   esatta della migrazione. Mai una regex globale (§12). */
+function soloCodice(testo) {
+  return testo.split('\n').filter(r => !/^\s*--/.test(r)).join('\n');
+}
+
+prova('Dare e Avere devono pareggiare, e la differenza si dice col suo verso', () => {
+  const b = C.bilanciato([{ dare: 400 }, { avere: 400 }]);
+  deve(b.ok, 'un movimento che quadra risulta sbilanciato: ' + b.motivo);
+  deve(b.dare === 400 && b.avere === 400 && b.differenza === 0, 'i totali non tornano');
+
+  const ko = C.bilanciato([{ dare: 400 }, { avere: 390 }]);
+  deve(!ko.ok, 'un movimento sbilanciato passa');
+  deve(ko.differenza === 10, 'la differenza è ' + ko.differenza);
+  /* Il verso della differenza non è cortesia: «mancano 10 in Avere» e
+     «mancano 10 in Dare» mandano a correggere due righe diverse. */
+  deve(/in Avere/.test(ko.motivo), 'non dice da che parte manca: ' + ko.motivo);
+  const ko2 = C.bilanciato([{ dare: 390 }, { avere: 400 }]);
+  deve(/in Dare/.test(ko2.motivo), 'il verso opposto non si distingue: ' + ko2.motivo);
+
+  /* Il centesimo non si perde per strada: tre terzi di 100 fanno 100. */
+  deve(C.bilanciato([{ dare: 33.33 }, { dare: 33.33 }, { dare: 33.34 }, { avere: 100 }]).ok,
+    '33,33 + 33,33 + 33,34 non fa 100');
+  return 'quadra a 400, e la differenza dice da che parte manca';
+});
+
+prova('una riga sola non è partita doppia, e un movimento senza righe nemmeno', () => {
+  const una = C.bilanciato([{ dare: 100 }]);
+  deve(!una.ok, 'una riga sola passa');
+  deve(/almeno due/.test(una.motivo), 'il motivo non lo spiega: ' + una.motivo);
+  const zero = C.bilanciato([]);
+  deve(!zero.ok && /non ha righe/.test(zero.motivo), 'zero righe: ' + zero.motivo);
+  /* E non basta che i totali coincidano: due righe a zero pareggiano e non
+     muovono niente. Lo prende `validaRighe`, riga per riga. */
+  const e = C.validaRighe([{ conto_id: 'k1', dare: 0 }, { conto_id: 'k2', avere: 0 }], { conti: CONTI });
+  deve(e.length >= 2, 'due righe a zero passano: ' + e.join(' | '));
+  return 'una riga sola, zero righe e due righe a zero: tre no diversi';
+});
+
+prova('una riga con Dare E Avere non è una riga: sono due fatti', () => {
+  const e = C.validaRighe([{ conto_id: 'k1', dare: 100, avere: 100 }, { conto_id: 'k2', avere: 100 }], { conti: CONTI });
+  deve(e.some(x => /Dare sia in Avere/.test(x)), 'la riga a due colonne passa: ' + e.join(' | '));
+  /* Il motivo del divieto, in una riga: quella scrittura si legge come zero,
+     quindi due righe DIVERSE darebbero lo stesso saldo. */
+  const finta = C.bilanciato([{ dare: 100, avere: 100 }, { dare: 50 }, { avere: 50 }]);
+  deve(finta.dare === 150 && finta.avere === 150, 'i totali non sono quelli attesi');
+  deve(finta.ok, 'per i soli totali quadra — ed è proprio il problema che la regola 11 chiude');
+  return 'i totali quadrano lo stesso: è per questo che la riga è vietata';
+});
+
+prova('un importo negativo non è un verso: il verso è la colonna', () => {
+  const e = C.validaRighe([{ conto_id: 'k1', dare: -100 }, { conto_id: 'k2', avere: -100 }], { conti: CONTI });
+  deve(e.some(x => /negativo/.test(x)), 'i negativi passano: ' + e.join(' | '));
+  /* E un conto spento non riceve più niente. */
+  const spento = C.validaRighe(
+    [{ conto_id: 'k9', dare: 10 }, { conto_id: 'k2', avere: 10 }],
+    { conti: CONTI.concat([{ id: 'k9', nome: 'Vecchia cassa', tipologia: 'cassa', natura: 'premi', attivo: false }]) });
+  deve(spento.some(x => /spento/.test(x)), 'si registra su un conto spento: ' + spento.join(' | '));
+  return 'meno cento è un errore, non un’uscita';
+});
+
+prova('i divieti stanno nel DATABASE, non nella schermata', () => {
+  const sql = soloCodice(readFileSync(MIGR1, 'utf8'));
+
+  /* Regola 11, e sta in un CHECK perché è l'unico posto che nessuna strada
+     aggira: c'è la console, c'è PostgREST, ci sarà QUOTO. */
+  deve(/check\s*\(\s*\(dare > 0 and avere = 0\) or \(avere > 0 and dare = 0\)\s*\)/.test(sql),
+    'il vincolo «Dare oppure Avere» non c\'è');
+
+  /* Il bilancio si controlla a fine transazione: le righe arrivano una alla
+     volta e dopo la prima il movimento è per forza sbilanciato. Un trigger
+     immediato vorrebbe dire non poterne scrivere nessuna. */
+  deve(/create constraint trigger iam_mov_righe_bilancio_trg/.test(sql), 'manca il trigger del bilancio');
+  deve(/deferrable initially deferred/.test(sql), 'il trigger del bilancio non è differito a fine transazione');
+
+  /* Regola 13, nei due versi: non si riscrive e non si cancella. */
+  deve(/create trigger iam_mov_immutabile_trg before update on public\.iam_movimenti/.test(sql), 'manca il divieto di riscrittura');
+  deve(/create trigger iam_mov_no_delete_trg before delete on public\.iam_movimenti/.test(sql), 'manca il divieto di cancellazione');
+  /* E la porta di servizio: la testata bloccata con le righe libere sarebbe
+     una porta chiusa con la finestra aperta. */
+  deve(/create trigger iam_mov_righe_bloccate_trg/.test(sql), 'le righe di un movimento registrato non sono difese');
+
+  /* Idempotenza: doppio clic e retry non fanno due movimenti. */
+  deve(/create unique index if not exists iam_movimenti_idem_uq[\s\S]{0,200}where chiave_idempotenza is not null/.test(sql),
+    'la chiave di idempotenza non è unica, o non è parziale');
+
+  /* Chi vede e chi scrive. */
+  deve(/enable row level security/.test(sql), 'le righe non hanno RLS');
+  deve(/create policy righe_select[\s\S]{0,120}iam_is_staff\(\)/.test(sql), 'la lettura non è dello staff');
+  deve(/create policy righe_write[\s\S]{0,160}iam_is_admin\(\)/.test(sql), 'la scrittura non è dell\'admin');
+  return 'check, quattro trigger, indice unico parziale e due politiche';
+});
+
+prova('testata e righe si scrivono in una transazione sola, e non dalla pagina', () => {
+  const sql = soloCodice(readFileSync(MIGR1, 'utf8'));
+  /* Due richieste dalla pagina vorrebbero dire che, cadendo la seconda, resta
+     una testata SENZA righe: un movimento che c'è, che si legge, che sembra a
+     posto, e che non dice da dove viene il denaro. È il tutto-o-niente
+     dell'importazione (§47) applicato alla contabilità. */
+  deve(/create or replace function public\.iam_movimento_registra/.test(sql), 'la funzione di scrittura non c\'è');
+  /* `security invoker`: le politiche valgono per CHI CHIAMA. Una funzione che
+     scavalcasse la RLS sarebbe una seconda regola su chi scrive in
+     contabilità, e quella che sbaglia sarebbe quella che nessuno guarda. */
+  deve(/security invoker/.test(sql), 'la funzione scavalca le politiche di chi chiama');
+  deve(!/security definer/.test(sql), 'la funzione gira con i permessi di chi l\'ha scritta');
+  /* Idempotenza: il secondo giro non è un errore e non è un secondo
+     movimento. È lo stesso movimento, e si restituisce il suo id. */
+  deve(/if v_chiave is not null then[\s\S]{0,200}if v_id is not null then return v_id/.test(sql),
+    'la chiave di idempotenza non corto-circuita il secondo giro');
+  /* Uno storno marca l'originale NELLO STESSO COLPO: con due richieste, se
+     cade la seconda, resta uno storno che non storna nulla. */
+  deve(/update public\.iam_movimenti[\s\S]{0,200}set stato = 'stornato'/.test(sql),
+    'lo storno non marca l\'originale nella stessa transazione');
+  /* E `origine` ammette lo storno: senza, il primo storno sarebbe morto
+     contro un vincolo dopo che la schermata aveva detto «sì, si può». */
+  deve(/check \(origine in \([^)]*'storno'[^)]*\)\)/.test(sql), 'lo storno non è un\'origine ammessa');
+  return 'una funzione, una transazione, e la RLS di chi chiama';
+});
+
+prova('nessun saldo memorizzato, e nessun conto seminato', () => {
+  const sql = soloCodice(readFileSync(MIGR1, 'utf8'));
+  /* Regola 1. Una colonna `saldo` si aggiorna da un'altra parte, e il giorno
+     in cui si scosta dalla somma delle righe nessuno sa quale sia quello vero. */
+  deve(!/add column if not exists saldo\b/.test(sql), 'la migrazione aggiunge una colonna saldo');
+
+  /* I dodici conti minimi sono una PROPOSTA, non un seed: un conto è un posto
+     dove stanno dei soldi e ha un saldo, e dodici saldi a zero che nessuno ha
+     deciso diventano un dato dopo due settimane (§8.1). */
+  deve(!/insert\s+into\s+public\.iam_conti/i.test(sql), 'la migrazione crea dei conti');
+  deve(C.CONTI_MINIMI.length === 12, 'i conti minimi non sono dodici: ' + C.CONTI_MINIMI.length);
+  return 'zero conti creati, dodici proposti';
+});
+
+prova('i dodici conti minimi si spiegano da soli, e i crediti non si quadrano', () => {
+  const chiavi = C.TIPOLOGIE.map(t => t.k);
+  for (const c of C.CONTI_MINIMI) {
+    deve(c.nome && c.nome.length > 2, 'un conto minimo senza nome');
+    deve(chiavi.indexOf(c.tipologia) >= 0, c.nome + ': tipologia «' + c.tipologia + '» non è nel vocabolario');
+    deve(c.natura === 'premi' || c.natura === 'aziendale', c.nome + ': natura non valida');
+    /* Ogni voce dice a che serve: una proposta senza il perché si accetta
+       senza leggerla, ed è il modo di ritrovarsi dodici conti che nessuno sa
+       a che cosa servono. */
+    deve(c.note && c.note.length > 30, c.nome + ': non dice a che serve');
+    /* Regola 9: quale mezzo arriva su quale conto lo decide l'agenzia. */
+    deve(!c.mezzi || !c.mezzi.length, c.nome + ': la proposta decide già i mezzi di pagamento');
+    /* Regola 12. */
+    if (c.e_conto_sospeso) deve(c.e_quadrabile === false, c.nome + ': è un conto di crediti e si propone quadrabile');
+  }
+  /* Le otto tipologie del vocabolario sono le otto ammesse dal database. */
+  const sql = soloCodice(readFileSync(MIGR1, 'utf8'));
+  const m = sql.match(/check \(tipologia in \(([^)]*)\)\)/);
+  deve(m, 'il vincolo delle tipologie non si trova');
+  const nelSql = m[1].split(',').map(s => s.trim().replace(/'/g, '')).filter(Boolean).sort();
+  deve(nelSql.join('|') === chiavi.slice().sort().join('|'),
+    'il vocabolario delle tipologie non coincide col vincolo: SQL ' + nelSql.join(',') + ' — motore ' + chiavi.join(','));
+  return '12 conti coerenti, 8 tipologie identiche in due posti';
+});
+
+prova('il genere di una causale dice da quale flusso nasce, e il vocabolario è uno', () => {
+  const chiavi = C.GENERI.map(g => g.k);
+  deve(chiavi.length === 6, 'i generi non sono sei: ' + chiavi.length);
+  const sql = soloCodice(readFileSync(MIGR1, 'utf8'));
+  const m = sql.match(/check \(genere in \(([\s\S]*?)\)\)/);
+  deve(m, 'il vincolo del genere non si trova');
+  const nelSql = m[1].split(',').map(s => s.trim().replace(/'/g, '')).filter(Boolean).sort();
+  deve(nelSql.join('|') === chiavi.slice().sort().join('|'),
+    'i generi non coincidono col vincolo: SQL ' + nelSql.join(',') + ' — motore ' + chiavi.join(','));
+
+  /* La schermata propone quello che il salvataggio accetta: una sola regola. */
+  deve(C.validaCausale({ nome: 'Prova', segno: 'uscita', incide_su_utile: true, genere: 'giroconto' }).ok,
+    'un genere valido viene rifiutato');
+  deve(!C.validaCausale({ nome: 'Prova', segno: 'uscita', incide_su_utile: true, genere: 'inventato' }).ok,
+    'un genere inventato passa');
+  /* Assente vuol dire «il default del database», non «errore». */
+  deve(C.validaCausale({ nome: 'Prova', segno: 'uscita', incide_su_utile: true }).ok,
+    'una causale senza genere viene rifiutata');
+  return '6 generi identici in due posti, e l’assente vale il default';
+});
+
+prova('i tre flag di un conto, e il conto che non ha due padroni', () => {
+  const base = { nome: 'Sospesi clienti', tipologia: 'credito', natura: 'premi' };
+
+  /* Un conto è di UNA compagnia o di UN collaboratore: con tutti e due lo
+     stesso saldo comparirebbe in due estratti conto diversi. */
+  const due = C.validaConto(Object.assign({}, base, { compagnia_id: 'c1', collaboratore_id: 'p1' }), []);
+  deve(!due.ok, 'un conto intestato a compagnia E collaboratore passa');
+  deve(C.validaConto(Object.assign({}, base, { compagnia_id: 'c1' }), []).ok, 'un conto di una compagnia viene rifiutato');
+
+  /* Il guasto muto del 21/09 in forma di avviso: la spunta «modo di pagare»
+     senza nessun mezzo dichiarato non intercetta niente. */
+  const muto = C.validaConto(Object.assign({}, base, { e_mezzo_pagamento: true, mezzi: [] }), []);
+  deve(muto.avvisi.some(a => /nessun incasso ci arriver/i.test(a)), 'il conto muto non si segnala: ' + muto.avvisi.join(' | '));
+  const dritto = C.validaConto(Object.assign({}, base, { e_mezzo_pagamento: true, mezzi: ['contante'] }), []);
+  deve(!dritto.avvisi.some(a => /nessun incasso ci arriver/i.test(a)), 'con i mezzi dichiarati avvisa lo stesso');
+
+  /* Regola 12, detta mentre si configura. */
+  const cred = C.validaConto(Object.assign({}, base, { e_conto_sospeso: true, e_quadrabile: true }), []);
+  deve(cred.avvisi.some(a => /scadenzario/i.test(a)), 'un conto di crediti quadrabile non avvisa: ' + cred.avvisi.join(' | '));
+  deve(cred.ok, 'ed è un avviso, non un errore: bloccare qualcosa di possibile insegna a ignorare gli avvisi');
+  return 'due padroni no, conto muto e credito quadrabile avvisano';
+});
+
+prova('un movimento scritto prima della partita doppia si legge com’è, non si completa', () => {
+  const vecchio = { id: 'v1', numero: 1, stato: 'registrato', conto_id: 'k3', causale_id: byCod('incasso_premi').id, importo: 120 };
+  const r = C.righeDi(vecchio, [], { causali: CAU });
+  deve(r.derivate, 'non si accorge che le righe non ci sono');
+  deve(r.righe.length === 1 && r.righe[0].dare === 120, 'la riga ricavata non è quella attesa');
+  deve(r.quadra === false, 'un movimento a conto singolo risulta quadrato');
+  /* E la nota lo dice in faccia: la contropartita non è persa, non è mai
+     stata scritta. Inventarla vorrebbe dire scrivere in contabilità una cosa
+     che nessuno ha deciso, e fra sei mesi nessuno saprebbe che l'ha scritta
+     un programma (§8.1). */
+  deve(/non è mai stata registrata|non si indovina/i.test(r.nota || ''), 'non dichiara la contropartita mancante: ' + r.nota);
+  deve(r.righe.length === 1, 'ha aggiunto una riga che nessuno ha scritto');
+
+  /* Con le righe vere, invece, si leggono quelle e si ordinano. */
+  const vere = [
+    { movimento_id: 'v2', conto_id: 'k2', avere: 120, ordine: 1 },
+    { movimento_id: 'v2', conto_id: 'k3', dare: 120, ordine: 0 },
+    { movimento_id: 'ALTRO', conto_id: 'k1', dare: 999, ordine: 0 }
+  ];
+  const r2 = C.righeDi({ id: 'v2', stato: 'registrato' }, vere);
+  deve(!r2.derivate && r2.quadra, 'un movimento con due righe che quadrano non risulta a posto');
+  deve(r2.righe.length === 2, 'legge le righe di un altro movimento: ' + r2.righe.length);
+  deve(r2.righe[0].conto_id === 'k3', 'le righe non sono in ordine');
+  return 'una riga sola e dichiarata, oppure due righe ordinate e quadrate';
+});
+
+prova('due conti e un importo diventano due righe che quadrano', () => {
+  /* Chi lavora non compila una griglia Dare/Avere: dice quale conto si muove
+     e qual è la contropartita. Le due righe le fa il motore, e il verso lo
+     dice la causale (regola 6). */
+  const entrata = C.righeSemplici(
+    { conto_id: 'k3', contropartita_id: 'k1', importo: 400, causale_id: byCod('incasso_premi').id },
+    { causali: CAU });
+  deve(entrata.ok, 'un incasso non produce righe: ' + entrata.motivo);
+  deve(entrata.righe[0].conto_id === 'k3' && entrata.righe[0].dare === 400, 'il denaro che entra non è in Dare sul conto');
+  deve(entrata.righe[1].conto_id === 'k1' && entrata.righe[1].avere === 400, 'la contropartita non è in Avere');
+  deve(C.bilanciato(entrata.righe).ok, 'le due righe non quadrano');
+
+  /* L'uscita è lo stesso movimento rovesciato. */
+  const uscita = C.righeSemplici(
+    { conto_id: 'k2', contropartita_id: 'k1', importo: 120, causale_id: byCod('affitti').id },
+    { causali: CAU });
+  deve(uscita.ok && uscita.righe[0].avere === 120 && uscita.righe[1].dare === 120, 'un’uscita non si rovescia');
+
+  /* I tre no, ognuno col suo motivo. */
+  deve(!C.righeSemplici({ conto_id: 'k3', importo: 400, causale_id: byCod('incasso_premi').id }, { causali: CAU }).ok,
+    'senza contropartita scrive lo stesso');
+  const stesso = C.righeSemplici({ conto_id: 'k3', contropartita_id: 'k3', importo: 400, causale_id: byCod('incasso_premi').id }, { causali: CAU });
+  deve(!stesso.ok && /se stesso/.test(stesso.motivo), 'un conto verso se stesso passa: ' + stesso.motivo);
+  /* Senza verso non si indovina da che parte scrivere: sarebbe un importo
+     messo a caso in una delle due colonne, e il saldo finirebbe al contrario
+     la metà delle volte. */
+  const muta = C.righeSemplici({ conto_id: 'k3', contropartita_id: 'k1', importo: 400, causale_id: 'inesistente' }, { causali: CAU });
+  deve(!muta.ok && /entrata o un.uscita/i.test(muta.motivo), 'senza verso scrive lo stesso: ' + muta.motivo);
+
+  /* E la contropartita si RITROVA riaprendo il movimento: una finestra che si
+     riapre vuota fa credere che il dato non sia stato salvato. */
+  const righe = entrata.righe.map(r => Object.assign({ movimento_id: 'm7' }, r));
+  deve(C.contropartitaDi({ id: 'm7', conto_id: 'k3' }, righe) === 'k1', 'la contropartita non si ritrova');
+  deve(C.contropartitaDi({ id: 'v1', conto_id: 'k3' }, []) === null, 'se la inventa su un movimento senza righe');
+  return 'entrata, uscita, tre rifiuti e la contropartita che si ritrova';
+});
+
+prova('lo storno rovescia le righe e punta all’originale', () => {
+  const m = { id: 'm1', numero: 7, stato: 'registrato', conto_id: 'k3', causale_id: byCod('incasso_premi').id, importo: 400, polizza_id: 'p9' };
+  const righe = [
+    { movimento_id: 'm1', conto_id: 'k3', dare: 400, ordine: 0, cliente_id: 'a1' },
+    { movimento_id: 'm1', conto_id: 'k1', avere: 400, ordine: 1, compagnia_id: 'g1' }
+  ];
+  const s = C.storno(m, righe, { oggi: '2026-09-25', perche: 'importo sbagliato', utente: 'u1', adesso: '2026-09-25T10:00:00Z' });
+  deve(s.ok, 'uno storno legittimo viene rifiutato: ' + s.motivo);
+
+  /* Le righe rovesciate, e il saldo che torna quello di prima. */
+  deve(s.righe.length === 2, 'righe dello storno: ' + s.righe.length);
+  deve(s.righe[0].avere === 400 && s.righe[0].dare === 0, 'la prima riga non è rovesciata');
+  deve(s.righe[1].dare === 400 && s.righe[1].avere === 0, 'la seconda riga non è rovesciata');
+  deve(C.bilanciato(s.righe).ok, 'lo storno non quadra');
+  /* Le dimensioni seguono la riga: uno storno che perde il cliente e la
+     compagnia toglie il movimento dal saldo e lo lascia negli estratti conto. */
+  deve(s.righe[0].cliente_id === 'a1' && s.righe[1].compagnia_id === 'g1', 'lo storno perde le dimensioni della riga');
+
+  /* È un movimento NUOVO, non una riscrittura: punta all'originale e porta la
+     data di chi corregge, non quella del fatto corretto. */
+  deve(s.movimento.storno_di_movimento_id === 'm1', 'lo storno non punta all\'originale');
+  deve(s.movimento.data === '2026-09-25', 'lo storno prende la data dell\'originale');
+  deve(/n\. 7/.test(s.movimento.descrizione) && /importo sbagliato/.test(s.movimento.descrizione),
+    'la descrizione non dice quale movimento e perché: ' + s.movimento.descrizione);
+  /* E sull'originale si scrivono SOLO le colonne dello storno: tutto il resto
+     è storia, e i trigger lo difendono comunque. */
+  deve(Object.keys(s.aggiorna).sort().join(',') === 'stato,stornato_da,stornato_il,storno_perche',
+    'lo storno riscrive altre colonne: ' + Object.keys(s.aggiorna).join(','));
+  deve(s.aggiorna.stato === 'stornato', 'l\'originale non risulta stornato');
+  return 'due righe rovesciate, la data di oggi e il puntatore all’originale';
+});
+
+prova('uno storno non si fa due volte, e la garanzia non è nel codice', () => {
+  const m = { id: 'm1', numero: 7, stato: 'registrato', conto_id: 'k3', causale_id: 'c5', importo: 400 };
+  const righe = [{ movimento_id: 'm1', conto_id: 'k3', dare: 400 }, { movimento_id: 'm1', conto_id: 'k1', avere: 400 }];
+  const s = C.storno(m, righe, { oggi: '2026-09-25', perche: 'sbagliato' });
+  /* La chiave è STABILE: due clic producono la stessa chiave, e il secondo
+     insert lo rifiuta Postgres. Uno storno duplicato rovescerebbe il
+     movimento due volte, e il saldo finirebbe dalla parte opposta. */
+  deve(s.movimento.chiave_idempotenza === 'storno:m1', 'la chiave non è quella attesa: ' + s.movimento.chiave_idempotenza);
+  const s2 = C.storno(m, righe, { oggi: '2026-09-30', perche: 'un altro motivo' });
+  deve(s2.movimento.chiave_idempotenza === s.movimento.chiave_idempotenza, 'la chiave cambia fra due tentativi');
+
+  /* E il movimento già stornato lo dice prima di provarci. */
+  const gia = C.stornabile(Object.assign({}, m, { stato: 'stornato' }), righe);
+  deve(!gia.ok && /già stato stornato/.test(gia.motivo), 'un movimento già stornato si storna di nuovo: ' + gia.motivo);
+  /* Una bozza non si storna: si corregge. Un annullato nemmeno: è già fuori. */
+  deve(!C.stornabile(Object.assign({}, m, { stato: 'bozza' }), righe).ok, 'una bozza si storna');
+  deve(!C.stornabile(Object.assign({}, m, { annullato_il: '2026-09-22T09:00:00Z' }), righe).ok, 'un annullato si storna');
+  return 'chiave stabile, e tre stati che non si stornano';
+});
+
+prova('senza la data e senza il motivo non si storna — e il motore non guarda l’orologio', () => {
+  const m = { id: 'm1', numero: 7, stato: 'registrato', conto_id: 'k3', causale_id: 'c5', importo: 400 };
+  const righe = [{ movimento_id: 'm1', conto_id: 'k3', dare: 400 }, { movimento_id: 'm1', conto_id: 'k1', avere: 400 }];
+
+  /* La data la passa chi chiama. Una funzione che chiede l'ora al computer di
+     chi guarda dà risposte diverse a due persone sullo stesso dato: è il
+     difetto già pagato con le date delle polizze e col monitor. */
+  const senzaData = C.storno(m, righe, { perche: 'sbagliato' });
+  deve(!senzaData.ok && /data/i.test(senzaData.motivo), 'storna senza data: ' + senzaData.motivo);
+  deve(!C.storno(m, righe, { oggi: '25/09/2026', perche: 'x' }).ok, 'accetta una data scritta all\'italiana');
+
+  const senzaPerche = C.storno(m, righe, { oggi: '2026-09-25' });
+  deve(!senzaPerche.ok && /motivo/i.test(senzaPerche.motivo), 'storna senza motivo: ' + senzaPerche.motivo);
+
+  /* E dentro il blocco della partita doppia non c'è nessuna chiamata
+     all'orologio. Si ritaglia il blocco con la CHIAMATA e non con la parola
+     (§10, §12): il nome di una funzione compare anche nei commenti che la
+     spiegano, e una fetta sbagliata è una prova che misura un altro file.
+     Altrove nel motore il ripiego a «oggi» c'è ancora, in tre punti nati con
+     la M4 e la M5: è annotato in DECISIONI.md, e non si tocca da qui. */
+  const src = readFileSync(join(RADICE, 'tariffe/motore/contabilita.js'), 'utf8');
+  const da = src.indexOf('function bilanciato(');
+  const a = src.indexOf('function riepilogo(');
+  deve(da > 0 && a > da, 'il blocco della partita doppia non si ritaglia');
+  const blocco = src.slice(da, a).split('\n').filter(r => !/^\s*(\/\/|\*|\/\*)/.test(r)).join('\n');
+  deve(!/new Date\(/.test(blocco), 'la partita doppia chiede l\'ora al computer di chi guarda');
+  return 'data e motivo obbligatori, e nessun orologio nel blocco';
+});
+
+prova('un movimento senza righe non si storna: si annulla', () => {
+  const vecchio = { id: 'v1', numero: 1, stato: 'registrato', conto_id: 'k3', causale_id: byCod('incasso_premi').id, importo: 120 };
+  const puo = C.stornabile(vecchio, []);
+  deve(!puo.ok, 'un movimento a conto singolo si storna');
+  deve(/si annulla/i.test(puo.motivo), 'non dice che cosa fare invece: ' + puo.motivo);
+  /* Non si rovescia quello che non c'è: uno storno «ricavato» inventerebbe la
+     contropartita che il movimento non ha mai avuto. */
+  deve(!C.storno(vecchio, [], { oggi: '2026-09-25', perche: 'x' }).ok, 'lo storna lo stesso');
+
+  /* E un movimento che NON quadra non si storna: sposterebbe la differenza
+     invece di toglierla. */
+  const storto = C.stornabile({ id: 's1', numero: 2, stato: 'registrato' },
+    [{ movimento_id: 's1', conto_id: 'k1', dare: 100 }, { movimento_id: 's1', conto_id: 'k2', avere: 90 }]);
+  deve(!storto.ok && /non quadra/i.test(storto.motivo), 'storna un movimento sbilanciato: ' + storto.motivo);
+  return 'si annulla col motivo, e resta a registro';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

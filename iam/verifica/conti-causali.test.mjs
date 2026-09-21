@@ -220,6 +220,72 @@ prova('il registro degli invii non si corregge e non si cancella', () => {
 });
 
 
+/* ═══ FASE 1 — LA PARTITA DOPPIA (21/09/2026) ═══════════════════════════════ */
+
+prova('i tre flag si compilano E si salvano: un campo mostrato e non letto non decide niente', () => {
+  const b = blocco();
+  /* Il difetto che questa prova esiste per prendere: una spunta disegnata nel
+     modulo e mai letta dal salvataggio. Si vede, si clicca, e non cambia
+     niente — ed è indistinguibile da un salvataggio che non funziona. */
+  for (const [campo, colonna] of [['cnt-pagamento', 'e_mezzo_pagamento'], ['cnt-sospeso', 'e_conto_sospeso'], ['cnt-quadrabile', 'e_quadrabile']]) {
+    deve(b.includes('id="' + campo + '"'), 'il modulo non mostra ' + campo);
+    deve(new RegExp(colonna + ":\\s*!!document\\.getElementById\\('" + campo + "'\\)").test(b),
+      colonna + ' si mostra e non si salva');
+  }
+  /* E si LEGGONO dalla riga: senza, bisogna aprire i conti uno per uno per
+     sapere come sono configurati. */
+  deve(/c\.e_mezzo_pagamento/.test(b) && /c\.e_conto_sospeso/.test(b) && /c\.e_quadrabile === false/.test(b),
+    'i tre flag non si vedono nell\'elenco dei conti');
+  return 'tre spunte mostrate, salvate e rilette';
+});
+
+prova('a chi si intesta un conto, e le due letture che possono cadere da sole', () => {
+  const b = blocco();
+  deve(/compagnia_id:\s*val\('cnt-compagnia'\)/.test(b), 'la compagnia non si salva');
+  deve(/collaboratore_id:\s*val\('cnt-collaboratore'\)/.test(b), 'il collaboratore non si salva');
+  /* I collaboratori arrivano dalla FONTE UNICA (§48): una seconda lettura qui
+     vorrebbe dire due elenchi delle stesse persone, e quello sbagliato
+     sarebbe quello che nessuno guarda. */
+  deve(/CNT_PERSONE\s*=\s*\(await colCarica\(\)\)/.test(b), 'i collaboratori non vengono da colCarica');
+  /* E stanno FUORI dalla Promise.all di conti e causali: una tendina che non
+     si legge non deve spegnere la schermata (§35). */
+  const car = b.slice(b.indexOf('async function cntCarica'), b.indexOf('function cntRender('));
+  deve(!/quote_compagnie/.test(car.slice(0, car.indexOf('cntRender();'))), 'le compagnie stanno dentro la lettura che rilancia');
+  deve(/CNT_INTEST_ERR/.test(b), 'non si distingue «non si è potuto leggere» da «non ce ne sono»');
+  return 'due tendine che cadono da sole, e i collaboratori dalla fonte unica';
+});
+
+prova('i dodici conti minimi si PROPONGONO: li crea una persona, non una migrazione', () => {
+  const b = blocco();
+  const SQL1 = fs.readFileSync(path.join(RADICE, 'supabase', 'migrations', '20260922_contab_partita_doppia.sql'), 'utf8')
+    .split('\n').filter(r => !/^\s*--/.test(r)).join('\n');
+  /* Un conto è un posto dove stanno dei soldi, e ha un saldo. Dodici saldi a
+     zero che nessuno ha deciso, dopo due settimane, sono dodici dati (§8.1). */
+  deve(!/insert\s+into\s+public\.iam_conti/i.test(SQL1), 'la migrazione semina dei conti');
+  deve(/Contabilita\.CONTI_MINIMI/.test(b), 'la proposta non legge i conti minimi dal motore');
+  /* Solo quelli che MANCANO, e solo quelli SPUNTATI. */
+  deve(/function cntMancanti\(/.test(b) && /cntMancanti\(\)/.test(b.replace('function cntMancanti(', '')), 'i conti già presenti si riproporrebbero');
+  deve(/\.cnt-min:checked/.test(b), 'crea tutto invece di quello che è spuntato');
+  /* Nascono senza data di dichiarazione del saldo: zero è anche un saldo
+     vero, e la data è l'unica cosa che distingue «è zero» da «nessuno l'ha
+     mai scritto» (§43). */
+  const crea = b.slice(b.indexOf('async function cntCreaMinimi'), b.indexOf('function cntChiudi'));
+  deve(!/saldo_dichiarato_il/.test(crea), 'i conti minimi nascono con un saldo dichiarato che nessuno ha dichiarato');
+  /* E la porta resta chiusa a chi non scrive. */
+  deve(/cntRenderMinimi\(puo\)/.test(b), 'la proposta si mostra anche a chi non può creare conti');
+  return 'proposta, spuntata, senza data di dichiarazione';
+});
+
+prova('il genere di una causale si sceglie, si salva e si legge', () => {
+  const b = blocco();
+  deve(/Contabilita\.GENERI\.map/.test(b), 'la tendina del genere non legge il vocabolario del motore');
+  deve(/genere:\s*val\('cnt-cgenere'\)/.test(b), 'il genere si mostra e non si salva');
+  /* Il default è «manuale», come sul database: assente vuol dire «scritta a
+     mano», non «errore». */
+  deve(/val\('cnt-cgenere'\)\s*\|\|\s*'manuale'/.test(b), 'senza scelta il genere non ripiega su «manuale»');
+  return 'sei generi dal motore, salvati, con il default del database';
+});
+
 /* ─────────────────────────────────────────────────────────────────────────── */
 function blocco() {
   const i = H.indexOf('/* ══ CONTI E CAUSALI (brief #02 · M1');

@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.12.0">
-<meta name="app-versione-nome" content="Il conto, il monitor, i numeri e i filtri">
+<meta name="app-versione" content="0.13.0">
+<meta name="app-versione-nome" content="Decisioni aperte">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -48,6 +48,7 @@
 <script src="/nuovo-preventivo/tariffe/motore/sospensione.js?v=20260920"></script>
 <script src="/nuovo-preventivo/tariffe/motore/collegamenti.js?v=20260920"></script>
 <script src="/nuovo-preventivo/tariffe/motore/kpi.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/decisioni.js?v=20260921"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -2034,6 +2035,7 @@ input[type=file]{display:none;}
           <div class="dash-list-row" onclick="goTab('pipeline')"><i class="ti ti-chart-arrows-vertical"></i><span>Apri trattative</span></div>
           <div class="dash-list-row" onclick="goTab('conto')"><i class="ti ti-building-bank"></i><span>Chiudi estratto conto</span></div>
           <div class="dash-list-row" onclick="goTab('scadenzario')"><i class="ti ti-calendar-due"></i><span>Scadenzario e rinnovi</span></div>
+          <div class="dash-list-row" onclick="goTab('decisioni')"><i class="ti ti-help-circle"></i><span>Decisioni aperte</span></div>
         </div>
       </div>
     </div>
@@ -3932,6 +3934,37 @@ input[type=file]{display:none;}
 
      Niente si elimina: si disattiva. Le polizze che ci sono sotto sono
      storia, e cancellare il prodotto le renderebbe orfane (§26). -->
+<!-- ══ DECISIONI APERTE (21/09/2026) ═══════════════════════════════════════
+     Da settembre il sistema ha smesso, in una decina di punti, di indovinare:
+     un fido non dichiarato non e' illimitato, una provvigione non concordata
+     non ha una percentuale di default, un codice produttore non si abbina per
+     somiglianza. Ogni volta la conseguenza e' la stessa — il sistema ha finito
+     il suo lavoro quando ha CHIESTO (§41, §19).
+
+     Il problema e' che ha chiesto in dodici posti diversi, e le schermate sono
+     ventuno. Qui ci sono tutte, ognuna con che cosa resta spento finche' manca
+     e il tasto che apre il posto esatto.
+
+     Le regole stanno nel motore (tariffe/motore/decisioni.js). Questa schermata
+     legge e disegna: nove letture indipendenti, perche' una che cade non deve
+     portarsi via le altre (§35) — e su una schermata che riassume lo stato di
+     tutto, «non si e' potuto leggere» spacciato per «e' deciso» e' la bugia
+     peggiore che ci sia (§12, §18). -->
+<div class="panel" id="panel-decisioni" style="overflow-y:auto;">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow">Impostazioni</div>
+      <h1>Decisioni aperte</h1>
+      <div class="subtitle">Quello che il sistema non indovina, e che aspetta una persona. Ogni voce dice che cosa resta spento finché manca.</div>
+    </div>
+    <div class="head-actions">
+      <button class="d-btn" type="button" onclick="decCarica(true)"><i class="ti ti-refresh"></i> Rileggi</button>
+    </div>
+  </section>
+  <section class="cnt-somma" id="dec-somma"></section>
+  <section class="cnt-lista" id="dec-lista"><div class="cl-sub">Guardo che cosa manca…</div></section>
+</div>
+
 <div class="panel" id="panel-catalogo" style="overflow-y:auto;">
   <section class="page-head">
     <div>
@@ -5140,6 +5173,14 @@ async function cntSalvaConto(id) {
     intestatario: val('cnt-intestatario').trim() || null,
     rimesse: !!document.getElementById('cnt-rimesse')?.checked,
     saldo_iniziale: Contabilita.numero(val('cnt-saldo')) ?? 0,
+    /* QUANDO e' stato dichiarato, e non solo quanto. Zero e' un saldo di
+       partenza vero — un conto aperto oggi parte da zero — quindi guardando
+       la sola cifra «il saldo e' zero» e «nessuno l'ha mai scritto» si
+       leggono uguali. E' lo stesso difetto delle anagrafiche che nascono a
+       «no» (§42): li' non si poteva rimediare a posteriori, qui si', perche'
+       la colonna nasce adesso. Si scrive solo se il campo e' stato riempito:
+       aprire e richiudere la finestra non e' una dichiarazione. */
+    saldo_dichiarato_il: String(val('cnt-saldo')).trim() !== '' ? new Date().toISOString() : undefined,
     ordine: parseInt(val('cnt-ordine'), 10) || 0,
     attivo: !!document.getElementById('cnt-attivo')?.checked,
     /* Si legge SOLO quello che il pannello ha mostrato: un elenco vuoto vuol
@@ -5147,6 +5188,9 @@ async function cntSalvaConto(id) {
     mezzi: [...document.querySelectorAll('.cnt-mezzo:checked')].map(e => e.value),
     note: val('cnt-note').trim() || null
   };
+  /* `undefined` non si manda al database: lascerebbe la colonna com'era, che
+     e' quello che si vuole, ma PostgREST preferisce non vederla proprio. */
+  if (riga.saldo_dichiarato_il === undefined) delete riga.saldo_dichiarato_il;
   const v = Contabilita.validaConto(Object.assign({ id: id || null }, riga, { iban: val('cnt-iban') }), CNT_CONTI);
   cntMsg(v);
   if (!v.ok) return;
@@ -5611,6 +5655,213 @@ function pntRenderQuadrature() {
       <div style="text-align:right">
         ${puo ? `<button class="d-btn" type="button" style="padding:3px 9px;font-size:11px"
              onclick="pntApriQuadratura('${esc(r.conto_id)}')">Dichiara il saldo</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══ DECISIONI APERTE (21/09/2026) ═══════════════════════════════════════════
+
+   Le regole stanno nel motore (`tariffe/motore/decisioni.js`, dieci prove in
+   Node con tre controprove). Qui si legge e si disegna.
+
+   NOVE LETTURE INDIPENDENTI, e non una `Promise.all` che rilancia: il
+   20/09/2026 sette letture messe insieme hanno spento Gestione compagnie per
+   una colonna sbagliata (§35). Qui sarebbe peggio, perché una voce che non si
+   legge non deve diventare una voce «a posto»: si marca `ignoto` e il
+   riepilogo smette di dire «tutto deciso».
+
+   E NON SI PROPONE MAI IL FATTO, SOLO LA PROVA. Dove c'è una misura che aiuta
+   — l'ultimo fondo cassa, un mezzo di pagamento che nessun conto riceve — la
+   si mostra accanto alla voce. Resta una misura da guardare: il giorno in cui
+   una proposta si applica da sola, quel numero diventa un dato e nessuno saprà
+   più che l'aveva scritto un programma (§8.1). */
+var DEC_DATI = {};          /* `var`: il banco lo legge da window (§17) */
+var DEC_ULTIMO = 0;
+
+function decVaiA(dove) {
+  /* Due voci si decidono in QUOTO, che è un altro documento dentro il
+     riquadro. Aprire una SUA pagina preciso vorrebbe dire toccare la scocca,
+     che è contratto (INTERFACCIA-QUOTO-IAM.md §2.6) e si tocca con la sua
+     versione e la sua impronta: non di notte e non di sfuggita. Quindi si
+     apre il preventivatore, e la riga dice dove andare — che è meglio di un
+     tasto che promette di portarti in un posto e ti lascia altrove. */
+  if (String(dove).indexOf('quoto:') === 0) return goTab('quoto');
+  goTab(dove);
+}
+
+async function decCarica(forza) {
+  const box = document.getElementById('dec-lista');
+  if (!box || !db || !window.Decisioni) return;
+  const ora = Date.now();
+  if (!forza && DEC_ULTIMO && (ora - DEC_ULTIMO) < 30000) { decRender(); return; }
+  DEC_ULTIMO = ora;
+
+  /* Ogni lettura sta in piedi da sola. `null` vuol dire «non si è potuto
+     leggere», ed è un'informazione diversa da «non c'è niente». */
+  const leggi = async (fn) => { try { return await fn(); } catch (e) { console.warn('Decisioni:', e.message || e); return null; } };
+  const oggi = new Date().toISOString().slice(0, 10);
+  const d = {};
+
+  const conti = await leggi(async () => {
+    const { data, error } = await db.from('iam_conti')
+      .select('id,nome,tipologia,natura,attivo,mezzi,iban,rimesse,saldo_iniziale,saldo_dichiarato_il');
+    if (error) throw error;
+    return (data || []).filter(c => c.attivo !== false);
+  });
+  const mezziUsati = await leggi(async () => {
+    const { data, error } = await db.from('quote_titoli').select('mezzo_pagamento');
+    if (error) throw error;
+    const acc = {};
+    (data || []).forEach(t => { const m = t.mezzo_pagamento || '(non dichiarato)'; acc[m] = (acc[m] || 0) + 1; });
+    return acc;
+  });
+  const giornata = await leggi(async () => {
+    const { data, error } = await db.from('sessioni_giornaliere')
+      .select('data_riferimento,fondo_cassa').order('data_riferimento', { ascending: false }).limit(1);
+    if (error) throw error;
+    const r = (data || [])[0];
+    return r ? { data: r.data_riferimento, fondo_cassa: r.fondo_cassa } : null;
+  });
+
+  if (conti === null) {
+    d.conti_mezzi = null; d.cassa_contanti = null; d.saldi_iniziali = null; d.conto_rimesse = null;
+  } else {
+    d.conti_mezzi = {
+      su: conti.length,
+      fatte: conti.filter(c => (c.mezzi || []).length).length,
+      prove: mezziUsati ? Decisioni.proveMezzi(conti, mezziUsati) : []
+    };
+    const casse = conti.filter(c => c.tipologia === 'cassa');
+    d.cassa_contanti = { su: 1, fatte: casse.length ? 1 : 0, prove: Decisioni.proveCassa(giornata) };
+    /* Zero è un saldo di partenza vero: quello che distingue «è zero» da
+       «nessuno l'ha scritto» è la DATA, non la cifra. */
+    d.saldi_iniziali = { su: conti.length, fatte: conti.filter(c => c.saldo_dichiarato_il).length };
+    const rim = conti.filter(c => c.rimesse && c.iban);
+    d.conto_rimesse = { su: 1, fatte: rim.length === 1 ? 1 : 0,
+      motivo: rim.length > 1 ? 'Più di un conto è marcato per le rimesse: le coordinate sarebbero due.'
+            : conti.some(c => c.rimesse && !c.iban) ? 'Il conto delle rimesse è scelto ma non ha un IBAN.' : null };
+  }
+
+  d.tariffe = await leggi(async () => {
+    const [pol, tar, cat] = await Promise.all([
+      db.from('quote_polizze').select('compagnia,modulo,prodotto'),
+      db.from('iam_provvigioni_tariffa').select('*'),
+      db.from('quote_compagnie').select('id,nome,alias')
+    ]);
+    if (pol.error) throw pol.error;
+    if (tar.error) throw tar.error;
+    const cop = window.Provvigioni
+      ? Provvigioni.copertura(pol.data || [], tar.data || [], { catalogo: cat.data || [], data: oggi })
+      : [];
+    return { su: cop.length, fatte: cop.filter(x => x.coperta).length,
+             prove: cop.filter(x => !x.coperta).slice(0, 3).map(x => ({ grave: false,
+               testo: x.compagnia + ' · ' + x.ramo_l + ': ' + x.polizze + (x.polizze === 1 ? ' polizza' : ' polizze') + ' senza aliquota.' })) };
+  });
+
+  d.fidi = await leggi(async () => {
+    const { data, error } = await db.from('quote_collaboratori').select('id,fido,attivo');
+    if (error) throw error;
+    const vivi = (data || []).filter(c => c.attivo !== false);
+    return { su: vivi.length, fatte: vivi.filter(c => c.fido != null).length };
+  });
+
+  d.sospensioni_limite = await leggi(async () => {
+    const { data, error } = await db.from('quote_compagnie').select('id,sospensione_giorni_max');
+    if (error) throw error;
+    return { su: (data || []).length, fatte: (data || []).filter(c => c.sospensione_giorni_max != null).length };
+  });
+
+  d.titoli_collaboratore = await leggi(async () => {
+    const { data, error } = await db.from('quote_titoli').select('id,collaboratore_id');
+    if (error) throw error;
+    return { su: (data || []).length, fatte: (data || []).filter(t => t.collaboratore_id).length };
+  });
+
+  d.codici_collaboratore = await leggi(async () => {
+    const { data, error } = await db.from('quote_codici_collaboratore').select('codice,deciso');
+    if (error) throw error;
+    /* Le righe da decidere le scrive l'importazione del flusso. Nessuna riga
+       NON vuol dire «tutto deciso»: vuol dire che non è ancora arrivato
+       niente da decidere, ed è una cosa diversa che va detta. */
+    if (!(data || []).length) {
+      return { inerte: true, motivo: 'Nessun codice ancora: le righe da decidere le scrive l’importazione di un flusso compagnia.' };
+    }
+    return { su: data.length, fatte: data.filter(c => c.deciso).length };
+  });
+
+  d.catalogo = await leggi(async () => {
+    const [pol, pro, com] = await Promise.all([
+      db.from('quote_polizze').select('compagnia,modulo,prodotto'),
+      db.from('iam_compagnia_prodotti').select('*'),
+      db.from('quote_compagnie').select('id,nome,alias')
+    ]);
+    if (pol.error) throw pol.error;
+    if (pro.error) throw pro.error;
+    const cop = window.Catalogo
+      ? Catalogo.copertura(pol.data || [], com.data || [], pro.data || [])
+      : { dentro: 0, totale: (pol.data || []).length, fuori: [] };
+    return { su: cop.totale, fatte: cop.dentro,
+             prove: (cop.fuori || []).slice(0, 3).map(x => ({ grave: false,
+               testo: x.compagnia + ' · ' + x.prodotto + ': ' + x.n + (x.n === 1 ? ' polizza' : ' polizze') + ' — ' + x.motivo + '.' })) };
+  });
+
+  DEC_DATI = d;
+  decRender();
+}
+
+function decRender() {
+  const box = document.getElementById('dec-lista');
+  const somma = document.getElementById('dec-somma');
+  if (!box || !window.Decisioni) return;
+  const voci = Decisioni.elenco(DEC_DATI);
+  const r = Decisioni.riepilogo(voci);
+
+  if (somma) somma.innerHTML = `
+    <div class="cnt-card"><div class="cnt-k">Da decidere</div>
+      <div class="cnt-v">${r.da_decidere}</div>
+      <div class="cnt-s">${r.aperte} mai toccate · ${r.parziali} a metà</div></div>
+    <div class="cnt-card"><div class="cnt-k">Decise</div>
+      <div class="cnt-v">${r.fatte}</div>
+      <div class="cnt-s">${r.inerti ? r.inerti + ' non servono ancora' : 'su ' + r.totale + ' voci'}</div></div>
+    <div class="cnt-card${r.ignote ? ' ' : ''}"><div class="cnt-k">Non si è potuto guardare</div>
+      <div class="cnt-v">${r.ignote}</div>
+      <div class="cnt-s">${r.ignote
+        ? 'Finché ce n’è anche una, «tutto deciso» non si può dire.'
+        : 'Tutte le voci si sono potute leggere.'}</div></div>`;
+
+  /* «Tutto a posto» si dice solo se non è rimasto niente E si è potuto
+     guardare dappertutto: il verde che non è vero è il motivo per cui una
+     schermata di riepilogo smette di essere guardata. */
+  if (r.tutto_deciso) {
+    box.innerHTML = `<div class="cnt-avv" style="border-left-color:var(--acc)">
+      Tutte le decisioni che il sistema stava aspettando sono state prese. Le voci restano qui sotto:
+      quando una cosa cambia — un conto nuovo, una compagnia nuova, un flusso importato — tornano da sole.</div>`
+      + decHTML(voci);
+    return;
+  }
+  box.innerHTML = decHTML(voci);
+}
+
+function decHTML(voci) {
+  const classe = { aperta: 'uscita', parziale: 'transito', ignoto: '', fatta: 'utile', inerte: '' };
+  return voci.map(v => {
+    const quanti = (v.su != null && v.su > 0 && v.stato !== 'inerte')
+      ? `<span class="cnt-tag">${v.fatte} su ${v.su}</span>` : '';
+    return `<div class="cnt-r">
+      <div style="flex:1;min-width:0">
+        <div class="cnt-nome">${esc(v.titolo)}
+          <span class="cnt-tag ${classe[v.stato] || ''}">${esc(v.etichetta)}</span> ${quanti}</div>
+        <div class="cnt-sotto">${esc(v.perche)}</div>
+        ${v.stato === 'fatta' || v.stato === 'inerte' ? '' :
+          `<div class="cnt-sotto"><b>Finché manca:</b> ${esc(v.blocca)}</div>`}
+        ${v.motivo ? `<div class="cnt-sotto">${esc(v.motivo)}</div>` : ''}
+        ${(v.prove || []).map(p => `<div class="cnt-sotto"${p.grave ? ' style="font-weight:600"' : ''}>· ${esc(p.testo)}</div>`).join('')}
+        <div class="cnt-sotto" style="opacity:.75">${esc(v.rif)} · decide ${v.chi === 'admin' ? 'l’amministrazione' : 'lo staff'}</div>
+      </div>
+      <div style="text-align:right">
+        <button class="d-btn" type="button" style="padding:3px 9px;font-size:11px"
+          onclick="decVaiA('${esc(v.dove)}')">Apri</button>
       </div>
     </div>`;
   }).join('');
@@ -8484,6 +8735,7 @@ function goTab(t) {
   if (t === 'compagnie')   { prvCarica(true); }
   if (t === 'provvigioni') { prvTab(PRV_VISTA); prvCarica(true); }
   if (t === 'catalogo')    { catTab(CAT_VISTA); catCarica(true); }
+  if (t === 'decisioni')   { decCarica(true); }
   if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); caricaKpiScrivania(); }   // Blocco B
   if (t === 'agenti')    { loadAgentiAI(); }
   if (t === 'quoto') {
@@ -22532,8 +22784,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: 304b666c — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260920c"></script>
+<!-- impronta withus-one.js: e178b7b0 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260921a"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

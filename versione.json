@@ -1,8 +1,21 @@
 {
-  "versione": "0.12.0",
-  "nome": "Il conto, il monitor, i numeri e i filtri",
+  "versione": "0.13.0",
+  "nome": "Decisioni aperte",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.13.0",
+      "data": "2026-09-21",
+      "nome": "Decisioni aperte",
+      "voci": [
+        "Strumenti › Decisioni aperte, e una scorciatoia dalla Scrivania: in un posto solo tutto quello che il sistema non indovina e sta aspettando da una persona. Prima chiedeva dentro la schermata che usa quel dato, cioè in dodici posti diversi.",
+        "Ogni voce dice CHE COSA RESTA SPENTO finché manca — «gli incassi restano fermi», «gli estratti conto escono senza coordinate» — perché un elenco di cose da fare che non dice che cosa si rompe non lo guarda nessuno due volte.",
+        "Una decisione presa a metà non è verde: un conto su tre che dichiara i suoi mezzi risulta «a metà», perché la metà mancante è quella che un giorno manderà un incasso sul conto sbagliato.",
+        "Dove c'è una misura che aiuta, si mostra: «carta di credito è il mezzo di 4 rate e nessun conto dichiara di riceverla», «l'ultimo foglio cassa dichiara un fondo di 276,00 €». Resta una misura da guardare, mai un valore precompilato.",
+        "Se una lettura non riesce, quella voce dice «non si sa» e il riepilogo smette di poter dire «tutto deciso»: su una schermata che serve a vedere se manca qualcosa, un verde che non è vero fa smettere di cercare proprio dove c'è il buco.",
+        "Nei conti si registra anche QUANDO il saldo di partenza è stato dichiarato. Zero è un saldo vero — un conto aperto oggi parte da zero — e senza la data «è zero» e «nessuno l'ha mai scritto» si leggevano uguali."
+      ]
+    },
     {
       "v": "0.12.0",
       "data": "2026-09-21",

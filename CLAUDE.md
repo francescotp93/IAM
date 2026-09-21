@@ -4057,3 +4057,125 @@ la rilettura.
   decisione da prendere di sfuggita.
 - **I segmenti restano zero**: la tabella `quote_segmenti` è vuota. I filtri
   adesso ci sono tutti, ma il primo segmento lo costruisce una persona.
+
+---
+
+## 43. Decisioni aperte: dove il sistema chiede (21/09/2026)
+
+> «Definisci tutto, domani mattina vorrei vedere tutto online e funzionante» —
+> Francesco, andando a dormire.
+
+Metà di quella richiesta non si può soddisfare, e la ragione è la regola di
+casa §8.1: **un fido, un saldo di banca, il nome dietro `U25274` non si
+inventano.** Un numero scritto da un programma in contabilità, dopo due
+settimane, diventa un dato — e nessuno saprà più che l'aveva scritto un
+programma. Quello che si può fare è l'altra metà, ed è questo lavoro.
+
+| pezzo | dove |
+|---|---|
+| le regole | `tariffe/motore/decisioni.js` |
+| prove in Node | `server/verifica/decisioni.test.mjs` — 10, con tre controprove |
+| la schermata | `#panel-decisioni` e il blocco `dec*` in `iam/index.html` |
+| la voce di menu | `iam/withus-one.js` (Strumenti › Gestionale) + scorciatoia dalla Scrivania |
+| prove sulla schermata | `iam/verifica/decisioni-aperte.test.mjs` — 6, che fa girare il codice |
+| la colonna della data | `supabase/migrations/20260921_saldo_dichiarato_il.sql` (applicata) |
+
+### Il problema: il sistema chiedeva in dodici posti diversi
+
+Da settembre, in una decina di punti, il sistema ha smesso di indovinare — un
+fido non dichiarato non è illimitato (§41), una provvigione non concordata non
+ha una percentuale di default (§17), un codice produttore non si abbina per
+somiglianza (§19). Ogni volta la conclusione è la stessa: **il sistema ha
+finito il suo lavoro quando ha chiesto.**
+
+Solo che chiedeva **dentro la schermata che usa quel dato**, e le schermate
+sono ventuno. Una domanda che vive in un posto che nessuno apre è una domanda
+che non è stata fatta — è §1 applicato alle richieste invece che al codice.
+
+### Le tre regole che rendono l'elenco affidabile
+
+1. **Ogni voce dice che cosa resta spento finché manca.** «Gli incassi restano
+   fermi: il denaro è stato incassato e il conto non lo sa.» Un elenco di cose
+   da fare che non dice che cosa si rompe non lo guarda nessuno due volte — è
+   §33 («le anomalie hanno il verbo») applicato alle decisioni invece che ai
+   guasti. C'è una prova che pretende quella frase su ogni voce.
+2. **Una decisione presa a metà non è fatta.** Un conto su tre che dichiara i
+   suoi mezzi è `a metà`, non verde: la metà mancante è esattamente quella che
+   un giorno manderà un incasso sul conto sbagliato.
+3. **«Non si è potuto leggere» non è «è deciso».** Su *questa* schermata è la
+   bugia peggiore possibile, perché è il posto in cui si va a vedere se manca
+   qualcosa: un verde che non è vero fa smettere di cercare proprio dove c'è il
+   buco. Finché una voce resta cieca, «tutto deciso» non si può dire, e il
+   riepilogo lo scrive.
+
+E uno stato in più che sembra un dettaglio: **`inerte`**, cioè «non c'è ancora
+niente da decidere qui». I codici produttore sono zero righe perché **le righe
+da decidere le scrive l'importazione di un flusso**: contarli come decisi
+direbbe che quel lavoro è finito, contarli come aperti manderebbe a cercare una
+decisione che non esiste. È una terza cosa e si chiama col suo nome.
+
+### Le prove sono misure, mai valori da accettare
+
+Dove esiste un numero che aiuta a decidere, si mostra accanto alla voce:
+
+- «**carta di credito** è il mezzo di 4 rate e **nessun conto** dichiara di
+  riceverlo» — misurato sul portafoglio vero;
+- «l'ultimo foglio cassa (16/09/2026) dichiara un fondo di **276,00 €**».
+
+**Resta una misura da guardare, non un valore da scrivere**, e la frase lo dice
+in faccia. Il giorno in cui una proposta si applica da sola, quel numero
+diventa un dato. È la stessa distinzione di §19 fra *indovinare* e *applicare
+una decisione presa*: dal risultato si somigliano, nella sostanza sono opposte.
+Dalla schermata non si scrive niente — c'è una prova che lo misura.
+
+### Uno zero non dice se qualcuno l'ha deciso
+
+Il difetto trovato costruendo la voce dei saldi iniziali, ed è **lo stesso
+misurato poche ore prima sulle anagrafiche** (§42): `saldo_iniziale` nasce a 0,
+ma **zero è anche un saldo di partenza vero** — un conto aperto oggi parte da
+zero. Guardando la sola cifra, «il saldo è zero» e «nessuno l'ha mai scritto»
+si leggono uguali.
+
+Sulle anagrafiche non si poteva rimediare: i `false` già scritti restano
+ambigui per sempre. Qui sì, perché la colonna nasce adesso —
+`iam_conti.saldo_dichiarato_il`, scritta solo quando qualcuno riempie il campo.
+Aprire e richiudere la finestra non è una dichiarazione.
+
+> **La lezione, generale: una colonna con un default che coincide con un valore
+> legittimo perde per sempre la differenza fra «deciso così» e «mai toccato».**
+> Se la si accorge quando la colonna nasce, costa una data accanto. Se la si
+> accorge dopo, non si recupera.
+
+### Quello che NON si è fatto, e perché
+
+- **Non si è toccata la scocca per aprire una pagina precisa di QUOTO.** Due
+  voci si decidono nel preventivatore; aprirlo su una sua schermata vorrebbe
+  dire cambiare `MEGA`, che è contratto (`INTERFACCIA-QUOTO-IAM.md` §2.6) e si
+  tocca con la sua versione e la sua impronta — non di notte e non di
+  sfuggita. Il tasto apre il preventivatore, e la riga dice la stanza: meglio
+  di un «Apri» che promette un posto e ne apre un altro.
+- **Non si è creata la cassa contanti**, e non è pigrizia: l'agenzia ha già dei
+  contanti (68 giorni di foglio cassa), quindi un conto nuovo con saldo zero
+  sarebbe un saldo sbagliato, non un saldo mancante. La misura dell'ultimo
+  giorno sta accanto alla voce.
+- **Non si sono migrate le coordinate da `iam_azienda.dati`** (§26 lo lasciava
+  aperto): misurato il 21/09/2026, `iban1`, `iban2` e `banca` sono **stringhe
+  vuote**. Non c'era niente da spostare, e quella voce aperta si può chiudere.
+
+### Una prova rossa per una maiuscola
+
+`/non vuol dire che sia deciso/` contro un testo che comincia con «**N**on vuol
+dire»: la prova dichiarava rotto un codice giusto. È la stessa trappola di §23
+(«una regex sensibile alle maiuscole non vedeva *Non si è*»), e costa dieci
+minuti ogni volta. **Una prova che cerca una frase dell'interfaccia la cerca
+senza la prima lettera, o con `[Nn]`.**
+
+### Cosa resta aperto — e adesso si vede da una schermata sola
+
+Le dieci voci, misurate il 21/09/2026: mezzi 1 conto su 3, nessuna cassa
+contanti, 0 saldi dichiarati su 3, conto delle rimesse non scelto, 0 tariffe,
+0 fidi su 17 persone, 0 limiti di sospensione su 9 compagnie, 0 rate assegnate
+su 55, catalogo prodotti vuoto, e i codici produttore che aspettano
+un'importazione. Nessuna di queste è un lavoro di programmazione: sono dieci
+domande con una risposta sola ciascuna, e adesso stanno tutte nello stesso
+posto con scritto accanto che cosa costa non rispondere.

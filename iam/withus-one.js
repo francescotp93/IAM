@@ -679,6 +679,12 @@
              quale nome. Le compagnie e i loro prodotti stavano scritti solo
              come stringhe sulle polizze: qui hanno un'anagrafica. */
           { l: 'Catalogo prodotti', i: 'i-fold', act: 'catalogo', go: function(){ vai('catalogo'); } },
+          /* Decisioni aperte (21/09/2026). Da settembre il sistema, in una
+             decina di punti, si rifiuta di indovinare — e ogni volta chiede.
+             Chiedeva pero' dentro la schermata che usa quel dato, cioe' in
+             dodici posti diversi: questa e' la voce che li raccoglie. Sta in
+             Gestionale perche' e' dove si CONFIGURA, non dove si lavora. */
+          { l: 'Decisioni aperte', i: 'i-help', act: 'decisioni', go: function(){ vai('decisioni'); } },
         ] },
         { hr: true },
         /* Materiale di consultazione dell'agenzia. Le tre categorie sono un
@@ -746,6 +752,7 @@
     compagnie:   ['Gestione compagnie', 'Strumenti'],
     provvigioni: ['Provvigioni', 'Strumenti'],
     catalogo:    ['Catalogo prodotti', 'Strumenti'],
+    decisioni:   ['Decisioni aperte', 'Strumenti'],
     pipeline:    ['Trattative', 'Clienti'],
     workdiary:   ['Diario di lavoro', 'Agenzia'],
     performance: ['KPI e gare', 'Agenzia'],
@@ -841,7 +848,7 @@
     performance: 'agenzia', pipeline: 'clienti',
     fonti: 'strumenti', analisi: 'marketing', collegamenti: 'strumenti',
     posta: 'strumenti', conti: 'strumenti', compagnie: 'strumenti', provvigioni: 'strumenti',
-    catalogo: 'strumenti',
+    catalogo: 'strumenti', decisioni: 'strumenti',
     parametri: 'strumenti',
     utenti: 'admin', azienda: 'admin', agenti: 'admin', quoto: 'quoto'
   };

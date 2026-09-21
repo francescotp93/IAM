@@ -1,26 +1,26 @@
-id: b3-fine-1789969603  exit: 0  2026-09-21 05:47:16
+id: dec-1789970794  exit: 0  2026-09-21 06:07:11
 ----
 == commit vivo ==
-02e8f4e Blocco 3 · punti 7, 12-bis, 10 e 4: il conto, il monitor, i numeri, i filtri (#222)
-== versione.json ==
-  "versione": "0.12.0",
-  "nome": "Il conto, il monitor, i numeri e i filtri",
-== meta IAM ==
-<meta name="app-versione" content="0.12.0">
-<meta name="app-versione-nome" content="Il conto, il monitor, i numeri e i filtri">
-== motori nuovi ==
--rw-r--r-- 1 root root 8455 Sep 21 05:47 tariffe/motore/collegamenti.js
--rw-r--r-- 1 root root 9798 Sep 21 05:47 tariffe/motore/kpi.js
-== dco/kpi nel documento ==
-6
-== HTTP iam ==
-200
-== versione servita ==
-<meta name="app-versione" content="0.12.0">
-== versione.json servito ==
-{
-  "versione": "0.12.0",
-  "nome": "Il conto, il monitor, i numeri e i filtri",
-  "data": "2026-09-21",
-  "storia": [
- 
+0c5eb51 Decisioni aperte: in un posto solo quello che il sistema sta aspettando (#223)
+== versione ==
+  "versione": "0.13.0",
+  "nome": "Decisioni aperte",
+== meta IAM/QUOTO ==
+<meta name="app-versione" content="0.13.0">
+<meta name="app-versione" content="0.13.0">
+== motore decisioni ==
+-rw-r--r-- 1 root root 14754 Sep 21 06:06 tariffe/motore/decisioni.js
+== scocca ==
+withus-one.js?v=20260921a
+1
+== pannello + rotta ==
+1
+1
+== HTTP ==
+iam=200 quoto=200
+== servito ==
+<meta name="app-versione" content="0.13.0">
+== motore servito ==
+decisioni.js=200
+== scocca servita ==
+withus-one.js=200

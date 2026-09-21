@@ -253,6 +253,54 @@ cifrato senza la sua riga non è di nessuno.
 
 ---
 
+## 21/09/2026 — Contabilità · Fase 1: le fondamenta a partita doppia (0.22.0)
+
+**Perimetro:** la prima nota diventa a partita doppia. Niente incassi, niente
+sospesi, niente estratti conto: sono le Fasi 2, 3 e 4.
+
+🔴 **Applicato al database, con autorizzazione esplicita.**
+`20260922_contab_partita_doppia.sql`: la tabella nuova `iam_movimenti_righe`
+(le righe Dare/Avere), cinque colonne su `iam_conti`, una su `iam_causali`,
+nove su `iam_movimenti`, quattro trigger, due politiche e la funzione
+`iam_movimento_registra`. **Nessuna riga esistente riscritta** tranne il numero
+progressivo dato all'unico movimento che c'era, e **nessun conto creato**.
+*Come tornare indietro:* il blocco ROLLBACK è in testa al file di migrazione.
+
+🟡 **I dodici conti minimi della specifica NON sono stati creati.** Sono una
+proposta nella schermata Conti e casse: si spuntano e li crea una persona. Un
+conto ha un saldo, e dodici saldi a zero che nessuno ha deciso diventano dodici
+dati dopo due settimane (regola di casa §8.1).
+*Come tornare indietro:* niente da disfare — non è stato scritto niente.
+
+🟡 **Niente `organization_id`, contro il principio 7 della specifica.**
+Misurato: zero colonne tenant in tutto il database, `iam_azienda` ha una riga.
+Una colonna che vale sempre lo stesso valore non isola niente, e le prove di
+«isolamento fra tenant» proverebbero una cosa che non esiste. L'isolamento qui
+è per RUOLO: lo staff legge, l'admin scrive.
+*Come tornare indietro:* si aggiunge la colonna il giorno in cui esiste una
+seconda agenzia — e quel giorno va aggiunta ovunque, non solo in contabilità.
+
+🟡 **`iam_movimenti.conto_id` e `.importo` restano**, e da oggi sono il derivato
+della riga singola. Toglierli adesso vorrebbe dire riscrivere cinque funzioni
+con 34 prove sopra mentre si cambia il modello.
+*Come tornare indietro:* si spengono quando le schermate leggeranno le righe.
+
+🟡 **I movimenti scritti prima di oggi non si stornano.** Hanno un conto solo e
+la contropartita non è mai stata scritta: non si rovescia quello che non c'è, e
+inventarla vorrebbe dire scrivere in contabilità una cosa che nessuno ha
+deciso. Si annullano col motivo, come prima, e restano a registro.
+*Come tornare indietro:* nessuna strada che non passi dall'inventare.
+
+🟡 **`origine` ammette un valore in più (`storno`).** Senza, il primo storno
+sarebbe morto contro un vincolo dopo che la schermata aveva detto «sì, si può».
+I quattro valori di prima restano e nessuna riga si è mossa.
+
+🟡 **La soglia dei punti di chiamata del registro sale da 54 a 57.** Tre
+movimenti nuovi lasciano traccia: i conti minimi creati in blocco, lo storno e
+il movimento che nasce dallo storno.
+
+---
+
 ## Fuori perimetro — annotato e non fatto
 
 - **`flusso-ssf.js:805 aggiungiMesi` duplica `PianoRate.sommaMesi`**: due copie
@@ -279,3 +327,14 @@ cifrato senza la sua riga non è di nessuno.
   alias di `quote_compagnie` (CLAUDE.md §11): «HDI Assicurazioni» sulla polizza
   e «HDI» in tabella non si ritroverebbero. Sul portafoglio vero c'è una
   compagnia sola e il difetto non si vede; va guardato prima del secondo flusso.
+- **Il motore della contabilità chiede l'ora al computer in tre punti**
+  (`giorniDa`, `sospesiAperti`, `anomalie`), nati con la M4 e la M5: è la
+  famiglia del difetto delle date di CLAUDE.md §44 e §45. Nel blocco della
+  partita doppia non c'è, e una prova lo sorveglia; gli altri tre vogliono di
+  passare `oggi` da chi chiama, cioè toccare le schermate M4 e M5.
+- **`otp-dalla-posta.test.mjs` è rosso su `main` da prima** (5/17): cerca
+  `server/otpPosta.js`, che nel repository non c'è. È il guasto §1 al
+  contrario — una prova che sorveglia un modulo mai arrivato.
+- **La prima nota nasce vuota e i saldi iniziali dei conti sono a zero**:
+  finché non si scrivono quelli veri, il saldo ricostruito parte da un numero
+  che non è quello.

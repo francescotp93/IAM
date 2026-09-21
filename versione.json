@@ -1,8 +1,23 @@
 {
-  "versione": "0.21.1",
-  "nome": "L'archivio si prova all'avvio, non sul primo documento",
+  "versione": "0.22.0",
+  "nome": "La contabilità a partita doppia: le fondamenta",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.22.0",
+      "data": "2026-09-21",
+      "nome": "La contabilità a partita doppia: le fondamenta",
+      "voci": [
+        "Un movimento di prima nota adesso ha DUE righe, non una: il conto che si muove e la contropartita. Quando un cliente paga 400 € di premio, quei 400 entrano in cassa E diventano un debito verso la compagnia — sono due fatti dello stesso evento, e registrarne uno solo lasciava l'altro alla memoria di chi c'era.",
+        "Le due righe devono pareggiare al centesimo, e lo controlla il database: è il solo controllo che da solo si accorge di un movimento scritto male. Un importo sbagliato su un conto solo non lo vede nessuno; lo stesso importo sbagliato su due righe non quadra, e il salvataggio dice quanto manca e da che parte.",
+        "Testata e righe si scrivono in una transazione sola. Con due richieste, cadendo la seconda, sarebbe rimasto un movimento con una gamba sola: uno che c'è, che si legge e che sembra a posto. E un doppio clic non fa due movimenti: il secondo riconosce il primo e restituisce quello.",
+        "Un movimento registrato non si riscrive e non si cancella più: si STORNA. Lo storno è un movimento nuovo con le righe rovesciate che punta all'originale — il saldo torna quello di prima e restano a registro tutti e due i fatti, l'errore e la correzione. Un movimento vecchio senza righe non si storna: si annulla, e la schermata lo dice.",
+        "I conti hanno tre proprietà nuove: si può usare per pagare un premio, è un conto di crediti (sospesi), si mette in quadratura. La terza è quella che conta: si quadra solo un conto che ha qualcosa di reale con cui confrontarsi — i contanti nel cassetto, gli assegni, l'estratto conto. Quello che non si può contare non si quadra, e chiedere di quadrarlo vuol dire pretendere un numero che nessuno può verificare.",
+        "E un conto si può intestare a una compagnia o a un collaboratore (mai a tutti e due), per sapere quanto si deve a chi.",
+        "In Conti e casse compaiono i dodici conti minimi di una contabilità assicurativa — cassa, assegni, banca, POS da accreditare, sospesi clienti e collaboratori, conto compagnia, abbuoni, incassi diretti in compagnia, partite da identificare. Sono una PROPOSTA: si spuntano quelli che servono e li crea una persona. Nessuno è stato creato in automatico, perché un conto ha un saldo, e dodici saldi a zero che nessuno ha deciso diventano dodici dati dopo due settimane.",
+        "Le causali dicono anche da quale flusso nascono: incasso di un premio, apertura o recupero di un sospeso, giroconto, storno, scritta a mano. Serve a proporre la causale giusta nel posto giusto — e a riconoscere un movimento che ha scritto il sistema, che si corregge dove è nato e non dalla prima nota."
+      ]
+    },
     {
       "v": "0.21.1",
       "data": "2026-09-21",

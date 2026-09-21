@@ -5385,3 +5385,160 @@ cancellare.
 solleva *«Cannot set property promises of #<Object> which has only a getter»*.
 Il finto disco che serve a far cadere la scrittura si costruisce a mano, con i
 soli metodi che il modulo usa davvero.
+
+---
+
+## 54. Contabilità · Fase 1 — le fondamenta a partita doppia (21/09/2026)
+
+Primo pezzo della specifica che Francesco ha consegnato il 21/09
+(`CLAUDE_CODE_IAM_CONTABILITA_SEMPLIFICATA.md`); il piano, con le misure prese
+sul database vero, è in `CONTABILITA-PIANO.md`.
+
+| pezzo | dove |
+|---|---|
+| le regole (stesso motore di M1, M3, M4 e M5) | `tariffe/motore/contabilita.js` — `bilanciato`, `validaRighe`, `righeSemplici`, `righeDi`, `contropartitaDi`, `stornabile`, `storno`, `CONTI_MINIMI`, `GENERI` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **64** (erano 48) |
+| la tabella delle righe, i quattro trigger, la funzione di scrittura | `supabase/migrations/20260922_contab_partita_doppia.sql` (applicata) |
+| i tre flag e i dodici conti proposti | blocco `cnt*` in `iam/index.html` |
+| la contropartita, le righe Dare/Avere, lo storno | blocco `pnt*` in `iam/index.html` |
+| prove sulle schermate | `conti-causali.test.mjs` (16), `prima-nota.test.mjs` (14) |
+
+### La misura che ha deciso QUANDO farlo
+
+Presa prima di scrivere una riga: `iam_movimenti` **1 riga**, `iam_quadrature`
+**0**, `iam_sospesi` **0**. Non c'era niente da migrare, e il modello si è
+cambiato a costo quasi zero. Con qualche centinaio di movimenti scritti sarebbe
+stata una migrazione di dati con il rischio di riscrivere numeri che qualcuno
+ha già letto e usato.
+
+### Perché due righe e non una
+
+Fin qui un movimento era **un conto e un importo**. Basta per una prima nota di
+cassa e non basta per una contabilità assicurativa: quando un cliente paga 400 €
+di premio, quei 400 **entrano in cassa** *e* **diventano un debito verso la
+compagnia**. Sono due fatti dello stesso evento, e un modello che ne registra
+uno solo lascia l'altro alla memoria di chi c'era.
+
+E c'è una ragione che vale più di tutte: **il pareggio è il solo controllo che,
+da solo, si accorge di un movimento scritto male.** Un importo sbagliato su un
+conto solo non lo vede nessuno. Lo stesso importo su due righe non quadra, e lo
+dice il database prima che la riga esista.
+
+### Le tre regole nuove
+
+11. **Dare oppure Avere, mai tutti e due sulla stessa riga.** Una riga con 100
+    di qua e 100 di là si legge come «zero», e allora due righe **diverse**
+    darebbero lo stesso saldo: un totale sbagliato smetterebbe di distinguersi
+    da uno giusto guardando le cifre. Il divieto è un `CHECK`.
+12. **Quello che non si può contare non si quadra.** `e_quadrabile` si mette
+    solo su un conto che ha una realtà contro cui confrontarsi — il cassetto,
+    gli assegni, l'estratto conto. Un conto di crediti non ce l'ha: si legge
+    nello scadenzario, riga per riga. Oggi si quadra tutto, ed è il difetto che
+    il flag chiude.
+13. **Un movimento registrato non si riscrive: si storna.** Lo storno è un
+    movimento **nuovo**, con le righe rovesciate, che punta all'originale.
+    Restano a registro tutti e due i fatti — l'errore e la correzione.
+
+### Chi scrive: una funzione, non due richieste
+
+Testata e righe sono due tabelle, e dalla pagina sarebbero due richieste. Se
+cade la seconda resta **una testata senza righe**: un movimento che c'è, che si
+legge, che sembra a posto, e che non dice da dove viene il denaro. È lo stesso
+ragionamento dell'importazione del portafoglio (§47) — *un'importazione a metà
+che si dichiara è recuperabile, una che sembra finita è un archivio sbagliato
+di cui nessuno sa il perché.*
+
+`iam_movimento_registra(p_movimento, p_righe)` scrive tutto in una transazione,
+è **idempotente sulla chiave** (doppio clic → lo stesso movimento, non due) e,
+se la testata porta `storno_di_movimento_id`, marca l'originale nello stesso
+colpo. È `security invoker`: le politiche valgono per **chi chiama**. Una
+funzione che scavalcasse la RLS sarebbe una seconda regola su chi può scrivere
+in contabilità, e quella che sbaglia sarebbe quella che nessuno guarda.
+
+### Il bilancio si controlla a fine transazione, e non è un dettaglio
+
+`create constraint trigger … deferrable initially deferred`. Le righe arrivano
+una alla volta, e dopo la prima il movimento è **per forza** sbilanciato: un
+trigger immediato vorrebbe dire non poterne scrivere nessuna. Il controllo vero
+si fa quando la transazione chiude, che è il momento in cui il movimento è
+finito.
+
+E la testata bloccata con le righe libere sarebbe **una porta chiusa con la
+finestra aperta**: c'è un quarto trigger che difende anche le righe.
+
+### La domanda che si fa a chi lavora
+
+Non una griglia Dare / Avere — sarebbe chiedergli di fare il ragioniere. Si
+chiedono **due conti**: quello che si muove e la **contropartita**. È una
+domanda a cui sa già rispondere («sono entrati 400 in cassa, erano il premio di
+Rossi da girare alla compagnia»), e le due righe le costruisce il motore con il
+verso che dice la causale (regola 6).
+
+### I movimenti scritti prima si DICHIARANO, non si completano
+
+Quello che c'è ha un conto solo: la contropartita **non è persa, non è mai
+stata scritta**. Il dettaglio la mostra com'è e lo dice in faccia. Un
+«Conto compagnia» aggiunto dal programma sarebbe una cosa che nessuno ha
+deciso, e fra sei mesi nessuno saprebbe che l'ha scritta un programma (§8.1).
+Conseguenza dichiarata: quei movimenti **non si stornano** — non si rovescia
+quello che non c'è. Si annullano, col motivo, e restano a registro.
+
+`conto_id` e `importo` sulla testata **restano**, e da oggi sono il derivato
+della riga singola. Toglierli adesso vorrebbe dire riscrivere `saldo`,
+`quadratura`, `giornata`, `dettaglioConto` e `anomalie` nello stesso colpo —
+cinque funzioni con 34 prove sopra — mentre si cambia il modello: il modo di
+non sapere più quale delle due cose ha rotto l'altra.
+
+### I dodici conti minimi si propongono, non si seminano
+
+Le dieci causali della M1 sono seminate dalla migrazione perché sono un
+**vocabolario**. Un conto no: è un posto dove stanno dei soldi, e **ha un
+saldo**. Dodici saldi a zero che nessuno ha deciso, dopo due settimane, sono
+dodici dati. Quindi stanno in `Contabilita.CONTI_MINIMI`, la schermata li mostra
+con quello che servono, si spuntano e li crea una persona. Chi ne crea sei su
+dodici ne ha creati sei: non manca niente.
+
+Nascono **senza** `saldo_dichiarato_il`, perché zero è anche un saldo vero e
+quella data è l'unica cosa che distingue «è zero» da «nessuno l'ha mai
+scritto» (§43).
+
+### Niente `organization_id`
+
+La specifica lo chiede (principio 7). Misurato: **zero colonne tenant in tutto
+il database**, e `iam_azienda` ha una riga. Una colonna che vale sempre lo
+stesso valore non isola niente, e le prove di «isolamento fra tenant»
+proverebbero una cosa che non esiste. L'isolamento qui è **per ruolo**, ed è
+quello che le politiche fanno: staff legge, admin scrive.
+
+### Un vincolo che sarebbe scattato al primo storno
+
+`origine` ammetteva quattro valori e `storno` non c'era. Senza allargarlo, il
+primo storno sarebbe morto contro un vincolo **dopo** che la schermata aveva
+appena detto «sì, si può stornare». L'ha trovato il collaudo sul database vero,
+non la rilettura: le prove sul sorgente non vedono i `CHECK` che non leggono.
+
+### Le controprove
+
+- Tolto «almeno due righe» da `bilanciato` → rossa la prova della regola 11.
+- `righeDi` che **non** dichiara più un movimento senza righe → rosse **due**
+  prove, quella della lettura e quella dello storno.
+- Le due scritture separate al posto della funzione → rossa la prova della
+  transazione unica.
+- Tolto «già stornato» da `stornabile`, e poi la chiave di idempotenza dello
+  storno con la data dentro (due clic in due giorni = due storni) → rossa la
+  stessa prova, due volte per due motivi diversi.
+
+### Cosa resta aperto
+
+- **La prima nota nasce vuota**, e i saldi iniziali dei conti sono a zero: il
+  ricostruito parte da un numero che non è quello (§29).
+- **Il motore chiede ancora l'ora al computer in tre punti** (`giorniDa`,
+  `sospesiAperti`, `anomalie`), nati con la M4 e la M5. È la famiglia del
+  difetto di §44 e §45; nel blocco della partita doppia non c'è, e una prova lo
+  sorveglia. Gli altri tre sono annotati e non toccati.
+- **`otp-dalla-posta.test.mjs` è rosso su `main` da prima**: cerca
+  `server/otpPosta.js`, che nel repository non c'è. È il guasto §1 al
+  contrario — una prova che sorveglia un modulo mai arrivato.
+- **Le Fasi 2, 3 e 4** (incassi con più rate e più pagamenti, crediti verso
+  clienti e collaboratori, estratti conto e cruscotto) sono il resto della
+  specifica.

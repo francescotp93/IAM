@@ -94,6 +94,28 @@
       quindici. Metterle da una parte a caso vorrebbe dire scrivere in
       contabilita' un fatto che nessuno ha verificato.
 
+   ─── AGGIUNTO CON LA FASE 1 (21/09/2026): LA PARTITA DOPPIA ─────────────────
+
+  11. **Dare oppure Avere, mai tutti e due sulla stessa riga**, e un movimento
+      registrato ha almeno due righe che si pareggiano al centesimo. Una riga
+      con 100 di qua e 100 di la' si legge come «zero», e allora due righe
+      diverse darebbero lo stesso saldo: un totale sbagliato smetterebbe di
+      distinguersi da uno giusto guardando le cifre. E' anche il solo controllo
+      che da solo si accorge di un movimento scritto male.
+
+  12. **Quello che non si puo' contare non si quadra.** Si mette in quadratura
+      solo un conto che ha una realta' contro cui confrontarsi — il cassetto,
+      gli assegni, l'estratto conto della banca. Un conto di crediti non ce
+      l'ha: il suo saldo si legge nello scadenzario, riga per riga. Chiedere di
+      quadrarlo vorrebbe dire pretendere un numero che nessuno puo' verificare.
+
+  13. **Un movimento registrato non si riscrive: si storna.** Lo storno e' un
+      movimento NUOVO, con le righe rovesciate, che punta all'originale. Il
+      saldo torna quello di prima e restano a registro tutti e due i fatti —
+      quello sbagliato e la correzione. Riscrivere il primo li cancellerebbe
+      tutti e due, e resterebbe solo il numero giusto senza la storia di come
+      ci si e' arrivati.
+
    Il motore NON tocca il database e NON disegna: calcola e valida. Lo
    caricano IAM (`iam/index.html`) e il preventivatore, dallo stesso indirizzo
    e dallo stesso file — due copie del vocabolario dei conti vorrebbero dire
@@ -102,7 +124,7 @@
 (function () {
   'use strict';
 
-  var VERSIONE = '2026-09-20c';
+  var VERSIONE = '2026-09-21a';
 
   /* ═══ VOCABOLARI ══════════════════════════════════════════════════════════ */
 
@@ -113,6 +135,15 @@
     { k: 'banca',              l: 'Conto corrente bancario', i: 'ti-building-bank' },
     { k: 'cassa',              l: 'Cassa contanti',          i: 'ti-wallet' },
     { k: 'conto_assicurativo', l: 'Conto assicurativo',      i: 'ti-shield-check' },
+    /* Le quattro tipologie della Fase 1. Non sono decorazione: la prima nota a
+       partita doppia ha bisogno di una contropartita per ogni riga, e senza un
+       posto dove metterla la contropartita finisce «in altro» — cioè in un
+       mucchio dove un POS da accreditare e un credito verso un collaboratore
+       si sommano nello stesso numero. */
+    { k: 'transitorio',        l: 'Transitorio (denaro per strada)', i: 'ti-arrow-right-circle' },
+    { k: 'credito',            l: 'Crediti (sospesi)',       i: 'ti-clock-dollar' },
+    { k: 'debito',             l: 'Debiti e crediti verso terzi', i: 'ti-scale' },
+    { k: 'rettifica',          l: 'Rettifiche (abbuoni)',    i: 'ti-adjustments' },
     { k: 'altro',              l: 'Altro',                   i: 'ti-dots' }
   ];
 
@@ -173,6 +204,38 @@
     { k: 'uscita',  l: 'Uscita',  segno: -1 }
   ];
 
+  /* ═══ IL GENERE DI UNA CAUSALE (Fase 1) ═══════════════════════════════════
+
+     `segno` dice il VERSO, `genere` dice CHI ha scritto il movimento. Sono due
+     domande diverse e senza la seconda restano due indovinelli:
+
+     · quale causale proporre dentro quale flusso (l'incasso di una rata non
+       propone «Pagamento affitti»);
+     · se un movimento l'ha scritto il sistema o una persona. Un movimento nato
+       da un incasso non si corregge dalla prima nota ma DOVE È NATO — altrimenti
+       la rata e la prima nota direbbero due cose diverse, e nessuna delle due
+       saprebbe di essere quella sbagliata (CLAUDE.md §29).
+
+     Le chiavi sono italiane come tutto il resto della casa: la specifica le
+     scrive in inglese (`premium_collection`, `suspense_opening`…) ma è un
+     documento funzionale, non un contratto di database — e un vocabolario
+     metà in inglese dentro `iam_causali.natura`/`segno`/`codice` sarebbe la
+     stessa malattia dei due vocabolari dei mezzi di pagamento. */
+  var GENERI = [
+    { k: 'incasso_premio',   l: 'Incasso di un premio',        i: 'ti-cash',        sistema: true,
+      nota: 'Nasce quando si incassa una rata. Si corregge dall’incasso, non dalla prima nota.' },
+    { k: 'apertura_credito', l: 'Apertura di un sospeso',      i: 'ti-clock-dollar', sistema: true,
+      nota: 'La rata è a copertura e il denaro non è ancora arrivato.' },
+    { k: 'recupero_credito', l: 'Recupero di un sospeso',      i: 'ti-arrow-back-up', sistema: true,
+      nota: 'Il denaro arriva dopo e riduce il residuo del sospeso.' },
+    { k: 'giroconto',        l: 'Giroconto fra due conti',     i: 'ti-transfer',    sistema: false,
+      nota: 'Lo stesso denaro che cambia posto: versamento, prelievo, accredito del POS.' },
+    { k: 'storno',           l: 'Storno di un movimento',      i: 'ti-rotate-2',    sistema: true,
+      nota: 'Il movimento inverso che annulla un altro movimento e resta a registro.' },
+    { k: 'manuale',          l: 'Scritta a mano in prima nota', i: 'ti-pencil',     sistema: false,
+      nota: 'Affitti, utenze, stipendi, spese: le scrive una persona.' }
+  ];
+
   /* Le dieci causali del brief, alla lettera. Questo elenco e il `insert` della
      migrazione `20260919_b02_m1_conti_e_causali.sql` devono dire la stessa
      cosa: c'è una prova che li confronta riga per riga, perché due elenchi
@@ -196,6 +259,83 @@
      nome cambia e il codice no. */
   var CAUSALE_INCASSO = 'incasso_premi';
   var CAUSALE_RIMESSA = 'rimesse_compagnia';
+
+  /* ═══ I DODICI CONTI MINIMI (Fase 1) ══════════════════════════════════════
+
+     Sono la tabella §5 della specifica, tradotta nei campi di `iam_conti`.
+
+     ┌─────────────────────────────────────────────────────────────────────────┐
+     │ STANNO QUI E NON NELLA MIGRAZIONE, ED È LA COSA PIÙ IMPORTANTE DI       │
+     │ TUTTO IL BLOCCO.                                                        │
+     │                                                                         │
+     │ Una migrazione che semina dodici conti mette nella contabilità          │
+     │ dell'agenzia dodici conti che nessuno ha deciso, tutti con saldo zero,  │
+     │ e da domani quello zero è un dato (regola di casa §8.1). Le dieci       │
+     │ causali della M1 sono state seminate perché sono un VOCABOLARIO; un     │
+     │ conto è un posto dove stanno dei soldi, e ha un saldo.                  │
+     │                                                                         │
+     │ Quindi: qui c'è la PROPOSTA, la schermata la mostra con i campi         │
+     │ modificabili, e a creare è una persona. Chi ne crea sei su dodici ne ha │
+     │ creati sei: non manca niente, mancano sei conti che non gli servono.    │
+     └─────────────────────────────────────────────────────────────────────────┘
+
+     Perché non c'è un `codice`: `iam_conti` non ha quella colonna e la chiave
+     leggibile è il NOME, che è già unico (`validaConto` lo controlla, e c'è un
+     indice). La specifica dice «se IAM possiede già un sistema di codici,
+     rispettarlo»: qui il sistema è il nome per i conti e il codice per le
+     causali, e aggiungerne un secondo vorrebbe dire due modi di nominare la
+     stessa cosa.
+
+     `natura` è **premi** su tutti e dodici, e non è una svista: sono i dodici
+     posti in cui passa il denaro DEI CLIENTI dal momento in cui lo pagano a
+     quello in cui arriva in compagnia. Le due rettifiche sono il caso che si
+     discute — un abbuono lo sopporta l'agenzia — ma il movimento in cui
+     compaiono è la chiusura di un incasso di premi, e lì vivono. Il giorno in
+     cui l'abbuono dovrà pesare sul conto economico dell'agenzia si deciderà
+     con la Fase 2, che è quella che li scrive: oggi nessuno li scrive.
+
+     `mezzi` resta VUOTO su tutti. Quale mezzo arriva su quale conto è una
+     decisione dell'agenzia (regola 9), e proporla vorrebbe dire che un giorno
+     un POS si accredita sul conto sbagliato perché nessuno ha letto la
+     proposta. */
+  var CONTI_MINIMI = [
+    { nome: 'Cassa contanti',              tipologia: 'cassa',              natura: 'premi', ordine: 10,
+      e_mezzo_pagamento: true,  e_conto_sospeso: false, e_quadrabile: true,
+      note: 'I contanti che stanno nel cassetto. Si quadra contandoli.' },
+    { nome: 'Assegni da versare',          tipologia: 'cassa',              natura: 'premi', ordine: 20,
+      e_mezzo_pagamento: true,  e_conto_sospeso: false, e_quadrabile: true,
+      note: 'Gli assegni ricevuti e non ancora versati. Si quadra contando i pezzi di carta.' },
+    { nome: 'Banca assicurativa',          tipologia: 'conto_assicurativo', natura: 'premi', ordine: 30,
+      e_mezzo_pagamento: true,  e_conto_sospeso: false, e_quadrabile: true,
+      note: 'Il conto separato dei premi (art. 117 CAP). Si quadra con l’estratto conto.' },
+    { nome: 'POS da accreditare',          tipologia: 'transitorio',        natura: 'premi', ordine: 40,
+      e_mezzo_pagamento: true,  e_conto_sospeso: false, e_quadrabile: true,
+      note: 'Il cliente ha pagato, l’accredito arriva dopo. Qui vive il tempo in mezzo.' },
+    { nome: 'Sospesi clienti',             tipologia: 'credito',            natura: 'premi', ordine: 50,
+      e_mezzo_pagamento: true,  e_conto_sospeso: true,  e_quadrabile: false,
+      note: 'Premi messi a copertura e non ancora ricevuti dal cliente. Non si quadra contando: si legge nello scadenzario, riga per riga.' },
+    { nome: 'Sospesi collaboratori',       tipologia: 'credito',            natura: 'premi', ordine: 60,
+      e_mezzo_pagamento: true,  e_conto_sospeso: true,  e_quadrabile: false,
+      note: 'Premi incassati da un collaboratore e non ancora rimessi in agenzia.' },
+    { nome: 'Conto compagnia',             tipologia: 'debito',             natura: 'premi', ordine: 70,
+      e_mezzo_pagamento: false, e_conto_sospeso: false, e_quadrabile: true,
+      note: 'Quello che si deve alla compagnia. Non è un modo di pagare: è il debito che l’incasso crea.' },
+    { nome: 'Conto collaborazione',        tipologia: 'debito',             natura: 'premi', ordine: 80,
+      e_mezzo_pagamento: false, e_conto_sospeso: false, e_quadrabile: true,
+      note: 'I rapporti con l’altra agenzia in collaborazione.' },
+    { nome: 'Abbuoni passivi',             tipologia: 'rettifica',          natura: 'premi', ordine: 90,
+      e_mezzo_pagamento: true,  e_conto_sospeso: false, e_quadrabile: true,
+      note: 'I centesimi che l’agenzia lascia per chiudere un incasso. Senza questo conto un incasso di 99,98 su 100,00 non quadra e nessuno sa dove mettere la differenza.' },
+    { nome: 'Eccedenze e abbuoni attivi',  tipologia: 'rettifica',          natura: 'premi', ordine: 100,
+      e_mezzo_pagamento: true,  e_conto_sospeso: false, e_quadrabile: true,
+      note: 'Il caso opposto: il cliente ha dato qualcosa in più.' },
+    { nome: 'Incassi diretti in compagnia', tipologia: 'transitorio',       natura: 'premi', ordine: 110,
+      e_mezzo_pagamento: true,  e_conto_sospeso: false, e_quadrabile: true,
+      note: 'Il cliente ha pagato la compagnia, non noi. La rata si chiude lo stesso e in agenzia non entra un euro.' },
+    { nome: 'Partite da identificare',     tipologia: 'transitorio',        natura: 'premi', ordine: 120,
+      e_mezzo_pagamento: true,  e_conto_sospeso: false, e_quadrabile: true,
+      note: 'Il bonifico arrivato senza sapere di chi è. Un posto dichiarato dove metterlo è meglio di un posto scelto a caso.' }
+  ];
 
   /* ═══ ATTREZZI ════════════════════════════════════════════════════════════ */
 
@@ -325,6 +465,42 @@
       avvisi.push('Questo è il conto delle rimesse ma non ha l’IBAN: finché manca, l’estratto conto lo dichiara invece di scrivere le coordinate.');
     }
 
+    /* ── Fase 1: i tre flag ───────────────────────────────────────────────
+       Sono booleani e hanno un default sul database, quindi «assente» vuol
+       dire «il default»: si controlla solo quello che è stato scritto. */
+    ['e_mezzo_pagamento', 'e_conto_sospeso', 'e_quadrabile'].forEach(function (f) {
+      if (c[f] != null && c[f] !== true && c[f] !== false) e.push('Il campo «' + f + '» può essere solo sì o no.');
+    });
+
+    /* Un conto è di UNA compagnia o di UN collaboratore, mai di tutti e due:
+       l'estratto conto verso la compagnia e quello verso il collaboratore
+       sono due documenti diversi, e un conto che appartiene a entrambi
+       finirebbe in tutti e due con lo stesso saldo. */
+    if (c.compagnia_id && c.collaboratore_id) {
+      e.push('Un conto si intesta a una compagnia oppure a un collaboratore, non a tutti e due: altrimenti lo stesso saldo comparirebbe in due estratti conto diversi.');
+    }
+
+    /* Il guasto muto del 21/09, in forma di avviso: la spunta «è un modo di
+       pagare» senza nessun mezzo dichiarato non intercetta NIENTE — è la
+       cassa contanti configurata a puntino e inerte per costruzione. */
+    var quantiMezzi = Array.isArray(c.mezzi) ? c.mezzi.length : 0;
+    if (c.e_mezzo_pagamento === true && quantiMezzi === 0) {
+      avvisi.push('Questo conto è dichiarato «modo di pagare» ma non dice quali mezzi riceve: finché resta così, nessun incasso ci arriverà mai.');
+    }
+    if (c.e_mezzo_pagamento === false && quantiMezzi > 0) {
+      avvisi.push('Questo conto dichiara dei mezzi di pagamento ma non è segnato come «modo di pagare»: uno dei due campi dice il contrario dell’altro.');
+    }
+
+    /* Regola 12: quello che non si può contare non si quadra. Un conto di
+       crediti non ha una carta contro cui confrontarsi — il suo saldo si
+       legge riga per riga nello scadenzario. */
+    if (c.e_conto_sospeso === true && c.e_quadrabile === true) {
+      avvisi.push('Un conto di crediti (sospesi) non si quadra contando: il suo saldo si controlla nello scadenzario, riga per riga. Togli la spunta «si quadra» se non hai una carta con cui confrontarlo.');
+    }
+    if (c.tipologia === 'debito' && c.e_mezzo_pagamento === true) {
+      avvisi.push('Un conto di debito verso la compagnia non è un modo di pagare: è il debito che l’incasso crea. Controlla la spunta.');
+    }
+
     return { ok: e.length === 0, errori: e, avvisi: avvisi };
   }
 
@@ -341,6 +517,10 @@
     if (c.incide_su_utile !== true && c.incide_su_utile !== false) e.push('Di’ se questa causale incide sull’utile: è quello che distingue un ricavo o un costo veri dal denaro solo in transito.');
 
     if (c.natura != null && c.natura !== '' && !etichetta(NATURE, c.natura)) e.push('Natura non valida.');
+
+    /* Fase 1. `genere` ha un default sul database (`manuale`), quindi assente
+       vuol dire «scritta a mano»: si controlla solo quello che c'è scritto. */
+    if (c.genere != null && c.genere !== '' && !etichetta(GENERI, c.genere)) e.push('Genere non valido: dice da quale flusso nasce il movimento.');
 
     var cod = testo(c.codice);
     if (cod && !/^[a-z0-9_]{2,40}$/.test(cod)) e.push('Il codice può avere solo lettere minuscole, cifre e trattini bassi.');
@@ -810,6 +990,287 @@
     return e;
   }
 
+  /* ═══ LA PARTITA DOPPIA (Fase 1, 21/09/2026) ══════════════════════════════
+
+     Fin qui un movimento era UN conto e UN importo. Bastava per una prima nota
+     di cassa e non basta per una contabilità assicurativa: quando un cliente
+     paga 400 € di premio, quei 400 € entrano in cassa E diventano un debito
+     verso la compagnia. Sono due fatti dello stesso evento, e un modello che
+     ne registra uno solo lascia l'altro alla memoria di chi c'era.
+
+     Da qui in avanti un movimento ha ALMENO DUE righe, e la somma di quelle in
+     Dare è uguale alla somma di quelle in Avere. Non è una formalità da
+     ragionieri: è il solo controllo che, da solo, si accorge di un movimento
+     scritto male. Un importo sbagliato su un conto solo non lo vede nessuno;
+     lo stesso importo sbagliato su due righe non quadra, e lo dice il database.
+
+     Le tre regole nuove, e sono in fondo al file di testa come le altre dieci:
+
+     11. **Dare oppure Avere, mai tutti e due sulla stessa riga.** Una riga con
+         100 in Dare e 100 in Avere si legge come «zero», e allora due righe
+         diverse darebbero lo stesso saldo: un totale sbagliato smetterebbe di
+         distinguersi da uno giusto guardando le cifre.
+     12. **Quello che non si può contare non si quadra.** Si mette in
+         quadratura solo un conto che ha una realtà contro cui confrontarsi —
+         il cassetto, gli assegni, l'estratto conto. Un conto di crediti non
+         ce l'ha: si legge nello scadenzario, riga per riga.
+     13. **Un movimento registrato non si riscrive: si storna.** Lo storno è un
+         movimento NUOVO, con le righe rovesciate, che punta all'originale. Il
+         saldo torna quello di prima e restano a registro tutti e due i fatti —
+         quello sbagliato e la correzione. Riscrivere il primo li cancellerebbe
+         tutti e due. */
+
+  /* Quadra? Ritorna i due totali, la differenza e il motivo per esteso. È la
+     stessa regola del trigger `iam_mov_bilancio`, detta prima e con parole che
+     si capiscono: il controllo vero sta nel database perché la schermata è una
+     delle strade, ma far fallire un `insert` per dire a una persona che ha
+     scritto 90 invece di 100 è il modo peggiore di dirglielo. */
+  function bilanciato(righe) {
+    var r = (righe || []).filter(function (x) { return !!x; });
+    var d = 0, a = 0;
+    r.forEach(function (x) {
+      d = cent(d + (numero(x.dare) || 0));
+      a = cent(a + (numero(x.avere) || 0));
+    });
+    var diff = cent(d - a);
+    var esito = { ok: false, dare: d, avere: a, differenza: diff, righe: r.length, motivo: null };
+
+    if (r.length === 0) { esito.motivo = 'Il movimento non ha righe.'; return esito; }
+    if (r.length < 2) {
+      esito.motivo = 'C’è una riga sola: la partita doppia ne vuole almeno due — da dove esce il denaro e dove entra.';
+      return esito;
+    }
+    if (diff !== 0) {
+      esito.motivo = 'Il movimento non quadra: ' + euro(d) + ' in Dare contro ' + euro(a) + ' in Avere. ' +
+        (diff > 0 ? 'Mancano ' + euro(diff) + ' in Avere.' : 'Mancano ' + euro(-diff) + ' in Dare.');
+      return esito;
+    }
+    esito.ok = true;
+    return esito;
+  }
+
+  /* Che cosa deve avere OGNI riga. Ritorna l'elenco completo degli errori, come
+     `validaConto`: correggere un campo per giro fa smettere di compilare. */
+  function validaRighe(righe, opz) {
+    opz = opz || {};
+    var conti = opz.conti ? indice(opz.conti) : null;
+    var e = [];
+    var r = (righe || []).filter(function (x) { return !!x; });
+
+    r.forEach(function (x, i) {
+      var n = 'Riga ' + (i + 1) + ': ';
+      var c = conti && x.conto_id ? conti[x.conto_id] : null;
+      if (!x.conto_id) e.push(n + 'scegli il conto.');
+      else if (conti && !c) e.push(n + 'quel conto non esiste più.');
+      else if (c && c.attivo === false) e.push(n + 'il conto «' + testo(c.nome) + '» è spento: non ci si registra più niente.');
+
+      var d = numero(x.dare)  || 0;
+      var a = numero(x.avere) || 0;
+      /* Regola 11, detta con le parole del mestiere e non con quelle del
+         vincolo: chi compila non sa che cos'è un CHECK. */
+      if (d > 0 && a > 0) e.push(n + 'ha un importo sia in Dare sia in Avere. Una riga va da una parte sola: se sono due fatti, sono due righe.');
+      else if (d === 0 && a === 0) e.push(n + 'non ha importo. Una riga a zero non muove niente: toglila.');
+      else if (d < 0 || a < 0) e.push(n + 'ha un importo negativo. Il verso lo dice la colonna — Dare o Avere — non il segno.');
+    });
+
+    var b = bilanciato(r);
+    if (!b.ok && b.motivo) e.push(b.motivo);
+    return e;
+  }
+
+  /* ── LE DUE RIGHE DI UN MOVIMENTO SEMPLICE ───────────────────────────────
+
+     Nella prima nota di tutti i giorni un movimento ha due sole righe: il
+     conto che si muove e la CONTROPARTITA, cioè da dove il denaro arriva o
+     dove va a finire. Chiedere a chi lavora di compilare una griglia Dare /
+     Avere sarebbe chiedergli di fare il ragioniere; chiedergli DUE conti è
+     una domanda che sa già rispondere («sono entrati 400 in cassa, erano il
+     premio di Rossi da girare alla compagnia»).
+
+     Il verso lo decide la causale, come sempre (regola 6): su un conto di
+     denaro un'ENTRATA è Dare e un'USCITA è Avere. Se il verso non si sa, non
+     si scrivono righe — si dice perché. */
+  function righeSemplici(m, opz) {
+    opz = opz || {};
+    m = m || {};
+    var causali = opz.causali ? indice(opz.causali) : null;
+    var imp = numero(m.importo);
+    var v = versoDi(m, causali);
+
+    if (!m.conto_id) return { ok: false, righe: [], motivo: 'Scegli il conto che si muove.' };
+    if (!m.contropartita_id) {
+      return { ok: false, righe: [], motivo: 'Scegli la contropartita: è l’altro conto, quello da cui il denaro arriva o su cui va a finire. Senza, il movimento ha una gamba sola.' };
+    }
+    if (m.conto_id === m.contropartita_id) {
+      return { ok: false, righe: [], motivo: 'Il conto e la contropartita sono lo stesso: un movimento da un conto a se stesso non muove niente.' };
+    }
+    if (imp == null || imp <= 0) return { ok: false, righe: [], motivo: 'Metti l’importo, positivo.' };
+    if (!v) {
+      return { ok: false, righe: [], motivo: 'Non si sa se è un’entrata o un’uscita: lo dice la causale, e questa non lo dichiara. Senza il verso non si indovina da che parte scrivere.' };
+    }
+
+    return {
+      ok: true, motivo: null,
+      righe: [
+        { conto_id: m.conto_id,          dare: v > 0 ? imp : 0, avere: v > 0 ? 0 : imp, ordine: 0 },
+        { conto_id: m.contropartita_id,  dare: v > 0 ? 0 : imp, avere: v > 0 ? imp : 0, ordine: 1 }
+      ]
+    };
+  }
+
+  /* La contropartita di un movimento già scritto: è la riga che NON è quella
+     del conto in testata. Serve a riaprire la finestra con il campo pieno —
+     una finestra che si riapre vuota fa credere che il dato non ci sia. */
+  function contropartitaDi(movimento, righe) {
+    var r = righeDi(movimento || {}, righe || []);
+    if (r.derivate || r.righe.length !== 2) return null;
+    var altra = r.righe.filter(function (x) { return x.conto_id !== (movimento || {}).conto_id; });
+    return altra.length === 1 ? altra[0].conto_id : null;
+  }
+
+  /* Le righe di un movimento, per chi lo deve MOSTRARE.
+     Ed è qui che si dice la verità sui movimenti scritti prima di oggi: la
+     prima nota esiste dal 20/09 e ha un conto solo per movimento, quindi la
+     contropartita non c'è — non è persa, non è stata scritta. Si dichiara e
+     non si inventa (regola di casa §8.1): un movimento a cui il sistema
+     aggiungesse da sé «Conto compagnia» direbbe una cosa che nessuno ha mai
+     deciso, e fra sei mesi nessuno saprebbe che l'ha scritta un programma. */
+  function righeDi(movimento, righe, opz) {
+    opz = opz || {};
+    var m = movimento || {};
+    var mie = (righe || []).filter(function (x) { return x && x.movimento_id === m.id; });
+
+    if (mie.length) {
+      mie = mie.slice().sort(function (x, y) {
+        var a = (x.ordine || 0) - (y.ordine || 0);
+        if (a) return a;
+        return testo(x.creato_il) < testo(y.creato_il) ? -1 : 1;
+      });
+      var b = bilanciato(mie);
+      return {
+        righe: mie, derivate: false, quadra: b.ok, dare: b.dare, avere: b.avere,
+        motivo: b.ok ? null : b.motivo, nota: null
+      };
+    }
+
+    /* Nessuna riga: è un movimento della prima nota a conto singolo. */
+    var causali = opz.causali ? indice(opz.causali) : null;
+    var v = versoDi(m, causali);
+    var imp = numero(m.importo);
+    var una = {
+      conto_id: m.conto_id,
+      dare:  v > 0 && imp != null ? Math.abs(imp) : 0,
+      avere: v < 0 && imp != null ? Math.abs(imp) : 0,
+      descrizione: testo(m.descrizione) || null,
+      derivata: true
+    };
+    return {
+      righe: (v && imp != null) ? [una] : [],
+      derivate: true, quadra: false,
+      dare: una.dare, avere: una.avere,
+      motivo: null,
+      nota: (v && imp != null)
+        ? 'Questo movimento è stato scritto prima della partita doppia: ha un conto solo e la contropartita non è mai stata registrata. Non si indovina — si legge com’è.'
+        : 'Questo movimento è stato scritto prima della partita doppia e non se ne ricava nemmeno una riga: manca l’importo o il verso.'
+    };
+  }
+
+  /* Si può stornare? Una funzione sola, due porte: la schermata la chiama per
+     decidere se accendere il bottone, e `storno()` la chiama per rifiutare.
+     Due controlli scritti a mano sarebbero due regole, e quella sbagliata
+     sarebbe quella che nessuno guarda. */
+  function stornabile(movimento, righe) {
+    var m = movimento || {};
+    if (!m.id) return { ok: false, motivo: 'Non c’è nessun movimento da stornare.' };
+    if (m.stato === 'bozza') return { ok: false, motivo: 'È una bozza: non è ancora stata registrata, quindi non c’è niente da stornare. Si corregge e si registra.' };
+    if (m.stato === 'stornato') return { ok: false, motivo: 'Questo movimento è già stato stornato: cercane lo storno invece di farne un secondo.' };
+    if (m.annullato_il) return { ok: false, motivo: 'Questo movimento è già annullato: è fuori da tutti i totali e non c’è niente da rovesciare.' };
+
+    var r = righeDi(m, righe || []);
+    if (r.derivate) {
+      return { ok: false, motivo: 'Questo movimento è stato scritto prima della partita doppia e non ha righe: non si può rovesciare quello che non c’è. Si annulla, col motivo, e resta a registro.' };
+    }
+    if (!r.quadra) {
+      return { ok: false, motivo: 'Questo movimento non quadra: ' + (r.motivo || 'Dare e Avere non coincidono') + '. Uno storno di un movimento sbilanciato sposterebbe la differenza invece di toglierla.' };
+    }
+    return { ok: true, motivo: null };
+  }
+
+  /* Lo storno: un movimento NUOVO con le righe rovesciate.
+     Non si tocca l'originale — è la regola 13, ed è anche quello che i trigger
+     del database impongono comunque.
+
+     La data la passa CHI CHIAMA (`opz.oggi`). Il motore non chiede mai l'ora
+     al computer di chi guarda: una funzione che lo fa dà risposte diverse a
+     due persone sullo stesso dato, ed è il difetto già pagato due volte con le
+     date delle polizze e col monitor dei collegamenti. */
+  function storno(movimento, righe, opz) {
+    opz = opz || {};
+    var m = movimento || {};
+
+    var puo = stornabile(m, righe);
+    if (!puo.ok) return { ok: false, motivo: puo.motivo };
+
+    var oggi = testo(opz.oggi);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(oggi)) {
+      return { ok: false, motivo: 'Manca la data dello storno: è il giorno in cui si corregge, e la sceglie chi corregge.' };
+    }
+    var perche = testo(opz.perche);
+    if (!perche) {
+      return { ok: false, motivo: 'Per stornare serve il motivo: fra sei mesi è l’unica cosa che spiega perché ci sono due movimenti uguali e contrari.' };
+    }
+
+    var r = righeDi(m, righe || []);
+    var rovesciate = r.righe.map(function (x, i) {
+      return {
+        conto_id: x.conto_id,
+        dare:  numero(x.avere) || 0,
+        avere: numero(x.dare)  || 0,
+        descrizione: testo(x.descrizione) || null,
+        ordine: i,
+        compagnia_id: x.compagnia_id || null,
+        cliente_id: x.cliente_id || null,
+        collaboratore_id: x.collaboratore_id || null,
+        polizza_id: x.polizza_id || null,
+        titolo_id: x.titolo_id || null
+      };
+    });
+
+    var etich = m.numero != null ? ('n. ' + m.numero) : 'precedente';
+    return {
+      ok: true,
+      motivo: null,
+      movimento: {
+        data: oggi,
+        conto_id: m.conto_id,
+        causale_id: m.causale_id,
+        importo: numero(m.importo),
+        descrizione: 'Storno del movimento ' + etich + ' — ' + perche,
+        storno_di_movimento_id: m.id,
+        storno_perche: perche,
+        stato: 'registrato',
+        origine: 'storno',
+        collaboratore_id: m.collaboratore_id || null,
+        polizza_id: m.polizza_id || null,
+        titolo_id: m.titolo_id || null,
+        /* Doppio clic, rete che cade, tasto premuto due volte: la chiave è la
+           stessa e il database rifiuta il secondo. Uno storno duplicato
+           rovescerebbe il movimento due volte, e il saldo finirebbe dalla
+           parte opposta di quella giusta. */
+        chiave_idempotenza: 'storno:' + m.id
+      },
+      righe: rovesciate,
+      /* Quello che va scritto sull'ORIGINALE: solo le colonne dello storno.
+         Tutto il resto è storia, e i trigger lo difendono. */
+      aggiorna: {
+        stato: 'stornato',
+        storno_perche: perche,
+        stornato_il: testo(opz.adesso) || null,
+        stornato_da: opz.utente || null
+      }
+    };
+  }
+
   /* Entrate, uscite e differenza su un mucchio di movimenti già filtrato dalla
      schermata. Serve alla barra della prima nota. Gli annullati si contano a
      parte: dire «12 movimenti» quando tre sono annullati è un numero che non
@@ -1270,9 +1731,13 @@
 
   var API = {
     VERSIONE: VERSIONE,
-    TIPOLOGIE: TIPOLOGIE, NATURE: NATURE, SEGNI: SEGNI,
-    CAUSALI_INIZIALI: CAUSALI_INIZIALI,
+    TIPOLOGIE: TIPOLOGIE, NATURE: NATURE, SEGNI: SEGNI, GENERI: GENERI,
+    CAUSALI_INIZIALI: CAUSALI_INIZIALI, CONTI_MINIMI: CONTI_MINIMI,
     CAUSALE_INCASSO: CAUSALE_INCASSO, CAUSALE_RIMESSA: CAUSALE_RIMESSA,
+    /* Fase 1 — la partita doppia */
+    bilanciato: bilanciato, validaRighe: validaRighe, righeDi: righeDi,
+    righeSemplici: righeSemplici, contropartitaDi: contropartitaDi,
+    stornabile: stornabile, storno: storno,
     validaConto: validaConto, validaCausale: validaCausale, codiceDa: codiceDa,
     compatibile: compatibile, causaliPerConto: causaliPerConto,
     saldo: saldo, saldi: saldi, progressivo: progressivo,

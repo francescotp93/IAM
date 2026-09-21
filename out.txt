@@ -1,28 +1,45 @@
-id: 1790001876  exit: 0  2026-09-21 14:44:53
+id: 1790002936  exit: 0  2026-09-21 15:02:26
 ----
-== commit vivo sul VPS ==
-e23f0a4
-0.15.0 → 0.20.0 — Produzione, import tutto-o-niente, brief Anagrafiche, e il grafico della Scrivania (#225)
+== variabili d'ambiente del backend: PRESENZA e LUNGHEZZA, mai il valore ==
+SUPABASE_URL: ASSENTE
+SUPABASE_ANON_KEY: ASSENTE
+SUPABASE_SERVICE_ROLE_KEY: ASSENTE
+SUPABASE_SERVICE_KEY: ASSENTE
+ARCHIVIO_CHIAVE: ASSENTE
+ARCHIVIO_DIR: ASSENTE
 
-== versione annotata nei due documenti ==
-app-versione" content="0.20.0"
-app-versione-nome" content="Il grafico dei volumi è un grafico"
-app-versione" content="0.20.0"
-app-versione-nome" content="Il grafico dei volumi è un grafico"
+== e nel file .env se esiste ==
+--- /opt/withus-backend/server/.env
+BREVO_API_KEY= <valore, nascosto>
+MAIL_ALLOWED_EMAILS= <valore, nascosto>
+MAIL_PASS= <valore, nascosto>
+MAIL_PASS_2= <valore, nascosto>
+MAIL_PASS_3= <valore, nascosto>
+MAIL_SELFTEST_KEY= <valore, nascosto>
+MAIL_USER= <valore, nascosto>
+MAIL_USER_2= <valore, nascosto>
+MAIL_USER_3= <valore, nascosto>
+NOTIFY_FROM= <valore, nascosto>
+NOTIFY_NAME= <valore, nascosto>
+PAYPAL_CLIENT_ID= <valore, nascosto>
+PAYPAL_ENV= <valore, nascosto>
+PAYPAL_SECRET= <valore, nascosto>
+STRIPE_PUBLISHABLE_KEY= <valore, nascosto>
+STRIPE_SECRET_KEY= <valore, nascosto>
+SUPABASE_JWT_SECRET= <valore, nascosto>
+SUPABASE_SERVICE_ROLE_KEY= <valore, nascosto>
+SELF_URL= <valore, nascosto>
+HDI_SCRAPER_URL= <valore, nascosto>
 
-== versione.json servito ==
-{
-  "versione": "0.20.0",
-  "nome": "Il grafico dei volumi è un grafico",
-  "data": "2026-09-21",
-  "storia": [
-    {
-      "v": "0.20.0",
-      "data": "2026
-== il grafico c'e'? ==
-6
+MAIL_DIGEST_KEY= <valore, nascosto>
 
-== IAM risponde dal vivo ==
-200
-app-versione" content="0.20.0"
-app-versione-nome" content="Il grafico dei volumi è un grafico"
+SUPABASE_URL= <valore, nascosto>
+FONTI_SECRET= <valore, nascosto>
+
+# Sospesa il 02/08/2026 su richiesta di Francesco: mandava una mail a ogni
+# oscillazione di stato di una fonte, e lo stato vive solo in memoria, quindi
+# ogni riavvio del backend la faceva ricominciare. Rimettere a 1 (o togliere la
+# riga) per riaccenderla.
+
+== la cartella dell'archivio cifrato ==
+ARCHIVIO_DIR=(non impostata)

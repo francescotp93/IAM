@@ -134,6 +134,54 @@ prova('chi è fermo da più tempo viene prima, e chi è a posto per ultimo', () 
   return 'spento, da collegare, incerta, collegata';
 });
 
+prova('IL «DA QUANDO» NON CHIEDE L\'ORA ALLA MACCHINA', () => {
+  /* Difetto trovato il 21/09/2026, e si vedeva solo passando un giorno.
+     `confronta` passa l'istante di riferimento come NUMERO di millisecondi;
+     `quando()` lo dava in pasto a `Date.parse`, che prima lo trasforma in
+     stringa — e «1758362400000» non è una data, è NaN. Quindi si prendeva il
+     ripiego `Date.now()`: l'etichetta «da quanto» si calcolava sull'orologio
+     della macchina invece che sull'istante chiesto.
+
+     In produzione i due coincidono quasi sempre, quindi non si vedeva. Si è
+     visto quando una prova scritta ieri, con un istante fisso, è diventata
+     rossa oggi — cioè quando la distanza fra i due ha superato un giorno.
+     È la stessa famiglia del difetto delle date di §44: una funzione che
+     chiede l'ora al computer di chi guarda dà risposte diverse a due persone
+     sullo stesso dato. */
+  const iso = ORA, num = Date.parse(ORA);
+  const a1 = K.durata(meno(2 * ORE), iso);
+  const a2 = K.durata(meno(2 * ORE), num);
+  deve(a1.testo === a2.testo && a1.ms === a2.ms,
+    'con un numero risponde un\'altra cosa: ' + a1.testo + ' / ' + a2.testo);
+  deve(a1.testo === 'da 2 ore', 'due ore non sono due ore: ' + a1.testo);
+  /* E una riga appena osservata è ferma da ZERO, non da quanto è vecchio il
+     campione: `dal` uguale all'istante di riferimento. */
+  const r = K.confronta([SPENTO], [], ORA).righe[0];
+  deve(r.da_quanto === 'da poco', 'una prima osservazione non è «da poco»: ' + r.da_quanto);
+  deve(r.da_quanto_ms === 0, 'i millisecondi non sono zero: ' + r.da_quanto_ms);
+  return 'numero e stringa dicono la stessa cosa';
+});
+
+prova('il conteggio delle ferme si fa sui MILLISECONDI, non sulla frase', () => {
+  /* Il riepilogo contava le ferme da oltre un giorno cercando la parola
+     «giorn» dentro l'etichetta. Un numero ricavato da una frase cambia il
+     giorno in cui qualcuno riscrive la frase — e nessuno collega le due cose.
+     Qui si controlla che il conto venga dal tempo, non dal testo. */
+  const righe = [
+    { stato: 'fuori',  da_quanto: 'da 5 giorni', da_quanto_ms: 5 * GIORNO },
+    { stato: 'boh',    da_quanto: 'da 2 ore',    da_quanto_ms: 2 * ORE },
+    { stato: 'dentro', da_quanto: 'da 9 giorni', da_quanto_ms: 9 * GIORNO },
+    /* La riga cattiva: la frase non nomina i giorni, il tempo sì. */
+    { stato: 'spento', da_quanto: 'da 30 ore',   da_quanto_ms: 30 * ORE }
+  ];
+  const r = K.riepilogo(righe);
+  deve(r.ferme_da_oltre_un_giorno === 2,
+    'le ferme da oltre un giorno non sono due: ' + r.ferme_da_oltre_un_giorno);
+  /* Una collegata da un mese non è un problema, e resta fuori dal conto. */
+  deve(r.dentro === 1, 'la collegata non si conta come collegata');
+  return '2 su 4, e la collegata fuori';
+});
+
 prova('la tabella della memoria esiste, ed è una riga per fonte, non un registro', () => {
   const sql = readFileSync(join(RADICE, 'supabase/migrations/20260920_collegamenti_stato.sql'), 'utf8');
   /* Solo le righe di CODICE: i commenti di una migrazione spiegano anche

@@ -1,15 +1,20 @@
-pid=$(systemctl show withus-backend -p MainPID --value 2>/dev/null)
-echo "pid backend: ${pid:-(non trovato)}"
-if [ -n "$pid" ] && [ -r "/proc/$pid/environ" ]; then
-  echo "== nomi delle variabili viste DAL PROCESSO, con la sola lunghezza del valore =="
-  tr '\0' '\n' < "/proc/$pid/environ" | awk -F= '{n=$1; v=substr($0,length(n)+2); printf "%s : %d\n", n, length(v)}' | sort
+ENV=/opt/withus-backend/server/.env
+SRC=/opt/withus-backend/index.html
+echo "== prima =="
+grep -q '^SUPABASE_ANON_KEY=' "$ENV" && echo "SUPABASE_ANON_KEY: gia' presente" || echo "SUPABASE_ANON_KEY: assente"
+K=$(sed -nE "s/^const SUPABASE_KEY *= *'([^']+)'.*/\1/p" "$SRC" | head -1)
+if [ -z "$K" ]; then echo "NON TROVATA nel client: non tocco niente"; exit 1; fi
+echo "chiave pubblica letta dal client: ${#K} caratteri"
+if ! grep -q '^SUPABASE_ANON_KEY=' "$ENV"; then
+  cp -a "$ENV" "${ENV}.bak-$(date +%Y%m%d%H%M%S)"
+  printf '\n# 21/09/2026 — la chiave ANONIMA (pubblica, la stessa del client): serve al\n# modulo archivio per scrivere i metadati con il token di chi carica.\nSUPABASE_ANON_KEY=%s\n' "$K" >> "$ENV"
+  echo "scritta nel .env (backup accanto)"
 else
-  echo "non leggibile"
+  echo "non riscritta"
 fi
-echo
-echo "== il modulo archivio risponde? =="
-curl -s -o /dev/null -w 'POST /archivio/carica -> %{http_code}\n' -X POST http://127.0.0.1:8080/archivio/carica 2>/dev/null
-curl -s http://127.0.0.1:8080/archivio/carica -X POST 2>/dev/null | head -c 300
-echo
-echo "== avvisi all'avvio nei log =="
-journalctl -u withus-backend -n 200 --no-pager 2>/dev/null | grep -i "archivio" | tail -10
+systemctl restart withus-backend && sleep 4
+pid=$(systemctl show withus-backend -p MainPID --value)
+echo "== dopo: il processo la vede? =="
+tr '\0' '\n' < "/proc/$pid/environ" | awk -F= '$1=="SUPABASE_ANON_KEY"{n=$1;v=substr($0,length(n)+2);printf "SUPABASE_ANON_KEY : %d caratteri\n", length(v)}'
+systemctl is-active withus-backend
+journalctl -u withus-backend -n 30 --no-pager | grep -i "archivio\|listen\|error" | tail -5

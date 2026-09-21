@@ -1,24 +1,23 @@
-id: 1790008760  exit: 0  2026-09-21 16:39:56
+id: 1790010568  exit: 0  2026-09-21 17:09:37
 ----
-== attendo l'autopull ==
-arrivata dopo ~10s
-3954c4f
-
-== la versione servita ==
+== commit vivo ==
+3954c4f 0.22.0 — La contabilità a partita doppia: le fondamenta (#231)
+== versione servita da IAM ==
 app-versione" content="0.22.0"
+== versione servita da QUOTO ==
 app-versione" content="0.22.0"
-"versione": "0.22.0"
-
-== i pezzi nuovi ci sono davvero ==
-2
-2
-
-== quello che il browser riceve ==
-iam/  200
-app-versione" content="0.22.0"
+== versione.json ==
 {
   "versione": "0.22.0",
   "nome": "La contabilità a partita doppia: le fondamenta",
   "data": "2026-09-21",
-  "storia": [
-    {
+== la correzione c'e' nel file servito ==
+0
+== migrazione presente ==
+20260922_contab_partita_doppia.sql
+== il sito risponde ==
+IAM 200
+app-versione" content="0.22.0"
+{
+  "versione": "0.22.0",
+  "nome": "La contabilità a partita doppia: le fondamenta",

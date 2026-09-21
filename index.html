@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.17.0">
-<meta name="app-versione-nome" content="L'import non si ferma più a metà, e un salvataggio muto non esiste">
+<meta name="app-versione" content="0.18.0">
+<meta name="app-versione-nome" content="I collaboratori da un elenco solo, e un codice produttore che ha un periodo">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -83,7 +83,7 @@
 <script src="tariffe/motore/contabilita.js?v=20260920"></script>
 <script src="tariffe/motore/collaboratori.js?v=20260921"></script>
 <script src="tariffe/motore/registro.js?v=20260919"></script>
-<script src="tariffe/motore/assegnazione.js?v=20260919"></script>
+<script src="tariffe/motore/assegnazione.js?v=20260921"></script>
 <script src="tariffe/motore/anagrafica.js?v=20260919"></script>
 <!-- Il catalogo prodotti: l'importazione riconosce compagnie e prodotti con
      le stesse regole con cui li mostra IAM. Due riconoscimenti sarebbero due
@@ -15695,7 +15695,10 @@ async function polDettaglio(id) {
           + (p.premio_rata != null ? ' · rata ' + pfEuro(p.premio_rata) : ''))}
       ${riga('Pagamento', (mezzo ? esc(mezzo) : '<span class="cl-sub">mezzo da indicare</span>') + (pag ? ' · ' + esc(pag[0]) : '')
           + ` <a href="#" onclick="event.preventDefault();polPagamento('${esc(p.id)}')" style="font-size:11px;color:var(--blue);text-decoration:underline">correggi</a>`)}
-      ${riga('Produttore', `<span class="pol-produttore">${esc(prod.testo)}</span>` + (prod.da ? ' <span class="cl-sub">' + esc(prod.da) + '</span>' : ''))}
+      ${riga('Produttore', (prod.avviso
+          ? `<span class="tk-badge st-aperto pol-produttore">${esc(prod.testo)}</span>`
+          : `<span class="pol-produttore">${esc(prod.testo)}</span>`)
+        + (prod.da ? ' <span class="cl-sub">' + esc(prod.da) + '</span>' : ''))}
     </div>
 
     <div class="flu-sez">Rate in scadenza</div>
@@ -15929,7 +15932,17 @@ function polRateInScadenza(rate) {
       quel codice è stato DECISO (§19): la persona decisa, o «produzione
       diretta» se deciso «nessuno»;
    3. altrimenti si dice che non è assegnato — un nome messo per somiglianza
-      qui è una provvigione pagata a chi non doveva. */
+      qui è una provvigione pagata a chi non doveva.
+
+   Dal 21/09/2026 una decisione ha anche un PERIODO e un interruttore, e il
+   caso 2 si sdoppia: se l'abbinamento è sospeso o non copre la data di questa
+   polizza, **il nome non si scrive**. Mostrarlo lo farebbe leggere come «l'ha
+   prodotta lui», che è esattamente la cosa che non si sa — e il campo qui
+   accanto, con la percentuale, diventerebbe un compenso attribuito a chi non
+   doveva. Si dice il codice, e da che parte guardare.
+
+   `avviso` accende il richiamo: il brief chiede che un produttore non
+   risolto si VEDA, invece di leggersi come una riga qualunque. */
 async function polProduttore(p, rate) {
   const ssf = (p.dati && p.dati.ssf) || {};
   const codice = ssf.collaboratore || null;
@@ -15945,16 +15958,30 @@ async function polProduttore(p, rate) {
   if (codice) {
     let dec = null;
     try {
-      const { data } = await db.from('quote_codici_collaboratore').select('collaboratore_id,nessuno,deciso')
+      const { data } = await db.from('quote_codici_collaboratore')
+        .select('collaboratore_id,nessuno,deciso,attivo,data_inizio,data_fine')
         .eq('compagnia', p.compagnia).eq('codice', codice).maybeSingle();
       dec = data || null;
     } catch (e) { dec = null; }
     const stato = (window.Assegnazione && Assegnazione.statoDecisione) ? Assegnazione.statoDecisione(dec) : 'non-deciso';
-    if (stato === 'persona') return { testo: nome(dec.collaboratore_id), da: 'codice ' + codice + ' della compagnia' };
+    if (stato === 'persona') {
+      const v = Assegnazione.valeIl(dec, p.data_effetto);
+      if (v.vale) return { testo: nome(dec.collaboratore_id), da: 'codice ' + codice + ' della compagnia' };
+      /* Il nome c'è e non si scrive: l'abbinamento non copre questa polizza.
+         Dirlo col motivo è l'unica risposta vera — «lui» sarebbe falso,
+         «non assegnato» nasconderebbe che una decisione esiste. */
+      return {
+        testo: 'codice ' + codice + ': l\'abbinamento non copre questa polizza',
+        da: (v.spiega || '') + ' — è di ' + nome(dec.collaboratore_id) + ', si corregge dalla sua scheda in IAM',
+        avviso: true
+      };
+    }
     if (stato === 'nessuno') return { testo: 'produzione diretta dell\'agenzia', da: 'codice ' + codice + ', deciso «nessuno»' };
-    return { testo: 'codice ' + codice + ' non ancora abbinato a una persona', da: 'si abbina da Titoli › Assegna il pregresso' };
+    return { testo: 'codice produttore ' + codice + ' non associato a nessuna persona',
+             da: 'si abbina da Titoli › Assegna il pregresso, o dalla scheda del collaboratore in IAM',
+             avviso: true };
   }
-  return { testo: 'non assegnato', da: p.creato_nome ? 'inserita da ' + p.creato_nome : null };
+  return { testo: 'non assegnato', da: p.creato_nome ? 'inserita da ' + p.creato_nome : null, avviso: true };
 }
 
 /* La data di emissione si corregge dal dettaglio e resta scritto chi l'ha

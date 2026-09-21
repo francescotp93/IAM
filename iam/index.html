@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.17.0">
-<meta name="app-versione-nome" content="L'import non si ferma più a metà, e un salvataggio muto non esiste">
+<meta name="app-versione" content="0.18.0">
+<meta name="app-versione-nome" content="I collaboratori da un elenco solo, e un codice produttore che ha un periodo">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -34,7 +34,7 @@
      Se non si carica, `logMovimento` non scrive e non rompe niente: un
      movimento perso è meglio di una schermata che non si apre. -->
 <script src="/nuovo-preventivo/tariffe/motore/registro.js?v=20260919"></script>
-<script src="/nuovo-preventivo/tariffe/motore/assegnazione.js?v=20260919"></script>
+<script src="/nuovo-preventivo/tariffe/motore/assegnazione.js?v=20260921"></script>
 <!-- I conti e le causali (brief #02 M1). Stesso file del preventivatore, per lo
      stesso motivo: il vocabolario della contabilità dev'essere uno solo. -->
 <script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260919"></script>
@@ -614,6 +614,21 @@ input[type=file]{display:none;}
   background:var(--surf2);border:1px solid var(--bord)}
 .ccp-agg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
 .ccp-agg select{flex:1;min-width:220px}
+/* La pastiglia dice se quel codice sta ancora assegnando. Tre stati e non due:
+   «sospeso» e «periodo finito» arrivano allo stesso risultato per due ragioni
+   diverse, e chi guarda deve sapere quale delle due — una si toglie con un
+   clic, l'altra cambiando una data. */
+.ccp-p{font-size:10px;font-weight:700;padding:2px 8px;border-radius:9px;margin-left:6px;white-space:nowrap}
+.ccp-on{background:#e3f6ec;color:#1c8a52}
+.ccp-off{background:#fdeede;color:#c77a14}
+.ccp-fine{background:var(--surf2);color:var(--txt3)}
+.ccp-az{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.ccp-mod{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px;
+  padding:9px 10px;border-radius:8px;background:var(--surf2);border:1px solid var(--bord)}
+.ccp-mod label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--txt3)}
+.ccp-mod input{font-size:12.5px;padding:5px 7px;border-radius:6px;border:1px solid var(--bord);
+  background:var(--surf);color:var(--txt)}
+@media(max-width:640px){.ccp-r{flex-direction:column}.ccp-az{flex-direction:row;flex-wrap:wrap;width:100%}}
 .fsec{margin-top:14px;}
 .fsec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);margin-bottom:8px;}
 .doc-btn{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surf2);border-radius:var(--rs);cursor:pointer;font-size:12px;color:var(--txt2);border:1.5px dashed var(--bord);margin-bottom:6px;transition:all .15s;}
@@ -4869,6 +4884,10 @@ let CCP_PERSONA = null;  // la persona di cui si sta guardando la scheda
    ridotto a una, due colleghi con lo stesso RUI diventerebbero una proposta
    sicura — e sarebbe sicura di niente. */
 let CCP_PERSONE = [];
+/* La riga che si sta modificando («COMPAGNIA|CODICE»), o null. Un editor
+   aperto alla volta: due periodi in modifica insieme sono due «Salva» che si
+   somigliano, e si salva quello sbagliato. */
+let CCP_MOD = null;
 
 /* ═══ IL FIDO DELLA PERSONA (Blocco 3 · punto 6, 20/09/2026) ════════════════
    Un campo solo, e tre regole che lo rendono onesto:
@@ -4956,6 +4975,9 @@ function ccpPuoDecidere() { return PROFILO?.ruolo === 'admin'; }
 
 async function ccpInstalla(personaId) {
   CCP_PERSONA = personaId || null;
+  /* Aprendo un'altra scheda l'editor si chiude: lasciarlo aperto mostrerebbe
+     le date di una persona dentro la riga di un'altra. */
+  CCP_MOD = null;
   /* Il fido si installa insieme ai codici: sono due cose della stessa
      persona, e due letture separate su due aperture diverse sarebbero due
      occasioni di dimenticarne una. */
@@ -5007,26 +5029,8 @@ function ccpRender() {
   });
 
   box.innerHTML = `
-    ${suoi.length ? suoi.map(r => {
-      const ruiFlusso = (r.rui_flusso || '').replace(/[\s.\-\/]/g, '').toUpperCase();
-      /* Il confronto fra il RUI della scheda e quello che manda la compagnia:
-         se non coincidono, o l'abbinamento è sbagliato o uno dei due numeri è
-         vecchio. In tutti e due i casi è meglio saperlo prima di pagare. */
-      const discorde = ruiScheda && ruiFlusso && ruiScheda !== ruiFlusso;
-      return `<div class="ccp-r">
-        <div>
-          <b>${esc(r.codice)}</b> <span class="cl-sub">${esc(r.compagnia)}</span>
-          ${r.produttore_flusso && r.produttore_flusso !== r.codice
-            ? `<span class="cl-sub"> · produttore ${esc(r.produttore_flusso)}</span>` : ''}
-          <div class="cl-sub">${r.nome_flusso ? esc(r.nome_flusso) + ' · ' : ''}${
-            r.rui_flusso ? 'RUI ' + esc(r.rui_flusso) : 'nessun RUI nel flusso'}${
-            r.email_flusso ? ' · ' + esc(r.email_flusso) : ''}</div>
-          ${discorde ? `<div class="ccp-avviso">Il RUI di questa scheda (${esc(document.getElementById('mc-rui').value)})
-            non è quello che manda la compagnia: o l'abbinamento è sbagliato, o uno dei due numeri è vecchio.</div>` : ''}
-        </div>
-        ${puo ? `<button class="mbtn" onclick="ccpTogli('${esc(r.compagnia)}','${esc(r.codice)}')"><i class="ti ti-unlink"></i> Togli</button>` : ''}
-      </div>`;
-    }).join('') : '<div class="cl-sub">Nessun codice compagnia abbinato a questa persona.</div>'}
+    ${suoi.length ? suoi.map(r => ccpRigaSua(r, ruiScheda, puo)).join('')
+      : '<div class="cl-sub">Nessun codice compagnia abbinato a questa persona.</div>'}
 
     ${puo && liberi.length ? `
       ${sugg.length ? `<div class="ccp-sugg">
@@ -5051,11 +5055,96 @@ function ccpRender() {
     ${puo && !liberi.length ? '<div class="cl-sub" style="margin-top:8px">Non ci sono codici in attesa di essere abbinati. Quelli nuovi arrivano con l\'importazione del portafoglio.</div>' : ''}`;
 }
 
+/* Una data ISO scritta come la legge una persona. Si taglia la stringa, non si
+   passa da `new Date()`: una data ISO non ha un fuso orario, e farcela passare
+   gliene dà uno — in Italia torna indietro di un giorno (§44). */
+function ccpData(iso) {
+  const s = String(iso || '');
+  if (!/^\d{4}-\d{2}-\d{2}/.test(s)) return '';
+  return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
+}
+
+/* ── UNA RIGA DI CODICE ABBINATO ─────────────────────────────────────────────
+   Tre cose che non sono decorazione:
+
+   · LA PASTIGLIA DICE SE QUEL CODICE STA ANCORA ASSEGNANDO. Un abbinamento
+     sospeso, o scaduto, continua a comparire — la persona ce l'ha avuto, ed è
+     storia — ma smette di produrre attribuzioni. Se la riga si leggesse uguale
+     nei due casi, si continuerebbe a credere che le polizze nuove siano sue.
+   · SOSPENDI E TOGLI SONO DUE COSE DIVERSE, e la differenza è scritta nelle
+     due domande di conferma: sospendere vuol dire «non produce più, ma è stato
+     suo»; togliere vuol dire «non è suo», e rimette il codice fra quelli da
+     abbinare. Un bottone solo costringerebbe a scegliere alla cieca.
+   · IL PERIODO SI CONFRONTA CON LA DATA DELLA POLIZZA, non con oggi: la frase
+     sotto il modulo lo dice, perché è l'unica cosa che una data «dal/al» non
+     fa capire da sola. */
+function ccpRigaSua(r, ruiScheda, puo) {
+  const ruiFlusso = (r.rui_flusso || '').replace(/[\s.\-\/]/g, '').toUpperCase();
+  /* Il confronto fra il RUI della scheda e quello che manda la compagnia:
+     se non coincidono, o l'abbinamento è sbagliato o uno dei due numeri è
+     vecchio. In tutti e due i casi è meglio saperlo prima di pagare. */
+  const discorde = ruiScheda && ruiFlusso && ruiScheda !== ruiFlusso;
+  const k = r.compagnia + '|' + r.codice;
+  const sospeso = r.attivo === false;
+  /* «Oggi» serve SOLO a dire se un periodo è già finito: è un'informazione
+     per chi guarda, non la regola con cui si assegna. */
+  const oggi = new Date().toISOString().slice(0, 10);
+  const scaduto = !sospeso && r.data_fine && r.data_fine < oggi;
+  const periodo = (r.data_inizio || r.data_fine)
+    ? (r.data_inizio ? 'dal ' + ccpData(r.data_inizio) : 'fino')
+      + (r.data_fine ? ' al ' + ccpData(r.data_fine) : ' in poi')
+    : 'nessun periodo dichiarato: vale sempre';
+
+  return `<div class="ccp-r">
+    <div style="flex:1">
+      <b>${esc(r.codice)}</b> <span class="cl-sub">${esc(r.compagnia)}</span>
+      ${r.produttore_flusso && r.produttore_flusso !== r.codice
+        ? `<span class="cl-sub"> · produttore ${esc(r.produttore_flusso)}</span>` : ''}
+      <span class="ccp-p ${sospeso ? 'ccp-off' : scaduto ? 'ccp-fine' : 'ccp-on'}">${
+        sospeso ? 'sospeso' : scaduto ? 'periodo finito' : 'assegna'}</span>
+      <div class="cl-sub">${r.nome_flusso ? esc(r.nome_flusso) + ' · ' : ''}${
+        r.rui_flusso ? 'RUI ' + esc(r.rui_flusso) : 'nessun RUI nel flusso'}${
+        r.email_flusso ? ' · ' + esc(r.email_flusso) : ''}</div>
+      <div class="cl-sub">${esc(periodo)}${r.note ? ' · ' + esc(r.note) : ''}</div>
+      ${sospeso ? `<div class="ccp-avviso">Sospeso: le polizze e le rate nuove di questo codice
+        <b>non si assegnano più</b> a questa persona. Quelle già assegnate restano sue.</div>` : ''}
+      ${scaduto ? `<div class="ccp-avviso">Il periodo è finito il ${esc(ccpData(r.data_fine))}: le polizze
+        prodotte dopo quella data non si assegnano a questa persona. Quelle di prima restano sue.</div>` : ''}
+      ${discorde ? `<div class="ccp-avviso">Il RUI di questa scheda (${esc(document.getElementById('mc-rui').value)})
+        non è quello che manda la compagnia: o l'abbinamento è sbagliato, o uno dei due numeri è vecchio.</div>` : ''}
+      ${puo && CCP_MOD === k ? `<div class="ccp-mod">
+        <label>Dal <input type="date" id="ccp-dal" value="${esc(r.data_inizio || '')}"></label>
+        <label>Al <input type="date" id="ccp-al" value="${esc(r.data_fine || '')}"></label>
+        <label style="flex:1;min-width:180px">Nota <input type="text" id="ccp-nota" maxlength="200"
+          placeholder="perché, o a chi è subentrato" value="${esc(r.note || '')}"></label>
+        <button class="mbtn" onclick="ccpSalvaPeriodo('${esc(r.compagnia)}','${esc(r.codice)}')"><i class="ti ti-check"></i> Salva</button>
+        <button class="mbtn" onclick="ccpAnnulla()">Annulla</button>
+        <div class="cl-sub" style="flex-basis:100%">Le date si confrontano con <b>l'effetto della polizza</b>,
+          non con oggi: una polizza appartiene a chi teneva il codice quando è stata prodotta. Lasciarle vuote
+          vuol dire «nessun periodo dichiarato», e allora l'abbinamento vale sempre.</div>
+      </div>` : ''}
+    </div>
+    ${puo ? `<div class="ccp-az">
+      <button class="mbtn" onclick="ccpModifica('${esc(r.compagnia)}','${esc(r.codice)}')"><i class="ti ti-calendar"></i> Periodo</button>
+      <button class="mbtn" onclick="ccpSospendi('${esc(r.compagnia)}','${esc(r.codice)}',${sospeso ? 'false' : 'true'})">
+        <i class="ti ti-${sospeso ? 'player-play' : 'player-pause'}"></i> ${sospeso ? 'Riattiva' : 'Sospendi'}</button>
+      <button class="mbtn" onclick="ccpTogli('${esc(r.compagnia)}','${esc(r.codice)}')"><i class="ti ti-unlink"></i> Togli</button>
+    </div>` : ''}
+  </div>`;
+}
+
+function ccpModifica(compagnia, codice) { CCP_MOD = compagnia + '|' + codice; ccpRender(); }
+function ccpAnnulla() { CCP_MOD = null; ccpRender(); }
+
 /* Scrive la decisione. Le evidenze si ripassano tutte: un `upsert` riscrive la
-   riga intera, e senza di loro il codice tornerebbe a essere una sigla. */
-async function ccpScrivi(compagnia, codice, valore) {
+   riga intera, e senza di loro il codice tornerebbe a essere una sigla.
+   `modifiche` è quello che si sta cambiando adesso, sopra la riga vecchia: il
+   motore ci legge periodo, sospensione e nota, e quello che non si passa resta
+   com'era. */
+async function ccpScrivi(compagnia, codice, valore, modifiche) {
   const k = compagnia + '|' + codice;
-  const vecchia = CCP_RIGHE.find(r => r.compagnia === compagnia && r.codice === codice) || {};
+  const vecchia = Object.assign({},
+    CCP_RIGHE.find(r => r.compagnia === compagnia && r.codice === codice) || {}, modifiche || {});
   const riga = Assegnazione.rigaDecisione(k, valore, vecchia, ME?.id || null);
   const { error } = await db.from('quote_codici_collaboratore')
     .upsert([riga], { onConflict: 'compagnia,codice' });
@@ -5076,13 +5165,63 @@ async function ccpAggiungi() {
   } catch (e) { alert('Non riesco ad abbinare: ' + (e.message || e)); }
 }
 
+/* Il periodo e la nota. Le date vuote NON diventano zero e non diventano oggi:
+   diventano `null`, che vuol dire «nessuno ha dichiarato un periodo» — e
+   l'abbinamento torna a valere sempre. Riempirle con una data di comodo
+   scriverebbe una decisione che nessuno ha preso (§8.1). */
+async function ccpSalvaPeriodo(compagnia, codice) {
+  const dal = document.getElementById('ccp-dal')?.value || null;
+  const al = document.getElementById('ccp-al')?.value || null;
+  const nota = (document.getElementById('ccp-nota')?.value || '').trim() || null;
+  if (dal && al && al < dal) {
+    alert('Il periodo finisce prima di cominciare: controlla le due date.');
+    return;
+  }
+  const r = CCP_RIGHE.find(x => x.compagnia === compagnia && x.codice === codice);
+  if (!r || !r.collaboratore_id) return;
+  /* Una correzione che non cambia niente non scrive niente: una storia piena
+     di modifiche che non hanno modificato nulla non serve più a distinguerle
+     (§16). */
+  if ((r.data_inizio || null) === dal && (r.data_fine || null) === al && (r.note || null) === nota) {
+    CCP_MOD = null; ccpRender(); return;
+  }
+  try {
+    await ccpScrivi(compagnia, codice, r.collaboratore_id, { data_inizio: dal, data_fine: al, note: nota });
+    logMovimento('Periodo del codice ' + compagnia + ' ' + codice, 'collaboratore',
+      (dal || al) ? ((dal ? 'dal ' + dal : '') + (al ? ' al ' + al : '')).trim() : 'nessun periodo', CCP_PERSONA);
+    CCP_MOD = null;
+    ccpRender();
+  } catch (e) { alert('Non riesco a salvare il periodo: ' + (e.message || e)); }
+}
+
+/* Sospendere NON è togliere, ed è il motivo per cui sono due bottoni:
+   sospeso vuol dire «non produce più, ma è stato suo» e la persona resta
+   scritta; tolto vuol dire «non è suo», e il codice torna fra quelli da
+   abbinare. In tutti e due i casi quello che è già assegnato resta dov'è: il
+   dato sta sulla rata e sulla polizza, non qui (§19). */
+async function ccpSospendi(compagnia, codice, sospendi) {
+  const r = CCP_RIGHE.find(x => x.compagnia === compagnia && x.codice === codice);
+  if (!r || !r.collaboratore_id) return;
+  const msg = sospendi
+    ? 'Sospendere il codice ' + codice + ' di ' + compagnia + '?\n\nDa questo momento le polizze e le rate nuove di quel codice NON si assegnano più a questa persona. Quelle già assegnate restano sue.\n\nResta abbinato a lei: per darlo a qualcun altro usa «Togli».'
+    : 'Riattivare il codice ' + codice + ' di ' + compagnia + '?\n\nTorna ad assegnare le polizze nuove a questa persona, nel periodo dichiarato.';
+  if (!confirm(msg)) return;
+  try {
+    await ccpScrivi(compagnia, codice, r.collaboratore_id, { attivo: !sospendi });
+    logMovimento((sospendi ? 'Codice compagnia sospeso · ' : 'Codice compagnia riattivato · ') + compagnia + ' ' + codice,
+      'collaboratore', codice, CCP_PERSONA);
+    ccpRender();
+  } catch (e) { alert('Non riesco a cambiare lo stato: ' + (e.message || e)); }
+}
+
 async function ccpTogli(compagnia, codice) {
-  if (!confirm('Togliere il codice ' + codice + ' di ' + compagnia + ' da questa persona?\n\nLe rate già assegnate NON tornano indietro: restano sue finché non le si cambia dai Titoli.')) return;
+  if (!confirm('Togliere il codice ' + codice + ' di ' + compagnia + ' da questa persona?\n\nIl codice torna fra quelli da abbinare, pulito: periodo e sospensione si azzerano, perché sono di questo abbinamento e non del codice. Nome, RUI, email e la nota restano, e servono a chi lo riabbinerà.\n\nLe rate già assegnate NON tornano indietro: restano sue finché non le si cambia dai Titoli.')) return;
   try {
     /* Si toglie la DECISIONE, non la riga: nome, email, RUI e codice produttore
        che il flusso aveva portato restano, e servono a chi dovrà riabbinarlo. */
     await ccpScrivi(compagnia, codice, '');
     logMovimento('Codice compagnia tolto · ' + compagnia + ' ' + codice, 'collaboratore', codice, CCP_PERSONA);
+    CCP_MOD = null;
     ccpRender();
   } catch (e) { alert('Non riesco a togliere l\'abbinamento: ' + (e.message || e)); }
 }

@@ -68,7 +68,7 @@
 (function () {
   'use strict';
 
-  var VERSIONE = '2026-09-19';
+  var VERSIONE = '2026-09-21';
 
   /* ══ 1. LA CHIAVE ═════════════════════════════════════════════════════════
      Maiuscole e spazi tolti perché la stessa compagnia arriva scritta in modi
@@ -121,6 +121,78 @@
     if (riga.collaboratore_id) return 'persona';
     if (riga.nessuno) return 'nessuno';
     return 'da-ridecidere';
+  }
+
+  /* ══ 2-bis. LA VALIDITÀ DI UN ABBINAMENTO (21/09/2026) ═══════════════════
+     Il codice produttore è della COMPAGNIA, non della persona. Un
+     collaboratore se ne va a giugno e la compagnia riassegna «U25274» a un
+     altro da luglio: senza un periodo, la decisione presa una volta
+     continuerebbe ad attribuire a chi è andato via tutte le polizze prodotte
+     dopo — e sono provvigioni pagate a chi non doveva.
+
+     Due interruttori, e fanno cose diverse:
+
+       `attivo = false`  · sospeso. Smette di assegnare lavoro NUOVO e resta
+                           tutto: la riga, le evidenze, la persona. Serve
+                           quando si sa che il codice non è più suo ma non si
+                           sa ancora di chi sia.
+       `data_inizio` / `data_fine` · il periodo in cui quel codice è suo.
+
+     ── LA REGOLA CHE COMANDA: UN VUOTO NON È UNA CHIUSURA ──────────────────
+     Periodo non dichiarato = l'abbinamento vale sempre. È l'unica lettura che
+     non inventa niente (§8.1) e l'unica che non cambia il significato delle
+     sedici righe già scritte: leggere un vuoto come «chiuso» spegnerebbe
+     tutti gli abbinamenti in un colpo solo, in silenzio.
+
+     ── LA DATA CHE SI GUARDA È QUELLA DELLA POLIZZA, NON OGGI ──────────────
+     Una polizza appartiene a chi teneva il codice **quando è stata
+     prodotta**: si confronta `data_effetto`. Con «oggi» un abbinamento chiuso
+     a giugno toglierebbe a quella persona anche le polizze di marzo, che sono
+     sue — è lo stesso errore di chi rilegge i requisiti «da vivi» su un
+     fascicolo già chiuso (§11, regola 4).
+
+     E la data è la stessa anche per le RATE, che pure hanno una decorrenza
+     loro: una rata è di chi ha prodotto la sua polizza, non di chi tiene il
+     codice il giorno in cui scade. Guardare due date diverse farebbe finire
+     la polizza a uno e le sue rate a un altro.
+
+     ── QUANDO LA DATA NON C'È ──────────────────────────────────────────────
+     Se un periodo è dichiarato e la polizza non ha una data, non si assegna e
+     si dice perché: da che parte del confine stia non lo sa nessuno, e
+     sceglierne una è indovinare. Senza periodo, invece, la data non serve e
+     non si chiede. */
+  function giorno(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!/^\d{4}-\d{2}-\d{2}/.test(s)) return '';
+    return s.slice(0, 10);
+  }
+
+  function valeIl(riga, dataIso) {
+    if (!riga) return { vale: false, stato: 'non-deciso', motivo: 'codice-non-deciso' };
+    /* `attivo !== false`: una colonna mai riempita non vuol dire «spento».
+       È la stessa distinzione di `Collaboratori.eAttivo` e delle anagrafiche
+       che nascono a «no» (§42). */
+    if (riga.attivo === false) {
+      return { vale: false, stato: 'sospeso', motivo: 'codice-sospeso',
+               spiega: 'l’abbinamento di questo codice è sospeso' };
+    }
+    var dal = giorno(riga.data_inizio), al = giorno(riga.data_fine);
+    if (!dal && !al) return { vale: true, stato: 'sempre', motivo: '', dal: '', al: '' };
+
+    var d = giorno(dataIso);
+    if (!d) {
+      return { vale: false, stato: 'senza-data', motivo: 'senza-data', dal: dal, al: al,
+               spiega: 'il codice vale in un periodo e questa polizza non ha una data di effetto' };
+    }
+    if (dal && d < dal) {
+      return { vale: false, stato: 'prima', motivo: 'fuori-periodo', dal: dal, al: al,
+               spiega: 'la polizza è del ' + d + ', il codice è di questa persona dal ' + dal };
+    }
+    if (al && d > al) {
+      return { vale: false, stato: 'dopo', motivo: 'fuori-periodo', dal: dal, al: al,
+               spiega: 'la polizza è del ' + d + ', il codice è stato suo fino al ' + al };
+    }
+    return { vale: true, stato: 'dentro', motivo: '', dal: dal, al: al };
   }
 
   /* Da righe a mappa. L'ultima riga con la stessa chiave vince, ma in tabella
@@ -218,6 +290,9 @@
        codice-non-deciso· c'è il codice, manca la decisione
        codice-scoperto  · c'era una decisione, la persona è stata cancellata
        deciso-nessuno   · deciso che non è di nessuno
+       codice-sospeso   · l'abbinamento è sospeso: non assegna più niente
+       fuori-periodo    · la polizza è fuori dal periodo dell'abbinamento
+       senza-data       · c'è un periodo e la polizza non ha data di effetto
        gia-assegnata    · la rata ha già un collaboratore (regola 2) */
   function piano(titoli, polizze, mappaCodici, opz) {
     opz = opz || {};
@@ -242,6 +317,13 @@
       if (stato === 'non-deciso') return void saltate.push({ id: t.id, motivo: 'codice-non-deciso', chiave: c.chiave });
       if (stato === 'da-ridecidere') return void saltate.push({ id: t.id, motivo: 'codice-scoperto', chiave: c.chiave });
       if (stato === 'nessuno') return void saltate.push({ id: t.id, motivo: 'deciso-nessuno', chiave: c.chiave });
+
+      /* La data è quella della POLIZZA, anche per una rata: una rata è di chi
+         ha prodotto il contratto, non di chi tiene il codice il giorno in cui
+         scade. Due date diverse farebbero finire la polizza a uno e le sue
+         rate a un altro. */
+      var v = valeIl(d, p.data_effetto);
+      if (!v.vale) return void saltate.push({ id: t.id, motivo: v.motivo, chiave: c.chiave, spiega: v.spiega });
 
       /* Regola 2. Una rata già assegnata alla STESSA persona non è un conflitto
          e non è nemmeno lavoro: non si riscrive per non contarla come se si
@@ -315,6 +397,9 @@
       if (stato === 'non-deciso')    return void saltate.push({ id: p.id, motivo: 'codice-non-deciso', chiave: c.chiave });
       if (stato === 'da-ridecidere') return void saltate.push({ id: p.id, motivo: 'codice-scoperto', chiave: c.chiave });
       if (stato === 'nessuno')       return void saltate.push({ id: p.id, motivo: 'deciso-nessuno', chiave: c.chiave });
+
+      var v = valeIl(d, p.data_effetto);
+      if (!v.vale) return void saltate.push({ id: p.id, motivo: v.motivo, chiave: c.chiave, spiega: v.spiega });
 
       if (p.collaboratore_id) {
         var gia = {
@@ -507,6 +592,31 @@
       email_flusso: e.email_flusso || e.email || null,
       rui_flusso: e.rui_flusso || e.rui || null,
       produttore_flusso: e.produttore_flusso || e.produttore || null,
+      /* Stessa ragione, e qui il difetto era già vivo: `note` non veniva
+         ripassata, quindi abbinare un codice cancellava quello che qualcuno
+         ci aveva scritto accanto. Sedici righe su sedici sono senza note,
+         perciò non si è perso niente — ma è il tipo di guasto che si scopre
+         il giorno in cui la nota serviva.
+
+         `attivo` e il periodo sono la stessa trappola col dente più lungo:
+         senza queste tre righe, riabbinare un codice riaprirebbe da solo un
+         abbinamento sospeso e cancellerebbe il periodo in cui vale. Chi
+         chiama passa la riga che ha in mano; per cambiare un valore lo mette
+         lì dentro (`Object.assign({}, vecchia, { data_fine: '2026-06-30' })`),
+         e per toglierlo ci mette `null`.
+
+         MA QUANDO SI TOGLIE LA DECISIONE I TRE SI AZZERANO, e non è una
+         sfumatura: sospensione e periodo qualificano UN abbinamento, non il
+         codice. Portandoli avanti, un codice tolto a Tizio perché è passato a
+         Caio rinascerebbe **già sospeso**, o col periodo del padrone
+         precedente — e le polizze di Caio non si assegnerebbero mai, senza un
+         errore e senza che nessuno capisca perché. Le evidenze del flusso
+         restano invece, perché servono proprio a chi dovrà riabbinarlo (§19),
+         e la nota con loro: è scritta da una persona per la persona dopo. */
+      attivo: vuota ? true : e.attivo !== false,
+      data_inizio: vuota ? null : (e.data_inizio || null),
+      data_fine: vuota ? null : (e.data_fine || null),
+      note: e.note || null,
       /* `deciso` distingue una decisione da una riga di sole evidenze.
          Rimettere una scelta su «da decidere» la spegne invece di cancellare la
          riga: le evidenze restano, e servono la prossima volta. */
@@ -553,6 +663,7 @@
   var API = {
     VERSIONE: VERSIONE, NESSUNO: NESSUNO,
     chiave: chiave, codiceDi: codiceDi, statoDecisione: statoDecisione, mappa: mappa,
+    valeIl: valeIl,
     riepilogo: riepilogo, piano: piano, pianoPolizze: pianoPolizze,
     proposteDaFlusso: proposteDaFlusso, proposte: proposte, suoi: suoi,
     rigaDecisione: rigaDecisione, cent: cent

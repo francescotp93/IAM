@@ -75,6 +75,39 @@ sa il perché.
 
 ---
 
+## 21/09/2026 — Codice produttore per compagnia (0.18.0, brief Anagrafiche · punto 3)
+
+**Perimetro:** dare un periodo e un interruttore all'abbinamento fra un codice
+produttore della compagnia e una persona.
+
+🔴 **Applicato al database, con autorizzazione esplicita.**
+`20260921_codici_periodo_e_attivo.sql`: tre colonne nuove su
+`quote_codici_collaboratore` (`attivo`, `data_inizio`, `data_fine`). Nessuna
+riga riscritta, nessuna colonna esistente toccata. Misurato prima e dopo: 16
+righe, tutte attive, 0 con un periodo, 0 decise — dicono esattamente quello che
+dicevano.
+*Come tornare indietro:* il blocco ROLLBACK è in testa al file; il motore torna
+a non guardarle, cioè a come si comportava fino a ieri.
+
+🟡 **Le date si confrontano con l'effetto della polizza, non con oggi.** Con
+«oggi» un abbinamento chiuso a giugno toglierebbe a quella persona anche le
+polizze di marzo, che sono sue.
+*Come tornare indietro:* una riga in `Assegnazione.valeIl`.
+
+🟡 **Sospendere e togliere sono due bottoni, non uno.** Sospeso vuol dire «non
+produce più, ma è stato suo»; tolto rimette il codice fra quelli da abbinare e
+azzera periodo e sospensione, perché sono di quell'abbinamento e non del codice.
+
+🟡 **Nel dettaglio di una polizza un produttore non risolto adesso si vede**
+(richiamo giallo) e, quando l'abbinamento non copre quella data, **il nome non
+si scrive**: si scrive il codice e il motivo.
+
+🟡 **Una riga per codice, quindi un padrone per codice.** Il periodo non tiene
+lo storico dei padroni che si sono succeduti: servirebbe un'altra chiave
+primaria, ed è un lavoro a sé. Scritto nella migrazione.
+
+---
+
 ## Fuori perimetro — annotato e non fatto
 
 - **`flusso-ssf.js:805 aggiungiMesi` duplica `PianoRate.sommaMesi`**: due copie
@@ -89,3 +122,7 @@ sa il perché.
 - **Le rate perse dall'import di stamattina non si ricostruiscono dal
   database**: stanno solo nel file della compagnia. Si recuperano ricaricando
   quello stesso file, che adesso è idempotente e atomico.
+- **Il codice produttore si cerca sulla compagnia scritta esatta**, non sugli
+  alias di `quote_compagnie` (CLAUDE.md §11): «HDI Assicurazioni» sulla polizza
+  e «HDI» in tabella non si ritroverebbero. Sul portafoglio vero c'è una
+  compagnia sola e il difetto non si vede; va guardato prima del secondo flusso.

@@ -1199,11 +1199,73 @@ const avvio = async () => {
       deve(r.prima.emissione === '2026-09-10', 'la data di emissione non si vede nel campo: ' + r.prima.emissione);
       deve(/Bonifico/.test(r.prima.html) && /Pagato/.test(r.prima.html), 'il pagamento (mezzo e stato) non si legge nel dettaglio');
       deve(r.prima.rateAperte === 1 && /16\/03\/2027/.test(r.prima.html), 'le rate in scadenza: ' + r.prima.rateAperte + ' (attesa 1, quella del 16/03/2027)');
-      deve(/U25337/.test(r.prima.produttore) && /non ancora abbinato/.test(r.prima.produttore), 'un codice non deciso deve restare un codice: ' + r.prima.produttore);
+      /* La frase è cambiata il 21/09/2026 («non associato», la parola del
+         brief) e la prova non la insegue: quello che deve restare vero è che
+         il codice si legga, che NON esca un nome, e che la riga si VEDA —
+         il brief chiede un avviso, non una riga qualunque (§15, §16: si
+         aggiorna la regola, non il numero). */
+      deve(/U25337/.test(r.prima.produttore) && /non associat|non ancora abbinato/.test(r.prima.produttore),
+        'un codice non deciso deve restare un codice: ' + r.prima.produttore);
+      deve(/class="tk-badge st-aperto pol-produttore"/.test(r.prima.html),
+        'un produttore non risolto si legge come una riga qualunque: il brief chiede che si veda');
       deve(r.deciso === 'Neri Anna', 'con la decisione presa il produttore non e\' la persona: ' + r.deciso);
       deve(r.upd.length === 1 && r.upd[0].data_emissione === '2026-09-12', 'la data corretta non viene scritta: ' + JSON.stringify(r.upd));
       deve(r.log.length === 1 && /Data di emissione/.test(r.log[0].azione) && r.log[0].entita_id === POL, 'la correzione non lascia il movimento sulla riga: ' + JSON.stringify(r.log));
       return 'emissione 10/09 → 12/09 con movimento; 1 rata in scadenza; produttore da codice deciso';
+    });
+
+    await prova('punto 3 · un abbinamento SCADUTO o SOSPESO non mette il nome sul dettaglio', async () => {
+      /* Il caso vero: un collaboratore se ne va a giugno e la compagnia
+         riassegna il suo codice. Da luglio le polizze non sono piu' sue — ma
+         la decisione presa una volta continuerebbe a scrivere il suo nome, e
+         quel nome e' la riga da cui si parte per pagare una provvigione.
+         Scrivere «lui» sarebbe falso; scrivere «non assegnato» nasconderebbe
+         che una decisione esiste: si dice il codice, il motivo, e dove si
+         corregge. */
+      const POL = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+      const COL = 'cccccccc-3333-4333-8333-cccccccccccc';
+      const r = await page.evaluate(async (o) => {
+        const { POL, COL } = o;
+        const out = {};
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: POL, cliente: 'Rossi Mario', numero_polizza: 'PR/78', compagnia: 'PRIMA', prodotto: 'RC Auto',
+          data_effetto: '2026-09-16', data_scadenza: '2027-09-16', premio_annuo: 390,
+          dati: { ssf: { collaboratore: 'U25337' } } } };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: [] };
+        window.__COLLAUDO.risposte['quote_collaboratori:lista'] = { error: null, data: [{ id: COL, nome: 'Anna', cognome: 'Neri' }] };
+
+        async function guarda(dec) {
+          window.__COLLAUDO.risposte['quote_codici_collaboratore:single'] = { error: null, data: dec };
+          TIT_COLLAB = []; window.TIT_COLLAB_NOMI = {};
+          await window.polDettaglio(POL);
+          const bd = document.getElementById('pol-bd');
+          return { testo: (bd.querySelector('.pol-produttore') || {}).textContent || '', html: bd.innerHTML };
+        }
+        const base = { collaboratore_id: COL, nessuno: false, deciso: true };
+        out.dentro  = await guarda(Object.assign({}, base, { attivo: true, data_inizio: '2025-01-01', data_fine: '2027-12-31' }));
+        out.scaduto = await guarda(Object.assign({}, base, { attivo: true, data_inizio: '2025-01-01', data_fine: '2026-06-30' }));
+        out.sospeso = await guarda(Object.assign({}, base, { attivo: false }));
+        out.senza   = await guarda(Object.assign({}, base, { attivo: true }));
+        delete window.__COLLAUDO.risposte['quote_codici_collaboratore:single'];
+        delete window.__COLLAUDO.risposte['quote_collaboratori:lista'];
+        delete window.__COLLAUDO.risposte['quote_titoli:lista'];
+        TIT_COLLAB = []; window.TIT_COLLAB_NOMI = {};
+        return out;
+      }, { POL, COL });
+
+      deve(r.dentro.testo === 'Neri Anna', 'dentro il periodo il produttore non e\' la persona: ' + r.dentro.testo);
+      /* «Nessun periodo dichiarato» NON e' «chiuso»: le sedici righe vere
+         nascono cosi', e leggerle come chiuse spegnerebbe tutto in silenzio. */
+      deve(r.senza.testo === 'Neri Anna', 'senza periodo dichiarato il codice smette di valere: ' + r.senza.testo);
+      deve(!/Neri Anna/.test(r.scaduto.testo) && /U25337/.test(r.scaduto.testo),
+        'un abbinamento scaduto scrive lo stesso il nome: ' + r.scaduto.testo);
+      deve(/fino al 2026-06-30/.test(r.scaduto.html), 'non dice fino a quando il codice era suo');
+      deve(!/Neri Anna/.test(r.sospeso.testo), 'un abbinamento sospeso scrive lo stesso il nome: ' + r.sospeso.testo);
+      /* E in tutti e due i casi si VEDE, invece di leggersi come una riga
+         qualunque: il brief chiede un avviso. */
+      deve(/class="tk-badge st-aperto pol-produttore"/.test(r.scaduto.html)
+        && /class="tk-badge st-aperto pol-produttore"/.test(r.sospeso.html), 'l\'avviso non compare');
+      return 'dentro Neri Anna, fuori il codice col motivo, sospeso idem';
     });
 
     await prova('M1.2 · il flusso scrive la data di emissione in colonna, e la sua esportazione la porta', async () => {
@@ -1308,7 +1370,17 @@ const avvio = async () => {
         document.getElementById('fc-m-chi').value = 'collaboratore'; document.getElementById('fc-m-chi').dispatchEvent(new Event('change'));
         document.getElementById('fc-m-collab-sel').value = 'c-1';
         window.__COLLAUDO.db = [];
+        /* L'update adesso si fa restituire le righe toccate (BUG 1, 21/09):
+           il banco deve dire che ne ha toccata una, altrimenti la correzione
+           risulta non salvata e il movimento non si scrive.
+           FINO A OGGI QUESTA PROVA ERA VERDE PER SBAGLIO: si reggeva sulla
+           risposta finta lasciata accesa da una prova centocinquanta righe
+           piu' su. E' la trappola gia' scritta due volte — una risposta finta
+           non spenta cammina nelle prove dopo, e quando qualcuno la spegne
+           diventa rossa una prova che non c'entra niente. */
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [{ id: FC_T1 }], error: null };
         await window.fcSalvaModifica(FC_T1);
+        delete window.__COLLAUDO.risposte['quote_titoli:lista'];
         const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update').map(x => ({ p: x.payload, f: x.filtri }));
         const log = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload);
         const chiuso = !document.getElementById('fc-ov');

@@ -1,8 +1,22 @@
 {
-  "versione": "0.17.0",
-  "nome": "L'import non si ferma più a metà, e un salvataggio muto non esiste",
+  "versione": "0.18.0",
+  "nome": "I collaboratori da un elenco solo, e un codice produttore che ha un periodo",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.18.0",
+      "data": "2026-09-21",
+      "nome": "I collaboratori da un elenco solo, e un codice produttore che ha un periodo",
+      "voci": [
+        "Ovunque si sceglie o si nomina un collaboratore, l'elenco è UNO SOLO: quello della sezione Collaboratori. Tre tendine leggevano gli account (cinque persone) invece del registro (diciassette): chi non ha un accesso a IAM non compariva.",
+        "L'email che il cliente riceve adesso nomina il consulente giusto: lo cercava nella tabella sbagliata e ripiegava su chi aveva fatto il preventivo.",
+        "Un codice produttore della compagnia adesso ha un PERIODO («dal … al …») e si può SOSPENDERE dalla scheda del collaboratore. Serve quando un collaboratore se ne va e la compagnia dà il suo codice a un altro: senza, le polizze nuove continuerebbero ad andare a chi è andato via.",
+        "Le date si confrontano con l'effetto della polizza, non con oggi: una polizza resta di chi teneva il codice quando è stata prodotta, e quello che è già stato assegnato non torna mai indietro.",
+        "Lasciare le date vuote vuol dire «nessun periodo dichiarato», e l'abbinamento vale sempre: nessun limite viene inventato.",
+        "Sospendere e togliere sono due bottoni diversi, e la differenza è scritta nella conferma: sospeso vuol dire «non produce più, ma è stato suo»; tolto rimette il codice fra quelli da abbinare.",
+        "Nel dettaglio di una polizza, un codice produttore non associato — o associato a un periodo che non copre quella polizza — adesso si VEDE, con scritto perché e dove si corregge, invece di leggersi come una riga qualunque."
+      ]
+    },
     {
       "v": "0.17.0",
       "data": "2026-09-21",

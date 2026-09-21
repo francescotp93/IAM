@@ -424,6 +424,142 @@ prova('POLIZZE · la chiave resta la coppia compagnia+codice', () => {
   return 'PRIMA|U1 non è HDI|U1';
 });
 
+/* ══ IL PERIODO E LA SOSPENSIONE (21/09/2026) ═══════════════════════════
+   Il codice produttore è della COMPAGNIA. Quando un collaboratore se ne va e
+   la compagnia riassegna il suo codice, una decisione presa una volta e
+   valida per sempre attribuirebbe a chi è andato via tutto quello che l'altro
+   produce da domani. Queste prove sono quelle che, saltando, pagano una
+   provvigione alla persona sbagliata senza che si veda. */
+const POLD = (id, cod, eff, chi) => ({
+  id: id, compagnia: 'PRIMA', collaboratore_id: chi || null, data_effetto: eff || null,
+  dati: cod ? { ssf: { collaboratore: cod } } : {}
+});
+const DECP = (cod, chi, extra) => Object.assign(
+  { compagnia: 'PRIMA', codice: cod, deciso: true, collaboratore_id: chi || null, nessuno: false }, extra || {});
+
+prova('«NESSUN PERIODO DICHIARATO» NON È «CHIUSO»', () => {
+  /* La lettura opposta spegnerebbe in un colpo solo tutti gli abbinamenti
+     esistenti — sedici righe su sedici nascono senza periodo — e lo farebbe
+     in silenzio: nessun errore, solo delle rate che smettono di assegnarsi.
+     È la stessa distinzione fra un vuoto e una decisione che vale per
+     `attivo` sulle persone (§42) e per le colonne che il tracciato non
+     dichiara (§20). */
+  const v = A.valeIl(DECP('U1', 'c1'), '2026-09-21');
+  deve(v.vale && v.stato === 'sempre', 'un abbinamento senza periodo non vale: ' + JSON.stringify(v));
+  /* E non serve nemmeno una data: senza periodo non c'è niente da
+     confrontare, quindi una polizza senza data di effetto si assegna. */
+  const p = A.pianoPolizze([POLD('a', 'U1', null)], A.mappa([DECP('U1', 'c1')]));
+  deve(p.assegna.length === 1, 'senza periodo pretende comunque una data');
+  return 'vuoto = vale sempre';
+});
+
+prova('UN ABBINAMENTO SOSPESO NON ASSEGNA PIÙ NIENTE — e non si riprende quello che ha dato', () => {
+  /* Sospendere serve quando si sa che il codice non è più suo e non si sa
+     ancora di chi sia. Se togliesse anche il passato, sospendere costerebbe
+     la produzione già attribuita: nessuno lo farebbe, e il codice
+     continuerebbe a produrre attribuzioni sbagliate. */
+  const m = A.mappa([DECP('U1', 'c1', { attivo: false })]);
+  const p = A.pianoPolizze([POLD('a', 'U1', '2026-09-01'), POLD('b', 'U1', '2026-03-01', 'c1')], m);
+  deve(p.assegna.length === 0, 'un codice sospeso assegna ancora');
+  deve(p.saltate.some(s => s.id === 'a' && s.motivo === 'codice-sospeso'), 'non dice che è sospeso');
+  /* La polizza `b` era già sua e resta sua: il piano non la tocca, perché il
+     dato sta sulla polizza e questa tabella è solo il modo con cui ci si è
+     arrivati (§19). */
+  deve(!p.assegna.some(x => x.id === 'b'), 'rimette le mani su una polizza già assegnata');
+  return 'niente di nuovo, e niente tolto';
+});
+
+prova('LA DATA CHE CONTA È QUELLA DELLA POLIZZA, NON OGGI', () => {
+  /* Con «oggi» un abbinamento chiuso a giugno toglierebbe a quella persona
+     anche le polizze di marzo, che sono sue: una polizza appartiene a chi
+     teneva il codice quando è stata prodotta. È la regola del fascicolo
+     congelato (§11, regola 4) applicata alle provvigioni. */
+  const m = A.mappa([DECP('U1', 'c1', { data_inizio: '2025-01-01', data_fine: '2026-06-30' })]);
+  const p = A.pianoPolizze([POLD('marzo', 'U1', '2026-03-01'), POLD('settembre', 'U1', '2026-09-01')], m);
+  deve(p.assegna.length === 1 && p.assegna[0].id === 'marzo', 'la polizza dentro il periodo non si assegna');
+  const fuori = p.saltate.find(s => s.id === 'settembre');
+  deve(fuori && fuori.motivo === 'fuori-periodo', 'la polizza fuori dal periodo si assegna lo stesso');
+  deve(/fino al 2026-06-30/.test(fuori.spiega || ''), 'non dice fino a quando il codice era suo: ' + fuori.spiega);
+  /* E anche prima dell'inizio: un codice riciclato dalla compagnia ha un
+     passato che non è di questa persona. */
+  const prima = A.pianoPolizze([POLD('vecchia', 'U1', '2024-05-01')], m);
+  deve(prima.saltate[0].motivo === 'fuori-periodo', 'assegna anche quello che è successo prima');
+  return 'marzo sì, settembre no, 2024 no';
+});
+
+prova('LA RATA SEGUE LA DATA DELLA SUA POLIZZA, non la propria decorrenza', () => {
+  /* Una rata è di chi ha PRODOTTO il contratto, non di chi tiene il codice il
+     giorno in cui scade. Guardando due date diverse, la polizza finirebbe a
+     uno e le sue rate a un altro — e i due numeri non tornerebbero mai. */
+  const m = A.mappa([DECP('U1', 'c1', { data_fine: '2026-06-30' })]);
+  const polizze = [POLD('vecchia', 'U1', '2026-02-01'), POLD('nuova', 'U1', '2026-08-01')];
+  const titoli = [
+    /* La rata di una polizza dentro il periodo, ma che scade molto dopo. */
+    { id: 'r1', polizza_id: 'vecchia', data_decorrenza: '2026-12-01', collaboratore_id: null },
+    { id: 'r2', polizza_id: 'nuova', data_decorrenza: '2026-08-01', collaboratore_id: null }
+  ];
+  const p = A.piano(titoli, polizze, m);
+  deve(p.assegna.length === 1 && p.assegna[0].id === 'r1',
+    'la rata non segue la polizza: ' + JSON.stringify(p.assegna));
+  deve(p.saltate.some(s => s.id === 'r2' && s.motivo === 'fuori-periodo'), 'la rata fuori periodo si assegna');
+  return 'una rata di dicembre su una polizza di febbraio resta sua';
+});
+
+prova('con un periodo e senza data non si indovina', () => {
+  /* Da che parte del confine stia non lo sa nessuno, e sceglierne una è
+     indovinare (§8.1). Si lascia da decidere e si dice perché. */
+  const m = A.mappa([DECP('U1', 'c1', { data_fine: '2026-06-30' })]);
+  const p = A.pianoPolizze([POLD('senza', 'U1', null)], m);
+  deve(p.assegna.length === 0, 'assegna una polizza che non si sa dove cada');
+  deve(p.saltate[0].motivo === 'senza-data', 'il motivo non è quello giusto: ' + p.saltate[0].motivo);
+  deve(/data di effetto/.test(p.saltate[0].spiega || ''), 'non dice che cosa manca');
+  return 'niente data, niente assegnazione, e si sa perché';
+});
+
+prova('L’UPSERT NON CANCELLA IL PERIODO, LA SOSPENSIONE E LE NOTE', () => {
+  /* `upsert` riscrive la RIGA INTERA: le colonne che non si passano tornano
+     al valore di partenza. Senza queste quattro, riabbinare un codice
+     riaprirebbe da solo un abbinamento sospeso e cancellerebbe il periodo in
+     cui vale — cioè rimetterebbe in piedi proprio il guasto che il periodo
+     esiste per evitare. `note` era già così, e nessuno se n'era accorto
+     perché nessuna riga ne ha. */
+  const vecchia = {
+    compagnia: 'PRIMA', codice: 'U1', nome_flusso: 'NERI ANNA', rui_flusso: 'E000111111',
+    attivo: false, data_inizio: '2025-01-01', data_fine: '2026-06-30', note: 'subentrata a Rossi'
+  };
+  const r = A.rigaDecisione('PRIMA|U1', 'c1', vecchia, 'u9');
+  deve(r.attivo === false, 'riabbina da solo un abbinamento sospeso');
+  deve(r.data_inizio === '2025-01-01' && r.data_fine === '2026-06-30', 'cancella il periodo');
+  deve(r.note === 'subentrata a Rossi', 'cancella le note');
+  deve(r.rui_flusso === 'E000111111', 'cancella le evidenze del flusso');
+  /* E si cambiano passando il valore nuovo — o `null` per toglierlo. */
+  const r2 = A.rigaDecisione('PRIMA|U1', 'c1', Object.assign({}, vecchia, { data_fine: null, attivo: true }), 'u9');
+  deve(r2.data_fine === null && r2.attivo === true, 'non si riesce a togliere una scadenza');
+  return 'quattro colonne che sopravvivono a un abbinamento';
+});
+
+prova('TOGLIERE LA DECISIONE AZZERA SOSPENSIONE E PERIODO — la nota no', () => {
+  /* Il caso vero: un codice si toglie a Tizio perché la compagnia l'ha dato a
+     Caio. Portandosi avanti la sospensione, il codice rinascerebbe **già
+     sospeso** addosso a Caio — e le sue polizze non si assegnerebbero mai,
+     senza un errore e senza che nessuno capisca perché. Il periodo idem: è il
+     periodo del padrone di prima.
+
+     La nota invece resta, come le evidenze del flusso: è scritta da una
+     persona per la persona dopo, ed è metà del motivo per cui si riconosce un
+     codice la volta successiva (§19). */
+  const tolta = A.rigaDecisione('PRIMA|U1', '', {
+    attivo: false, data_inizio: '2025-01-01', data_fine: '2026-06-30',
+    note: 'passato all’altro ufficio', nome_flusso: 'NERI ANNA'
+  }, 'u9');
+  deve(tolta.deciso === false, 'togliere non toglie la decisione');
+  deve(tolta.attivo === true, 'il codice resta sospeso e chi lo riabbina non se ne accorge');
+  deve(tolta.data_inizio === null && tolta.data_fine === null, 'il periodo del padrone di prima resta addosso al prossimo');
+  deve(tolta.note === 'passato all’altro ufficio' && tolta.nome_flusso === 'NERI ANNA',
+    'si perde quello che serve a riconoscerlo');
+  return 'pulito per il prossimo, e con la nota di chi c’era prima';
+});
+
 /* ══ ARITMETICA ═════════════════════════════════════════════════════════ */
 prova('gli storni non guadagnano un centesimo dall\'arrotondamento', () => {
   deve(A.cent(-0.005) === -0.01, 'cent(-0.005) = ' + A.cent(-0.005));

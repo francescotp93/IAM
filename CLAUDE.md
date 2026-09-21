@@ -4736,3 +4736,161 @@ spegne dove si accende.
 - **La causa prima di BUG 1 resta da vedere sul campo**: adesso, quando
   succede, la schermata lo dice — ed è quello che serve per capire su quale
   riga e con quale profilo capita.
+
+---
+
+## 48. Brief Anagrafiche — punto 4: i collaboratori da un elenco solo (21/09/2026)
+
+> «In ogni punto dell'app dove si cerca, seleziona o inserisce un
+> collaboratore la fonte deve essere SEMPRE e SOLO la tabella della sezione
+> Collaboratori.» — Francesco.
+
+| pezzo | dove |
+|---|---|
+| le regole | `tariffe/motore/collaboratori.js` |
+| prove in Node | `server/verifica/collaboratori.test.mjs` — 8 |
+| le tendine di IAM | `colCarica` / `colNome` / `colOpzioniNome` in `iam/index.html` |
+| prove sulle tendine | `iam/verifica/collaboratori-fonte-unica.test.mjs` — 4 |
+
+**La mappatura, fatta prima di toccare.** Undici punti in cui si sceglie o si
+nomina un collaboratore. Sette leggevano già `quote_collaboratori`; **quattro
+no**, e uno dei quattro non era una tendina: era l'email che il cliente riceve,
+che cercava «il tuo consulente» in `iam_utenti`.
+
+Misurato sul database, ed è la prova che non era un dettaglio: l'unica
+anagrafica che ha un intermediario di riferimento ce l'ha in
+`quote_collaboratori` e **non** in `iam_utenti`. La lettura sbagliata non
+trovava niente, ripiegava su «chi ha creato il preventivo», e **il cliente
+leggeva il nome di un altro** — che è esattamente il guasto che quel codice
+diceva di aver corretto.
+
+`iam_utenti` sono gli **account** (cinque righe, quelle con una password),
+`quote_collaboratori` sono le **persone** (diciassette). Chi non ha un accesso
+a IAM — la maggioranza — non compariva in nessuna delle tre tendine.
+
+**La condivisione resta sugli account, ed è giusto**: si condivide con chi può
+entrare in IAM, non con chi è in anagrafica. Due domande diverse, due elenchi
+diversi, e la prova lo sorveglia.
+
+**Una tendina non perde il valore che sta guardando.** `iam_trattative.collab`
+è testo libero, scritto «Nome Cognome»; il registro compone «Cognome Nome».
+Cambiare la fonte senza accorgersene avrebbe staccato le righe già scritte:
+il valore che una riga ha resta in elenco, marcato «scritto a mano», finché
+qualcuno non sceglie di nuovo. Una tendina che perde il proprio valore lo
+cancella al primo salvataggio, e nessuno se ne accorge.
+
+**Il filtro della produzione ha cambiato fonte e non significato.** Lavora su
+`creato_da`, che è un account: i nomi arrivano dal registro, il **valore** resta
+`iam_id`. C'è una prova, perché è il difetto che si fa cambiando una tendina.
+
+**L'abbinamento del testo libero aggancia solo se è UNA** (§19, regola 5).
+«Francesco» con due Francesco in agenzia non si abbina: si elenca. Un
+abbinamento sbagliato qui è una trattativa attribuita a chi non l'ha fatta.
+
+---
+
+## 49. Brief Anagrafiche — punto 3: il codice produttore ha un periodo (21/09/2026)
+
+Il codice produttore («U25274») è della **compagnia**, non della persona. Un
+collaboratore se ne va a giugno e la compagnia riassegna quel codice a un altro
+da luglio: fino a ieri la decisione presa una volta valeva per sempre, e
+avrebbe attribuito a chi è andato via tutto quello che l'altro produce da
+domani. Non è un fastidio di interfaccia — sono **provvigioni pagate a chi non
+doveva**.
+
+| pezzo | dove |
+|---|---|
+| le regole | `Assegnazione.valeIl` in `tariffe/motore/assegnazione.js` |
+| prove in Node | `server/verifica/assegnazione.test.mjs` — **42** (erano 35) |
+| le tre colonne, con il rollback | `supabase/migrations/20260921_codici_periodo_e_attivo.sql` (applicata) |
+| la sezione nella scheda | `ccpRigaSua`, `ccpModifica`, `ccpSalvaPeriodo`, `ccpSospendi` in `iam/index.html` |
+| il produttore nel dettaglio polizza | `polProduttore` in `index.html` |
+| prove | `iam/verifica/codici-compagnia.test.mjs` (18), blocco «punto 3» in `ui-test.mjs` (**487**) |
+
+### Le quattro regole, e che cosa impedisce ognuna
+
+1. **Un vuoto non è una chiusura.** Periodo non dichiarato = l'abbinamento vale
+   sempre. È l'unica lettura che non inventa niente (§8.1) e l'unica che non
+   cambia il significato delle sedici righe già scritte: leggere un vuoto come
+   «chiuso» spegnerebbe tutti gli abbinamenti in un colpo solo, **in silenzio**.
+2. **La data che si guarda è quella della POLIZZA, non oggi.** Una polizza
+   appartiene a chi teneva il codice **quando è stata prodotta**. Con «oggi» un
+   abbinamento chiuso a giugno toglierebbe a quella persona anche le polizze di
+   marzo, che sono sue — è la regola del fascicolo congelato (§11, regola 4)
+   applicata alle provvigioni.
+3. **La rata segue la data della sua polizza, non la propria decorrenza.** Una
+   rata è di chi ha prodotto il contratto, non di chi tiene il codice il giorno
+   in cui scade. Guardando due date diverse, la polizza finirebbe a uno e le sue
+   rate a un altro, e i due numeri non tornerebbero mai.
+4. **Con un periodo e senza data non si indovina.** Da che parte del confine
+   stia una polizza senza effetto non lo sa nessuno: si lascia da decidere e si
+   dice perché.
+
+### Sospendere e togliere sono due cose diverse
+
+**Sospeso** = «non produce più, ma è stato suo»: la persona resta scritta, e il
+codice smette di assegnare lavoro nuovo. Serve quando si sa che il codice non è
+più suo e non si sa ancora di chi sia. **Tolto** = «non è suo»: il codice torna
+fra quelli da abbinare. Un bottone solo costringerebbe a scegliere alla cieca,
+e la differenza è scritta nelle due conferme.
+
+In tutti e due i casi **quello che è già assegnato resta dov'è**: il dato sta
+sulla rata e sulla polizza, non qui (§19).
+
+### Due difetti che ha trovato la prova, e il secondo era il peggiore
+
+**`upsert` riscrive la riga intera** (§19). `rigaDecisione` non ripassava
+`note`: abbinare un codice **cancellava già oggi** quello che qualcuno ci aveva
+scritto accanto. Sedici righe su sedici sono senza note, perciò non si è perso
+niente — ma è il tipo di guasto che si scopre il giorno in cui la nota serviva.
+
+E il dente più lungo: **togliere la decisione azzera sospensione e periodo, la
+nota no.** Sospensione e periodo qualificano *un* abbinamento, non il codice.
+Portandoli avanti, un codice tolto a Tizio perché è passato a Caio
+**rinascerebbe già sospeso** addosso a Caio — e le sue polizze non si
+assegnerebbero mai, senza un errore e senza che nessuno capisca perché. Le
+evidenze del flusso restano invece, perché servono proprio a chi dovrà
+riabbinarlo, e la nota con loro: è scritta da una persona per la persona dopo.
+
+### Il produttore non risolto adesso si vede
+
+Il brief: «se non trovi il codice, segnalalo invece di lasciare il campo vuoto
+senza avviso». Nel dettaglio polizza il produttore ha ora **cinque** risposte,
+e le due nuove sono quelle che prima mentivano:
+
+- l'abbinamento **non copre** la data di questa polizza → si scrive il codice e
+  il motivo, **non il nome**. «Lui» sarebbe falso; «non assegnato»
+  nasconderebbe che una decisione esiste;
+- il codice **non è associato** a nessuna persona → si dice, e si dice dove si
+  abbina.
+
+Tutte e due con il richiamo giallo, perché una riga qualunque non la guarda
+nessuno.
+
+### Quello che questa tabella non può fare, ed è scritto nella migrazione
+
+La chiave primaria è la coppia (compagnia, codice): **una riga per codice,
+quindi un padrone per codice.** Il periodo dice fino a quando *quell'*
+abbinamento vale, non tiene lo storico dei padroni che si sono succeduti. Per
+una storia completa servirebbe una riga per periodo, cioè un'altra chiave
+primaria: è un lavoro a sé, e si fa se e quando un codice cambia mano davvero.
+
+### Una prova verde per sbaglio, e si è scoperto spegnendo una risposta finta
+
+«M5 · la correzione del movimento…» era verde perché si reggeva sulla
+**risposta finta lasciata accesa da una prova centocinquanta righe più su**:
+senza, l'update non ha righe da restituire e la correzione risulta non salvata
+(è il controllo di BUG 1, §47). Se n'è accorta una prova nuova che quella
+risposta la spegneva. *Una risposta finta non spenta cammina nelle prove dopo,
+e quando qualcuno la spegne diventa rossa una prova che non c'entra niente.*
+È la stessa trappola già annotata in §19 e §42, dal lato opposto.
+
+### Cosa resta aperto
+
+- **Nessun periodo e nessuna sospensione sono ancora dichiarati** (misurato
+  dopo la migrazione: 16 righe, tutte attive, 0 con date, 0 decise). È il
+  punto: il sistema conta e non giudica finché nessuno decide.
+- **Il confronto con la compagnia della polizza è esatto**, non passa dagli
+  alias (§11): «HDI Assicurazioni» sulla polizza e «HDI» in tabella non si
+  ritrovano. Sul portafoglio vero c'è una compagnia sola e non si vede; va
+  guardato prima del secondo flusso.

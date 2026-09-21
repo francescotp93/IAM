@@ -117,7 +117,11 @@ prova('il RUI discorde si vede, e non e\' un rosso', () => {
      l'abbinamento e' sbagliato o uno dei due numeri e' vecchio: in tutti e due
      i casi e' meglio saperlo prima di pagare. Ma non e' un guasto, e un rosso
      che non e' un guasto insegna a ignorare i rossi. */
-  const blocco = ritaglia('function ccpRender');
+  /* La riga si e' spostata in `ccpRigaSua` il 21/09/2026, quando ha smesso di
+     essere due righe e ne e' diventata una con stato, periodo e nota: la
+     regola e' la stessa, il posto no. Si e' aggiornata la regola, non il
+     numero (§15, §16, §33, §35). */
+  const blocco = ritaglia('function ccpRigaSua');
   deve(/const discorde = ruiScheda && ruiFlusso && ruiScheda !== ruiFlusso;/.test(blocco),
     'il confronto fra i due RUI non c\'e\'');
   deve(/ccp-avviso/.test(blocco), 'l\'avviso non compare nella riga');
@@ -188,6 +192,100 @@ prova('l\'abbinamento e il distacco lasciano traccia a registro', () => {
      sua scheda, che e' dove lo si cerca. */
   deve(/logMovimento\([^;]*CCP_PERSONA\)/.test(agg), 'il movimento non punta alla persona: ' + agg.match(/logMovimento\([^;]*/));
   return 'due movimenti, tutti e due con il puntatore';
+});
+
+/* ══ IL PERIODO E LA SOSPENSIONE (21/09/2026, brief Anagrafiche · punto 3) ══ */
+
+prova('LA RIGA DICE SE QUEL CODICE STA ANCORA ASSEGNANDO', () => {
+  /* Un abbinamento sospeso, o scaduto, continua a comparire — la persona ce
+     l'ha avuto, ed e' storia — ma smette di produrre attribuzioni. Se la riga
+     si leggesse uguale nei due casi, si continuerebbe a credere che le polizze
+     nuove siano sue, e nessuno andrebbe a guardare. */
+  const b = ritaglia('function ccpRigaSua');
+  deve(/const sospeso = r\.attivo === false;/.test(b), 'la riga non guarda l\'interruttore');
+  /* `attivo === false` e non `!r.attivo`: una colonna mai riempita non vuol
+     dire «spento» — e' la stessa distinzione delle anagrafiche che nascono a
+     «no» (§42). */
+  deve(!/const sospeso = !r\.attivo/.test(b), 'un vuoto si legge come «sospeso»');
+  deve(/ccp-off/.test(b) && /ccp-fine/.test(b) && /ccp-on/.test(b),
+    'i tre stati non si distinguono nella pastiglia');
+  deve(/nessun periodo dichiarato: vale sempre/.test(b),
+    'una riga senza periodo non dice che vale sempre: un vuoto si legge come un limite');
+  return 'assegna / sospeso / periodo finito';
+});
+
+prova('SOSPENDERE E TOGLIERE SONO DUE COSE DIVERSE, e si vede prima di farle', () => {
+  /* Sospeso = «non produce piu', ma e' stato suo», e la persona resta scritta.
+     Tolto = «non e' suo», e il codice torna fra quelli da abbinare. Un bottone
+     solo costringerebbe a scegliere alla cieca. */
+  const sos = ritaglia('async function ccpSospendi');
+  const tog = ritaglia('async function ccpTogli');
+  deve(/ccpScrivi\([^)]*\{ attivo: !sospendi \}\)/.test(sos),
+    'sospendere non passa dall\'interruttore: ' + sos.slice(0, 300));
+  /* E sospendere NON tocca la persona: si ripassa quella che c'e'. */
+  deve(/ccpScrivi\(compagnia, codice, r\.collaboratore_id,/.test(sos),
+    'sospendere cambia anche di chi e\' il codice');
+  /* Senza la prima lettera: nel testo e' «NON si assegnano piu'», e una regex
+     sensibile alle maiuscole dichiarerebbe rotto un codice giusto — la stessa
+     trappola gia' costata dieci minuti in §23 e §43. */
+  deve(/si assegnano pi[uù]/.test(sos), 'non dice che cosa smette di succedere');
+  deve(/restano sue/.test(sos) && /restano sue/.test(tog),
+    'non dice che le rate gia\' assegnate non tornano indietro');
+  /* E i due gesti si distinguono anche a registro: «sospeso» e «tolto» sono
+     due fatti diversi, e mesi dopo si chiede quale dei due e' successo. */
+  deve(/logMovimento\(/.test(sos) && /Codice compagnia sospeso/.test(sos) && /riattivato/.test(sos),
+    'la sospensione non lascia una traccia sua');
+  return 'due bottoni, due conferme, due movimenti';
+});
+
+prova('TOGLIERE AZZERA IL PERIODO: il prossimo non nasce gia\' sospeso', () => {
+  /* Il difetto che si fa senza accorgersene: un codice si toglie a Tizio
+     perche' la compagnia l'ha dato a Caio. Se la sospensione si portasse
+     avanti, il codice rinascerebbe sospeso addosso a Caio e le sue polizze non
+     si assegnerebbero mai — senza un errore e senza che nessuno capisca
+     perche'. Qui si fa girare il motore davvero. */
+  const r = A.rigaDecisione('PRIMA|U100', '', {
+    attivo: false, data_inizio: '2025-01-01', data_fine: '2026-06-30',
+    note: 'subentrato', nome_flusso: 'Chi Sa'
+  }, 'u1');
+  deve(r.attivo === true, 'il codice tolto resta sospeso');
+  deve(r.data_inizio === null && r.data_fine === null, 'il periodo del padrone di prima resta addosso al prossimo');
+  deve(r.note === 'subentrato' && r.nome_flusso === 'Chi Sa', 'si perde quello che serve a riconoscerlo');
+  /* E la conferma lo dice, invece di farlo di nascosto. */
+  deve(/periodo e sospensione si azzerano/.test(ritaglia('async function ccpTogli')),
+    'la conferma non dice che periodo e sospensione si azzerano');
+  return 'pulito per il prossimo, con la nota di chi c\'era prima';
+});
+
+prova('le date vuote restano VUOTE, e non diventano oggi', () => {
+  /* Riempirle con una data di comodo scriverebbe una decisione che nessuno ha
+     preso (§8.1), e un abbinamento che valeva sempre comincerebbe a valere da
+     una data qualunque. */
+  const b = ritaglia('async function ccpSalvaPeriodo');
+  deve(/value \|\| null/.test(b), 'una data vuota non diventa null: ' + b.slice(0, 300));
+  deve(!/new Date\(\)/.test(b), 'la schermata mette una data al posto del vuoto');
+  /* Un periodo che finisce prima di cominciare non si salva. */
+  deve(/al < dal/.test(b), 'si puo\' salvare un periodo che finisce prima di cominciare');
+  /* E una correzione che non cambia niente non scrive niente (§16). */
+  deve(/CCP_MOD = null; ccpRender\(\); return;/.test(b),
+    'un salvataggio che non cambia niente scrive lo stesso');
+  return 'vuoto = nessun periodo dichiarato';
+});
+
+prova('la data si confronta con la POLIZZA, non con oggi — e la schermata lo dice', () => {
+  /* Con «oggi» un abbinamento chiuso a giugno toglierebbe a quella persona
+     anche le polizze di marzo, che sono sue. E' la regola del motore; qui si
+     sorveglia che la schermata non la contraddica a parole, perche' «dal/al»
+     da solo non fa capire con che cosa si confronta. */
+  const b = ritaglia('function ccpRigaSua');
+  deve(/l'effetto della polizza|l’effetto della polizza/.test(b),
+    'la schermata non dice con che data si confronta il periodo');
+  /* La data si scrive tagliando la stringa: una data ISO non ha un fuso, e
+     farla passare da `new Date()` gliene da' uno — in Italia torna indietro di
+     un giorno (§44). */
+  const d = ritaglia('function ccpData');
+  deve(/slice\(/.test(d) && !/new Date\(/.test(d), 'la data passa da new Date(): ' + d.slice(0, 200));
+  return 'si confronta con l\'effetto, e si scrive senza fusi';
 });
 
 /* Ritaglia una funzione dal sorgente: dalla firma alla prima graffa che chiude

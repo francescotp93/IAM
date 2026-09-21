@@ -133,9 +133,20 @@ function initScript(conSessione) {
            (Niente apici inversi qui: il banco vive in un template literal —
            e' la terza volta che questa riga fa saltare il file.) */
         var ors = [];
-        var conta = false;
+        var conta = false, soloConta = false;
         b.or = function (f) { ors.push(String(f)); return b; };
-        b.select = function (_c, opt) { if (opt && opt.count) conta = true; return b; };
+        /* Con l'opzione «head» si chiede SOLO il numero; senza, PostgREST
+           manda le righe E il totale nella stessa risposta. Il banco li
+           confondeva — qualunque conteggio tornava senza righe — e una
+           schermata che chiede tutti e due si vedeva la lista vuota per un
+           difetto del banco, non del codice.
+           (Niente apici inversi in questo commento: il banco vive in un
+           template literal, ed e' la quarta volta che questa riga fa saltare
+           il file.) */
+        b.select = function (_c, opt) {
+          if (opt && opt.count) { conta = true; soloConta = !!opt.head; }
+          return b;
+        };
         b.eq = function (col, val) { filtri[col] = val; return b; };
         /* I metodi in() e upsert() erano passanti, cioè invisibili al
            registro: una prova che guardava «quali righe stai spostando» o
@@ -178,12 +189,12 @@ function initScript(conSessione) {
              dichiarati dalla prova. Se la prova non ne ha dichiarato nessuno
              risponde 0 — che e' un numero, non un errore, e una prova che non
              lo distingue dal vero non sta misurando niente. */
-          if (conta) {
-            var k = tabella + '|' + ors.slice().sort().join('&');
-            window.__COLLAUDO.conteggiChiesti.push(k);
+          var kConta = tabella + '|' + ors.slice().sort().join('&');
+          if (conta) window.__COLLAUDO.conteggiChiesti.push(kConta);
+          if (soloConta) {
             var tab = window.__COLLAUDO.conteggi;
-            if (tab && Object.prototype.hasOwnProperty.call(tab, k)) {
-              var v = tab[k];
+            if (tab && Object.prototype.hasOwnProperty.call(tab, kConta)) {
+              var v = tab[kConta];
               if (v && v.error) return Promise.resolve({ count: null, data: null, error: v.error }).then(ok, ko);
               return Promise.resolve({ count: v, data: null, error: null }).then(ok, ko);
             }
@@ -192,7 +203,13 @@ function initScript(conSessione) {
           var chiave = tabella + ':' + (singolo ? 'single' : 'lista');
           var su_misura = window.__COLLAUDO.risposte[chiave];
           if (su_misura !== undefined) {
-            return Promise.resolve(JSON.parse(JSON.stringify(su_misura))).then(ok, ko);
+            var rr = JSON.parse(JSON.stringify(su_misura));
+            if (conta && rr.count === undefined) {
+              var t2 = window.__COLLAUDO.conteggi;
+              rr.count = (t2 && Object.prototype.hasOwnProperty.call(t2, kConta))
+                ? t2[kConta] : ((rr.data || []).length);
+            }
+            return Promise.resolve(rr).then(ok, ko);
           }
           var r;
           if (operazione === 'insert') {
@@ -4040,10 +4057,13 @@ const avvio = async () => {
     });
 
     await prova('pensione: il cliente si sceglie dall\'anagrafica, o si censisce li\' — niente nominativi volanti', async () => {
-      /* Dal 17/09/2026 l'analisi parte da una persona in archivio. Il campo in
-         cima cerca nel portafoglio; se la persona non c'e', la scheda nuova si
-         compila nella stessa tendina e nasce in quote_anagrafiche con cognome,
-         nome e un codice fiscale valido. Un nome e basta non si accetta. */
+      /* Dal 17/09/2026 l'analisi parte da una persona in archivio. Dal
+         21/09/2026 il campo in cima non e' piu' una tendina: e' una PORTA che
+         apre la schermata di scelta (clp*), con la ricerca in anagrafica e la
+         linguetta del cliente nuovo. Le regole non sono cambiate — solo
+         persone fisiche, codice fiscale controllato, una scheda o niente — e
+         sono quelle che questa prova misura: si e' aggiornata la REGOLA, non
+         il numero. */
       const r = await page.evaluate(async () => {
         const attendi = (ms) => new Promise(r => setTimeout(r, ms));
         apriPensione(); pensPulisci();
@@ -4054,24 +4074,28 @@ const avvio = async () => {
           { id: 'g1', tipo: 'giuridica', nominativo: 'ROSSI SRL', partita_iva: '12345678901' },
         ], error: null };
         const q = document.getElementById('pens-cliente-q');
-        q.value = 'ross'; clpCerca(q);
-        await attendi(450);
-        const box = q.closest('.geo-wrap').querySelector('.clp-res');
-        const righe = [...box.querySelectorAll('.geo-item')].map(x => x.textContent.trim());
-        const visibile = box.classList.contains('show');
-        box.querySelector('.geo-item').click();
+        clpCerca(q);
+        const soloPorta = { apre: !!document.getElementById('clpk-ov'), scrivibile: !q.readOnly };
+        document.getElementById('clpk-q').value = 'ross';
+        await clpTrova();
+        const righe = [...document.querySelectorAll('#clpk-lista .clpk-r')].map(x => x.textContent.trim());
+        const piede = document.getElementById('clpk-piede').textContent;
+        document.querySelector('#clpk-lista .clpk-r').click();
         const scelto = { cliente: PENS.cliente, eta: document.getElementById('pens-eta').value,
           lavoro: document.getElementById('pens-lavoro').value, nota: document.getElementById('pens-da-cliente').textContent,
-          campo: q.value, chiuso: !box.classList.contains('show') };
+          campo: q.value, chiuso: !document.getElementById('clpk-ov') };
 
         /* La persona nuova. */
         window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [], error: null };
         const prima = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').length;
-        q.value = 'Bianchi Laura'; clpCerca(q);
-        await attendi(450);
-        const nessuno = [...box.querySelectorAll('.geo-item')].map(x => x.textContent.trim());
-        box.querySelector('.clp-nuovo').click();
-        const form = { cognome: document.getElementById('clp-cognome').value, nome: document.getElementById('clp-nome').value };
+        clpCerca(q);
+        document.getElementById('clpk-q').value = 'Bianchi Laura';
+        await clpTrova();
+        const nessuno = document.getElementById('clpk-lista').textContent.trim();
+        const soloFisiche = document.getElementById('clpk-c').textContent;
+        clpVista('nuovo');
+        const form = { cognome: document.getElementById('clp-cognome').value, nome: document.getElementById('clp-nome').value,
+                       tipo: !!document.getElementById('clp-tipo') };
         document.getElementById('clp-cf').value = 'BNCLRA90A41F205X';   /* carattere di controllo sbagliato */
         await clpSalvaNuovo();
         const rifiuto = document.getElementById('clp-errore').textContent;
@@ -4083,18 +4107,22 @@ const avvio = async () => {
         await clpSalvaNuovo();
         await attendi(50);
         delete window.__COLLAUDO.risposte['quote_anagrafiche:single'];
+        delete window.__COLLAUDO.risposte['quote_anagrafiche:lista'];
         const ins = window.__COLLAUDO.db.filter(o => o.tabella === 'quote_anagrafiche' && o.operazione === 'insert').slice(prima);
-        return { righe, visibile, scelto, nessuno, form, rifiuto, dopoRifiuto: dopoRifiuto - prima, ins,
+        return { righe, piede, soloPorta, soloFisiche, scelto, nessuno, form, rifiuto, dopoRifiuto: dopoRifiuto - prima, ins,
           nuovo: { cliente: PENS.cliente, lavoro: document.getElementById('pens-lavoro').value, eta: document.getElementById('pens-eta').value } };
       });
-      deve(r.visibile && r.righe.length === 2, 'la tendina non mostra la persona fisica e la riga «censisci»: ' + JSON.stringify(r.righe));
+      deve(r.soloPorta.apre && !r.soloPorta.scrivibile, 'il campo non apre la schermata, o ci si puo\' ancora scrivere dentro a mano');
+      deve(r.righe.length === 1, 'la lista non mostra la sola persona fisica: ' + JSON.stringify(r.righe));
       deve(/ROSSI MARIO/.test(r.righe[0]) && !r.righe.some(x => /ROSSI SRL/.test(x)), 'una societa\' compare fra le persone su cui calcolare una pensione');
-      deve(/Censisci/.test(r.righe[1]), 'manca la strada per la persona nuova');
+      deve(/societ/i.test(r.piede), 'la societa\' e\' stata tolta in silenzio: ' + r.piede);
+      deve(/solo persone fisiche/i.test(r.soloFisiche), 'la schermata non dice che qui si scelgono solo persone fisiche');
       deve(r.scelto.cliente && r.scelto.cliente.id === 'a1' && r.scelto.cliente.nome === 'Mario Rossi', 'il cliente scelto non e\' agganciato: ' + JSON.stringify(r.scelto.cliente));
       deve(Number(r.scelto.eta) >= 40 && r.scelto.lavoro === 'dipendente', 'eta\' e lavoro non ripresi dalla scheda: ' + r.scelto.eta + ' ' + r.scelto.lavoro);
-      deve(/dedotto/.test(r.scelto.nota) && r.scelto.chiuso && /ROSSI MARIO/.test(r.scelto.campo), 'dopo la scelta la tendina resta aperta o il campo non dice chi');
-      deve(r.nessuno.length === 2 && /Nessun cliente/.test(r.nessuno[0]) && /Censisci/.test(r.nessuno[1]), 'con zero risultati non offre di censire: ' + JSON.stringify(r.nessuno));
+      deve(/dedotto/.test(r.scelto.nota) && r.scelto.chiuso && /ROSSI MARIO/.test(r.scelto.campo), 'dopo la scelta la schermata resta aperta o il campo non dice chi');
+      deve(/Nessun cliente/.test(r.nessuno) && /Cliente nuovo/.test(r.nessuno), 'con zero risultati non manda a censire: ' + r.nessuno);
       deve(r.form.cognome === 'Bianchi' && r.form.nome === 'Laura', 'cognome e nome non proposti dal testo cercato: ' + JSON.stringify(r.form));
+      deve(!r.form.tipo, 'dove si scelgono solo persone fisiche compare lo stesso la scelta «societa\'»');
       deve(/codice fiscale|controllo|valido/i.test(r.rifiuto) && r.dopoRifiuto === 0, 'un codice fiscale sbagliato e\' stato salvato, o rifiutato senza dirlo: ' + r.rifiuto);
       deve(r.ins.length === 1, 'la scheda nuova non e\' stata scritta una volta sola: ' + r.ins.length);
       const p = r.ins[0].payload;
@@ -10530,12 +10558,22 @@ const avvio = async () => {
       deve(i > 0, 'manca il blocco di stile della nuova polizza');
       const fine = h.indexOf('@media(max-width:640px){.pnu-griglia', i);
       const css = h.slice(i, fine).split('\n').filter(r => !/^\s*(\/\*|\*)/.test(r)).join('\n');
-      /* Un colore a mano e' ammesso in UN posto solo: la dichiarazione, sul
-         contenitore, dei due gettoni che `withus-one-tokens.css` non porta.
-         Ovunque altro sarebbe una tavolozza che somiglia a IAM oggi e
-         diverge al primo ritocco. */
-      const fuoriDalContenitore = css.split('.pnu-kit{')[0] +
-        (css.split('.pnu-kit{')[1] || '').split('}').slice(1).join('}');
+      /* Un colore a mano e' ammesso in UN posto solo: la dichiarazione, sui
+         CONTENITORI del kit, dei gettoni che `withus-one-tokens.css` non
+         porta. Ovunque altro sarebbe una tavolozza che somiglia a IAM oggi e
+         diverge al primo ritocco.
+         I contenitori il 21/09/2026 sono due — il modulo della polizza nuova
+         e la schermata che sceglie il cliente — e la regola vale per tutti:
+         era scritta al singolare perche' allora ce n'era uno solo, e un
+         guardiano che ammette l'eccezione a un nome proprio invece che a una
+         categoria costringe a riscriverlo a ogni schermata nuova. */
+      const CONTENITORI = ['.pnu-kit{', '.clpk{'];
+      let fuoriDalContenitore = css;
+      for (const c of CONTENITORI) {
+        deve(css.includes(c), 'il kit non dichiara i gettoni mancanti sul contenitore ' + c);
+        fuoriDalContenitore = fuoriDalContenitore.split(c)[0] +
+          (fuoriDalContenitore.split(c)[1] || '').split('}').slice(1).join('}');
+      }
       /* Il bianco su fondo verde non e' una scelta di tavolozza: e' il
          contrasto del testo su un bottone pieno, e nei gettoni non esiste un
          colore «sopra il verde». Il kit di IAM lo scrive allo stesso modo
@@ -10548,7 +10586,8 @@ const avvio = async () => {
          mancano davvero: dichiararne uno che esiste gia' vorrebbe dire
          sovrascrivere la fonte unica del marchio. */
       const tokensQuoto = fs.readFileSync('withus-one-tokens.css', 'utf8');
-      const dichiarati = ((css.split('.pnu-kit{')[1] || '').split('}')[0].match(/--w1-[a-z0-9-]+(?=\s*:)/g) || []);
+      const dichiarati = CONTENITORI.flatMap(c =>
+        ((css.split(c)[1] || '').split('}')[0].match(/--w1-[a-z0-9-]+(?=\s*:)/g) || []));
       const gia = dichiarati.filter(t => new RegExp('^\\s*' + t + '\\s*:', 'm').test(tokensQuoto));
       deve(!gia.length, 'la schermata ridichiara gettoni che la fonte unica ha gia\': ' + gia.join(' '));
       for (const t of ['--w1-verde', '--w1-bordo', '--w1-card', '--w1-testo', '--w1-raggio', '--w1-ombra']) {
@@ -10558,6 +10597,149 @@ const avvio = async () => {
       deve(/class="pnu-scheda"/.test(h) && /class="pnu-btn pnu-primario"/.test(h), 'il modulo non usa il kit');
       deve(!/class="rin-az rin-primario" onclick="pnuSalva/.test(h), 'il tasto del modulo e\' rimasto quello vecchio');
       return '0 colori a mano, 6 gettoni, schede e bottoni sul kit';
+    });
+
+    await prova('scegli un cliente: il campo e\' una PORTA, e la schermata usa il kit', async () => {
+      /* «Si dovrebbe aprire un'interfaccia intermedia dove posso cercare un
+         cliente esistente oppure inserirne uno nuovo. Sempre con lo stesso
+         design di IAM, compresa questa barra di ricerca che non c'entra nulla
+         come design.»
+         La schermata vecchia si disegnava con `aw-grid`, `pv-sec`, `pv-azioni`
+         e `pv-piccolo`, che nel foglio di stile esistono SOLO dentro il
+         pannello della previdenza: dentro la finestra della polizza nuova —
+         appesa al body — quelle regole non arrivavano, e nessun errore lo
+         diceva. Questa prova guarda che non tornino. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_compagnie:lista'] = { data: [], error: null };
+        window.__COLLAUDO.risposte['iam_compagnia_prodotti:lista'] = { data: [], error: null };
+        await pnuApri();
+        await new Promise(r => setTimeout(r, 300));
+        const campo = document.getElementById('pnu-cliente-q');
+        const porta = { readonly: campo.readOnly, prima: !document.getElementById('clpk-ov') };
+        campo.click();
+        const ov = document.getElementById('clpk-ov');
+        const sopra = ov ? ov.parentElement === document.body : false;
+        const html = ov ? ov.innerHTML : '';
+        clpVista('nuovo');
+        const nuovoHtml = document.getElementById('clpk-c').innerHTML;
+        /* Esc chiude: una finestra che si apre sopra un'altra deve potersi
+           chiudere senza cercare la crocetta. */
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        const dopoEsc = !document.getElementById('clpk-ov');
+        document.getElementById('pol-ov')?.remove();
+        return { porta, sopra, html, nuovoHtml, dopoEsc };
+      });
+      deve(r.porta.readonly, 'nel campo del cliente si puo\' ancora scrivere a mano un nominativo volante');
+      deve(r.porta.prima && r.sopra, 'il clic non apre la schermata, o non la appende al body (sotto la finestra che l\'ha chiamata non si vedrebbe)');
+      deve(/clpk-ling/.test(r.html) && /Cerca in anagrafica/.test(r.html) && /Cliente nuovo/.test(r.html),
+        'mancano le due strade: cercare in archivio e censire il cliente nuovo');
+      deve(/class="pnu-btn pnu-primario"/.test(r.html), 'la schermata non usa il bottone del kit');
+      deve(/class="pnu-scheda"/.test(r.nuovoHtml) && /class="pnu-griglia"/.test(r.nuovoHtml),
+        'la scheda del cliente nuovo non usa il kit');
+      const morte = ['aw-grid', 'pv-sec', 'pv-azioni', 'pv-piccolo'].filter(c => new RegExp('class="[^"]*\\b' + c + '\\b').test(r.html + r.nuovoHtml));
+      deve(!morte.length, 'la schermata usa classi che fuori dalla previdenza non esistono: ' + morte.join(' '));
+      deve(r.dopoEsc, 'Esc non chiude la schermata');
+      return 'porta, due linguette, kit, niente classi che non arrivano, Esc chiude';
+    });
+
+    await prova('scegli un cliente: «non si e\' potuto leggere» non e\' «non c\'e\' nessuno»', async () => {
+      /* §12 e §18, qui su una lista di persone: un elenco vuoto rassicura, e
+         chi cerca smette di cercare credendo che quel cliente non ci sia. */
+      const r = await page.evaluate(async () => {
+        const finto = document.createElement('input'); finto.id = 'clp-prova'; document.body.appendChild(finto);
+        clpInstalla('clp-prova', { origine: 'collaudo', onScelto: function () {} });
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: null, error: { message: 'giu\'' } };
+        clpApri('clp-prova');
+        document.getElementById('clpk-q').value = 'ross';
+        await clpTrova();
+        const guasto = document.getElementById('clpk-lista').textContent;
+        /* E il totale che non si e' potuto contare si scrive con un punto,
+           mai con uno zero (§50). */
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { data: [
+          { id: 'a1', tipo: 'fisica', nominativo: 'ROSSI MARIO', codice_fiscale: 'RSSMRA86D10H501I' }], error: null };
+        window.__COLLAUDO.conteggi = window.__COLLAUDO.conteggi || {};
+        const k = 'quote_anagrafiche|nominativo.ilike.%ross%,codice_fiscale.ilike.%ross%,partita_iva.ilike.%ross%,telefono.ilike.%ross%,cellulare.ilike.%ross%';
+        window.__COLLAUDO.conteggi[k] = 412;
+        await clpTrova();
+        const tanti = document.getElementById('clpk-piede').textContent;
+        delete window.__COLLAUDO.conteggi[k];
+        delete window.__COLLAUDO.risposte['quote_anagrafiche:lista'];
+        clpChiudi(); finto.remove();
+        return { guasto, tanti };
+      });
+      deve(/non si è potuto (leggere|cercar)/i.test(r.guasto), 'un guasto della lettura si legge come «non c\'e\' nessuno»: ' + r.guasto);
+      deve(!/Nessun cliente con/.test(r.guasto), 'con la lettura caduta dice che quel cliente non esiste');
+      deve(/su 412/.test(r.tanti), 'non dice quanti sono in tutto: una lista tagliata che sembra tutta fa smettere di cercare (' + r.tanti + ')');
+      return 'lettura caduta dichiarata, «ne vedi 1 su 412»';
+    });
+
+    await prova('scegli un cliente: si censisce anche una societa\', e il movimento punta alla riga creata', async () => {
+      /* Le polizze si fanno anche alle societa'. Senza questa linguetta
+         l'unica strada era uscire dal modulo e andare in Anagrafiche, cioe'
+         perdere quello che si stava scrivendo.
+         E il movimento porta l'identificativo (§18): senza, alla domanda «chi
+         ha censito QUESTO cliente» il registro non sa rispondere. */
+      const r = await page.evaluate(async () => {
+        let scelto = null;
+        const finto = document.createElement('input'); finto.id = 'clp-prova'; document.body.appendChild(finto);
+        clpInstalla('clp-prova', { origine: 'collaudo', onScelto: function (a) { scelto = a; } });
+        clpApri('clp-prova');
+        clpVista('nuovo');
+        const haTipo = !!document.getElementById('clp-tipo');
+        /* Se la scelta non c'e' si torna subito: la prova deve dire «non si
+           puo' censire una societa'», non morire su un campo che non esiste —
+           un rosso per la strada nasconde il rosso per il contenuto (§4). */
+        if (!haTipo) { clpChiudi(); finto.remove(); return { haTipo }; }
+        document.getElementById('clp-tipo').value = 'giuridica'; clpNuovoTipo();
+        window.__COLLAUDO.db = [];
+        document.getElementById('clp-ragione').value = 'Rossi Srl';
+        document.getElementById('clp-piva').value = '1234';
+        await clpSalvaNuovo();
+        const corta = document.getElementById('clp-errore').textContent;
+        const dopoCorta = window.__COLLAUDO.db.filter(x => x.operazione === 'insert').length;
+        document.getElementById('clp-piva').value = '12345678901';
+        window.__COLLAUDO.risposte['quote_anagrafiche:single'] = { data: { id: '33333333-3333-4333-8333-333333333333' }, error: null };
+        await clpSalvaNuovo();
+        await new Promise(r => setTimeout(r, 60));
+        delete window.__COLLAUDO.risposte['quote_anagrafiche:single'];
+        const ins = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_anagrafiche' && x.operazione === 'insert');
+        const log = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert');
+        finto.remove();
+        return { haTipo, corta, dopoCorta, ins: ins.map(x => x.payload), log: log.map(x => x.payload), scelto, chiuso: !document.getElementById('clpk-ov') };
+      });
+      deve(r.haTipo, 'non si puo\' scegliere di censire una societa\'');
+      deve(/undici cifre/i.test(r.corta) && r.dopoCorta === 0, 'una partita IVA di quattro cifre e\' stata accettata, o rifiutata senza dire perche\': ' + r.corta);
+      deve(r.ins.length === 1 && r.ins[0].tipo === 'giuridica' && r.ins[0].partita_iva === '12345678901' && r.ins[0].nominativo === 'ROSSI SRL',
+        'la societa\' non e\' stata scritta una volta sola e per bene: ' + JSON.stringify(r.ins));
+      deve(r.scelto && r.scelto.id === '33333333-3333-4333-8333-333333333333' && r.chiuso,
+        'la societa\' appena censita non diventa il cliente scelto, o la schermata resta aperta');
+      deve(r.log.length === 1 && r.log[0].entita === 'cliente' && r.log[0].entita_id === '33333333-3333-4333-8333-333333333333',
+        'il movimento non punta alla riga creata: ' + JSON.stringify(r.log));
+      return 'societa\' censita, P.IVA controllata, movimento agganciato';
+    });
+
+    await prova('scegli un cliente: la data di nascita viene dal codice fiscale, e non riscrive quella scritta', async () => {
+      /* §23: due porte, un motore solo. E quello che una persona ha corretto a
+         mano non si sovrascrive — sapeva qualcosa che il codice non sa. */
+      const r = await page.evaluate(async () => {
+        const finto = document.createElement('input'); finto.id = 'clp-prova'; document.body.appendChild(finto);
+        clpInstalla('clp-prova', { origine: 'collaudo', onScelto: function () {} });
+        clpApri('clp-prova'); clpVista('nuovo');
+        document.getElementById('clp-cf').value = 'RSSMRA86D10H501I'; clpDaCF();
+        const dedotta = document.getElementById('clp-nascita').value;
+        document.getElementById('clp-nascita').value = '1986-04-11';
+        document.getElementById('clp-cf').value = 'BNCLRA90A41F205I'; clpDaCF();
+        const tenuta = document.getElementById('clp-nascita').value;
+        document.getElementById('clp-nascita').value = '';
+        document.getElementById('clp-cf').value = 'BNCLRA90A41F205X'; clpDaCF();
+        const sbagliato = document.getElementById('clp-nascita').value;
+        clpChiudi(); finto.remove();
+        return { dedotta, tenuta, sbagliato };
+      });
+      deve(r.dedotta === '1986-04-10', 'la data di nascita non si ricava dal codice fiscale: ' + r.dedotta);
+      deve(r.tenuta === '1986-04-11', 'ha sovrascritto la data corretta a mano: ' + r.tenuta);
+      deve(r.sbagliato === '', 'da un codice fiscale non valido ha comunque tirato fuori una data: ' + r.sbagliato);
+      return 'dedotta, non sovrascritta, e da un CF rotto niente';
     });
 
     await prova('nuova polizza: nessuna rata oltre la fine del contratto', async () => {

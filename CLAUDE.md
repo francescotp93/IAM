@@ -5891,3 +5891,119 @@ finestra è di un istante, ma esiste.
 - **Il confronto compagnia+codice non passa dagli alias** (§49): «HDI
   Assicurazioni» sulla polizza e «HDI» in tabella non si ritrovano. Con una
   compagnia sola non si vede; va guardato prima del secondo flusso.
+
+---
+
+## 58. Il cliente si sceglie da una schermata, non da una tendina (22/09/2026)
+
+> «Quando si inserisce una polizza e si deve cercare un cliente si dovrebbe
+> aprire un'interfaccia intermedia dove posso cercare un cliente esistente già
+> in IAM oppure inserire un nuovo cliente. Ovviamente sempre con lo stesso
+> design di IAM, compresa questa barra di ricerca che non c'entra nulla come
+> design.» — Francesco.
+
+| pezzo | dove |
+|---|---|
+| la schermata | blocco `clp*` in `index.html` (`clpApri`, `clpVista`, `clpTrova`, `clpScegli`, `clpNuovo`, `clpNuovoTipo`, `clpDaCF`, `clpSalvaNuovo`) |
+| lo stile | blocco `.clpk-*` accanto al kit di IAM in QUOTO |
+| le due porte | `#pnu-cliente-q` (nuova polizza) e `#pens-cliente-q` (analisi previdenziale) |
+| prove | quattro blocchi «scegli un cliente» in `ui-test.mjs` → **501** |
+
+### Il motivo non era estetico: erano regole che non arrivavano
+
+La scheda «cliente nuovo» si disegnava con `aw-grid`, `pv-sec`, `pv-piccolo` e
+`pv-azioni`. Misurato nel foglio di stile: quelle quattro classi esistono
+**solo** dentro `#page-previdenza`. Il modulo della polizza nuova vive in una
+finestra appesa al `body`, fuori da quel pannello — quindi lì **nessuna di
+quelle regole si applicava**: niente griglia, niente titolo di sezione, niente
+riga di bottoni, e il rosso dell'errore arrivava da un ripiego scritto a mano.
+
+> **Una classe che esiste solo sotto un pannello è una regola che non arriva, e
+> non lo dice.** È la stessa firma del gettone che non risolve (§44): la
+> proprietà viene ignorata in silenzio, la scheda esce brutta, e nessun errore
+> collega le due cose. Chi la guarda pensa a una scelta estetica sbagliata.
+
+### Il kit non si copia: si usa
+
+Il kit di IAM in QUOTO è nato il 21/09 sul modulo della polizza nuova, e il
+prefisso lo dice. Adesso che le schermate sono due, la finestra riprende le
+schede, i bottoni, la griglia e le note di quel kit e definisce solo quello che
+prima non esisteva: la finestra, la barra di ricerca, le righe del risultato,
+le due linguette. **Due copie della stessa tavolozza sono due tavolozze che un
+giorno diranno cose diverse** — è la regola dei motori (§18) applicata al
+foglio di stile.
+
+Conseguenza sul guardiano: la regola «un colore a mano solo dove il contenitore
+dichiara i gettoni mancanti» era scritta **al singolare**, con il nome proprio
+di quel contenitore. Adesso i contenitori sono un elenco, e la prova pretende
+che ognuno dichiari i suoi gettoni. *Un guardiano che ammette l'eccezione a un
+nome proprio invece che a una categoria va riscritto a ogni schermata nuova, e
+alla terza qualcuno smette di riscriverlo.*
+
+### `clpCerca` conserva il nome, e non è pigrizia
+
+Il nome e la firma sono scritti negli attributi `onfocus` dell'HTML. Cambiarli
+avrebbe voluto dire toccare ogni punto d'uso per un lavoro che non li riguarda.
+Così i due campi registrati — l'analisi pensione e la polizza nuova — non hanno
+cambiato una riga, e **il terzo che arriverà avrà la schermata gratis**.
+
+Il campo è diventato una **porta**: `readonly`, il clic apre. Ci si poteva
+ancora scrivere dentro un nominativo a mano, che è esattamente quello che §7
+vieta.
+
+### Le cinque regole di casa applicate qui
+
+1. **Le società si tolgono DOPO aver contato, e si dice quante.** `soloFisiche`
+   (l'analisi previdenziale: una società non ha un'età) accorciava l'elenco in
+   silenzio. Un elenco che si accorcia da solo fa cercare per mezz'ora una
+   persona che c'è (§50).
+2. **«Non si è potuto leggere» non è «non c'è nessuno»** (§12, §18). Su una
+   ricerca di persone è la bugia peggiore: chi cerca smette di cercare.
+3. **Il totale che non si è potuto contare si scrive con un punto, mai con uno
+   zero**, e la lista dice «ne vedi N su M» quando è tagliata.
+4. **La data di nascita viene dal motore** (§23, due porte una regola) e **non
+   sovrascrive quella corretta a mano**: chi l'ha corretta sapeva qualcosa che
+   il codice non sa. Da un codice fiscale non valido non esce niente.
+5. **Il movimento porta l'identificativo della riga creata** (§18): mancava, e
+   senza di lui alla domanda «chi ha censito QUESTO cliente» il registro non
+   sapeva rispondere.
+
+### Le società si censiscono qui
+
+Le polizze si fanno anche alle società, e la scheda nuova era solo per persone
+fisiche: l'unica strada era uscire dal modulo e andare in Anagrafiche, cioè
+**perdere quello che si stava scrivendo**. La partita IVA è di undici cifre e
+il rifiuto lo dice; l'aggancio resta «solo se è una» (`anagGiaCensita`).
+
+### Un difetto del banco, trovato scrivendo la prova
+
+Il finto database trattava **qualunque** conteggio come un conteggio e basta
+(`data: null`). In PostgREST è vero solo con `head`: senza, la risposta porta
+le righe **e** il totale. Una schermata che li chiede tutti e due si vedeva la
+lista vuota **per un difetto del banco, non del codice** — ed è il modo più
+veloce di accusare il codice giusto. Adesso il banco li distingue.
+
+### La trappola dell'apice inverso, quinta e sesta volta
+
+Due volte nella stessa ora: un commento HTML dentro un template literal di
+`index.html`, e un commento dentro il banco di `ui-test.mjs` — che due righe
+più sotto avvisa di non farlo. §31 vale anche dentro §31: **non si scrive il
+carattere vietato dentro il costrutto che lo vieta.**
+
+### Controprove
+
+Campo non più `readonly` → rossa la prova della porta. Guasto della lettura
+scritto come «nessun cliente» → rossa. `entita_id` tolto dal movimento →
+rossa. La data dedotta che sovrascrive quella a mano → rossa. La scelta
+«società» tolta → rossa.
+
+### Cosa resta aperto
+
+- **La ricerca si ferma a 40 righe** e lo dichiara: non si pagina. Su un
+  archivio di 2.536 anagrafiche restringere la ricerca basta; se un giorno non
+  bastasse, la strada è quella di `asgPagina` (§57).
+- **Gli altri diciotto wizard** hanno ancora il loro autocomplete copiato: si
+  portano qui uno alla volta, quando si tocca quel wizard (è la stessa nota del
+  17/09, e adesso la meta è una schermata invece di una tendina).
+- **Il modulo non chiede ancora chi ha prodotto la polizza** (§45): resta il
+  punto 4 del brief Anagrafiche.

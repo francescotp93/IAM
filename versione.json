@@ -1,8 +1,21 @@
 {
-  "versione": "0.24.0",
-  "nome": "Abbinare un codice produttore lo applica davvero",
+  "versione": "0.25.0",
+  "nome": "Il cliente si sceglie da una schermata vera",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.25.0",
+      "data": "2026-09-22",
+      "nome": "Il cliente si sceglie da una schermata vera",
+      "voci": [
+        "Quando inserisci una polizza, il campo del cliente non è più una barra di ricerca appiccicata lì: è una porta. Ci clicchi e si apre una schermata con lo stesso design di IAM, dove cerchi in anagrafica oppure censisci un cliente nuovo senza uscire dal modulo.",
+        "Il perché non era estetica: la scheda «cliente nuovo» usava regole di stile che esistono solo dentro la pagina della previdenza. Fuori da lì non arrivavano — niente griglia, niente titolo, niente riga di bottoni — e nessun errore lo diceva.",
+        "Adesso si censisce anche una società, con ragione sociale e partita IVA: prima l'unica strada era uscire dal modulo e andare in Anagrafiche, cioè perdere quello che si stava scrivendo.",
+        "La data di nascita si ricava dal codice fiscale mentre lo scrivi, e non tocca quella che hai corretto a mano.",
+        "La lista dice quanti clienti ci sono in tutto, non solo quanti ne vedi; e se l'archivio non risponde lo scrive in faccia, invece di mostrare un elenco vuoto che fa credere che quel cliente non esista.",
+        "Vale anche per l'analisi previdenziale, che usa lo stesso componente: una schermata sola, non due."
+      ]
+    },
     {
       "v": "0.24.0",
       "data": "2026-09-22",

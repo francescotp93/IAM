@@ -1,23 +1,20 @@
-id: 1790010568  exit: 0  2026-09-21 17:09:37
+id: 1790010595  exit: 0  2026-09-21 17:10:11
 ----
 == commit vivo ==
-3954c4f 0.22.0 — La contabilità a partita doppia: le fondamenta (#231)
+41034d7 0.22.1 — Le rate che sparivano ricaricando il file (#232)
 == versione servita da IAM ==
-app-versione" content="0.22.0"
+app-versione" content="0.22.1"
 == versione servita da QUOTO ==
-app-versione" content="0.22.0"
-== versione.json ==
-{
-  "versione": "0.22.0",
-  "nome": "La contabilità a partita doppia: le fondamenta",
-  "data": "2026-09-21",
-== la correzione c'e' nel file servito ==
-0
+app-versione" content="0.22.1"
+== la correzione c'e' nel file servito (attesi >=1) ==
+2
 == migrazione presente ==
 20260922_contab_partita_doppia.sql
+20260922_import_rate_su_polizze_gia_dentro.sql
 == il sito risponde ==
 IAM 200
-app-versione" content="0.22.0"
+app-versione" content="0.22.1"
 {
-  "versione": "0.22.0",
-  "nome": "La contabilità a partita doppia: le fondamenta",
+  "versione": "0.22.1",
+  "nome": "Le rate che sparivano ricaricando il file",
+2

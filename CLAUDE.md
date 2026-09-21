@@ -4608,3 +4608,131 @@ le toglierebbe e rimetterebbe, perdendo lo stato del modulo dentro.
 - **L'elenco «in portafoglio ma non in anagrafica»** oggi porta una riga sola,
   e va guardato dopo ogni importazione nuova: è lì che si vede una compagnia
   entrata col nome scritto in un altro modo.
+
+---
+
+## 47. L'import tutto-o-niente, e il salvataggio che non salvava (21/09/2026)
+
+Due richieste separate che si sono rivelate lo stesso difetto visto da due
+parti: **una scrittura che non riesce e non lo dice.**
+
+| pezzo | dove |
+|---|---|
+| la tabella di appoggio e la funzione | `supabase/migrations/20260921_import_tutto_o_niente.sql` (applicata) |
+| il riepilogo, la barra, l'esito | blocco `flu*` in `index.html` (`fluMostra`, `fluAvanza`, `fluConferma`) |
+| il dettaglio, che non si apre da solo | `fluDettaglio` / `fluApriDettaglio` |
+| il controllo delle righe toccate | `fcTocca` in `index.html`, `pntTocca` in `iam/index.html` |
+| prove | blocco «import» e «BUG 1» in `ui-test.mjs` → **485** |
+
+### La misura che ha deciso tutto
+
+Il 21/09/2026, prima di scrivere una riga:
+
+| | |
+|---|---|
+| anagrafiche entrate fra le 06:33:03 e le 06:36:41 | **2.475** |
+| polizze entrate nella stessa finestra | **1.690** |
+| rate entrate | **0** |
+| verbali a registro | **0** |
+| polizze in portafoglio **senza nemmeno una rata** | **1.700 su 1.715** |
+
+Quattromilacentosessantacinque righe in 218 secondi: **diciannove al secondo**,
+cioè una chiamata di rete per riga. Poi si è fermato.
+
+**Non è un fastidio di interfaccia.** Una polizza senza le sue rate non ha
+insoluti, non entra nello scadenzario delle rate, non produce estratto conto e
+non arriva in contabilità: per il sistema quel premio non lo deve nessuno.
+
+### La regola di §14 è stata RIBALTATA, e va detto
+
+Fino a oggi l'ordine clienti → polizze → rate serviva a **reggere**
+un'interruzione: quello che era scritto restava e si ricaricava lo stesso file.
+Con venticinque polizze era ragionevole — il secondo giro saltava il fatto.
+
+Con milleseicento non regge, per una ragione che si è vista solo succedendo:
+**nessuno si accorge di essere a metà.** Il verbale si scriveva alla fine,
+quindi non c'è; le polizze ci sono tutte e sembrano a posto; le rate mancanti
+non si vedono finché qualcuno non cerca un insoluto.
+
+> Un'importazione a metà **che si dichiara** è recuperabile. Una che **sembra
+> finita** è un portafoglio sbagliato di cui nessuno sa il perché.
+
+Adesso o entra tutto o non entra niente, e lo garantisce Postgres con una
+transazione, non il codice della pagina che ci prova.
+
+### Perché una tabella di appoggio e non un argomento solo
+
+Il piano di un portafoglio intero pesa qualche megabyte. Passarlo tutto in una
+chiamata sola è possibile, e allora la barra non potrebbe dire niente di vero:
+una richiesta o è finita o non lo è. Il brief chiede che la barra rifletta il
+salvataggio **reale**, quindi il piano sale a blocchi — ogni blocco è una
+scrittura confermata dal database — e alla fine **una** chiamata applica tutto
+insieme. Quello che si vede avanzare è lavoro fatto.
+
+**Il catalogo resta fuori dal «tutto o niente»**, ed è voluto: il portafoglio è
+il lavoro, il catalogo è la sua etichetta (§39, regola 6).
+
+### Il collaudo si è rotto sul posto giusto, e si è dimostrato da solo
+
+Il primo giro della funzione è morto su `tacito_rinnovo`: è `NOT NULL` **con un
+default**, e passare un NULL esplicito non fa scattare il default — lo
+scavalca. La cosa utile è come è morto: aveva già scritto il cliente, e
+morendo ha tirato indietro **anche quello** e il foglio di brutta. Zero righe
+rimaste. Il «tutto o niente» si è dimostrato prima ancora di essere provato
+apposta.
+
+### BUG 1 — e la ragione per cui non si vedeva
+
+> «Modifico un movimento di cassa e la modifica non resta» — Francesco.
+
+Il codice era **strutturalmente giusto**: `update`, filtro sull'id, errore
+controllato. Ed è proprio per questo che il guasto non si vedeva.
+
+> **PostgREST non restituisce un errore quando un update tocca ZERO righe.**
+
+Succede ogni volta che una politica di visibilità filtra via la riga: `error` è
+`null`, la schermata non dice niente, l'oggetto in memoria viene aggiornato lo
+stesso (`Object.assign`) e la modifica sparisce alla prima rilettura vera. Per
+chi lavora è indistinguibile da un salvataggio che non ha funzionato.
+
+Da qui in avanti, **dove si toccano dei soldi si chiede al database di
+restituire le righe che ha cambiato e si guarda quante sono**: zero righe non è
+un successo silenzioso. E non si fa credere che sia andata — il valore nuovo
+non si mostra e il modulo non si chiude, che è la conferma più forte che ci sia.
+
+Toccati: la correzione del foglio cassa e il pagamento della polizza (QUOTO), i
+movimenti di prima nota, l'annullamento, la riapertura e il saldo dichiarato
+(IAM).
+
+### Due trappole del banco, e una è la stessa due volte
+
+**1. `delete` era un passante.** Il finto database lo ignorava, quindi una
+prova che guardava una cancellazione leggeva sempre niente e restava verde
+comunque. È lo stesso difetto già corretto su `in()` e `upsert()` (§19).
+Adesso la registra.
+
+**2. Un apice inverso dentro il banco.** Il finto database vive dentro un
+template literal: un commento che nomina una funzione fra apici inversi chiude
+la stringa a metà e il file non si carica più. Ci sono cascato **due volte
+nella stessa sessione**, la seconda scrivendo il commento che spiegava la
+prima. È §31 — non si scrive il carattere vietato dentro il costrutto che lo
+vieta — applicata alle stringhe invece che ai selettori.
+
+**3. Una risposta finta lasciata accesa.** `__COLLAUDO.risposte` non si azzera
+fra una prova e l'altra: una risposta d'errore messa per provare il caso
+cattivo faceva fallire le due prove successive, e il rosso sembrava loro. Si
+spegne dove si accende.
+
+### Cosa resta aperto
+
+- **Le rate perse stamattina non si ricostruiscono dal database**: stanno solo
+  nel file della compagnia. Si recuperano ricaricando **quello stesso file**,
+  che adesso è atomico e idempotente — le polizze già dentro non si
+  riscrivono, entrano solo le rate che mancano.
+- **I lotti mai applicati non si puliscono da soli col tempo**: si cancellano
+  quando l'importazione riesce o fallisce, ma una scheda chiusa a metà
+  caricamento ne lascia qualcuno. Sono invisibili a chiunque altro e non sono
+  portafoglio; una pulizia periodica è un lavoro a sé.
+- **La causa prima di BUG 1 resta da vedere sul campo**: adesso, quando
+  succede, la schermata lo dice — ed è quello che serve per capire su quale
+  riga e con quale profilo capita.

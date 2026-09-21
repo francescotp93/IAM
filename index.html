@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.16.0">
-<meta name="app-versione-nome" content="Gestione compagnie: si entra dalla compagnia, non dalla tariffa">
+<meta name="app-versione" content="0.17.0">
+<meta name="app-versione-nome" content="L'import non si ferma più a metà, e un salvataggio muto non esiste">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -1114,6 +1114,44 @@ button{font-family:inherit}
   background:#fff7ed;border:1px solid #f2d6b8;color:#7a4a08}
 .flu-senza ul{margin:6px 0 0 18px;padding:0}
 .flu-senza li{margin:2px 0}
+
+/* ══ IL RIEPILOGO A TRE NUMERI, LA BARRA E L'ESITO (21/09/2026) ═════════════
+   Stessi gettoni del resto della casa: `--line`, `--ink`, `--blue` sono quelli
+   che questo documento usa gia' ovunque, quindi la schermata segue il tema
+   senza una tavolozza sua. Prefissate `flu-`, come le vicine. */
+.flu-tre{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.flu-num{padding:18px 12px;border:1px solid var(--line);border-radius:12px;background:#fbfcff;text-align:center;min-width:0}
+.flu-num .flu-v{font-size:34px;font-weight:800;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums}
+.flu-num .flu-k{font-size:12px;color:var(--muted);margin-top:4px;text-transform:lowercase}
+.flu-scarti{margin-top:4px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.55;
+  background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
+.flu-link{background:none;border:none;padding:0;font:inherit;color:var(--blue);
+  text-decoration:underline;cursor:pointer}
+.flu-azioni{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:18px}
+.flu-btn{padding:12px 20px;border-radius:10px;border:1px solid var(--line);background:#fff;
+  font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink)}
+.flu-btn:hover:not(:disabled){background:#f6f8fc}
+.flu-btn:disabled{opacity:.55;cursor:default}
+.flu-btn.flu-primario{background:var(--blue);border-color:var(--blue);color:#fff}
+.flu-piu{margin-top:14px}
+.flu-avanz{margin-top:16px}
+.flu-fase{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.flu-barra{height:10px;border-radius:999px;background:#eef2f7;overflow:hidden}
+.flu-riemp{height:100%;background:var(--blue);border-radius:999px;transition:width .18s linear}
+.flu-fatto,.flu-rotto{padding:22px 16px;border-radius:12px;border:1px solid var(--line);text-align:center;margin-top:8px}
+.flu-fatto{background:#f0fdf4;border-color:#bbf7d0}
+.flu-rotto{background:#fef2f2;border-color:#fecaca}
+.flu-fatto-t{font-size:17px;font-weight:800;color:var(--ink)}
+.flu-spunta,.flu-croce{font-size:44px;line-height:1}
+.flu-spunta{color:#16a34a;animation:flu-pop .45s cubic-bezier(.2,1.6,.4,1)}
+.flu-croce{color:#dc2626}
+@keyframes flu-pop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+@media(max-width:600px){
+  .flu-tre{gap:8px}
+  .flu-num{padding:14px 6px}
+  .flu-num .flu-v{font-size:26px}
+  .flu-azioni .flu-btn{flex:1 1 auto}
+}
 .fdoc-storico{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#f8f9fc}
 .fdoc-storico summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)}
 .fdoc-storico .sc-docrow{margin-top:8px}
@@ -16009,9 +16047,9 @@ async function polSalvaPagamento(id) {
      sapesse dire su quale riga. Si continua a leggere quello che c'e' gia'
      scritto, ma non si scrive piu'. */
   try {
-    const { error } = await db.from('quote_polizze')
-      .update({ mezzo_pagamento: mezzo || null, stato_pagamento: stato }).eq('id', id);
-    if (error) throw error;
+    fcTocca(await db.from('quote_polizze')
+      .update({ mezzo_pagamento: mezzo || null, stato_pagamento: stato }).eq('id', id).select('id'),
+      'Il pagamento della polizza non e\u2019 stato modificato.');
     const r = (PF_ROWS || []).find(x => x.id === id);
     if (r) { r.mezzo_pagamento = mezzo || null; r.stato_pagamento = stato; }
     if (typeof pfRender === 'function') pfRender();
@@ -19215,8 +19253,104 @@ async function fluEsistenti(analisi) {
   return out;
 }
 
+/* ══ IL RIEPILOGO PRIMA DELLA CONFERMA (21/09/2026) ═════════════════════════
+   Prima qui c'era l'elenco di tutte le polizze del file. Con venticinque
+   righe era una verifica; con millesettecento è un muro che nessuno legge, e
+   il tasto per confermare finiva in fondo a una pagina lunga come un
+   lenzuolo.
+
+   Adesso: TRE NUMERI e un bottone. Quello che c'era resta, sotto «vedi il
+   dettaglio»: non si cancella niente — le rate che restano fuori, i codici da
+   abbinare e le cose da sapere prima di confermare sono esattamente il motivo
+   per cui questa schermata mostra prima di scrivere (§14). Si smette di
+   metterle DAVANTI a chi deve solo dire di sì. */
 function fluMostra() {
   const box = document.getElementById('flu-esito');
+  const p = FLU_PIANO;
+  if (!box || !p) return;
+  const t = p.testata || {};
+  const n = (v) => Number(v || 0).toLocaleString('it-IT');
+
+  /* Quello che resta fuori, in UN numero. Il dettaglio è sotto: un avviso per
+     ogni motivo diverso si legge come cinque guasti, e la cosa da fare è una
+     (§16). */
+  const fuori = (p.polizze.senzaCliente || []).length
+              + (p.titoli.senzaPolizza || []).length
+              + (p.titoli.ignoti || []).length;
+  const gravi = (p.avvisi || []).filter(a => a.g === 'grave').length;
+
+  box.innerHTML = `
+    <div class="flu-testata">
+      <b>${esc(t.emittente || 'compagnia non dichiarata')}</b>
+      <span class="pdoc-opt">${esc(t.versione || 'tracciato non dichiarato')}</span>
+      <div class="cl-sub">${t.dal ? 'movimenti dal ' + new Date(t.dal).toLocaleDateString('it-IT') + ' al ' + new Date(t.al).toLocaleDateString('it-IT') : 'periodo non dichiarato'}${
+        t.intermediario ? ' · agenzia ' + esc(t.intermediario) : ''}</div>
+    </div>
+
+    <div class="flu-tre">
+      <div class="flu-num"><div class="flu-v">${n(p.clienti.nuovi.length)}</div><div class="flu-k">client${p.clienti.nuovi.length === 1 ? 'e' : 'i'}</div></div>
+      <div class="flu-num"><div class="flu-v">${n(p.polizze.nuove.length)}</div><div class="flu-k">polizz${p.polizze.nuove.length === 1 ? 'a' : 'e'}</div></div>
+      <div class="flu-num"><div class="flu-v">${n(p.titoli.nuovi.length)}</div><div class="flu-k">rat${p.titoli.nuovi.length === 1 ? 'a' : 'e'}</div></div>
+    </div>
+
+    ${fuori ? `<div class="flu-scarti"><b>${n(fuori)} righe non importabili.</b>
+      Restano fuori e il portafoglio entra lo stesso.
+      <button type="button" class="flu-link" onclick="fluApriDettaglio()">vedi il dettaglio</button></div>` : ''}
+    ${gravi ? `<div class="pdoc-esito ko" style="margin-top:10px"><i class="ti ti-alert-triangle"></i>
+      ${n(gravi)} avvis${gravi === 1 ? 'o' : 'i'} da leggere prima di confermare.
+      <button type="button" class="flu-link" onclick="fluApriDettaglio()">vedi il dettaglio</button></div>` : ''}
+
+    <div class="flu-azioni">
+      ${p.niente
+        ? '<div class="pdoc-esito ok"><i class="ti ti-circle-check"></i> Non c\'è niente di nuovo da scrivere: questo flusso è già tutto dentro.</div>'
+        : `<button type="button" class="flu-btn flu-primario" id="flu-vai" onclick="fluConferma()">
+             <i class="ti ti-database-import"></i> Importa</button>
+           <button type="button" class="flu-btn" id="flu-stop" onclick="fluAnnulla()">Annulla</button>`}
+    </div>
+
+    <div class="flu-avanz" id="flu-avanz" hidden>
+      <div class="flu-fase" id="flu-fase">Preparo…</div>
+      <div class="flu-barra"><div class="flu-riemp" id="flu-riemp" style="width:0%"></div></div>
+      <div class="cl-sub" id="flu-quanti"></div>
+    </div>
+
+    ${p.niente ? '' : `<div class="flu-piu">
+      <button type="button" class="flu-link" onclick="fluApriDettaglio()">Vedi che cosa c\'è nel file</button>
+    </div>`}
+    <div id="flu-dett" hidden></div>`;
+}
+
+function fluApriDettaglio() {
+  const d = document.getElementById('flu-dett');
+  if (!d) return;
+  if (d.hidden) { d.hidden = false; fluDettaglio(); d.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  else d.hidden = true;
+}
+
+function fluAnnulla() {
+  FLU_PIANO = null;
+  const box = document.getElementById('flu-esito');
+  if (box) box.innerHTML = '<div class="cl-sub">Annullato: non è stato scritto niente. Scegli un altro file quando vuoi.</div>';
+}
+
+/* La barra dice quanto è stato CONFERMATO dal database, non quanto tempo è
+   passato. È la richiesta di Francesco, e ha una ragione: una barra a tempo
+   che arriva in fondo mentre la scrittura è ancora a metà è peggio di nessuna
+   barra — fa chiudere la scheda. */
+function fluAvanza(fase, fatto, totale) {
+  const a = document.getElementById('flu-avanz');
+  if (a) a.hidden = false;
+  const f = document.getElementById('flu-fase');
+  const r = document.getElementById('flu-riemp');
+  const q = document.getElementById('flu-quanti');
+  if (f) f.textContent = fase;
+  if (r) r.style.width = (totale > 0 ? Math.round(fatto / totale * 100) : 0) + '%';
+  if (q) q.textContent = totale > 0 ? fatto.toLocaleString('it-IT') + ' di ' + totale.toLocaleString('it-IT') : '';
+}
+
+/* L'elenco completo di quello che c'è nel file. Non si apre da solo. */
+function fluDettaglio() {
+  const box = document.getElementById('flu-dett');
   const p = FLU_PIANO;
   if (!box || !p) return;
   const t = p.testata || {};
@@ -19225,21 +19359,14 @@ function fluMostra() {
 
   box.innerHTML = `
     <div class="flu-testata">
-      <b>${esc(t.emittente || 'compagnia non dichiarata')}</b>
-      <span class="pdoc-opt">${esc(t.versione || 'tracciato non dichiarato')}</span>
       ${(p.tracciato && p.tracciato.senza || []).length ? `<div class="flu-senza">
         <b>Questo tracciato non porta tutto.</b> Non è un guasto del gestionale: è quello che la compagnia
         non manda, e conviene saperlo prima di guardare i numeri.
         <ul>${p.tracciato.senza.map(s => `<li>${esc(s)}</li>`).join('')}</ul>
       </div>` : ''}
-      <div class="cl-sub">${t.dal ? 'movimenti dal ' + new Date(t.dal).toLocaleDateString('it-IT') + ' al ' + new Date(t.al).toLocaleDateString('it-IT') : 'periodo non dichiarato'}${
-        t.intermediario ? ' · agenzia ' + esc(t.intermediario) : ''}</div>
     </div>
     <div class="cdoc-conta" style="margin-top:12px">
-      ${card(p.clienti.nuovi.length, 'Clienti nuovi', 'entrano in anagrafica')}
       ${card(p.clienti.gia.length, 'Clienti già in anagrafica', 'non si toccano: si aggancia la polizza')}
-      ${card(p.polizze.nuove.length, 'Polizze nuove', 'entrano in portafoglio')}
-      ${card(p.titoli.nuovi.length, 'Rate nuove', 'con le provvigioni')}
     </div>
     ${p.polizze.gia.length ? `<div class="pdoc-esito ok" style="margin-top:12px"><i class="ti ti-circle-check"></i>
       <b>${p.polizze.gia.length}</b> polizz${p.polizze.gia.length === 1 ? 'a' : 'e'} già importat${p.polizze.gia.length === 1 ? 'a' : 'e'}: non si riscrivono. Lo stesso file si può ricaricare senza far danni.</div>` : ''}
@@ -19329,19 +19456,9 @@ function fluMostra() {
       ${p.avvisi.map(a => `<div class="pdoc-esito ${a.g === 'grave' ? 'ko' : ''}"><i class="ti ti-alert-triangle"></i> ${esc(a.t)}</div>`).join('')}
       ${p.titoli.senzaPolizza.length ? `<div class="pdoc-esito"><i class="ti ti-alert-triangle"></i>
         ${p.titoli.senzaPolizza.length} rate si riferiscono a una polizza che non è in questo flusso: restano fuori.</div>` : ''}` : ''}
-    <div class="pdoc-ft" style="margin-top:16px">
-      ${p.niente
-        ? '<div class="pdoc-esito ok"><i class="ti ti-circle-check"></i> Non c\'è niente di nuovo da scrivere: questo flusso è già tutto dentro.</div>'
-        : `<button class="btn-emetti" onclick="fluConferma()"><i class="ti ti-database-import"></i>
-             Scrivi ${p.clienti.nuovi.length} client${p.clienti.nuovi.length === 1 ? 'e' : 'i'}, ${p.polizze.nuove.length} polizz${p.polizze.nuove.length === 1 ? 'a' : 'e'} e ${p.titoli.nuovi.length} rat${p.titoli.nuovi.length === 1 ? 'a' : 'e'}</button>`}
-    </div>`;
+    `;
 }
 
-/* La scrittura. Tre passaggi, in ordine, perché ognuno ha bisogno degli id
-   del precedente: i clienti, poi le polizze (che vogliono `cliente_id`), poi
-   le rate (che vogliono `polizza_id`). Se si ferma in mezzo, quello che è
-   stato scritto resta e il caricamento si rifà: la chiave di provenienza fa
-   sì che il secondo giro salti quello che c'è già. */
 /* L'abbinamento fatto dall'anteprima, dove il codice si legge. Si scrive
    subito — non c'è un «salva» da ricordarsi — e l'anteprima si ridisegna, così
    si vede immediatamente che quelle rate adesso hanno un padrone.
@@ -19443,203 +19560,210 @@ function fluChiDi(polizza, mappaCodici) {
   return Assegnazione.statoDecisione(d) === 'persona' ? d.collaboratore_id : null;
 }
 
+/* ══ LA SCRITTURA: O ENTRA TUTTO, O NON ENTRA NIENTE (21/09/2026) ═══════════
+   Prima si scriveva una riga alla volta, con una chiamata di rete per riga, e
+   la regola dichiarata era che un'interruzione si REGGEVA: quello che era
+   scritto restava e si ricaricava lo stesso file (§14).
+
+   Il 21/09/2026 quella regola si è rotta sul serio. L'importazione delle 06:33
+   ha scritto 2.475 anagrafiche e 1.690 polizze in tre minuti e mezzo, poi si è
+   fermata prima delle rate. Risultato: 1.700 polizze su 1.715 senza NEMMENO
+   una rata — cioè senza insoluti, fuori dallo scadenzario e fuori dalla
+   contabilità — e nessun verbale a registro, perché il verbale si scriveva
+   alla fine. Il portafoglio sembrava a posto.
+
+   Adesso il piano SALE A BLOCCHI in una tabella di appoggio (ogni blocco è
+   una scrittura vera: è quello che la barra misura) e poi UNA chiamata lo
+   applica dentro una transazione sola. Se qualcosa non va, Postgres tira
+   indietro tutto — clienti, polizze, rate e verbale — e in archivio non resta
+   niente a metà.
+
+   Il catalogo resta fuori apposta, come prima: il portafoglio è il lavoro, il
+   catalogo è la sua etichetta, e un'importazione che si ferma su una tabella
+   di contorno lascia fuori delle polizze vere (§39, regola 6). */
 async function fluConferma() {
   const p = FLU_PIANO;
   const box = document.getElementById('flu-esito');
   if (!p || !box) return;
   if (!fluPuo()) return fluVietato(box);
-  if (!confirm('Scrivo in archivio ' + p.clienti.nuovi.length + ' clienti, ' + p.polizze.nuove.length
-    + ' polizze e ' + p.titoli.nuovi.length + ' rate.\n\nI clienti che ci sono già NON vengono toccati. Procedo?')) return;
-  box.insertAdjacentHTML('afterbegin', '<div class="pdoc-attesa" id="flu-attesa">Scrivo…</div>');
-  const idPerChiave = Object.assign({}, p.clienti.idPerChiave);
-  const fatti = { clienti: 0, polizze: 0, titoli: 0, dedotte: 0, assegnate: 0,
-                  compagnie: 0, prodotti: 0, catalogoKo: null };
+
+  /* Niente doppio invio: il bottone si spegne al primo clic e non si riaccende
+     se non annullando. Un secondo clic su un'importazione da millesettecento
+     righe non è un fastidio, è un portafoglio doppio. */
+  const vai = document.getElementById('flu-vai');
+  const stop = document.getElementById('flu-stop');
+  if (vai) { if (vai.disabled) return; vai.disabled = true; vai.innerHTML = '<i class="ti ti-loader"></i> Importo…'; }
+  if (stop) stop.disabled = true;
+
   const mio = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : null;
+  const fatti = { compagnie: 0, prodotti: 0, catalogoKo: null };
 
-  /* Le decisioni già prese su chi è ogni codice collaboratore (§ «Assegna il
-     pregresso»). Si leggono PRIMA di scrivere le rate, così una rata nasce già
-     di qualcuno invece di essere assegnata a mano il giorno dopo.
-     Se la lettura non riesce non si ferma niente: le rate entrano senza
-     collaboratore, che è come entravano prima. Una decisione che non si è
-     potuta leggere non è una decisione diversa — è una decisione mancante. */
-  let mappaCodici = {};
-  try {
-    const { data: cod } = await db.from('quote_codici_collaboratore').select('*');
-    mappaCodici = Assegnazione.mappa(cod || []);
-  } catch (e) { mappaCodici = {}; }
-  /* Il codice sta sulla POLIZZA, la rata ha solo il riferimento: qui si ritrova
-     l'una dall'altra. Le polizze che c'erano già portano il loro codice come le
-     nuove — è lo stesso flusso che le descrive. */
-  const polPerFonte = {};
-  [].concat(p.polizze.nuove || [], p.polizze.gia || []).forEach(x => { polPerFonte[x._fonte_id] = x; });
-
-  /* 0. Il catalogo. Sta FUORI dal try che scrive il portafoglio, e non è un
-     dettaglio: se la creazione di una compagnia non riesce, l'importazione
-     deve andare avanti lo stesso — il portafoglio è il lavoro, il catalogo è
-     la sua etichetta. Un'importazione che si ferma su una tabella di
-     contorno lascia fuori delle polizze vere.
-     Quello che nasce qui è marcato `da_verificare`: il sistema registra che
-     cosa ha trovato, e a dire se va bene è una persona. */
+  /* 0. Il catalogo, come prima e fuori dalla transazione. */
   if (p._catalogo && !p._catalogo.errore) {
     try {
       const esito = await fluScriviCatalogo(p._catalogo);
-      fatti.compagnie = esito.compagnie;
-      fatti.prodotti = esito.prodotti;
+      fatti.compagnie = esito.compagnie; fatti.prodotti = esito.prodotti;
     } catch (e) { fatti.catalogoKo = e.message || String(e); }
   } else if (p._catalogo && p._catalogo.errore) {
     fatti.catalogoKo = p._catalogo.errore;
   }
 
+  /* Le decisioni già prese su chi è ogni codice collaboratore: si leggono
+     prima, così una rata e una polizza nascono già di qualcuno. Se la lettura
+     non riesce non si ferma niente — una decisione che non si è potuta
+     leggere non è una decisione diversa, è una decisione mancante. */
+  let mappaCodici = {};
   try {
-    /* 1. I clienti nuovi. `fonte`/`fonte_id` dicono da dove arrivano; il
-       riconoscimento resta il codice fiscale. */
-    for (const c of p.clienti.nuovi) {
-      const rec = {
-        tipo: c.tipo, nominativo: c.nominativo, cognome: c.cognome, nome: c.nome,
-        ragione_sociale: c.ragione_sociale, codice_fiscale: c.codice_fiscale, partita_iva: c.partita_iva,
-        indirizzo: c.indirizzo, cap: c.cap, comune: c.comune, provincia: c.provincia,
-        cellulare: c.cellulare, telefono: c.telefono, email: c.email, data_nascita: c.data_nascita,
-        fonte: 'ssf', fonte_id: c._chiave
-      };
-      const { data, error } = await db.from('quote_anagrafiche').insert(rec).select('id').single();
-      if (error) throw error;
-      idPerChiave[c._chiave] = data.id;
-      /* Le altre chiavi della stessa persona dentro questo flusso puntano
-         alla scheda appena creata, non a una seconda. */
-      p.clienti.nuovi.forEach(x => { if (x._duplicatoDi === c._chiave) idPerChiave[x._chiave] = data.id; });
-      (p.clienti.gia || []).forEach(x => { if (!idPerChiave[x._chiave] && x.codice_fiscale && x.codice_fiscale === c.codice_fiscale) idPerChiave[x._chiave] = data.id; });
-      fatti.clienti++;
+    const { data: cod } = await db.from('quote_codici_collaboratore').select('*');
+    mappaCodici = Assegnazione.mappa(cod || []);
+  } catch (e) { mappaCodici = {}; }
+
+  const lotto = (crypto.randomUUID ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+
+  /* Tutte le chiavi che indicano la stessa persona: il doppione interno al
+     file e le schede già in archivio con lo stesso codice fiscale. Senza,
+     una polizza del doppione resterebbe senza contraente. */
+  const chiaviDi = (c) => {
+    const k = [c._chiave];
+    (p.clienti.nuovi || []).forEach(x => { if (x._duplicatoDi === c._chiave) k.push(x._chiave); });
+    return k;
+  };
+
+  const blocchi = [];
+  const aBlocchi = (tipo, righe, n) => {
+    for (let i = 0; i < righe.length; i += n) blocchi.push({ tipo, righe: righe.slice(i, i + n) });
+  };
+
+  aBlocchi('clienti', (p.clienti.nuovi || []).filter(c => !c._duplicatoDi).map(c => ({
+    _chiave: c._chiave, _chiavi: chiaviDi(c),
+    tipo: c.tipo, nominativo: c.nominativo, cognome: c.cognome, nome: c.nome,
+    ragione_sociale: c.ragione_sociale, codice_fiscale: c.codice_fiscale, partita_iva: c.partita_iva,
+    indirizzo: c.indirizzo, cap: c.cap, comune: c.comune, provincia: c.provincia,
+    cellulare: c.cellulare, telefono: c.telefono, email: c.email, data_nascita: c.data_nascita
+  })), 300);
+
+  aBlocchi('polizze', (p.polizze.nuove || []).map(x => ({
+    _fonte_id: x._fonte_id, _cliente: x._cliente,
+    cliente: x.cliente, numero_polizza: x.numero_polizza, compagnia: x.compagnia,
+    prodotto: x.prodotto, modulo: x.modulo,
+    data_effetto: x.data_effetto, data_scadenza: x.data_scadenza, data_emissione: x.data_emissione || null,
+    copertura_dal: x.copertura_dal, copertura_al: x.copertura_al,
+    frazionamento: x.frazionamento, tacito_rinnovo: x.tacito_rinnovo,
+    mezzo_pagamento: x.mezzo_pagamento, premio_annuo: x.premio_annuo, premio_rata: x.premio_rata,
+    stato_pagamento: x.stato_pagamento, dati: x.dati,
+    collaboratore_id: fluChiDi(x, mappaCodici)
+  })), 150);
+
+  const polPerFonte = {};
+  [].concat(p.polizze.nuove || [], p.polizze.gia || []).forEach(x => { polPerFonte[x._fonte_id] = x; });
+
+  aBlocchi('titoli', (p.titoli.nuovi || []).map(t => ({
+    _fonte_id: t._fonte_id, _polizza: t._polizza,
+    tipo: t.tipo, data_decorrenza: t.data_decorrenza, data_scadenza: t.data_scadenza,
+    importo_lordo: t.importo_lordo, provvigione: t.provvigione, stato: t.stato,
+    mezzo_pagamento: t.mezzo_pagamento, incassato_il: t.incassato_il, note: t.note || null,
+    collaboratore_id: fluChiDi(polPerFonte[t._polizza], mappaCodici)
+  })), 400);
+
+  /* Quante rate e quante polizze nascono GIA' di qualcuno. Zero su un flusso
+     pieno vuol dire che nessun codice e' stato deciso, ed e' un'informazione
+     diversa da «nessuno ha prodotto niente» (§19): il verbale deve poterlo
+     dire anche fra sei mesi. */
+  const conAssegnato = (tipo) => blocchi.filter(b => b.tipo === tipo)
+    .reduce((n, b) => n + b.righe.filter(r => r.collaboratore_id).length, 0);
+  const assegnate = conAssegnato('titoli');
+  const polAssegnate = conAssegnato('polizze');
+
+  const righeTot = blocchi.reduce((s, b) => s + b.righe.length, 0);
+  const nomeFase = { clienti: 'Clienti', polizze: 'Polizze', titoli: 'Rate' };
+
+  try {
+    /* 1. La testata: senza, la funzione non applica niente. */
+    fluAvanza('Preparo…', 0, righeTot + 1);
+    let err = (await db.from('iam_import_lotti').insert({
+      lotto: lotto, tipo: 'testata', parte: 0,
+      righe: {
+        emittente: p.testata.emittente, intermediario: p.testata.intermediario,
+        versione: p.testata.versione, dal: p.testata.dal, al: p.testata.al,
+        file_nome: FLU_NOMI, creato_nome: mio,
+        clienti_gia: p.clienti.idPerChiave || {},
+        avvisi: p.avvisi || [], collaboratori: p.collaboratori || [],
+        conteggi: {
+          clienti_gia: (p.clienti.gia || []).length,
+          polizze_gia: (p.polizze.gia || []).length,
+          titoli_gia: (p.titoli.gia || []).length,
+          titoli_dedotti: (p.titoli.dedotti || []).length,
+          titoli_assegnati: assegnate,
+          polizze_assegnate: polAssegnate,
+          offerte: (p.offerte || []).length,
+          compagnie_create: fatti.compagnie, prodotti_creati: fatti.prodotti,
+          catalogo_errore: fatti.catalogoKo
+        }
+      }
+    })).error;
+    if (err) throw err;
+
+    /* 2. I blocchi. Ognuno è una scrittura confermata dal database: è questo
+       che la barra sta misurando. */
+    const parti = {};
+    let fatte = 1;
+    for (const b of blocchi) {
+      parti[b.tipo] = (parti[b.tipo] || 0);
+      fluAvanza(nomeFase[b.tipo] + '…', fatte, righeTot + 1);
+      err = (await db.from('iam_import_lotti').insert({
+        lotto: lotto, tipo: b.tipo, parte: parti[b.tipo], righe: b.righe
+      })).error;
+      if (err) throw err;
+      parti[b.tipo]++;
+      fatte += b.righe.length;
+      fluAvanza(nomeFase[b.tipo] + '…', fatte, righeTot + 1);
     }
 
-    /* 2. Le polizze. */
-    const idPolizza = {};
-    for (const x of p.polizze.nuove) {
-      const cliente_id = idPerChiave[x._cliente];
-      if (!cliente_id) continue;   // il contraente non c'è: già dichiarato nell'anteprima
-      const rec = {
-        cliente_id: cliente_id, cliente: x.cliente,
-        numero_polizza: x.numero_polizza, compagnia: x.compagnia, prodotto: x.prodotto, modulo: x.modulo,
-        data_effetto: x.data_effetto, data_scadenza: x.data_scadenza,
-        data_emissione: x.data_emissione || null,
-        copertura_dal: x.copertura_dal, copertura_al: x.copertura_al,
-        frazionamento: x.frazionamento, tacito_rinnovo: x.tacito_rinnovo,
-        mezzo_pagamento: x.mezzo_pagamento,
-        premio_annuo: x.premio_annuo, premio_rata: x.premio_rata,
-        stato_pagamento: x.stato_pagamento, dati: x.dati,
-        /* CHI L'HA PRODOTTA. Come per le rate qui sotto, non è una deduzione:
-           è la decisione già presa su quel codice, applicata. Dove il codice
-           non è deciso la polizza nasce senza produttore e resta da
-           attribuire — che è quello che deve succedere (§19). Senza questa
-           riga ogni notte entrerebbero polizze senza produttore anche per i
-           codici già decisi, e il consuntivo di produzione tornerebbe da
-           rifare a mano ogni mattina. */
-        collaboratore_id: fluChiDi(x, mappaCodici),
-        fonte: 'ssf', fonte_id: x._fonte_id, creato_nome: mio
-      };
-      const { data, error } = await db.from('quote_polizze').insert(rec).select('id').single();
-      if (error) throw error;
-      idPolizza[x._fonte_id] = data.id;
-      fatti.polizze++;
-    }
-    (p.polizze.gia || []).forEach(x => { if (x._id) idPolizza[x._fonte_id] = x._id; });
+    /* 3. Una chiamata sola, una transazione sola. */
+    fluAvanza('Scrivo tutto insieme…', righeTot + 1, righeTot + 1);
+    const { data, error } = await db.rpc('iam_importa_flusso', { p_lotto: lotto });
+    if (error) throw error;
+    const r = data || {};
 
-    /* 3. Le rate. */
-    for (const t of p.titoli.nuovi) {
-      const polizza_id = idPolizza[t._polizza];
-      if (!polizza_id) continue;
-      const rec = {
-        polizza_id: polizza_id, tipo: t.tipo,
-        data_decorrenza: t.data_decorrenza, data_scadenza: t.data_scadenza,
-        importo_lordo: t.importo_lordo, provvigione: t.provvigione,
-        stato: t.stato, mezzo_pagamento: t.mezzo_pagamento, incassato_il: t.incassato_il,
-        /* La nota c'è solo sulle rate dedotte, e dice in chiaro che la
-           compagnia non le ha mandate: una riga di contabilità che non si
-           distingue da quelle vere è una riga di cui non ci si può fidare. */
-        note: t.note || null,
-        fonte: 'ssf', fonte_id: t._fonte_id,
-        /* Di chi è. Non è una deduzione: è la decisione che una persona ha già
-           preso su quel codice, applicata. Dove il codice non è deciso la rata
-           nasce senza collaboratore e resta da assegnare, che è quello che
-           deve succedere. */
-        collaboratore_id: fluChiDi(polPerFonte[t._polizza], mappaCodici)
-      };
-      const { error } = await db.from('quote_titoli').insert(rec);
-      if (error) throw error;
-      fatti.titoli++;
-      if (rec.collaboratore_id) fatti.assegnate++;
-      if (t._generato) fatti.dedotte++;
-    }
-
-    /* 3-bis. Le evidenze dei collaboratori del flusso: nome, email e RUI
-       accanto al loro codice. NON decidono niente (`deciso` resta falso) —
-       servono a chi dovrà riconoscere «U25337» la prima volta che lo guarda,
-       e senza di loro quel riconoscimento si rifà da capo a ogni flusso.
-       Si scrivono solo le righe che non hanno già una decisione: riscrivere
-       una riga decisa vorrebbe dire che un flusso può cambiare un'evidenza
-       sotto una decisione già presa. */
-    const evidenze = (p.collaboratori || [])
-      .filter(c => c.codice && (c.nome || c.email || c.rui || c.produttore))
-      .filter(c => !mappaCodici[Assegnazione.chiave(p.testata.emittente, c.codice)])
-      .map(c => ({
-        compagnia: String(p.testata.emittente || '').trim().toUpperCase(),
-        codice: String(c.codice).trim().toUpperCase(),
-        nome_flusso: c.nome || null, email_flusso: c.email || null, rui_flusso: c.rui || null,
-        produttore_flusso: c.produttore || null,
-        deciso: false
-      }))
-      .filter(c => c.compagnia && c.codice);
-    if (evidenze.length) {
-      try { await db.from('quote_codici_collaboratore').upsert(evidenze, { onConflict: 'compagnia,codice' }); }
-      catch (e) {}   // sono evidenze: se non entrano, l'importazione non si ferma
-    }
-
-    /* 4. Il verbale. Si scrive alla fine e con i numeri VERI, non con quelli
-       del piano: se qualcosa si è fermato per strada, il registro deve dire
-       quello che è successo, non quello che doveva succedere. */
-    await db.from('quote_importazioni').insert({
-      fonte: 'ssf', emittente: p.testata.emittente, intermediario: p.testata.intermediario,
-      versione: p.testata.versione, periodo_dal: p.testata.dal, periodo_al: p.testata.al,
-      file_nome: FLU_NOMI,
-      conteggi: {
-        clienti_scritti: fatti.clienti, clienti_gia: p.clienti.gia.length,
-        polizze_scritte: fatti.polizze, polizze_gia: p.polizze.gia.length,
-        titoli_scritti: fatti.titoli, titoli_gia: p.titoli.gia.length,
-        /* Quante di quelle rate le ha mandate la compagnia e quante le abbiamo
-           dedotte noi: il verbale deve poterlo dire anche fra sei mesi. */
-        titoli_dedotti: fatti.dedotte,
-        /* Quante sono nate già di qualcuno. Zero su un flusso pieno vuol dire
-           che nessun codice è stato deciso, ed è un'informazione utile a
-           distinguerlo da «nessuno ha prodotto niente». */
-        titoli_assegnati: fatti.assegnate,
-        offerte: p.offerte.length, polizze_senza_cliente: p.polizze.senzaCliente.length,
-        /* Le creazioni in catalogo finiscono nel verbale e nella vista «da
-           verificare»: un'anagrafica cresciuta da sola senza che il registro
-           lo dica è un'anagrafica che nessuno sa più com'è cresciuta. */
-        compagnie_create: fatti.compagnie, prodotti_creati: fatti.prodotti,
-        catalogo_errore: fatti.catalogoKo
-      },
-      avvisi: p.avvisi, collaboratori: p.collaboratori, creato_nome: mio
-    });
+    try { logMovimento('Portafoglio importato · ' + (p.testata.emittente || ''), 'documento', ''); } catch (e) {}
+    FLU_PIANO = null;
+    box.innerHTML = `
+      <div class="flu-fatto">
+        <div class="flu-spunta"><i class="ti ti-circle-check"></i></div>
+        <div class="flu-fatto-t">Import completato</div>
+        <div class="flu-tre" style="margin-top:14px">
+          <div class="flu-num"><div class="flu-v">${Number(r.clienti || 0).toLocaleString('it-IT')}</div><div class="flu-k">client${r.clienti === 1 ? 'e' : 'i'} nuov${r.clienti === 1 ? 'o' : 'i'}</div></div>
+          <div class="flu-num"><div class="flu-v">${Number(r.polizze || 0).toLocaleString('it-IT')}</div><div class="flu-k">polizz${r.polizze === 1 ? 'a' : 'e'} nuov${r.polizze === 1 ? 'a' : 'e'}</div></div>
+          <div class="flu-num"><div class="flu-v">${Number(r.titoli || 0).toLocaleString('it-IT')}</div><div class="flu-k">rat${r.titoli === 1 ? 'a' : 'e'} caricat${r.titoli === 1 ? 'a' : 'e'}</div></div>
+        </div>
+        ${r.polizze_senza_cliente ? `<div class="cl-sub" style="margin-top:10px">${r.polizze_senza_cliente} polizz${r.polizze_senza_cliente === 1 ? 'a è rimasta fuori' : 'e sono rimaste fuori'}: il contraente non è in questo file.</div>` : ''}
+        ${r.titoli ? `<div class="cl-sub" style="margin-top:8px">${assegnate} rat${assegnate === 1 ? 'a è nata' : 'e sono nate'} già assegnat${assegnate === 1 ? 'a' : 'e'} dalle decisioni sui codici${
+          assegnate < r.titoli ? `; le altre ${r.titoli - assegnate} aspettano che si decida di chi è il loro codice (Titoli › «Assegna il pregresso»)` : ''}.</div>` : ''}
+        ${fatti.compagnie + fatti.prodotti ? `<div class="cl-sub" style="margin-top:6px">In catalogo ${fatti.compagnie} compagni${fatti.compagnie === 1 ? 'a' : 'e'} e ${fatti.prodotti} prodott${fatti.prodotti === 1 ? 'o' : 'i'}, marcati «da verificare».</div>` : ''}
+        ${fatti.catalogoKo ? `<div class="cl-sub" style="margin-top:6px">Il catalogo non si è potuto aggiornare (${esc(fatti.catalogoKo)}). Il portafoglio è entrato lo stesso.</div>` : ''}
+        <div class="flu-azioni"><button type="button" class="flu-btn flu-primario" onclick="fluAnnulla()">OK</button></div>
+      </div>`;
+    if (typeof loadPortafoglio === 'function') loadPortafoglio();
+    await fluRegistro();
   } catch (e) {
-    document.getElementById('flu-attesa')?.remove();
-    box.insertAdjacentHTML('afterbegin', `<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i>
-      Il caricamento si è fermato: ${esc(e.message || e)}<br>
-      <small>Quello che era già stato scritto resta (${fatti.clienti} clienti, ${fatti.polizze} polizze, ${fatti.titoli} rate).
-      Si può ricaricare lo stesso file: quello che c'è già non viene riscritto.</small></div>`);
-    return;
+    /* Il foglio di brutta si toglie: non è portafoglio, e lasciarlo lì
+       vorrebbe dire trovarselo domani senza sapere che cos'è. Se anche questa
+       cancellazione non riesce, non è grave — quelle righe non le legge
+       nessun'altra schermata. */
+    try { await db.from('iam_import_lotti').delete().eq('lotto', lotto); } catch (e2) {}
+    const a = document.getElementById('flu-avanz'); if (a) a.hidden = true;
+    if (vai) { vai.disabled = false; vai.innerHTML = '<i class="ti ti-database-import"></i> Importa'; }
+    if (stop) stop.disabled = false;
+    box.insertAdjacentHTML('afterbegin', `<div class="flu-rotto">
+      <div class="flu-croce"><i class="ti ti-alert-triangle"></i></div>
+      <div class="flu-fatto-t">L'importazione non è andata a buon fine</div>
+      <div class="cl-sub" style="margin-top:6px">${esc(e.message || e)}</div>
+      <div class="cl-sub" style="margin-top:8px"><b>In archivio non è stato scritto niente.</b>
+        Non è rimasta mezza importazione: si può ripremere «Importa» sullo stesso file.</div>
+    </div>`);
   }
-
-  document.getElementById('flu-attesa')?.remove();
-  try { logMovimento('Portafoglio importato · ' + (p.testata.emittente || ''), 'documento', ''); } catch (e) {}
-  FLU_PIANO = null;
-  box.innerHTML = `<div class="pdoc-esito ok"><i class="ti ti-circle-check"></i>
-      Fatto: <b>${fatti.clienti}</b> client${fatti.clienti === 1 ? 'e' : 'i'}, <b>${fatti.polizze}</b> polizz${fatti.polizze === 1 ? 'a' : 'e'} e <b>${fatti.titoli}</b> rat${fatti.titoli === 1 ? 'a' : 'e'} in archivio.
-      ${fatti.titoli ? `<br><small>${fatti.assegnate} rat${fatti.assegnate === 1 ? 'a è nata' : 'e sono nate'} già assegnat${fatti.assegnate === 1 ? 'a' : 'e'} dalle decisioni sui codici${
-        fatti.assegnate < fatti.titoli ? `; le altre ${fatti.titoli - fatti.assegnate} aspettano che si decida di chi è il loro codice (Titoli › «Assegna il pregresso»)` : ''}.</small>` : ''}
-      ${fatti.compagnie + fatti.prodotti ? `<br><small>In catalogo sono nat${fatti.compagnie + fatti.prodotti === 1 ? 'o' : 'i'} ${fatti.compagnie} compagni${fatti.compagnie === 1 ? 'a' : 'e'} e ${fatti.prodotti} prodott${fatti.prodotti === 1 ? 'o' : 'i'}, marcat${fatti.prodotti === 1 ? 'o' : 'i'} «da verificare»: si confermano da IAM › Strumenti › Catalogo prodotti.</small>` : ''}
-      ${fatti.catalogoKo ? `<br><small>Il catalogo non si è potuto aggiornare (${esc(fatti.catalogoKo)}). Il portafoglio è entrato lo stesso: compagnie e prodotti si sistemano da IAM.</small>` : ''}</div>`;
-  if (typeof loadPortafoglio === 'function') loadPortafoglio();
-  await fluRegistro();
 }
 
 /* Il registro dei caricamenti: serve il giorno in cui un numero non torna. */
@@ -27594,6 +27718,31 @@ function fcModifica(titoloId) {
       </div></div></div>`);
 }
 
+/* ══ UN SALVATAGGIO CHE NON SALVA NIENTE DEVE DIRLO (21/09/2026) ════════════
+   Segnalato da Francesco sul foglio cassa: «modifico un movimento e la
+   modifica non resta». Il codice era strutturalmente giusto — update, filtro
+   sull'id, errore controllato — e proprio per questo il guasto non si vedeva:
+
+   **PostgREST NON restituisce un errore quando un update tocca ZERO righe.**
+
+   Succede ogni volta che una politica di visibilita' filtra via la riga:
+   `error` e' null, la schermata non dice niente, l'oggetto in memoria viene
+   aggiornato lo stesso (`Object.assign`) e la modifica sparisce alla prima
+   rilettura vera. Per chi lavora e' indistinguibile da un salvataggio che non
+   ha funzionato.
+
+   Dove si toccano dei soldi si chiede al database di RESTITUIRE le righe che
+   ha cambiato e si guarda quante sono. Zero righe non e' un successo
+   silenzioso. */
+function fcTocca(esito, cosa) {
+  if (esito.error) throw esito.error;
+  const n = (esito.data || []).length;
+  if (!n) throw new Error('Il database non ha cambiato nessuna riga. ' + (cosa || '') +
+    ' Puo\u2019 essere che qualcun altro l\u2019abbia gia\u2019 modificata, o che il tuo profilo ' +
+    'non abbia il permesso di scriverla: la modifica NON e\u2019 stata salvata.');
+  return n;
+}
+
 async function fcSalvaModifica(titoloId) {
   const t = FC_TITOLI.find(x => x.id === titoloId);
   if (!t) return;
@@ -27610,8 +27759,8 @@ async function fcSalvaModifica(titoloId) {
   if ((t.note || null) !== nuovo.note) cambi.push('nota');
   if (!cambi.length) { document.getElementById('fc-ov')?.remove(); return; }
   try {
-    const { error } = await db.from('quote_titoli').update(nuovo).eq('id', titoloId);
-    if (error) throw error;
+    fcTocca(await db.from('quote_titoli').update(nuovo).eq('id', titoloId).select('id'),
+            'Il movimento di cassa non e\u2019 stato corretto.');
     Object.assign(t, nuovo);
     try { logMovimento('Movimento di cassa corretto · ' + cambi.join(', ') + ' · ' + pfEuro(t.importo_lordo), 'titolo', p.cliente || '', titoloId); } catch (e) {}
     document.getElementById('fc-ov')?.remove();

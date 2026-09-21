@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.16.0">
-<meta name="app-versione-nome" content="Gestione compagnie: si entra dalla compagnia, non dalla tariffa">
+<meta name="app-versione" content="0.17.0">
+<meta name="app-versione-nome" content="L'import non si ferma più a metà, e un salvataggio muto non esiste">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -5723,6 +5723,33 @@ function pntApriMovimento(id) {
   if (id && typeof regInstalla === 'function') regInstalla('pnt-storia', 'movimento', id);
 }
 
+/* ══ UN SALVATAGGIO CHE NON SALVA NIENTE DEVE DIRLO (21/09/2026) ════════════
+   Segnalato da Francesco: «modifico un movimento di cassa e la modifica non
+   resta». Il codice era strutturalmente giusto — update, filtro sull'id,
+   errore controllato — e proprio per questo il guasto non si vedeva:
+
+   **PostgREST NON restituisce un errore quando un update tocca ZERO righe.**
+
+   Succede ogni volta che una politica di visibilita' filtra via la riga:
+   `error` e' null, la schermata non dice niente, l'oggetto in memoria viene
+   aggiornato lo stesso e la modifica sparisce alla prima rilettura vera. Per
+   chi lavora e' indistinguibile da un salvataggio che non ha funzionato — che
+   e' esattamente la frase che ha usato.
+
+   Da qui in avanti, dove si toccano dei soldi, si chiede al database di
+   RESTITUIRE le righe che ha cambiato e si guarda quante sono. Zero righe non
+   e' un successo silenzioso: e' un messaggio in faccia. */
+function pntTocca(esito, cosa) {
+  if (esito.error) throw esito.error;
+  const n = (esito.data || []).length;
+  if (!n) {
+    throw new Error('Il database non ha cambiato nessuna riga. ' + (cosa || '') +
+      ' Puo' + '\u2019' + ' essere che qualcun altro l' + '\u2019' + 'abbia gia' + '\u2019' +
+      ' modificata, o che il tuo profilo non abbia il permesso di scriverla: la modifica NON e' + '\u2019' + ' stata salvata.');
+  }
+  return n;
+}
+
 async function pntSalva(id) {
   const riga = {
     data: pntVal('pnt-m-data'),
@@ -5739,8 +5766,8 @@ async function pntSalva(id) {
   try {
     let movId = id;
     if (id) {
-      const { error } = await db.from('iam_movimenti').update(riga).eq('id', id);
-      if (error) throw error;
+      pntTocca(await db.from('iam_movimenti').update(riga).eq('id', id).select('id'),
+               'Il movimento non e\u2019 stato corretto.');
     } else {
       const { data, error } = await db.from('iam_movimenti').insert(riga).select('id').single();
       if (error) throw error;
@@ -5763,10 +5790,9 @@ async function pntAnnulla(id) {
   const perche = (pntVal('pnt-m-perche') || '').trim();
   if (!perche) { pntMsg(['Per annullare serve il motivo: fra sei mesi è l’unica cosa che spiega quel buco.']); return; }
   try {
-    const { error } = await db.from('iam_movimenti')
+    pntTocca(await db.from('iam_movimenti')
       .update({ annullato_il: new Date().toISOString(), annullato_da: ME?.id || null, annullato_perche: perche })
-      .eq('id', id);
-    if (error) throw error;
+      .eq('id', id).select('id'), 'Il movimento non e\u2019 stato annullato.');
     logMovimento('Movimento annullato', 'movimento', perche, id);
     pntChiudi();
     await pntCarica();
@@ -5776,9 +5802,9 @@ async function pntAnnulla(id) {
 async function pntRiapri(id) {
   if (!confirm('Riaprire questo movimento?\n\nTorna a contare nei saldi e nei riepiloghi.')) return;
   try {
-    const { error } = await db.from('iam_movimenti')
-      .update({ annullato_il: null, annullato_da: null, annullato_perche: null }).eq('id', id);
-    if (error) throw error;
+    pntTocca(await db.from('iam_movimenti')
+      .update({ annullato_il: null, annullato_da: null, annullato_perche: null }).eq('id', id).select('id'),
+      'Il movimento non e\u2019 stato riaperto.');
     logMovimento('Movimento riaperto', 'movimento', '', id);
     await pntCarica();
   } catch (e) { alert('Non riesco a riaprire: ' + (e.message || e)); }
@@ -6249,10 +6275,10 @@ async function pntSalvaQuadratura(contoId) {
   pntMsg(e);
   if (e.length) return;
   try {
-    const { error } = await db.from('iam_quadrature')
+    pntTocca(await db.from('iam_quadrature')
       .upsert({ conto_id: contoId, data, saldo_dichiarato: saldo, nota: pntVal('pnt-q-nota').trim() || null },
-              { onConflict: 'conto_id,data' });
-    if (error) throw error;
+              { onConflict: 'conto_id,data' }).select('conto_id'),
+      'Il saldo dichiarato non e\u2019 stato salvato.');
     logMovimento('Saldo dichiarato · ' + (pntConto(contoId)?.nome || ''), 'conto',
                  pntData(data) + ' · ' + Contabilita.euro(saldo), contoId);
     pntChiudi();

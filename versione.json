@@ -1,8 +1,22 @@
 {
-  "versione": "0.16.0",
-  "nome": "Gestione compagnie: si entra dalla compagnia, non dalla tariffa",
+  "versione": "0.17.0",
+  "nome": "L'import non si ferma più a metà, e un salvataggio muto non esiste",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.17.0",
+      "data": "2026-09-21",
+      "nome": "L'import non si ferma più a metà, e un salvataggio muto non esiste",
+      "voci": [
+        "L'import del portafoglio è TUTTO O NIENTE: o entra tutto — clienti, polizze, rate e verbale — o non entra niente. Non può più restare scritta mezza importazione.",
+        "Dopo aver scelto il file si vedono TRE NUMERI grandi (clienti, polizze, rate) e un solo pulsante «Importa», con «Annulla» accanto. L'elenco delle polizze non è più davanti: sta sotto «vedi il dettaglio», e chi lo vuole lo apre.",
+        "Le righe che restano fuori si riassumono in un avviso solo, con il collegamento al dettaglio: cinque avvisi diversi si leggono come cinque guasti, e la cosa da fare è una.",
+        "Premendo «Importa» il pulsante si spegne — niente doppio invio — e compare una barra che dice la fase (Clienti, Polizze, Rate) e avanza sui blocchi che il database ha CONFERMATO, non a tempo.",
+        "Alla fine: spunta verde, «Import completato» e il riepilogo di quello che è entrato davvero. In caso di errore: icona rossa, il motivo, e scritto in chiaro che in archivio non è stato scritto niente.",
+        "Il verbale dell'importazione adesso si scrive nella stessa transazione dei dati: o ci sono tutti e due, o non c'è nessuno dei due.",
+        "Corretto un difetto silenzioso su tutti i salvataggi che toccano soldi: quando il database non cambiava nessuna riga, la schermata non diceva niente e la modifica spariva alla prima rilettura. Adesso lo dice in faccia e non chiude il modulo."
+      ]
+    },
     {
       "v": "0.16.0",
       "data": "2026-09-21",

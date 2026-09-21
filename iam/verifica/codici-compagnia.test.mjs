@@ -16,6 +16,10 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
+/* La stanza chiusa del banco: serve a far GIRARE la riga nei due ruoli, non
+   solo a leggerla nel sorgente (§1 — una prova che legge una stringa non dice
+   se quel codice fa quello che la stringa promette). */
+import { stanza } from './banco.mjs';
 
 const QUI = path.dirname(fileURLToPath(import.meta.url));
 const IAM = path.join(QUI, '..', 'index.html');
@@ -286,6 +290,55 @@ prova('la data si confronta con la POLIZZA, non con oggi — e la schermata lo d
   const d = ritaglia('function ccpData');
   deve(/slice\(/.test(d) && !/new Date\(/.test(d), 'la data passa da new Date(): ' + d.slice(0, 200));
   return 'si confronta con l\'effetto, e si scrive senza fusi';
+});
+
+prova('DUE RUOLI: l\'admin decide, l\'operatore guarda e basta', () => {
+  /* Richiesta del brief: provare con almeno due ruoli. Qui si fa girare la
+     riga davvero, nei due casi — una prova che guarda solo che il cancello
+     esista non dice se qualcuno lo chiama (§1), e una che guarda solo il
+     ramo dell'admin non dice che cosa vede l'altro. */
+  const riga = { compagnia: 'PRIMA', codice: 'U100', collaboratore_id: 'p1', deciso: true,
+                 attivo: true, data_inizio: '2025-01-01', data_fine: '2026-06-30',
+                 nome_flusso: 'NERI ANNA', rui_flusso: 'E000111111', note: 'subentrata' };
+  const s = stanza(H, ['ccpRigaSua', 'ccpData'], {
+    altro: { CCP_MOD: null, Assegnazione: A, document: { getElementById: () => ({ value: '' }) } }
+  });
+  if (s.mancanti.length) throw new Error('non trovo nel sorgente: ' + s.mancanti.join(', '));
+
+  const admin = s.ctx.ccpRigaSua(riga, '', true);
+  const operatore = s.ctx.ccpRigaSua(riga, '', false);
+
+  /* L'admin ha i tre gesti; l'operatore nessuno. */
+  ['ccpModifica(', 'ccpSospendi(', 'ccpTogli('].forEach(f => {
+    deve(admin.includes(f), 'all\'admin manca ' + f);
+    deve(!operatore.includes(f), 'l\'operatore puo\' chiamare ' + f + ': qui si decide a chi vanno dei soldi');
+  });
+  /* Ma vede TUTTO il resto: il codice, la persona, il periodo. Nascondere
+     anche l'informazione vorrebbe dire che chi lavora non sa perche' una
+     polizza non e' sua — e lo chiederebbe a voce, ogni volta. */
+  ['U100', 'PRIMA', 'NERI ANNA', '30/06/2026', 'subentrata'].forEach(t => {
+    deve(operatore.includes(t), 'l\'operatore non vede «' + t + '»');
+  });
+  /* E l'editor non si apre nemmeno se qualcuno forza CCP_MOD dalla console:
+     il ramo e' dentro `puo`, non accanto. */
+  s.ctx.CCP_MOD = 'PRIMA|U100';
+  deve(!s.ctx.ccpRigaSua(riga, '', false).includes('ccp-dal'),
+    'forzando la variabile di stato l\'operatore apre il modulo delle date');
+  deve(s.ctx.ccpRigaSua(riga, '', true).includes('ccp-dal'), 'all\'admin non si apre il modulo delle date');
+  return 'admin: 3 gesti · operatore: 0 gesti e tutte le informazioni';
+});
+
+prova('da telefono la riga si impila e i bottoni non escono', () => {
+  /* La riga e' fatta di due colonne affiancate con tre bottoni in verticale:
+     a 360 pixel, senza una regola, i bottoni escono dallo schermo e non si
+     premono. Si sorveglia la regola, non la fotografia. */
+  const m = H.match(/@media\(max-width:640px\)\{[^}]*\.ccp-r\{[^}]*\}[^{]*\.ccp-az\{[^}]*\}/);
+  deve(m, 'manca la regola per il telefono sulla riga dei codici');
+  deve(/flex-direction:column/.test(m[0]), 'la riga non si impila sul telefono');
+  deve(/width:100%/.test(m[0]), 'i bottoni non si allargano sul telefono');
+  /* E il modulo delle date va a capo invece di spingere fuori la riga. */
+  deve(/\.ccp-mod\{[^}]*flex-wrap:wrap/.test(H), 'il modulo delle date non va a capo');
+  return 'riga impilata, azioni a tutta larghezza, modulo a capo';
 });
 
 /* Ritaglia una funzione dal sorgente: dalla firma alla prima graffa che chiude

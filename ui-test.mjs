@@ -7447,6 +7447,47 @@ const avvio = async () => {
       return 'un contenitore, in cima a Campagne, riempito da lì e non più dalle Anagrafiche';
     });
 
+    await prova('da telefono: il piede della lista e il riquadro dei compleanni non escono dallo schermo', async () => {
+      /* Richiesta del brief: provare da mobile. Le due cose nuove di questi
+         due punti sono una riga di testo larga quanto la tabella e un
+         riquadro messo in cima a una pagina a due colonne: tutte e due, senza
+         una regola, allargano il documento e fanno comparire la barra
+         orizzontale — che su un telefono vuol dire una pagina che «si muove»
+         mentre si legge. Si misura la larghezza vera, non il foglio di stile. */
+      await page.setViewportSize({ width: 390, height: 820 });
+      const r = await page.evaluate(async () => {
+        const K = (f) => 'quote_anagrafiche|' + (f || '');
+        const V = Anagrafica.VISTE;
+        const righe = [];
+        for (let i = 0; i < 50; i++) righe.push({ id: 'm' + i, nominativo: 'CLIENTE ' + i, lead: false, tipo: 'fisica' });
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { error: null, data: righe };
+        window.__COLLAUDO.conteggi = { [K('')]: 2536, [K(V.lead.filtro)]: 29,
+                                       [K(V.con_email.filtro)]: 6, [K(V.con_consenso.filtro)]: 4 };
+        ANAG_FILTRO = null; ANAG_VIEW = 'clienti';
+        document.getElementById('anag-q').value = '';
+        showPage('anagrafiche');
+        await window.cercaAnagrafica();
+        const clienti = document.documentElement.scrollWidth <= window.innerWidth + 1;
+        /* E i compleanni nella loro casa nuova. */
+        CPL_INVIATI = {};
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { error: null, data: [] };
+        showPage('campagne');
+        await window.cplCarica();
+        const campagne = document.documentElement.scrollWidth <= window.innerWidth + 1;
+        const box = document.getElementById('cpl-oggi');
+        const dentro = box.getBoundingClientRect().right <= window.innerWidth + 1;
+        window.__COLLAUDO.conteggi = {};
+        delete window.__COLLAUDO.risposte['quote_anagrafiche:lista'];
+        showPage('anagrafiche');
+        return { clienti, campagne, dentro, larghezza: document.documentElement.scrollWidth, schermo: window.innerWidth };
+      });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      deve(r.clienti, 'la lista Clienti esce dallo schermo del telefono: ' + r.larghezza + ' > ' + r.schermo);
+      deve(r.campagne, 'la pagina Campagne esce dallo schermo del telefono: ' + r.larghezza + ' > ' + r.schermo);
+      deve(r.dentro, 'il riquadro dei compleanni sborda a destra');
+      return '390px: nessuna barra orizzontale, riquadro dentro lo schermo';
+    });
+
     await prova('personalizzati: il premio non si mostra mai senza il suo frazionamento', async () => {
       const r = await page.evaluate(() => ({
         annuale: ppPremioTesto(480, 'annuale'),

@@ -23,14 +23,41 @@ const prova = (nome, fn) => esiti.push({ nome, fn });
 const deve = (c, m) => { if (!c) throw new Error(m); };
 
 const scripts = s => [...s.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
-const styles = s => [...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
+/* I fogli di stile in linea, SENZA i commenti.
+
+   Il 21/09/2026 questo guardiano e' stato rosso per un giorno su `main`
+   senza che una riga di codice fosse sbagliata: un commento di QUOTO
+   spiegava perche' il kit di IAM non si copia, e per spiegarlo NOMINAVA i
+   nomi del kit e il nome di un file di prova. In un foglio di stile un nome
+   preceduto da un punto e' un selettore, e un nome di file coi punti e' una
+   catena di selettori: cinque collisioni inventate, contate come vere.
+
+   E' la trappola dei commenti per la dodicesima volta (§10, §12, §18, §26,
+   §29, §31, §33, §34, §37, §41, §42). Le prime undici volte si e' corretto
+   il commento; questa volta si corregge anche la MISURA, che e' quello che
+   la prova voleva dire dall'inizio — contare i selettori, non le parole.
+
+   I commenti si tolgono SOLO dentro i blocchi `<style>`, mai sul documento
+   intero: una regex globale su `index.html` si mangia 450.000 caratteri,
+   perche' le due sequenze che aprono e chiudono un commento compaiono anche
+   dentro le espressioni regolari del JavaScript, e la ricerca accoppia pezzi
+   che non sono commenti (§12).
+
+   (E questo commento non le scrive nemmeno una volta: la prima stesura le
+   citava, la seconda chiudeva il commento a meta' e il file non si caricava
+   piu'. La regola di §31 vale anche qui.) */
+const styles = s => [...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
+  .map(m => m[1].replace(/\/\*[\s\S]*?\*\//g, ' ')).join('\n');
 export const globali = js => new Set([...js.matchAll(/^(?:async\s+)?(?:function\s+|var\s+|let\s+|const\s+)([A-Za-z_$][\w$]*)/gm)].map(m => m[1]));
 export const id = s => new Set([...s.matchAll(/\bid="([A-Za-z][\w-]*)"/g)].map(m => m[1]));
 export const classi = css => new Set([...css.matchAll(/\.([a-zA-Z_][\w-]*)/g)].map(m => m[1]));
 const comuni = (a, b) => [...a].filter(x => b.has(x)).sort();
 
-/* La soglia e' la misura del 17/09/2026. Si abbassa, non si alza. */
-const SOGLIA = { globali: 43, id: 29, classi: 17 };
+/* La soglia e' la misura del 17/09/2026. Si abbassa, non si alza.
+   `classi` e' scesa da 17 a 15 il 21/09/2026: non e' stato tolto un
+   doppione, e' stata corretta la misura — due delle diciassette erano
+   parole dentro un commento (vedi `styles` qui sopra). */
+const SOGLIA = { globali: 43, id: 29, classi: 15 };
 
 /* ── I GEMELLI VOLUTI (18/09/2026) ──────────────────────────────────────────
    Nove nomi compaiono nei due documenti perche' DEVONO: sono la rete di

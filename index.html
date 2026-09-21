@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.14.0">
-<meta name="app-versione-nome" content="Nuova polizza: dal menu, con il design di casa, e le rate giuste">
+<meta name="app-versione" content="0.15.0">
+<meta name="app-versione-nome" content="Volumi di portafoglio anno su anno, e la produzione con un nome">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -801,13 +801,22 @@ button{font-family:inherit}
    marchio — lo stesso verde, lo stesso raggio, la stessa ombra, gli stessi
    neutri. Quindi qui non si scrive nemmeno un colore a mano: solo var(--w1-*).
 
-   Le REGOLE del kit (`.page-head`, `.d-btn`, `.d-card`…) restano dentro
-   `iam/index.html`, dove una prova pretende che stiano (kit-schermate).
-   Riscriverle qui con quei nomi porterebbe le classi in comune fra i due
-   documenti da 17 a 28, e quella soglia puo' solo SCENDERE
-   (`fusione-collisioni.test.mjs`, scarto zero). Quindi i nomi sono
-   prefissati, come gia' successo il 20/09 quando `primario` e' nata
-   `rin-primario` (§40). Stessi gettoni, stesso aspetto, nomi propri.
+   Le REGOLE del kit (testata, bottoni, schede: i nomi stanno in CLAUDE.md
+   §44) restano dentro `iam/index.html`, dove il guardiano del kit pretende
+   che stiano. Riscriverle qui con quei nomi porterebbe le classi in comune
+   fra i due documenti da 17 a 28, e quella soglia puo' solo SCENDERE
+   (guardiano delle collisioni, scarto zero). Quindi i nomi sono prefissati,
+   come gia' successo il 20/09 quando `primario` e' nata `rin-primario`
+   (§40). Stessi gettoni, stesso aspetto, nomi propri.
+
+   E QUESTO COMMENTO NON SCRIVE QUEI NOMI, per una ragione misurata il
+   21/09/2026: la prima stesura li citava con il punto davanti, e in un
+   foglio di stile un nome col punto E' un selettore. Cinque collisioni
+   inventate — i tre nomi del kit piu' i due pezzi del nome di un file — e
+   il guardiano rosso su `main` per un giorno intero, senza che una riga di
+   codice fosse sbagliata. E' la trappola dei commenti per la dodicesima
+   volta, e il rimedio resta quello di §31: non si scrive la parola vietata
+   dentro il file che la vieta.
    ═════════════════════════════════════════════════════════════════════════ */
 .pnu-kit{
   /* I due gettoni che `withus-one-tokens.css` non porta (stanno in
@@ -17603,6 +17612,12 @@ async function asgApplica() {
   const esito = document.getElementById('asg-esito');
   const mappa = asgMappaConScelte();
   const piano = Assegnazione.piano(ASG_TITOLI, ASG_POLIZZE, mappa);
+  /* La stessa decisione vale su due cose diverse: di chi è la RATA (a chi
+     spetta la provvigione) e chi ha PRODOTTO la polizza (il consuntivo di
+     produzione). Senza questa seconda riga la colonna del produttore
+     resterebbe vuota per sempre, e una colonna che nessuno riempie è il
+     guasto numero uno di questo repository (§1). */
+  const pianoPol = Assegnazione.pianoPolizze(ASG_POLIZZE, mappa);
 
   /* Le decisioni cambiate, non tutte: riscrivere una riga identica rifarebbe
      la firma e la data di una decisione che nessuno ha ripreso in mano. */
@@ -17612,10 +17627,15 @@ async function asgApplica() {
     const prima = vecchia ? (vecchia.collaboratore_id || (vecchia.nessuno ? '__nessuno__' : '')) : '';
     return ora !== prima;
   });
-  if (!nuove.length && !piano.assegna.length) { if (esito) esito.textContent = 'Non c\'è niente da salvare.'; return; }
+  if (!nuove.length && !piano.assegna.length && !pianoPol.assegna.length) {
+    if (esito) esito.textContent = 'Non c\'è niente da salvare.'; return;
+  }
 
   const quante = piano.assegna.length;
-  if (!confirm(`Salvare ${nuove.length} decision${nuove.length === 1 ? 'e' : 'i'} e assegnare ${quante} rat${quante === 1 ? 'a' : 'e'}?`)) return;
+  const quantePol = pianoPol.assegna.length;
+  if (!confirm(`Salvare ${nuove.length} decision${nuove.length === 1 ? 'e' : 'i'}, `
+    + `assegnare ${quante} rat${quante === 1 ? 'a' : 'e'} e attribuire `
+    + `${quantePol} polizz${quantePol === 1 ? 'a' : 'e'} in produzione?`)) return;
 
   try {
     if (nuove.length) {
@@ -17645,11 +17665,33 @@ async function asgApplica() {
       } catch (e) {}
     }
 
+    /* Le polizze, con la stessa forma: un `update ... in (...)` per persona,
+       a blocchi di duecento. Si scrivono DOPO le rate e non prima: se cade in
+       mezzo restano delle rate assegnate e delle polizze no — si vede, e si
+       rifà premendo di nuovo, perché il piano salta quello che è già a posto.
+       Nell'ordine opposto il consuntivo di produzione direbbe un nome mentre
+       la provvigione non ha ancora un titolare. */
+    const polPerPersona = {};
+    pianoPol.assegna.forEach(a => { (polPerPersona[a.collaboratore_id] = polPerPersona[a.collaboratore_id] || []).push(a.id); });
+    for (const chi of Object.keys(polPerPersona)) {
+      const ids = polPerPersona[chi];
+      for (let i = 0; i < ids.length; i += 200) {
+        const { error } = await db.from('quote_polizze')
+          .update({ collaboratore_id: chi }).in('id', ids.slice(i, i + 200));
+        if (error) throw error;
+      }
+      try {
+        logMovimento('Polizze attribuite in produzione · ' + ids.length, 'collaboratore',
+          Object.keys(ASG_SCELTE).filter(k => ASG_SCELTE[k] === chi).join(', '), chi);
+      } catch (e) {}
+    }
+
     await asgCarica();
     asgRender();
     const bd = document.getElementById('asg-esito');
     if (bd) bd.innerHTML = `<span class="pdoc-esito ok"><i class="ti ti-circle-check"></i>
-      ${quante} rat${quante === 1 ? 'a' : 'e'} assegnat${quante === 1 ? 'a' : 'e'}.</span>`;
+      ${quante} rat${quante === 1 ? 'a' : 'e'} assegnat${quante === 1 ? 'a' : 'e'},
+      ${quantePol} polizz${quantePol === 1 ? 'a' : 'e'} attribuit${quantePol === 1 ? 'a' : 'e'} in produzione.</span>`;
     if (typeof loadTitoli === 'function') await loadTitoli();
   } catch (e) {
     if (esito) esito.innerHTML = `<span class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i>
@@ -19484,6 +19526,14 @@ async function fluConferma() {
         mezzo_pagamento: x.mezzo_pagamento,
         premio_annuo: x.premio_annuo, premio_rata: x.premio_rata,
         stato_pagamento: x.stato_pagamento, dati: x.dati,
+        /* CHI L'HA PRODOTTA. Come per le rate qui sotto, non è una deduzione:
+           è la decisione già presa su quel codice, applicata. Dove il codice
+           non è deciso la polizza nasce senza produttore e resta da
+           attribuire — che è quello che deve succedere (§19). Senza questa
+           riga ogni notte entrerebbero polizze senza produttore anche per i
+           codici già decisi, e il consuntivo di produzione tornerebbe da
+           rifare a mano ogni mattina. */
+        collaboratore_id: fluChiDi(x, mappaCodici),
         fonte: 'ssf', fonte_id: x._fonte_id, creato_nome: mio
       };
       const { data, error } = await db.from('quote_polizze').insert(rec).select('id').single();

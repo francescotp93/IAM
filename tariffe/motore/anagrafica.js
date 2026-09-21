@@ -180,11 +180,73 @@
     return n;
   }
 
+  /* ══ LE VISTE DELL'ELENCO, IN DUE LINGUE (21/09/2026) ═════════════════════
+     Brief «Anagrafiche», punto 1: il contatore diceva un numero sbagliato.
+
+     ── IL DIFETTO, MISURATO ────────────────────────────────────────────────
+     La lista carica **i cinquanta più recenti** — ed è giusto, nessuno scorre
+     duemila righe — e i tre contatori si contavano su quelle cinquanta. Con
+     2.536 anagrafiche in archivio la schermata diceva «50», e con una ricerca
+     diceva quante ne aveva caricate, non quante ne aveva trovate.
+
+     > **Un elenco non è un conteggio.** Un numero preso dalle righe caricate
+     > non conta quello che c'è: conta quello che si è avuto voglia di
+     > scaricare — e non c'è modo, guardandolo, di accorgersene.
+
+     ── PERCHÉ LE REGOLE STANNO QUI, E IN DUE FORME ─────────────────────────
+     Contare sul server vuol dire scrivere la stessa condizione due volte: una
+     per la lista, che filtra quello che ha in mano, e una per il server, che
+     conta senza mandare le righe. Due scritture della stessa regola sono due
+     regole, e quella che sbaglia è quella che nessuno guarda — qui
+     produrrebbero un contatore che non torna con la sua lista, cioè
+     esattamente il guasto che stiamo togliendo.
+
+     Quindi stanno **accanto**, una riga sotto l'altra, e una prova le fa
+     girare tutte e due sulle stesse righe e pretende la stessa risposta.
+
+     Le condizioni sono scritte in positivo anche quando servono in negativo
+     («chi HA il consenso», non «chi non ce l'ha»): il server non sa negare un
+     gruppo di condizioni senza contorsioni, e il complemento si ricava
+     sottraendo dal totale — una sottrazione non può divergere da se stessa. */
+  function eLead(a) { return !!(a && a.lead === true); }
+  function eCliente(a) { return !eLead(a); }
+  function conEmail(a) { return !!(a && a.email && String(a.email).trim()); }
+
+  /* Il consenso vero: la colonna, oppure la privacy firmata con la spunta.
+     `=== true` e non «è vero»: una colonna mai riempita non è un consenso, e
+     in una campagna di marketing la differenza è una sanzione. */
+  function conConsenso(a) {
+    if (a && a.consenso_marketing === true) return true;
+    var pf = a && a.privacy_firma;
+    return !!(pf && pf.stato === 'firmata' && pf.consensi && pf.consensi.marketing_elettronico === true);
+  }
+
+  var VISTE = {
+    /* chiave → { js, filtro } — `filtro` è quello che si passa a `.or(...)`:
+       le virgole al primo livello sono degli OR. */
+    lead:         { js: eLead,       filtro: 'lead.is.true' },
+    clienti:      { js: eCliente,    filtro: 'lead.is.false,lead.is.null' },
+    /* L'unico punto in cui le due lingue possono non coincidere: il server non
+       sa togliere gli spazi, quindi un'email fatta di soli spazi risulterebbe
+       presente di là e assente di qua. Misurato il 21/09/2026 su 2.536 righe:
+       2.524 nulle, 6 vuote, **zero di soli spazi**. Sta scritto perché se un
+       giorno la differenza comparisse, il posto da guardare è questo. */
+    con_email:    { js: conEmail,    filtro: 'and(email.not.is.null,email.neq.)' },
+    con_consenso: { js: conConsenso,
+                    filtro: 'consenso_marketing.is.true,'
+                          + 'and(privacy_firma->>stato.eq.firmata,'
+                          + 'privacy_firma->consensi->>marketing_elettronico.eq.true)' }
+  };
+
   var API = {
     VERSIONE: VERSIONE, MESI: MESI, OMOCODIA: OMOCODIA, TESTO_AUGURI: TESTO_AUGURI,
     normalizza: normalizza, valido: valido, controllo: controllo, nascita: nascita,
     eta: eta, compleannoOggi: compleannoOggi, contattabile: contattabile, delGiorno: delGiorno,
-    testoAuguri: testoAuguri, numeroWhatsapp: numeroWhatsapp
+    testoAuguri: testoAuguri, numeroWhatsapp: numeroWhatsapp,
+    VISTE: VISTE, eLead: eLead, eCliente: eCliente,
+    conEmail: conEmail, conConsenso: conConsenso,
+    senzaEmail: function (a) { return !conEmail(a); },
+    senzaConsenso: function (a) { return !conConsenso(a); }
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.Anagrafica = API;

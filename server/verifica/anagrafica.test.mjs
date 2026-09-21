@@ -117,6 +117,116 @@ prova('il testo degli auguri lo scrive il motore, con i segnaposto, e senza l\'e
   return 'segnaposto, modello personalizzato, numero normalizzato';
 });
 
+/* ══ LE VISTE, IN DUE LINGUE (21/09/2026, brief Anagrafiche · punto 1) ══════
+   Il contatore non si conta più sulle righe caricate: lo chiede al server.
+   Vuol dire che ogni condizione esiste in due forme — il predicato che la
+   lista applica in memoria e il filtro che il server capisce — e due
+   scritture della stessa regola sono due regole: quella che sbaglia
+   produrrebbe un numero che non torna con la sua lista, cioè esattamente il
+   guasto che questo lavoro sta togliendo.
+
+   Qui le si fa girare tutte e due sulle stesse righe e si pretende la stessa
+   risposta. Il valutatore qui sotto legge il pezzetto di sintassi PostgREST
+   che il motore usa: sta nella prova e non nel motore, perché in produzione
+   non lo chiama nessuno — e il codice che nessuno chiama è il guasto numero
+   uno di questo repository (§1).
+
+   Quello che NON dimostra, e va detto: che PostgREST legga quella stringa
+   come la leggo io. Quello si è misurato a mano il 21/09/2026 contro l'API
+   vera, filtro per filtro (200 con le quattro condizioni, 400 con una
+   colonna inventata come controllo negativo). */
+function valuta(filtro, riga) {
+  /* Le virgole al primo livello sono OR; `and(...)` raggruppa. */
+  return pezzi(filtro).some(p => uno(p, riga));
+}
+function pezzi(s) {
+  const out = []; let liv = 0, cur = '';
+  for (const c of s) {
+    if (c === '(') liv++;
+    if (c === ')') liv--;
+    if (c === ',' && liv === 0) { out.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+function uno(p, riga) {
+  p = p.trim();
+  if (p.startsWith('and(')) return pezzi(p.slice(4, -1)).every(x => uno(x, riga));
+  if (p.startsWith('or(')) return pezzi(p.slice(3, -1)).some(x => uno(x, riga));
+  const m = p.match(/^(.+?)\.(not\.)?(is|eq|neq)\.(.*)$/);
+  if (!m) throw new Error('il valutatore non capisce «' + p + '»');
+  const [, col, neg, op, val] = m;
+  const v = leggi(riga, col);
+  let r;
+  if (op === 'is') r = val === 'null' ? (v == null) : (val === 'true' ? v === true : v === false);
+  else if (op === 'eq') r = String(v == null ? '' : v) === val;
+  else r = String(v == null ? '' : v) !== val;   /* neq */
+  return neg ? !r : r;
+}
+/* `privacy_firma->consensi->>marketing_elettronico` → dentro il jsonb. */
+function leggi(riga, col) {
+  const parti = col.split(/->>?/);
+  let v = riga[parti[0]];
+  for (let i = 1; i < parti.length; i++) v = v == null ? undefined : v[parti[i]];
+  return v;
+}
+
+const RIGHE = [
+  { id: 1, lead: true,  email: 'a@b.it' },
+  { id: 2, lead: false, email: null },
+  { id: 3, lead: false, email: '' },
+  { id: 4, lead: null,  email: 'c@d.it' },                                   /* colonna mai scritta */
+  { id: 5, lead: false, email: 'e@f.it', consenso_marketing: true },
+  { id: 6, lead: false, email: 'g@h.it', consenso_marketing: false,
+    privacy_firma: { stato: 'firmata', consensi: { marketing_elettronico: true } } },
+  { id: 7, lead: false, email: 'i@l.it',
+    privacy_firma: { stato: 'firmata', consensi: { marketing_elettronico: false } } },
+  { id: 8, lead: false, email: 'm@n.it',
+    privacy_firma: { stato: 'bozza', consensi: { marketing_elettronico: true } } }
+];
+
+prova('LE DUE LINGUE DICONO LA STESSA COSA, riga per riga', () => {
+  const nomi = Object.keys(A.VISTE);
+  deve(nomi.length === 4, 'le viste non sono quattro: ' + nomi.join(' '));
+  nomi.forEach(nome => {
+    const v = A.VISTE[nome];
+    RIGHE.forEach(r => {
+      const js = !!v.js(r), srv = valuta(v.filtro, r);
+      deve(js === srv, 'vista «' + nome + '» sulla riga ' + r.id
+        + ': la lista dice ' + js + ', il server ' + srv + ' — il contatore non tornerebbe con la sua lista');
+    });
+  });
+  return nomi.length + ' viste × ' + RIGHE.length + ' righe, nessuna discordanza';
+});
+
+prova('una colonna mai scritta non è un «no»', () => {
+  /* `lead` a null è una scheda su cui nessuno ha detto niente: è un cliente,
+     non un lead. E il consenso è `=== true`, mai «è vero»: in una campagna di
+     marketing la differenza fra «non ha detto no» e «ha detto sì» è una
+     sanzione (§42). */
+  deve(A.eCliente({ lead: null }), 'una colonna mai scritta diventa un lead');
+  deve(!A.conConsenso({ consenso_marketing: 1 }), 'un 1 al posto di true diventa un consenso');
+  deve(!A.conConsenso({ privacy_firma: { stato: 'bozza', consensi: { marketing_elettronico: true } } }),
+    'una privacy non firmata vale come consenso');
+  deve(A.conConsenso({ privacy_firma: { stato: 'firmata', consensi: { marketing_elettronico: true } } }),
+    'una privacy firmata con la spunta non vale');
+  return 'null = cliente, 1 ≠ true, bozza ≠ firmata';
+});
+
+prova('le condizioni sono scritte in POSITIVO, e il complemento si sottrae', () => {
+  /* Il server non sa negare un gruppo di condizioni senza contorsioni: si
+     conta chi ce l'ha e si sottrae dal totale. Una sottrazione non può
+     divergere da se stessa, mentre una seconda condizione scritta al
+     contrario sì. */
+  const senza = RIGHE.filter(A.senzaConsenso).length;
+  const con = RIGHE.filter(A.conConsenso).length;
+  deve(senza + con === RIGHE.length, 'i due gruppi non fanno il totale: ' + senza + ' + ' + con);
+  deve(/con_consenso|con_email/.test(Object.keys(A.VISTE).join(' ')), 'le viste non sono scritte in positivo');
+  deve(!/not\.is\.null/.test(A.VISTE.con_consenso.filtro), 'il consenso si nega invece di contarsi in positivo');
+  return senza + ' senza + ' + con + ' con = ' + RIGHE.length;
+});
+
 console.log('\n══ ANAGRAFICA DEL CLIENTE ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

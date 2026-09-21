@@ -1,8 +1,95 @@
 {
-  "versione": "0.14.0",
-  "nome": "Nuova polizza: dal menu, con il design di casa, e le rate giuste",
+  "versione": "0.20.0",
+  "nome": "Il grafico dei volumi è un grafico",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.20.0",
+      "data": "2026-09-21",
+      "nome": "Il grafico dei volumi è un grafico",
+      "voci": [
+        "Sulla Scrivania «Volumi di portafoglio» adesso è un GRAFICO vero: due curve, l'anno in corso in verde sopra l'anno scorso in grigio. Dove il grigio spunta sopra il verde, quel mese è andato peggio dell'anno scorso — si legge senza guardare un numero.",
+        "Il grafico sta SOPRA i tre riquadri di numeri: la prima cosa che si vede aprendo IAM è l'andamento, non tre cifre. Prima era il contrario, e la scheda si leggeva come l'ennesima fila di indicatori con un grafichino in fondo.",
+        "In cima al grafico c'è UNA riga di riepilogo invece di tre riquadri: quanto hai prodotto quest'anno a oggi, quante polizze, e di quanto sei sopra o sotto l'anno scorso nello stesso periodo.",
+        "Si tocca un mese e compaiono i numeri esatti di quel mese nei due anni: funziona col dito, non solo col mouse.",
+        "I mesi che non sono ancora arrivati non hanno più una linea verde a zero. Ottobre non è un mese andato male: è un mese che non c'è ancora, e adesso lo dice invece di disegnare un crollo verticale.",
+        "Un mese a zero e un mese da 300 euro non si disegnano più alla stessa altezza: c'era un minimo fisso che li appiattiva insieme.",
+        "Un mese le cui polizze non hanno un premio noto dice «premio non noto» e quante polizze sono, non «0,00 €»: quelle polizze ci sono, è l'importo che non si sa."
+      ]
+    },
+    {
+      "v": "0.19.0",
+      "data": "2026-09-21",
+      "nome": "Il contatore dei clienti dice quanti ce ne sono davvero",
+      "voci": [
+        "I tre contatori della pagina Clienti (Tutti · Clienti · Lead) dicevano «50», perché contavano le righe caricate e non quelle in archivio. Adesso li conta il server: 2.536 anagrafiche, di cui 29 lead.",
+        "Sotto l'elenco compare «Ne vedi 50 su 2.507»: senza, una lista che si ferma a cinquanta e un numero che ne dice duemilacinquecento si leggono come un guasto, e chi cerca qualcuno smette di cercare.",
+        "Se il conteggio non riesce la schermata scrive «·» e non un numero: «non si è potuto contare» non è «non ce n'è», e un contatore che sbaglia verso il basso fa credere di aver finito.",
+        "Anche i due numeri della Scrivania (clienti senza email, clienti senza consenso marketing) li conta il server: prima si fermavano alle prime mille righe scaricate.",
+        "Il consenso marketing adesso lo decide una regola sola per tutta la casa: la Scrivania guardava solo la privacy firmata e non la spunta raccolta allo sportello, quindi contava fra i buchi anche chi il consenso l'aveva già dato.",
+        "«Compleanni di oggi» si è spostato da Clienti a Campagne (Marketing): è lì che si decide che cosa si manda ai clienti. Le regole non cambiano — invio manuale, uno per persona, solo con consenso marketing e un recapito."
+      ]
+    },
+    {
+      "v": "0.18.0",
+      "data": "2026-09-21",
+      "nome": "I collaboratori da un elenco solo, e un codice produttore che ha un periodo",
+      "voci": [
+        "Ovunque si sceglie o si nomina un collaboratore, l'elenco è UNO SOLO: quello della sezione Collaboratori. Tre tendine leggevano gli account (cinque persone) invece del registro (diciassette): chi non ha un accesso a IAM non compariva.",
+        "L'email che il cliente riceve adesso nomina il consulente giusto: lo cercava nella tabella sbagliata e ripiegava su chi aveva fatto il preventivo.",
+        "Un codice produttore della compagnia adesso ha un PERIODO («dal … al …») e si può SOSPENDERE dalla scheda del collaboratore. Serve quando un collaboratore se ne va e la compagnia dà il suo codice a un altro: senza, le polizze nuove continuerebbero ad andare a chi è andato via.",
+        "Le date si confrontano con l'effetto della polizza, non con oggi: una polizza resta di chi teneva il codice quando è stata prodotta, e quello che è già stato assegnato non torna mai indietro.",
+        "Lasciare le date vuote vuol dire «nessun periodo dichiarato», e l'abbinamento vale sempre: nessun limite viene inventato.",
+        "Sospendere e togliere sono due bottoni diversi, e la differenza è scritta nella conferma: sospeso vuol dire «non produce più, ma è stato suo»; tolto rimette il codice fra quelli da abbinare.",
+        "Nel dettaglio di una polizza, un codice produttore non associato — o associato a un periodo che non copre quella polizza — adesso si VEDE, con scritto perché e dove si corregge, invece di leggersi come una riga qualunque."
+      ]
+    },
+    {
+      "v": "0.17.0",
+      "data": "2026-09-21",
+      "nome": "L'import non si ferma più a metà, e un salvataggio muto non esiste",
+      "voci": [
+        "L'import del portafoglio è TUTTO O NIENTE: o entra tutto — clienti, polizze, rate e verbale — o non entra niente. Non può più restare scritta mezza importazione.",
+        "Dopo aver scelto il file si vedono TRE NUMERI grandi (clienti, polizze, rate) e un solo pulsante «Importa», con «Annulla» accanto. L'elenco delle polizze non è più davanti: sta sotto «vedi il dettaglio», e chi lo vuole lo apre.",
+        "Le righe che restano fuori si riassumono in un avviso solo, con il collegamento al dettaglio: cinque avvisi diversi si leggono come cinque guasti, e la cosa da fare è una.",
+        "Premendo «Importa» il pulsante si spegne — niente doppio invio — e compare una barra che dice la fase (Clienti, Polizze, Rate) e avanza sui blocchi che il database ha CONFERMATO, non a tempo.",
+        "Alla fine: spunta verde, «Import completato» e il riepilogo di quello che è entrato davvero. In caso di errore: icona rossa, il motivo, e scritto in chiaro che in archivio non è stato scritto niente.",
+        "Il verbale dell'importazione adesso si scrive nella stessa transazione dei dati: o ci sono tutti e due, o non c'è nessuno dei due.",
+        "Corretto un difetto silenzioso su tutti i salvataggi che toccano soldi: quando il database non cambiava nessuna riga, la schermata non diceva niente e la modifica spariva alla prima rilettura. Adesso lo dice in faccia e non chiude il modulo."
+      ]
+    },
+    {
+      "v": "0.16.0",
+      "data": "2026-09-21",
+      "nome": "Gestione compagnie: si entra dalla compagnia, non dalla tariffa",
+      "voci": [
+        "In Gestione compagnie il tasto in alto è «Nuova compagnia», non «Nuova tariffa»: si entra dalla compagnia, e da lì si mettono prodotti e provvigioni.",
+        "Ogni compagnia dell'elenco dice quanti prodotti attivi ha, quante provvigioni sono in vigore e quante polizze restano senza provvigione — e si modifica con un tasto sulla riga.",
+        "La scheda della compagnia raccoglie dati, prodotti e provvigioni in un posto solo, con i rami scoperti cliccabili per configurarli subito.",
+        "In fondo all'elenco ci sono le compagnie che stanno sulle polizze e non hanno una scheda, con «Aggiungi» già precompilato: senza scheda non c'è dove attaccare prodotti e provvigioni.",
+        "Rinominare una compagnia non stacca più niente: il nome vecchio diventa un altro nome della stessa compagnia, e tariffe e accordi passano al nome nuovo.",
+        "Corretto un guasto che si vedeva solo da lì: le finestre delle tariffe e del catalogo stavano dentro il loro pannello, e da Gestione compagnie — dove quel pannello è nascosto — non comparivano.",
+        "Una compagnia aperta che nel frattempo non c'è più riporta all'elenco invece di lasciare una scheda vuota, che si legge come un guasto."
+      ]
+    },
+    {
+      "v": "0.15.0",
+      "data": "2026-09-21",
+      "nome": "Volumi di portafoglio anno su anno, e la produzione con un nome",
+      "voci": [
+        "Sulla Scrivania c'è «Volumi di portafoglio»: l'anno in corso contro quello prima, mese per mese, letto dal portafoglio vero e non digitato a mano.",
+        "I due anni sono contati fino allo STESSO GIORNO. Mettere dodici mesi dell'anno scorso accanto a nove di quest'anno disegna un crollo che non è successo, e succede undici mesi su dodici: adesso il confronto è fra periodi uguali, e la schermata scrive fino a che giorno ha contato.",
+        "I mesi dell'anno scorso che quest'anno non sono ancora arrivati si vedono lo stesso, in chiaro e fuori dal confronto: sono produzione vera, e sapere quanto c'è ancora da fare entro dicembre serve.",
+        "Nuova schermata Agenzia › Produzione: quanto è stato prodotto, da chi, con quale compagnia e su quale ramo, con i filtri e l'esportazione.",
+        "Le polizze adesso hanno una colonna «chi l'ha prodotta», diversa da «di chi è la rata»: una polizza può cambiare gestione senza che la produzione dell'anno in cui è nata cambi.",
+        "Decidere una volta a chi appartiene un codice produttore adesso attribuisce sia le rate sia le polizze, e il flusso della notte fa nascere le polizze già col nome giusto.",
+        "I sedici codici produttore che stanno sulle polizze sono stati registrati come domande da decidere: prima non c'era nemmeno il posto dove scrivere la risposta.",
+        "Un codice che nessuno ha deciso non prende mai un nome: si mostra il codice, quante polizze ci stanno sotto e dove si decide.",
+        "Le polizze senza premio annuo non valgono zero: restano fuori dagli importi, si contano a parte e la schermata lo dice.",
+        "Le somme le fa il database: aprendo la Scrivania non scendono più le polizze una per una.",
+        "I volumi digitati a mano nella scheda del collaboratore restano dove sono, con accanto scritto dove stanno quelli letti dal portafoglio: finché i due numeri non tornano sono due misure diverse."
+      ]
+    },
     {
       "v": "0.14.0",
       "data": "2026-09-21",

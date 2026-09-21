@@ -81,14 +81,61 @@ function initScript(conSessione) {
       // database vero. Dai test: window.__COLLAUDO.risposte['quote_polizze:single'] = …
       window.__COLLAUDO.db = [];
       window.__COLLAUDO.risposte = {};
+      /* I conteggi dal server, per condizione: chiave «tabella|or1&or2»
+         (le condizioni ordinate). Dalle prove:
+         window.__COLLAUDO.conteggi['quote_anagrafiche|'] = 2536 */
+      window.__COLLAUDO.conteggi = {};
+      window.__COLLAUDO.conteggiChiesti = [];
+
+      /* DUE ATTREZZI PER LE PROVE DELL'IMPORTAZIONE (21/09/2026).
+         Dal giorno in cui l'importazione carica a blocchi e poi applica con
+         una funzione SQL, le righe non passano piu' una per una da
+         quote_anagrafiche / quote_polizze / quote_titoli: passano dal foglio
+         di brutta. Una prova che continua a guardare le tre tabelle non
+         dichiara un guasto — dichiara di non aver capito dove si guarda.
+
+         .importate(tipo) rimette insieme le righe di quel tipo dai blocchi
+         caricati: e' ESATTAMENTE quello che la funzione SQL scrivera'.
+         .schermo() apre il dettaglio se e' chiuso e torna la schermata
+         intera: il dettaglio non si apre piu' da solo, e una persona che lo
+         vuole leggere clicca. */
+      window.__COLLAUDO.importate = function (tipo) {
+        var out = [];
+        window.__COLLAUDO.db.forEach(function (o) {
+          if (o.tabella !== 'iam_import_lotti' || o.operazione !== 'insert') return;
+          if (!o.payload || o.payload.tipo !== tipo) return;
+          out = out.concat(o.payload.righe || []);
+        });
+        return out;
+      };
+      window.__COLLAUDO.schermo = function () {
+        try {
+          var d = document.getElementById('flu-dett');
+          if (d && d.hidden && typeof fluApriDettaglio === 'function') fluApriDettaglio();
+        } catch (e) {}
+        var b = document.getElementById('flu-esito');
+        return b ? b.innerHTML : '';
+      };
 
       function builder(tabella) {
         var singolo = false, operazione = 'select', payload = null, filtri = {};
         var b = {};
-        var passanti = ['select','delete','neq','gt','gte','lt','lte','like',
-          'ilike','is','or','not','contains','match','filter','order','limit',
+        var passanti = ['neq','gt','gte','lt','lte','like',
+          'ilike','is','not','contains','match','filter','order','limit',
           'range','csv','abortSignal','returns','overrideTypes'];
         passanti.forEach(function (m) { b[m] = function () { return b; }; });
+        /* I metodi select() e or() erano passanti, cioe' invisibili: una prova
+           che guardava QUALE conteggio il codice stesse chiedendo leggeva
+           sempre niente e restava verde comunque. E' lo stesso difetto gia'
+           corretto su in(), upsert() e delete() (§19), un metodo piu' in la'.
+           Adesso select(colonne, opzioni) dice che e' un conteggio e or() dice
+           con che condizione, e le risposte si danno per condizione.
+           (Niente apici inversi qui: il banco vive in un template literal —
+           e' la terza volta che questa riga fa saltare il file.) */
+        var ors = [];
+        var conta = false;
+        b.or = function (f) { ors.push(String(f)); return b; };
+        b.select = function (_c, opt) { if (opt && opt.count) conta = true; return b; };
         b.eq = function (col, val) { filtri[col] = val; return b; };
         /* I metodi in() e upsert() erano passanti, cioè invisibili al
            registro: una prova che guardava «quali righe stai spostando» o
@@ -99,6 +146,11 @@ function initScript(conSessione) {
         b.in = function (col, valori) { filtri[col] = { in: (valori || []).slice() }; return b; };
         b.upsert = function (v) { operazione = 'upsert'; payload = v; annota(); return b; };
         b.insert = function (v) { operazione = 'insert'; payload = v; annota(); return b; };
+        /* La cancellazione era fra i passanti: una prova che la guardava
+           leggeva sempre niente e restava verde comunque. E' lo stesso
+           difetto gia' corretto su in() e upsert() (§19).
+           (Niente apici inversi qui: il banco vive in un template literal.) */
+        b.delete = function () { operazione = 'delete'; payload = null; annota(); return b; };
         b.update = function (v) { operazione = 'update'; payload = v; annota(); return b; };
         b.single = function () { singolo = true; return b; };
         b.maybeSingle = b.single;
@@ -121,6 +173,22 @@ function initScript(conSessione) {
 
         b.then = function (ok, ko) {
           if (riga) riga.filtri = JSON.parse(JSON.stringify(filtri));
+          /* Un conteggio non e' una lista: si annota a parte, con le
+             condizioni che ha chiesto, e la risposta si cerca fra i conteggi
+             dichiarati dalla prova. Se la prova non ne ha dichiarato nessuno
+             risponde 0 — che e' un numero, non un errore, e una prova che non
+             lo distingue dal vero non sta misurando niente. */
+          if (conta) {
+            var k = tabella + '|' + ors.slice().sort().join('&');
+            window.__COLLAUDO.conteggiChiesti.push(k);
+            var tab = window.__COLLAUDO.conteggi;
+            if (tab && Object.prototype.hasOwnProperty.call(tab, k)) {
+              var v = tab[k];
+              if (v && v.error) return Promise.resolve({ count: null, data: null, error: v.error }).then(ok, ko);
+              return Promise.resolve({ count: v, data: null, error: null }).then(ok, ko);
+            }
+            return Promise.resolve({ count: 0, data: null, error: null }).then(ok, ko);
+          }
           var chiave = tabella + ':' + (singolo ? 'single' : 'lista');
           var su_misura = window.__COLLAUDO.risposte[chiave];
           if (su_misura !== undefined) {
@@ -177,7 +245,36 @@ function initScript(conSessione) {
         from: builder,
         channel: canale,
         removeChannel: function () {},
-        rpc: function () { return builder('rpc'); },
+        /* IL FINTO rpc NON E' PIU' UN PASSANTE (21/09/2026). Dal giorno in
+           cui l'importazione scrive con una funzione SQL, un rpc che risponde
+           «va bene» senza guardare niente lascerebbe verdi le prove qualunque
+           cosa il codice carichi — lo stesso difetto gia' corretto su in() e
+           upsert() (§19): un metodo passante nel banco e' una prova che non
+           misura. Qui l'importazione si SIMULA, contando le righe messe nel
+           foglio di brutta, come farebbe la funzione vera.
+
+           (E questo commento non usa apici inversi: il banco vive dentro un
+           template literal, e un apice inverso qui dentro lo chiude a meta'.
+           Ci sono cascato scrivendolo.) */
+        rpc: function (nome, args) {
+          var riga = { tabella: 'rpc:' + nome, operazione: 'rpc',
+                       payload: JSON.parse(JSON.stringify(args || null)), filtri: {} };
+          window.__COLLAUDO.db.push(riga);
+          var su_misura = window.__COLLAUDO.risposte['rpc:' + nome];
+          if (su_misura !== undefined) return Promise.resolve(JSON.parse(JSON.stringify(su_misura)));
+          if (nome === 'iam_importa_flusso') {
+            var conta = { clienti: 0, polizze: 0, titoli: 0 };
+            window.__COLLAUDO.db.forEach(function (o) {
+              if (o.tabella !== 'iam_import_lotti' || o.operazione !== 'insert') return;
+              if (!o.payload || o.payload.lotto !== (args || {}).p_lotto) return;
+              if (conta[o.payload.tipo] === undefined) return;
+              conta[o.payload.tipo] += (o.payload.righe || []).length;
+            });
+            return Promise.resolve({ data: { verbale: 'verbale-finto', clienti: conta.clienti,
+              polizze: conta.polizze, titoli: conta.titoli, polizze_senza_cliente: 0 }, error: null });
+          }
+          return Promise.resolve({ data: null, error: null });
+        },
         functions: { invoke: function () { return Promise.resolve({ data: {}, error: null }); } },
         storage: {
           from: function () {
@@ -1135,17 +1232,82 @@ const avvio = async () => {
       deve(r.prima.emissione === '2026-09-10', 'la data di emissione non si vede nel campo: ' + r.prima.emissione);
       deve(/Bonifico/.test(r.prima.html) && /Pagato/.test(r.prima.html), 'il pagamento (mezzo e stato) non si legge nel dettaglio');
       deve(r.prima.rateAperte === 1 && /16\/03\/2027/.test(r.prima.html), 'le rate in scadenza: ' + r.prima.rateAperte + ' (attesa 1, quella del 16/03/2027)');
-      deve(/U25337/.test(r.prima.produttore) && /non ancora abbinato/.test(r.prima.produttore), 'un codice non deciso deve restare un codice: ' + r.prima.produttore);
+      /* La frase è cambiata il 21/09/2026 («non associato», la parola del
+         brief) e la prova non la insegue: quello che deve restare vero è che
+         il codice si legga, che NON esca un nome, e che la riga si VEDA —
+         il brief chiede un avviso, non una riga qualunque (§15, §16: si
+         aggiorna la regola, non il numero). */
+      deve(/U25337/.test(r.prima.produttore) && /non associat|non ancora abbinato/.test(r.prima.produttore),
+        'un codice non deciso deve restare un codice: ' + r.prima.produttore);
+      deve(/class="tk-badge st-aperto pol-produttore"/.test(r.prima.html),
+        'un produttore non risolto si legge come una riga qualunque: il brief chiede che si veda');
       deve(r.deciso === 'Neri Anna', 'con la decisione presa il produttore non e\' la persona: ' + r.deciso);
       deve(r.upd.length === 1 && r.upd[0].data_emissione === '2026-09-12', 'la data corretta non viene scritta: ' + JSON.stringify(r.upd));
       deve(r.log.length === 1 && /Data di emissione/.test(r.log[0].azione) && r.log[0].entita_id === POL, 'la correzione non lascia il movimento sulla riga: ' + JSON.stringify(r.log));
       return 'emissione 10/09 → 12/09 con movimento; 1 rata in scadenza; produttore da codice deciso';
     });
 
+    await prova('punto 3 · un abbinamento SCADUTO o SOSPESO non mette il nome sul dettaglio', async () => {
+      /* Il caso vero: un collaboratore se ne va a giugno e la compagnia
+         riassegna il suo codice. Da luglio le polizze non sono piu' sue — ma
+         la decisione presa una volta continuerebbe a scrivere il suo nome, e
+         quel nome e' la riga da cui si parte per pagare una provvigione.
+         Scrivere «lui» sarebbe falso; scrivere «non assegnato» nasconderebbe
+         che una decisione esiste: si dice il codice, il motivo, e dove si
+         corregge. */
+      const POL = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+      const COL = 'cccccccc-3333-4333-8333-cccccccccccc';
+      const r = await page.evaluate(async (o) => {
+        const { POL, COL } = o;
+        const out = {};
+        window.__COLLAUDO.risposte['quote_polizze:single'] = { error: null, data: {
+          id: POL, cliente: 'Rossi Mario', numero_polizza: 'PR/78', compagnia: 'PRIMA', prodotto: 'RC Auto',
+          data_effetto: '2026-09-16', data_scadenza: '2027-09-16', premio_annuo: 390,
+          dati: { ssf: { collaboratore: 'U25337' } } } };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: [] };
+        window.__COLLAUDO.risposte['quote_collaboratori:lista'] = { error: null, data: [{ id: COL, nome: 'Anna', cognome: 'Neri' }] };
+
+        async function guarda(dec) {
+          window.__COLLAUDO.risposte['quote_codici_collaboratore:single'] = { error: null, data: dec };
+          TIT_COLLAB = []; window.TIT_COLLAB_NOMI = {};
+          await window.polDettaglio(POL);
+          const bd = document.getElementById('pol-bd');
+          return { testo: (bd.querySelector('.pol-produttore') || {}).textContent || '', html: bd.innerHTML };
+        }
+        const base = { collaboratore_id: COL, nessuno: false, deciso: true };
+        out.dentro  = await guarda(Object.assign({}, base, { attivo: true, data_inizio: '2025-01-01', data_fine: '2027-12-31' }));
+        out.scaduto = await guarda(Object.assign({}, base, { attivo: true, data_inizio: '2025-01-01', data_fine: '2026-06-30' }));
+        out.sospeso = await guarda(Object.assign({}, base, { attivo: false }));
+        out.senza   = await guarda(Object.assign({}, base, { attivo: true }));
+        delete window.__COLLAUDO.risposte['quote_codici_collaboratore:single'];
+        delete window.__COLLAUDO.risposte['quote_collaboratori:lista'];
+        delete window.__COLLAUDO.risposte['quote_titoli:lista'];
+        TIT_COLLAB = []; window.TIT_COLLAB_NOMI = {};
+        return out;
+      }, { POL, COL });
+
+      deve(r.dentro.testo === 'Neri Anna', 'dentro il periodo il produttore non e\' la persona: ' + r.dentro.testo);
+      /* «Nessun periodo dichiarato» NON e' «chiuso»: le sedici righe vere
+         nascono cosi', e leggerle come chiuse spegnerebbe tutto in silenzio. */
+      deve(r.senza.testo === 'Neri Anna', 'senza periodo dichiarato il codice smette di valere: ' + r.senza.testo);
+      deve(!/Neri Anna/.test(r.scaduto.testo) && /U25337/.test(r.scaduto.testo),
+        'un abbinamento scaduto scrive lo stesso il nome: ' + r.scaduto.testo);
+      deve(/fino al 2026-06-30/.test(r.scaduto.html), 'non dice fino a quando il codice era suo');
+      deve(!/Neri Anna/.test(r.sospeso.testo), 'un abbinamento sospeso scrive lo stesso il nome: ' + r.sospeso.testo);
+      /* E in tutti e due i casi si VEDE, invece di leggersi come una riga
+         qualunque: il brief chiede un avviso. */
+      deve(/class="tk-badge st-aperto pol-produttore"/.test(r.scaduto.html)
+        && /class="tk-badge st-aperto pol-produttore"/.test(r.sospeso.html), 'l\'avviso non compare');
+      return 'dentro Neri Anna, fuori il codice col motivo, sospeso idem';
+    });
+
     await prova('M1.2 · il flusso scrive la data di emissione in colonna, e la sua esportazione la porta', async () => {
       const h = fs.readFileSync('index.html', 'utf8');
-      const blocco = (h.match(/async function fluConferma\(\)[\s\S]*?quote_polizze'\)\.insert/) || [''])[0];
-      deve(/data_emissione: x\.data_emissione/.test(blocco), 'fluConferma non scrive data_emissione sulla polizza');
+      /* Dal 21/09/2026 la polizza non si inserisce piu' riga per riga: entra
+         nel blocco che sale nel foglio di brutta e che la funzione SQL
+         applica. La colonna e' la stessa, il posto in cui si scrive no. */
+      const blocco = (h.match(/aBlocchi\('polizze'[\s\S]*?\}\)\), 150\);/) || [''])[0];
+      deve(/data_emissione: x\.data_emissione/.test(blocco), 'il flusso non porta data_emissione sulla polizza');
       const exp = (h.match(/function pfExportExcel\(\)[\s\S]*?<\/thead>/) || [''])[0];
       deve(/<th>Emissione<\/th>/.test(exp), 'l\'esportazione Excel non ha la colonna Emissione');
       return 'colonna scritta dal flusso, esportata dall\'Excel';
@@ -1241,7 +1403,17 @@ const avvio = async () => {
         document.getElementById('fc-m-chi').value = 'collaboratore'; document.getElementById('fc-m-chi').dispatchEvent(new Event('change'));
         document.getElementById('fc-m-collab-sel').value = 'c-1';
         window.__COLLAUDO.db = [];
+        /* L'update adesso si fa restituire le righe toccate (BUG 1, 21/09):
+           il banco deve dire che ne ha toccata una, altrimenti la correzione
+           risulta non salvata e il movimento non si scrive.
+           FINO A OGGI QUESTA PROVA ERA VERDE PER SBAGLIO: si reggeva sulla
+           risposta finta lasciata accesa da una prova centocinquanta righe
+           piu' su. E' la trappola gia' scritta due volte — una risposta finta
+           non spenta cammina nelle prove dopo, e quando qualcuno la spegne
+           diventa rossa una prova che non c'entra niente. */
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [{ id: FC_T1 }], error: null };
         await window.fcSalvaModifica(FC_T1);
+        delete window.__COLLAUDO.risposte['quote_titoli:lista'];
         const upd = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update').map(x => ({ p: x.payload, f: x.filtri }));
         const log = window.__COLLAUDO.db.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload);
         const chiuso = !document.getElementById('fc-ov');
@@ -1259,6 +1431,66 @@ const avvio = async () => {
       deve(r.nulla === 0, 'rimettere gli stessi valori ha scritto ' + r.nulla + ' righe');
       deve(/POS/.test(r.riga), 'la lista non si aggiorna dopo la correzione');
       return 'mezzo e chi paga corretti, 1 update + 1 movimento, niente se non cambia niente';
+    });
+
+    await prova('BUG 1 · un salvataggio che non cambia nessuna riga LO DICE', async () => {
+      /* Segnalato da Francesco il 21/09/2026: «modifico un movimento di cassa
+         e la modifica non resta». Il codice era strutturalmente giusto —
+         update, filtro sull'id, errore controllato — e proprio per questo il
+         guasto non si vedeva: PostgREST NON restituisce un errore quando un
+         update tocca ZERO righe. Succede ogni volta che una politica di
+         visibilità filtra via la riga: `error` è null, la schermata tace,
+         l'oggetto in memoria viene aggiornato lo stesso e la modifica
+         sparisce alla prima rilettura vera.
+         Per chi lavora è indistinguibile da un salvataggio che non ha
+         funzionato — ed è esattamente la frase che ha usato. */
+      const r = await page.evaluate(async (FC_T1) => {
+        window.fcModifica(FC_T1);
+        document.getElementById('fc-m-mezzo').value = 'bonifico';
+        /* Il database accetta la richiesta e non cambia niente: e' il caso
+           che prima passava in silenzio. */
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
+        const detti = [];
+        const vecchioAlert = window.alert;
+        window.alert = (m) => detti.push(String(m));
+        window.__COLLAUDO.db = [];
+        await window.fcSalvaModifica(FC_T1);
+        window.alert = vecchioAlert;
+        delete window.__COLLAUDO.risposte['quote_titoli:lista'];
+        const t = (window.FC_TITOLI || []).find(x => x.id === FC_T1);
+        return { detti, ancoraAperto: !!document.getElementById('fc-ov'),
+                 inMemoria: t ? t.mezzo_pagamento : null };
+      }, FC_T1);
+      deve(r.detti.length === 1, 'non dice niente: ' + JSON.stringify(r.detti));
+      deve(/nessuna riga/i.test(r.detti[0]), 'non dice che non ha cambiato niente: ' + r.detti[0]);
+      deve(/NON e/i.test(r.detti[0]) && /salvata/i.test(r.detti[0]),
+        'non dice in faccia che la modifica non è stata salvata: ' + r.detti[0]);
+      /* E NON si fa credere che sia andata: né in memoria né chiudendo il
+         modulo. Un modulo che si chiude è la conferma più forte che ci sia. */
+      deve(r.inMemoria !== 'bonifico', 'la schermata mostra il valore nuovo su una modifica non salvata');
+      deve(r.ancoraAperto, 'il modulo si chiude come se avesse salvato');
+      return 'lo dice, non lo mostra, e non chiude il modulo';
+    });
+
+    await prova('collaboratori: il nome del consulente viene dal REGISTRO, non dagli account', async () => {
+      /* Difetto trovato mappando (21/09/2026). `quote_anagrafiche.intermediario_id`
+         punta a `quote_collaboratori`, ma l'email al CLIENTE cercava quel
+         id in `iam_utenti`: nessun errore, non trovava niente, e ripiegava su
+         «chi ha creato il preventivo» — cioè esattamente il nome sbagliato che
+         quel codice diceva di aver corretto.
+         Misurato sul database: l'unica anagrafica che ha un intermediario lo
+         ha nel registro delle persone (1) e NON fra gli account (0). */
+      const h = fs.readFileSync('index.html', 'utf8');
+      const i = h.indexOf('let consulente = r.creato_nome');
+      deve(i > 0, 'non trovo il punto in cui si sceglie il consulente');
+      const blocco = h.slice(i, i + 1400);
+      deve(/from\('quote_collaboratori'\)/.test(blocco), 'il consulente si cerca ancora fra gli account');
+      deve(!/from\('iam_utenti'\)/.test(blocco), 'il consulente si cerca ancora fra gli account');
+      /* E il motore è caricato: il nome si compone in un posto solo. */
+      deve(/<script src="tariffe\/motore\/collaboratori\.js\?v=/.test(h), 'QUOTO non carica il motore dei collaboratori');
+      const co = (h.match(/function collabOpzioni\(scelto, primo\) \{[\s\S]{0,400}?\n\}/) || [''])[0];
+      deve(/Collaboratori\.opzioni\(/.test(co), 'la tendina dei collaboratori non passa dal motore');
+      return 'registro delle persone, e una sola composizione del nome';
     });
 
     /* ══ IL REGISTRO DEI MOVIMENTI (19/09/2026) ═══════════════════════════
@@ -4647,6 +4879,7 @@ const avvio = async () => {
           anteprima,
           dec: ops.filter(x => x.tabella === 'quote_codici_collaboratore' && x.operazione === 'upsert').map(x => x.payload),
           upd: ops.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update'),
+          pol: ops.filter(x => x.tabella === 'quote_polizze' && x.operazione === 'update'),
           log: ops.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload)
         };
       }, ASG_C1);
@@ -4661,10 +4894,22 @@ const avvio = async () => {
       /* Un update in blocco, non uno per rata. */
       deve(r.upd.length === 1, 'update sulle rate: ' + r.upd.length + ' (ne basta uno, in blocco)');
       deve(r.upd[0].payload.collaboratore_id === ASG_C1, 'assegnate a ' + JSON.stringify(r.upd[0].payload));
-      /* Un movimento per persona, non uno per rata, e con l'identificativo. */
-      deve(r.log.length === 1 && r.log[0].entita_id === ASG_C1,
+      /* E LA STESSA DECISIONE ATTRIBUISCE LA PRODUZIONE (21/09/2026).
+         Due cose diverse, non lo stesso dato scritto due volte: la rata dice
+         a chi spetta la provvigione, la polizza dice chi ha fatto il
+         contratto. Senza questa riga la colonna del produttore resterebbe
+         vuota per sempre e il consuntivo non avrebbe mai un nome.
+         Questa prova misurava un movimento solo: era il mondo di ieri, e si
+         aggiorna la regola, non il numero (§15, §16, §33, §35). */
+      deve(r.pol.length === 1, 'update sulle polizze: ' + r.pol.length + ' (ne basta uno, in blocco)');
+      deve(r.pol[0].payload.collaboratore_id === ASG_C1, 'attribuite a ' + JSON.stringify(r.pol[0].payload));
+      /* Un movimento per persona e per cosa, non uno per riga, e con
+         l'identificativo che porta alla scheda. */
+      deve(r.log.length === 2 && r.log.every(x => x.entita_id === ASG_C1),
            'il registro: ' + JSON.stringify(r.log));
-      return '1 decisione firmata, 1 update per 3 rate, 1 movimento';
+      deve(r.log.some(x => /[Rr]ate del pregresso/.test(x.azione)), 'manca il movimento delle rate');
+      deve(r.log.some(x => /[Pp]olizze attribuite/.test(x.azione)), 'manca il movimento della produzione');
+      return '1 decisione firmata, 3 rate e le polizze in un colpo, 2 movimenti';
     });
 
     await prova('assegnazione: una rata già assegnata a mano non viene coperta dal blocco', async () => {
@@ -7012,6 +7257,66 @@ const avvio = async () => {
     });
 
 
+    /* ══ BRIEF ANAGRAFICHE · punto 1 — il contatore (21/09/2026) ═══════════ */
+    await prova('punto 1 · i contatori li conta il SERVER, non le righe caricate', async () => {
+      /* Il difetto, misurato sul database vero il 21/09/2026: 2.536
+         anagrafiche, di cui 29 lead. La lista ne carica cinquanta apposta — e
+         i tre contatori si contavano su quelle, quindi la schermata diceva
+         «50». Un numero preso dalle righe caricate non conta quello che c'è:
+         conta quello che si è avuto voglia di scaricare, e guardandolo non
+         c'è modo di accorgersene. */
+      const r = await page.evaluate(async () => {
+        const K = (f) => 'quote_anagrafiche|' + (f || '');
+        const V = Anagrafica.VISTE;
+        const righe = [];
+        for (let i = 0; i < 50; i++) righe.push({ id: 'a' + i, nominativo: 'CLIENTE ' + i, lead: false, tipo: 'fisica' });
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { error: null, data: righe };
+        window.__COLLAUDO.conteggi = {
+          [K('')]: 2536,
+          [K(V.lead.filtro)]: 29,
+          [K(V.con_email.filtro)]: 6,
+          [K(V.con_consenso.filtro)]: 4
+        };
+        window.__COLLAUDO.conteggiChiesti = [];
+        ANAG_FILTRO = null; ANAG_VIEW = 'clienti';
+        document.getElementById('anag-q').value = '';
+        await window.cercaAnagrafica();
+        const leggi = () => ({
+          tutti: document.getElementById('anag-cnt-tutti').textContent,
+          cli: document.getElementById('anag-cnt-cli').textContent,
+          lead: document.getElementById('anag-cnt-lead').textContent,
+          corpo: document.getElementById('anag-results').textContent
+        });
+        const buoni = leggi();
+        const chiesti = window.__COLLAUDO.conteggiChiesti.slice();
+        /* E se il conteggio non riesce: «non si è potuto contare» non è
+           «non ce n'è», e soprattutto non è «cinquanta». */
+        window.__COLLAUDO.conteggi = { [K('')]: { error: { message: 'giù' } } };
+        await window.cercaAnagrafica();
+        const rotti = leggi();
+        window.__COLLAUDO.conteggi = {};
+        delete window.__COLLAUDO.risposte['quote_anagrafiche:lista'];
+        return { buoni, rotti, chiesti, righe: righe.length };
+      });
+
+      deve(r.buoni.tutti === '2536', 'il contatore «Tutti» non è quello del server: ' + r.buoni.tutti);
+      deve(r.buoni.cli === '2507', 'i clienti non si ricavano per differenza: ' + r.buoni.cli);
+      deve(r.buoni.lead === '29', 'i lead non sono quelli del server: ' + r.buoni.lead);
+      deve(r.buoni.tutti !== String(r.righe), 'il contatore conta ancora le righe caricate');
+      /* La riga che tiene insieme il numero e l'elenco: senza, una lista che
+         si ferma a cinquanta e un contatore che dice duemilacinquecento si
+         leggono come un guasto, e chi cerca smette di cercare. */
+      deve(/Ne vedi/.test(r.buoni.corpo) && /2507/.test(r.buoni.corpo),
+        'la lista non dice quante ne sta mostrando su quante: ' + r.buoni.corpo.slice(0, 200));
+      /* Quattro conteggi, non uno: il totale, i lead, e i due «ce l'ha» da
+         cui si ricavano i buchi per differenza. */
+      deve(r.chiesti.length === 4, 'i conteggi chiesti non sono quattro: ' + r.chiesti.join(' · '));
+      deve(r.rotti.tutti === '·' && r.rotti.cli === '·' && r.rotti.lead === '·',
+        'quando il conteggio non riesce la schermata mostra un numero: ' + JSON.stringify(r.rotti));
+      deve(!/Ne vedi/.test(r.rotti.corpo), 'senza conteggio dice lo stesso quante ne mostra su quante');
+      return '2536 · 2507 clienti · 29 lead, e «·» quando non si è potuto contare';
+    });
+
     /* ══ BRIEF IAM #01 · M3 — anagrafica (19/09/2026) ═══════════════════════ */
     await prova('M3.1 · un parser solo del codice fiscale: le due porte della pagina passano dal motore', async () => {
       const r = await page.evaluate(() => {
@@ -7098,6 +7403,89 @@ const avvio = async () => {
       deve(r.log.length === 1 && r.log[0].entita === 'cliente' && r.log[0].entita_id === A1, 'il movimento non punta al cliente: ' + JSON.stringify(r.log));
       deve(/auguri inviati via email/.test(r.dopo), 'dopo l\'invio la riga non lo dice: ' + r.dopo);
       return '2 in elenco, 1 contattabile, email + diario + registro';
+    });
+
+    await prova('punto 2 · «Compleanni di oggi» vive in Campagne, e in Anagrafiche non resta niente', async () => {
+      /* Spostare una schermata vuol dire spostare TRE cose: il contenitore,
+         chi lo riempie, e chi NON deve più riempirlo. Lasciare indietro la
+         terza è il difetto più silenzioso: una pagina che legge l'anagrafica
+         intera a ogni apertura per scrivere dentro un `div` che non esiste
+         più. Le regole invece non si toccano: quelle le misura la prova
+         M3.3/M3.4 qui sopra, che chiama `cplCarica` e basta. */
+      const r = await page.evaluate(() => {
+        const dentro = (idPagina) => {
+          const p = document.getElementById(idPagina);
+          return !!(p && p.querySelector('#cpl-oggi'));
+        };
+        return {
+          inCampagne: dentro('page-campagne'),
+          inAnagrafiche: dentro('page-anagrafiche'),
+          quanti: document.querySelectorAll('#cpl-oggi').length,
+          /* Il riquadro sta in cima: un compleanno è l'unica cosa di quella
+             pagina che scade, e in fondo lo si legge domani. */
+          primaDellaGriglia: (() => {
+            const p = document.getElementById('page-campagne');
+            if (!p) return false;
+            const box = p.querySelector('#cpl-oggi'), gri = p.querySelector('.cmp-griglia');
+            return !!(box && gri && (box.compareDocumentPosition(gri) & Node.DOCUMENT_POSITION_FOLLOWING));
+          })()
+        };
+      });
+      deve(r.inCampagne, 'il riquadro dei compleanni non è nella pagina Campagne');
+      deve(!r.inAnagrafiche, 'il riquadro è rimasto anche in Anagrafiche: due schermate uguali');
+      deve(r.quanti === 1, 'il contenitore compare ' + r.quanti + ' volte: deve essere uno');
+      deve(r.primaDellaGriglia, 'i compleanni stanno sotto le campagne: in fondo si leggono domani');
+
+      const h = fs.readFileSync('index.html', 'utf8');
+      const marketing = (h.match(/async function loadMarketing\(\)[\s\S]*?\n\}/) || [''])[0];
+      const anag = (h.match(/function initAnagrafiche\(\)[\s\S]*?\n\}/) || [''])[0];
+      deve(/cplCarica\(\)/.test(marketing), 'nessuno riempie il riquadro quando si apre Campagne');
+      /* Si cerca la CHIAMATA, non la parola: il commento che spiega lo
+         spostamento nomina `cplCarica`, ed è la trappola già scritta dieci
+         volte (§10, §12, §18, §26, §29, §31, §33, §34, §37, §41). */
+      deve(!/cplCarica\(\)/.test(anag), 'le Anagrafiche leggono ancora l\'anagrafica intera per un riquadro che non hanno');
+      return 'un contenitore, in cima a Campagne, riempito da lì e non più dalle Anagrafiche';
+    });
+
+    await prova('da telefono: il piede della lista e il riquadro dei compleanni non escono dallo schermo', async () => {
+      /* Richiesta del brief: provare da mobile. Le due cose nuove di questi
+         due punti sono una riga di testo larga quanto la tabella e un
+         riquadro messo in cima a una pagina a due colonne: tutte e due, senza
+         una regola, allargano il documento e fanno comparire la barra
+         orizzontale — che su un telefono vuol dire una pagina che «si muove»
+         mentre si legge. Si misura la larghezza vera, non il foglio di stile. */
+      await page.setViewportSize({ width: 390, height: 820 });
+      const r = await page.evaluate(async () => {
+        const K = (f) => 'quote_anagrafiche|' + (f || '');
+        const V = Anagrafica.VISTE;
+        const righe = [];
+        for (let i = 0; i < 50; i++) righe.push({ id: 'm' + i, nominativo: 'CLIENTE ' + i, lead: false, tipo: 'fisica' });
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { error: null, data: righe };
+        window.__COLLAUDO.conteggi = { [K('')]: 2536, [K(V.lead.filtro)]: 29,
+                                       [K(V.con_email.filtro)]: 6, [K(V.con_consenso.filtro)]: 4 };
+        ANAG_FILTRO = null; ANAG_VIEW = 'clienti';
+        document.getElementById('anag-q').value = '';
+        showPage('anagrafiche');
+        await window.cercaAnagrafica();
+        const clienti = document.documentElement.scrollWidth <= window.innerWidth + 1;
+        /* E i compleanni nella loro casa nuova. */
+        CPL_INVIATI = {};
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { error: null, data: [] };
+        showPage('campagne');
+        await window.cplCarica();
+        const campagne = document.documentElement.scrollWidth <= window.innerWidth + 1;
+        const box = document.getElementById('cpl-oggi');
+        const dentro = box.getBoundingClientRect().right <= window.innerWidth + 1;
+        window.__COLLAUDO.conteggi = {};
+        delete window.__COLLAUDO.risposte['quote_anagrafiche:lista'];
+        showPage('anagrafiche');
+        return { clienti, campagne, dentro, larghezza: document.documentElement.scrollWidth, schermo: window.innerWidth };
+      });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      deve(r.clienti, 'la lista Clienti esce dallo schermo del telefono: ' + r.larghezza + ' > ' + r.schermo);
+      deve(r.campagne, 'la pagina Campagne esce dallo schermo del telefono: ' + r.larghezza + ' > ' + r.schermo);
+      deve(r.dentro, 'il riquadro dei compleanni sborda a destra');
+      return '390px: nessuna barra orizzontale, riquadro dentro lo schermo';
     });
 
     await prova('personalizzati: il premio non si mostra mai senza il suo frazionamento', async () => {
@@ -8642,7 +9030,14 @@ const avvio = async () => {
       window.__CAMPIONE = o.campione;   // lo riusa la prova del secondo caricamento
       const files = Object.keys(o.campione).map(n => new File([o.campione[n]], n, { type: 'text/csv' }));
       await fluScelto(files);
-      return document.getElementById('flu-esito').innerHTML;
+        /* Dal 21/09/2026 l'anteprima mostra tre numeri e un bottone: il
+           dettaglio (rate che restano fuori, codici da abbinare, cose da
+           sapere) sta sotto «vedi il dettaglio» e NON si apre da solo. Non e'
+           sparito niente — si e' smesso di metterlo davanti a chi deve solo
+           dire di si'. Le prove che lo guardano lo aprono, come farebbe una
+           persona. */
+        if (typeof fluApriDettaglio === 'function' && FLU_PIANO) fluApriDettaglio();
+      return window.__COLLAUDO.schermo();
     }, { campione, esistenti });
 
     await prova('flusso: il motore è caricato dalla pagina, non solo dal disco', async () => {
@@ -8692,7 +9087,13 @@ const avvio = async () => {
       const scritture = await page.evaluate(() => window.__COLLAUDO.db.filter(x => x.operazione === 'insert'));
       deve(scritture.length === 0, 'l\'anteprima ha già scritto ' + scritture.length + ' righe');
       deve(/COMPAGNIA_DI_PROVA/.test(html), 'non dice quale compagnia ha mandato il flusso');
-      deve(/Clienti nuovi/.test(html) && /Polizze nuove/.test(html), 'mancano i conti del piano');
+      /* Dal 21/09/2026 il riepilogo e' TRE numeri grandi, non quattro schede:
+         con millesettecento polizze l'elenco era un muro e il bottone finiva
+         in fondo. La regola che questa prova difende non e' «quattro schede»,
+         e' «si vede che cosa entra PRIMA di scrivere». */
+      deve(/flu-tre/.test(html) && /class="flu-k">client/.test(html)
+        && /class="flu-k">polizz/.test(html) && /class="flu-k">rat/.test(html),
+        'mancano i conti del piano');
       /* Le offerte di rinnovo non sono polizze e devono comparire per quello
          che sono: clienti da chiamare entro una data. */
       deve(/Offerte di rinnovo/.test(html), 'le offerte di rinnovo non si vedono');
@@ -8743,25 +9144,52 @@ const avvio = async () => {
         await fluConferma();
         const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
         return {
-          ordine: ins.map(x => x.tabella),
-          anag: ins.filter(x => x.tabella === 'quote_anagrafiche').map(x => x.payload),
-          pol: ins.filter(x => x.tabella === 'quote_polizze').map(x => x.payload),
-          tit: ins.filter(x => x.tabella === 'quote_titoli').map(x => x.payload),
-          reg: ins.filter(x => x.tabella === 'quote_importazioni').map(x => x.payload),
-          esito: document.getElementById('flu-esito').innerHTML
+          /* Anche la chiamata che applica: e' l'ultimo anello, e una prova
+             sull'ordine che non la vede non sta guardando l'ordine vero. */
+          ordine: window.__COLLAUDO.db
+            .filter(x => x.operazione === 'insert' || x.operazione === 'rpc')
+            .map(x => x.tabella),
+          anag: window.__COLLAUDO.importate('clienti'),
+          pol: window.__COLLAUDO.importate('polizze'),
+          tit: window.__COLLAUDO.importate('titoli'),
+          /* Il verbale non lo scrive piu' il browser: lo scrive la funzione
+             SQL, dentro la stessa transazione dei dati — cosi' o ci sono
+             tutti e due o non c'e' nessuno dei due. Quello che il browser
+             manda sta nella testata del lotto. */
+          reg: window.__COLLAUDO.db
+            .filter(x => x.tabella === 'iam_import_lotti' && x.operazione === 'insert'
+                      && x.payload && x.payload.tipo === 'testata')
+            .map(x => x.payload.righe),
+          applicato: (window.__COLLAUDO.db.find(x => x.tabella === 'rpc:iam_importa_flusso') ? { polizze: window.__COLLAUDO.importate('polizze').length, clienti: window.__COLLAUDO.importate('clienti').length, titoli: window.__COLLAUDO.importate('titoli').length } : null),
+          esito: window.__COLLAUDO.schermo()
         };
       });
       /* L'ordine non è estetica: la polizza vuole `cliente_id` e la rata vuole
          `polizza_id`. Scritti al contrario, non si agganciano a niente. */
-      const primo = r.ordine.indexOf('quote_anagrafiche');
-      const pol = r.ordine.indexOf('quote_polizze');
-      const tit = r.ordine.indexOf('quote_titoli');
-      deve(primo >= 0 && primo < pol && pol < tit, 'l\'ordine di scrittura è ' + r.ordine.join(' → '));
+      /* L'ordine contava perche' la polizza voleva `cliente_id` e la rata
+         `polizza_id`, e si scriveva riga per riga. Dal 21/09/2026 gli
+         agganci li fa la funzione SQL dentro una transazione: quello che
+         deve valere qui e' che il portafoglio salga nel foglio di brutta e
+         che la scrittura vera sia UNA chiamata sola — altrimenti torna
+         possibile restare a meta'. Regola aggiornata, non numero (§15). */
+      const lotti = r.ordine.filter(t => t === 'iam_import_lotti').length;
+      const applica = r.ordine.indexOf('rpc:iam_importa_flusso');
+      deve(lotti >= 4, 'il piano non sale a blocchi: ' + r.ordine.join(' → '));
+      deve(applica > r.ordine.lastIndexOf('iam_import_lotti'),
+        'la scrittura non arriva dopo il caricamento: ' + r.ordine.join(' → '));
+      deve(r.ordine.filter(t => t === 'rpc:iam_importa_flusso').length === 1,
+        'la scrittura non e\' una chiamata sola: ' + r.ordine.join(' → '));
+      deve(!r.ordine.includes('quote_polizze') && !r.ordine.includes('quote_titoli'),
+        'si scrive ancora riga per riga: ' + r.ordine.join(' → '));
       deve(r.anag.length === 3, 'anagrafiche scritte: ' + r.anag.length + ' (attese 3: il doppione dentro il flusso non fa una scheda in più)');
-      deve(r.anag.every(a => a.fonte === 'ssf' && a.fonte_id), 'un\'anagrafica senza provenienza: ' + JSON.stringify(r.anag[0]));
+      /* La provenienza la scrive la funzione SQL (`fonte = 'ssf'`,
+         `fonte_id = _chiave`): quello che deve arrivarle da qui e' la chiave,
+         senza la quale non c'e' idempotenza e il prossimo caricamento fa
+         doppioni. */
+      deve(r.anag.every(a => a._chiave), 'un\'anagrafica senza chiave di provenienza: ' + JSON.stringify(r.anag[0]));
       deve(r.pol.length === 7, 'polizze scritte: ' + r.pol.length + ' (attese 7: l\'offerta e quella senza contraente restano fuori)');
-      deve(r.pol.every(p => p.fonte === 'ssf' && p.fonte_id), 'una polizza senza chiave di provenienza: al prossimo caricamento diventa un doppione');
-      deve(r.pol.every(p => p.cliente_id), 'una polizza senza cliente_id');
+      deve(r.pol.every(p => p._fonte_id), 'una polizza senza chiave di provenienza: al prossimo caricamento diventa un doppione');
+      deve(r.pol.every(p => p._cliente), 'una polizza senza il riferimento al contraente');
       const semestrale = r.pol.find(p => p.numero_polizza === 'NP-0002');
       /* Il premio di RATA resta la rata: scriverci dentro l'annuo
          raddoppierebbe il portafoglio, e il contrario lo dimezzerebbe.
@@ -8774,20 +9202,128 @@ const avvio = async () => {
          deduciamo noi dal frazionamento di NP-0008, che la compagnia non ha
          mandato. */
       deve(r.tit.length === 4, 'rate scritte: ' + r.tit.length);
-      deve(r.tit.every(t => t.polizza_id && t.fonte_id), 'una rata senza polizza o senza provenienza');
-      const dedotta = r.tit.find(t => /:RATA:/.test(t.fonte_id));
+      deve(r.tit.every(t => t._polizza && t._fonte_id), 'una rata senza il riferimento alla polizza o senza provenienza');
+      const dedotta = r.tit.find(t => /:RATA:/.test(t._fonte_id));
       deve(dedotta, 'la rata dedotta dal frazionamento non viene scritta: il cliente la deve e nessuno la vede');
       deve(dedotta.stato === 'aperto' && dedotta.importo_lordo === 145, 'la rata dedotta: ' + dedotta.stato + ' ' + dedotta.importo_lordo);
       /* E si distingue da quelle vere: una riga di contabilita' che non si
          distingue e' una riga di cui non ci si puo' fidare. */
       deve(/dedotta/i.test(dedotta.note || ''), 'la rata dedotta non dichiara di esserlo: ' + dedotta.note);
-      deve(r.tit.filter(t => !/:RATA:/.test(t.fonte_id)).every(t => !t.note), 'una rata della compagnia porta una nota che non e\' sua');
-      /* Il verbale si scrive alla fine, coi numeri veri. */
-      deve(r.reg.length === 1, 'righe di registro: ' + r.reg.length);
-      deve(r.reg[0].conteggi.polizze_scritte === 7 && r.reg[0].emittente === 'COMPAGNIA_DI_PROVA', 'il registro non dice che cosa è stato scritto: ' + JSON.stringify(r.reg[0].conteggi));
+      deve(r.tit.filter(t => !/:RATA:/.test(t._fonte_id)).every(t => !t.note), 'una rata della compagnia porta una nota che non e\' sua');
+      /* IL VERBALE ADESSO LO SCRIVE LA FUNZIONE SQL, nella stessa transazione
+         dei dati. Non e' un dettaglio di implementazione: il 21/09/2026
+         un'importazione si e' fermata a meta' e il registro e' rimasto vuoto,
+         perche' il verbale si scriveva alla fine e da fuori. Adesso o ci sono
+         i dati E il verbale, o non c'e' nessuno dei due.
+         Qui si controlla che il browser mandi quello che solo lui sa (chi
+         manda, che periodo, quante rate abbiamo dedotto noi) e che i numeri
+         di quello che e' entrato arrivino da chi ha scritto. */
+      deve(r.reg.length === 1, 'testate mandate: ' + r.reg.length);
+      deve(r.reg[0].emittente === 'COMPAGNIA_DI_PROVA', 'la testata non dice chi manda: ' + JSON.stringify(r.reg[0]));
       deve(r.reg[0].conteggi.titoli_dedotti === 1, 'il verbale non dice quante rate le abbiamo dedotte noi: ' + JSON.stringify(r.reg[0].conteggi));
-      deve(/Fatto/.test(r.esito), 'non dice com\'è andata');
+      deve(r.applicato && r.applicato.polizze === 7,
+        'chi ha scritto non dice quante polizze sono entrate: ' + JSON.stringify(r.applicato));
+      deve(/Import completato/.test(r.esito), 'non dice com\'è andata');
       return '3 clienti, 7 polizze, 3 rate (1 dedotta), 1 riga di registro';
+    });
+
+    await prova('import: il riepilogo è tre numeri, e l\'elenco delle polizze NON c\'è', async () => {
+      /* Con venticinque righe l'elenco era una verifica; con millesettecento è
+         un muro, e il bottone per confermare finiva in fondo a una pagina
+         lunga come un lenzuolo. Il dettaglio non è stato cancellato: è sotto,
+         e lo apre chi lo vuole. */
+      await scegli([]);
+      const r = await page.evaluate(() => {
+        /* Si ridisegna: il preparatore delle prove apre il dettaglio per
+           quelle che lo leggono, e qui interessa com'e' APPENA APERTA. */
+        fluMostra();
+        const box = document.getElementById('flu-esito');
+        const chiuso = box.innerHTML;
+        const dett = document.getElementById('flu-dett');
+        return { chiuso, nascosto: !!(dett && dett.hidden), vuoto: !!(dett && !dett.innerHTML),
+                 aperto: window.__COLLAUDO.schermo() };
+      });
+      deve(/flu-tre/.test(r.chiuso), 'il riepilogo a tre numeri non c\'è');
+      deve(r.nascosto && r.vuoto, 'il dettaglio si apre da solo: il muro è tornato');
+      deve(!/NP-0002/.test(r.chiuso), 'l\'elenco delle polizze è ancora davanti');
+      deve(/Importa/.test(r.chiuso) && /Annulla/.test(r.chiuso), 'mancano «Importa» e «Annulla»');
+      /* E aprendolo si ritrova tutto quello che c'era. */
+      deve(/NP-0002/.test(r.aperto), 'il dettaglio non porta più le polizze del file');
+      return 'tre numeri davanti, il resto sotto';
+    });
+
+    await prova('import: TUTTO O NIENTE — se la scrittura fallisce non resta mezza importazione', async () => {
+      /* La prova che nasce da un guasto vero: il 21/09/2026 un'importazione
+         ha scritto 2.475 anagrafiche e 1.690 polizze e si è fermata prima
+         delle rate, lasciando 1.700 polizze senza insoluti e nessun verbale. */
+      await scegli([]);
+      const r = await page.evaluate(async () => {
+        window.confirm = () => true;
+        window.__COLLAUDO.db = [];
+        /* La chiamata che applica fallisce: è il caso da difendere. */
+        window.__COLLAUDO.risposte['rpc:iam_importa_flusso'] =
+          { data: null, error: { message: 'connessione persa' } };
+        await fluConferma();
+        const ops = window.__COLLAUDO.db;
+        const out = {
+          html: document.getElementById('flu-esito').innerHTML,
+          /* Niente deve essere finito nelle tabelle vere. */
+          vere: ops.filter(o => ['quote_anagrafiche', 'quote_polizze', 'quote_titoli', 'quote_importazioni']
+                                  .indexOf(o.tabella) >= 0 && o.operazione === 'insert').length,
+          /* E il foglio di brutta si toglie. */
+          pulito: ops.some(o => o.tabella === 'iam_import_lotti' && o.operazione === 'delete'),
+          riprovabile: !document.getElementById('flu-vai') || !document.getElementById('flu-vai').disabled
+        };
+        /* La risposta finta si spegne: lasciata accesa fa fallire le prove
+           che vengono dopo, e il rosso sembra loro invece che mio. */
+        delete window.__COLLAUDO.risposte['rpc:iam_importa_flusso'];
+        return out;
+      });
+      deve(r.vere === 0, r.vere + ' righe sono finite nelle tabelle vere nonostante l\'errore');
+      deve(/non è andata a buon fine/.test(r.html), 'non dice che è andata male: ' + r.html.slice(0, 200));
+      deve(/non è stato scritto niente/.test(r.html), 'non rassicura su che cosa è rimasto in archivio');
+      deve(r.pulito, 'il foglio di brutta resta lì: domani nessuno saprà che cos\'è');
+      deve(r.riprovabile, 'dopo un errore non si può ripremere «Importa»');
+      return '0 righe scritte, brutta pulita, si può riprovare';
+    });
+
+    await prova('import: il bottone si spegne al primo clic, e la barra segue le scritture vere', async () => {
+      /* Un secondo clic su un'importazione da millesettecento righe non è un
+         fastidio: è un portafoglio doppio. E la barra misura i blocchi
+         CONFERMATI dal database — una barra a tempo che arriva in fondo mentre
+         la scrittura è a metà fa chiudere la scheda. */
+      await scegli([]);
+      const r = await page.evaluate(async () => {
+        window.confirm = () => true;
+        window.__COLLAUDO.db = [];
+        const larghezze = [];
+        const orig = window.fluAvanza;
+        window.fluAvanza = function (f, fatto, tot) {
+          orig(f, fatto, tot);
+          const el = document.getElementById('flu-riemp');
+          larghezze.push({ fase: f, w: el ? el.style.width : null });
+        };
+        const vai = document.getElementById('flu-vai');
+        const p1 = fluConferma();
+        const spentoSubito = vai.disabled;
+        await fluConferma();            // il secondo clic non deve fare niente
+        await p1;
+        window.fluAvanza = orig;
+        return { spentoSubito, larghezze,
+                 lotti: window.__COLLAUDO.db.filter(o => o.tabella === 'iam_import_lotti' && o.operazione === 'insert').length,
+                 rpc: window.__COLLAUDO.db.filter(o => o.tabella === 'rpc:iam_importa_flusso').length };
+      });
+      deve(r.spentoSubito, 'il bottone resta premibile: due clic scrivono due volte');
+      deve(r.rpc === 1, 'la scrittura è partita ' + r.rpc + ' volte');
+      deve(r.larghezze.length >= 3, 'la barra non si muove: ' + r.larghezze.length + ' passi');
+      const fasi = r.larghezze.map(x => x.fase);
+      deve(fasi.some(f => /Clienti/.test(f)) && fasi.some(f => /Polizze/.test(f)) && fasi.some(f => /Rate/.test(f)),
+        'la barra non dice la fase: ' + fasi.join(' → '));
+      deve(/100%/.test(r.larghezze[r.larghezze.length - 1].w || ''), 'la barra non arriva in fondo');
+      /* E i passi CRESCONO: una barra che torna indietro non è una misura. */
+      const num = r.larghezze.map(x => parseInt(x.w) || 0);
+      deve(num.every((v, i) => i === 0 || v >= num[i - 1]), 'la barra torna indietro: ' + num.join(','));
+      return r.lotti + ' blocchi confermati, ' + fasi.length + ' passi, una sola scrittura';
     });
 
     await prova('flusso: dove il codice è stato deciso la rata nasce già sua', async () => {
@@ -8809,16 +9345,31 @@ const avvio = async () => {
         window.__COLLAUDO.risposte['quote_polizze:single'] = { data: { id: 'pol-nuova' }, error: null };
         const files = Object.keys(campione).map(n => new File([campione[n]], n, { type: 'text/csv' }));
         await fluScelto(files);
-        const anteprima = document.getElementById('flu-esito').innerHTML;
+        /* Dal 21/09/2026 l'anteprima mostra tre numeri e un bottone: il
+           dettaglio (rate che restano fuori, codici da abbinare, cose da
+           sapere) sta sotto «vedi il dettaglio» e NON si apre da solo. Non e'
+           sparito niente — si e' smesso di metterlo davanti a chi deve solo
+           dire di si'. Le prove che lo guardano lo aprono, come farebbe una
+           persona. */
+        if (typeof fluApriDettaglio === 'function' && FLU_PIANO) fluApriDettaglio();
+        const anteprima = window.__COLLAUDO.schermo();
         window.__COLLAUDO.db = [];
         window.confirm = () => true;
         await fluConferma();
         const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
         return {
           anteprima,
-          tit: ins.filter(x => x.tabella === 'quote_titoli').map(x => x.payload),
-          reg: ins.filter(x => x.tabella === 'quote_importazioni').map(x => x.payload),
-          esito: document.getElementById('flu-esito').innerHTML
+          tit: window.__COLLAUDO.importate('titoli'),
+          /* Il verbale non lo scrive piu' il browser: lo scrive la funzione
+             SQL, dentro la stessa transazione dei dati — cosi' o ci sono
+             tutti e due o non c'e' nessuno dei due. Quello che il browser
+             manda sta nella testata del lotto. */
+          reg: window.__COLLAUDO.db
+            .filter(x => x.tabella === 'iam_import_lotti' && x.operazione === 'insert'
+                      && x.payload && x.payload.tipo === 'testata')
+            .map(x => x.payload.righe),
+          applicato: (window.__COLLAUDO.db.find(x => x.tabella === 'rpc:iam_importa_flusso') ? { polizze: window.__COLLAUDO.importate('polizze').length, clienti: window.__COLLAUDO.importate('clienti').length, titoli: window.__COLLAUDO.importate('titoli').length } : null),
+          esito: window.__COLLAUDO.schermo()
         };
       }, campione);
       /* La regola, non la parola: l'anteprima deve dire a CHI andranno quelle
@@ -8862,14 +9413,21 @@ const avvio = async () => {
         window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
         const files = Object.keys(campione).map(n => new File([campione[n]], n, { type: 'text/csv' }));
         await fluScelto(files);
-        const prima = document.getElementById('flu-esito').innerHTML;
+        /* Dal 21/09/2026 l'anteprima mostra tre numeri e un bottone: il
+           dettaglio (rate che restano fuori, codici da abbinare, cose da
+           sapere) sta sotto «vedi il dettaglio» e NON si apre da solo. Non e'
+           sparito niente — si e' smesso di metterlo davanti a chi deve solo
+           dire di si'. Le prove che lo guardano lo aprono, come farebbe una
+           persona. */
+        if (typeof fluApriDettaglio === 'function' && FLU_PIANO) fluApriDettaglio();
+        const prima = window.__COLLAUDO.schermo();
         window.__COLLAUDO.db = [];
         await window.fluAbbina('COMPAGNIA_DI_PROVA|U90001', C9);
         await window.fluAbbina('COMPAGNIA_DI_PROVA|U90003', '__nessuno__');
         const ops = window.__COLLAUDO.db;
         return {
           prima,
-          dopo: document.getElementById('flu-esito').innerHTML,
+          dopo: window.__COLLAUDO.schermo(),
           dec: ops.filter(x => x.tabella === 'quote_codici_collaboratore' && x.operazione === 'upsert').map(x => x.payload),
           log: ops.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload)
         };
@@ -8925,12 +9483,19 @@ const avvio = async () => {
         window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
         const files = Object.keys(campione).map(n => new File([campione[n]], n, { type: 'text/csv' }));
         await fluScelto(files);
-        const anteprima = document.getElementById('flu-esito').innerHTML;
+        /* Dal 21/09/2026 l'anteprima mostra tre numeri e un bottone: il
+           dettaglio (rate che restano fuori, codici da abbinare, cose da
+           sapere) sta sotto «vedi il dettaglio» e NON si apre da solo. Non e'
+           sparito niente — si e' smesso di metterlo davanti a chi deve solo
+           dire di si'. Le prove che lo guardano lo aprono, come farebbe una
+           persona. */
+        if (typeof fluApriDettaglio === 'function' && FLU_PIANO) fluApriDettaglio();
+        const anteprima = window.__COLLAUDO.schermo();
         window.__COLLAUDO.db = [];
         window.confirm = () => true;
         await fluConferma();
         const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
-        return { anteprima, tit: ins.filter(x => x.tabella === 'quote_titoli').map(x => x.payload) };
+        return { anteprima, tit: window.__COLLAUDO.importate('titoli') };
       }, campione);
       /* E dove non è deciso la tendina resta sul vuoto: è l'invito ad
          abbinare, ed è il motivo per cui la tendina sta qui e non solo nel
@@ -8954,7 +9519,14 @@ const avvio = async () => {
         window.__COLLAUDO.risposte['quote_codici_collaboratore:lista'] = { data: [], error: null };
         const files = Object.keys(campione).map(n => new File([campione[n]], n, { type: 'text/csv' }));
         await fluScelto(files);
-        const html = document.getElementById('flu-esito').innerHTML;
+        /* Dal 21/09/2026 l'anteprima mostra tre numeri e un bottone: il
+           dettaglio (rate che restano fuori, codici da abbinare, cose da
+           sapere) sta sotto «vedi il dettaglio» e NON si apre da solo. Non e'
+           sparito niente — si e' smesso di metterlo davanti a chi deve solo
+           dire di si'. Le prove che lo guardano lo aprono, come farebbe una
+           persona. */
+        if (typeof fluApriDettaglio === 'function' && FLU_PIANO) fluApriDettaglio();
+        const html = window.__COLLAUDO.schermo();
         /* `FLU_PIANO` e' dichiarato con `let`: non e' su `window`, e cercarlo
            la' darebbe sempre «non c'e' il piano». */
         return { html, piano: !!FLU_PIANO,
@@ -8979,15 +9551,17 @@ const avvio = async () => {
          l'ha sistemata qualcuno a mano. */
       await scegli([{ id: 'gia-nostro', codice_fiscale: 'RSSMRA80A01H501U' }]);
       const r = await page.evaluate(async () => {
-        const html = document.getElementById('flu-esito').innerHTML;
+        const html = window.__COLLAUDO.schermo();
         window.confirm = () => true;
         window.__COLLAUDO.db = [];
         await fluConferma();
         const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
         return {
           html,
-          anag: ins.filter(x => x.tabella === 'quote_anagrafiche').map(x => x.payload),
-          pol: ins.filter(x => x.tabella === 'quote_polizze').map(x => x.payload),
+          anag: window.__COLLAUDO.importate('clienti'),
+          pol: window.__COLLAUDO.importate('polizze'),
+          gia: (window.__COLLAUDO.db.find(x => x.tabella === 'iam_import_lotti'
+                 && x.payload && x.payload.tipo === 'testata') || { payload: { righe: {} } }).payload.righe.clienti_gia,
           agg: window.__COLLAUDO.db.filter(x => x.tabella === 'quote_anagrafiche' && x.operazione === 'update').length
         };
       });
@@ -8996,7 +9570,13 @@ const avvio = async () => {
       deve(r.agg === 0, 'la scheda del cliente esistente è stata aggiornata: il lavoro fatto a mano si perde');
       deve(r.anag.length === 2, 'anagrafiche scritte: ' + r.anag.length + ' (attese 2, la terza c\'era già)');
       /* E le sue polizze si agganciano alla scheda che c'era. */
-      const sue = r.pol.filter(p => p.cliente_id === 'gia-nostro');
+      /* L'aggancio lo fa la funzione SQL: dal browser arriva il riferimento
+         del file sulla polizza e la mappa «riferimento → scheda esistente»
+         nella testata. Se la mappa non porta la scheda che c'e' gia', quelle
+         polizze nascono senza contraente — ed e' il caso che questa prova
+         difende. */
+      const mappa = r.gia || {};
+      const sue = r.pol.filter(p => mappa[p._cliente] === 'gia-nostro');
       deve(sue.length === 3, 'polizze agganciate alla scheda esistente: ' + sue.length + ' (attese 3)');
       return '1 riconosciuto, 0 sovrascritti, 3 polizze agganciate';
     });
@@ -9021,7 +9601,14 @@ const avvio = async () => {
         const files = Object.keys(testi).map(n => new File([testi[n]], n, { type: 'text/csv' }));
         window.__COLLAUDO.db = [];
         await fluScelto(files);
-        return document.getElementById('flu-esito').innerHTML;
+        /* Dal 21/09/2026 l'anteprima mostra tre numeri e un bottone: il
+           dettaglio (rate che restano fuori, codici da abbinare, cose da
+           sapere) sta sotto «vedi il dettaglio» e NON si apre da solo. Non e'
+           sparito niente — si e' smesso di metterlo davanti a chi deve solo
+           dire di si'. Le prove che lo guardano lo aprono, come farebbe una
+           persona. */
+        if (typeof fluApriDettaglio === 'function' && FLU_PIANO) fluApriDettaglio();
+        return window.__COLLAUDO.schermo();
       });
       deve(/niente di nuovo da scrivere/.test(html), 'al secondo caricamento propone di riscrivere: ' + html.slice(0, 300));
       const scritture = await page.evaluate(() => window.__COLLAUDO.db.filter(x => x.operazione === 'insert').length);
@@ -9042,7 +9629,14 @@ const avvio = async () => {
         window.__COLLAUDO.db = [];
         const files = Object.keys(window.__CAMPIONE).map(n => new File([window.__CAMPIONE[n]], n, { type: 'text/csv' }));
         await fluScelto(files);
-        const dopoScelta = document.getElementById('flu-esito').innerHTML;
+        /* Dal 21/09/2026 l'anteprima mostra tre numeri e un bottone: il
+           dettaglio (rate che restano fuori, codici da abbinare, cose da
+           sapere) sta sotto «vedi il dettaglio» e NON si apre da solo. Non e'
+           sparito niente — si e' smesso di metterlo davanti a chi deve solo
+           dire di si'. Le prove che lo guardano lo aprono, come farebbe una
+           persona. */
+        if (typeof fluApriDettaglio === 'function' && FLU_PIANO) fluApriDettaglio();
+        const dopoScelta = window.__COLLAUDO.schermo();
         await fluConferma();
         const scritture = window.__COLLAUDO.db.filter(x => x.operazione === 'insert').length;
         return { dopoScelta, scritture };
@@ -9071,8 +9665,15 @@ const avvio = async () => {
         const files = Object.keys(window.__CAMPIONE).map(n => new File([window.__CAMPIONE[n]], n, { type: 'text/csv' }));
         window.__COLLAUDO.db = [];
         await fluScelto(files);
+        /* Dal 21/09/2026 l'anteprima mostra tre numeri e un bottone: il
+           dettaglio (rate che restano fuori, codici da abbinare, cose da
+           sapere) sta sotto «vedi il dettaglio» e NON si apre da solo. Non e'
+           sparito niente — si e' smesso di metterlo davanti a chi deve solo
+           dire di si'. Le prove che lo guardano lo aprono, come farebbe una
+           persona. */
+        if (typeof fluApriDettaglio === 'function' && FLU_PIANO) fluApriDettaglio();
         return {
-          html: document.getElementById('flu-esito').innerHTML,
+          html: window.__COLLAUDO.schermo(),
           cat: FLU_PIANO ? FLU_PIANO._catalogo : null,
           /* Il piano non deve aver scritto NIENTE. */
           scritture: window.__COLLAUDO.db.filter(x => x.operazione === 'insert').length
@@ -9100,9 +9701,9 @@ const avvio = async () => {
         await fluConferma();
         const ins = window.__COLLAUDO.db.filter(x => x.operazione === 'insert');
         return {
-          html: document.getElementById('flu-esito').innerHTML,
-          pol: ins.filter(x => x.tabella === 'quote_polizze').length,
-          anag: ins.filter(x => x.tabella === 'quote_anagrafiche').length
+          html: window.__COLLAUDO.schermo(),
+          pol: window.__COLLAUDO.importate('polizze').length,
+          anag: window.__COLLAUDO.importate('clienti').length
         };
       });
       deve(r.anag > 0 && r.pol > 0, 'il portafoglio non è entrato: ' + r.anag + ' clienti, ' + r.pol + ' polizze');

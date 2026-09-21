@@ -4339,3 +4339,789 @@ tardi.
   congelano aprendo il fascicolo dal Portafoglio.
 - **Il resto di QUOTO non è sul kit**: questa è la prima schermata. Le altre si
   portano una alla volta, come si è fatto in IAM (§31).
+
+---
+
+## 45. La produzione: anno su anno, e con un nome (21/09/2026)
+
+> «per produzione per collaboratore, aggiungi collaboratore id» — Francesco.
+
+Tre richieste in coda arrivate insieme al brief: rifare i «volumi di
+portafoglio» come confronto anno su anno, una schermata di dettaglio della
+produzione, e **le aggregazioni lato database, non scaricando le polizze nel
+browser**.
+
+| pezzo | dove |
+|---|---|
+| le regole | `tariffe/motore/produzione.js` |
+| prove in Node | `server/verifica/produzione.test.mjs` — 12, tre controprove |
+| la colonna, gli indici, la vista e la funzione | `supabase/migrations/20260921_produzione_collaboratore.sql` (applicata) |
+| il grafico sulla Scrivania | blocco `vol*` in `iam/index.html`, `#vol-card` |
+| la schermata di dettaglio | `#panel-produzione` e il blocco `prd*` in `iam/index.html` |
+| la voce di menu | `iam/withus-one.js`, Agenzia › Produzione |
+| il piano sulle polizze | `Assegnazione.pianoPolizze` + `asgApplica` e `fluConferma` in `index.html` |
+| prove sulle schermate | `iam/verifica/volumi-produzione.test.mjs` — 9, che fanno girare il codice |
+
+### La misura, e com'era cambiata dalla sera prima
+
+| | 20/09 sera | 21/09 |
+|---|---|---|
+| polizze in portafoglio | 484 | **1720** |
+| anagrafiche | ~600 | **2536** |
+| codici produttore distinti sulle polizze | — | **16** |
+| `quote_codici_collaboratore` | 0 righe | **0 righe** |
+| `creato_da` distinti sulle polizze | 1 | **1** |
+
+Fra le due misure Francesco ha importato il portafoglio completo. Cambia
+tutto: il 20/09 «produzione per collaboratore» non si poteva fare perché non
+c'era il dato, il 21/09 il dato c'è ed è ben distribuito — **415, 250, 246,
+224, 160 polizze** sui primi cinque codici.
+
+Quello che NON è cambiato è la colonna che conta: `creato_da` è **un solo
+utente su tutte e 1720 le righe**, ed è chi ha premuto il tasto
+dell'importazione. Attribuire lì vorrebbe dire dare l'intero portafoglio a una
+persona sola.
+
+**E la tabella delle decisioni era vuota**: sedici codici sulle polizze, zero
+righe dove scrivere chi sono. L'importazione grossa non ha annotato le
+evidenze. La migrazione le scrive — `deciso = false`, nessuna persona: **la
+domanda, mai la risposta** (§19).
+
+### Perché una colonna sulla polizza, se le rate ce l'hanno già
+
+`quote_titoli.collaboratore_id` esiste dal 18/09 (§17) e ci resta. Non è un
+doppione: sono due domande, e confonderle produce numeri credibili e
+sbagliati.
+
+> **Sulla RATA**: di chi è questo incasso, quindi a chi spetta la provvigione.
+> Sta sulla rata apposta, perché una polizza vive anni e può cambiare mano.
+> **Sulla POLIZZA**: chi ha PRODOTTO il contratto. La produzione di un anno non
+> cambia quando la gestione passa a un altro — se si leggesse dalle rate, una
+> polizza riassegnata a marzo sposterebbe la produzione di gennaio, **e il
+> consuntivo di un anno già chiuso cambierebbe da solo.**
+
+`Assegnazione.pianoPolizze` applica alla polizza la stessa decisione, con le
+stesse cinque regole: sono le regole della decisione, non del posto in cui si
+scrive. Decidere un codice una volta adesso muove **le rate e le polizze**, e
+il flusso della notte fa nascere le polizze già col nome giusto — senza quella
+riga ogni notte entrerebbero polizze senza produttore anche per i codici
+decisi, e il consuntivo tornerebbe da rifare a mano ogni mattina.
+
+### La regola che vale più di tutte: si confronta periodo con periodo
+
+**Mettere dodici mesi dell'anno scorso accanto a nove dell'anno in corso
+disegna un crollo che non è successo.** Non è un caso limite: succede undici
+mesi su dodici, e il numero sbagliato ha esattamente l'aria di quello giusto.
+
+Il taglio lo fa il database: `iam_produzione_confronto(p_al)` tiene solo i due
+anni e taglia il mese in corso **allo stesso giorno in tutti e due**. Sul
+portafoglio vero, al 21/09/2026, settembre 2025 passa da 140 a **95** polizze
+e settembre 2026 da 144 a **138**: stesso metro.
+
+E la differenza non è un dettaglio di cortesia. Col confronto sbagliato
+(2025 intero contro 2026 a oggi) la crescita risulta **+53%**; col confronto
+giusto (1 gennaio–21 settembre nei due anni) è **+109%**. In questo caso il
+metodo sbagliato *sottostima*, ma il punto non è il verso: è che il numero
+dipendeva dal giorno in cui si guardava.
+
+**I mesi dell'anno scorso oltre il mese in corso non si nascondono.** Sono
+produzione vera, e vedere quanto c'è ancora da fare entro dicembre serve:
+escono marcati `fuori_confronto`, si disegnano in chiaro e **non entrano in
+nessun totale**.
+
+### Le somme le fa il database, ed è una richiesta con una ragione
+
+`iam_produzione_confronto` restituisce ventiquattro righe, `iam_produzione_mensile`
+qualche centinaio. Nel browser non scende una polizza alla volta: 1720 righe a
+ogni apertura della Scrivania sono un programma che si apre lento e che
+peggiora ogni mese. C'è una prova che lo misura — legge il sorgente e pretende
+che quel blocco **non** chieda `quote_polizze`.
+
+**Tutte e due sono SECURITY INVOKER.** Non sono una scorciatoia intorno alle
+politiche: chi non può leggere una polizza non la vede nemmeno sommata,
+altrimenti un totale direbbe a un collaboratore quanto ha prodotto l'agenzia.
+
+### Le altre tre regole, tutte già scritte altrove
+
+- **Una polizza senza premio annuo non vale zero** (§36, §42): 182 su 1720 non
+  ce l'hanno. Restano fuori dagli importi, si contano a parte e si dichiarano.
+- **Da zero non si fa una percentuale**: «da 0 a 5» non è «+500%».
+- **«Non si è potuto leggere» non è «non c'è niente»** (§12, §18) — e su un
+  grafico di andamento è peggio che altrove: **un grafico piatto si legge come
+  un anno andato male**, non come un dato che non è arrivato.
+
+### Il modulo digitato a mano resta
+
+`iam_team.report_volumi`: **nove schede su dodici** hanno volumi digitati, e
+coprono esattamente 2025 e 2026 — gli stessi anni del portafoglio. I due
+numeri non coincidono (634.843 contro 228.540 sul 2025), ed è il motivo per
+cui quella schermata non si spegne: si spegne quando i numeri sono stati
+confrontati e tornano, non perché ne è nata una migliore (§17, §33). Accanto
+c'è scritto dove stanno gli altri.
+
+### Quattro cose trovate misurando, non ragionando
+
+**1. La trappola dei commenti, dodicesima volta — e stavolta sul guardiano
+che la documenta.** `fusione-collisioni.test.mjs` era **rosso su `main` dal
+20/09**, e non per una riga di codice sbagliata: il commento CSS scritto ieri
+in QUOTO spiegava perché il kit di IAM non si copia, e per spiegarlo nominava
+i tre nomi del kit col punto davanti e il nome di un file di prova. In un
+foglio di stile un nome col punto **è** un selettore, e un nome di file coi
+punti è una catena di selettori: cinque collisioni inventate, contate come
+vere. Due correzioni, come sempre — il commento non scrive più quei nomi,
+**e** la misura adesso toglie i commenti dai blocchi `<style>` prima di
+contare, che è quello che la prova voleva dire dall'inizio. La soglia è scesa
+da 17 a **15**: non è stato tolto un doppione, è stata corretta la misura.
+(E la prima stesura di quella correzione conteneva la sequenza che chiude un
+commento, e il file non si caricava più. §31 vale anche dentro §31.)
+
+**2. Un mese senza produzione non è un mese finito a zero.** La prima stesura
+marcava «parziale» il mese in corso solo se il database aveva mandato una riga
+per quel mese. Un mese senza nemmeno una polizza non risultava parziale — e un
+mese vuoto che sembra finito si legge come un mese andato a zero, che è
+un'altra notizia. Il taglio lo decide la data, non la presenza di righe.
+L'ha trovato la prova sui cinque fusi orari, non la rilettura.
+
+**3. Una prova che misurava il mondo di ieri.** «Decidere un codice assegna le
+sue rate» pretendeva **un** movimento a registro. Adesso ne scrive due, perché
+attribuisce anche le polizze. Si è aggiornata la regola e si è rafforzata —
+adesso pretende tutti e due i movimenti per nome (§15, §16, §33, §35).
+
+**4. Trappola d'ambiente, nuova.** `toLocaleString('it-IT')` in questo Node
+**non raggruppa le migliaia** (`1500,00`), nel browser sì (`1.500,00`). Una
+prova che cerca la forma col punto dichiara rotto un codice giusto. Si
+accettano tutte e due: quello che conta è il numero, non il separatore.
+
+**5. Un difetto che si vedeva solo passando un giorno.** Lanciando la suite,
+`collegamenti.test.mjs` era rosso — e rosso anche su `main`, cioè non per
+questo lavoro. Il monitor dei collegamenti (§42) calcolava il «da quanto è
+ferma» **sull'orologio della macchina** invece che sull'istante di
+riferimento: `confronta` passa quell'istante come numero di millisecondi, e
+`quando()` lo dava a `Date.parse`, che prima lo trasforma in stringa —
+«1758362400000» non è una data, è NaN, e si prendeva il ripiego `Date.now()`.
+
+In produzione i due coincidono quasi sempre, quindi non si è mai visto. Si è
+visto quando una prova scritta ieri, con un istante fisso, è diventata rossa
+oggi: **l'unico modo di accorgersene era che passasse un giorno.** È la
+famiglia del difetto delle date di §44 — una funzione che chiede l'ora al
+computer di chi guarda dà risposte diverse a due persone sullo stesso dato.
+
+E sotto ce n'era un secondo: `riepilogo` contava le compagnie ferme da oltre
+un giorno **cercando la parola «giorn» dentro l'etichetta**. Un numero
+ricavato da una frase cambia il giorno in cui qualcuno riscrive la frase, e
+nessuno collega le due cose. Adesso il conto viene dai millisecondi, che è
+quello che quella riga voleva dire. Due prove nuove, due controprove.
+
+### Cosa resta aperto
+
+- **I sedici codici sono tutti da decidere**, ed è il punto: il sistema ha
+  finito il suo lavoro quando ha chiesto. Finché nessuno risponde, la
+  produzione si legge per codice — che è un fatto vero della compagnia — e non
+  per nome. Adesso però si vede quanto pesa ognuno: **415 polizze** sul primo.
+- **«Nuova polizza» non chiede chi l'ha prodotta.** Una polizza scritta a mano
+  non ha un codice di compagnia, quindi nasce senza produttore. Il campo va
+  aggiunto con il componente unico dei collaboratori, che è il punto 4 del
+  brief Anagrafiche: farne uno adesso vorrebbe dire scriverne uno da buttare.
+- **Le politiche di `quote_polizze` non sono cambiate**: si legge ancora per
+  `creato_da`, che è un utente solo. Il giorno in cui un collaboratore dovrà
+  vedere «le sue» polizze, la colonna nuova è la strada — ma cambiare chi vede
+  che cosa è una decisione, non una conseguenza.
+- **La produzione non incrocia le provvigioni**: dice premi e polizze, non
+  quanto si è guadagnato. I due motori esistono tutti e due (§17, §28) e
+  metterli insieme è un lavoro a sé.
+
+---
+
+## 46. Gestione compagnie: si entra dalla compagnia (21/09/2026)
+
+> «reimplementala tu sopra main» — Francesco, su una patch nata in un'altra
+> sessione e mai spinta.
+
+La schermata della M2 (§28) si apriva sulle **tariffe**: il tasto in alto
+diceva «Nuova tariffa», e per configurare una compagnia bisognava sapere che
+si comincia da una percentuale. La richiesta era l'opposto, ed è quella
+giusta: si entra dalla compagnia, e da lì si mettono prodotti e provvigioni.
+
+| pezzo | dove |
+|---|---|
+| la schermata | blocco `gc*` in `iam/index.html` (12 funzioni) |
+| le righe prodotto, una sola volta | `catRigheProdotti`, chiamata dal Catalogo **e** dalla scheda compagnia |
+| prove sul sorgente | `iam/verifica/compagnie-provvigioni.test.mjs` (14) |
+| prove che fanno GIRARE la schermata | `iam/verifica/gestione-compagnie.test.mjs` — 8 |
+
+### Come è arrivata, e perché non si è presa per buona
+
+La patch veniva da un'altra sessione, in forma di testo: **non era su `main`
+né su nessun ramo remoto**, quindi esisteva solo come diff. Applicata sopra
+`main` di oggi, 14 hunk su 16 sono entrati da soli; i due rifiutati erano il
+numero di versione (scritto contro la 0.12.0) e una riga di `goTab` che il
+lavoro di stamattina aveva spostato.
+
+Quello che **non** si è preso per buono sono le prove. Le quattro che la patch
+porta leggono tutte il sorgente: cercano il bottone, il nome della funzione,
+la forma della chiamata. Sono guardie utili e non bastano — una schermata con
+tutti i pezzi al posto giusto può lo stesso disegnare la cosa sbagliata. Le
+otto prove nuove la fanno **girare**, con un'anagrafica e un portafoglio
+finti, e guardano che cosa esce.
+
+### Una controprova restata verde, e la prova era debole
+
+Tolti gli alias da `gcDiQuesta` — cioè il confronto che fa di «HDI
+Assicurazioni» sulle polizze la stessa cosa di «HDI» in anagrafica — **tutte
+le prove restavano verdi**. Il codice non era assolto: era il banco a non
+vedere la differenza.
+
+`gcCopertura` passa da `Provvigioni.copertura`, che risolve **già** i nomi col
+catalogo: quelle righe arrivano a `gcDiQuesta` con il nome corto, e il
+confronto esatto basta. Le **tariffe** invece le digita una persona, e può
+scriverci il nome che legge sulle polizze. Aggiunta al campione una tariffa
+col nome lungo, la controprova diventa rossa.
+
+*Una controprova che non fa diventare rossa nessuna prova non assolve il
+codice: accusa la prova* (§15, §17, §18, §19, §41). Qui serviva il banco più
+cattivo di §19 — il caso in cui i due comportamenti divergono davvero.
+
+### Il guasto che si vedeva solo da lì
+
+`prv-ov` e `cat-ov` — le finestre delle tariffe e del catalogo — stavano
+**dentro i loro pannelli**. Da Gestione compagnie quel pannello è
+`display:none`, e una finestra dentro un elemento nascosto è nascosta: il
+clic funzionava, il salvataggio pure, e non si vedeva niente. All'apertura
+salgono sul `body` (`gcSulBody`), una volta sola: rispostarle a ogni apertura
+le toglierebbe e rimetterebbe, perdendo lo stato del modulo dentro.
+
+### Le due regole che non si vedono finché non si rompono
+
+- **Rinominare non stacca niente.** Il nome vecchio diventa un **alias**, e
+  tariffe e accordi passano al nome nuovo con un aggiornamento. Senza, una
+  rinomina scollegherebbe in silenzio tutta la configurazione di quella
+  compagnia — ed è la trappola degli alias di §11 e §28, vista dal lato di chi
+  scrive invece che di chi legge.
+- **Una compagnia aperta che non c'è più torna all'elenco.** Cancellata da un
+  altro, o semplicemente ricaricata: una scheda vuota si legge come un guasto
+  del programma.
+
+### Cosa resta aperto
+
+- **Le tariffe restano zero** (§28): la schermata adesso è comoda, ma il primo
+  accordo lo scrive una persona.
+- **L'elenco «in portafoglio ma non in anagrafica»** oggi porta una riga sola,
+  e va guardato dopo ogni importazione nuova: è lì che si vede una compagnia
+  entrata col nome scritto in un altro modo.
+
+---
+
+## 47. L'import tutto-o-niente, e il salvataggio che non salvava (21/09/2026)
+
+Due richieste separate che si sono rivelate lo stesso difetto visto da due
+parti: **una scrittura che non riesce e non lo dice.**
+
+| pezzo | dove |
+|---|---|
+| la tabella di appoggio e la funzione | `supabase/migrations/20260921_import_tutto_o_niente.sql` (applicata) |
+| il riepilogo, la barra, l'esito | blocco `flu*` in `index.html` (`fluMostra`, `fluAvanza`, `fluConferma`) |
+| il dettaglio, che non si apre da solo | `fluDettaglio` / `fluApriDettaglio` |
+| il controllo delle righe toccate | `fcTocca` in `index.html`, `pntTocca` in `iam/index.html` |
+| prove | blocco «import» e «BUG 1» in `ui-test.mjs` → **485** |
+
+### La misura che ha deciso tutto
+
+Il 21/09/2026, prima di scrivere una riga:
+
+| | |
+|---|---|
+| anagrafiche entrate fra le 06:33:03 e le 06:36:41 | **2.475** |
+| polizze entrate nella stessa finestra | **1.690** |
+| rate entrate | **0** |
+| verbali a registro | **0** |
+| polizze in portafoglio **senza nemmeno una rata** | **1.700 su 1.715** |
+
+Quattromilacentosessantacinque righe in 218 secondi: **diciannove al secondo**,
+cioè una chiamata di rete per riga. Poi si è fermato.
+
+**Non è un fastidio di interfaccia.** Una polizza senza le sue rate non ha
+insoluti, non entra nello scadenzario delle rate, non produce estratto conto e
+non arriva in contabilità: per il sistema quel premio non lo deve nessuno.
+
+### La regola di §14 è stata RIBALTATA, e va detto
+
+Fino a oggi l'ordine clienti → polizze → rate serviva a **reggere**
+un'interruzione: quello che era scritto restava e si ricaricava lo stesso file.
+Con venticinque polizze era ragionevole — il secondo giro saltava il fatto.
+
+Con milleseicento non regge, per una ragione che si è vista solo succedendo:
+**nessuno si accorge di essere a metà.** Il verbale si scriveva alla fine,
+quindi non c'è; le polizze ci sono tutte e sembrano a posto; le rate mancanti
+non si vedono finché qualcuno non cerca un insoluto.
+
+> Un'importazione a metà **che si dichiara** è recuperabile. Una che **sembra
+> finita** è un portafoglio sbagliato di cui nessuno sa il perché.
+
+Adesso o entra tutto o non entra niente, e lo garantisce Postgres con una
+transazione, non il codice della pagina che ci prova.
+
+### Perché una tabella di appoggio e non un argomento solo
+
+Il piano di un portafoglio intero pesa qualche megabyte. Passarlo tutto in una
+chiamata sola è possibile, e allora la barra non potrebbe dire niente di vero:
+una richiesta o è finita o non lo è. Il brief chiede che la barra rifletta il
+salvataggio **reale**, quindi il piano sale a blocchi — ogni blocco è una
+scrittura confermata dal database — e alla fine **una** chiamata applica tutto
+insieme. Quello che si vede avanzare è lavoro fatto.
+
+**Il catalogo resta fuori dal «tutto o niente»**, ed è voluto: il portafoglio è
+il lavoro, il catalogo è la sua etichetta (§39, regola 6).
+
+### Il collaudo si è rotto sul posto giusto, e si è dimostrato da solo
+
+Il primo giro della funzione è morto su `tacito_rinnovo`: è `NOT NULL` **con un
+default**, e passare un NULL esplicito non fa scattare il default — lo
+scavalca. La cosa utile è come è morto: aveva già scritto il cliente, e
+morendo ha tirato indietro **anche quello** e il foglio di brutta. Zero righe
+rimaste. Il «tutto o niente» si è dimostrato prima ancora di essere provato
+apposta.
+
+### BUG 1 — e la ragione per cui non si vedeva
+
+> «Modifico un movimento di cassa e la modifica non resta» — Francesco.
+
+Il codice era **strutturalmente giusto**: `update`, filtro sull'id, errore
+controllato. Ed è proprio per questo che il guasto non si vedeva.
+
+> **PostgREST non restituisce un errore quando un update tocca ZERO righe.**
+
+Succede ogni volta che una politica di visibilità filtra via la riga: `error` è
+`null`, la schermata non dice niente, l'oggetto in memoria viene aggiornato lo
+stesso (`Object.assign`) e la modifica sparisce alla prima rilettura vera. Per
+chi lavora è indistinguibile da un salvataggio che non ha funzionato.
+
+Da qui in avanti, **dove si toccano dei soldi si chiede al database di
+restituire le righe che ha cambiato e si guarda quante sono**: zero righe non è
+un successo silenzioso. E non si fa credere che sia andata — il valore nuovo
+non si mostra e il modulo non si chiude, che è la conferma più forte che ci sia.
+
+Toccati: la correzione del foglio cassa e il pagamento della polizza (QUOTO), i
+movimenti di prima nota, l'annullamento, la riapertura e il saldo dichiarato
+(IAM).
+
+### Due trappole del banco, e una è la stessa due volte
+
+**1. `delete` era un passante.** Il finto database lo ignorava, quindi una
+prova che guardava una cancellazione leggeva sempre niente e restava verde
+comunque. È lo stesso difetto già corretto su `in()` e `upsert()` (§19).
+Adesso la registra.
+
+**2. Un apice inverso dentro il banco.** Il finto database vive dentro un
+template literal: un commento che nomina una funzione fra apici inversi chiude
+la stringa a metà e il file non si carica più. Ci sono cascato **due volte
+nella stessa sessione**, la seconda scrivendo il commento che spiegava la
+prima. È §31 — non si scrive il carattere vietato dentro il costrutto che lo
+vieta — applicata alle stringhe invece che ai selettori.
+
+**3. Una risposta finta lasciata accesa.** `__COLLAUDO.risposte` non si azzera
+fra una prova e l'altra: una risposta d'errore messa per provare il caso
+cattivo faceva fallire le due prove successive, e il rosso sembrava loro. Si
+spegne dove si accende.
+
+### Cosa resta aperto
+
+- **Le rate perse stamattina non si ricostruiscono dal database**: stanno solo
+  nel file della compagnia. Si recuperano ricaricando **quello stesso file**,
+  che adesso è atomico e idempotente — le polizze già dentro non si
+  riscrivono, entrano solo le rate che mancano.
+- **I lotti mai applicati non si puliscono da soli col tempo**: si cancellano
+  quando l'importazione riesce o fallisce, ma una scheda chiusa a metà
+  caricamento ne lascia qualcuno. Sono invisibili a chiunque altro e non sono
+  portafoglio; una pulizia periodica è un lavoro a sé.
+- **La causa prima di BUG 1 resta da vedere sul campo**: adesso, quando
+  succede, la schermata lo dice — ed è quello che serve per capire su quale
+  riga e con quale profilo capita.
+
+---
+
+## 48. Brief Anagrafiche — punto 4: i collaboratori da un elenco solo (21/09/2026)
+
+> «In ogni punto dell'app dove si cerca, seleziona o inserisce un
+> collaboratore la fonte deve essere SEMPRE e SOLO la tabella della sezione
+> Collaboratori.» — Francesco.
+
+| pezzo | dove |
+|---|---|
+| le regole | `tariffe/motore/collaboratori.js` |
+| prove in Node | `server/verifica/collaboratori.test.mjs` — 8 |
+| le tendine di IAM | `colCarica` / `colNome` / `colOpzioniNome` in `iam/index.html` |
+| prove sulle tendine | `iam/verifica/collaboratori-fonte-unica.test.mjs` — 4 |
+
+**La mappatura, fatta prima di toccare.** Undici punti in cui si sceglie o si
+nomina un collaboratore. Sette leggevano già `quote_collaboratori`; **quattro
+no**, e uno dei quattro non era una tendina: era l'email che il cliente riceve,
+che cercava «il tuo consulente» in `iam_utenti`.
+
+Misurato sul database, ed è la prova che non era un dettaglio: l'unica
+anagrafica che ha un intermediario di riferimento ce l'ha in
+`quote_collaboratori` e **non** in `iam_utenti`. La lettura sbagliata non
+trovava niente, ripiegava su «chi ha creato il preventivo», e **il cliente
+leggeva il nome di un altro** — che è esattamente il guasto che quel codice
+diceva di aver corretto.
+
+`iam_utenti` sono gli **account** (cinque righe, quelle con una password),
+`quote_collaboratori` sono le **persone** (diciassette). Chi non ha un accesso
+a IAM — la maggioranza — non compariva in nessuna delle tre tendine.
+
+**La condivisione resta sugli account, ed è giusto**: si condivide con chi può
+entrare in IAM, non con chi è in anagrafica. Due domande diverse, due elenchi
+diversi, e la prova lo sorveglia.
+
+**Una tendina non perde il valore che sta guardando.** `iam_trattative.collab`
+è testo libero, scritto «Nome Cognome»; il registro compone «Cognome Nome».
+Cambiare la fonte senza accorgersene avrebbe staccato le righe già scritte:
+il valore che una riga ha resta in elenco, marcato «scritto a mano», finché
+qualcuno non sceglie di nuovo. Una tendina che perde il proprio valore lo
+cancella al primo salvataggio, e nessuno se ne accorge.
+
+**Il filtro della produzione ha cambiato fonte e non significato.** Lavora su
+`creato_da`, che è un account: i nomi arrivano dal registro, il **valore** resta
+`iam_id`. C'è una prova, perché è il difetto che si fa cambiando una tendina.
+
+**L'abbinamento del testo libero aggancia solo se è UNA** (§19, regola 5).
+«Francesco» con due Francesco in agenzia non si abbina: si elenca. Un
+abbinamento sbagliato qui è una trattativa attribuita a chi non l'ha fatta.
+
+---
+
+## 49. Brief Anagrafiche — punto 3: il codice produttore ha un periodo (21/09/2026)
+
+Il codice produttore («U25274») è della **compagnia**, non della persona. Un
+collaboratore se ne va a giugno e la compagnia riassegna quel codice a un altro
+da luglio: fino a ieri la decisione presa una volta valeva per sempre, e
+avrebbe attribuito a chi è andato via tutto quello che l'altro produce da
+domani. Non è un fastidio di interfaccia — sono **provvigioni pagate a chi non
+doveva**.
+
+| pezzo | dove |
+|---|---|
+| le regole | `Assegnazione.valeIl` in `tariffe/motore/assegnazione.js` |
+| prove in Node | `server/verifica/assegnazione.test.mjs` — **42** (erano 35) |
+| le tre colonne, con il rollback | `supabase/migrations/20260921_codici_periodo_e_attivo.sql` (applicata) |
+| la sezione nella scheda | `ccpRigaSua`, `ccpModifica`, `ccpSalvaPeriodo`, `ccpSospendi` in `iam/index.html` |
+| il produttore nel dettaglio polizza | `polProduttore` in `index.html` |
+| prove | `iam/verifica/codici-compagnia.test.mjs` (18), blocco «punto 3» in `ui-test.mjs` (**487**) |
+
+### Le quattro regole, e che cosa impedisce ognuna
+
+1. **Un vuoto non è una chiusura.** Periodo non dichiarato = l'abbinamento vale
+   sempre. È l'unica lettura che non inventa niente (§8.1) e l'unica che non
+   cambia il significato delle sedici righe già scritte: leggere un vuoto come
+   «chiuso» spegnerebbe tutti gli abbinamenti in un colpo solo, **in silenzio**.
+2. **La data che si guarda è quella della POLIZZA, non oggi.** Una polizza
+   appartiene a chi teneva il codice **quando è stata prodotta**. Con «oggi» un
+   abbinamento chiuso a giugno toglierebbe a quella persona anche le polizze di
+   marzo, che sono sue — è la regola del fascicolo congelato (§11, regola 4)
+   applicata alle provvigioni.
+3. **La rata segue la data della sua polizza, non la propria decorrenza.** Una
+   rata è di chi ha prodotto il contratto, non di chi tiene il codice il giorno
+   in cui scade. Guardando due date diverse, la polizza finirebbe a uno e le sue
+   rate a un altro, e i due numeri non tornerebbero mai.
+4. **Con un periodo e senza data non si indovina.** Da che parte del confine
+   stia una polizza senza effetto non lo sa nessuno: si lascia da decidere e si
+   dice perché.
+
+### Sospendere e togliere sono due cose diverse
+
+**Sospeso** = «non produce più, ma è stato suo»: la persona resta scritta, e il
+codice smette di assegnare lavoro nuovo. Serve quando si sa che il codice non è
+più suo e non si sa ancora di chi sia. **Tolto** = «non è suo»: il codice torna
+fra quelli da abbinare. Un bottone solo costringerebbe a scegliere alla cieca,
+e la differenza è scritta nelle due conferme.
+
+In tutti e due i casi **quello che è già assegnato resta dov'è**: il dato sta
+sulla rata e sulla polizza, non qui (§19).
+
+### Due difetti che ha trovato la prova, e il secondo era il peggiore
+
+**`upsert` riscrive la riga intera** (§19). `rigaDecisione` non ripassava
+`note`: abbinare un codice **cancellava già oggi** quello che qualcuno ci aveva
+scritto accanto. Sedici righe su sedici sono senza note, perciò non si è perso
+niente — ma è il tipo di guasto che si scopre il giorno in cui la nota serviva.
+
+E il dente più lungo: **togliere la decisione azzera sospensione e periodo, la
+nota no.** Sospensione e periodo qualificano *un* abbinamento, non il codice.
+Portandoli avanti, un codice tolto a Tizio perché è passato a Caio
+**rinascerebbe già sospeso** addosso a Caio — e le sue polizze non si
+assegnerebbero mai, senza un errore e senza che nessuno capisca perché. Le
+evidenze del flusso restano invece, perché servono proprio a chi dovrà
+riabbinarlo, e la nota con loro: è scritta da una persona per la persona dopo.
+
+### Il produttore non risolto adesso si vede
+
+Il brief: «se non trovi il codice, segnalalo invece di lasciare il campo vuoto
+senza avviso». Nel dettaglio polizza il produttore ha ora **cinque** risposte,
+e le due nuove sono quelle che prima mentivano:
+
+- l'abbinamento **non copre** la data di questa polizza → si scrive il codice e
+  il motivo, **non il nome**. «Lui» sarebbe falso; «non assegnato»
+  nasconderebbe che una decisione esiste;
+- il codice **non è associato** a nessuna persona → si dice, e si dice dove si
+  abbina.
+
+Tutte e due con il richiamo giallo, perché una riga qualunque non la guarda
+nessuno.
+
+### Quello che questa tabella non può fare, ed è scritto nella migrazione
+
+La chiave primaria è la coppia (compagnia, codice): **una riga per codice,
+quindi un padrone per codice.** Il periodo dice fino a quando *quell'*
+abbinamento vale, non tiene lo storico dei padroni che si sono succeduti. Per
+una storia completa servirebbe una riga per periodo, cioè un'altra chiave
+primaria: è un lavoro a sé, e si fa se e quando un codice cambia mano davvero.
+
+### Una prova verde per sbaglio, e si è scoperto spegnendo una risposta finta
+
+«M5 · la correzione del movimento…» era verde perché si reggeva sulla
+**risposta finta lasciata accesa da una prova centocinquanta righe più su**:
+senza, l'update non ha righe da restituire e la correzione risulta non salvata
+(è il controllo di BUG 1, §47). Se n'è accorta una prova nuova che quella
+risposta la spegneva. *Una risposta finta non spenta cammina nelle prove dopo,
+e quando qualcuno la spegne diventa rossa una prova che non c'entra niente.*
+È la stessa trappola già annotata in §19 e §42, dal lato opposto.
+
+### Cosa resta aperto
+
+- **Nessun periodo e nessuna sospensione sono ancora dichiarati** (misurato
+  dopo la migrazione: 16 righe, tutte attive, 0 con date, 0 decise). È il
+  punto: il sistema conta e non giudica finché nessuno decide.
+- **Il confronto con la compagnia della polizza è esatto**, non passa dagli
+  alias (§11): «HDI Assicurazioni» sulla polizza e «HDI» in tabella non si
+  ritrovano. Sul portafoglio vero c'è una compagnia sola e non si vede; va
+  guardato prima del secondo flusso.
+
+---
+
+## 50. Brief Anagrafiche — punto 1: il contatore che contava le righe caricate (21/09/2026)
+
+> «Il contatore delle anagrafiche è sbagliato.» — Francesco.
+
+**Misurato sul database prima di toccare qualsiasi cosa: 2.536 anagrafiche,
+di cui 29 lead e 2.507 clienti. La schermata diceva 50.**
+
+| pezzo | dove |
+|---|---|
+| le condizioni, in due lingue | `Anagrafica.VISTE` in `tariffe/motore/anagrafica.js` |
+| prove in Node, col valutatore | `server/verifica/anagrafica.test.mjs` — **11** (erano 8) |
+| i contatori della lista | `anagConta`, `anagQuanti`, `anagRicerca`, `anagPiede` in `index.html` |
+| i due buchi della Scrivania | `quantiClienti` in `caricaDaFareOggi`, `iam/index.html` |
+| prove | blocco «punto 1» in `ui-test.mjs` (**488**), `iam/verifica/da-fare-oggi.test.mjs` (15) |
+
+### La causa, e perché non si vedeva
+
+`cercaAnagrafica` carica **i cinquanta più recenti** — ed è giusto, nessuno
+scorre duemila righe. I tre contatori si contavano su `ANAG_CACHE.length`.
+
+> **Un elenco non è un conteggio.** Un numero preso dalle righe caricate non
+> conta quello che c'è: conta quello che si è avuto voglia di scaricare — e
+> guardandolo non c'è modo di accorgersene. Non dà un errore: dà un numero più
+> piccolo, credibile, e più basso del vero.
+
+Gli stessi due numeri sulla Scrivania di IAM avevano la stessa malattia in una
+forma più insidiosa: `.select(...)` senza limite, ma il server ne manda **al
+massimo mille per richiesta**. Nessun `limit` scritto da nessuna parte, e un
+tetto che non si vede nel codice.
+
+### Le condizioni esistono in due lingue, e stanno accanto
+
+Contare sul server vuol dire scrivere ogni condizione due volte: il predicato
+che la lista applica in memoria e il filtro che il server capisce. **Due
+scritture della stessa regola sono due regole**, e qui produrrebbero un
+contatore che non torna con la sua lista — cioè lo stesso guasto, in una forma
+nuova. Quindi stanno una riga sotto l'altra in `VISTE`, e una prova le fa
+girare tutte e due sulle stesse righe pretendendo la stessa risposta (un
+piccolo valutatore della sintassi PostgREST vive **nella prova**, non nel
+motore: in produzione non lo chiamerebbe nessuno, §1).
+
+Quello che quella prova **non** dimostra è che PostgREST legga quelle stringhe
+come le legge il valutatore. Quello si è misurato a mano contro l'API vera,
+filtro per filtro: `200` con le quattro condizioni, `400` con una colonna
+inventata come controllo negativo.
+
+### Le condizioni si scrivono in positivo, e il complemento si sottrae
+
+Il server non sa negare un gruppo di condizioni senza contorsioni. Quindi si
+conta **chi ce l'ha** (`con_email`, `con_consenso`) e si sottrae dal totale:
+una sottrazione non può divergere da se stessa, mentre una seconda condizione
+scritta al contrario sì.
+
+### Due regole diventate una
+
+- **Che cos'è un lead**: la colonna `lead`. Il marcatore `LEAD` scritto nelle
+  note non si guarda più — misurato: **una sola riga** in tutto l'archivio ce
+  l'ha, e non è fra i clienti. Toglierlo non cambia un numero e lascia un modo
+  solo di essere un lead invece di due.
+- **Che cos'è un consenso valido**: la colonna `consenso_marketing` **oppure**
+  la privacy firmata con la spunta. IAM guardava solo la seconda — una seconda
+  regola, che avrebbe contato fra i buchi chi il consenso l'aveva dato allo
+  sportello. Oggi coincidono per caso (4 consensi, tutti da privacy firmata):
+  domani no.
+
+### «Ne vedi 50 su 2.507»
+
+Senza quella riga sotto l'elenco, una lista che si ferma a cinquanta e un
+contatore che dice duemilacinquecento si leggono come un guasto — e chi cerca
+qualcuno smette di cercare credendo che non ci sia. Compare **solo** quando i
+due numeri non coincidono: dirlo sempre sarebbe rumore che si impara a saltare.
+
+E quando il conteggio non riesce i contatori mostrano `·`, non un numero: «non
+si è potuto contare» non è «non ce n'è» (§12, §18), e qui ripiegare sulle righe
+caricate vorrebbe dire rimettere esattamente il difetto appena tolto.
+
+### Il banco non vedeva due metodi su due
+
+`select()` e `or()` erano **passanti** nel finto database: una prova che
+guardava *quale* conteggio il codice stesse chiedendo leggeva sempre niente e
+restava verde comunque. È lo stesso difetto già corretto su `in()`, `upsert()`
+(§19) e `delete()` (§47), un metodo più in là. Adesso `select(colonne, opzioni)`
+dice che è un conteggio, `or()` dice con che condizione, e le risposte si danno
+per condizione.
+
+**E l'apice inverso dentro un commento del banco ha fatto saltare il file per
+la terza volta.** Il banco vive dentro un template literal: un nome di funzione
+scritto fra apici inversi lo chiude. Annotato qui perché è successo tre volte,
+e due di quelle scrivendo il commento che spiegava la volta prima.
+
+---
+
+## 51. Brief Anagrafiche — punto 2: «Compleanni di oggi» va in Marketing (21/09/2026)
+
+Il riquadro nasce il 19/09 in cima alla pagina Clienti (§23). Sta meglio dove
+si decide **che cosa si manda ai clienti**: in Campagne, che nel menu di IAM è
+la voce Marketing › Campagne email.
+
+| pezzo | dove |
+|---|---|
+| il contenitore | `#cpl-oggi`, adesso in `#page-campagne` (era in `#page-anagrafiche`) |
+| chi lo riempie | `loadMarketing()` (era `initAnagrafiche()`) |
+| le regole | invariate: blocco `cpl*` e `Anagrafica.delGiorno` / `contattabile` / `testoAuguri` |
+| prove | blocco «punto 2» in `ui-test.mjs` (**489**) |
+
+**Spostare una schermata vuol dire spostare tre cose**, e la terza è quella che
+si dimentica: il contenitore, chi lo riempie, e **chi non deve più riempirlo**.
+Lasciare indietro la terza è il difetto più silenzioso di tutti — la pagina
+Clienti avrebbe continuato a leggere l'anagrafica intera a ogni apertura per
+scrivere dentro un `div` che non esiste più. Nessun errore, solo una lettura in
+più per sempre. C'è una prova, e la controprova la fa diventare rossa.
+
+**Sta in cima e non in fondo**: un compleanno è l'unica cosa di quella pagina
+che scade. Una campagna si prepara quando si vuole; gli auguri si fanno oggi, e
+in fondo alla pagina si leggono domani.
+
+**In Anagrafiche non resta niente** — né un riquadro vuoto né un rimando: un
+rimando a una schermata che sta altrove è il doppione che si voleva togliere.
+
+> **E cambia chi può usarlo, ed è la cosa da sapere.** La pagina Clienti la
+> vede chiunque entri nel preventivatore; **Marketing è dietro il cancello
+> `lab_abilitato`** (o super-admin), letto dal pulsante `nb-marketing` della
+> scocca. Quindi un collaboratore senza Marketing abilitato **non vede più i
+> compleanni**. Non è un effetto collaterale nascosto in una riga: è la
+> conseguenza diretta di dove il brief chiede di metterlo, e si ribalta
+> abilitando Marketing a chi serve — oppure riportando il riquadro indietro,
+> che è una riga di HTML e una chiamata.
+
+---
+
+## 52. «Volevo un grafico, non un indicatore» (21/09/2026)
+
+> «Per la dashboard ti avevo detto che volevo un grafico no un indicatore»
+> — Francesco.
+
+Aveva ragione due volte, e la prima è quella che conta più di tutto il resto.
+
+### La causa prima: online c'era la 0.14.0
+
+Misurato su `quoto.withusassicurazioni.it` prima di toccare qualsiasi cosa:
+`app-versione 0.14.0`. Il grafico nasce con la **0.15.0** (§45) e viveva in una
+PR **ancora aperta** insieme ad altri quattro rilasci. Sulla Scrivania, in
+produzione, c'era soltanto `#kpi-riga` — i tre riquadri di numeri — perché è
+l'unica cosa che `main` aveva.
+
+> **Non stava guardando un grafico fatto male: stava guardando il posto dove il
+> grafico non era ancora arrivato.** È §2 in una forma nuova — il lavoro non
+> sparisce nei rami, ma finché la PR non è fusa non è vivo. E chi lavora non
+> vede una PR: vede una schermata.
+
+### La seconda: anche pubblicato, era una fila di indicatori
+
+`volHTML` apriva con `vol-testa` → tre riquadri di numeri grandi (2026 a oggi,
+2025 stesso periodo, Differenza) e metteva sotto un `vol-graf` alto 190 pixel
+con **ventiquattro barre larghe al massimo sedici pixel**. Su un telefono sono
+trentadue pixel per mese, cioè due barre da otto: illeggibili. La scheda si
+chiamava «grafico» ed era un cruscotto di cifre con una decorazione sotto.
+
+| pezzo | dove |
+|---|---|
+| il grafico | `volHTML`, `volDettaglio`, `volK`, `volMese` in `iam/index.html` |
+| lo stile | blocco `.vol-*` nel `<style>` di `iam/index.html` |
+| la regola che marca i mesi non arrivati | `confronto` in `tariffe/motore/produzione.js` |
+| prove | `produzione.test.mjs` (13), `volumi-produzione.test.mjs` (13) |
+
+**Adesso**: due serie ad area in SVG disegnato a mano — l'anno scorso in
+grigio, quest'anno in verde sopra. Dodici punti invece di ventiquattro barre.
+La risposta si legge senza numeri: **dove il grigio spunta sopra il verde,
+quel mese è andato peggio dell'anno scorso.** Il riepilogo è **una riga**, non
+tre riquadri, e il grafico sta **sopra** la riga di indicatori.
+
+### Due trappole dell'SVG che si pagano se si dimenticano
+
+`preserveAspectRatio="none"` fa stirare il disegno nel contenitore, ed è quello
+che serve per un grafico che deve riempire una scheda di larghezza qualunque.
+Ma stira **tutto**: dentro l'SVG non ci va nessun testo (le etichette stanno in
+HTML, fuori) e le linee portano `vector-effect="non-scaling-stroke"`, altrimenti
+si stira anche il loro spessore e la curva diventa più grassa in orizzontale che
+in verticale.
+
+### Tre difetti trovati facendo girare il motore sui numeri VERI
+
+Non dalla rilettura: stampando le altezze che la Scrivania avrebbe disegnato
+sul portafoglio dell'agenzia (2025 contro 2026, 348.193 € contro 128.875 €).
+
+1. **Uno zero e 300 € disegnavano la stessa barra.** L'altezza aveva un minimo
+   fisso del 2%: gennaio 2025 (nessuna polizza) e febbraio 2025 (300 €)
+   finivano allo stesso pixel. Adesso uno zero sta sulla linea di base.
+2. **I mesi non ancora arrivati avevano una barra.** Ottobre, novembre e
+   dicembre 2026 disegnavano una barra verde al 2% accanto alla barra grigia
+   alta di ottobre 2025 (61.515 €): si legge come un **crollo verticale**, e
+   invece è un mese che non c'è ancora. Adesso la curva dell'anno in corso si
+   **ferma**, e quella dell'anno scorso prosegue tratteggiata.
+3. **E il marcatore non arrivava sempre.** Il motore accendeva
+   `fuori_confronto` solo dove il database aveva mandato una riga: un mese in
+   cui *nessuno dei due anni* aveva prodotto niente non risultava «non ancora
+   arrivato», e la curva ci passava dentro a zero. **È lo stesso ragionamento
+   già scritto una riga più sotto per il mese parziale** — «prendere il segno
+   solo dalle righe vuol dire che un mese senza una polizza non risulta
+   parziale» — e non era stato applicato qui. Il taglio lo decide la data.
+
+### Il numero esatto si legge col dito
+
+Il tooltip nativo (`title`) funziona col mouse e **non esiste sul telefono**,
+che è dove IAM si guarda metà delle volte. Ogni mese è un bottone vero e il
+numero compare sotto, in parole — ed è lì che i **tre zeri restano tre**:
+«non è ancora arrivato» per il mese che non c'è, «premio non noto · 3 polizze»
+per il mese le cui polizze un premio non ce l'hanno, e zero per il mese in cui
+non è successo niente. Scrivere «0,00 €» sul secondo sarebbe il numero
+credibile e falso (§8.1).
+
+### Una trappola nuova: l'accento scritto come carattere combinante
+
+Le stringhe nuove erano state scritte con `e` + U+0300 (accento combinante)
+invece di `è` (U+00E8). **Si vede identico** e non combacia con niente: la
+prova cercava «non è ancora arrivato» e non lo trovava, su un testo che sullo
+schermo diceva esattamente quello. Sette occorrenze nel blocco, corrette
+normalizzando in NFC.
+
+> Un carattere che si vede giusto e non è quello che sembra costa mezz'ora, e
+> nessun rosso dice che cos'è: dice solo che la stringa non c'è.
+
+### Quello che NON si è tolto
+
+I tre riquadri di indicatori restano, sotto il grafico: rispondono a domande
+che il grafico non fa (quanto portafoglio ho in gestione, quanto converto), e
+il 4/8/2026 erano stati tolti per un motivo diverso — ripetevano i numeri di
+«Da fare oggi» (§42, punto 10). Qui non si ripete niente: si cambia l'ordine.

@@ -46,7 +46,8 @@ const SUL_KIT = [
   'contab-panel-quadratura',  // brief #02 M5
   'contab-panel-anomalie',    // brief #02 M5
   'contab-panel-storico',     // brief #02 M5
-  'panel-catalogo'            // catalogo prodotti (20/09/2026)
+  'panel-catalogo',           // catalogo prodotti (20/09/2026)
+  'panel-produzione'          // produzione per collaboratore (21/09/2026)
   /* «contab-panel-conto» non c'è più: il saldo ricostruito e gli estratti
      caricati dalla banca sono i due numeri della quadratura, e dal 20/09/2026
      stanno dentro «Quadratura conti» (Blocco 1 · punto 5). */
@@ -166,7 +167,10 @@ prova('una schermata nuova non si scrive gli stili a mano', () => {
        (Blocco 1 · punto 5): con lui sono arrivati i suoi stili scritti a
        mano. La soglia sale UNA VOLTA perché il pannello è un altro, e da qui
        torna a calare soltanto. */
-    'contab-panel-quadconti': 17
+    'contab-panel-quadconti': 17,
+    /* Nata sul kit il 21/09/2026: l'unico stile scritto a mano è lo
+       scorrimento del pannello, come sulle altre. */
+    'panel-produzione': 1
   };
   for (const [id, max] of Object.entries(soglie)) {
     const n = conta(id);

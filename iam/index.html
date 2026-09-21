@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.14.0">
-<meta name="app-versione-nome" content="Nuova polizza: dal menu, con il design di casa, e le rate giuste">
+<meta name="app-versione" content="0.20.0">
+<meta name="app-versione-nome" content="Il grafico dei volumi è un grafico">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -34,7 +34,14 @@
      Se non si carica, `logMovimento` non scrive e non rompe niente: un
      movimento perso è meglio di una schermata che non si apre. -->
 <script src="/nuovo-preventivo/tariffe/motore/registro.js?v=20260919"></script>
-<script src="/nuovo-preventivo/tariffe/motore/assegnazione.js?v=20260919"></script>
+<script src="/nuovo-preventivo/tariffe/motore/assegnazione.js?v=20260921"></script>
+<!-- Le anagrafiche: che cos'è un lead, che cos'è un consenso valido. Stesso
+     file del preventivatore, perché i due contatori — quello della Scrivania e
+     quello della lista Clienti — devono contare la stessa cosa. Fino al
+     21/09/2026 IAM aveva la sua copia della regola del consenso, e non
+     guardava la colonna `consenso_marketing`: due regole, e quella che
+     sbagliava era quella che nessuno guarda. -->
+<script src="/nuovo-preventivo/tariffe/motore/anagrafica.js?v=20260921"></script>
 <!-- I conti e le causali (brief #02 M1). Stesso file del preventivatore, per lo
      stesso motivo: il vocabolario della contabilità dev'essere uno solo. -->
 <script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260919"></script>
@@ -49,6 +56,8 @@
 <script src="/nuovo-preventivo/tariffe/motore/collegamenti.js?v=20260920"></script>
 <script src="/nuovo-preventivo/tariffe/motore/kpi.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/decisioni.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/produzione.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/collaboratori.js?v=20260921"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -97,6 +106,109 @@
 .kpi-c .kpi-v .kpi-u{font-size:13px;font-weight:600;color:var(--txt2)}
 .kpi-c .kpi-s{font-size:11px;color:var(--txt2);margin-top:5px;line-height:1.5}
 @media(max-width:900px){.kpi-riga{grid-template-columns:1fr}}
+
+/* ══ VOLUMI DI PORTAFOGLIO — il grafico anno su anno (21/09/2026) ═══════════
+   Disegnato a mano: IAM non carica ApexCharts e non comincia adesso (§10).
+
+   RIFATTO IL 21/09/2026, su segnalazione di Francesco: «volevo un grafico, non
+   un indicatore». La prima stesura apriva con tre riquadri di numeri grandi e
+   metteva il grafico sotto, alto 190 pixel, con ventiquattro barre larghe al
+   massimo sedici pixel. Su un telefono sono trentadue pixel per mese, cioe'
+   due barre da otto: illeggibili. E soprattutto si leggeva come l'ennesima
+   fila di indicatori con un grafichino in fondo, che e' esattamente quello
+   che era.
+
+   Adesso: DUE SERIE AD AREA. L'anno scorso in grigio, quest'anno in verde
+   sopra. La risposta si legge senza numeri — DOVE IL GRIGIO SPUNTA SOPRA IL
+   VERDE, quel mese e' andato peggio dell'anno scorso. Dodici punti invece di
+   ventiquattro barre: a 390 pixel ci stanno.
+
+   Perche' SVG e non dei div: un'area, una griglia e una linea che si ferma a
+   meta' anno con dei div non si fanno. `preserveAspectRatio="none"` stira il
+   disegno nel contenitore, e questo ha due conseguenze che si pagano se si
+   dimenticano — DENTRO l'SVG non ci va nessun testo, perche' si stirerebbe
+   con lui (le etichette stanno in HTML, fuori), e le linee portano
+   `vector-effect` perche' altrimenti si stira anche il loro spessore.
+
+   Prefissate `vol-`: nel foglio di stile un nome di classe e' globale anche
+   dentro un discendente (§26), e le classi in comune coi due documenti sono a
+   scarto zero (§10). */
+.vol-sintesi{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:14px}
+.vol-k{font-size:11px;color:var(--w1-testo3);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
+.vol-big{font-size:27px;font-weight:800;line-height:1.05;letter-spacing:-.015em}
+.vol-pol{font-size:12.5px;color:var(--w1-testo2);font-weight:600}
+.vol-vs{font-size:12.5px;color:var(--w1-testo2);flex-basis:100%}
+.vol-delta{font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:999px;display:inline-block}
+.vol-delta.vol-su{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
+.vol-delta.vol-giu{background:var(--w1-rosso-bg);color:var(--w1-rosso)}
+.vol-delta.vol-pari{background:var(--w1-sfondo);color:var(--w1-testo2)}
+.vol-graf{position:relative;height:232px;margin-top:2px}
+.vol-svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.vol-a-prec{fill:#e2e8f0}
+.vol-a-ora{fill:var(--w1-verde-tenue)}
+.vol-l-prec{fill:none;stroke:#94a3b8;stroke-width:2}
+.vol-l-fuori{fill:none;stroke:#cbd5e1;stroke-width:2;stroke-dasharray:5 4}
+.vol-l-ora{fill:none;stroke:var(--w1-verde);stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.vol-banda{fill:rgba(15,23,42,.07)}
+.vol-griglia{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+.vol-g{height:0;border-top:1px dashed var(--w1-bordo);position:relative}
+.vol-gv{position:absolute;right:0;top:-8px;font-size:10px;font-weight:700;color:var(--w1-testo3);background:var(--w1-card);padding:0 4px;border-radius:3px}
+.vol-tocchi{position:absolute;inset:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr))}
+.vol-tocco{border:0;background:transparent;padding:0;margin:0;cursor:pointer;font:inherit;color:inherit}
+.vol-tocco:hover{background:rgba(15,23,42,.04)}
+.vol-mesi{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px;margin-top:7px}
+.vol-m{font-size:10px;color:var(--w1-testo3);text-align:center;text-transform:uppercase;letter-spacing:.02em}
+.vol-m.vol-parz{color:var(--w1-ambra);font-weight:800}
+.vol-m.vol-nonarr{color:var(--w1-bordo2,#e9edf1)}
+.vol-m.vol-msel{color:var(--w1-testo);font-weight:800}
+.vol-dett{margin-top:12px;font-size:12.5px;line-height:1.6;padding:10px 12px;border-radius:var(--w1-raggio);background:var(--w1-sfondo);border:1px solid var(--w1-bordo)}
+.vol-dett.vol-invito{color:var(--w1-testo3);background:transparent;border-style:dashed}
+.vol-dm{font-weight:800;text-transform:capitalize}
+.vol-dr{display:block}
+.vol-legenda{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--w1-testo2);margin-top:12px}
+.vol-leg{display:inline-flex;align-items:center;gap:6px}
+.vol-bollo{width:11px;height:11px;border-radius:2px;display:inline-block}
+.vol-bollo.vol-ora{background:var(--w1-verde)}
+.vol-bollo.vol-prima{background:#94a3b8}
+.vol-bollo.vol-fuori{background:#cbd5e1}
+.vol-note{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.vol-n{font-size:11.5px;color:var(--w1-testo2);line-height:1.5;padding-left:16px;position:relative}
+.vol-n::before{content:'\00b7';position:absolute;left:6px;font-weight:800;color:var(--w1-testo3)}
+@media(max-width:640px){
+  .vol-graf{height:184px}
+  .vol-big{font-size:23px}
+  .vol-m{font-size:9px}
+  .vol-mesi{gap:0}
+}
+.vol-ko{font-size:12px;color:var(--w1-ambra);background:var(--w1-ambra-bg);border-radius:var(--w1-raggio);padding:9px 11px;line-height:1.5}
+@media(max-width:700px){
+  .vol-graf{height:140px}
+  .vol-m{font-size:9px}
+}
+
+/* ══ PRODUZIONE — la schermata di dettaglio (21/09/2026) ════════════════════ */
+.prd-filtri{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+.prd-f label{display:block;font-size:11px;font-weight:800;color:var(--w1-testo3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+.prd-f select,.prd-f input{width:100%;padding:8px 10px;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);
+  font-family:inherit;font-size:13px;background:#fff;color:var(--w1-testo)}
+.prd-azioni{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.prd-tab{width:100%;border-collapse:collapse;font-size:13px}
+.prd-tab th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--w1-testo3);
+  font-weight:800;padding:8px 10px;border-bottom:1px solid var(--w1-bordo)}
+.prd-tab td{padding:9px 10px;border-bottom:1px solid var(--w1-bordo);vertical-align:top}
+.prd-tab tr:last-child td{border-bottom:none}
+.prd-tab .prd-num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.prd-tab tfoot td{font-weight:800;border-top:2px solid var(--w1-bordo);border-bottom:none}
+.prd-pil{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:.02em}
+.prd-pil.prd-persona{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
+.prd-pil.prd-codice{background:var(--w1-ambra-bg);color:var(--w1-ambra)}
+.prd-pil.prd-diretta{background:var(--w1-sfondo);color:var(--w1-testo2)}
+.prd-sotto{font-size:11px;color:var(--w1-testo2);margin-top:3px;line-height:1.45}
+.prd-quota{display:block;height:4px;border-radius:2px;background:var(--w1-verde);margin-top:5px;min-width:2px}
+.prd-vuoto{font-size:12.5px;color:var(--w1-testo2);padding:14px 2px;line-height:1.55}
+@media(max-width:700px){
+  .prd-tab th:nth-child(3),.prd-tab td:nth-child(3){display:none}
+}
 
 .cnt-r .cnt-apri{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor;cursor:pointer}
 .cnt-r .cnt-apri:hover{border-bottom-style:solid}
@@ -544,6 +656,21 @@ input[type=file]{display:none;}
   background:var(--surf2);border:1px solid var(--bord)}
 .ccp-agg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
 .ccp-agg select{flex:1;min-width:220px}
+/* La pastiglia dice se quel codice sta ancora assegnando. Tre stati e non due:
+   «sospeso» e «periodo finito» arrivano allo stesso risultato per due ragioni
+   diverse, e chi guarda deve sapere quale delle due — una si toglie con un
+   clic, l'altra cambiando una data. */
+.ccp-p{font-size:10px;font-weight:700;padding:2px 8px;border-radius:9px;margin-left:6px;white-space:nowrap}
+.ccp-on{background:#e3f6ec;color:#1c8a52}
+.ccp-off{background:#fdeede;color:#c77a14}
+.ccp-fine{background:var(--surf2);color:var(--txt3)}
+.ccp-az{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.ccp-mod{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px;
+  padding:9px 10px;border-radius:8px;background:var(--surf2);border:1px solid var(--bord)}
+.ccp-mod label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--txt3)}
+.ccp-mod input{font-size:12.5px;padding:5px 7px;border-radius:6px;border:1px solid var(--bord);
+  background:var(--surf);color:var(--txt)}
+@media(max-width:640px){.ccp-r{flex-direction:column}.ccp-az{flex-direction:row;flex-wrap:wrap;width:100%}}
 .fsec{margin-top:14px;}
 .fsec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);margin-bottom:8px;}
 .doc-btn{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surf2);border-radius:var(--rs);cursor:pointer;font-size:12px;color:var(--txt2);border:1.5px dashed var(--bord);margin-bottom:6px;transition:all .15s;}
@@ -812,6 +939,7 @@ input[type=file]{display:none;}
 #contab-panel-anomalie,
 #contab-panel-storico,
 #panel-catalogo,
+#panel-produzione,
 #contab-panel-conto {
   --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
   --w1-sfondo:#f3f5f7; --w1-bordo:#e3e8ec;
@@ -2000,6 +2128,29 @@ input[type=file]{display:none;}
     </div>
   </section>
 
+  <!-- ── VOLUMI DI PORTAFOGLIO (21/09/2026) ──────────────────────────────────
+       Il confronto anno su anno, letto dal portafoglio vero e aggregato dal
+       DATABASE (`iam_produzione_confronto`): qui non arriva una polizza alla
+       volta, arrivano ventiquattro righe già sommate.
+
+       I due anni sono contati fino allo STESSO GIORNO. Mettere dodici mesi
+       dell'anno scorso accanto a nove dell'anno in corso disegna un crollo
+       che non è successo, e succede undici mesi su dodici: è la cosa che, in
+       un grafico di andamento, si rompe senza che nessuno se ne accorga —
+       perché il numero sbagliato ha esattamente l'aria di quello giusto. -->
+  <div class="d-card" id="vol-card">
+    <div class="card-head">
+      <div class="card-title"><span class="pictogram"><i class="ti ti-chart-bar"></i></span> Volumi di portafoglio</div>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="volCarica(true)" title="Rileggi"><i class="ti ti-refresh"></i></button>
+        <button class="d-btn primario" type="button" onclick="goTab('produzione')">Vedi il dettaglio</button>
+      </div>
+    </div>
+    <div class="card-body" id="vol-corpo">
+      <div class="prd-vuoto">Sto leggendo la produzione…</div>
+    </div>
+  </div>
+
   <!-- ── COME STA ANDANDO (Blocco 3 · punto 10, 21/09/2026) ──────────────────
        Sta SOPRA «Da fare oggi» e non ripete i suoi numeri, che è la ragione
        per cui il 4/8/2026 una striscia di indicatori era stata tolta da qui
@@ -2010,7 +2161,14 @@ input[type=file]{display:none;}
 
        Ogni riquadro è una LETTURA A SÉ (§35): quello che si può leggere si
        mostra, e quello che non si può leggere lo dice col suo nome invece di
-       mostrare uno zero rassicurante (§12, §18). -->
+       mostrare uno zero rassicurante (§12, §18).
+
+       STA SOTTO IL GRAFICO dal 21/09/2026: «volevo un grafico, non un
+       indicatore». Tre numeri in cima alla Scrivania sono la prima cosa che
+       si vede, e facevano sembrare la pagina un cruscotto di cifre; il
+       grafico dice la stessa cosa e in più dice QUANDO. I tre riquadri
+       restano perché rispondono a domande che il grafico non fa (quanto
+       portafoglio ho in gestione, quanto converto), ma vengono dopo. -->
   <section class="kpi-riga" id="kpi-riga"></section>
 
   <section class="dashboard-grid">
@@ -3551,6 +3709,18 @@ input[type=file]{display:none;}
           <button onclick="aggiungiVolumeAnno()" style="font-size:11px;padding:3px 10px;background:var(--acc);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">+ Anno</button>
         </div>
         <div id="mc-report-volumi" style="margin-top:8px;"></div>
+        <!-- Questi volumi si DIGITANO, e restano (21/09/2026): nove schede su
+             dodici ne hanno, ed è l'unico storico che l'agenzia ha su queste
+             persone. Una schermata in uso si spegne quando i suoi numeri sono
+             stati confrontati con quelli nuovi e tornano, non perché ne è nata
+             una migliore (§17, §33). Accanto adesso c'è la produzione letta dal
+             portafoglio: finché le due non tornano, sono due misure, e sapere
+             che sono due è più utile che averne una sola sbagliata. -->
+        <div style="font-size:11px;color:var(--txt3);margin-top:6px;line-height:1.5;">
+          Questi numeri li scrive una persona. Quelli letti dal portafoglio stanno in
+          <b>Agenzia › Produzione</b>: finché i due non coincidono restano due misure diverse,
+          e la differenza è da guardare, non da nascondere.
+        </div>
       </div>
       <div class="fsec">
         <div class="fsec-title">Portafoglio attuale (€)</div>
@@ -3839,24 +4009,31 @@ input[type=file]{display:none;}
      ne apre una nuova da oggi. Gli estratti conto già mandati devono
      continuare a dire lo stesso numero. -->
 <div class="panel" id="panel-compagnie" style="overflow-y:auto;">
+  <!-- LA PORTA UNICA (21/09/2026). Si entra dalla COMPAGNIA, non dalla
+       tariffa: «Nuova compagnia» in alto, e dentro la scheda di ognuna i suoi
+       dati, i suoi prodotti e le sue provvigioni. Prima erano due schermate
+       (qui le tariffe, in Catalogo l'anagrafica) e per aggiungere una
+       compagnia bisognava sapere che stava nell'altra. Le regole sono le
+       stesse di prima: qui cambia solo da dove si entra. -->
   <section class="page-head">
     <div>
       <div class="eyebrow">Strumenti</div>
       <h1>Gestione compagnie</h1>
-      <div class="subtitle">Quanto riconosce ogni compagnia, e quanto ne gira al collaboratore.</div>
+      <div class="subtitle">Le compagnie con cui lavori: dati, prodotti e provvigioni.</div>
     </div>
     <div class="head-actions">
-      <button class="d-btn" type="button" onclick="prvCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
-      <button class="d-btn primario" type="button" id="prv-nuova-tariffa" onclick="prvApriTariffa(null)"><i class="ti ti-plus"></i> Nuova tariffa</button>
+      <button class="d-btn" type="button" onclick="gcCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <button class="d-btn primario" type="button" id="gc-nuova" onclick="gcNuova()"><i class="ti ti-plus"></i> Nuova compagnia</button>
     </div>
   </section>
 
-  <!-- Che cosa NON si è potuto leggere, sopra quello che invece c'è: con sette
-       letture, «qualcosa è andato storto» non dice a nessuno dove guardare. -->
+  <!-- Che cosa NON si è potuto leggere, sopra quello che invece c'è: con
+       dieci letture, «qualcosa è andato storto» non dice a nessuno dove
+       guardare. Le tariffe in una sezione, l'anagrafica nell'altra. -->
   <section id="prv-guasti" style="display:none"></section>
+  <section id="gc-guasti" style="display:none"></section>
   <section class="cnt-somma" id="prv-somma"></section>
-  <section class="cnt-lista" id="prv-copertura"></section>
-  <section class="cnt-lista" id="prv-tariffe"><div class="cl-sub">Carico le tariffe…</div></section>
+  <section class="cnt-lista" id="gc-lista"><div class="cl-sub">Carico le compagnie…</div></section>
 </div>
 
 <!-- ══ PANNELLO PROVVIGIONI ══════════════════════════════════════════════
@@ -3963,6 +4140,69 @@ input[type=file]{display:none;}
   </section>
   <section class="cnt-somma" id="dec-somma"></section>
   <section class="cnt-lista" id="dec-lista"><div class="cl-sub">Guardo che cosa manca…</div></section>
+</div>
+
+<!-- ══ PRODUZIONE — il dettaglio (21/09/2026) ═════════════════════════════════
+     La domanda «chi ha prodotto» ha una risposta sola in questa casa, e non è
+     `creato_da`: quella colonna, sulle 1720 polizze arrivate dal flusso, è una
+     persona sola — chi ha premuto il tasto dell'importazione. Attribuire lì
+     vorrebbe dire dare l'intero portafoglio a chi ha fatto un'importazione.
+
+     Il dato vero è il CODICE PRODUTTORE che la compagnia scrive sulla polizza.
+     Trasformarlo in un nome è una decisione umana (§19), e finché non è stata
+     presa la riga porta il codice e dice che è da abbinare — mai un nome
+     scelto per somiglianza, che qui vuol dire attribuire a una persona la
+     produzione di un'altra.
+
+     Le somme le fa il database (`iam_produzione_mensile`, SECURITY INVOKER):
+     qui non scende una polizza alla volta. -->
+<div class="panel" id="panel-produzione" style="overflow-y:auto;">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow">Agenzia</div>
+      <h1>Produzione</h1>
+      <div class="subtitle">Quanto è stato prodotto, da chi, con quale compagnia e su quale ramo.</div>
+    </div>
+    <div class="head-actions">
+      <button class="d-btn" type="button" onclick="prdCarica(true)"><i class="ti ti-refresh"></i> Rileggi</button>
+      <button class="d-btn primario" type="button" onclick="prdEsporta()"><i class="ti ti-download"></i> Esporta</button>
+    </div>
+  </section>
+
+  <div class="d-card">
+    <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-filter"></i></span> Filtri</div></div>
+    <div class="card-body">
+      <div class="prd-filtri">
+        <div class="prd-f"><label for="prd-anno">Anno</label><select id="prd-anno"></select></div>
+        <div class="prd-f"><label for="prd-compagnia">Compagnia</label><select id="prd-compagnia"><option value="">Tutte</option></select></div>
+        <div class="prd-f"><label for="prd-ramo">Ramo</label><select id="prd-ramo"><option value="">Tutti</option></select></div>
+        <div class="prd-f"><label for="prd-dal">Dal mese</label><select id="prd-dal"></select></div>
+        <div class="prd-f"><label for="prd-al">Al mese</label><select id="prd-al"></select></div>
+      </div>
+      <!-- Solo al clic su Cerca, come tutte le altre barre di IAM (§22). -->
+      <div class="prd-azioni">
+        <button class="d-btn" type="button" onclick="prdAzzera()">Azzera filtri</button>
+        <button class="d-btn primario" type="button" onclick="prdRender()">Cerca</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="kpi-riga" id="prd-somma"></section>
+
+  <div class="d-card">
+    <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-user-check"></i></span> Chi ha prodotto</div></div>
+    <div class="card-body" id="prd-produttori"><div class="prd-vuoto">Sto leggendo…</div></div>
+  </div>
+
+  <div class="d-card">
+    <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-building-bank"></i></span> Per compagnia</div></div>
+    <div class="card-body" id="prd-compagnie"><div class="prd-vuoto">Sto leggendo…</div></div>
+  </div>
+
+  <div class="d-card">
+    <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-category"></i></span> Per ramo</div></div>
+    <div class="card-body" id="prd-rami"><div class="prd-vuoto">Sto leggendo…</div></div>
+  </div>
 </div>
 
 <div class="panel" id="panel-catalogo" style="overflow-y:auto;">
@@ -4693,6 +4933,10 @@ let CCP_PERSONA = null;  // la persona di cui si sta guardando la scheda
    ridotto a una, due colleghi con lo stesso RUI diventerebbero una proposta
    sicura — e sarebbe sicura di niente. */
 let CCP_PERSONE = [];
+/* La riga che si sta modificando («COMPAGNIA|CODICE»), o null. Un editor
+   aperto alla volta: due periodi in modifica insieme sono due «Salva» che si
+   somigliano, e si salva quello sbagliato. */
+let CCP_MOD = null;
 
 /* ═══ IL FIDO DELLA PERSONA (Blocco 3 · punto 6, 20/09/2026) ════════════════
    Un campo solo, e tre regole che lo rendono onesto:
@@ -4780,6 +5024,9 @@ function ccpPuoDecidere() { return PROFILO?.ruolo === 'admin'; }
 
 async function ccpInstalla(personaId) {
   CCP_PERSONA = personaId || null;
+  /* Aprendo un'altra scheda l'editor si chiude: lasciarlo aperto mostrerebbe
+     le date di una persona dentro la riga di un'altra. */
+  CCP_MOD = null;
   /* Il fido si installa insieme ai codici: sono due cose della stessa
      persona, e due letture separate su due aperture diverse sarebbero due
      occasioni di dimenticarne una. */
@@ -4831,26 +5078,8 @@ function ccpRender() {
   });
 
   box.innerHTML = `
-    ${suoi.length ? suoi.map(r => {
-      const ruiFlusso = (r.rui_flusso || '').replace(/[\s.\-\/]/g, '').toUpperCase();
-      /* Il confronto fra il RUI della scheda e quello che manda la compagnia:
-         se non coincidono, o l'abbinamento è sbagliato o uno dei due numeri è
-         vecchio. In tutti e due i casi è meglio saperlo prima di pagare. */
-      const discorde = ruiScheda && ruiFlusso && ruiScheda !== ruiFlusso;
-      return `<div class="ccp-r">
-        <div>
-          <b>${esc(r.codice)}</b> <span class="cl-sub">${esc(r.compagnia)}</span>
-          ${r.produttore_flusso && r.produttore_flusso !== r.codice
-            ? `<span class="cl-sub"> · produttore ${esc(r.produttore_flusso)}</span>` : ''}
-          <div class="cl-sub">${r.nome_flusso ? esc(r.nome_flusso) + ' · ' : ''}${
-            r.rui_flusso ? 'RUI ' + esc(r.rui_flusso) : 'nessun RUI nel flusso'}${
-            r.email_flusso ? ' · ' + esc(r.email_flusso) : ''}</div>
-          ${discorde ? `<div class="ccp-avviso">Il RUI di questa scheda (${esc(document.getElementById('mc-rui').value)})
-            non è quello che manda la compagnia: o l'abbinamento è sbagliato, o uno dei due numeri è vecchio.</div>` : ''}
-        </div>
-        ${puo ? `<button class="mbtn" onclick="ccpTogli('${esc(r.compagnia)}','${esc(r.codice)}')"><i class="ti ti-unlink"></i> Togli</button>` : ''}
-      </div>`;
-    }).join('') : '<div class="cl-sub">Nessun codice compagnia abbinato a questa persona.</div>'}
+    ${suoi.length ? suoi.map(r => ccpRigaSua(r, ruiScheda, puo)).join('')
+      : '<div class="cl-sub">Nessun codice compagnia abbinato a questa persona.</div>'}
 
     ${puo && liberi.length ? `
       ${sugg.length ? `<div class="ccp-sugg">
@@ -4875,11 +5104,96 @@ function ccpRender() {
     ${puo && !liberi.length ? '<div class="cl-sub" style="margin-top:8px">Non ci sono codici in attesa di essere abbinati. Quelli nuovi arrivano con l\'importazione del portafoglio.</div>' : ''}`;
 }
 
+/* Una data ISO scritta come la legge una persona. Si taglia la stringa, non si
+   passa da `new Date()`: una data ISO non ha un fuso orario, e farcela passare
+   gliene dà uno — in Italia torna indietro di un giorno (§44). */
+function ccpData(iso) {
+  const s = String(iso || '');
+  if (!/^\d{4}-\d{2}-\d{2}/.test(s)) return '';
+  return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
+}
+
+/* ── UNA RIGA DI CODICE ABBINATO ─────────────────────────────────────────────
+   Tre cose che non sono decorazione:
+
+   · LA PASTIGLIA DICE SE QUEL CODICE STA ANCORA ASSEGNANDO. Un abbinamento
+     sospeso, o scaduto, continua a comparire — la persona ce l'ha avuto, ed è
+     storia — ma smette di produrre attribuzioni. Se la riga si leggesse uguale
+     nei due casi, si continuerebbe a credere che le polizze nuove siano sue.
+   · SOSPENDI E TOGLI SONO DUE COSE DIVERSE, e la differenza è scritta nelle
+     due domande di conferma: sospendere vuol dire «non produce più, ma è stato
+     suo»; togliere vuol dire «non è suo», e rimette il codice fra quelli da
+     abbinare. Un bottone solo costringerebbe a scegliere alla cieca.
+   · IL PERIODO SI CONFRONTA CON LA DATA DELLA POLIZZA, non con oggi: la frase
+     sotto il modulo lo dice, perché è l'unica cosa che una data «dal/al» non
+     fa capire da sola. */
+function ccpRigaSua(r, ruiScheda, puo) {
+  const ruiFlusso = (r.rui_flusso || '').replace(/[\s.\-\/]/g, '').toUpperCase();
+  /* Il confronto fra il RUI della scheda e quello che manda la compagnia:
+     se non coincidono, o l'abbinamento è sbagliato o uno dei due numeri è
+     vecchio. In tutti e due i casi è meglio saperlo prima di pagare. */
+  const discorde = ruiScheda && ruiFlusso && ruiScheda !== ruiFlusso;
+  const k = r.compagnia + '|' + r.codice;
+  const sospeso = r.attivo === false;
+  /* «Oggi» serve SOLO a dire se un periodo è già finito: è un'informazione
+     per chi guarda, non la regola con cui si assegna. */
+  const oggi = new Date().toISOString().slice(0, 10);
+  const scaduto = !sospeso && r.data_fine && r.data_fine < oggi;
+  const periodo = (r.data_inizio || r.data_fine)
+    ? (r.data_inizio ? 'dal ' + ccpData(r.data_inizio) : 'fino')
+      + (r.data_fine ? ' al ' + ccpData(r.data_fine) : ' in poi')
+    : 'nessun periodo dichiarato: vale sempre';
+
+  return `<div class="ccp-r">
+    <div style="flex:1">
+      <b>${esc(r.codice)}</b> <span class="cl-sub">${esc(r.compagnia)}</span>
+      ${r.produttore_flusso && r.produttore_flusso !== r.codice
+        ? `<span class="cl-sub"> · produttore ${esc(r.produttore_flusso)}</span>` : ''}
+      <span class="ccp-p ${sospeso ? 'ccp-off' : scaduto ? 'ccp-fine' : 'ccp-on'}">${
+        sospeso ? 'sospeso' : scaduto ? 'periodo finito' : 'assegna'}</span>
+      <div class="cl-sub">${r.nome_flusso ? esc(r.nome_flusso) + ' · ' : ''}${
+        r.rui_flusso ? 'RUI ' + esc(r.rui_flusso) : 'nessun RUI nel flusso'}${
+        r.email_flusso ? ' · ' + esc(r.email_flusso) : ''}</div>
+      <div class="cl-sub">${esc(periodo)}${r.note ? ' · ' + esc(r.note) : ''}</div>
+      ${sospeso ? `<div class="ccp-avviso">Sospeso: le polizze e le rate nuove di questo codice
+        <b>non si assegnano più</b> a questa persona. Quelle già assegnate restano sue.</div>` : ''}
+      ${scaduto ? `<div class="ccp-avviso">Il periodo è finito il ${esc(ccpData(r.data_fine))}: le polizze
+        prodotte dopo quella data non si assegnano a questa persona. Quelle di prima restano sue.</div>` : ''}
+      ${discorde ? `<div class="ccp-avviso">Il RUI di questa scheda (${esc(document.getElementById('mc-rui').value)})
+        non è quello che manda la compagnia: o l'abbinamento è sbagliato, o uno dei due numeri è vecchio.</div>` : ''}
+      ${puo && CCP_MOD === k ? `<div class="ccp-mod">
+        <label>Dal <input type="date" id="ccp-dal" value="${esc(r.data_inizio || '')}"></label>
+        <label>Al <input type="date" id="ccp-al" value="${esc(r.data_fine || '')}"></label>
+        <label style="flex:1;min-width:180px">Nota <input type="text" id="ccp-nota" maxlength="200"
+          placeholder="perché, o a chi è subentrato" value="${esc(r.note || '')}"></label>
+        <button class="mbtn" onclick="ccpSalvaPeriodo('${esc(r.compagnia)}','${esc(r.codice)}')"><i class="ti ti-check"></i> Salva</button>
+        <button class="mbtn" onclick="ccpAnnulla()">Annulla</button>
+        <div class="cl-sub" style="flex-basis:100%">Le date si confrontano con <b>l'effetto della polizza</b>,
+          non con oggi: una polizza appartiene a chi teneva il codice quando è stata prodotta. Lasciarle vuote
+          vuol dire «nessun periodo dichiarato», e allora l'abbinamento vale sempre.</div>
+      </div>` : ''}
+    </div>
+    ${puo ? `<div class="ccp-az">
+      <button class="mbtn" onclick="ccpModifica('${esc(r.compagnia)}','${esc(r.codice)}')"><i class="ti ti-calendar"></i> Periodo</button>
+      <button class="mbtn" onclick="ccpSospendi('${esc(r.compagnia)}','${esc(r.codice)}',${sospeso ? 'false' : 'true'})">
+        <i class="ti ti-${sospeso ? 'player-play' : 'player-pause'}"></i> ${sospeso ? 'Riattiva' : 'Sospendi'}</button>
+      <button class="mbtn" onclick="ccpTogli('${esc(r.compagnia)}','${esc(r.codice)}')"><i class="ti ti-unlink"></i> Togli</button>
+    </div>` : ''}
+  </div>`;
+}
+
+function ccpModifica(compagnia, codice) { CCP_MOD = compagnia + '|' + codice; ccpRender(); }
+function ccpAnnulla() { CCP_MOD = null; ccpRender(); }
+
 /* Scrive la decisione. Le evidenze si ripassano tutte: un `upsert` riscrive la
-   riga intera, e senza di loro il codice tornerebbe a essere una sigla. */
-async function ccpScrivi(compagnia, codice, valore) {
+   riga intera, e senza di loro il codice tornerebbe a essere una sigla.
+   `modifiche` è quello che si sta cambiando adesso, sopra la riga vecchia: il
+   motore ci legge periodo, sospensione e nota, e quello che non si passa resta
+   com'era. */
+async function ccpScrivi(compagnia, codice, valore, modifiche) {
   const k = compagnia + '|' + codice;
-  const vecchia = CCP_RIGHE.find(r => r.compagnia === compagnia && r.codice === codice) || {};
+  const vecchia = Object.assign({},
+    CCP_RIGHE.find(r => r.compagnia === compagnia && r.codice === codice) || {}, modifiche || {});
   const riga = Assegnazione.rigaDecisione(k, valore, vecchia, ME?.id || null);
   const { error } = await db.from('quote_codici_collaboratore')
     .upsert([riga], { onConflict: 'compagnia,codice' });
@@ -4900,13 +5214,63 @@ async function ccpAggiungi() {
   } catch (e) { alert('Non riesco ad abbinare: ' + (e.message || e)); }
 }
 
+/* Il periodo e la nota. Le date vuote NON diventano zero e non diventano oggi:
+   diventano `null`, che vuol dire «nessuno ha dichiarato un periodo» — e
+   l'abbinamento torna a valere sempre. Riempirle con una data di comodo
+   scriverebbe una decisione che nessuno ha preso (§8.1). */
+async function ccpSalvaPeriodo(compagnia, codice) {
+  const dal = document.getElementById('ccp-dal')?.value || null;
+  const al = document.getElementById('ccp-al')?.value || null;
+  const nota = (document.getElementById('ccp-nota')?.value || '').trim() || null;
+  if (dal && al && al < dal) {
+    alert('Il periodo finisce prima di cominciare: controlla le due date.');
+    return;
+  }
+  const r = CCP_RIGHE.find(x => x.compagnia === compagnia && x.codice === codice);
+  if (!r || !r.collaboratore_id) return;
+  /* Una correzione che non cambia niente non scrive niente: una storia piena
+     di modifiche che non hanno modificato nulla non serve più a distinguerle
+     (§16). */
+  if ((r.data_inizio || null) === dal && (r.data_fine || null) === al && (r.note || null) === nota) {
+    CCP_MOD = null; ccpRender(); return;
+  }
+  try {
+    await ccpScrivi(compagnia, codice, r.collaboratore_id, { data_inizio: dal, data_fine: al, note: nota });
+    logMovimento('Periodo del codice ' + compagnia + ' ' + codice, 'collaboratore',
+      (dal || al) ? ((dal ? 'dal ' + dal : '') + (al ? ' al ' + al : '')).trim() : 'nessun periodo', CCP_PERSONA);
+    CCP_MOD = null;
+    ccpRender();
+  } catch (e) { alert('Non riesco a salvare il periodo: ' + (e.message || e)); }
+}
+
+/* Sospendere NON è togliere, ed è il motivo per cui sono due bottoni:
+   sospeso vuol dire «non produce più, ma è stato suo» e la persona resta
+   scritta; tolto vuol dire «non è suo», e il codice torna fra quelli da
+   abbinare. In tutti e due i casi quello che è già assegnato resta dov'è: il
+   dato sta sulla rata e sulla polizza, non qui (§19). */
+async function ccpSospendi(compagnia, codice, sospendi) {
+  const r = CCP_RIGHE.find(x => x.compagnia === compagnia && x.codice === codice);
+  if (!r || !r.collaboratore_id) return;
+  const msg = sospendi
+    ? 'Sospendere il codice ' + codice + ' di ' + compagnia + '?\n\nDa questo momento le polizze e le rate nuove di quel codice NON si assegnano più a questa persona. Quelle già assegnate restano sue.\n\nResta abbinato a lei: per darlo a qualcun altro usa «Togli».'
+    : 'Riattivare il codice ' + codice + ' di ' + compagnia + '?\n\nTorna ad assegnare le polizze nuove a questa persona, nel periodo dichiarato.';
+  if (!confirm(msg)) return;
+  try {
+    await ccpScrivi(compagnia, codice, r.collaboratore_id, { attivo: !sospendi });
+    logMovimento((sospendi ? 'Codice compagnia sospeso · ' : 'Codice compagnia riattivato · ') + compagnia + ' ' + codice,
+      'collaboratore', codice, CCP_PERSONA);
+    ccpRender();
+  } catch (e) { alert('Non riesco a cambiare lo stato: ' + (e.message || e)); }
+}
+
 async function ccpTogli(compagnia, codice) {
-  if (!confirm('Togliere il codice ' + codice + ' di ' + compagnia + ' da questa persona?\n\nLe rate già assegnate NON tornano indietro: restano sue finché non le si cambia dai Titoli.')) return;
+  if (!confirm('Togliere il codice ' + codice + ' di ' + compagnia + ' da questa persona?\n\nIl codice torna fra quelli da abbinare, pulito: periodo e sospensione si azzerano, perché sono di questo abbinamento e non del codice. Nome, RUI, email e la nota restano, e servono a chi lo riabbinerà.\n\nLe rate già assegnate NON tornano indietro: restano sue finché non le si cambia dai Titoli.')) return;
   try {
     /* Si toglie la DECISIONE, non la riga: nome, email, RUI e codice produttore
        che il flusso aveva portato restano, e servono a chi dovrà riabbinarlo. */
     await ccpScrivi(compagnia, codice, '');
     logMovimento('Codice compagnia tolto · ' + compagnia + ' ' + codice, 'collaboratore', codice, CCP_PERSONA);
+    CCP_MOD = null;
     ccpRender();
   } catch (e) { alert('Non riesco a togliere l\'abbinamento: ' + (e.message || e)); }
 }
@@ -5548,6 +5912,33 @@ function pntApriMovimento(id) {
   if (id && typeof regInstalla === 'function') regInstalla('pnt-storia', 'movimento', id);
 }
 
+/* ══ UN SALVATAGGIO CHE NON SALVA NIENTE DEVE DIRLO (21/09/2026) ════════════
+   Segnalato da Francesco: «modifico un movimento di cassa e la modifica non
+   resta». Il codice era strutturalmente giusto — update, filtro sull'id,
+   errore controllato — e proprio per questo il guasto non si vedeva:
+
+   **PostgREST NON restituisce un errore quando un update tocca ZERO righe.**
+
+   Succede ogni volta che una politica di visibilita' filtra via la riga:
+   `error` e' null, la schermata non dice niente, l'oggetto in memoria viene
+   aggiornato lo stesso e la modifica sparisce alla prima rilettura vera. Per
+   chi lavora e' indistinguibile da un salvataggio che non ha funzionato — che
+   e' esattamente la frase che ha usato.
+
+   Da qui in avanti, dove si toccano dei soldi, si chiede al database di
+   RESTITUIRE le righe che ha cambiato e si guarda quante sono. Zero righe non
+   e' un successo silenzioso: e' un messaggio in faccia. */
+function pntTocca(esito, cosa) {
+  if (esito.error) throw esito.error;
+  const n = (esito.data || []).length;
+  if (!n) {
+    throw new Error('Il database non ha cambiato nessuna riga. ' + (cosa || '') +
+      ' Puo' + '\u2019' + ' essere che qualcun altro l' + '\u2019' + 'abbia gia' + '\u2019' +
+      ' modificata, o che il tuo profilo non abbia il permesso di scriverla: la modifica NON e' + '\u2019' + ' stata salvata.');
+  }
+  return n;
+}
+
 async function pntSalva(id) {
   const riga = {
     data: pntVal('pnt-m-data'),
@@ -5564,8 +5955,8 @@ async function pntSalva(id) {
   try {
     let movId = id;
     if (id) {
-      const { error } = await db.from('iam_movimenti').update(riga).eq('id', id);
-      if (error) throw error;
+      pntTocca(await db.from('iam_movimenti').update(riga).eq('id', id).select('id'),
+               'Il movimento non e\u2019 stato corretto.');
     } else {
       const { data, error } = await db.from('iam_movimenti').insert(riga).select('id').single();
       if (error) throw error;
@@ -5588,10 +5979,9 @@ async function pntAnnulla(id) {
   const perche = (pntVal('pnt-m-perche') || '').trim();
   if (!perche) { pntMsg(['Per annullare serve il motivo: fra sei mesi è l’unica cosa che spiega quel buco.']); return; }
   try {
-    const { error } = await db.from('iam_movimenti')
+    pntTocca(await db.from('iam_movimenti')
       .update({ annullato_il: new Date().toISOString(), annullato_da: ME?.id || null, annullato_perche: perche })
-      .eq('id', id);
-    if (error) throw error;
+      .eq('id', id).select('id'), 'Il movimento non e\u2019 stato annullato.');
     logMovimento('Movimento annullato', 'movimento', perche, id);
     pntChiudi();
     await pntCarica();
@@ -5601,9 +5991,9 @@ async function pntAnnulla(id) {
 async function pntRiapri(id) {
   if (!confirm('Riaprire questo movimento?\n\nTorna a contare nei saldi e nei riepiloghi.')) return;
   try {
-    const { error } = await db.from('iam_movimenti')
-      .update({ annullato_il: null, annullato_da: null, annullato_perche: null }).eq('id', id);
-    if (error) throw error;
+    pntTocca(await db.from('iam_movimenti')
+      .update({ annullato_il: null, annullato_da: null, annullato_perche: null }).eq('id', id).select('id'),
+      'Il movimento non e\u2019 stato riaperto.');
     logMovimento('Movimento riaperto', 'movimento', '', id);
     await pntCarica();
   } catch (e) { alert('Non riesco a riaprire: ' + (e.message || e)); }
@@ -6074,10 +6464,10 @@ async function pntSalvaQuadratura(contoId) {
   pntMsg(e);
   if (e.length) return;
   try {
-    const { error } = await db.from('iam_quadrature')
+    pntTocca(await db.from('iam_quadrature')
       .upsert({ conto_id: contoId, data, saldo_dichiarato: saldo, nota: pntVal('pnt-q-nota').trim() || null },
-              { onConflict: 'conto_id,data' });
-    if (error) throw error;
+              { onConflict: 'conto_id,data' }).select('conto_id'),
+      'Il saldo dichiarato non e\u2019 stato salvato.');
     logMovimento('Saldo dichiarato · ' + (pntConto(contoId)?.nome || ''), 'conto',
                  pntData(data) + ' · ' + Contabilita.euro(saldo), contoId);
     pntChiudi();
@@ -6750,15 +7140,14 @@ function prvGuasti(guasti) {
 
 function prvRender() {
   const puo = prvPuoScrivere();
-  ['prv-nuova-tariffa', 'prv-nuovo'].forEach(id => {
+  ['prv-nuovo'].forEach(id => {
     const b = document.getElementById(id); if (b) b.style.display = puo ? '' : 'none';
   });
   prvRenderSomma();
-  prvRenderCopertura(puo);
-  prvRenderTariffe(puo);
   prvRenderOverride(puo);
   prvRenderGruppi(puo);
   prvRiempiSimulatore();
+  gcRender();
 }
 
 function prvRenderSomma() {
@@ -6778,53 +7167,6 @@ function prvRenderSomma() {
     <div class="cnt-card"><div class="cnt-k">Accordi e gruppi</div>
       <div class="cnt-v">${Provvigioni.vigenti(PRV_OVERRIDE, prvOggi()).length} · ${Provvigioni.vigenti(PRV_GRUPPI, prvOggi()).length}</div>
       <div class="cnt-s">accordi per collaboratore · gruppi produttivi</div></div>`;
-}
-
-/* La lista di lavoro di chi configura: che cosa il portafoglio ha e la
-   configurazione non copre. In cima quelle che pesano di più. */
-function prvRenderCopertura(puo) {
-  const box = document.getElementById('prv-copertura');
-  if (!box || !window.Provvigioni) return;
-  const cop = Provvigioni.copertura(PRV_POLIZZE, PRV_TARIFFE, { catalogo: PRV_CATALOGO, data: prvOggi() });
-  const scoperte = cop.filter(c => !c.coperta);
-  if (!scoperte.length) { box.innerHTML = ''; return; }
-  box.innerHTML = `<div class="cnt-avv">
-    <b>Queste compagnie e rami sono in portafoglio e non hanno una tariffa.</b>
-    Finché manca, su quelle polizze la provvigione si calcola solo dove la compagnia la dichiara, e la quota del collaboratore non si calcola affatto.
-    </div>` + scoperte.map(c => `
-    <div class="cnt-r" ${puo ? `onclick="prvApriTariffa(null,{compagnia:'${esc(c.compagnia)}',ramo:'${esc(c.ramo)}'})" style="cursor:pointer"` : ''}>
-      <div><div class="cnt-nome">${esc(c.compagnia)} · ${esc(c.ramo_l)}</div>
-        <div class="cnt-sotto">${c.polizze} polizz${c.polizze === 1 ? 'a' : 'e'}${c.prodotti.length ? ' · ' + c.prodotti.slice(0, 3).map(esc).join(', ') : ''}</div></div>
-      <div class="cnt-saldo" style="font-size:12px;color:#f59e0b">senza tariffa</div>
-    </div>`).join('');
-}
-
-function prvRenderTariffe(puo) {
-  const box = document.getElementById('prv-tariffe');
-  if (!box || !window.Provvigioni) return;
-  const righe = PRV_STORICO ? PRV_TARIFFE : Provvigioni.vigenti(PRV_TARIFFE, prvOggi());
-  const testa = `<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px">
-      <b style="font-size:13px">Tariffe${PRV_STORICO ? ' · con lo storico' : ' in vigore'}</b>
-      <button class="d-btn" type="button" style="padding:4px 10px;font-size:12px" onclick="PRV_STORICO=!PRV_STORICO;prvRender()">
-        ${PRV_STORICO ? 'Nascondi lo storico' : 'Mostra lo storico'}</button></div>`;
-  if (!righe.length) {
-    box.innerHTML = testa + `<div class="cl-sub" style="padding:14px 0">Nessuna tariffa. ${puo ? 'Comincia dalle compagnie che hai in portafoglio: le trovi elencate qui sopra.' : 'Le scrive un amministratore.'}</div>`;
-    return;
-  }
-  box.innerHTML = testa + righe.map(t => {
-    const chiusa = !!t.al;
-    const ramo = Provvigioni.etichettaRamo(t.ramo);
-    return `<div class="cnt-r ${chiusa ? 'cnt-spento' : ''}" ${puo && !chiusa ? `onclick="prvApriTariffa('${esc(t.id)}')" style="cursor:pointer"` : ''}>
-      <div>
-        <div class="cnt-nome">${esc(t.compagnia)} · ${esc(ramo)}
-          ${t.prodotto ? `<span class="cnt-tag">${esc(t.prodotto)}</span>` : ''}
-          ${chiusa ? '<span class="cnt-tag">chiusa</span>' : ''}</div>
-        <div class="cnt-sotto">dal ${esc(t.dal)}${t.al ? ' al ' + esc(t.al) : ''}${t.note ? ' · ' + esc(t.note) : ''}</div>
-      </div>
-      <div class="cnt-saldo">${Provvigioni.perc(t.aliquota_agenzia)}
-        <div class="cnt-sotto" style="font-weight:400">al collaboratore ${Provvigioni.perc(t.retrocessione_default)}</div></div>
-    </div>`;
-  }).join('');
 }
 
 function prvRenderOverride(puo) {
@@ -6924,6 +7266,7 @@ function prvApri(html) {
   if (!prvPuoScrivere()) return;
   const ov = document.getElementById('prv-ov'), box = document.getElementById('prv-box');
   if (!ov || !box) return;
+  gcSulBody(ov);
   box.innerHTML = html;
   ov.style.display = 'flex';
 }
@@ -7285,6 +7628,7 @@ async function catCarica(forza) {
 }
 
 function catGuasti(guasti) {
+  gcGuasti(guasti);
   const box = document.getElementById('cat-guasti');
   if (!box) return;
   if (!guasti || !guasti.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
@@ -7302,6 +7646,7 @@ function catRender() {
   catRenderVerifica(puo);
   catRenderLibreria(puo);
   catTab(CAT_VISTA);
+  gcRender();
 }
 
 /* ── Le tessere di riepilogo ───────────────────────────────────────────── */
@@ -7362,11 +7707,6 @@ function catRenderCatalogo(puo) {
   if (!box) return;
   const c = catCompagnia(CAT_APERTA);
   if (!c) { CAT_APERTA = null; catRender(); return; }
-  const suoi = CAT_PRODOTTI.filter(p => p.compagnia_id === c.id)
-    .sort((a, b) => (a.ramo + a.nome).toLowerCase() < (b.ramo + b.nome).toLowerCase() ? -1 : 1);
-  const oggi = new Date().toISOString().slice(0, 10);
-  const M = catM();
-
   let h = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">' +
     '<button class="d-btn" type="button" onclick="catIndietro()"><i class="ti ti-arrow-left"></i> Tutte le compagnie</button>' +
     '<div style="font-size:17px;font-weight:800">' + esc(c.nome) + '</div>' +
@@ -7376,6 +7716,19 @@ function catRenderCatalogo(puo) {
       '<button class="d-btn primario" type="button" onclick="catApriProdotto(null)"><i class="ti ti-plus"></i> Nuovo prodotto</button></div>' : '') +
     '</div>';
 
+  h += catRigheProdotti(c, puo);
+  box.innerHTML = h;
+}
+
+/* Le righe dei prodotti di UNA compagnia. Una funzione sola perché le
+   disegnano due schermate (Catalogo e la scheda in Gestione compagnie): due
+   copie dello stesso elenco divergono al primo ritocco. */
+function catRigheProdotti(c, puo) {
+  const suoi = CAT_PRODOTTI.filter(p => p.compagnia_id === c.id)
+    .sort((a, b) => (a.ramo + a.nome).toLowerCase() < (b.ramo + b.nome).toLowerCase() ? -1 : 1);
+  const oggi = new Date().toISOString().slice(0, 10);
+  const M = catM();
+  let h = '';
   if (!suoi.length) {
     h += '<div class="cl-sub">Questa compagnia non ha ancora prodotti in catalogo. ' +
       'Si aggiungono dalla libreria standard — e si personalizza il nome, che è quello con cui la compagnia li chiama.</div>';
@@ -7411,7 +7764,7 @@ function catRenderCatalogo(puo) {
     h += '<div class="cl-sub" style="margin-top:10px">Un prodotto non si elimina: si disattiva. ' +
       'Esce dalle tendine e resta sulle polizze che ci sono sotto, che sono storia.</div>';
   }
-  box.innerHTML = h;
+  return h;
 }
 
 function catData(d) {
@@ -7495,6 +7848,7 @@ function catRenderLibreria(puo) {
 function catApri(html) {
   const ov = document.getElementById('cat-ov'), box = document.getElementById('cat-box');
   if (!ov || !box) return;
+  gcSulBody(ov);
   box.innerHTML = html;
   ov.style.display = 'flex';
 }
@@ -7518,12 +7872,12 @@ function catOpzRami(sel) {
 /* L'anagrafica della compagnia: nome, alias, attiva. Gli alias non sono un
    vezzo — sulle polizze è scritto «HDI Assicurazioni» e nel catalogo «HDI»,
    e senza l'alias quel portafoglio non ritrova la sua compagnia (§11). */
-function catApriAnagrafica(id) {
+function catApriAnagrafica(id, nomePre) {
   const c = id ? catCompagnia(id) : null;
   catApri('<div style="padding:18px">' +
     '<div style="font-size:16px;font-weight:800;margin-bottom:12px">' + (c ? 'Compagnia' : 'Nuova compagnia') + '</div>' +
     '<div id="cat-msg"></div>' +
-    '<label class="cl-sub">Nome</label><input id="cat-c-nome" class="d-inp" value="' + esc(c ? c.nome : '') + '">' +
+    '<label class="cl-sub">Nome</label><input id="cat-c-nome" class="d-inp" value="' + esc(c ? c.nome : (nomePre || '')) + '">' +
     '<label class="cl-sub" style="display:block;margin-top:10px">Altri nomi con cui compare (uno per riga)</label>' +
     '<textarea id="cat-c-alias" class="d-inp" rows="3">' + esc(((c && c.alias) || []).join('\n')) + '</textarea>' +
     '<div class="cl-sub" style="margin-top:4px">Sulle polizze è scritto «HDI Assicurazioni», nel catalogo «HDI»: senza questi nomi quelle polizze non ritrovano la loro compagnia.</div>' +
@@ -7548,17 +7902,32 @@ async function catSalvaCompagnia(id) {
   const alias = (document.getElementById('cat-c-alias')?.value || '')
     .split('\n').map(s => s.trim()).filter(Boolean);
   const attiva = !!document.getElementById('cat-c-attiva')?.checked;
+  /* RINOMINARE NON DEVE STACCARE NIENTE. Sulle polizze resta scritto il nome
+     vecchio, e tariffe e accordi sono intestati a quel nome: il vecchio nome
+     diventa un alias (così il portafoglio ritrova la compagnia) e tariffe e
+     accordi passano al nome nuovo. È un cambio di etichetta, non di aliquota:
+     lo storico dice gli stessi numeri di prima. */
+  const prima = id ? catCompagnia(id) : null;
+  const rinomina = prima && prima.nome && prima.nome !== nome;
+  if (rinomina && !alias.some(a => a.toLowerCase() === prima.nome.toLowerCase())) alias.push(prima.nome);
   try {
     if (id) {
       const r = await db.from('quote_compagnie').update({ nome, alias, attiva }).eq('id', id);
       if (r.error) throw r.error;
-      logMovimento('modifica', 'compagnia', nome, id);
+      if (rinomina) {
+        for (const t of ['iam_provvigioni_tariffa', 'iam_provvigioni_collaboratore']) {
+          const u = await db.from(t).update({ compagnia: nome }).eq('compagnia', prima.nome);
+          if (u.error) throw new Error('La compagnia è rinominata, ma le provvigioni restano sul nome vecchio (' + (u.error.message || u.error) + '). Riprova il salvataggio.');
+        }
+      }
+      logMovimento('modifica', 'compagnia', rinomina ? prima.nome + ' → ' + nome : nome, id);
     } else {
       const r = await db.from('quote_compagnie').insert({ nome, alias, attiva }).select('id').single();
       if (r.error) throw r.error;
       logMovimento('creazione', 'compagnia', nome, r.data?.id);
     }
     catChiudi(); catCarica(true);
+    if (rinomina) prvCarica();
   } catch (e) { catMsg([e.message || String(e)]); }
 }
 
@@ -7895,6 +8264,183 @@ async function catScriviPiano() {
     }
     catChiudi(); catCarica(true);
   } catch (e) { catMsg([e.message || String(e)]); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GESTIONE COMPAGNIE — la porta unica (21/09/2026)
+
+   Richiesta: «non deve riportare Nuova tariffa, ma darmi la possibilità di
+   inserire una nuova compagnia; da lì inserisco prodotti, provvigioni ecc.;
+   le compagnie esistenti devono essere modificabili».
+
+   Qui NON c'è una regola nuova: l'anagrafica, i prodotti e le tariffe restano
+   quelli del Catalogo (cat*) e delle Provvigioni (prv*), con le loro
+   finestre, i loro controlli e la loro storicizzazione. Questo blocco li mette
+   in fila sotto la compagnia — due copie delle stesse regole sarebbero due
+   modi di sbagliare la stessa provvigione (§18).
+   ═══════════════════════════════════════════════════════════════════════════ */
+var GC_APERTA = null;   // id (quote_compagnie) della compagnia aperta
+
+function gcPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
+
+/* Le finestre di tariffe e catalogo sono nate dentro i LORO pannelli. Un
+   pannello spento è display:none, e con lui tutto quello che contiene — anche
+   una finestra position:fixed: il «Nuova tariffa» di questa schermata apriva
+   una finestra che nessuno poteva vedere. Sul body si vedono da ovunque. */
+function gcSulBody(el) {
+  if (el && el.parentElement !== document.body) document.body.appendChild(el);
+}
+
+async function gcCarica(forza) {
+  if (!db) return;
+  if (forza && !GC_APERTA) {
+    const l = document.getElementById('gc-lista');
+    if (l) l.innerHTML = '<div class="cl-sub">Carico le compagnie…</div>';
+  }
+  /* Due letture che stanno in piedi da sole: ognuna disegna quando arriva, e
+     se una cade l'altra si vede lo stesso (§35). */
+  await Promise.all([prvCarica(), catCarica()]);
+  gcRender();
+}
+
+function gcGuasti(guasti) {
+  const box = document.getElementById('gc-guasti');
+  if (!box) return;
+  if (!guasti || !guasti.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  box.innerHTML = '<div class="cnt-err"><b>Non ho potuto leggere ' + guasti.length +
+    (guasti.length === 1 ? ' parte' : ' parti') + ' dell’anagrafica.</b> Non vuol dire che non ci sia niente.<br>' +
+    guasti.map(g => '<small>· ' + esc(g.nome) + ' — ' + esc(g.motivo) + '</small>').join('<br>') + '</div>';
+}
+
+/* Una compagnia dell'anagrafica si riconosce dal nome O da un alias: sulle
+   tariffe è scritto «HDI», sulle polizze «HDI Assicurazioni». */
+function gcDiQuesta(c, nome) {
+  if (!c || !window.Provvigioni) return false;
+  const k = Provvigioni.chiave(nome);
+  if (!k) return false;
+  return Provvigioni.chiave(c.nome) === k || (c.alias || []).some(a => Provvigioni.chiave(a) === k);
+}
+function gcCopertura() {
+  if (!window.Provvigioni) return [];
+  return Provvigioni.copertura(PRV_POLIZZE, PRV_TARIFFE, { catalogo: CAT_COMPAGNIE, data: prvOggi() });
+}
+
+function gcNuova() { if (gcPuoScrivere()) catApriAnagrafica(null); }
+function gcApri(id) { GC_APERTA = id; CAT_APERTA = id; gcRender(); document.getElementById('panel-compagnie')?.scrollTo?.(0, 0); }
+function gcIndietro() { GC_APERTA = null; CAT_APERTA = null; gcRender(); }
+
+function gcRender() {
+  const box = document.getElementById('gc-lista');
+  if (!box) return;
+  const puo = gcPuoScrivere();
+  const b = document.getElementById('gc-nuova');
+  if (b) b.style.display = puo && !GC_APERTA ? '' : 'none';
+  const somma = document.getElementById('prv-somma');
+  if (somma) somma.style.display = GC_APERTA ? 'none' : '';
+  if (GC_APERTA && catCompagnia(GC_APERTA)) { box.innerHTML = gcScheda(catCompagnia(GC_APERTA), puo); return; }
+  GC_APERTA = null;
+  box.innerHTML = gcElenco(puo);
+}
+
+/* ── L'elenco: ogni compagnia con quello che ha e quello che le manca ───── */
+function gcElenco(puo) {
+  const oggi = prvOggi();
+  const vig = window.Provvigioni ? Provvigioni.vigenti(PRV_TARIFFE, oggi) : [];
+  const cop = gcCopertura();
+  let h = '';
+  if (!CAT_COMPAGNIE.length) {
+    h += '<div class="cl-sub" style="padding:14px 0">Nessuna compagnia in anagrafica. ' +
+      (puo ? 'Comincia da «Nuova compagnia», in alto a destra.' : 'Le inserisce un amministratore.') + '</div>';
+  }
+  h += CAT_COMPAGNIE.map(c => {
+    const prod = CAT_PRODOTTI.filter(p => p.compagnia_id === c.id && p.attivo !== false).length;
+    const tar = vig.filter(t => gcDiQuesta(c, t.compagnia)).length;
+    const buchi = cop.filter(x => !x.coperta && gcDiQuesta(c, x.compagnia));
+    const polB = buchi.reduce((s, x) => s + x.polizze, 0);
+    return '<div class="cnt-r' + (c.attiva === false ? ' cnt-spento' : '') + '" style="cursor:pointer" onclick="gcApri(\'' + c.id + '\')">' +
+      '<div style="min-width:0"><div class="cnt-nome">' + esc(c.nome) +
+        (c.attiva === false ? ' <span class="cnt-tag">spenta</span>' : '') +
+        (polB ? ' <span class="cnt-tag transito">' + polB + (polB === 1 ? ' polizza' : ' polizze') + ' senza provvigione</span>' : '') + '</div>' +
+      '<div class="cnt-sotto">' + prod + (prod === 1 ? ' prodotto' : ' prodotti') + ' · ' +
+        tar + (tar === 1 ? ' provvigione in vigore' : ' provvigioni in vigore') +
+        ((c.alias || []).length ? ' · anche: ' + c.alias.map(esc).join(', ') : '') + '</div></div>' +
+      '<div class="cnt-saldo" style="font-size:12px;font-weight:600">' +
+      (puo ? '<button class="d-btn" type="button" onclick="event.stopPropagation();catApriAnagrafica(\'' + c.id + '\')"><i class="ti ti-pencil"></i> Modifica</button> ' : '') +
+      '<i class="ti ti-chevron-right"></i></div></div>';
+  }).join('');
+
+  /* Quello che il portafoglio conosce e l'anagrafica no: senza la compagnia
+     in anagrafica non c'è dove attaccare prodotti e provvigioni. */
+  const fuori = {};
+  cop.forEach(x => {
+    if (CAT_COMPAGNIE.some(c => gcDiQuesta(c, x.compagnia))) return;
+    fuori[x.compagnia] = (fuori[x.compagnia] || 0) + x.polizze;
+  });
+  const nomi = Object.keys(fuori).sort((a, b) => fuori[b] - fuori[a]);
+  if (nomi.length) {
+    h += '<div class="cnt-avv" style="margin-top:16px"><b>In portafoglio, ma non in anagrafica.</b> ' +
+      'Queste compagnie compaiono sulle polizze e non hanno una scheda: aggiungila, oppure scrivi questo nome fra gli «altri nomi» della compagnia giusta.</div>' +
+      nomi.map(n => '<div class="cnt-r"><div style="min-width:0"><div class="cnt-nome">' + esc(n) + '</div>' +
+        '<div class="cnt-sotto">' + fuori[n] + (fuori[n] === 1 ? ' polizza' : ' polizze') + '</div></div>' +
+        (puo ? '<div class="cnt-saldo"><button class="d-btn" type="button" onclick="catApriAnagrafica(null,' + esc(JSON.stringify(n)) + ')"><i class="ti ti-plus"></i> Aggiungi</button></div>' : '') +
+        '</div>').join('');
+  }
+  return h;
+}
+
+/* ── La scheda di UNA compagnia: dati, prodotti, provvigioni ──────────── */
+function gcScheda(c, puo) {
+  const oggi = prvOggi();
+  const tutte = PRV_TARIFFE.filter(t => gcDiQuesta(c, t.compagnia));
+  const righe = PRV_STORICO ? tutte : (window.Provvigioni ? Provvigioni.vigenti(tutte, oggi) : tutte);
+  const buchi = gcCopertura().filter(x => !x.coperta && gcDiQuesta(c, x.compagnia));
+  const titolo = (t, bottoni) => '<div style="display:flex;align-items:center;gap:8px;margin:20px 0 8px;flex-wrap:wrap">' +
+    '<b style="font-size:15px">' + t + '</b>' + (bottoni ? '<div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">' + bottoni + '</div>' : '') + '</div>';
+
+  let h = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+    '<button class="d-btn" type="button" onclick="gcIndietro()"><i class="ti ti-arrow-left"></i> Tutte le compagnie</button>' +
+    '<div style="font-size:18px;font-weight:800">' + esc(c.nome) + '</div>' +
+    (c.attiva === false ? '<span class="cnt-tag">spenta</span>' : '') +
+    (puo ? '<button class="d-btn" type="button" style="margin-left:auto" onclick="catApriAnagrafica(\'' + c.id + '\')"><i class="ti ti-pencil"></i> Modifica dati</button>' : '') +
+    '</div>' +
+    '<div class="cl-sub" style="margin-top:4px">' + ((c.alias || []).length ? 'Compare anche come: ' + c.alias.map(esc).join(', ') : 'Nessun altro nome registrato') + '</div>';
+
+  /* Prodotti: le stesse righe e gli stessi bottoni del Catalogo. */
+  h += titolo('Prodotti', puo
+    ? '<button class="d-btn" type="button" onclick="catApriLibreriaScelta()"><i class="ti ti-library-plus"></i> Dalla libreria</button>' +
+      '<button class="d-btn primario" type="button" onclick="catApriProdotto(null)"><i class="ti ti-plus"></i> Nuovo prodotto</button>'
+    : '');
+  h += catRigheProdotti(c, puo);
+
+  /* Provvigioni: l'accordo con la compagnia, ramo per ramo. */
+  h += titolo('Provvigioni', (tutte.length !== righe.length || PRV_STORICO
+      ? '<button class="d-btn" type="button" onclick="PRV_STORICO=!PRV_STORICO;gcRender()">' + (PRV_STORICO ? 'Nascondi lo storico' : 'Mostra lo storico') + '</button>' : '') +
+    (puo ? '<button class="d-btn primario" type="button" onclick="prvApriTariffa(null,{compagnia:' + esc(JSON.stringify(c.nome)) + '})"><i class="ti ti-plus"></i> Nuova provvigione</button>' : ''));
+  if (buchi.length) {
+    h += '<div class="cnt-avv">In portafoglio ci sono rami senza provvigione: finché manca, la quota del collaboratore non si calcola. ' +
+      (puo ? 'Tocca una riga per impostarla.' : '') + '</div>' +
+      buchi.map(x => '<div class="cnt-r"' + (puo ? ' style="cursor:pointer" onclick="prvApriTariffa(null,{compagnia:' + esc(JSON.stringify(c.nome)) + ',ramo:' + esc(JSON.stringify(x.ramo)) + '})"' : '') + '>' +
+        '<div><div class="cnt-nome">' + esc(x.ramo_l) + '</div><div class="cnt-sotto">' + x.polizze + (x.polizze === 1 ? ' polizza' : ' polizze') +
+        (x.prodotti.length ? ' · ' + x.prodotti.slice(0, 3).map(esc).join(', ') : '') + '</div></div>' +
+        '<div class="cnt-saldo" style="font-size:12px;color:#f59e0b">senza provvigione</div></div>').join('');
+  }
+  if (!righe.length) {
+    h += '<div class="cl-sub" style="padding:10px 0">Nessuna provvigione ' + (PRV_STORICO ? '' : 'in vigore ') + 'per questa compagnia.</div>';
+  } else {
+    h += righe.map(t => {
+      const chiusa = !!t.al;
+      return '<div class="cnt-r' + (chiusa ? ' cnt-spento' : '') + '"' + (puo && !chiusa ? ' style="cursor:pointer" onclick="prvApriTariffa(\'' + esc(t.id) + '\')"' : '') + '>' +
+        '<div><div class="cnt-nome">' + esc(Provvigioni.etichettaRamo(t.ramo)) +
+          (t.prodotto ? ' <span class="cnt-tag">' + esc(t.prodotto) + '</span>' : '') +
+          (chiusa ? ' <span class="cnt-tag">chiusa</span>' : '') + '</div>' +
+        '<div class="cnt-sotto">dal ' + esc(catData(t.dal)) + (t.al ? ' al ' + esc(catData(t.al)) : '') + (t.note ? ' · ' + esc(t.note) : '') + '</div></div>' +
+        '<div class="cnt-saldo">' + Provvigioni.perc(t.aliquota_agenzia) +
+        '<div class="cnt-sotto" style="font-weight:400">al collaboratore ' + Provvigioni.perc(t.retrocessione_default) + '</div></div></div>';
+    }).join('');
+    h += '<div class="cl-sub" style="margin-top:8px">Cambiare una percentuale vale da oggi: la riga di adesso si chiude e ne nasce una nuova, e quello già calcolato non cambia.</div>';
+  }
+  return h;
 }
 
 function showReset() {
@@ -8328,7 +8874,7 @@ async function loadLastSession() {
     // Blocco B: il lavoro del giorno si calcola all'avvio, qualunque scheda
     // venga ripristinata: così il numero è già pronto quando si apre la
     // scrivania, e non si vede mai la fascia "sto calcolando".
-    caricaDaFareOggi(); caricaKpiScrivania();
+    caricaDaFareOggi(); caricaKpiScrivania(); volCarica();
     // Vai a dashboard solo al primo login fresco, non su ogni ricarica pagina
     ripristinaScheda();
     setTimeout(() => buildStorico(), 500);
@@ -8732,11 +9278,12 @@ function goTab(t) {
   if (t === 'performance') { mostraResiduiKPI(); selPerfTab(PERF_CUR || 'gare'); loadREFromDB(); }
   if (t === 'azienda')     { loadAzienda(); }
   if (t === 'conti')       { cntTab(CNT_VISTA); cntCarica(true); }
-  if (t === 'compagnie')   { prvCarica(true); }
+  if (t === 'compagnie')   { gcCarica(true); }
   if (t === 'provvigioni') { prvTab(PRV_VISTA); prvCarica(true); }
   if (t === 'catalogo')    { catTab(CAT_VISTA); catCarica(true); }
   if (t === 'decisioni')   { decCarica(true); }
-  if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); caricaKpiScrivania(); }   // Blocco B
+  if (t === 'produzione')  { prdCarica(true); }
+  if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); caricaKpiScrivania(); volCarica(); }   // Blocco B
   if (t === 'agenti')    { loadAgentiAI(); }
   if (t === 'quoto') {
     // Splash screen fullscreen prima del redirect
@@ -9435,6 +9982,414 @@ async function caricaKpiScrivania(forza) {
   box.innerHTML = pezzi.join('');
 }
 
+/* ══ VOLUMI DI PORTAFOGLIO E PRODUZIONE (21/09/2026) ═════════════════════════
+
+   Le REGOLE stanno nel motore `/nuovo-preventivo/tariffe/motore/produzione.js`
+   (dodici prove in Node, tre controprove), che è lo stesso file che caricherà
+   il preventivatore: due copie della stessa somma sarebbero due produzioni
+   della stessa agenzia. Qui si legge, si filtra e si disegna.
+
+   LE SOMME LE FA IL DATABASE. `iam_produzione_confronto` restituisce
+   ventiquattro righe già aggregate e `iam_produzione_mensile` qualche
+   centinaio: nel browser non scende una polizza alla volta. Tutte e due sono
+   SECURITY INVOKER — non sono una scorciatoia intorno alle politiche, e chi
+   non può leggere una polizza non la vede nemmeno sommata.
+
+   Le variabili di stato sono `var` e non `let`: con `let` la variabile del
+   blocco e `window.PRD_RIGHE` sono due cose diverse, e una prova che inietta
+   dei dati finti scriverebbe in una mentre il codice legge l'altra, restando
+   verde senza aver misurato niente (§17, §32). */
+var VOL_ULTIMO = 0;
+/* Il confronto che il grafico sta disegnando, e il mese che qualcuno ha
+   toccato (null = nessuno). `var` e non `let`: con `let` la variabile del
+   blocco e `window.VOL_DATI` sono due cose diverse, e una prova che inietta
+   un confronto finto scriverebbe in una mentre il codice legge l'altra,
+   restando verde senza aver misurato niente (§17, §32). */
+var VOL_DATI = null;
+var VOL_MESE = null;
+var PRD_RIGHE  = null;   /* null = mai letto o lettura fallita; [] = niente */
+var PRD_PERSONE = [];
+var PRD_ULTIMO = 0;
+var PRD_ERRORE = '';
+
+function prdEuro(n) {
+  return (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+function prdNum(n) { return (Number(n) || 0).toLocaleString('it-IT'); }
+
+function volDelta(v) {
+  const cl = v.verso === 'su' ? 'vol-su' : v.verso === 'giu' ? 'vol-giu' : 'vol-pari';
+  return '<span class="vol-delta ' + cl + '">' + esc(v.testo) + '</span>';
+}
+
+/* Gli importi dell'asse, corti: «95k» invece di «94.781,13 €». L'asse serve a
+   dare la misura, non il numero — il numero esatto si legge toccando un mese. */
+function volK(n) {
+  n = Math.round(Number(n) || 0);
+  if (n >= 1000000) return Math.round(n / 100000) / 10 + 'M';
+  if (n >= 1000)    return Math.round(n / 1000) + 'k';
+  return String(n);
+}
+
+/* IL DETTAGLIO DI UN MESE, e i TRE ZERI che non sono lo stesso zero.
+
+   Il tooltip nativo (`title`) funziona col mouse e NON esiste sul telefono,
+   dove IAM si guarda meta' delle volte: il valore esatto di un mese deve
+   essere raggiungibile con un dito. Si tocca la colonna e il numero compare
+   qui sotto, in parole.
+
+   E qui si tengono separati i tre zeri (`produzione.test.mjs`):
+     · il mese NON ANCORA ARRIVATO non ha un importo, ha una frase;
+     · il mese con delle polizze e nessun premio noto dice che il premio non
+       si sa, perche' zero sarebbe una bugia sul denaro (§8.1);
+     · il mese in cui non e' successo niente dice zero, ed e' vero. */
+function volDettaglio(c, i) {
+  if (i == null || !c.mesi[i]) {
+    return '<div class="vol-dett vol-invito">Tocca un mese del grafico per leggere i numeri esatti.</div>';
+  }
+  const m = c.mesi[i];
+  const quante = (d) => prdNum(d.polizze) + (d.polizze === 1 ? ' polizza' : ' polizze');
+  const riga = (anno, d, fuori) => {
+    if (fuori) return '<span class="vol-dr"><b>' + anno + '</b>: non è ancora arrivato.</span>';
+    if (!d.polizze) return '<span class="vol-dr"><b>' + anno + '</b>: nessuna polizza.</span>';
+    const senza = d.senza_premio
+      ? ' · <b>' + prdNum(d.senza_premio) + '</b> senza premio noto, fuori dall’importo'
+      : '';
+    /* Tutte le polizze del mese senza premio: l'importo non e' zero, e' non
+       noto. Scrivere «0,00 €» qui sarebbe il numero credibile e falso. */
+    const imp = (d.polizze && d.senza_premio === d.polizze)
+      ? 'premio non noto' : prdEuro(d.premio);
+    return '<span class="vol-dr"><b>' + anno + '</b>: ' + imp + ' · ' + quante(d) + senza + '</span>';
+  };
+  const conf = (!m.fuori_confronto && m.precedente.premio > 0)
+    ? ' ' + volDelta(Produzione.variazione(m.precedente.premio, m.corrente.premio))
+    : '';
+  return '<div class="vol-dett">'
+    + '<span class="vol-dm">' + esc(m.nome) + '</span>' + conf
+    + (m.parziale ? ' <span class="vol-pol">— contato fino a oggi in tutti e due gli anni</span>' : '')
+    + riga(c.anno, m.corrente, m.fuori_confronto)
+    + riga(c.anno_prec, m.precedente, false)
+    + (m.fuori_confronto ? '<span class="vol-dr vol-pol">Quel mese dell’anno scorso resta fuori dal confronto e dai totali.</span>' : '')
+    + '</div>';
+}
+
+function volHTML(c) {
+  if (!c) return '<div class="vol-ko">Non si è potuto leggere la produzione. Non vuol dire che non ce ne sia: vuol dire che la lettura non è riuscita.</div>';
+  if (c.vuoto) return '<div class="prd-vuoto">Non c’è ancora produzione da confrontare. Le polizze entrano in portafoglio con l’importazione del flusso della compagnia o scrivendone una a mano.</div>';
+
+  const t = c.totali, max = c.massimo || 1;
+  const W = 720, H = 260, BASE = 254, ALTO = 246;
+  const x = (i) => Math.round(((i + 0.5) / 12) * W * 10) / 10;
+  /* UNO ZERO DISEGNA ZERO. La prima stesura aveva un minimo del 2%: un mese a
+     zero e un mese da 300 euro finivano alla stessa altezza, e a occhio erano
+     lo stesso fatto. Sono due fatti diversi (§8.1). */
+  const y = (v) => Math.round((BASE - (Math.max(0, Number(v) || 0) / max) * ALTO) * 10) / 10;
+
+  /* L'ULTIMO MESE ARRIVATO quest'anno. Oltre, la serie dell'anno in corso si
+     FERMA: non scende a zero. Ottobre 2026 non è un mese andato male, è un
+     mese che non c'è ancora — e una linea che precipita accanto alla barra
+     alta di ottobre 2025 si legge come un crollo verticale. */
+  let ultimo = 11;
+  for (let k = 0; k < 12; k++) { if (c.mesi[k].fuori_confronto) { ultimo = k - 1; break; } }
+
+  const linea = (p) => p.map((q, k) => (k ? 'L' : 'M') + q[0] + ',' + q[1]).join(' ');
+  const area = (p) => !p.length ? '' : 'M' + p[0][0] + ',' + BASE
+    + p.map(q => ' L' + q[0] + ',' + q[1]).join('')
+    + ' L' + p[p.length - 1][0] + ',' + BASE + ' Z';
+
+  const prec = c.mesi.map((m, i) => [x(i), y(m.precedente.premio)]);
+  const dentro = prec.slice(0, ultimo + 1);
+  /* Parte dal punto di taglio, così il tratteggio si attacca alla linea piena
+     invece di cominciare staccato. */
+  const fuoriP = ultimo >= 0 ? prec.slice(ultimo) : prec;
+  const ora = c.mesi.slice(0, ultimo + 1).map((m, i) => [x(i), y(m.corrente.premio)]);
+
+  const banda = (VOL_MESE != null && c.mesi[VOL_MESE])
+    ? '<rect class="vol-banda" x="' + Math.round((VOL_MESE / 12) * W) + '" y="0" width="'
+      + Math.round(W / 12) + '" height="' + H + '"/>' : '';
+
+  const svg = '<svg class="vol-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true" focusable="false">'
+    + banda
+    + '<path class="vol-a-prec" d="' + area(dentro) + '"/>'
+    + '<path class="vol-a-ora" d="' + area(ora) + '"/>'
+    + (fuoriP.length > 1 ? '<path class="vol-l-fuori" d="' + linea(fuoriP) + '" vector-effect="non-scaling-stroke"/>' : '')
+    + '<path class="vol-l-prec" d="' + linea(dentro) + '" vector-effect="non-scaling-stroke"/>'
+    + '<path class="vol-l-ora" d="' + linea(ora) + '" vector-effect="non-scaling-stroke"/>'
+    + '</svg>';
+
+  const griglia = '<div class="vol-griglia">'
+    + [max, max / 2, 0].map(v => '<div class="vol-g"><span class="vol-gv">' + volK(v) + '</span></div>').join('')
+    + '</div>';
+
+  /* Le zone da toccare stanno SOPRA il disegno, una per mese, e sono dei
+     bottoni veri: si arrivano anche col tasto di tabulazione. */
+  const tocchi = '<div class="vol-tocchi">' + c.mesi.map((m, i) =>
+    '<button type="button" class="vol-tocco" onclick="volMese(' + i + ')" aria-label="'
+    + esc(m.nome) + '"></button>').join('') + '</div>';
+
+  const etichette = c.mesi.map((m, i) => '<div class="vol-m'
+    + (m.parziale ? ' vol-parz' : '') + (m.fuori_confronto ? ' vol-nonarr' : '')
+    + (VOL_MESE === i ? ' vol-msel' : '') + '">' + esc(m.breve) + '</div>').join('');
+
+  return ''
+    /* IL RIEPILOGO È UNA RIGA, NON TRE RIQUADRI. Tre riquadri di numeri in
+       cima a una scheda che si chiama «grafico» sono tre indicatori, e il
+       grafico diventa la decorazione sotto. */
+    + '<div class="vol-sintesi">'
+    +   '<span class="vol-k">' + c.anno + ' a oggi</span>'
+    +   '<span class="vol-big">' + prdEuro(t.corrente.premio) + '</span>'
+    +   '<span class="vol-pol">' + prdNum(t.corrente.polizze) + ' polizze</span>'
+    +   volDelta(c.variazione_premio)
+    +   '<span class="vol-vs">contro <b>' + prdEuro(t.precedente.premio) + '</b> e '
+    +     prdNum(t.precedente.polizze) + ' polizze del ' + c.anno_prec + ', stesso periodo</span>'
+    + '</div>'
+    + '<div class="vol-graf">' + griglia + svg + tocchi + '</div>'
+    + '<div class="vol-mesi">' + etichette + '</div>'
+    + volDettaglio(c, VOL_MESE)
+    + '<div class="vol-legenda">'
+    +   '<span class="vol-leg"><i class="vol-bollo vol-ora"></i>' + c.anno + '</span>'
+    +   '<span class="vol-leg"><i class="vol-bollo vol-prima"></i>' + c.anno_prec + '</span>'
+    +   (c.fuori.polizze ? '<span class="vol-leg"><i class="vol-bollo vol-fuori"></i>'
+        + c.anno_prec + ', mesi non ancora arrivati quest’anno</span>' : '')
+    + '</div>'
+    + '<div class="vol-note">' + c.avvisi.map(a => '<div class="vol-n">' + esc(a) + '</div>').join('') + '</div>';
+}
+
+/* Il mese toccato. Si ridisegna tutto: la scheda è piccola, e tenere due
+   strade — una che disegna e una che aggiorna — vuol dire due disegni che un
+   giorno diranno due cose diverse. Ritoccare lo stesso mese lo richiude. */
+function volMese(i) {
+  VOL_MESE = (VOL_MESE === i) ? null : i;
+  const box = document.getElementById('vol-corpo');
+  if (box && VOL_DATI) box.innerHTML = volHTML(VOL_DATI);
+}
+
+
+async function volCarica(forza) {
+  const box = document.getElementById('vol-corpo');
+  if (!box || !db || !window.Produzione) return;
+  const ora = Date.now();
+  if (!forza && VOL_ULTIMO && (ora - VOL_ULTIMO) < 60000) return;
+  VOL_ULTIMO = ora;
+
+  /* Ora LOCALE, non UTC: `toISOString()` fra mezzanotte e le due in Italia
+     restituisce il giorno prima, e qui il giorno decide dove tagliare i due
+     anni — il 1° gennaio sposterebbe il confronto di un anno intero (§44). */
+  const oggi = wdsISO(new Date());
+  try {
+    const { data, error } = await db.rpc('iam_produzione_confronto', { p_al: oggi });
+    if (error) throw error;
+    /* Il confronto si tiene: il grafico lo ridisegna a ogni tocco su un mese,
+       e rileggere il database per aprire un dettaglio sarebbe una richiesta di
+       rete per un numero che si ha gia' in mano. */
+    VOL_DATI = Produzione.confronto(data || [], oggi);
+    VOL_MESE = null;
+    box.innerHTML = volHTML(VOL_DATI);
+  } catch (e) {
+    console.warn('Volumi di portafoglio:', e.message || e);
+    /* Una lettura caduta non lascia in giro i dati di prima: il grafico
+       sparisce e al suo posto c'e' la frase. Tenerli vorrebbe dire che un
+       tocco su un mese fa ricomparire un grafico che il database non ha
+       confermato (§12, §18). */
+    VOL_DATI = null;
+    VOL_MESE = null;
+    box.innerHTML = volHTML(null);
+  }
+}
+
+/* ── LA SCHERMATA DI DETTAGLIO ──────────────────────────────────────────── */
+
+async function prdCarica(forza) {
+  if (!db || !window.Produzione) return;
+  const ora = Date.now();
+  if (!forza && PRD_ULTIMO && (ora - PRD_ULTIMO) < 60000) { prdRender(); return; }
+  PRD_ULTIMO = ora;
+  PRD_ERRORE = '';
+
+  /* Due letture separate: i nomi che mancano non devono portare giù i numeri
+     (§35). Senza l'elenco delle persone un collaboratore già deciso si legge
+     col suo identificativo invece che col nome — brutto, non falso. */
+  try {
+    const { data, error } = await db.from('iam_produzione_mensile')
+      .select('anno,mese,collaboratore_id,codice_produttore,compagnia,ramo,polizze,senza_premio,premio');
+    if (error) throw error;
+    PRD_RIGHE = data || [];
+  } catch (e) {
+    console.warn('Produzione:', e.message || e);
+    PRD_RIGHE = null;
+    PRD_ERRORE = e.message || String(e);
+  }
+  try {
+    const { data, error } = await db.from('quote_collaboratori').select('id,nome,cognome,email');
+    if (error) throw error;
+    PRD_PERSONE = data || [];
+  } catch (e) { console.warn('Produzione · persone:', e.message || e); PRD_PERSONE = []; }
+
+  prdRiempiFiltri();
+  prdRender();
+}
+
+function prdOpz(sel, valori, tutte) {
+  const el = document.getElementById(sel);
+  if (!el) return;
+  const scelto = el.value;
+  el.innerHTML = (tutte ? '<option value="">' + tutte + '</option>' : '')
+    + valori.map(v => '<option value="' + esc(String(v.v)) + '">' + esc(v.l) + '</option>').join('');
+  if (scelto && valori.some(v => String(v.v) === scelto)) el.value = scelto;
+}
+
+function prdRiempiFiltri() {
+  const righe = PRD_RIGHE || [];
+  const anni = Produzione.anniPresenti(righe);
+  prdOpz('prd-anno', anni.map(a => ({ v: a, l: String(a) })), 'Tutti gli anni');
+  const comp = [...new Set(righe.map(r => r.compagnia).filter(Boolean))].sort();
+  const rami = [...new Set(righe.map(r => r.ramo).filter(Boolean))].sort();
+  prdOpz('prd-compagnia', comp.map(c => ({ v: c, l: c })), 'Tutte');
+  prdOpz('prd-ramo', rami.map(c => ({ v: c, l: c })), 'Tutti');
+  const mesi = Produzione.MESI.map((m, i) => ({ v: i + 1, l: m.charAt(0).toUpperCase() + m.slice(1) }));
+  prdOpz('prd-dal', mesi, 'Da gennaio');
+  prdOpz('prd-al', mesi, 'A dicembre');
+}
+
+function prdFiltri() {
+  const v = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
+  return {
+    anno: v('prd-anno') || null,
+    compagnia: v('prd-compagnia') || null,
+    ramo: v('prd-ramo') || null,
+    dal_mese: v('prd-dal') || null,
+    al_mese: v('prd-al') || null
+  };
+}
+
+function prdAzzera() {
+  ['prd-anno', 'prd-compagnia', 'prd-ramo', 'prd-dal', 'prd-al'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.value = '';
+  });
+  prdRender();
+}
+
+function prdTabella(gruppo, etichetta) {
+  if (!gruppo || !gruppo.righe.length) return '<div class="prd-vuoto">Nessuna produzione con questi filtri.</div>';
+  const max = gruppo.righe[0].premio || 1;
+  const corpo = gruppo.righe.map(r => ''
+    + '<tr><td>' + esc(r.etichetta)
+    +   (r.senza_premio ? '<div class="prd-sotto">' + r.senza_premio
+        + (r.senza_premio === 1 ? ' polizza senza premio annuo: fuori dall’importo, non vale zero.'
+                                : ' polizze senza premio annuo: fuori dall’importo, non valgono zero.') + '</div>' : '')
+    +   '<span class="prd-quota" style="width:' + Math.max(2, Math.round(r.premio / max * 100)) + '%"></span></td>'
+    + '<td class="prd-num">' + prdNum(r.polizze) + '</td>'
+    + '<td class="prd-num">' + (r.quota == null ? '—' : String(r.quota).replace('.', ',') + '%') + '</td>'
+    + '<td class="prd-num">' + prdEuro(r.premio) + '</td></tr>').join('');
+  return '<table class="prd-tab"><thead><tr><th>' + esc(etichetta)
+    + '</th><th class="prd-num">Polizze</th><th class="prd-num">Quota</th><th class="prd-num">Premio</th></tr></thead>'
+    + '<tbody>' + corpo + '</tbody>'
+    + '<tfoot><tr><td>Totale</td><td class="prd-num">'
+    + prdNum(gruppo.righe.reduce((s, r) => s + r.polizze, 0)) + '</td><td class="prd-num"></td><td class="prd-num">'
+    + prdEuro(gruppo.totale) + '</td></tr></tfoot></table>';
+}
+
+function prdProduttoriHTML(p) {
+  if (!p) return prdNonLetto();
+  if (!p.righe.length) return '<div class="prd-vuoto">Nessuna produzione con questi filtri.</div>';
+  const max = p.righe[0].premio || 1;
+  const pil = { persona: 'deciso', codice: 'da abbinare', diretta: 'agenzia' };
+  const corpo = p.righe.map(r => ''
+    + '<tr><td><b>' + esc(r.etichetta) + '</b> '
+    +   '<span class="prd-pil prd-' + r.stato + '">' + pil[r.stato] + '</span>'
+    +   (r.stato === 'codice'
+        ? '<div class="prd-sotto">Codice ' + esc(r.compagnia || '') + '. Nessuno ha ancora detto chi è: '
+          + 'finché non lo si decide, questa produzione non ha un nome. Si decide in Strumenti › Decisioni aperte.</div>'
+        : '')
+    +   (r.senza_premio ? '<div class="prd-sotto">' + r.senza_premio
+        + (r.senza_premio === 1 ? ' polizza senza premio annuo: fuori dall’importo, non vale zero.'
+                                : ' polizze senza premio annuo: fuori dall’importo, non valgono zero.') + '</div>' : '')
+    +   '<span class="prd-quota" style="width:' + Math.max(2, Math.round(r.premio / max * 100)) + '%"></span></td>'
+    + '<td class="prd-num">' + prdNum(r.polizze) + '</td>'
+    + '<td class="prd-num">' + (r.quota == null ? '—' : String(r.quota).replace('.', ',') + '%') + '</td>'
+    + '<td class="prd-num">' + prdEuro(r.premio) + '</td></tr>').join('');
+  const avviso = p.da_abbinare
+    ? '<div class="vol-ko" style="margin-bottom:10px">' + p.da_abbinare
+      + (p.da_abbinare === 1 ? ' codice produttore non è ancora abbinato a una persona'
+                             : ' codici produttore non sono ancora abbinati a una persona')
+      + ' — sotto ci sono ' + prdNum(p.polizze_da_abbinare) + ' polizze per ' + prdEuro(p.premio_da_abbinare)
+      + '. Il sistema non li abbina da solo: un nome scelto per somiglianza qui vuol dire attribuire '
+      + 'a una persona la produzione di un’altra.</div>'
+    : '';
+  return avviso
+    + '<table class="prd-tab"><thead><tr><th>Chi</th><th class="prd-num">Polizze</th>'
+    + '<th class="prd-num">Quota</th><th class="prd-num">Premio</th></tr></thead>'
+    + '<tbody>' + corpo + '</tbody>'
+    + '<tfoot><tr><td>Totale</td><td class="prd-num">'
+    + prdNum(p.righe.reduce((s, r) => s + r.polizze, 0)) + '</td><td class="prd-num"></td><td class="prd-num">'
+    + prdEuro(p.totale) + '</td></tr></tfoot></table>';
+}
+
+function prdNonLetto() {
+  return '<div class="vol-ko">Non si è potuto leggere la produzione. Non vuol dire che non ce ne sia: '
+    + 'vuol dire che la lettura non è riuscita.' + (PRD_ERRORE ? ' (' + esc(PRD_ERRORE) + ')' : '') + '</div>';
+}
+
+function prdRender() {
+  const somma = document.getElementById('prd-somma');
+  const boxP = document.getElementById('prd-produttori');
+  const boxC = document.getElementById('prd-compagnie');
+  const boxR = document.getElementById('prd-rami');
+  if (!boxP || !window.Produzione) return;
+
+  if (PRD_RIGHE == null) {
+    if (somma) somma.innerHTML = '';
+    boxP.innerHTML = prdNonLetto();
+    if (boxC) boxC.innerHTML = prdNonLetto();
+    if (boxR) boxR.innerHTML = prdNonLetto();
+    return;
+  }
+
+  const righe = Produzione.filtra(PRD_RIGHE, prdFiltri()) || [];
+  const perProd = Produzione.perProduttore(righe, PRD_PERSONE);
+  const tot = righe.reduce((a, r) => {
+    a.polizze += Number(r.polizze) || 0;
+    a.premio += Number(r.premio) || 0;
+    a.senza += Number(r.senza_premio) || 0;
+    return a;
+  }, { polizze: 0, premio: 0, senza: 0 });
+
+  if (somma) {
+    somma.innerHTML = kpiRiquadro('Premio', prdEuro(tot.premio),
+        tot.senza ? tot.senza + (tot.senza === 1 ? ' polizza senza premio annuo, fuori da questo importo'
+                                                 : ' polizze senza premio annuo, fuori da questo importo')
+                  : 'Tutte le polizze hanno un premio annuo')
+      + kpiRiquadro('Polizze', prdNum(tot.polizze), 'Con i filtri applicati')
+      + kpiRiquadro('Da abbinare', prdNum(perProd ? perProd.da_abbinare : 0) + ' <span class="kpi-u">codici</span>',
+        perProd && perProd.da_abbinare
+          ? prdNum(perProd.polizze_da_abbinare) + ' polizze senza un nome'
+          : 'Ogni codice ha una persona');
+  }
+
+  boxP.innerHTML = prdProduttoriHTML(perProd);
+  if (boxC) boxC.innerHTML = prdTabella(Produzione.perChiave(righe, 'compagnia'), 'Compagnia');
+  if (boxR) boxR.innerHTML = prdTabella(Produzione.perChiave(righe, 'ramo'), 'Ramo');
+}
+
+/* L'esportazione parte dagli STESSI oggetti della schermata: se costruisse i
+   suoi, prima o poi il foglio e lo schermo direbbero due numeri diversi, e
+   quello sbagliato sarebbe quello che è uscito di casa (§17). */
+function prdEsporta() {
+  if (PRD_RIGHE == null) { alert('Non si è potuto leggere la produzione: non c’è niente da esportare.'); return; }
+  const righe = Produzione.filtra(PRD_RIGHE, prdFiltri()) || [];
+  const p = Produzione.perProduttore(righe, PRD_PERSONE);
+  const html = '<html><head><meta charset="utf-8"></head><body>'
+    + '<h3>Produzione</h3>'
+    + prdProduttoriHTML(p)
+    + '<h3>Per compagnia</h3>' + prdTabella(Produzione.perChiave(righe, 'compagnia'), 'Compagnia')
+    + '<h3>Per ramo</h3>' + prdTabella(Produzione.perChiave(righe, 'ramo'), 'Ramo')
+    + '</body></html>';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type: 'application/vnd.ms-excel' }));
+  a.download = 'produzione-' + wdsISO(new Date()) + '.xls';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
 async function caricaDaFareOggi(forza) {
   const box = document.getElementById('oggi-corpo');
   if (!box) return;
@@ -9546,29 +10501,47 @@ async function caricaDaFareOggi(forza) {
      Clienti già filtrati sul buco (page «anagrafiche:senza-email» / «-consenso»),
      che là parte dalla scheda Clienti, così il numero in lista combacia con questo. */
 
+  /* I DUE NUMERI LI CONTA IL SERVER (21/09/2026, brief Anagrafiche · punto 1).
+     Fino a oggi si scaricavano le righe e si contavano qui: il server ne manda
+     al massimo mille per richiesta, e in archivio ce ne sono 2.536 — quindi il
+     numero era quello delle righe arrivate, non di quelle che ci sono. Non
+     dava nessun errore: dava un numero più piccolo, credibile, e più basso del
+     vero, che su un elenco di cose da fare è il modo peggiore di sbagliare.
+
+     Si conta al contrario — quanti CE L'HANNO — e si sottrae: il server non sa
+     negare un gruppo di condizioni senza contorsioni, e una sottrazione non
+     può divergere da se stessa. La condizione la dà il motore, lo stesso che
+     usa il preventivatore.
+
+     Il marcatore `LEAD` scritto nelle note non si guarda più: chi è un lead lo
+     dice la colonna `lead`. Misurato il 21/09/2026: una sola riga in tutto
+     l'archivio ha quel marcatore, e non è fra i clienti — toglierlo non cambia
+     un numero, e lascia un modo solo di essere un lead invece di due. */
+  const quantiClienti = async (vista) => {
+    let q = db.from('quote_anagrafiche').select('id', { count: 'exact', head: true }).eq('lead', false);
+    if (vista) q = q.or(Anagrafica.VISTE[vista].filtro);
+    const { count, error } = await q;
+    if (error) throw error;
+    return count || 0;
+  };
+
   // 8. Clienti senza email
   await conta(async () => {
-    const { data, error } = await db.from('quote_anagrafiche').select('email,note').eq('lead', false);
-    if (error) throw error;
-    const cl = (data || []).filter(a => !/\bLEAD\b/i.test(a.note || ''));
-    const n = cl.filter(a => !(a.email && String(a.email).trim())).length;
+    const [tutti, conEmail] = await Promise.all([quantiClienti(null), quantiClienti('con_email')]);
+    const n = tutti - conEmail;
     if (!n) return;
     voci.push({ n, cls: '', l: n === 1 ? 'cliente senza email' : 'clienti senza email',
                 s: 'senza indirizzo non li raggiunge nessuna campagna', va: () => oggiApri('anagrafiche:senza-email') });
   });
 
-  // 9. Clienti senza consenso marketing (stessa regola di QUOTO: privacy firmata
-  //    con marketing_elettronico = true). Nel DB non c'è la colonna consenso_marketing,
-  //    quindi ci si basa solo su privacy_firma.
+  // 9. Clienti senza consenso marketing. La regola è quella del motore, quindi
+  //    la stessa di QUOTO: la colonna `consenso_marketing` OPPURE la privacy
+  //    firmata con la spunta. Fino a oggi IAM guardava solo la privacy firmata
+  //    — una seconda regola, che avrebbe contato fra i buchi chi il consenso
+  //    l'aveva dato allo sportello.
   await conta(async () => {
-    const { data, error } = await db.from('quote_anagrafiche').select('privacy_firma,note').eq('lead', false);
-    if (error) throw error;
-    const cl = (data || []).filter(a => !/\bLEAD\b/i.test(a.note || ''));
-    const haConsenso = a => {
-      const pf = a && a.privacy_firma;
-      return !!(pf && pf.stato === 'firmata' && pf.consensi && pf.consensi.marketing_elettronico === true);
-    };
-    const n = cl.filter(a => !haConsenso(a)).length;
+    const [tutti, conConsenso] = await Promise.all([quantiClienti(null), quantiClienti('con_consenso')]);
+    const n = tutti - conConsenso;
     if (!n) return;
     voci.push({ n, cls: '', l: n === 1 ? 'cliente senza consenso marketing' : 'clienti senza consenso marketing',
                 s: 'non entrano in una campagna finché non firmano', va: () => oggiApri('anagrafiche:senza-consenso') });
@@ -9740,6 +10713,7 @@ function buildDashboard() {
   renderDashboardAlerts();
   caricaDaFareOggi();   // Blocco B — un solo aggancio copre tutti i percorsi
   caricaKpiScrivania();  // Blocco 3 · punto 10 — i numeri, accanto al lavoro
+  volCarica();           // i volumi di portafoglio, anno su anno (21/09/2026)
 
   document.getElementById('d-empty').style.display = 'none';
   document.getElementById('d-content').style.display = 'block';
@@ -13343,23 +14317,71 @@ function selPTab(t) {
   if (t==='agenda') renderAgenda();
 }
 
+/* ══ I COLLABORATORI: UNA FONTE SOLA (21/09/2026) ═══════════════════════════
+   Richiesta di Francesco: «in ogni punto dell'app dove si cerca, seleziona o
+   inserisce un collaboratore la fonte deve essere SEMPRE e SOLO la tabella
+   della sezione Collaboratori».
+
+   Qui dentro tre tendine leggevano `iam_utenti`, che e' il registro degli
+   ACCOUNT: cinque righe, quelle con una password. Il registro delle PERSONE e'
+   `quote_collaboratori` e ne ha diciassette. Chi non ha un accesso a IAM —
+   ed e' la maggioranza — non compariva in nessuna delle tre.
+
+   Le regole stanno nel motore (`tariffe/motore/collaboratori.js`, otto prove
+   in Node): qui si legge e si disegna.
+
+   COSA NON SI TOCCA. Le trattative salvano il NOME, non un identificativo, e
+   il nome era composto «Nome Cognome» mentre il registro lo compone «Cognome
+   Nome». Cambiare la fonte senza accorgersene staccherebbe le righe gia'
+   scritte. Quindi il valore che una riga ha gia' resta nell'elenco, marcato,
+   finche' qualcuno non lo sceglie di nuovo: una tendina che perde il valore
+   che sta guardando lo cancella al primo salvataggio. */
+var COL_GENTE = null;      /* var e non let: le prove iniettano qui (§17) */
+var COL_ULTIMO = 0;
+
+async function colCarica(forza) {
+  if (!db) return COL_GENTE || [];
+  const ora = Date.now();
+  if (!forza && COL_GENTE && (ora - COL_ULTIMO) < 300000) return COL_GENTE;
+  try {
+    const cols = window.Collaboratori ? Collaboratori.COLONNE : 'id,nome,cognome,email,attivo,iam_id';
+    const { data, error } = await db.from('quote_collaboratori').select(cols);
+    if (error) throw error;
+    COL_GENTE = data || [];
+    COL_ULTIMO = ora;
+  } catch (e) {
+    /* «Non si e' potuto leggere» non e' «non ce n'e'» (§12, §18): si tiene
+       quello che si aveva invece di svuotare una tendina che qualcuno sta
+       guardando. */
+    console.warn('Collaboratori:', e.message || e);
+    if (!COL_GENTE) COL_GENTE = [];
+  }
+  return COL_GENTE;
+}
+
+function colNome(c) { return window.Collaboratori ? Collaboratori.nome(c) : ((c?.cognome || '') + ' ' + (c?.nome || '')).trim(); }
+
+/* Una tendina che vale per NOME (trattative): il valore e' il nome composto.
+   Il valore gia' scritto sulla riga resta in elenco anche se non corrisponde a
+   nessuno — e lo dice. */
+function colOpzioniNome(scelto, primo) {
+  const gente = window.Collaboratori ? Collaboratori.attivi(COL_GENTE || []) : (COL_GENTE || []);
+  const nomi = gente.map(colNome).filter(Boolean);
+  const out = ['<option value="">' + esc(primo || '— nessuno —') + '</option>'];
+  nomi.forEach(n => out.push('<option value="' + esc(n) + '"' + (n === scelto ? ' selected' : '') + '>' + esc(n) + '</option>'));
+  if (scelto && nomi.indexOf(scelto) < 0) {
+    out.push('<option value="' + esc(scelto) + '" selected>' + esc(scelto) + ' (scritto a mano)</option>');
+  }
+  return out.join('');
+}
+
 function renderTratt() {
   console.log('renderTratt chiamato, PIPE:', PIPE.length);
   loadTeam();
   const selC = document.getElementById('tr-collab');
   if (selC && db) {
     const curC = selC.value;
-    db.from('iam_utenti').select('id,nome,cognome').eq('attivo', true)
-      .then(({data}) => {
-        if (data) {
-          UTENTI_LISTA = data;
-          selC.innerHTML = '<option value="">Tutti i collab.</option>' +
-            data.map(u => {
-              const nome = ((u.nome||'')+' '+(u.cognome||'')).trim();
-              return `<option value="${nome}" ${curC===nome?'selected':''}>${nome}</option>`;
-            }).join('');
-        }
-      });
+    colCarica().then(() => { selC.innerHTML = colOpzioniNome(curC, 'Tutti i collab.'); });
   }
   const visiblePipe = visiblePipelineItems(PIPE);
   const q       = (document.getElementById('tr-search')?.value||'').toLowerCase();
@@ -13446,16 +14468,15 @@ function openTrattModal(id) {
   if (shareSel) shareSel.innerHTML = '<option value="">— nessuna condivisione —</option>';
   if (sel && db) {
     sel.innerHTML = '<option value="">— nessuno —</option>';
+    /* Il collaboratore dal registro delle persone; la CONDIVISIONE resta sugli
+       account, ed e' giusto: si condivide con chi puo' entrare in IAM, non con
+       chi e' in anagrafica. Due domande diverse, due elenchi diversi. */
+    colCarica().then(() => { sel.innerHTML = colOpzioniNome(t?.collab || '', '— nessuno —'); });
     db.from('iam_utenti').select('id,nome,cognome,email').eq('attivo', true)
       .then(({data}) => {
         if (data) {
           data.forEach(u => {
             const nome = ((u.nome||'')+' '+(u.cognome||'')).trim() || u.email;
-            const opt = document.createElement('option');
-            opt.value = nome;
-            opt.textContent = nome;
-            if (t?.collab === nome) opt.selected = true;
-            sel.appendChild(opt);
 
             if (shareSel && u.id !== ME?.id) {
               const sopt = document.createElement('option');
@@ -20679,9 +21700,16 @@ async function loadProduzioneKpi() {
   if (admin && collabSel) {
     collabSel.style.display = '';
     if (!collabSel.options.length) {
-      if (!(UTENTI_LISTA || []).length) await caricaUtenti();
+      /* I NOMI dal registro delle persone, il VALORE l'account (21/09/2026).
+         Questo filtro lavora su `creato_da`, che e' un account: cambiare il
+         valore lo romperebbe. Cambia la FONTE dei nomi — prima erano gli
+         account, e chi non ha un accesso a IAM non compariva. Chi non ha un
+         account resta fuori, ed e' corretto: non puo' aver creato niente. */
+      await colCarica();
+      const conAccesso = (window.Collaboratori ? Collaboratori.attivi(COL_GENTE || []) : (COL_GENTE || []))
+        .filter(c => c.iam_id);
       collabSel.innerHTML = '<option value="">Tutti i collaboratori</option>'
-        + (UTENTI_LISTA || []).map(u => `<option value="${esc(u.id)}">${esc([u.cognome, u.nome].filter(Boolean).join(' ') || u.email || u.id)}</option>`).join('');
+        + conAccesso.map(c => `<option value="${esc(c.iam_id)}">${esc(colNome(c) || c.email || c.iam_id)}</option>`).join('');
     }
   }
   const anno = parseInt(annoSel?.value) || new Date().getFullYear();
@@ -22784,8 +23812,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: d308c132 — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260921b"></script>
+<!-- impronta withus-one.js: 97e3a307 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260921c"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

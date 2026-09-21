@@ -122,7 +122,10 @@ prova('il cancello dell\'admin esiste ED E\' CHIAMATO', () => {
 
 prova('le due porte esistono: menu, titolo e riga in goTab', () => {
   /* §6b: una pagina senza inizializzatore apre un riquadro vuoto. */
-  deve(/if \(t === 'compagnie'\)\s*{\s*prvCarica\(true\);/.test(H), 'goTab non avvia il pannello compagnie');
+  /* Dal 21/09/2026 la schermata compagnie legge anche l'anagrafica: la
+     avvia gcCarica, che chiama prvCarica e catCarica insieme. */
+  deve(/if \(t === 'compagnie'\)\s*{\s*gcCarica\(true\);/.test(H), 'goTab non avvia il pannello compagnie');
+  deve(/async function gcCarica\([^)]*\)\s*{[\s\S]{0,600}prvCarica\(\)[\s\S]{0,40}catCarica\(\)/.test(H), 'gcCarica non legge tariffe e anagrafica');
   deve(/if \(t === 'provvigioni'\)\s*{\s*prvTab\(PRV_VISTA\); prvCarica\(true\);/.test(H), 'goTab non avvia il pannello provvigioni');
   deve(/id="panel-compagnie"/.test(H) && /id="panel-provvigioni"/.test(H), 'manca uno dei due pannelli');
   for (const k of ['compagnie', 'provvigioni']) {
@@ -135,6 +138,44 @@ prova('le due porte esistono: menu, titolo e riga in goTab', () => {
     deve(new RegExp(k + ": 'strumenti'").test(SCOCCA), k + ' non e\' agganciata al menu Strumenti');
   }
   return 'due voci, due titoli, TAB2MENU, goTab, RISERVATE';
+});
+
+prova('Gestione compagnie: si entra dalla compagnia, non dalla tariffa', () => {
+  /* Richiesta del 21/09/2026: in alto «Nuova compagnia», non «Nuova
+     tariffa»; dalla compagnia si arriva a prodotti e provvigioni; le
+     compagnie esistenti si modificano. */
+  const i = H.indexOf('id="panel-compagnie"'), j = H.indexOf('<!-- ══ PANNELLO PROVVIGIONI');
+  deve(i > 0 && j > i, 'non trovo il pannello compagnie');
+  const pan = H.slice(i, j);
+  deve(!/Nuova tariffa/.test(pan), 'il pannello mostra ancora «Nuova tariffa»');
+  deve(/id="gc-nuova" onclick="gcNuova\(\)"[^>]*>.*Nuova compagnia/.test(pan), 'manca il bottone «Nuova compagnia»');
+  deve(/function gcNuova\(\)\s*{\s*if \(gcPuoScrivere\(\)\) catApriAnagrafica\(null\);/.test(H), '«Nuova compagnia» non apre l\'anagrafica');
+  /* Ogni riga dell'elenco ha «Modifica», e la scheda ha «Modifica dati». */
+  const el = H.slice(H.indexOf('function gcElenco('), H.indexOf('function gcScheda('));
+  deve(/catApriAnagrafica\(\\'' \+ c\.id/.test(el), 'le compagnie dell\'elenco non si modificano');
+  const sc = H.slice(H.indexOf('function gcScheda('), H.indexOf('function showReset('));
+  deve(/Modifica dati/.test(sc) && /catApriProdotto\(null\)/.test(sc) && /prvApriTariffa\(null,\{compagnia:/.test(sc),
+    'la scheda non porta a dati, prodotti e provvigioni');
+  /* §1: le righe prodotto sono UNA funzione, chiamata da tutte e due le schermate. */
+  deve((H.match(/catRigheProdotti\(c, puo\)/g) || []).length >= 2, 'le righe prodotto non sono condivise');
+  return 'bottone, modifica, scheda con prodotti e provvigioni';
+});
+
+prova('le finestre si vedono anche da un pannello che non e\' il loro', () => {
+  /* Guasto vero: prv-ov sta dentro panel-provvigioni, che da Gestione
+     compagnie e' display:none — e la finestra con lui. */
+  deve(/function gcSulBody\(el\)\s*{\s*if \(el && el\.parentElement !== document\.body\) document\.body\.appendChild\(el\);/.test(H), 'manca gcSulBody');
+  deve(/function prvApri\(html\) {[\s\S]{0,260}gcSulBody\(ov\);/.test(H), 'la finestra delle tariffe resta chiusa nel suo pannello');
+  deve(/function catApri\(html\) {[\s\S]{0,200}gcSulBody\(ov\);/.test(H), 'la finestra del catalogo resta chiusa nel suo pannello');
+  return 'prv-ov e cat-ov salgono sul body';
+});
+
+prova('rinominare una compagnia non stacca tariffe, accordi e polizze', () => {
+  const b = H.slice(H.indexOf('async function catSalvaCompagnia('), H.indexOf('/* Il prodotto di compagnia.'));
+  deve(/rinomina && !alias\.some[\s\S]{0,120}alias\.push\(prima\.nome\)/.test(b), 'il nome vecchio non diventa un alias');
+  deve(/\['iam_provvigioni_tariffa', 'iam_provvigioni_collaboratore'\]/.test(b) && /\.update\(\{ compagnia: nome \}\)\.eq\('compagnia', prima\.nome\)/.test(b),
+    'tariffe e accordi restano sul nome vecchio');
+  return 'alias + tariffe + accordi';
 });
 
 prova('«non si e\' potuto leggere» non diventa «non ce ne sono» — e non porta giu\' la pagina', () => {

@@ -69,8 +69,16 @@
     return 'boh';
   }
 
+  /* Accetta una data, una stringa ISO e ANCHE un numero di millisecondi.
+     Il numero non era previsto, e `Date.parse` lo trasforma in stringa prima
+     di leggerlo: `Date.parse(1758362400000)` non è una data, è NaN. Chi
+     chiamava con un numero si prendeva il ripiego `Date.now()` — cioè
+     l'orologio della macchina al posto dell'istante chiesto. Trovato il
+     21/09/2026 da una prova che era verde quando è stata scritta e rossa il
+     giorno dopo: l'unico modo di accorgersene era che passasse un giorno. */
   function quando(v) {
-    if (!v) return null;
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return isFinite(v) ? v : null;
     var t = (v instanceof Date) ? v.getTime() : Date.parse(v);
     return isFinite(t) ? t : null;
   }
@@ -130,6 +138,11 @@
         cambiato: cambiato,
         cambi: (vecchia && Number(vecchia.cambi)) ? Number(vecchia.cambi) + (cambiato ? 1 : 0) : (cambiato ? 1 : 0),
         da_quanto: durata(dal, adesso).testo,
+        /* I millisecondi accanto alla frase. Il riepilogo contava le ferme da
+           oltre un giorno cercando la parola «giorn» nell'etichetta: un
+           numero ricavato da una frase cambia il giorno in cui la frase si
+           riscrive, e nessuno collega le due cose. */
+        da_quanto_ms: durata(dal, adesso).ms,
         /* Si scrive quando è cambiato qualcosa, quando è la prima volta, o
            quando l'ultima occhiata è vecchia. Mai a ogni giro. */
         scrivi: nuovo || cambiato || scad,
@@ -165,7 +178,7 @@
       else if (r.stato === 'fuori') out.fuori++;
       else if (r.stato === 'spento') out.spente++;
       else out.incerte++;
-      if (r.stato !== 'dentro' && /giorn/.test(r.da_quanto || '')) out.ferme_da_oltre_un_giorno++;
+      if (r.stato !== 'dentro' && Number(r.da_quanto_ms) >= 86400000) out.ferme_da_oltre_un_giorno++;
     });
     return out;
   }

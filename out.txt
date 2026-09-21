@@ -1,5 +1,5 @@
-id: v0250-1790025263  exit: 0  2026-09-21 21:14:56
+id: v0250b-1790025311  exit: 0  2026-09-21 21:15:29
 ----
-e2c68f3 Abbinare un codice produttore lo applica davvero (0.24.0) (#234)
-app-versione" content="0.24.0"
-app-versione" content="0.24.0"
+eb09fe3 Il cliente si sceglie da una schermata vera (0.25.0) (#235)
+app-versione" content="0.25.0"
+HTTP/2 200 

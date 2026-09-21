@@ -1,50 +1,12 @@
-id: 1790002999  exit: 0  2026-09-21 15:03:31
+id: 1790003131  exit: 0  2026-09-21 15:05:49
 ----
-pid backend: 3895684
-== nomi delle variabili viste DAL PROCESSO, con la sola lunghezza del valore ==
-ARCHIVIO_CHIAVE : 44
-ARCHIVIO_DIR : 24
-BREVO_API_KEY : 89
-FONTI_SECRET : 48
-FONTI_VIGILANZA_CONFERME : 1
-HDI_SCRAPER_URL : 21
-HOME : 12
-INVOCATION_ID : 32
-JOURNAL_STREAM : 11
-LANG : 7
-LOGNAME : 6
-MAIL_ALLOWED_EMAILS : 30
-MAIL_DIGEST_KEY : 48
-MAIL_PASS : 12
-MAIL_PASS_2 : 15
-MAIL_PASS_3 : 13
-MAIL_SELFTEST_KEY : 9
-MAIL_USER : 38
-MAIL_USER_2 : 34
-MAIL_USER_3 : 35
-MEMORY_PRESSURE_WATCH : 66
-MEMORY_PRESSURE_WRITE : 28
-NOTIFY_FROM : 30
-NOTIFY_NAME : 21
-PATH : 59
-PAYPAL_CLIENT_ID : 80
-PAYPAL_ENV : 7
-PAYPAL_SECRET : 80
-PORT : 4
-SELF_URL : 34
-SHELL : 9
-STRIPE_PUBLISHABLE_KEY : 107
-STRIPE_SECRET_KEY : 107
-SUPABASE_JWT_SECRET : 49
-SUPABASE_SERVICE_ROLE_KEY : 219
-SUPABASE_URL : 40
-SYSTEMD_EXEC_PID : 7
-USER : 6
-
-== il modulo archivio risponde? ==
-POST /archivio/carica -> 000
-
-== avvisi all'avvio nei log ==
+== prima ==
+SUPABASE_ANON_KEY: assente
+chiave pubblica letta dal client: 208 caratteri
+scritta nel .env (backup accanto)
+== dopo: il processo la vede? ==
+SUPABASE_ANON_KEY : 208 caratteri
+active
 Sep 21 15:00:51 vps-d6443a46 node[3895684]: 2026-09-21T15:00:51.429Z OPTIONS /archivio/carica 204 1ms u:-
 Sep 21 15:00:51 vps-d6443a46 node[3895684]: archivio: caricamento non riuscito: metadati non scritti (401): {"message":"No API key found in request","hint":"No `apikey` request header or url param was found."}
 Sep 21 15:00:51 vps-d6443a46 node[3895684]: 2026-09-21T15:00:51.499Z POST   /archivio/carica 403 204ms u:a5ab0cd0

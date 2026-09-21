@@ -1,26 +1,19 @@
-id: dec-1789970794  exit: 0  2026-09-21 06:07:11
+id: np-1789974187  exit: 0  2026-09-21 07:03:27
 ----
-== commit vivo ==
+== commit ==
 0c5eb51 Decisioni aperte: in un posto solo quello che il sistema sta aspettando (#223)
 == versione ==
   "versione": "0.13.0",
   "nome": "Decisioni aperte",
-== meta IAM/QUOTO ==
-<meta name="app-versione" content="0.13.0">
-<meta name="app-versione" content="0.13.0">
-== motore decisioni ==
--rw-r--r-- 1 root root 14754 Sep 21 06:06 tariffe/motore/decisioni.js
+== motore ==
+ls: cannot access 'tariffe/motore/piano-rate.js': No such file or directory
+== rotta e menu ==
+index.html:0
+iam/withus-one.js:0
 == scocca ==
 withus-one.js?v=20260921a
-1
-== pannello + rotta ==
-1
-1
 == HTTP ==
 iam=200 quoto=200
 == servito ==
 <meta name="app-versione" content="0.13.0">
-== motore servito ==
-decisioni.js=200
-== scocca servita ==
-withus-one.js=200
+piano-rate.js=404

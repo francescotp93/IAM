@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.22.1">
-<meta name="app-versione-nome" content="Le rate che sparivano ricaricando il file">
+<meta name="app-versione" content="0.23.0">
+<meta name="app-versione-nome" content="L'import non muore per una riga, e dice quello che lascia fuori">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -19350,6 +19350,26 @@ function fluMostra() {
               + (p.titoli.ignoti || []).length;
   const gravi = (p.avvisi || []).filter(a => a.g === 'grave').length;
 
+  /* I TRE SECCHI SI DICONO PER NOME (22/09/2026). Un numero solo metteva nello
+     stesso mucchio una regola che funziona — le rate dei rinnovi non pagati,
+     che NON devono entrare in portafoglio — e due cose che si perdono davvero.
+     Chi guardava non poteva distinguere «ho lasciato fuori delle offerte» da
+     «ho perso delle polizze mie», che sono due giornate diverse. E il secchio
+     più caro, le polizze senza contraente, era l'unico senza un numero. */
+  const secchi = [
+    { n: (p.polizze.senzaCliente || []).length, t: 'polizze senza il contraente',
+      d: 'il loro intestatario non è in questo file: la polizza non entra, e con lei le sue rate' },
+    { n: (p.titoli.ignoti || []).length, t: 'rate di tipo sconosciuto',
+      d: 'un titolo è una riga di soldi: tradurne il tipo a occhio vuol dire inventare un movimento' },
+    { n: (p.titoli.senzaPolizza || []).length, t: 'rate senza la loro polizza',
+      d: 'quasi sempre sono i rinnovi emessi e non pagati, che è giusto restino fuori dal portafoglio' }
+  ].filter(x => x.n);
+
+  /* Le righe che il database rifiuterebbe. Prima si scopriva a importazione
+     morta, con un messaggio grezzo; adesso si sa prima di premere. */
+  const inc = p.incomplete || { polizze: [], titoli: [] };
+  const incTot = (inc.polizze || []).length + (inc.titoli || []).length;
+
   box.innerHTML = `
     <div class="flu-testata">
       <b>${esc(t.emittente || 'compagnia non dichiarata')}</b>
@@ -19364,9 +19384,17 @@ function fluMostra() {
       <div class="flu-num"><div class="flu-v">${n(p.titoli.nuovi.length)}</div><div class="flu-k">rat${p.titoli.nuovi.length === 1 ? 'a' : 'e'}</div></div>
     </div>
 
-    ${fuori ? `<div class="flu-scarti"><b>${n(fuori)} righe non importabili.</b>
-      Restano fuori e il portafoglio entra lo stesso.
+    ${fuori ? `<div class="flu-scarti"><b>${n(fuori)} righe restano fuori.</b>
+      Il portafoglio entra lo stesso. Sono cose diverse:
+      <ul style="margin:6px 0 0 18px;padding:0">${secchi.map(s =>
+        `<li><b>${n(s.n)}</b> ${esc(s.t)} — ${esc(s.d)}</li>`).join('')}</ul>
       <button type="button" class="flu-link" onclick="fluApriDettaglio()">vedi il dettaglio</button></div>` : ''}
+    ${incTot ? `<div class="pdoc-esito ko" style="margin-top:10px"><i class="ti ti-alert-triangle"></i>
+      <b>${n(incTot)} righe non hanno un dato che il database pretende</b>
+      (${(inc.polizze || []).length ? n(inc.polizze.length) + ' polizz' + (inc.polizze.length === 1 ? 'a senza data di effetto' : 'e senza data di effetto') : ''}${
+        (inc.polizze || []).length && (inc.titoli || []).length ? ', ' : ''}${
+        (inc.titoli || []).length ? n(inc.titoli.length) + ' rat' + (inc.titoli.length === 1 ? 'a senza data o senza importo' : 'e senza data o senza importo') : ''}).
+      Vengono escluse e contate: il resto entra lo stesso.</div>` : ''}
     ${gravi ? `<div class="pdoc-esito ko" style="margin-top:10px"><i class="ti ti-alert-triangle"></i>
       ${n(gravi)} avvis${gravi === 1 ? 'o' : 'i'} da leggere prima di confermare.
       <button type="button" class="flu-link" onclick="fluApriDettaglio()">vedi il dettaglio</button></div>` : ''}
@@ -19522,11 +19550,27 @@ function fluDettaglio() {
             x.pagato_il ? ' · pagato il ' + new Date(x.pagato_il).toLocaleDateString('it-IT') : ' · non risulta pagato'}</div></div>
         <div class="pdoc-r-a">${x.provvigione != null ? `<span class="tk-badge st-lav">${pfEuro(x.provvigione)} di provvigioni</span>` : ''}
           <b>${x.importo != null ? pfEuro(x.importo) : '—'}</b></div></div>`).join('')}` : ''}
-    ${(p.avvisi.length || p.polizze.senzaCliente.length || p.titoli.senzaPolizza.length) ? `
+    ${p.polizze.senzaCliente.length ? `<div class="flu-sez">Polizze che restano fuori — ${p.polizze.senzaCliente.length}</div>
+      <div class="cl-sub" style="margin-bottom:8px">È il secchio che costa di più: non è una rata, è una <b>polizza intera</b>,
+        e con lei se ne vanno scadenzario, fascicolo e le sue rate. Il loro intestatario non è fra le anagrafiche di
+        questo file — o non c'è, o il file lo marca come collaboratore. <b>Ricaricare non cambia questo numero</b>:
+        si confronta il file con se stesso, non con l'archivio. Si chiude chiedendo a
+        ${esc(p.testata && p.testata.emittente || 'la compagnia')} un file che contenga anche quei contraenti.
+        ${p.polizze.senzaCliente.length > 60 ? 'Qui sotto le prime 60.' : ''}</div>
+      ${p.polizze.senzaCliente.slice(0, 60).map(x => `<div class="pdoc-r"><div class="pdoc-r-l">
+          <b>${esc(x.numero_polizza || x._fonte_id || '—')}</b>
+          <span class="pdoc-opt">${esc(x.compagnia || '')}</span>
+          <div class="cl-sub" style="flex-basis:100%">${esc(x.prodotto || '—')}${
+            x.data_effetto ? ' · effetto ' + new Date(x.data_effetto).toLocaleDateString('it-IT') : ''}</div></div>
+        <div class="pdoc-r-a"><b>${x.premio_annuo != null ? pfEuro(x.premio_annuo) : (x.premio_rata != null ? pfEuro(x.premio_rata) + ' di rata' : '—')}</b></div></div>`).join('')}` : ''}
+    ${(p.avvisi.length || p.titoli.senzaPolizza.length) ? `
       <div class="flu-sez">Da sapere prima di confermare</div>
-      ${p.avvisi.map(a => `<div class="pdoc-esito ${a.g === 'grave' ? 'ko' : ''}"><i class="ti ti-alert-triangle"></i> ${esc(a.t)}</div>`).join('')}
+      ${p.avvisi.filter(a => a.k !== 'polizza-senza-cliente')
+          .map(a => `<div class="pdoc-esito ${a.g === 'grave' ? 'ko' : ''}"><i class="ti ti-alert-triangle"></i> ${esc(a.t)}</div>`).join('')}
       ${p.titoli.senzaPolizza.length ? `<div class="pdoc-esito"><i class="ti ti-alert-triangle"></i>
-        ${p.titoli.senzaPolizza.length} rate si riferiscono a una polizza che non è in questo flusso: restano fuori.</div>` : ''}` : ''}
+        ${p.titoli.senzaPolizza.length} rate si riferiscono a una polizza che non è in questo flusso: restano fuori.
+        Quasi sempre sono le rate dei <b>rinnovi emessi e non pagati</b> — qui sopra ce ne sono
+        ${(p.offerte || []).length} — e per quelle è giusto: un rinnovo non pagato non è una polizza in portafoglio.</div>` : ''}` : ''}
     `;
 }
 
@@ -19748,11 +19792,20 @@ async function fluConferma() {
   const polAssegnate = conAssegnato('polizze');
 
   const righeTot = blocchi.reduce((s, b) => s + b.righe.length, 0);
+  /* LA BARRA RISERVA L'ULTIMO PEZZO ALLA SCRITTURA (22/09/2026). Il
+     caricamento dei blocchi è la parte veloce; la scrittura è una chiamata
+     sola e può durare, ed è l'unica che può morire. Se il caricamento
+     arrivasse in fondo, la barra sarebbe piena proprio quando comincia il
+     lavoro vero — e una barra piena fa chiudere la scheda, che è il modo in
+     cui il 21/09 si è perso mezzo portafoglio. Un ottavo resta alla
+     scrittura, e non si torna mai indietro. */
+  const totBarra = righeTot + Math.max(1, Math.round(righeTot / 8));
+  const suBarra = (n) => Math.min(n, righeTot);
   const nomeFase = { clienti: 'Clienti', polizze: 'Polizze', titoli: 'Rate' };
 
   try {
     /* 1. La testata: senza, la funzione non applica niente. */
-    fluAvanza('Preparo…', 0, righeTot + 1);
+    fluAvanza('Preparo…', 0, totBarra);
     let err = (await db.from('iam_import_lotti').insert({
       lotto: lotto, tipo: 'testata', parte: 0,
       righe: {
@@ -19782,21 +19835,49 @@ async function fluConferma() {
     let fatte = 1;
     for (const b of blocchi) {
       parti[b.tipo] = (parti[b.tipo] || 0);
-      fluAvanza(nomeFase[b.tipo] + '…', fatte, righeTot + 1);
+      fluAvanza(nomeFase[b.tipo] + '…', suBarra(fatte), totBarra);
       err = (await db.from('iam_import_lotti').insert({
         lotto: lotto, tipo: b.tipo, parte: parti[b.tipo], righe: b.righe
       })).error;
       if (err) throw err;
       parti[b.tipo]++;
       fatte += b.righe.length;
-      fluAvanza(nomeFase[b.tipo] + '…', fatte, righeTot + 1);
+      fluAvanza(nomeFase[b.tipo] + '…', suBarra(fatte), totBarra);
     }
 
-    /* 3. Una chiamata sola, una transazione sola. */
-    fluAvanza('Scrivo tutto insieme…', righeTot + 1, righeTot + 1);
+    /* 3. Una chiamata sola, una transazione sola.
+       La barra NON arriva al 100% qui: la scrittura vera comincia adesso, ed è
+       l'unica fase che può durare. Una barra piena con la scrittura in corso
+       fa chiudere la scheda — che è esattamente il modo in cui il 21/09 si è
+       perso mezzo portafoglio. Si ferma appena sotto e lo dice. */
+    fluAvanza('Il database sta scrivendo tutto insieme… non chiudere la pagina', righeTot, totBarra);
     const { data, error } = await db.rpc('iam_importa_flusso', { p_lotto: lotto });
     if (error) throw error;
     const r = data || {};
+
+    /* LE EVIDENZE DEI CODICI PRODUTTORE — rimesse il 22/09/2026, erano sparite
+       nella riscrittura del 21. Nome, email e RUI accanto al codice della
+       compagnia: NON decidono niente (`deciso` resta falso), servono a
+       riconoscere «U25337» la prima volta che lo si guarda (§19). Senza, ogni
+       flusso lascia le stesse sigle nude e il riconoscimento si rifà da capo.
+       Si scrivono solo le righe che non hanno già una decisione: un flusso non
+       deve poter cambiare un'evidenza sotto una decisione già presa.
+       Fuori dalla transazione e in un try: sono evidenze, non portafoglio, e
+       se non entrano l'importazione resta buona. */
+    try {
+      const evidenze = (p.collaboratori || [])
+        .filter(c => c.codice && (c.nome || c.email || c.rui || c.produttore))
+        .filter(c => !mappaCodici[Assegnazione.chiave(p.testata.emittente, c.codice)])
+        .map(c => ({
+          compagnia: String(p.testata.emittente || '').trim().toUpperCase(),
+          codice: String(c.codice).trim().toUpperCase(),
+          nome_flusso: c.nome || null, email_flusso: c.email || null, rui_flusso: c.rui || null,
+          produttore_flusso: c.produttore || null,
+          deciso: false
+        }))
+        .filter(c => c.compagnia && c.codice);
+      if (evidenze.length) await db.from('quote_codici_collaboratore').upsert(evidenze, { onConflict: 'compagnia,codice' });
+    } catch (e) {}
 
     try { logMovimento('Portafoglio importato · ' + (p.testata.emittente || ''), 'documento', ''); } catch (e) {}
     FLU_PIANO = null;
@@ -19814,6 +19895,16 @@ async function fluConferma() {
           ${Number(r.titoli_senza_polizza).toLocaleString('it-IT')} rat${r.titoli_senza_polizza === 1 ? 'a è rimasta fuori' : 'e sono rimaste fuori'}:
           la loro polizza non è in archivio e non è in questo file.
           Rate proposte ${Number(r.titoli_proposti || 0).toLocaleString('it-IT')}, scritte ${Number(r.titoli || 0).toLocaleString('it-IT')}.</div>` : ''}
+        ${(r.polizze_senza_dati || r.titoli_senza_dati) ? `<div class="pdoc-esito ko" style="margin-top:10px"><i class="ti ti-alert-triangle"></i>
+          Righe escluse perché manca un dato che il database pretende:
+          ${r.polizze_senza_dati ? Number(r.polizze_senza_dati).toLocaleString('it-IT') + ' polizz' + (r.polizze_senza_dati === 1 ? 'a' : 'e') + ' senza data di effetto' : ''}${
+            r.polizze_senza_dati && r.titoli_senza_dati ? ', ' : ''}${
+            r.titoli_senza_dati ? Number(r.titoli_senza_dati).toLocaleString('it-IT') + ' rat' + (r.titoli_senza_dati === 1 ? 'a' : 'e') + ' senza data o senza importo' : ''}.
+          Il resto è entrato lo stesso.</div>` : ''}
+        ${r.polizze_numero_doppio ? `<div class="pdoc-esito ko" style="margin-top:10px"><i class="ti ti-alert-triangle"></i>
+          ${Number(r.polizze_numero_doppio).toLocaleString('it-IT')} polizz${r.polizze_numero_doppio === 1 ? 'a è rimasta fuori' : 'e sono rimaste fuori'}
+          perché quel numero di polizza è già in archivio (o compare due volte in questo file).
+          Da guardare: quando una polizza si rinnova nasce una riga nuova, e il numero spesso resta lo stesso.</div>` : ''}
         ${r.titoli ? `<div class="cl-sub" style="margin-top:8px">${assegnate} rat${assegnate === 1 ? 'a è nata' : 'e sono nate'} già assegnat${assegnate === 1 ? 'a' : 'e'} dalle decisioni sui codici${
           assegnate < r.titoli ? `; le altre ${r.titoli - assegnate} aspettano che si decida di chi è il loro codice (Titoli › «Assegna il pregresso»)` : ''}.</div>` : ''}
         ${fatti.compagnie + fatti.prodotti ? `<div class="cl-sub" style="margin-top:6px">In catalogo ${fatti.compagnie} compagni${fatti.compagnie === 1 ? 'a' : 'e'} e ${fatti.prodotti} prodott${fatti.prodotti === 1 ? 'o' : 'i'}, marcati «da verificare».</div>` : ''}
@@ -19835,8 +19926,11 @@ async function fluConferma() {
       <div class="flu-croce"><i class="ti ti-alert-triangle"></i></div>
       <div class="flu-fatto-t">L'importazione non è andata a buon fine</div>
       <div class="cl-sub" style="margin-top:6px">${esc(e.message || e)}</div>
-      <div class="cl-sub" style="margin-top:8px"><b>In archivio non è stato scritto niente.</b>
+      <div class="cl-sub" style="margin-top:8px"><b>Il portafoglio non è stato toccato:</b> né clienti, né polizze, né rate.
         Non è rimasta mezza importazione: si può ripremere «Importa» sullo stesso file.</div>
+      ${fatti.compagnie + fatti.prodotti ? `<div class="cl-sub" style="margin-top:6px">Il catalogo invece sì:
+        ${fatti.compagnie} compagni${fatti.compagnie === 1 ? 'a' : 'e'} e ${fatti.prodotti} prodott${fatti.prodotti === 1 ? 'o' : 'i'}
+        erano già stati creati prima della scrittura, e restano (marcati «da verificare»). Non sono portafoglio.</div>` : ''}
     </div>`);
   }
 }

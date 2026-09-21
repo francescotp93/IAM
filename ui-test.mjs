@@ -9337,6 +9337,46 @@ const avvio = async () => {
       return 'tre numeri davanti, il resto sotto';
     });
 
+    await prova('import: quello che resta fuori si dice per NOME, non in un numero solo', async () => {
+      /* «568 righe non importabili» metteva nello stesso mucchio una regola
+         che funziona — le rate dei rinnovi emessi e non pagati, che NON devono
+         entrare in portafoglio — e due cose che si perdono davvero. Chi
+         guardava non poteva distinguere «ho lasciato fuori delle offerte» da
+         «ho perso delle polizze mie». E il secchio più caro, le polizze senza
+         contraente, era l'unico senza un numero da nessuna parte: esisteva
+         solo come N riquadri di avviso identici, leggibili con tre polizze e
+         un muro con trecento. */
+      await scegli([]);
+      const r = await page.evaluate(() => {
+        /* Una riga senza il dato che il database pretende: il campione non ne
+           ha, e questa è la parte che, mancando, fa morire tutta
+           l'importazione invece di perdere una riga. */
+        FLU_PIANO.incomplete = { polizze: [FLU_PIANO.polizze.nuove[0]], titoli: [] };
+        fluMostra();
+        const chiuso = document.getElementById('flu-esito').innerHTML;
+        fluApriDettaglio();
+        return { chiuso, aperto: document.getElementById('flu-dett').innerHTML,
+                 senzaCli: FLU_PIANO.polizze.senzaCliente.length,
+                 ignoti: FLU_PIANO.titoli.ignoti.length };
+      });
+      deve(r.senzaCli > 0 && r.ignoti > 0, 'il campione non ha più i casi da misurare');
+      deve(!/righe non importabili/.test(r.chiuso),
+        'il numero unico è tornato: rimette insieme una regola che funziona e due problemi veri');
+      deve(/polizze senza il contraente/.test(r.chiuso),
+        'il secchio più caro non ha un nome: ' + r.chiuso.slice(0, 600));
+      deve(/rate di tipo sconosciuto/.test(r.chiuso) && /rate senza la loro polizza/.test(r.chiuso),
+        'gli altri due secchi non si distinguono');
+      /* E le righe che il database rifiuterebbe si sanno PRIMA di premere. */
+      deve(/database pretende/.test(r.chiuso),
+        'non avvisa delle righe senza un dato obbligatorio: si scoprirebbero a importazione morta');
+      /* Nel dettaglio, le polizze perse hanno una sezione loro, col numero. */
+      deve(/Polizze che restano fuori — /.test(r.aperto),
+        'nel dettaglio le polizze senza contraente non hanno una sezione con il loro numero');
+      deve(/[Rr]icaricare non cambia questo numero/.test(r.aperto),
+        'non dice che ricaricare il file non le recupera: è la cosa che si prova per prima');
+      return r.senzaCli + ' polizze e ' + r.ignoti + ' rate, ognuna col suo nome';
+    });
+
     await prova('import: TUTTO O NIENTE — se la scrittura fallisce non resta mezza importazione', async () => {
       /* La prova che nasce da un guasto vero: il 21/09/2026 un'importazione
          ha scritto 2.475 anagrafiche e 1.690 polizze e si è fermata prima
@@ -9366,7 +9406,17 @@ const avvio = async () => {
       });
       deve(r.vere === 0, r.vere + ' righe sono finite nelle tabelle vere nonostante l\'errore');
       deve(/non è andata a buon fine/.test(r.html), 'non dice che è andata male: ' + r.html.slice(0, 200));
-      deve(/non è stato scritto niente/.test(r.html), 'non rassicura su che cosa è rimasto in archivio');
+      /* REGOLA AGGIORNATA IL 22/09/2026, NON IL NUMERO (§15, §16, §33, §35).
+         Prima la frase era «In archivio non è stato scritto niente», in
+         grassetto e INCONDIZIONATA — e non era vera: il catalogo (compagnie e
+         prodotti) si scrive PRIMA della transazione, fuori da essa, ed è una
+         scelta dichiarata (§39 regola 6). Una rassicurazione più larga di
+         quello che si può garantire è la stessa bugia di §12 e §18, dal lato
+         della scrittura. Adesso si dice che cosa non è stato toccato. */
+      deve(/portafoglio non è stato toccato/.test(r.html),
+        'non dice che cosa è rimasto in archivio: ' + r.html.slice(0, 300));
+      deve(!/[Ii]n archivio non è stato scritto niente/.test(r.html),
+        'promette che non è stato scritto NIENTE, e il catalogo invece si scrive prima della transazione');
       deve(r.pulito, 'il foglio di brutta resta lì: domani nessuno saprà che cos\'è');
       deve(r.riprovabile, 'dopo un errore non si può ripremere «Importa»');
       return '0 righe scritte, brutta pulita, si può riprovare';
@@ -9408,6 +9458,33 @@ const avvio = async () => {
       return '12 fuori su 100 proposte, dette in faccia';
     });
 
+    await prova('import: le righe escluse per non far morire tutto si vedono', async () => {
+      /* Con il tutto-o-niente una riga rifiutata dal database non costa quella
+         riga: costa l'importazione intera. Adesso quelle righe si escludono —
+         ma un'esclusione taciuta è peggio del guasto che evita, perché il
+         portafoglio risulta completo e non lo è. */
+      await scegli([]);
+      const r = await page.evaluate(async () => {
+        window.confirm = () => true;
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['rpc:iam_importa_flusso'] = { data: {
+          verbale: 'verbale-finto', clienti: 0, polizze: 40, titoli: 70,
+          titoli_proposti: 75, titoli_senza_polizza: 0,
+          polizze_senza_dati: 3, polizze_numero_doppio: 5, titoli_senza_dati: 5,
+          polizze_senza_cliente: 0 }, error: null };
+        await fluConferma();
+        const out = { html: document.getElementById('flu-esito').innerHTML };
+        delete window.__COLLAUDO.risposte['rpc:iam_importa_flusso'];
+        return out;
+      });
+      deve(/3 polizze senza data di effetto/.test(r.html),
+        'non dice le polizze escluse per un dato mancante: ' + r.html.slice(0, 500));
+      deve(/5 rate senza data o senza importo/.test(r.html), 'non dice le rate escluse per un dato mancante');
+      deve(/5 polizze sono rimaste fuori/.test(r.html), 'non dice le polizze escluse per numero già preso');
+      deve(/numero di polizza è già in archivio/.test(r.html), 'non spiega perché quelle polizze sono rimaste fuori');
+      return '3 + 5 + 5 escluse, tutte e tre dichiarate';
+    });
+
     await prova('import: il bottone si spegne al primo clic, e la barra segue le scritture vere', async () => {
       /* Un secondo clic su un'importazione da millesettecento righe non è un
          fastidio: è un portafoglio doppio. E la barra misura i blocchi
@@ -9440,7 +9517,20 @@ const avvio = async () => {
       const fasi = r.larghezze.map(x => x.fase);
       deve(fasi.some(f => /Clienti/.test(f)) && fasi.some(f => /Polizze/.test(f)) && fasi.some(f => /Rate/.test(f)),
         'la barra non dice la fase: ' + fasi.join(' → '));
-      deve(/100%/.test(r.larghezze[r.larghezze.length - 1].w || ''), 'la barra non arriva in fondo');
+      /* LA BARRA NON ARRIVA AL 100% PRIMA DELLA SCRITTURA (22/09/2026).
+         Fino a ieri l'ultimo passo metteva il riempimento a 100% e POI
+         lanciava la scrittura vera — che è l'unica fase capace di durare, e
+         l'unica che può morire. Una barra piena mentre il database sta ancora
+         scrivendo fa chiudere la scheda, ed è esattamente il modo in cui il
+         21/09 si è perso mezzo portafoglio. È lo stesso difetto che il
+         commento qui sopra dichiarava di voler evitare, arrivato da un'altra
+         porta. Regola aggiornata, non numero (§15, §16, §33, §35). */
+      const ultimo = r.larghezze[r.larghezze.length - 1];
+      deve(!/^100%$/.test(ultimo.w || ''),
+        'la barra è piena mentre il database sta ancora scrivendo: ' + ultimo.w);
+      deve(parseInt(ultimo.w) >= 85, 'la barra si ferma troppo presto: ' + ultimo.w);
+      deve(/non chiudere/i.test(ultimo.fase || ''),
+        'l\'ultimo passo non avverte di non chiudere la pagina: ' + ultimo.fase);
       /* E i passi CRESCONO: una barra che torna indietro non è una misura. */
       const num = r.larghezze.map(x => parseInt(x.w) || 0);
       deve(num.every((v, i) => i === 0 || v >= num[i - 1]), 'la barra torna indietro: ' + num.join(','));

@@ -1,20 +1,17 @@
-id: 1790005643  exit: 0  2026-09-21 15:47:34
+id: 1790005832  exit: 0  2026-09-21 15:51:05
 ----
-== prima ==
-drwx------ 3 root   root 4096 Sep 18 18:51 /var/lib/withus
-drwx------ 2 withus root 4096 Sep 18 18:51 /var/lib/withus/archivio
+== attendo l'autopull ==
+arrivata dopo ~10s
+854c1f1
+app-versione" content="0.21.1"
+app-versione-nome" content="L'archivio si prova all'avvio, non sul primo documento"
 
-== correzione: il proprietario giusto sul ramo e sulla foglia ==
-drwx------ 3 withus withus 4096 Sep 18 18:51 /var/lib/withus
-drwx------ 2 withus withus 4096 Sep 18 18:51 /var/lib/withus/archivio
-
-== prova di scrittura con l'utente del servizio ==
-mkdir: riuscito
-scrittura: riuscita
-
-== riavvio e controllo d'avvio ==
+== il modulo archivio, dopo il riavvio col codice nuovo ==
 active
-nessun avviso di spegnimento: il modulo e' acceso
+acceso: il controllo di scrittura e' passato
 
-== file cifrati presenti ==
-0
+== la cartella, e nessun residuo della prova d'avvio ==
+total 8
+drwx------ 2 withus withus 4096 Sep 21 15:51 .
+drwx------ 3 withus withus 4096 Sep 18 18:51 ..
+file cifrati: 0

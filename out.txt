@@ -1,21 +1,24 @@
-id: 1790006290  exit: 0  2026-09-21 15:58:23
+id: 1790008760  exit: 0  2026-09-21 16:39:56
 ----
-== i file cifrati sul disco ==
-/var/lib/withus/archivio/b8/d7/b8d76ce4-400f-4204-b1fe-8cfcabaa8da1.bin
-  101993 byte  2026-09-21 15:57  utente withus:withus  permessi 600
-totale: 1
+== attendo l'autopull ==
+arrivata dopo ~10s
+3954c4f
 
-== e' davvero cifrato col nostro formato? ==
-sigla in testa: WUS1
-occorrenze di %PDF nel file (deve essere 0): 0
-0
+== la versione servita ==
+app-versione" content="0.22.0"
+app-versione" content="0.22.0"
+"versione": "0.22.0"
 
-== residui della prova d'avvio (deve essere vuoto) ==
-(nessuno)
+== i pezzi nuovi ci sono davvero ==
+2
+2
 
-== errori dell'archivio nell'ultima mezz'ora ==
-Sep 21 15:44:09 vps-d6443a46 node[3903008]: 2026-09-21T15:44:09.458Z POST   /archivio/carica 500 251ms u:a5ab0cd0
-Sep 21 15:57:21 vps-d6443a46 node[3905199]: 2026-09-21T15:57:21.752Z OPTIONS /archivio/carica 204 1ms u:-
-Sep 21 15:57:22 vps-d6443a46 node[3905199]: 2026-09-21T15:57:21.855Z POST   /archivio/carica 200 236ms u:a5ab0cd0
-Sep 21 15:57:27 vps-d6443a46 node[3905199]: 2026-09-21T15:57:27.531Z OPTIONS /archivio/apri/b8d76ce4-400f-4204-b1fe-8cfcabaa8da1 204 2ms u:-
-Sep 21 15:57:27 vps-d6443a46 node[3905199]: 2026-09-21T15:57:27.596Z GET    /archivio/apri/b8d76ce4-400f-4204-b1fe-8cfcabaa8da1 200 130ms u:a5ab0cd0
+== quello che il browser riceve ==
+iam/  200
+app-versione" content="0.22.0"
+{
+  "versione": "0.22.0",
+  "nome": "La contabilità a partita doppia: le fondamenta",
+  "data": "2026-09-21",
+  "storia": [
+    {

@@ -4179,3 +4179,163 @@ su 55, catalogo prodotti vuoto, e i codici produttore che aspettano
 un'importazione. Nessuna di queste è un lavoro di programmazione: sono dieci
 domande con una risposta sola ciascuna, e adesso stanno tutte nello stesso
 posto con scritto accanto che cosa costa non rispondere.
+
+---
+
+## 44. «Nuova polizza»: dal menu, col design di casa, e le rate giuste (21/09/2026)
+
+Tre richieste di Francesco in una riga sola, e la terza portava una regola
+scritta da lui che vale la pena rileggere:
+
+> «se una polizza è fatta oggi ed ha frazionamento semestrale, la scadenza di
+> contratto sarà esattamente tra un anno ma tra 6 mesi ci sarà una rata
+> intermedia da incassare»
+
+| pezzo | dove |
+|---|---|
+| le regole del piano rate | `tariffe/motore/piano-rate.js` |
+| prove in Node | `server/verifica/piano-rate.test.mjs` — 10, una gira in cinque fusi orari |
+| l'involucro in pagina | `titPianoPieno` / `titPiano` / `titGenera` in `index.html` |
+| il modulo col design di IAM | blocco `pnu*` e il blocco di stile `.pnu-*` in `index.html` |
+| la voce di menu | `iam/withus-one.js`, `MENU` › Portafoglio |
+| la rotta | `showPage('portafoglio:nuova')` in `index.html` |
+| prove nella pagina | blocco «nuova polizza» in `ui-test.mjs` → **481** |
+
+### Il difetto che si vedeva solo contando i giorni
+
+`pnuPiuUnAnno` costruiva la data con `new Date(iso + 'T00:00:00')` — mezzanotte
+**locale** — e la rileggeva con `toISOString()`, che è **UTC**. In Italia, che
+è avanti, il risultato torna indietro di un giorno:
+
+| data | prima | adesso |
+|---|---|---|
+| 2026-09-21 | 2027-09-**20** | 2027-09-21 |
+| 2026-01-31 | 2027-01-**30** | 2027-01-31 |
+
+Sempre, anche d'inverno. Nessun errore e nessuna schermata rotta: **una data
+credibile e falsa**, che finisce nello scadenzario e fa telefonare il giorno
+sbagliato. Lo stesso difetto stava sul valore di partenza del modulo, che
+prendeva `new Date().toISOString()`: fra mezzanotte e le due proponeva ieri —
+la trappola già scritta per la Scrivania di IAM.
+
+> **Una data ISO non ha un fuso orario, e farla passare da `new Date(...)` +
+> `toISOString()` gliene dà uno.** L'aritmetica delle date si fa contando sui
+> numeri della stringa. C'è una prova che fa girare il motore in cinque fusi
+> (`UTC`, `Europe/Rome`, `Pacific/Kiritimati`, `Pacific/Niue`,
+> `America/New_York`) e pretende la stessa risposta: è l'unico modo di
+> misurarlo davvero, perché dentro un processo solo il fuso è già quello che è.
+
+### Gli altri tre difetti del piano rate, tutti misurati
+
+1. **Chi scriveva solo la rata non otteneva niente.** `titPiano` leggeva solo
+   `premio_annuo`, e `titGenera` non rileggeva nemmeno `premio_rata` dal
+   database: chi compilava «premio di rata» — che è **il numero che dice la
+   compagnia** — si ritrovava la polizza scritta e **nessuna rata**, con un
+   avviso 400 ms dopo. Senza rate non esistono gli insoluti, e i soldi non si
+   recuperano.
+
+   Dedurre l'annuo qui **non è** la stima vietata da §14 e §36: là è la
+   compagnia che manda un importo senza dire che periodo copre, e moltiplicarlo
+   sarebbe indovinare; qui è una persona che ha appena scritto «semestrale» e
+   «110» nello stesso modulo. E il numero si scrive **nel campo**, visibile e
+   correggibile (§8.1) — non dietro le quinte. Quando invece l'annuo non c'è
+   proprio (una polizza che arriva con la sola rata), il motore marca
+   `annuo_da: 'rate'` e lo dichiara.
+
+2. **Il piano non guardava la scadenza del contratto.** Faceva sempre le rate
+   dell'annualità a passi fissi, anche su un contratto di sei mesi: emetteva
+   rate che il contratto non copre. Adesso il piano appartiene al **contratto**,
+   non a un anno solare fisso — e oltre l'annualità non si emette niente,
+   perché il premio annuo è il denaro di **un** anno e le rate successive
+   nascono al rinnovo, col premio di allora.
+
+3. **«Non dichiarato» diventava «annuale», in silenzio.** `titRateAnno` tornava
+   1 per qualunque frazionamento sconosciuto. Una rata sola è la lettura meno
+   sbagliata, ma resta una supposizione: adesso si fa e **si dichiara**.
+
+E il motivo, quando le rate non si possono fare, dice **quale** dato manca:
+prima tre cause diverse finivano in «manca la data di effetto o il premio»
+(§12, §18).
+
+### Il design di IAM in QUOTO: i gettoni sì, le classi no
+
+Francesco: «l'interfaccia di questa sezione deve essere con il design IAM e non
+diversa». La strada che sembrava giusta — portare il kit di IAM in QUOTO, o
+estrarlo in un file condiviso come si fa coi motori — **è vietata da due
+guardiani**, e vale la pena scriverlo perché la prossima volta si risparmia il
+giro:
+
+- `kit-schermate.test.mjs` **pretende** che `.page-head{`, `.d-btn{`, `.d-card{`
+  … stiano dentro lo `<style>` in linea di `iam/index.html`. Estrarli in un
+  file esterno la fa diventare rossa.
+- `fusione-collisioni.test.mjs` conta le classi in comune fra i due documenti e
+  sta a **17 su 17, scarto zero**, e quella soglia **può solo scendere**.
+  Riscrivere il kit in QUOTO con i suoi nomi porterebbe il conto a 28.
+
+Ma il design di IAM non sta nei nomi delle classi: sta nei **gettoni**. E i
+gettoni sono **già condivisi** — QUOTO carica `withus-one-tokens.css`, che è la
+fonte unica del marchio. Quindi le classi sono prefissate (`pnu-scheda`,
+`pnu-btn`, `pnu-primario`…) e dentro non c'è **nemmeno un colore scritto a
+mano**: solo `var(--w1-*)`. Stessa tavolozza, stesso raggio, stessa ombra,
+stesso verde. È la strada già presa il 20/09 quando `primario` è nata
+`rin-primario` (§40).
+
+**Due gettoni mancavano davvero**, e questo è il pezzo che si rompe in
+silenzio: `--w1-card` e `--w1-ombra` non stanno in `withus-one-tokens.css` —
+vivono in `withus-one.css`, che QUOTO non carica. Senza, `var(--w1-card)` non
+risolve e **la proprietà viene ignorata senza un errore**: la scheda perde il
+fondo e nessuno lo dice. Si dichiarano sul contenitore (`.pnu-kit`), non su
+`:root` — la tavolozza chiara di una schermata non deve ridipingere il resto
+del documento, che è la lezione di §31.
+
+Una prova lo sorveglia: zero colori a mano fuori dal contenitore, i sei gettoni
+usati davvero, e **nessun gettone ridichiarato che la fonte unica abbia già**
+(sarebbe sovrascrivere il marchio). L'unica eccezione ammessa è `#fff` sul
+bottone pieno: il bianco su fondo verde non è una scelta di tavolozza, è
+contrasto, e il kit di IAM lo scrive allo stesso modo — vietarlo qui farebbe
+divergere i due kit invece di tenerli uguali.
+
+### La voce di menu, senza toccare nessun contratto
+
+`portafoglio:nuova` è una **pagina composta**, la stessa forma già in casa per
+`utility:nota` e `anagrafiche:senza-email`: nessun parametro nuovo
+nell'indirizzo, nessun id di pagina nuovo, nessuna chiave `prod` — il contratto
+del menu (`INTERFACCIA-QUOTO-IAM.md` §2.6) non si tocca. Il suffisso si accetta
+**solo se è quello previsto**: un nome che arriva da fuori non diventa mai una
+chiamata.
+
+Due cose che sembrano dettagli:
+- il modulo si apre **solo** se è stato chiesto. Legandolo al nome semplice
+  `portafoglio` si aprirebbe a ogni visita, e c'è una prova che lo misura;
+- **il tasto in cima al Portafoglio resta.** Non è un doppione: è la stessa
+  porta raggiunta da dove la si cerca, ed è la decisione già presa per
+  «Importa» (§15).
+
+### Le rate si vedono prima di salvare
+
+«Deve creare in automatico un titolo da incassare con la data tra sei mesi»:
+adesso si **legge** che lo farà, con date e importi veri, in una scheda del
+modulo. Scoprirlo da un avviso a polizza già scritta era il modo di accorgersene
+tardi.
+
+### Due prove aggiornate nella regola, non nel numero
+
+- «senza data di effetto o premio non si inventa nulla» pretendeva che il motivo
+  contenesse `manca` (minuscolo) — e la frase nuova comincia con «Manca». È la
+  trappola delle maiuscole già presa in §23. Corretta **e** rafforzata: adesso
+  pretende che il motivo dica **quale** dato manca.
+- la prova sull'anteprima chiedeva l'avviso «l'annuo viene dalle rate» anche
+  quando l'annuo è stato scritto nel campo. Sbagliata: se il numero è nel campo
+  **è dichiarato**, perché una persona lo vede e lo corregge. L'avviso resta
+  dove serve — sul motore, quando la polizza arriva con la sola rata e nessuno
+  ha visto niente.
+
+### Cosa resta aperto
+
+- **`titPiano` resta in pagina come involucro** e le sue prove girano ancora nel
+  browser: le regole però stanno nel motore, e lì si provano in Node. Portare
+  anche quelle prove sul motore è lavoro a sé.
+- **Il modulo non crea il fascicolo documentale** (§11, §40): i requisiti si
+  congelano aprendo il fascicolo dal Portafoglio.
+- **Il resto di QUOTO non è sul kit**: questa è la prima schermata. Le altre si
+  portano una alla volta, come si è fatto in IAM (§31).

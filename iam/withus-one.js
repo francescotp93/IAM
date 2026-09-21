@@ -533,6 +533,14 @@
     { key: 'portafoglio', l: 'Portafoglio', i: 'i-case', go: Q('portafoglio'),
       sub: [
         { l: 'Polizze', i: 'i-doc2', go: Q('portafoglio') },
+      /* «Nuova polizza» (21/09/2026, richiesta di Francesco: «nuova polizza si
+         deve trovare nel menu portafoglio»). La pagina composta
+         `portafoglio:nuova` e' la stessa forma gia' usata per `utility:nota` e
+         `anagrafiche:senza-email`: nessun id di pagina nuovo e nessuna chiave
+         di contratto. Il tasto in cima al Portafoglio RESTA — e' la stessa
+         porta raggiunta da dove la si cerca, come si e' deciso per «Importa»
+         (CLAUDE.md §15). */
+      { l: 'Nuova polizza', i: 'i-plus', go: Q('portafoglio:nuova', ['Nuova polizza', 'Portafoglio']) },
         { l: 'Scadenzario', i: 'i-cal', go: Q('scadenzario') },
         { l: 'Titoli e quietanze', i: 'i-euro', go: Q('titoli') },
         { hr: true },
@@ -821,6 +829,7 @@
        Da togliere quando la compat lato QUOTO sarà chiusa. */
     documenti:   ['Utility', 'Strumenti'],
     portafoglio: ['Portafoglio polizze', 'Portafoglio'],
+    'portafoglio:nuova': ['Nuova polizza', 'Portafoglio'],
     scadenzario: ['Scadenzario e rinnovi', 'Portafoglio'],
     titoli:      ['Titoli e quietanze', 'Portafoglio'],
     campagne:    ['Campagne email', 'Marketing'],

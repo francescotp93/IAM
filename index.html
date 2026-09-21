@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.20.0">
-<meta name="app-versione-nome" content="Il grafico dei volumi è un grafico">
+<meta name="app-versione" content="0.21.0">
+<meta name="app-versione-nome" content="I documenti tornano a salire, i contanti trovano la cassa">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -3108,7 +3108,13 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <div class="pf-f"><label>Compagnia</label><select id="fc-compagnia"><option value="">Tutte</option></select></div>
           <div class="pf-f"><label>Mezzo di pagamento</label><select id="fc-mezzo"><option value="">Tutti</option></select></div>
           <div class="pf-f"><label>Collaboratore</label><select id="fc-collab"><option value="">Tutti</option></select></div>
-          <div class="pf-f"><label>Incassi dal</label><input id="fc-da" type="date"></div>
+          <!-- Su quale data cadono le date qui accanto. Sono due domande
+               diverse e il foglio dice sempre a quale sta rispondendo: senza,
+               un totale si legge senza sapere a che periodo si riferisce. -->
+          <div class="pf-f"><label>Date su</label><select id="fc-su">
+            <option value="emissione">Data di emissione</option>
+            <option value="incasso">Data di incasso</option></select></div>
+          <div class="pf-f"><label>dal</label><input id="fc-da" type="date"></div>
           <div class="pf-f"><label>al</label><input id="fc-a" type="date"></div>
           <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="fcRender()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="fcAzzera()">Questo mese</button></div>
         </div>
@@ -3120,7 +3126,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div id="fc-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
       <div class="table-wrap">
         <table class="storico-table">
-          <thead><tr><th>Incasso</th><th>Cliente</th><th>Polizza</th><th>Mezzo · chi paga</th><th class="soldi">Premio</th><th class="soldi">Provv. compagnia</th><th>Collaboratore</th><th class="soldi">Resta all'agenzia</th><th></th></tr></thead>
+          <thead><tr><th>Emissione · incasso</th><th>Cliente</th><th>Polizza</th><th>Mezzo · chi paga</th><th class="soldi">Premio</th><th class="soldi">Provv. compagnia</th><th>Collaboratore</th><th class="soldi">Resta all'agenzia</th><th></th></tr></thead>
           <tbody id="fc-body"><tr><td colspan="9"><div class="empty-state">Carico la cassa…</div></td></tr></tbody>
         </table>
       </div>
@@ -16460,12 +16466,15 @@ function pnuForm(guasti) {
             <option value="Mensile">Mensile</option><option value="">non dichiarato</option></select></div>
           <div><label>Premio annuo (€)</label><input id="pnu-annuo" type="number" step="0.01" min="0" oninput="pnuRicalcolaRata('annuo')"></div>
           <div><label>Premio di rata (€)</label><input id="pnu-rata" type="number" step="0.01" min="0" oninput="pnuRicalcolaRata('rata')"></div>
+          <!-- La tendina si COSTRUISCE dal vocabolario, non si scrive a mano.
+               Scritta a mano lo era, e il 21/09/2026 si è misurato che tre
+               delle sue voci non erano ammesse dal vincolo del database: chi
+               le sceglieva non otteneva un campo sbagliato, otteneva una
+               polizza che NON SI SALVAVA. Un elenco di valori copiato a
+               memoria accanto a quello vero è il modo più silenzioso di
+               rompere un salvataggio. -->
           <div><label>Come paga</label><select id="pnu-mezzo">
-            <option value="">non dichiarato</option><option value="bonifico">bonifico</option>
-            <option value="contanti">contanti</option><option value="pos">POS</option>
-            <option value="assegno">assegno</option><option value="carta_di_credito">carta di credito</option>
-            <option value="rid">RID / SDD</option><option value="paypal">PayPal</option>
-            <option value="prepagata">prepagata</option><option value="altro">altro</option></select></div>
+            <option value="">non dichiarato</option>${pnuOpzioniMezzo()}</select></div>
           <div><label>Stato del pagamento</label><select id="pnu-stato">
             <option value="non_pagato">Non pagato</option><option value="pagato">Pagato</option>
             <option value="sospeso">Sospeso</option></select></div>
@@ -16515,6 +16524,18 @@ function pnuForm(guasti) {
 function pnuPiuUnAnno(iso) {
   if (!iso) return '';
   return (window.PianoRate ? PianoRate.piuUnAnno(iso) : null) || '';
+}
+
+/* I mezzi di pagamento vengono dal vocabolario unico, che e' quello del
+   vincolo del database (`Contabilita.MEZZI`). Il ripiego su `TIT_MEZZI` serve
+   solo se il motore non e' ancora stato caricato: anche quello parla la
+   lingua del database, quindi nessuna delle due strade puo' produrre un
+   valore che l'insert rifiuta. */
+function pnuOpzioniMezzo() {
+  const voci = (window.Contabilita && Contabilita.MEZZI)
+    ? Contabilita.MEZZI.map(m => [m.k, m.l])
+    : Object.keys(TIT_MEZZI).map(k => [k, TIT_MEZZI[k]]);
+  return voci.map(([k, l]) => `<option value="${esc(k)}">${esc(l)}</option>`).join('');
 }
 /* La data di OGGI si legge dal calendario locale, non da `toISOString()`, che
    e' UTC: fra mezzanotte e le due in Italia quello propone ieri. E' la stessa
@@ -18548,8 +18569,13 @@ async function pdocCarica(polizzaId, categoria, file) {
     if (error) throw error;
     try { logMovimento('Documento caricato · ' + categoria, entita, '', polizzaId); } catch (e) {}
   } catch (e) {
+    /* Il 21/09/2026 questo avviso INDOVINAVA la causa, e nominava una sola
+       configurazione possibile: il caricamento è fallito per un'altra, e il
+       suggerimento ha mandato a guardare nel posto sbagliato. Adesso non
+       indovina: il server dichiara da sé che cosa gli manca, e qui si dice
+       soltanto dove leggerlo. */
     alert('Caricamento non riuscito: ' + (e.message || e)
-      + '\n\n(I documenti del fascicolo salgono sull\'archivio cifrato del VPS: se il messaggio parla di ARCHIVIO_CHIAVE, la chiave non è configurata sul server.)');
+      + '\n\n(I documenti del fascicolo salgono sull\'archivio cifrato del VPS. Se manca una configurazione sul server, il messaggio qui sopra ne dice il nome: quella va impostata sul server, non c\'è niente da correggere da qui.)');
   }
   document.getElementById('pdoc-attesa')?.remove();
   await pdocRidisegna(polizzaId);
@@ -27738,11 +27764,45 @@ var FC_TITOLI = [];
 var FC_POLIZZE = {};
 var FC_SCHEMI = {};
 var FC_VISTA = null;
+/* Vero quando la lettura si è fermata al tetto: la schermata lo dice invece
+   di far credere che quello sia tutto il portafoglio. */
+var FC_TRONCATO = false;
 
 function fcFiltri() {
   const v = id => (document.getElementById(id)?.value || '').trim();
   return { dal: v('fc-da') || null, al: v('fc-a') || null, compagnia: v('fc-compagnia') || null,
-           mezzo: v('fc-mezzo') || null, collaboratore_id: v('fc-collab') || null };
+           mezzo: v('fc-mezzo') || null, collaboratore_id: v('fc-collab') || null,
+           /* Su quale data si guarda. Il valore di partenza è l'emissione,
+              perché è la domanda che si fa aprendo il foglio della giornata:
+              «che cosa ho prodotto oggi». Quello che si è incassato oggi è
+              un'altra domanda, e ha la sua voce. */
+           su: v('fc-su') === 'incasso' ? 'incasso' : 'emissione' };
+}
+
+/* ── Leggere TUTTE le righe, non le prime mille ────────────────────────────
+   PostgREST ne manda al massimo mille per richiesta, e un `.limit(5000)`
+   scritto qui non le fa arrivare: ne arrivano mille lo stesso. Con 1.720
+   polizze in portafoglio il foglio cassa ne caricava 1.000 e scartava in
+   silenzio le rate delle altre 720 — cioè degli incassi sparivano dalla cassa
+   senza che nessuna riga lo dicesse. È «un elenco non è un conteggio» (§50)
+   applicato ai soldi.
+   Si pagina finché una pagina torna piena. Il tetto esiste ed è dichiarato:
+   arrivati lì si smette e CHI CHIAMA lo sa, invece di credere di aver letto
+   tutto. */
+const FC_PAGINA = 1000;
+const FC_TETTO = 20000;
+async function fcLeggiTutte(fabbrica) {
+  const fuori = [];
+  let da = 0;
+  for (;;) {
+    const { data, error } = await fabbrica().range(da, da + FC_PAGINA - 1);
+    if (error) throw error;
+    const n = (data || []).length;
+    fuori.push(...(data || []));
+    if (n < FC_PAGINA) return { righe: fuori, troncato: false };
+    da += FC_PAGINA;
+    if (da >= FC_TETTO) return { righe: fuori, troncato: true };
+  }
 }
 
 async function fcCarica() {
@@ -27752,16 +27812,24 @@ async function fcCarica() {
   try {
     /* Il perimetro è quello delle polizze visibili: la riservatezza di un
        incasso eredita da quella della sua polizza, come nell'estratto conto. */
-    let qp = db.from('quote_polizze').select('id,numero,numero_polizza,cliente,cliente_id,compagnia,prodotto,modulo').limit(2000);
     const ids = await visibleUserIds();
-    if (ids) qp = qp.in('creato_da', ids);
-    const { data: pol, error: errP } = await qp;
-    if (errP) throw errP;
+    const pol = await fcLeggiTutte(() => {
+      /* `data_emissione` serve al foglio quanto il numero: è la data su cui si
+         guarda quando si chiede «che cosa ho prodotto». */
+      let q = db.from('quote_polizze')
+        .select('id,numero,numero_polizza,cliente,cliente_id,compagnia,prodotto,modulo,data_emissione')
+        .order('id');
+      if (ids) q = q.in('creato_da', ids);
+      return q;
+    });
     FC_POLIZZE = {};
-    (pol || []).forEach(p => { FC_POLIZZE[p.id] = p; });
-    const { data: tit, error } = await db.from('quote_titoli').select('*').eq('stato', 'incassato').limit(5000);
-    if (error) throw error;
-    FC_TITOLI = (tit || []).filter(t => FC_POLIZZE[t.polizza_id]);
+    (pol.righe || []).forEach(p => { FC_POLIZZE[p.id] = p; });
+    /* TUTTE le rate, non solo quelle incassate: guardando per emissione entra
+       anche quello che il cliente non ha ancora pagato, ed è metà della
+       domanda. Il motore tiene i due gruppi separati, qui non si filtra. */
+    const tit = await fcLeggiTutte(() => db.from('quote_titoli').select('*').order('id'));
+    FC_TITOLI = (tit.righe || []).filter(t => FC_POLIZZE[t.polizza_id]);
+    FC_TRONCATO = pol.troncato || tit.troncato;
     await caricaCollaboratori();
     await ecpCaricaSchemi();
     FC_SCHEMI = ECP_SCHEMI;
@@ -27810,18 +27878,45 @@ function fcRender() {
   FC_VISTA = FoglioCassa.riassunto(Object.assign({ titoli: FC_TITOLI, polizze: FC_POLIZZE, schemi: FC_SCHEMI, nomi: window.TIT_COLLAB_NOMI || {} }, f));
   FC_VISTA.filtri = f;
   const t = FC_VISTA.totali;
-  if (sum) sum.innerHTML = ecpCard(pfEuro(t.premi), 'Premi incassati', t.movimenti + ' movimenti nel filtro attivo')
+  const perEmissione = f.su === 'emissione';
+  if (sum) sum.innerHTML =
+    /* Guardando per emissione i due numeri sono DUE, e stanno in due tessere
+       separate: una somma sola direbbe che in cassa ci sono anche i soldi che
+       il cliente non ha ancora versato. */
+    (perEmissione
+      ? ecpCard(pfEuro(t.premi_emessi), 'Premi emessi', t.righe_emesse + ' rate emesse nel periodo')
+        + ecpCard(pfEuro(t.premi), 'Di cui incassati', t.righe_incassate + ' rate entrate — la data dell\'incasso può essere un\'altra')
+        + (t.righe_da_incassare ? ecpCard(pfEuro(t.premi_da_incassare), 'Ancora da incassare', t.righe_da_incassare + ' rate: emesse, non pagate') : '')
+      : ecpCard(pfEuro(t.premi), 'Premi incassati', t.movimenti + ' movimenti nel filtro attivo'))
     + ecpCard(pfEuro(t.provvigioni_dirette), 'Provvigioni dirette', 'produzione dell\'agenzia, senza collaboratore')
     + ecpCard(pfEuro(t.provvigioni_indirette), 'Provvigioni indirette', 'di cui ai collaboratori ' + pfEuro(t.quota_collaboratori))
     + ecpCard(pfEuro(t.margine_agenzia), 'Resta all\'agenzia', 'dirette + margine sulle indirette')
-    + (t.daConfermare ? ecpCard(t.daConfermare, 'Da confermare', 'provvigione non dichiarata o percentuale non concordata: premi sì, provvigioni no') : '');
+    + (t.daConfermare ? ecpCard(t.daConfermare, 'Da confermare', 'provvigione non dichiarata o percentuale non concordata: premi sì, provvigioni no') : '')
+    /* Le provvigioni, in tutti e due i casi, sono SOLO sulle rate incassate
+       (§17): una rata emessa e non pagata non ha prodotto niente per nessuno.
+       Dirlo qui evita che qualcuno legga il margine come «quello che ho
+       guadagnato questo mese» quando metà del periodo è ancora da incassare. */
+    + (perEmissione && t.righe_da_incassare
+      ? `<div class="cnt-avv" style="flex-basis:100%;margin-top:4px">Le provvigioni contano solo le rate incassate: quelle ancora da incassare sono nei premi emessi e non nei compensi.</div>` : '')
+    + (FC_TRONCATO ? `<div class="cnt-err" style="flex-basis:100%;margin-top:4px">Il portafoglio è più grande di quello che si è riusciti a leggere: questi totali sono parziali.</div>` : '');
   if (!FC_VISTA.righe.length) {
-    body.innerHTML = `<tr><td colspan="9"><div class="empty-state">${FC_TITOLI.length ? 'Nessun incasso con questi filtri.' : 'Nessun incasso registrato: gli incassi arrivano dal flusso della compagnia o si segnano nella pagina Titoli.'}</div></td></tr>`;
+    /* Il vuoto dice quale delle due letture è vuota, e perché: «nessun
+       incasso» su una schermata che sta guardando le emissioni manderebbe a
+       cercare un guasto che non c'è. */
+    body.innerHTML = `<tr><td colspan="9"><div class="empty-state">${
+      !FC_TITOLI.length
+        ? 'Nessuna rata in portafoglio: nascono con la polizza, dal flusso della compagnia o da «Nuova polizza».'
+        : perEmissione
+          ? 'Nessuna polizza emessa in questo periodo con questi filtri.<br><small>Una polizza senza data di emissione non compare qui: si scrive dal suo dettaglio.</small>'
+          : 'Nessun incasso con questi filtri.'}</div></td></tr>`;
     if (quad) quad.innerHTML = '';
     return;
   }
   body.innerHTML = FC_VISTA.righe.map(r => `<tr class="fc-riga">
-    <td style="font-size:12px">${polData(r.data)}<div class="cl-sub">${r.fonte === 'flusso' ? 'dal flusso' : 'a mano'}</div></td>
+    <td style="font-size:12px">${polData(r.data_emissione)}
+      <div class="cl-sub">${r.incassata
+        ? 'incassata ' + polData(r.data_incasso)
+        : '<b>da incassare</b>'} · ${r.fonte === 'flusso' ? 'dal flusso' : 'a mano'}</div></td>
     <td>${r.cliente_id ? `<a href="#" onclick="event.preventDefault();apriAnagrafica('${esc(r.cliente_id)}')" style="font-weight:700;color:var(--ink);text-decoration:underline">${esc(r.cliente || '—')}</a>` : `<strong>${esc(r.cliente || '—')}</strong>`}</td>
     <td style="font-size:12px"><a href="#" onclick="event.preventDefault();polDettaglio('${esc(r.polizza_id)}')" style="font-family:ui-monospace,monospace;color:var(--blue);text-decoration:underline">${esc(r.numero_polizza || '—')}</a>
       <div class="cl-sub">${esc(r.compagnia || '—')}${r.prodotto ? ' · ' + esc(r.prodotto) : ''}</div></td>
@@ -27835,14 +27930,22 @@ function fcRender() {
       <button class="rin-az" onclick="fcModifica('${esc(r.titolo_id)}')" title="Correggi data, mezzo, chi ha pagato"><i class="ti ti-pencil"></i></button>
       <button class="rin-az" onclick="polDettaglio('${esc(r.polizza_id)}')" title="Apri la polizza"><i class="ti ti-file-invoice"></i></button></div></td>
   </tr>`).join('')
-  + `<tr><td colspan="4"><b>Totale</b></td><td class="soldi"><b>${pfEuro(t.premi)}</b></td><td class="soldi"><b>${pfEuro(t.provvigioni)}</b></td><td style="font-size:12px">ai collaboratori <b>${pfEuro(t.quota_collaboratori)}</b></td><td class="soldi"><b>${pfEuro(t.margine_agenzia)}</b></td><td></td></tr>`;
+  + `<tr><td colspan="4"><b>${perEmissione ? 'Totale emesso' : 'Totale'}</b>${
+      perEmissione ? `<div class="cl-sub">di cui incassati ${pfEuro(t.premi)}</div>` : ''}</td>`
+    + `<td class="soldi"><b>${pfEuro(perEmissione ? t.premi_emessi : t.premi)}</b></td><td class="soldi"><b>${pfEuro(t.provvigioni)}</b></td><td style="font-size:12px">ai collaboratori <b>${pfEuro(t.quota_collaboratori)}</b></td><td class="soldi"><b>${pfEuro(t.margine_agenzia)}</b></td><td></td></tr>`;
 
   const tab = (titolo, gruppi, colonna) => `<div class="flu-sez" style="margin-top:14px">${titolo}</div>
     <div class="table-wrap"><table class="storico-table fc-quad"><thead><tr><th>${colonna}</th><th>Movimenti</th><th class="soldi">Premi</th><th class="soldi">Provvigioni</th><th class="soldi">Ai collaboratori</th></tr></thead>
     <tbody>${gruppi.map(g => `<tr><td><strong>${esc(g.etichetta)}</strong></td><td>${g.movimenti}</td><td class="soldi">${pfEuro(g.premi)}</td><td class="soldi">${pfEuro(g.provvigioni)}</td><td class="soldi">${pfEuro(g.quota_collaboratori)}</td></tr>`).join('')}
-    <tr><td><b>Totale</b></td><td><b>${t.movimenti}</b></td><td class="soldi"><b>${pfEuro(t.premi)}</b></td><td class="soldi"><b>${pfEuro(t.provvigioni)}</b></td><td class="soldi"><b>${pfEuro(t.quota_collaboratori)}</b></td></tr>
+    <tr><td><b>Totale</b></td><td><b>${t.righe_incassate}</b></td><td class="soldi"><b>${pfEuro(t.premi)}</b></td><td class="soldi"><b>${pfEuro(t.provvigioni)}</b></td><td class="soldi"><b>${pfEuro(t.quota_collaboratori)}</b></td></tr>
     </tbody></table></div>`;
-  if (quad) quad.innerHTML = tab('Quadratura per mezzo di pagamento', FC_VISTA.quadrature.perMezzo, 'Mezzo')
+  /* Le quadrature sono SEMPRE sugli incassi, anche guardando per emissione:
+     servono a far tornare la cassa col cassetto e col conto, e una rata non
+     incassata in cassa non c'è. Detto, perché altrimenti i numeri qui sotto
+     sembrerebbero non tornare con quelli qui sopra. */
+  if (quad) quad.innerHTML = (perEmissione && t.righe_da_incassare
+      ? `<div class="cnt-avv" style="margin-top:14px">Le quadrature contano le <b>${t.righe_incassate}</b> rate incassate: le ${t.righe_da_incassare} ancora da incassare non sono in cassa.</div>` : '')
+    + tab('Quadratura per mezzo di pagamento', FC_VISTA.quadrature.perMezzo, 'Mezzo')
     + tab('Quadratura per compagnia', FC_VISTA.quadrature.perCompagnia, 'Compagnia')
     + tab('Quadratura per collaboratore', FC_VISTA.quadrature.perCollaboratore, 'Collaboratore');
 }

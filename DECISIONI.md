@@ -178,6 +178,48 @@ usa anche la schermata Produzione.
 
 ---
 
+## 21/09/2026 — Tre scritture che non riuscivano (0.21.0)
+
+**Perimetro:** il caricamento dei documenti, i mezzi di pagamento, il foglio cassa.
+
+🔴 **Cambiata una configurazione di PRODUZIONE, con autorizzazione esplicita.**
+Sul VPS mancava `SUPABASE_ANON_KEY`, e senza quella i documenti del fascicolo
+non si caricavano. È stata scritta nel `.env` del backend prendendola **dal
+client**, dove quella chiave è pubblica per costruzione: non è passata da
+nessuna parte, non è nel repository e non è in nessun messaggio. Backup del
+file accanto, con la data.
+*Come tornare indietro:* si toglie quella riga dal `.env` e si riavvia — ma il
+caricamento dei documenti torna a fallire.
+
+🔴 **Applicate due migrazioni, con autorizzazione esplicita.**
+`20260921_mezzi_conti_allineati.sql` riscrive **solo** la colonna `mezzi` dei
+conti (configurazione, non contabilità: nessuna polizza e nessuna rata
+toccata). `20260921_polizze_senza_rate.sql` aggiunge una funzione di sola
+lettura. Il blocco ROLLBACK è in testa a tutti e due i file.
+
+🟡 **RIBALTATO il vocabolario dei mezzi di pagamento.** Erano quattro elenchi,
+e due chiavi su nove divergevano fra il motore della contabilità e il vincolo
+del database. Vince il database, perché è l'unico che non si può cambiare
+senza riscrivere 1.720 polizze e 55 rate.
+*Come tornare indietro:* `git revert` del commit 0.21.0 **e** il rollback della
+migrazione dei conti — le due cose vanno insieme.
+
+🟡 **Il foglio cassa parte dalla DATA DI EMISSIONE, non più da quella di
+incasso.** È la richiesta di Francesco. Chi lo usava per quadrare la cassa
+trova numeri diversi al primo colpo d'occhio: la schermata dichiara su quale
+data sta guardando, e il selettore «Date su» riporta alla lettura di prima.
+*Come tornare indietro:* una riga in `fcFiltri`.
+
+🟡 **Le rate non incassate entrano nel foglio, i loro premi NO nei totali di
+cassa.** Emesso e incassato sono due tessere separate e non si sommano mai; le
+provvigioni contano solo l'incassato (regola §17).
+
+🟡 **Il foglio cassa adesso legge tutto il portafoglio, paginando.** Prima si
+fermava a mille righe e scartava in silenzio le rate delle altre 720 polizze.
+Se un giorno l'archivio superasse il tetto dichiarato, lo scrive.
+
+---
+
 ## Fuori perimetro — annotato e non fatto
 
 - **`flusso-ssf.js:805 aggiungiMesi` duplica `PianoRate.sommaMesi`**: due copie
@@ -192,6 +234,14 @@ usa anche la schermata Produzione.
 - **Le rate perse dall'import di stamattina non si ricostruiscono dal
   database**: stanno solo nel file della compagnia. Si recuperano ricaricando
   quello stesso file, che adesso è idempotente e atomico.
+- **«CASSA CONTANTI» è di tipologia `altro`**, quindi il fondo cassa ricostruito
+  non la conta. Il sistema lo dice come anomalia; cambiare la tipologia di un
+  conto è una decisione contabile e non si fa da soli.
+- **Due conti dichiarano di ricevere i contanti**: finché è così quegli incassi
+  leggono «non si sa». Va lasciato su uno solo.
+- **Il manuale di contabilità di AssiEasy** (con la parte «registrazione
+  movimenti», cioè la loro prima nota) è da leggere e mappare contro quello che
+  IAM ha già: è il task #64, non fatto in questo rilascio.
 - **Il codice produttore si cerca sulla compagnia scritta esatta**, non sugli
   alias di `quote_compagnie` (CLAUDE.md §11): «HDI Assicurazioni» sulla polizza
   e «HDI» in tabella non si ritroverebbero. Sul portafoglio vero c'è una

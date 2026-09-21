@@ -133,16 +133,38 @@
 
      Trattarli tutti come immediati farebbe dire al saldo di avere dei soldi
      che non sono ancora arrivati — un numero credibile e falso, e la
-     quadratura (regola 7) lo troverebbe sbagliato senza saper dire perche'. */
+     quadratura (regola 7) lo troverebbe sbagliato senza saper dire perche'.
+
+     ── LE CHIAVI SONO QUELLE DEL DATABASE, E NON SI SCELGONO QUI ────────────
+     Misurato il 21/09/2026, e costava un guasto muto: questo elenco era nato
+     il 20/09 con due chiavi sue — al singolare la prima, una sigla la penultima
+     — mentre `quote_titoli.mezzo_pagamento` e `quote_polizze.mezzo_pagamento`
+     hanno un vincolo CHECK che ammette altri nomi. Due su nove divergevano, e
+     una delle due era proprio quella dei CONTANTI, cioe' il solo mezzo
+     `immediato`, il solo che fa muovere il conto lo stesso giorno.
+
+     Che cosa succedeva, senza nessun errore e senza niente di rosso: una rata
+     incassata in contanti arrivava a `destinoIncasso`, che non ritrovava la
+     sua chiave nel vocabolario e rispondeva «non si sa»; e la spunta
+     «Contanti» messa su un conto non poteva incrociare NESSUNA rata, perche'
+     quella parola sul database non e' ammessa. La cassa contanti configurata
+     a puntino restava inerte per costruzione.
+
+     La regola, da qui in avanti: **il vocabolario e' uno solo, ed e' quello
+     del vincolo del database** — perche' e' l'unico che non si puo' cambiare
+     senza riscrivere delle righe gia' scritte. Le etichette si traducono, le
+     chiavi no. Una prova confronta i quattro posti in cui questo elenco vive
+     (la migrazione, questo motore, il lettore dei flussi e la tendina della
+     pagina Titoli) e diventa rossa se uno si scosta. */
   var MEZZI = [
-    { k: 'contanti',      l: 'Contanti',            immediato: true,  i: 'ti-cash' },
+    { k: 'contante',      l: 'Contanti',            immediato: true,  i: 'ti-cash' },
     { k: 'pos',           l: 'POS',                 immediato: false, i: 'ti-credit-card', giorni: 2 },
     { k: 'bonifico',      l: 'Bonifico',            immediato: false, i: 'ti-building-bank', giorni: 3 },
     { k: 'assegno',       l: 'Assegno',             immediato: false, i: 'ti-file-invoice', giorni: 7 },
     { k: 'carta_credito', l: 'Carta di credito',    immediato: false, i: 'ti-credit-card', giorni: 3 },
     { k: 'prepagata',     l: 'Prepagata',           immediato: false, i: 'ti-credit-card', giorni: 3 },
     { k: 'paypal',        l: 'PayPal',              immediato: false, i: 'ti-brand-paypal', giorni: 3 },
-    { k: 'rid',           l: 'SDD / RID',           immediato: false, i: 'ti-repeat', giorni: 5 },
+    { k: 'domiciliazione', l: 'Domiciliazione (SDD)', immediato: false, i: 'ti-repeat', giorni: 5 },
     { k: 'altro',         l: 'Altro',               immediato: false, i: 'ti-dots' }
   ];
 
@@ -613,6 +635,25 @@
     return { conto: null, ok: false, ambiguo: ok, motivo: ok.length + ' conti dicono di ricevere «' + (mezzo(t) ? mezzo(t).l : t) + '»: non si puo' + '\u2019 sapere dove arriva. Lascialo su uno solo.' };
   }
 
+  /* Gli stessi conti guardati DALL'ALTRA PARTE: non «dove va questo mezzo» ma
+     «quali mezzi non hanno una destinazione sola». `contoPerMezzo` risponde a
+     una rata alla volta, e se ne accorge solo quando quella rata arriva;
+     questo lo dice PRIMA che arrivi, cioe' quando si sta ancora configurando.
+     Torna solo i conflitti: un mezzo su un conto solo non e' una notizia. */
+  function mezziInConflitto(conti) {
+    var per = {};
+    (conti || []).forEach(function (c) {
+      if (!c || c.attivo === false) return;
+      (c.mezzi || []).forEach(function (m) {
+        var k = testo(m).toLowerCase();
+        if (!k) return;
+        (per[k] = per[k] || []).push(c.nome || '(senza nome)');
+      });
+    });
+    return Object.keys(per).filter(function (k) { return per[k].length > 1; })
+      .map(function (k) { return { mezzo: k, conti: per[k] }; });
+  }
+
   /* CHE FINE FA un incasso. Tre risposte, e la terza e' quella che tiene in
      piedi tutto il resto:
 
@@ -968,6 +1009,47 @@
         'Creala in Strumenti \u203a Conti e causali: senza, i contanti restano fuori dalla contabilita\u2019.');
     }
 
+    /* 4-bis. DUE CONTI CHE DICHIARANO LO STESSO MEZZO. Trovato il 21/09/2026
+       sulla configurazione vera: la cassa contanti e un conto corrente
+       dichiaravano tutti e due i contanti. La regola (M4) dice che in quel
+       caso non si sceglie per somiglianza e si scrive \u00abnon si sa\u00bb \u2014 giusto \u2014
+       ma nessuno lo diceva a chi aveva appena finito di configurare. Il
+       risultato e' il peggiore dei due mondi: il lavoro e' stato fatto e gli
+       incassi restano fermi lo stesso, senza una riga che spieghi perche'. */
+    var doppi = mezziInConflitto(conti);
+    if (doppi.length) agg('giallo', 'Lo stesso mezzo su piu\u2019 conti', doppi.length, null,
+      doppi.map(function (d) {
+        return '\u00ab' + (mezzo(d.mezzo) ? mezzo(d.mezzo).l : d.mezzo) + '\u00bb e\u2019 dichiarato da ' + d.conti.length + ' conti (' + d.conti.join(', ') + ')';
+      }).join('; ') + '. Lascialo su uno solo, altrimenti quegli incassi leggono \u00abnon si sa\u00bb.');
+
+    /* 4-ter. UN CONTO CHE RICEVE CONTANTI E NON E' UNA CASSA. Il fondo cassa
+       somma le tipologie \u00abcassa\u00bb e basta (M5): un conto classificato in un
+       altro modo, per quanto si chiami \u00abcassa contanti\u00bb, non ci entra \u2014 e il
+       fondo resta a zero senza che nessuno sappia perche'. Non si corregge da
+       soli: cambiare la natura di un conto e' una decisione contabile. */
+    var casseStorte = (conti || []).filter(function (c) {
+      return c && c.attivo !== false && c.tipologia !== 'cassa' &&
+             (c.mezzi || []).some(function (m) { return testo(m).toLowerCase() === 'contante'; });
+    });
+    if (casseStorte.length) agg('giallo', 'Contanti su un conto che non e\u2019 una cassa', casseStorte.length, null,
+      casseStorte.map(function (c) { return '\u00ab' + c.nome + '\u00bb'; }).join(', ') +
+      ' riceve i contanti ma non e\u2019 di tipologia \u00abCassa contanti\u00bb: il fondo cassa non lo conta.');
+
+    /* 4-quater. POLIZZE SENZA NEMMENO UNA RATA. Il conto lo fa il database e
+       arriva gia' fatto (\u00a745: 1.720 polizze non si scaricano nel browser).
+       Perche' sta fra le anomalie della contabilita' e non altrove: una
+       polizza senza rate non ha insoluti, non entra nello scadenzario delle
+       rate, non produce estratto conto e non arriva qui \u2014 **per il sistema
+       quel premio non lo deve nessuno**. E' una voce di contabilita' che
+       manca, non un dettaglio di portafoglio. */
+    var pf = dati.portafoglio;
+    if (pf && numero(pf.senza_rate) > 0) {
+      agg('rosso', 'Polizze senza nemmeno una rata', numero(pf.senza_rate),
+        pf.premio == null ? null : numero(pf.premio),
+        'Per il sistema quei premi non li deve nessuno: non hanno insoluti e non arrivano in contabilita\u2019. ' +
+        'Se vengono da un\u2019importazione interrotta, si recuperano ricaricando lo stesso file della compagnia.');
+    }
+
     /* 5. Movimenti la cui causale non esiste piu': non hanno un verso, quindi
           NON entrano nei saldi — e un saldo a cui manca una riga non torna. */
     var cau = indice(causali);
@@ -1202,7 +1284,8 @@
     dettaglioConto: dettaglioConto, storicoQuadrature: storicoQuadrature,
     vivo: vivo, vivi: vivi, versoDi: versoDi, TOLLERANZA: TOLLERANZA,
     /* M4 — gli incassi da accreditare */
-    MEZZI: MEZZI, mezzo: mezzo, contoPerMezzo: contoPerMezzo, destinoIncasso: destinoIncasso,
+    MEZZI: MEZZI, mezzo: mezzo, contoPerMezzo: contoPerMezzo, mezziInConflitto: mezziInConflitto,
+    destinoIncasso: destinoIncasso,
     giorniDa: giorniDa, inRitardo: inRitardo, sospesiAperti: sospesiAperti,
     riepilogoSospesi: riepilogoSospesi, validaAccredito: validaAccredito,
     /* M5 — la giornata ricostruita, il fondo cassa, le anomalie */

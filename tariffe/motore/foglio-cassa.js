@@ -57,12 +57,38 @@
     var nomi = o.nomi || {};
     var righe = [];
 
+    /* SU QUALE DATA SI GUARDA (21/09/2026, richiesta di Francesco: «ho
+       inserito una polizza e non mi risulta nel foglio cassa; deve far testo
+       la data emissione, e per la parte dell'incasso può avere anche una data
+       diversa»).
+
+       Sono due domande diverse e non vanno confuse:
+         'incasso'   — che cosa è ENTRATO in un periodo. È la lettura storica,
+                       quella che serve a quadrare la cassa.
+         'emissione' — che cosa si è PRODOTTO in un periodo. Qui entrano anche
+                       le rate non ancora incassate, perché una polizza emessa
+                       oggi è lavoro di oggi anche se il cliente paga domani.
+
+       Le due date restano tutte e due su ogni riga: una polizza emessa il 21
+       e incassata il 30 appartiene a due periodi diversi per due domande
+       diverse, e nasconderne una obbligherebbe a tenere il conto a mente. */
+    var su = (o.su === 'emissione') ? 'emissione' : 'incasso';
+
     (o.titoli || []).forEach(function (t) {
-      if (!t || t.stato !== 'incassato' || !t.incassato_il) return;
-      var data = giorno(t.incassato_il);
+      if (!t) return;
+      var pol = polizze[t.polizza_id] || {};
+      var incassata = t.stato === 'incassato' && !!t.incassato_il;
+      var dIncasso = incassata ? giorno(t.incassato_il) : null;
+      var dEmissione = giorno(pol.data_emissione);
+      /* Guardando per incasso, una rata non incassata non c'è: non è un
+         incasso. Guardando per emissione, una polizza senza data di emissione
+         non si mette in un periodo indovinandolo dall'effetto — si emette
+         prima che decorra, e una data indovinata conta la riga nel mese
+         sbagliato (§21). Resta fuori, e la schermata dice quante sono. */
+      var data = su === 'emissione' ? dEmissione : dIncasso;
+      if (!data) return;
       if (o.dal && data < String(o.dal).slice(0, 10)) return;
       if (o.al && data > String(o.al).slice(0, 10)) return;
-      var pol = polizze[t.polizza_id] || {};
       if (o.compagnia && testo(pol.compagnia) !== o.compagnia) return;
       if (o.mezzo && testo(t.mezzo_pagamento) !== o.mezzo) return;
       if (o.collaboratore_id && t.collaboratore_id !== o.collaboratore_id) return;
@@ -77,7 +103,14 @@
       righe.push({
         titolo_id: t.id || null,
         polizza_id: t.polizza_id || null,
+        /* `data` e' quella su cui si sta guardando — serve all'ordinamento e
+           ai raggruppamenti. Le due vere restano accanto, sempre tutte e due:
+           chi legge una riga deve poter vedere quando e' stata emessa E
+           quando e' stata incassata senza cambiare schermata. */
         data: data,
+        data_emissione: dEmissione,
+        data_incasso: dIncasso,
+        incassata: incassata,
         cliente: testo(pol.cliente),
         cliente_id: pol.cliente_id || null,
         numero_polizza: testo(pol.numero_polizza),
@@ -106,17 +139,44 @@
     return righe;
   }
 
-  /* ══ I TOTALI DELLA BARRA ══════════════════════════════════════════════════ */
+  /* ══ I TOTALI DELLA BARRA ══════════════════════════════════════════════════
+     DUE GRUPPI, E NON SI SOMMANO MAI FRA LORO. Guardando per emissione qui
+     dentro arrivano anche le rate che il cliente non ha ancora pagato, e
+     metterle nello stesso totale degli incassi direbbe che in cassa ci sono
+     dei soldi che nessuno ha versato — un numero credibile e falso, e la
+     quadratura lo troverebbe sbagliato senza saper dire da dove viene.
+
+       · emesso    — tutte le righe del periodo. È la produzione.
+       · incassato — solo quelle con una data di incasso. È la cassa.
+
+     E le PROVVIGIONI si contano solo sull'incassato, perché è la decisione 1
+     dell'estratto conto (§17): una rata emessa e non pagata non ha prodotto
+     niente per nessuno. Contarle sull'emesso vorrebbe dire scrivere in un
+     foglio cassa un compenso che matura fra un mese.
+
+     Guardando per incasso ogni riga è incassata, quindi i due gruppi
+     coincidono e i numeri restano quelli di sempre. */
   function totali(righe) {
-    var buone = righe.filter(function (r) { return !r.daConfermare.length; });
+    var incassate = righe.filter(function (r) { return r.incassata; });
+    var aperte = righe.filter(function (r) { return !r.incassata; });
+    var buone = incassate.filter(function (r) { return !r.daConfermare.length; });
     var dirette = buone.filter(function (r) { return !r.collaboratore_id; });
     var indirette = buone.filter(function (r) { return r.collaboratore_id; });
     var somma = function (arr, k) { return cent(arr.reduce(function (s, r) { return s + (r[k] || 0); }, 0)); };
     return {
       movimenti: righe.length,
       conteggiati: buone.length,
-      daConfermare: righe.length - buone.length,
-      premi: somma(righe, 'importo'),
+      daConfermare: incassate.length - buone.length,
+      /* La produzione del periodo, che include anche quello che non è ancora
+         entrato: sono due righe di riepilogo, mai una somma sola. */
+      righe_emesse: righe.length,
+      premi_emessi: somma(righe, 'importo'),
+      righe_da_incassare: aperte.length,
+      premi_da_incassare: somma(aperte, 'importo'),
+      /* La cassa. `premi` resta il nome che aveva, e resta quello che diceva:
+         i premi INCASSATI. */
+      righe_incassate: incassate.length,
+      premi: somma(incassate, 'importo'),
       provvigioni: somma(buone, 'provvigione'),
       provvigioni_dirette: somma(dirette, 'provvigione'),
       provvigioni_indirette: somma(indirette, 'provvigione'),
@@ -143,11 +203,18 @@
     });
     return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return b.premi - a.premi; });
   }
+  /* Le quadrature restano SUGLI INCASSI, sempre, anche quando si sta
+     guardando per emissione: servono a far tornare la cassa con quello che
+     c'è nel cassetto e sul conto, e una rata non incassata in cassa non c'è.
+     Il filtro sta QUI dentro e non in chi chiama, perché i posti che lo
+     chiamano sono tre (schermata, Excel, PDF) e tre controlli scritti a mano
+     sono tre occasioni di dimenticarne uno. */
   function quadrature(righe) {
+    var inc = (righe || []).filter(function (r) { return r.incassata; });
     return {
-      perMezzo: raggruppa(righe, function (r) { return r.mezzo; }, function (r) { return r.mezzo_nome || '(non indicato)'; }),
-      perCompagnia: raggruppa(righe, function (r) { return r.compagnia; }),
-      perCollaboratore: raggruppa(righe, function (r) { return r.collaboratore_id; }, function (r, k) { return r.collaboratore || (r.collaboratore_id ? 'collaboratore rimosso' : 'Agenzia (produzione diretta)'); })
+      perMezzo: raggruppa(inc, function (r) { return r.mezzo; }, function (r) { return r.mezzo_nome || '(non indicato)'; }),
+      perCompagnia: raggruppa(inc, function (r) { return r.compagnia; }),
+      perCollaboratore: raggruppa(inc, function (r) { return r.collaboratore_id; }, function (r, k) { return r.collaboratore || (r.collaboratore_id ? 'collaboratore rimosso' : 'Agenzia (produzione diretta)'); })
     };
   }
 

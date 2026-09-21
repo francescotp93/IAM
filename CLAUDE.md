@@ -5125,3 +5125,194 @@ I tre riquadri di indicatori restano, sotto il grafico: rispondono a domande
 che il grafico non fa (quanto portafoglio ho in gestione, quanto converto), e
 il 4/8/2026 erano stati tolti per un motivo diverso — ripetevano i numeri di
 «Da fare oggi» (§42, punto 10). Qui non si ripete niente: si cambia l'ordine.
+
+---
+
+## 53. Tre scritture che non riuscivano, e nessuna lo diceva (21/09/2026)
+
+Tre segnalazioni arrivate a distanza di minuti, e sotto avevano la stessa
+forma: **una cosa che non funziona senza dare un errore che si possa capire.**
+Nessuna delle tre si vedeva guardando il codice: si sono viste misurando.
+
+| pezzo | dove |
+|---|---|
+| la terza credenziale del server | `chiaviRest` in `server/archivioVps.js` |
+| il vocabolario unico dei mezzi | `MEZZI` in `tariffe/motore/contabilita.js` |
+| i mezzi doppi e le polizze senza rate | `mezziInConflitto` e `anomalie` nello stesso motore |
+| il conteggio delle polizze scoperte | `supabase/migrations/20260921_polizze_senza_rate.sql` (applicata) |
+| l'allineamento dei conti già configurati | `supabase/migrations/20260921_mezzi_conti_allineati.sql` (applicata) |
+| emissione e incasso nel foglio cassa | `movimenti` / `totali` / `quadrature` in `tariffe/motore/foglio-cassa.js` |
+| la lettura che non si ferma a mille | `fcLeggiTutte` in `index.html` |
+| prove | `archivio-vps` (13), `contabilita` (48), `foglio-cassa` (7), `ui-test.mjs` (**492**) |
+
+### 1. «Caricamento non riuscito: No API key found in request»
+
+Il modulo dell'archivio cifrato (§15) fa **due** controlli all'avvio — la
+chiave di cifratura e la cartella — e se uno manca si spegne, risponde 503 e
+dice il nome della variabile. È la regola scritta allora, ed è giusta.
+
+Le credenziali che servono però sono **tre**: per scrivere i metadati serve
+anche la chiave con cui si parla col database. Quella non era controllata.
+Misurato nell'ambiente del processo sul VPS (mai i valori, solo i nomi e le
+lunghezze): `ARCHIVIO_CHIAVE` c'era, `ARCHIVIO_DIR` c'era,
+**`SUPABASE_ANON_KEY` non esisteva**. E nei log del server, all'orario esatto
+del tentativo di Francesco, la riga che chiudeva il caso.
+
+> **Una regola applicata a metà è peggio di una regola assente**: il modulo
+> partiva acceso, prendeva in carico il file, e falliva all'ultimo passo con
+> un errore di PostgREST che parla di header HTTP. Chi lavora non può
+> interpretarlo, e l'avviso della pagina **indovinava** una causa sola
+> («se parla di ARCHIVIO_CHIAVE…»), mandando a guardare nel posto sbagliato.
+
+Due correzioni. Il controllo d'avvio adesso sono tre, e il messaggio dice
+quale manca. E l'avviso della pagina non indovina più: dice che il nome della
+configurazione mancante sta nel messaggio del server.
+
+**Perché la chiave ANONIMA e non quella di servizio**, che sul VPS c'era: i
+metadati si leggono e si scrivono col token di chi chiede, e Supabase vuole
+`apikey` **accanto** al token. Con la chiave di servizio, un token assente o
+malformato non farebbe fallire la richiesta — la farebbe passare come
+servizio, scavalcando le politiche. Cioè esattamente la regola che quel
+modulo esiste per applicare (§15).
+
+Il controllo si fa **solo quando si userà la strada vera**: nelle prove i due
+accessi sono iniettati, e pretendere lì delle variabili d'ambiente avrebbe
+fatto diventare rosso il banco *per la strada* invece che per il contenuto
+(§4).
+
+### 2. `contante` ≠ `contanti`, e la cassa era inerte per costruzione
+
+Francesco aveva configurato i conti: sei, fra cui una «CASSA CONTANTI» con la
+spunta sui contanti. Misurato subito dopo:
+
+| dove | la chiave dei contanti |
+|---|---|
+| il vincolo `CHECK` di `quote_titoli` e `quote_polizze` | **`contante`** |
+| `Flusso.MEZZI`, `TIT_MEZZI` | `contante` |
+| **`Contabilita.MEZZI`** (nato il 20/09, §32) | **`contanti`** |
+
+Due chiavi su nove divergevano (l'altra: `rid` contro `domiciliazione`), e una
+delle due era **proprio quella dei contanti** — il solo mezzo `immediato`, il
+solo che fa muovere il conto lo stesso giorno.
+
+Conseguenza, senza un errore e senza niente di rosso: `destinoIncasso` non
+ritrovava quella chiave e rispondeva «non si sa»; e la spunta «Contanti» su un
+conto **non poteva incrociare nessuna rata**, perché quella parola su una rata
+il database non la ammette. *La configurazione era fatta bene ed era inerte.*
+
+> **Il vocabolario che comanda è quello del vincolo del database**, perché è
+> l'unico che non si può cambiare senza riscrivere righe già scritte (1.720
+> polizze, 55 rate). Le etichette si traducono, le chiavi no.
+
+E c'era un **quarto** elenco, il più rotto: la tendina «Come paga» di «Nuova
+polizza» (§44) era scritta a mano e portava **tre** chiavi che il vincolo
+rifiuta. Chi le sceglieva non otteneva un campo sbagliato: otteneva una
+polizza che **non si salvava**. Adesso quella tendina si costruisce
+dall'elenco, e il guardiano confronta **cinque** posti — la migrazione, i due
+motori, la tendina dei Titoli e quella di Nuova polizza — pretendendo le
+stesse chiavi.
+
+Il guardiano legge le chiavi dagli **oggetti**, non dal sorgente: un commento
+che nomina una chiave vecchia per spiegare perché è stata tolta lo farebbe
+diventare rosso su un codice giusto. È la trappola dei commenti (§10, §12,
+§18, §26, §29, §31, §33, §34, §37, §41, §42), evitata invece che subita.
+
+### 3. Tre anomalie che il sistema non sapeva dire
+
+Misurato sulla configurazione vera, e ognuna era un lavoro fatto che non
+serviva a niente:
+
+- **due conti dichiaravano tutti e due i contanti.** La regola (§32) dice che
+  in quel caso non si sceglie per somiglianza e si scrive «non si sa» — giusto
+  — ma nessuno lo diceva a chi aveva appena finito di configurare. Il risultato
+  è il peggiore dei due mondi: il lavoro è stato fatto e gli incassi restano
+  fermi lo stesso. Adesso `mezziInConflitto` lo dice **mentre si configura**,
+  non quando arriva una rata;
+- **«CASSA CONTANTI» era di tipologia `altro`.** Il fondo cassa somma le
+  tipologie `cassa` e basta (§33): un conto che si chiama così ma è
+  classificato in un altro modo non ci entra, e il fondo resta a zero senza
+  che si capisca perché. Non si corregge da soli — cambiare la natura di un
+  conto è una decisione contabile — si dice;
+- **1.700 polizze su 1.720 non hanno nemmeno una rata**, per **574.264,61 €**
+  di premio annuo. Sono quelle dell'importazione interrotta (§47).
+
+Perché quest'ultima sta fra le anomalie della *contabilità* e non del
+portafoglio: una polizza senza rate non ha insoluti, non entra nello
+scadenzario delle rate, non produce estratto conto e non arriva in
+contabilità — **per il sistema quel premio non lo deve nessuno.** È una voce
+che manca, non un dettaglio.
+
+Il conto lo fa il database e torna una riga (`iam_polizze_senza_rate`,
+SECURITY INVOKER): 1.720 polizze non si scaricano nel browser per contarle
+(§45). Se la lettura non riesce resta `null` e l'anomalia **non compare**:
+«non si è potuto contare» non è «non ce ne sono» (§12, §18), e su una
+schermata di anomalie è la bugia peggiore.
+
+### 4. Il foglio cassa guarda anche la data di emissione
+
+> «Ho inserito una polizza e non mi risulta nel foglio cassa. Deve far testo
+> la data emissione. Inoltre per la parte dell'incasso può avere anche una
+> data diversa» — Francesco.
+
+Misurato: la polizza (Allianz, inserita a mano) ha `data_emissione` di oggi e
+una rata **non incassata**; `fcCarica` leggeva `.eq('stato','incassato')`.
+Non era un guasto — era che il foglio sapeva leggere **una data sola**.
+
+Sono due domande diverse e adesso il foglio dice sempre a quale sta
+rispondendo:
+
+| lettura | che cosa mostra |
+|---|---|
+| **emissione** (di partenza) | che cosa si è **prodotto** nel periodo, comprese le rate non ancora pagate |
+| **incasso** | che cosa è **entrato** nel periodo. È la lettura che serve a quadrare la cassa |
+
+**I due totali non si sommano mai.** «Premi emessi» e «di cui incassati» sono
+due tessere, e una somma sola direbbe che in cassa ci sono dei soldi che il
+cliente non ha versato — un numero credibile e falso, e la quadratura lo
+troverebbe sbagliato senza saper dire da dove viene. C'è una prova che
+pretende che *incassato + da incassare = emesso*: se un giorno non tornasse,
+vorrebbe dire che una riga è finita in tutti e due o in nessuno dei due.
+
+**Le provvigioni restano solo sull'incassato** (§17, decisione 1), e il foglio
+lo scrive: una rata emessa e non pagata non ha prodotto niente per nessuno.
+**Le quadrature restano sugli incassi** anche guardando per emissione — in
+cassa una rata non incassata non c'è — e il filtro sta dentro `quadrature`,
+non in chi chiama: i posti che la chiamano sono tre (schermata, Excel, PDF), e
+tre controlli scritti a mano sono tre occasioni di dimenticarne uno.
+
+**Una polizza senza data di emissione non si colloca indovinando dall'effetto**
+(§21): si emette prima che decorra, e una data indovinata conta la riga nel
+mese sbagliato. Resta fuori, e il vuoto lo dice.
+
+Il selettore **non ricalcola mentre si sceglie**: è un campo da riempire come
+gli altri, e aspetta il clic su Cerca (§22). La prima stesura aveva un
+`onchange`, e la prova di M2.2 l'ha preso nello stesso giro.
+
+### 5. `.limit(5000)` su un server che ne manda mille
+
+Trovato lavorando sul punto 4, ed era vivo da quando il portafoglio è cresciuto:
+`fcCarica` chiedeva `.limit(2000)` sulle polizze e `.limit(5000)` sulle rate.
+PostgREST ne manda **mille** per richiesta (§50).
+
+> Con 1.720 polizze il foglio cassa ne caricava 1.000 e **scartava in silenzio
+> le rate delle altre 720**: degli incassi sparivano dalla cassa senza che
+> nessuna riga lo dicesse. È «un elenco non è un conteggio» (§50) applicato ai
+> soldi — e un `limit` più grande non è una correzione, è la stessa cosa
+> scritta con un numero diverso.
+
+Adesso si pagina finché una pagina torna piena. Il tetto esiste, è dichiarato,
+e quando si raggiunge **la schermata lo scrive**: «questi totali sono
+parziali». Una prova fa girare la funzione con un finto server da 2.400 righe
+e ne pretende 2.400 distinte in tre pagine; la controprova (una pagina sola)
+la fa diventare rossa con «righe lette: 1000».
+
+### Cosa resta aperto
+
+- **Le rate perse si recuperano solo ricaricando il file della compagnia**
+  (§47). Fino ad allora l'anomalia resta rossa, ed è giusto che lo sia.
+- **«CASSA CONTANTI» è ancora di tipologia `altro`**: il sistema lo dice, la
+  correzione è una decisione contabile e la prende una persona.
+- **Nessun conto ha l'IBAN e nessuno è quello delle rimesse** (§34): gli
+  estratti conto escono senza coordinate, e lo dichiarano.
+- **Il foglio cassa non ha ancora un «nuovo movimento a mano»**: un incasso
+  nasce nella pagina Titoli e il foglio lo legge (§25).

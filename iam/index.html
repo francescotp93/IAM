@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.20.0">
-<meta name="app-versione-nome" content="Il grafico dei volumi è un grafico">
+<meta name="app-versione" content="0.21.0">
+<meta name="app-versione-nome" content="I documenti tornano a salire, i contanti trovano la cassa">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -6504,6 +6504,12 @@ var GIO_SOSPESI = [];
 var GIO_QUADRATURE = [];
 var GIO_TITOLI = [];
 var GIO_SESSIONI = [];
+/* Resta `null` finché il conteggio non è tornato, e `null` vuol dire «non lo
+   so», non «zero»: il motore su `null` non dice niente. Un riquadro che
+   dichiara «nessuna polizza scoperta» perché la lettura non è riuscita è la
+   stessa bugia del contatore documentale che mostrava 0 su un archivio mai
+   letto (§12, §18). */
+var GIO_PORTAFOGLIO = null;
 var GIO_CARICATO = false;
 
 function gioData() {
@@ -6532,6 +6538,15 @@ async function gioCarica(forza) {
     const ti = await db.from('quote_titoli').select('id,importo_lordo,incassato_il')
       .eq('stato', 'incassato').not('incassato_il', 'is', null).limit(500);
     GIO_TITOLI = ti.error ? [] : (ti.data || []);
+    /* Le polizze senza nemmeno una rata: il conto lo fa il database e torna
+       UNA riga — 1.720 polizze non si scaricano qui per contarle (§45). Se la
+       lettura non riesce resta `null`, e l'anomalia non compare: meglio non
+       dirlo che dire un numero che non si è potuto misurare. */
+    try {
+      const pf = await db.rpc('iam_polizze_senza_rate');
+      const r = Array.isArray(pf.data) ? pf.data[0] : pf.data;
+      GIO_PORTAFOGLIO = (pf.error || !r) ? null : r;
+    } catch (e) { GIO_PORTAFOGLIO = null; }
     GIO_CARICATO = true;
     gioRender();
   } catch (e) {
@@ -6604,7 +6619,11 @@ function gioRenderAnomalie() {
   if (!box || !window.Contabilita) return;
   const a = Contabilita.anomalie({
     conti: GIO_CONTI, movimenti: GIO_MOVIMENTI, causali: GIO_CAUSALI,
-    sospesi: GIO_SOSPESI, titoli: GIO_TITOLI, quadrature: GIO_QUADRATURE, oggi: gioData()
+    sospesi: GIO_SOSPESI, titoli: GIO_TITOLI, quadrature: GIO_QUADRATURE, oggi: gioData(),
+    /* Resta `null` finché il conteggio non è tornato, e il motore in quel caso
+       non dice niente: «non si è potuto contare» non è «non ce ne sono»
+       (§12, §18) — e su una schermata di anomalie è la bugia peggiore. */
+    portafoglio: GIO_PORTAFOGLIO
   });
   if (!a.length) {
     box.innerHTML = `<div class="d-card" style="margin-bottom:12px"><div class="card-body">

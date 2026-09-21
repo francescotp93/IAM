@@ -1,8 +1,22 @@
 {
-  "versione": "0.15.0",
-  "nome": "Volumi di portafoglio anno su anno, e la produzione con un nome",
+  "versione": "0.16.0",
+  "nome": "Gestione compagnie: si entra dalla compagnia, non dalla tariffa",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.16.0",
+      "data": "2026-09-21",
+      "nome": "Gestione compagnie: si entra dalla compagnia, non dalla tariffa",
+      "voci": [
+        "In Gestione compagnie il tasto in alto è «Nuova compagnia», non «Nuova tariffa»: si entra dalla compagnia, e da lì si mettono prodotti e provvigioni.",
+        "Ogni compagnia dell'elenco dice quanti prodotti attivi ha, quante provvigioni sono in vigore e quante polizze restano senza provvigione — e si modifica con un tasto sulla riga.",
+        "La scheda della compagnia raccoglie dati, prodotti e provvigioni in un posto solo, con i rami scoperti cliccabili per configurarli subito.",
+        "In fondo all'elenco ci sono le compagnie che stanno sulle polizze e non hanno una scheda, con «Aggiungi» già precompilato: senza scheda non c'è dove attaccare prodotti e provvigioni.",
+        "Rinominare una compagnia non stacca più niente: il nome vecchio diventa un altro nome della stessa compagnia, e tariffe e accordi passano al nome nuovo.",
+        "Corretto un guasto che si vedeva solo da lì: le finestre delle tariffe e del catalogo stavano dentro il loro pannello, e da Gestione compagnie — dove quel pannello è nascosto — non comparivano.",
+        "Una compagnia aperta che nel frattempo non c'è più riporta all'elenco invece di lasciare una scheda vuota, che si legge come un guasto."
+      ]
+    },
     {
       "v": "0.15.0",
       "data": "2026-09-21",

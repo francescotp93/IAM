@@ -4529,3 +4529,82 @@ quello che quella riga voleva dire. Due prove nuove, due controprove.
 - **La produzione non incrocia le provvigioni**: dice premi e polizze, non
   quanto si è guadagnato. I due motori esistono tutti e due (§17, §28) e
   metterli insieme è un lavoro a sé.
+
+---
+
+## 46. Gestione compagnie: si entra dalla compagnia (21/09/2026)
+
+> «reimplementala tu sopra main» — Francesco, su una patch nata in un'altra
+> sessione e mai spinta.
+
+La schermata della M2 (§28) si apriva sulle **tariffe**: il tasto in alto
+diceva «Nuova tariffa», e per configurare una compagnia bisognava sapere che
+si comincia da una percentuale. La richiesta era l'opposto, ed è quella
+giusta: si entra dalla compagnia, e da lì si mettono prodotti e provvigioni.
+
+| pezzo | dove |
+|---|---|
+| la schermata | blocco `gc*` in `iam/index.html` (12 funzioni) |
+| le righe prodotto, una sola volta | `catRigheProdotti`, chiamata dal Catalogo **e** dalla scheda compagnia |
+| prove sul sorgente | `iam/verifica/compagnie-provvigioni.test.mjs` (14) |
+| prove che fanno GIRARE la schermata | `iam/verifica/gestione-compagnie.test.mjs` — 8 |
+
+### Come è arrivata, e perché non si è presa per buona
+
+La patch veniva da un'altra sessione, in forma di testo: **non era su `main`
+né su nessun ramo remoto**, quindi esisteva solo come diff. Applicata sopra
+`main` di oggi, 14 hunk su 16 sono entrati da soli; i due rifiutati erano il
+numero di versione (scritto contro la 0.12.0) e una riga di `goTab` che il
+lavoro di stamattina aveva spostato.
+
+Quello che **non** si è preso per buono sono le prove. Le quattro che la patch
+porta leggono tutte il sorgente: cercano il bottone, il nome della funzione,
+la forma della chiamata. Sono guardie utili e non bastano — una schermata con
+tutti i pezzi al posto giusto può lo stesso disegnare la cosa sbagliata. Le
+otto prove nuove la fanno **girare**, con un'anagrafica e un portafoglio
+finti, e guardano che cosa esce.
+
+### Una controprova restata verde, e la prova era debole
+
+Tolti gli alias da `gcDiQuesta` — cioè il confronto che fa di «HDI
+Assicurazioni» sulle polizze la stessa cosa di «HDI» in anagrafica — **tutte
+le prove restavano verdi**. Il codice non era assolto: era il banco a non
+vedere la differenza.
+
+`gcCopertura` passa da `Provvigioni.copertura`, che risolve **già** i nomi col
+catalogo: quelle righe arrivano a `gcDiQuesta` con il nome corto, e il
+confronto esatto basta. Le **tariffe** invece le digita una persona, e può
+scriverci il nome che legge sulle polizze. Aggiunta al campione una tariffa
+col nome lungo, la controprova diventa rossa.
+
+*Una controprova che non fa diventare rossa nessuna prova non assolve il
+codice: accusa la prova* (§15, §17, §18, §19, §41). Qui serviva il banco più
+cattivo di §19 — il caso in cui i due comportamenti divergono davvero.
+
+### Il guasto che si vedeva solo da lì
+
+`prv-ov` e `cat-ov` — le finestre delle tariffe e del catalogo — stavano
+**dentro i loro pannelli**. Da Gestione compagnie quel pannello è
+`display:none`, e una finestra dentro un elemento nascosto è nascosta: il
+clic funzionava, il salvataggio pure, e non si vedeva niente. All'apertura
+salgono sul `body` (`gcSulBody`), una volta sola: rispostarle a ogni apertura
+le toglierebbe e rimetterebbe, perdendo lo stato del modulo dentro.
+
+### Le due regole che non si vedono finché non si rompono
+
+- **Rinominare non stacca niente.** Il nome vecchio diventa un **alias**, e
+  tariffe e accordi passano al nome nuovo con un aggiornamento. Senza, una
+  rinomina scollegherebbe in silenzio tutta la configurazione di quella
+  compagnia — ed è la trappola degli alias di §11 e §28, vista dal lato di chi
+  scrive invece che di chi legge.
+- **Una compagnia aperta che non c'è più torna all'elenco.** Cancellata da un
+  altro, o semplicemente ricaricata: una scheda vuota si legge come un guasto
+  del programma.
+
+### Cosa resta aperto
+
+- **Le tariffe restano zero** (§28): la schermata adesso è comoda, ma il primo
+  accordo lo scrive una persona.
+- **L'elenco «in portafoglio ma non in anagrafica»** oggi porta una riga sola,
+  e va guardato dopo ogni importazione nuova: è lì che si vede una compagnia
+  entrata col nome scritto in un altro modo.

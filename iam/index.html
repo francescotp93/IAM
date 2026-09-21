@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.15.0">
-<meta name="app-versione-nome" content="Volumi di portafoglio anno su anno, e la produzione con un nome">
+<meta name="app-versione" content="0.16.0">
+<meta name="app-versione-nome" content="Gestione compagnie: si entra dalla compagnia, non dalla tariffa">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -3944,24 +3944,31 @@ input[type=file]{display:none;}
      ne apre una nuova da oggi. Gli estratti conto già mandati devono
      continuare a dire lo stesso numero. -->
 <div class="panel" id="panel-compagnie" style="overflow-y:auto;">
+  <!-- LA PORTA UNICA (21/09/2026). Si entra dalla COMPAGNIA, non dalla
+       tariffa: «Nuova compagnia» in alto, e dentro la scheda di ognuna i suoi
+       dati, i suoi prodotti e le sue provvigioni. Prima erano due schermate
+       (qui le tariffe, in Catalogo l'anagrafica) e per aggiungere una
+       compagnia bisognava sapere che stava nell'altra. Le regole sono le
+       stesse di prima: qui cambia solo da dove si entra. -->
   <section class="page-head">
     <div>
       <div class="eyebrow">Strumenti</div>
       <h1>Gestione compagnie</h1>
-      <div class="subtitle">Quanto riconosce ogni compagnia, e quanto ne gira al collaboratore.</div>
+      <div class="subtitle">Le compagnie con cui lavori: dati, prodotti e provvigioni.</div>
     </div>
     <div class="head-actions">
-      <button class="d-btn" type="button" onclick="prvCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
-      <button class="d-btn primario" type="button" id="prv-nuova-tariffa" onclick="prvApriTariffa(null)"><i class="ti ti-plus"></i> Nuova tariffa</button>
+      <button class="d-btn" type="button" onclick="gcCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <button class="d-btn primario" type="button" id="gc-nuova" onclick="gcNuova()"><i class="ti ti-plus"></i> Nuova compagnia</button>
     </div>
   </section>
 
-  <!-- Che cosa NON si è potuto leggere, sopra quello che invece c'è: con sette
-       letture, «qualcosa è andato storto» non dice a nessuno dove guardare. -->
+  <!-- Che cosa NON si è potuto leggere, sopra quello che invece c'è: con
+       dieci letture, «qualcosa è andato storto» non dice a nessuno dove
+       guardare. Le tariffe in una sezione, l'anagrafica nell'altra. -->
   <section id="prv-guasti" style="display:none"></section>
+  <section id="gc-guasti" style="display:none"></section>
   <section class="cnt-somma" id="prv-somma"></section>
-  <section class="cnt-lista" id="prv-copertura"></section>
-  <section class="cnt-lista" id="prv-tariffe"><div class="cl-sub">Carico le tariffe…</div></section>
+  <section class="cnt-lista" id="gc-lista"><div class="cl-sub">Carico le compagnie…</div></section>
 </div>
 
 <!-- ══ PANNELLO PROVVIGIONI ══════════════════════════════════════════════
@@ -6918,15 +6925,14 @@ function prvGuasti(guasti) {
 
 function prvRender() {
   const puo = prvPuoScrivere();
-  ['prv-nuova-tariffa', 'prv-nuovo'].forEach(id => {
+  ['prv-nuovo'].forEach(id => {
     const b = document.getElementById(id); if (b) b.style.display = puo ? '' : 'none';
   });
   prvRenderSomma();
-  prvRenderCopertura(puo);
-  prvRenderTariffe(puo);
   prvRenderOverride(puo);
   prvRenderGruppi(puo);
   prvRiempiSimulatore();
+  gcRender();
 }
 
 function prvRenderSomma() {
@@ -6946,53 +6952,6 @@ function prvRenderSomma() {
     <div class="cnt-card"><div class="cnt-k">Accordi e gruppi</div>
       <div class="cnt-v">${Provvigioni.vigenti(PRV_OVERRIDE, prvOggi()).length} · ${Provvigioni.vigenti(PRV_GRUPPI, prvOggi()).length}</div>
       <div class="cnt-s">accordi per collaboratore · gruppi produttivi</div></div>`;
-}
-
-/* La lista di lavoro di chi configura: che cosa il portafoglio ha e la
-   configurazione non copre. In cima quelle che pesano di più. */
-function prvRenderCopertura(puo) {
-  const box = document.getElementById('prv-copertura');
-  if (!box || !window.Provvigioni) return;
-  const cop = Provvigioni.copertura(PRV_POLIZZE, PRV_TARIFFE, { catalogo: PRV_CATALOGO, data: prvOggi() });
-  const scoperte = cop.filter(c => !c.coperta);
-  if (!scoperte.length) { box.innerHTML = ''; return; }
-  box.innerHTML = `<div class="cnt-avv">
-    <b>Queste compagnie e rami sono in portafoglio e non hanno una tariffa.</b>
-    Finché manca, su quelle polizze la provvigione si calcola solo dove la compagnia la dichiara, e la quota del collaboratore non si calcola affatto.
-    </div>` + scoperte.map(c => `
-    <div class="cnt-r" ${puo ? `onclick="prvApriTariffa(null,{compagnia:'${esc(c.compagnia)}',ramo:'${esc(c.ramo)}'})" style="cursor:pointer"` : ''}>
-      <div><div class="cnt-nome">${esc(c.compagnia)} · ${esc(c.ramo_l)}</div>
-        <div class="cnt-sotto">${c.polizze} polizz${c.polizze === 1 ? 'a' : 'e'}${c.prodotti.length ? ' · ' + c.prodotti.slice(0, 3).map(esc).join(', ') : ''}</div></div>
-      <div class="cnt-saldo" style="font-size:12px;color:#f59e0b">senza tariffa</div>
-    </div>`).join('');
-}
-
-function prvRenderTariffe(puo) {
-  const box = document.getElementById('prv-tariffe');
-  if (!box || !window.Provvigioni) return;
-  const righe = PRV_STORICO ? PRV_TARIFFE : Provvigioni.vigenti(PRV_TARIFFE, prvOggi());
-  const testa = `<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px">
-      <b style="font-size:13px">Tariffe${PRV_STORICO ? ' · con lo storico' : ' in vigore'}</b>
-      <button class="d-btn" type="button" style="padding:4px 10px;font-size:12px" onclick="PRV_STORICO=!PRV_STORICO;prvRender()">
-        ${PRV_STORICO ? 'Nascondi lo storico' : 'Mostra lo storico'}</button></div>`;
-  if (!righe.length) {
-    box.innerHTML = testa + `<div class="cl-sub" style="padding:14px 0">Nessuna tariffa. ${puo ? 'Comincia dalle compagnie che hai in portafoglio: le trovi elencate qui sopra.' : 'Le scrive un amministratore.'}</div>`;
-    return;
-  }
-  box.innerHTML = testa + righe.map(t => {
-    const chiusa = !!t.al;
-    const ramo = Provvigioni.etichettaRamo(t.ramo);
-    return `<div class="cnt-r ${chiusa ? 'cnt-spento' : ''}" ${puo && !chiusa ? `onclick="prvApriTariffa('${esc(t.id)}')" style="cursor:pointer"` : ''}>
-      <div>
-        <div class="cnt-nome">${esc(t.compagnia)} · ${esc(ramo)}
-          ${t.prodotto ? `<span class="cnt-tag">${esc(t.prodotto)}</span>` : ''}
-          ${chiusa ? '<span class="cnt-tag">chiusa</span>' : ''}</div>
-        <div class="cnt-sotto">dal ${esc(t.dal)}${t.al ? ' al ' + esc(t.al) : ''}${t.note ? ' · ' + esc(t.note) : ''}</div>
-      </div>
-      <div class="cnt-saldo">${Provvigioni.perc(t.aliquota_agenzia)}
-        <div class="cnt-sotto" style="font-weight:400">al collaboratore ${Provvigioni.perc(t.retrocessione_default)}</div></div>
-    </div>`;
-  }).join('');
 }
 
 function prvRenderOverride(puo) {
@@ -7092,6 +7051,7 @@ function prvApri(html) {
   if (!prvPuoScrivere()) return;
   const ov = document.getElementById('prv-ov'), box = document.getElementById('prv-box');
   if (!ov || !box) return;
+  gcSulBody(ov);
   box.innerHTML = html;
   ov.style.display = 'flex';
 }
@@ -7453,6 +7413,7 @@ async function catCarica(forza) {
 }
 
 function catGuasti(guasti) {
+  gcGuasti(guasti);
   const box = document.getElementById('cat-guasti');
   if (!box) return;
   if (!guasti || !guasti.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
@@ -7470,6 +7431,7 @@ function catRender() {
   catRenderVerifica(puo);
   catRenderLibreria(puo);
   catTab(CAT_VISTA);
+  gcRender();
 }
 
 /* ── Le tessere di riepilogo ───────────────────────────────────────────── */
@@ -7530,11 +7492,6 @@ function catRenderCatalogo(puo) {
   if (!box) return;
   const c = catCompagnia(CAT_APERTA);
   if (!c) { CAT_APERTA = null; catRender(); return; }
-  const suoi = CAT_PRODOTTI.filter(p => p.compagnia_id === c.id)
-    .sort((a, b) => (a.ramo + a.nome).toLowerCase() < (b.ramo + b.nome).toLowerCase() ? -1 : 1);
-  const oggi = new Date().toISOString().slice(0, 10);
-  const M = catM();
-
   let h = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">' +
     '<button class="d-btn" type="button" onclick="catIndietro()"><i class="ti ti-arrow-left"></i> Tutte le compagnie</button>' +
     '<div style="font-size:17px;font-weight:800">' + esc(c.nome) + '</div>' +
@@ -7544,6 +7501,19 @@ function catRenderCatalogo(puo) {
       '<button class="d-btn primario" type="button" onclick="catApriProdotto(null)"><i class="ti ti-plus"></i> Nuovo prodotto</button></div>' : '') +
     '</div>';
 
+  h += catRigheProdotti(c, puo);
+  box.innerHTML = h;
+}
+
+/* Le righe dei prodotti di UNA compagnia. Una funzione sola perché le
+   disegnano due schermate (Catalogo e la scheda in Gestione compagnie): due
+   copie dello stesso elenco divergono al primo ritocco. */
+function catRigheProdotti(c, puo) {
+  const suoi = CAT_PRODOTTI.filter(p => p.compagnia_id === c.id)
+    .sort((a, b) => (a.ramo + a.nome).toLowerCase() < (b.ramo + b.nome).toLowerCase() ? -1 : 1);
+  const oggi = new Date().toISOString().slice(0, 10);
+  const M = catM();
+  let h = '';
   if (!suoi.length) {
     h += '<div class="cl-sub">Questa compagnia non ha ancora prodotti in catalogo. ' +
       'Si aggiungono dalla libreria standard — e si personalizza il nome, che è quello con cui la compagnia li chiama.</div>';
@@ -7579,7 +7549,7 @@ function catRenderCatalogo(puo) {
     h += '<div class="cl-sub" style="margin-top:10px">Un prodotto non si elimina: si disattiva. ' +
       'Esce dalle tendine e resta sulle polizze che ci sono sotto, che sono storia.</div>';
   }
-  box.innerHTML = h;
+  return h;
 }
 
 function catData(d) {
@@ -7663,6 +7633,7 @@ function catRenderLibreria(puo) {
 function catApri(html) {
   const ov = document.getElementById('cat-ov'), box = document.getElementById('cat-box');
   if (!ov || !box) return;
+  gcSulBody(ov);
   box.innerHTML = html;
   ov.style.display = 'flex';
 }
@@ -7686,12 +7657,12 @@ function catOpzRami(sel) {
 /* L'anagrafica della compagnia: nome, alias, attiva. Gli alias non sono un
    vezzo — sulle polizze è scritto «HDI Assicurazioni» e nel catalogo «HDI»,
    e senza l'alias quel portafoglio non ritrova la sua compagnia (§11). */
-function catApriAnagrafica(id) {
+function catApriAnagrafica(id, nomePre) {
   const c = id ? catCompagnia(id) : null;
   catApri('<div style="padding:18px">' +
     '<div style="font-size:16px;font-weight:800;margin-bottom:12px">' + (c ? 'Compagnia' : 'Nuova compagnia') + '</div>' +
     '<div id="cat-msg"></div>' +
-    '<label class="cl-sub">Nome</label><input id="cat-c-nome" class="d-inp" value="' + esc(c ? c.nome : '') + '">' +
+    '<label class="cl-sub">Nome</label><input id="cat-c-nome" class="d-inp" value="' + esc(c ? c.nome : (nomePre || '')) + '">' +
     '<label class="cl-sub" style="display:block;margin-top:10px">Altri nomi con cui compare (uno per riga)</label>' +
     '<textarea id="cat-c-alias" class="d-inp" rows="3">' + esc(((c && c.alias) || []).join('\n')) + '</textarea>' +
     '<div class="cl-sub" style="margin-top:4px">Sulle polizze è scritto «HDI Assicurazioni», nel catalogo «HDI»: senza questi nomi quelle polizze non ritrovano la loro compagnia.</div>' +
@@ -7716,17 +7687,32 @@ async function catSalvaCompagnia(id) {
   const alias = (document.getElementById('cat-c-alias')?.value || '')
     .split('\n').map(s => s.trim()).filter(Boolean);
   const attiva = !!document.getElementById('cat-c-attiva')?.checked;
+  /* RINOMINARE NON DEVE STACCARE NIENTE. Sulle polizze resta scritto il nome
+     vecchio, e tariffe e accordi sono intestati a quel nome: il vecchio nome
+     diventa un alias (così il portafoglio ritrova la compagnia) e tariffe e
+     accordi passano al nome nuovo. È un cambio di etichetta, non di aliquota:
+     lo storico dice gli stessi numeri di prima. */
+  const prima = id ? catCompagnia(id) : null;
+  const rinomina = prima && prima.nome && prima.nome !== nome;
+  if (rinomina && !alias.some(a => a.toLowerCase() === prima.nome.toLowerCase())) alias.push(prima.nome);
   try {
     if (id) {
       const r = await db.from('quote_compagnie').update({ nome, alias, attiva }).eq('id', id);
       if (r.error) throw r.error;
-      logMovimento('modifica', 'compagnia', nome, id);
+      if (rinomina) {
+        for (const t of ['iam_provvigioni_tariffa', 'iam_provvigioni_collaboratore']) {
+          const u = await db.from(t).update({ compagnia: nome }).eq('compagnia', prima.nome);
+          if (u.error) throw new Error('La compagnia è rinominata, ma le provvigioni restano sul nome vecchio (' + (u.error.message || u.error) + '). Riprova il salvataggio.');
+        }
+      }
+      logMovimento('modifica', 'compagnia', rinomina ? prima.nome + ' → ' + nome : nome, id);
     } else {
       const r = await db.from('quote_compagnie').insert({ nome, alias, attiva }).select('id').single();
       if (r.error) throw r.error;
       logMovimento('creazione', 'compagnia', nome, r.data?.id);
     }
     catChiudi(); catCarica(true);
+    if (rinomina) prvCarica();
   } catch (e) { catMsg([e.message || String(e)]); }
 }
 
@@ -8063,6 +8049,183 @@ async function catScriviPiano() {
     }
     catChiudi(); catCarica(true);
   } catch (e) { catMsg([e.message || String(e)]); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GESTIONE COMPAGNIE — la porta unica (21/09/2026)
+
+   Richiesta: «non deve riportare Nuova tariffa, ma darmi la possibilità di
+   inserire una nuova compagnia; da lì inserisco prodotti, provvigioni ecc.;
+   le compagnie esistenti devono essere modificabili».
+
+   Qui NON c'è una regola nuova: l'anagrafica, i prodotti e le tariffe restano
+   quelli del Catalogo (cat*) e delle Provvigioni (prv*), con le loro
+   finestre, i loro controlli e la loro storicizzazione. Questo blocco li mette
+   in fila sotto la compagnia — due copie delle stesse regole sarebbero due
+   modi di sbagliare la stessa provvigione (§18).
+   ═══════════════════════════════════════════════════════════════════════════ */
+var GC_APERTA = null;   // id (quote_compagnie) della compagnia aperta
+
+function gcPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
+
+/* Le finestre di tariffe e catalogo sono nate dentro i LORO pannelli. Un
+   pannello spento è display:none, e con lui tutto quello che contiene — anche
+   una finestra position:fixed: il «Nuova tariffa» di questa schermata apriva
+   una finestra che nessuno poteva vedere. Sul body si vedono da ovunque. */
+function gcSulBody(el) {
+  if (el && el.parentElement !== document.body) document.body.appendChild(el);
+}
+
+async function gcCarica(forza) {
+  if (!db) return;
+  if (forza && !GC_APERTA) {
+    const l = document.getElementById('gc-lista');
+    if (l) l.innerHTML = '<div class="cl-sub">Carico le compagnie…</div>';
+  }
+  /* Due letture che stanno in piedi da sole: ognuna disegna quando arriva, e
+     se una cade l'altra si vede lo stesso (§35). */
+  await Promise.all([prvCarica(), catCarica()]);
+  gcRender();
+}
+
+function gcGuasti(guasti) {
+  const box = document.getElementById('gc-guasti');
+  if (!box) return;
+  if (!guasti || !guasti.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  box.innerHTML = '<div class="cnt-err"><b>Non ho potuto leggere ' + guasti.length +
+    (guasti.length === 1 ? ' parte' : ' parti') + ' dell’anagrafica.</b> Non vuol dire che non ci sia niente.<br>' +
+    guasti.map(g => '<small>· ' + esc(g.nome) + ' — ' + esc(g.motivo) + '</small>').join('<br>') + '</div>';
+}
+
+/* Una compagnia dell'anagrafica si riconosce dal nome O da un alias: sulle
+   tariffe è scritto «HDI», sulle polizze «HDI Assicurazioni». */
+function gcDiQuesta(c, nome) {
+  if (!c || !window.Provvigioni) return false;
+  const k = Provvigioni.chiave(nome);
+  if (!k) return false;
+  return Provvigioni.chiave(c.nome) === k || (c.alias || []).some(a => Provvigioni.chiave(a) === k);
+}
+function gcCopertura() {
+  if (!window.Provvigioni) return [];
+  return Provvigioni.copertura(PRV_POLIZZE, PRV_TARIFFE, { catalogo: CAT_COMPAGNIE, data: prvOggi() });
+}
+
+function gcNuova() { if (gcPuoScrivere()) catApriAnagrafica(null); }
+function gcApri(id) { GC_APERTA = id; CAT_APERTA = id; gcRender(); document.getElementById('panel-compagnie')?.scrollTo?.(0, 0); }
+function gcIndietro() { GC_APERTA = null; CAT_APERTA = null; gcRender(); }
+
+function gcRender() {
+  const box = document.getElementById('gc-lista');
+  if (!box) return;
+  const puo = gcPuoScrivere();
+  const b = document.getElementById('gc-nuova');
+  if (b) b.style.display = puo && !GC_APERTA ? '' : 'none';
+  const somma = document.getElementById('prv-somma');
+  if (somma) somma.style.display = GC_APERTA ? 'none' : '';
+  if (GC_APERTA && catCompagnia(GC_APERTA)) { box.innerHTML = gcScheda(catCompagnia(GC_APERTA), puo); return; }
+  GC_APERTA = null;
+  box.innerHTML = gcElenco(puo);
+}
+
+/* ── L'elenco: ogni compagnia con quello che ha e quello che le manca ───── */
+function gcElenco(puo) {
+  const oggi = prvOggi();
+  const vig = window.Provvigioni ? Provvigioni.vigenti(PRV_TARIFFE, oggi) : [];
+  const cop = gcCopertura();
+  let h = '';
+  if (!CAT_COMPAGNIE.length) {
+    h += '<div class="cl-sub" style="padding:14px 0">Nessuna compagnia in anagrafica. ' +
+      (puo ? 'Comincia da «Nuova compagnia», in alto a destra.' : 'Le inserisce un amministratore.') + '</div>';
+  }
+  h += CAT_COMPAGNIE.map(c => {
+    const prod = CAT_PRODOTTI.filter(p => p.compagnia_id === c.id && p.attivo !== false).length;
+    const tar = vig.filter(t => gcDiQuesta(c, t.compagnia)).length;
+    const buchi = cop.filter(x => !x.coperta && gcDiQuesta(c, x.compagnia));
+    const polB = buchi.reduce((s, x) => s + x.polizze, 0);
+    return '<div class="cnt-r' + (c.attiva === false ? ' cnt-spento' : '') + '" style="cursor:pointer" onclick="gcApri(\'' + c.id + '\')">' +
+      '<div style="min-width:0"><div class="cnt-nome">' + esc(c.nome) +
+        (c.attiva === false ? ' <span class="cnt-tag">spenta</span>' : '') +
+        (polB ? ' <span class="cnt-tag transito">' + polB + (polB === 1 ? ' polizza' : ' polizze') + ' senza provvigione</span>' : '') + '</div>' +
+      '<div class="cnt-sotto">' + prod + (prod === 1 ? ' prodotto' : ' prodotti') + ' · ' +
+        tar + (tar === 1 ? ' provvigione in vigore' : ' provvigioni in vigore') +
+        ((c.alias || []).length ? ' · anche: ' + c.alias.map(esc).join(', ') : '') + '</div></div>' +
+      '<div class="cnt-saldo" style="font-size:12px;font-weight:600">' +
+      (puo ? '<button class="d-btn" type="button" onclick="event.stopPropagation();catApriAnagrafica(\'' + c.id + '\')"><i class="ti ti-pencil"></i> Modifica</button> ' : '') +
+      '<i class="ti ti-chevron-right"></i></div></div>';
+  }).join('');
+
+  /* Quello che il portafoglio conosce e l'anagrafica no: senza la compagnia
+     in anagrafica non c'è dove attaccare prodotti e provvigioni. */
+  const fuori = {};
+  cop.forEach(x => {
+    if (CAT_COMPAGNIE.some(c => gcDiQuesta(c, x.compagnia))) return;
+    fuori[x.compagnia] = (fuori[x.compagnia] || 0) + x.polizze;
+  });
+  const nomi = Object.keys(fuori).sort((a, b) => fuori[b] - fuori[a]);
+  if (nomi.length) {
+    h += '<div class="cnt-avv" style="margin-top:16px"><b>In portafoglio, ma non in anagrafica.</b> ' +
+      'Queste compagnie compaiono sulle polizze e non hanno una scheda: aggiungila, oppure scrivi questo nome fra gli «altri nomi» della compagnia giusta.</div>' +
+      nomi.map(n => '<div class="cnt-r"><div style="min-width:0"><div class="cnt-nome">' + esc(n) + '</div>' +
+        '<div class="cnt-sotto">' + fuori[n] + (fuori[n] === 1 ? ' polizza' : ' polizze') + '</div></div>' +
+        (puo ? '<div class="cnt-saldo"><button class="d-btn" type="button" onclick="catApriAnagrafica(null,' + esc(JSON.stringify(n)) + ')"><i class="ti ti-plus"></i> Aggiungi</button></div>' : '') +
+        '</div>').join('');
+  }
+  return h;
+}
+
+/* ── La scheda di UNA compagnia: dati, prodotti, provvigioni ──────────── */
+function gcScheda(c, puo) {
+  const oggi = prvOggi();
+  const tutte = PRV_TARIFFE.filter(t => gcDiQuesta(c, t.compagnia));
+  const righe = PRV_STORICO ? tutte : (window.Provvigioni ? Provvigioni.vigenti(tutte, oggi) : tutte);
+  const buchi = gcCopertura().filter(x => !x.coperta && gcDiQuesta(c, x.compagnia));
+  const titolo = (t, bottoni) => '<div style="display:flex;align-items:center;gap:8px;margin:20px 0 8px;flex-wrap:wrap">' +
+    '<b style="font-size:15px">' + t + '</b>' + (bottoni ? '<div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">' + bottoni + '</div>' : '') + '</div>';
+
+  let h = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+    '<button class="d-btn" type="button" onclick="gcIndietro()"><i class="ti ti-arrow-left"></i> Tutte le compagnie</button>' +
+    '<div style="font-size:18px;font-weight:800">' + esc(c.nome) + '</div>' +
+    (c.attiva === false ? '<span class="cnt-tag">spenta</span>' : '') +
+    (puo ? '<button class="d-btn" type="button" style="margin-left:auto" onclick="catApriAnagrafica(\'' + c.id + '\')"><i class="ti ti-pencil"></i> Modifica dati</button>' : '') +
+    '</div>' +
+    '<div class="cl-sub" style="margin-top:4px">' + ((c.alias || []).length ? 'Compare anche come: ' + c.alias.map(esc).join(', ') : 'Nessun altro nome registrato') + '</div>';
+
+  /* Prodotti: le stesse righe e gli stessi bottoni del Catalogo. */
+  h += titolo('Prodotti', puo
+    ? '<button class="d-btn" type="button" onclick="catApriLibreriaScelta()"><i class="ti ti-library-plus"></i> Dalla libreria</button>' +
+      '<button class="d-btn primario" type="button" onclick="catApriProdotto(null)"><i class="ti ti-plus"></i> Nuovo prodotto</button>'
+    : '');
+  h += catRigheProdotti(c, puo);
+
+  /* Provvigioni: l'accordo con la compagnia, ramo per ramo. */
+  h += titolo('Provvigioni', (tutte.length !== righe.length || PRV_STORICO
+      ? '<button class="d-btn" type="button" onclick="PRV_STORICO=!PRV_STORICO;gcRender()">' + (PRV_STORICO ? 'Nascondi lo storico' : 'Mostra lo storico') + '</button>' : '') +
+    (puo ? '<button class="d-btn primario" type="button" onclick="prvApriTariffa(null,{compagnia:' + esc(JSON.stringify(c.nome)) + '})"><i class="ti ti-plus"></i> Nuova provvigione</button>' : ''));
+  if (buchi.length) {
+    h += '<div class="cnt-avv">In portafoglio ci sono rami senza provvigione: finché manca, la quota del collaboratore non si calcola. ' +
+      (puo ? 'Tocca una riga per impostarla.' : '') + '</div>' +
+      buchi.map(x => '<div class="cnt-r"' + (puo ? ' style="cursor:pointer" onclick="prvApriTariffa(null,{compagnia:' + esc(JSON.stringify(c.nome)) + ',ramo:' + esc(JSON.stringify(x.ramo)) + '})"' : '') + '>' +
+        '<div><div class="cnt-nome">' + esc(x.ramo_l) + '</div><div class="cnt-sotto">' + x.polizze + (x.polizze === 1 ? ' polizza' : ' polizze') +
+        (x.prodotti.length ? ' · ' + x.prodotti.slice(0, 3).map(esc).join(', ') : '') + '</div></div>' +
+        '<div class="cnt-saldo" style="font-size:12px;color:#f59e0b">senza provvigione</div></div>').join('');
+  }
+  if (!righe.length) {
+    h += '<div class="cl-sub" style="padding:10px 0">Nessuna provvigione ' + (PRV_STORICO ? '' : 'in vigore ') + 'per questa compagnia.</div>';
+  } else {
+    h += righe.map(t => {
+      const chiusa = !!t.al;
+      return '<div class="cnt-r' + (chiusa ? ' cnt-spento' : '') + '"' + (puo && !chiusa ? ' style="cursor:pointer" onclick="prvApriTariffa(\'' + esc(t.id) + '\')"' : '') + '>' +
+        '<div><div class="cnt-nome">' + esc(Provvigioni.etichettaRamo(t.ramo)) +
+          (t.prodotto ? ' <span class="cnt-tag">' + esc(t.prodotto) + '</span>' : '') +
+          (chiusa ? ' <span class="cnt-tag">chiusa</span>' : '') + '</div>' +
+        '<div class="cnt-sotto">dal ' + esc(catData(t.dal)) + (t.al ? ' al ' + esc(catData(t.al)) : '') + (t.note ? ' · ' + esc(t.note) : '') + '</div></div>' +
+        '<div class="cnt-saldo">' + Provvigioni.perc(t.aliquota_agenzia) +
+        '<div class="cnt-sotto" style="font-weight:400">al collaboratore ' + Provvigioni.perc(t.retrocessione_default) + '</div></div></div>';
+    }).join('');
+    h += '<div class="cl-sub" style="margin-top:8px">Cambiare una percentuale vale da oggi: la riga di adesso si chiude e ne nasce una nuova, e quello già calcolato non cambia.</div>';
+  }
+  return h;
 }
 
 function showReset() {
@@ -8900,7 +9063,7 @@ function goTab(t) {
   if (t === 'performance') { mostraResiduiKPI(); selPerfTab(PERF_CUR || 'gare'); loadREFromDB(); }
   if (t === 'azienda')     { loadAzienda(); }
   if (t === 'conti')       { cntTab(CNT_VISTA); cntCarica(true); }
-  if (t === 'compagnie')   { prvCarica(true); }
+  if (t === 'compagnie')   { gcCarica(true); }
   if (t === 'provvigioni') { prvTab(PRV_VISTA); prvCarica(true); }
   if (t === 'catalogo')    { catTab(CAT_VISTA); catCarica(true); }
   if (t === 'decisioni')   { decCarica(true); }

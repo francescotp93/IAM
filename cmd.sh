@@ -1,17 +1,16 @@
-echo "== attendo l'autopull =="
-for i in $(seq 1 18); do
-  v=$(grep -o 'app-versione" content="[^"]*"' /opt/withus-backend/iam/index.html 2>/dev/null | head -1)
-  case "$v" in *0.21.1*) echo "arrivata dopo ~$((i*10))s"; break;; esac
-  sleep 10
+D=/var/lib/withus/archivio
+echo "== i file cifrati sul disco =="
+find "$D" -name '*.bin' -printf '%p\n  %s byte  %TY-%Tm-%Td %TH:%TM  utente %u:%g  permessi %m\n' 2>/dev/null
+echo "totale: $(find "$D" -name '*.bin' 2>/dev/null | wc -l)"
+echo
+echo "== e' davvero cifrato col nostro formato? =="
+for f in $(find "$D" -name '*.bin' 2>/dev/null | head -3); do
+  printf 'sigla in testa: '; head -c 4 "$f"; echo
+  echo "occorrenze di %PDF nel file (deve essere 0): $(grep -c '%PDF' "$f" 2>/dev/null || echo 0)"
 done
-git -C /opt/withus-backend rev-parse --short HEAD
-grep -o 'app-versione[^>]*' /opt/withus-backend/iam/index.html | head -2
 echo
-echo "== il modulo archivio, dopo il riavvio col codice nuovo =="
-systemctl restart withus-backend && sleep 4
-systemctl is-active withus-backend
-journalctl -u withus-backend --since "-1 min" --no-pager | grep -i "archivio cifrato spento" && echo "^^ SPENTO" || echo "acceso: il controllo di scrittura e' passato"
+echo "== residui della prova d'avvio (deve essere vuoto) =="
+ls -A "$D" | grep -v '^[0-9a-f][0-9a-f]$' || echo "(nessuno)"
 echo
-echo "== la cartella, e nessun residuo della prova d'avvio =="
-ls -la /var/lib/withus/archivio
-echo "file cifrati: $(find /var/lib/withus/archivio -name '*.bin' 2>/dev/null | wc -l)"
+echo "== errori dell'archivio nell'ultima mezz'ora =="
+journalctl -u withus-backend --since "-30 min" --no-pager 2>/dev/null | grep -i "archivio" | tail -5 || echo "(nessuno)"

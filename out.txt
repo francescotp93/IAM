@@ -1,24 +1,29 @@
-id: 1790004659  exit: 0  2026-09-21 15:31:33
+id: 1790005482  exit: 0  2026-09-21 15:45:21
 ----
-== attendo l'autopull (fino a 3 minuti) ==
-arrivata dopo ~20s
+== con che utente gira il backend ==
+MainPID=3903008
+User=withus
+Group=
+withus
 
-== commit vivo sul VPS ==
-f5ed1b8
+== la cartella dell'archivio ==
+ARCHIVIO_DIR=/var/lib/withus/archivio
+drwxr-xr-x 13 root   root 4096 May 11 09:54 /var
+drwxr-xr-x 52 root   root 4096 Sep 18 18:51 /var/lib
+drwx------  3 root   root 4096 Sep 18 18:51 /var/lib/withus
+drwx------  2 withus root 4096 Sep 18 18:51 /var/lib/withus/archivio
 
-== versione nei due documenti ==
-app-versione" content="0.21.0"
-app-versione-nome" content="I documenti tornano a salire, i contanti trovano la cassa"
-app-versione" content="0.21.0"
-app-versione-nome" content="I documenti tornano a salire, i contanti trovano la cassa"
+== che cosa c'e' dentro ==
+/var/lib/withus/archivio
+file cifrati presenti: 0
 
-== il backend ha la chiave e risponde ==
-SUPABASE_ANON_KEY presente: 208 caratteri
-active
+== prova di scrittura CON L'UTENTE DEL SERVIZIO ==
+mkdir: Permission denied
+mkdir: NEGATO
+touch: setting times of '/var/lib/withus/archivio/zz/test/prova.bin': Permission denied
+scrittura: NEGATA
 
-== IAM dal vivo ==
-HTTP 200
-app-versione" content="0.21.0"
-app-versione-nome" content="I documenti tornano a salire, i contanti trovano la cassa"
-
-== errori dell'archivio negli ultimi minuti ==
+== errori dell'archivio negli ultimi 20 minuti ==
+Sep 21 15:44:09 vps-d6443a46 node[3903008]: 2026-09-21T15:44:09.360Z OPTIONS /archivio/carica 204 1ms u:-
+Sep 21 15:44:09 vps-d6443a46 node[3903008]: archivio: caricamento non riuscito: EACCES: permission denied, mkdir '/var/lib/withus/archivio/41/d6'
+Sep 21 15:44:09 vps-d6443a46 node[3903008]: 2026-09-21T15:44:09.458Z POST   /archivio/carica 500 251ms u:a5ab0cd0

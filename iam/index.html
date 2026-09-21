@@ -50,6 +50,7 @@
 <script src="/nuovo-preventivo/tariffe/motore/kpi.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/decisioni.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/produzione.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/collaboratori.js?v=20260921"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -13997,23 +13998,71 @@ function selPTab(t) {
   if (t==='agenda') renderAgenda();
 }
 
+/* ══ I COLLABORATORI: UNA FONTE SOLA (21/09/2026) ═══════════════════════════
+   Richiesta di Francesco: «in ogni punto dell'app dove si cerca, seleziona o
+   inserisce un collaboratore la fonte deve essere SEMPRE e SOLO la tabella
+   della sezione Collaboratori».
+
+   Qui dentro tre tendine leggevano `iam_utenti`, che e' il registro degli
+   ACCOUNT: cinque righe, quelle con una password. Il registro delle PERSONE e'
+   `quote_collaboratori` e ne ha diciassette. Chi non ha un accesso a IAM —
+   ed e' la maggioranza — non compariva in nessuna delle tre.
+
+   Le regole stanno nel motore (`tariffe/motore/collaboratori.js`, otto prove
+   in Node): qui si legge e si disegna.
+
+   COSA NON SI TOCCA. Le trattative salvano il NOME, non un identificativo, e
+   il nome era composto «Nome Cognome» mentre il registro lo compone «Cognome
+   Nome». Cambiare la fonte senza accorgersene staccherebbe le righe gia'
+   scritte. Quindi il valore che una riga ha gia' resta nell'elenco, marcato,
+   finche' qualcuno non lo sceglie di nuovo: una tendina che perde il valore
+   che sta guardando lo cancella al primo salvataggio. */
+var COL_GENTE = null;      /* var e non let: le prove iniettano qui (§17) */
+var COL_ULTIMO = 0;
+
+async function colCarica(forza) {
+  if (!db) return COL_GENTE || [];
+  const ora = Date.now();
+  if (!forza && COL_GENTE && (ora - COL_ULTIMO) < 300000) return COL_GENTE;
+  try {
+    const cols = window.Collaboratori ? Collaboratori.COLONNE : 'id,nome,cognome,email,attivo,iam_id';
+    const { data, error } = await db.from('quote_collaboratori').select(cols);
+    if (error) throw error;
+    COL_GENTE = data || [];
+    COL_ULTIMO = ora;
+  } catch (e) {
+    /* «Non si e' potuto leggere» non e' «non ce n'e'» (§12, §18): si tiene
+       quello che si aveva invece di svuotare una tendina che qualcuno sta
+       guardando. */
+    console.warn('Collaboratori:', e.message || e);
+    if (!COL_GENTE) COL_GENTE = [];
+  }
+  return COL_GENTE;
+}
+
+function colNome(c) { return window.Collaboratori ? Collaboratori.nome(c) : ((c?.cognome || '') + ' ' + (c?.nome || '')).trim(); }
+
+/* Una tendina che vale per NOME (trattative): il valore e' il nome composto.
+   Il valore gia' scritto sulla riga resta in elenco anche se non corrisponde a
+   nessuno — e lo dice. */
+function colOpzioniNome(scelto, primo) {
+  const gente = window.Collaboratori ? Collaboratori.attivi(COL_GENTE || []) : (COL_GENTE || []);
+  const nomi = gente.map(colNome).filter(Boolean);
+  const out = ['<option value="">' + esc(primo || '— nessuno —') + '</option>'];
+  nomi.forEach(n => out.push('<option value="' + esc(n) + '"' + (n === scelto ? ' selected' : '') + '>' + esc(n) + '</option>'));
+  if (scelto && nomi.indexOf(scelto) < 0) {
+    out.push('<option value="' + esc(scelto) + '" selected>' + esc(scelto) + ' (scritto a mano)</option>');
+  }
+  return out.join('');
+}
+
 function renderTratt() {
   console.log('renderTratt chiamato, PIPE:', PIPE.length);
   loadTeam();
   const selC = document.getElementById('tr-collab');
   if (selC && db) {
     const curC = selC.value;
-    db.from('iam_utenti').select('id,nome,cognome').eq('attivo', true)
-      .then(({data}) => {
-        if (data) {
-          UTENTI_LISTA = data;
-          selC.innerHTML = '<option value="">Tutti i collab.</option>' +
-            data.map(u => {
-              const nome = ((u.nome||'')+' '+(u.cognome||'')).trim();
-              return `<option value="${nome}" ${curC===nome?'selected':''}>${nome}</option>`;
-            }).join('');
-        }
-      });
+    colCarica().then(() => { selC.innerHTML = colOpzioniNome(curC, 'Tutti i collab.'); });
   }
   const visiblePipe = visiblePipelineItems(PIPE);
   const q       = (document.getElementById('tr-search')?.value||'').toLowerCase();
@@ -14100,16 +14149,15 @@ function openTrattModal(id) {
   if (shareSel) shareSel.innerHTML = '<option value="">— nessuna condivisione —</option>';
   if (sel && db) {
     sel.innerHTML = '<option value="">— nessuno —</option>';
+    /* Il collaboratore dal registro delle persone; la CONDIVISIONE resta sugli
+       account, ed e' giusto: si condivide con chi puo' entrare in IAM, non con
+       chi e' in anagrafica. Due domande diverse, due elenchi diversi. */
+    colCarica().then(() => { sel.innerHTML = colOpzioniNome(t?.collab || '', '— nessuno —'); });
     db.from('iam_utenti').select('id,nome,cognome,email').eq('attivo', true)
       .then(({data}) => {
         if (data) {
           data.forEach(u => {
             const nome = ((u.nome||'')+' '+(u.cognome||'')).trim() || u.email;
-            const opt = document.createElement('option');
-            opt.value = nome;
-            opt.textContent = nome;
-            if (t?.collab === nome) opt.selected = true;
-            sel.appendChild(opt);
 
             if (shareSel && u.id !== ME?.id) {
               const sopt = document.createElement('option');
@@ -21333,9 +21381,16 @@ async function loadProduzioneKpi() {
   if (admin && collabSel) {
     collabSel.style.display = '';
     if (!collabSel.options.length) {
-      if (!(UTENTI_LISTA || []).length) await caricaUtenti();
+      /* I NOMI dal registro delle persone, il VALORE l'account (21/09/2026).
+         Questo filtro lavora su `creato_da`, che e' un account: cambiare il
+         valore lo romperebbe. Cambia la FONTE dei nomi — prima erano gli
+         account, e chi non ha un accesso a IAM non compariva. Chi non ha un
+         account resta fuori, ed e' corretto: non puo' aver creato niente. */
+      await colCarica();
+      const conAccesso = (window.Collaboratori ? Collaboratori.attivi(COL_GENTE || []) : (COL_GENTE || []))
+        .filter(c => c.iam_id);
       collabSel.innerHTML = '<option value="">Tutti i collaboratori</option>'
-        + (UTENTI_LISTA || []).map(u => `<option value="${esc(u.id)}">${esc([u.cognome, u.nome].filter(Boolean).join(' ') || u.email || u.id)}</option>`).join('');
+        + conAccesso.map(c => `<option value="${esc(c.iam_id)}">${esc(colNome(c) || c.email || c.iam_id)}</option>`).join('');
     }
   }
   const anno = parseInt(annoSel?.value) || new Date().getFullYear();

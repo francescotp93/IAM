@@ -1367,6 +1367,27 @@ const avvio = async () => {
       return 'lo dice, non lo mostra, e non chiude il modulo';
     });
 
+    await prova('collaboratori: il nome del consulente viene dal REGISTRO, non dagli account', async () => {
+      /* Difetto trovato mappando (21/09/2026). `quote_anagrafiche.intermediario_id`
+         punta a `quote_collaboratori`, ma l'email al CLIENTE cercava quel
+         id in `iam_utenti`: nessun errore, non trovava niente, e ripiegava su
+         «chi ha creato il preventivo» — cioè esattamente il nome sbagliato che
+         quel codice diceva di aver corretto.
+         Misurato sul database: l'unica anagrafica che ha un intermediario lo
+         ha nel registro delle persone (1) e NON fra gli account (0). */
+      const h = fs.readFileSync('index.html', 'utf8');
+      const i = h.indexOf('let consulente = r.creato_nome');
+      deve(i > 0, 'non trovo il punto in cui si sceglie il consulente');
+      const blocco = h.slice(i, i + 1400);
+      deve(/from\('quote_collaboratori'\)/.test(blocco), 'il consulente si cerca ancora fra gli account');
+      deve(!/from\('iam_utenti'\)/.test(blocco), 'il consulente si cerca ancora fra gli account');
+      /* E il motore è caricato: il nome si compone in un posto solo. */
+      deve(/<script src="tariffe\/motore\/collaboratori\.js\?v=/.test(h), 'QUOTO non carica il motore dei collaboratori');
+      const co = (h.match(/function collabOpzioni\(scelto, primo\) \{[\s\S]{0,400}?\n\}/) || [''])[0];
+      deve(/Collaboratori\.opzioni\(/.test(co), 'la tendina dei collaboratori non passa dal motore');
+      return 'registro delle persone, e una sola composizione del nome';
+    });
+
     /* ══ IL REGISTRO DEI MOVIMENTI (19/09/2026) ═══════════════════════════
        `quote_log` sapeva dire che cosa e chi, non SU CHE COSA. Le prove qui
        sotto sorvegliano la cosa che quella colonna doveva rendere possibile:

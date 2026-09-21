@@ -81,6 +81,7 @@
      (con la tabella delle lunghezze per paese), e riscriverlo qui vorrebbe
      dire averne due — quello sbagliato sarebbe quello che nessuno guarda. -->
 <script src="tariffe/motore/contabilita.js?v=20260920"></script>
+<script src="tariffe/motore/collaboratori.js?v=20260921"></script>
 <script src="tariffe/motore/registro.js?v=20260919"></script>
 <script src="tariffe/motore/assegnazione.js?v=20260919"></script>
 <script src="tariffe/motore/anagrafica.js?v=20260919"></script>
@@ -17388,8 +17389,11 @@ function titRender() {
 window.TIT_COLLAB = window.TIT_COLLAB || [];
 window.TIT_COLLAB_NOMI = window.TIT_COLLAB_NOMI || {};
 
+/* Il nome lo compone il motore: tre tendine che se lo scrivono ognuna per
+   conto suo sono tre modi di scrivere la stessa persona (§35). */
 function collabNome(c) {
-  return [c.cognome, c.nome].filter(Boolean).join(' ').trim() || c.email || '(senza nome)';
+  return (window.Collaboratori ? Collaboratori.nome(c) : '') ||
+    ([c.cognome, c.nome].filter(Boolean).join(' ').trim() || c.email || '') || '(senza nome)';
 }
 
 async function caricaCollaboratori() {
@@ -17410,6 +17414,7 @@ async function caricaCollaboratori() {
    quella persona nel frattempo è stata disattivata: nascondergliela farebbe
    sparire in silenzio l'assegnazione che c'è. */
 function collabOpzioni(scelto, primo) {
+  if (window.Collaboratori) return Collaboratori.opzioni(TIT_COLLAB, scelto, primo, esc);
   return `<option value="">${primo || '— collaboratore —'}</option>` +
     TIT_COLLAB.map(c => `<option value="${esc(c.id)}"${c.id === scelto ? ' selected' : ''}>${esc(collabNome(c))}</option>`).join('');
 }
@@ -20901,8 +20906,17 @@ async function preventivoEmailHtml(id) {
   let consulente = r.creato_nome || '';
   if (ana && ana.intermediario_id) {
     try {
-      const { data: ref } = await db.from('iam_utenti').select('nome,cognome').eq('id', ana.intermediario_id).single();
-      if (ref) { const nc = ((ref.nome || '') + ' ' + (ref.cognome || '')).trim(); if (nc) consulente = nc; }
+      /* IL REGISTRO DELLE PERSONE, non quello degli account (21/09/2026).
+         `quote_anagrafiche.intermediario_id` punta a `quote_collaboratori`:
+         cercarlo in `iam_utenti` non dava un errore, non trovava niente e
+         ripiegava su «chi ha creato il preventivo» — cioe' esattamente il
+         nome sbagliato che il commento qui sopra dice di aver corretto.
+         Misurato: l'unica anagrafica che ha un intermediario lo ha nel
+         registro delle persone e NON fra gli account. */
+      const { data: ref } = await db.from('quote_collaboratori')
+        .select('id,nome,cognome,email').eq('id', ana.intermediario_id).single();
+      const nc = window.Collaboratori ? Collaboratori.nome(ref) : ((ref?.cognome || '') + ' ' + (ref?.nome || '')).trim();
+      if (nc) consulente = nc;
     } catch (e) { /* un consulente non risolto non deve bloccare l'email: resta il ripiego */ }
   }
 

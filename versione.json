@@ -1,8 +1,20 @@
 {
-  "versione": "0.18.0",
-  "nome": "I collaboratori da un elenco solo, e un codice produttore che ha un periodo",
+  "versione": "0.19.0",
+  "nome": "Il contatore dei clienti dice quanti ce ne sono davvero",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.19.0",
+      "data": "2026-09-21",
+      "nome": "Il contatore dei clienti dice quanti ce ne sono davvero",
+      "voci": [
+        "I tre contatori della pagina Clienti (Tutti · Clienti · Lead) dicevano «50», perché contavano le righe caricate e non quelle in archivio. Adesso li conta il server: 2.536 anagrafiche, di cui 29 lead.",
+        "Sotto l'elenco compare «Ne vedi 50 su 2.507»: senza, una lista che si ferma a cinquanta e un numero che ne dice duemilacinquecento si leggono come un guasto, e chi cerca qualcuno smette di cercare.",
+        "Se il conteggio non riesce la schermata scrive «·» e non un numero: «non si è potuto contare» non è «non ce n'è», e un contatore che sbaglia verso il basso fa credere di aver finito.",
+        "Anche i due numeri della Scrivania (clienti senza email, clienti senza consenso marketing) li conta il server: prima si fermavano alle prime mille righe scaricate.",
+        "Il consenso marketing adesso lo decide una regola sola per tutta la casa: la Scrivania guardava solo la privacy firmata e non la spunta raccolta allo sportello, quindi contava fra i buchi anche chi il consenso l'aveva già dato."
+      ]
+    },
     {
       "v": "0.18.0",
       "data": "2026-09-21",

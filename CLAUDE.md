@@ -4894,3 +4894,95 @@ e quando qualcuno la spegne diventa rossa una prova che non c'entra niente.*
   alias (§11): «HDI Assicurazioni» sulla polizza e «HDI» in tabella non si
   ritrovano. Sul portafoglio vero c'è una compagnia sola e non si vede; va
   guardato prima del secondo flusso.
+
+---
+
+## 50. Brief Anagrafiche — punto 1: il contatore che contava le righe caricate (21/09/2026)
+
+> «Il contatore delle anagrafiche è sbagliato.» — Francesco.
+
+**Misurato sul database prima di toccare qualsiasi cosa: 2.536 anagrafiche,
+di cui 29 lead e 2.507 clienti. La schermata diceva 50.**
+
+| pezzo | dove |
+|---|---|
+| le condizioni, in due lingue | `Anagrafica.VISTE` in `tariffe/motore/anagrafica.js` |
+| prove in Node, col valutatore | `server/verifica/anagrafica.test.mjs` — **11** (erano 8) |
+| i contatori della lista | `anagConta`, `anagQuanti`, `anagRicerca`, `anagPiede` in `index.html` |
+| i due buchi della Scrivania | `quantiClienti` in `caricaDaFareOggi`, `iam/index.html` |
+| prove | blocco «punto 1» in `ui-test.mjs` (**488**), `iam/verifica/da-fare-oggi.test.mjs` (15) |
+
+### La causa, e perché non si vedeva
+
+`cercaAnagrafica` carica **i cinquanta più recenti** — ed è giusto, nessuno
+scorre duemila righe. I tre contatori si contavano su `ANAG_CACHE.length`.
+
+> **Un elenco non è un conteggio.** Un numero preso dalle righe caricate non
+> conta quello che c'è: conta quello che si è avuto voglia di scaricare — e
+> guardandolo non c'è modo di accorgersene. Non dà un errore: dà un numero più
+> piccolo, credibile, e più basso del vero.
+
+Gli stessi due numeri sulla Scrivania di IAM avevano la stessa malattia in una
+forma più insidiosa: `.select(...)` senza limite, ma il server ne manda **al
+massimo mille per richiesta**. Nessun `limit` scritto da nessuna parte, e un
+tetto che non si vede nel codice.
+
+### Le condizioni esistono in due lingue, e stanno accanto
+
+Contare sul server vuol dire scrivere ogni condizione due volte: il predicato
+che la lista applica in memoria e il filtro che il server capisce. **Due
+scritture della stessa regola sono due regole**, e qui produrrebbero un
+contatore che non torna con la sua lista — cioè lo stesso guasto, in una forma
+nuova. Quindi stanno una riga sotto l'altra in `VISTE`, e una prova le fa
+girare tutte e due sulle stesse righe pretendendo la stessa risposta (un
+piccolo valutatore della sintassi PostgREST vive **nella prova**, non nel
+motore: in produzione non lo chiamerebbe nessuno, §1).
+
+Quello che quella prova **non** dimostra è che PostgREST legga quelle stringhe
+come le legge il valutatore. Quello si è misurato a mano contro l'API vera,
+filtro per filtro: `200` con le quattro condizioni, `400` con una colonna
+inventata come controllo negativo.
+
+### Le condizioni si scrivono in positivo, e il complemento si sottrae
+
+Il server non sa negare un gruppo di condizioni senza contorsioni. Quindi si
+conta **chi ce l'ha** (`con_email`, `con_consenso`) e si sottrae dal totale:
+una sottrazione non può divergere da se stessa, mentre una seconda condizione
+scritta al contrario sì.
+
+### Due regole diventate una
+
+- **Che cos'è un lead**: la colonna `lead`. Il marcatore `LEAD` scritto nelle
+  note non si guarda più — misurato: **una sola riga** in tutto l'archivio ce
+  l'ha, e non è fra i clienti. Toglierlo non cambia un numero e lascia un modo
+  solo di essere un lead invece di due.
+- **Che cos'è un consenso valido**: la colonna `consenso_marketing` **oppure**
+  la privacy firmata con la spunta. IAM guardava solo la seconda — una seconda
+  regola, che avrebbe contato fra i buchi chi il consenso l'aveva dato allo
+  sportello. Oggi coincidono per caso (4 consensi, tutti da privacy firmata):
+  domani no.
+
+### «Ne vedi 50 su 2.507»
+
+Senza quella riga sotto l'elenco, una lista che si ferma a cinquanta e un
+contatore che dice duemilacinquecento si leggono come un guasto — e chi cerca
+qualcuno smette di cercare credendo che non ci sia. Compare **solo** quando i
+due numeri non coincidono: dirlo sempre sarebbe rumore che si impara a saltare.
+
+E quando il conteggio non riesce i contatori mostrano `·`, non un numero: «non
+si è potuto contare» non è «non ce n'è» (§12, §18), e qui ripiegare sulle righe
+caricate vorrebbe dire rimettere esattamente il difetto appena tolto.
+
+### Il banco non vedeva due metodi su due
+
+`select()` e `or()` erano **passanti** nel finto database: una prova che
+guardava *quale* conteggio il codice stesse chiedendo leggeva sempre niente e
+restava verde comunque. È lo stesso difetto già corretto su `in()`, `upsert()`
+(§19) e `delete()` (§47), un metodo più in là. Adesso `select(colonne, opzioni)`
+dice che è un conteggio, `or()` dice con che condizione, e le risposte si danno
+per condizione.
+
+**E l'apice inverso dentro un commento del banco ha fatto saltare il file per
+la terza volta.** Il banco vive dentro un template literal: un nome di funzione
+scritto fra apici inversi lo chiude. Annotato qui perché è successo tre volte,
+e due di quelle scrivendo il commento che spiegava la volta prima.

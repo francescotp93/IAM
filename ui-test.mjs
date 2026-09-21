@@ -81,6 +81,11 @@ function initScript(conSessione) {
       // database vero. Dai test: window.__COLLAUDO.risposte['quote_polizze:single'] = …
       window.__COLLAUDO.db = [];
       window.__COLLAUDO.risposte = {};
+      /* I conteggi dal server, per condizione: chiave «tabella|or1&or2»
+         (le condizioni ordinate). Dalle prove:
+         window.__COLLAUDO.conteggi['quote_anagrafiche|'] = 2536 */
+      window.__COLLAUDO.conteggi = {};
+      window.__COLLAUDO.conteggiChiesti = [];
 
       /* DUE ATTREZZI PER LE PROVE DELL'IMPORTAZIONE (21/09/2026).
          Dal giorno in cui l'importazione carica a blocchi e poi applica con
@@ -115,10 +120,22 @@ function initScript(conSessione) {
       function builder(tabella) {
         var singolo = false, operazione = 'select', payload = null, filtri = {};
         var b = {};
-        var passanti = ['select','neq','gt','gte','lt','lte','like',
-          'ilike','is','or','not','contains','match','filter','order','limit',
+        var passanti = ['neq','gt','gte','lt','lte','like',
+          'ilike','is','not','contains','match','filter','order','limit',
           'range','csv','abortSignal','returns','overrideTypes'];
         passanti.forEach(function (m) { b[m] = function () { return b; }; });
+        /* I metodi select() e or() erano passanti, cioe' invisibili: una prova
+           che guardava QUALE conteggio il codice stesse chiedendo leggeva
+           sempre niente e restava verde comunque. E' lo stesso difetto gia'
+           corretto su in(), upsert() e delete() (§19), un metodo piu' in la'.
+           Adesso select(colonne, opzioni) dice che e' un conteggio e or() dice
+           con che condizione, e le risposte si danno per condizione.
+           (Niente apici inversi qui: il banco vive in un template literal —
+           e' la terza volta che questa riga fa saltare il file.) */
+        var ors = [];
+        var conta = false;
+        b.or = function (f) { ors.push(String(f)); return b; };
+        b.select = function (_c, opt) { if (opt && opt.count) conta = true; return b; };
         b.eq = function (col, val) { filtri[col] = val; return b; };
         /* I metodi in() e upsert() erano passanti, cioè invisibili al
            registro: una prova che guardava «quali righe stai spostando» o
@@ -156,6 +173,22 @@ function initScript(conSessione) {
 
         b.then = function (ok, ko) {
           if (riga) riga.filtri = JSON.parse(JSON.stringify(filtri));
+          /* Un conteggio non e' una lista: si annota a parte, con le
+             condizioni che ha chiesto, e la risposta si cerca fra i conteggi
+             dichiarati dalla prova. Se la prova non ne ha dichiarato nessuno
+             risponde 0 — che e' un numero, non un errore, e una prova che non
+             lo distingue dal vero non sta misurando niente. */
+          if (conta) {
+            var k = tabella + '|' + ors.slice().sort().join('&');
+            window.__COLLAUDO.conteggiChiesti.push(k);
+            var tab = window.__COLLAUDO.conteggi;
+            if (tab && Object.prototype.hasOwnProperty.call(tab, k)) {
+              var v = tab[k];
+              if (v && v.error) return Promise.resolve({ count: null, data: null, error: v.error }).then(ok, ko);
+              return Promise.resolve({ count: v, data: null, error: null }).then(ok, ko);
+            }
+            return Promise.resolve({ count: 0, data: null, error: null }).then(ok, ko);
+          }
           var chiave = tabella + ':' + (singolo ? 'single' : 'lista');
           var su_misura = window.__COLLAUDO.risposte[chiave];
           if (su_misura !== undefined) {
@@ -7223,6 +7256,66 @@ const avvio = async () => {
       return '3 righe, 6 pannelli pieni, stato ignoto mostrato com\'è';
     });
 
+
+    /* ══ BRIEF ANAGRAFICHE · punto 1 — il contatore (21/09/2026) ═══════════ */
+    await prova('punto 1 · i contatori li conta il SERVER, non le righe caricate', async () => {
+      /* Il difetto, misurato sul database vero il 21/09/2026: 2.536
+         anagrafiche, di cui 29 lead. La lista ne carica cinquanta apposta — e
+         i tre contatori si contavano su quelle, quindi la schermata diceva
+         «50». Un numero preso dalle righe caricate non conta quello che c'è:
+         conta quello che si è avuto voglia di scaricare, e guardandolo non
+         c'è modo di accorgersene. */
+      const r = await page.evaluate(async () => {
+        const K = (f) => 'quote_anagrafiche|' + (f || '');
+        const V = Anagrafica.VISTE;
+        const righe = [];
+        for (let i = 0; i < 50; i++) righe.push({ id: 'a' + i, nominativo: 'CLIENTE ' + i, lead: false, tipo: 'fisica' });
+        window.__COLLAUDO.risposte['quote_anagrafiche:lista'] = { error: null, data: righe };
+        window.__COLLAUDO.conteggi = {
+          [K('')]: 2536,
+          [K(V.lead.filtro)]: 29,
+          [K(V.con_email.filtro)]: 6,
+          [K(V.con_consenso.filtro)]: 4
+        };
+        window.__COLLAUDO.conteggiChiesti = [];
+        ANAG_FILTRO = null; ANAG_VIEW = 'clienti';
+        document.getElementById('anag-q').value = '';
+        await window.cercaAnagrafica();
+        const leggi = () => ({
+          tutti: document.getElementById('anag-cnt-tutti').textContent,
+          cli: document.getElementById('anag-cnt-cli').textContent,
+          lead: document.getElementById('anag-cnt-lead').textContent,
+          corpo: document.getElementById('anag-results').textContent
+        });
+        const buoni = leggi();
+        const chiesti = window.__COLLAUDO.conteggiChiesti.slice();
+        /* E se il conteggio non riesce: «non si è potuto contare» non è
+           «non ce n'è», e soprattutto non è «cinquanta». */
+        window.__COLLAUDO.conteggi = { [K('')]: { error: { message: 'giù' } } };
+        await window.cercaAnagrafica();
+        const rotti = leggi();
+        window.__COLLAUDO.conteggi = {};
+        delete window.__COLLAUDO.risposte['quote_anagrafiche:lista'];
+        return { buoni, rotti, chiesti, righe: righe.length };
+      });
+
+      deve(r.buoni.tutti === '2536', 'il contatore «Tutti» non è quello del server: ' + r.buoni.tutti);
+      deve(r.buoni.cli === '2507', 'i clienti non si ricavano per differenza: ' + r.buoni.cli);
+      deve(r.buoni.lead === '29', 'i lead non sono quelli del server: ' + r.buoni.lead);
+      deve(r.buoni.tutti !== String(r.righe), 'il contatore conta ancora le righe caricate');
+      /* La riga che tiene insieme il numero e l'elenco: senza, una lista che
+         si ferma a cinquanta e un contatore che dice duemilacinquecento si
+         leggono come un guasto, e chi cerca smette di cercare. */
+      deve(/Ne vedi/.test(r.buoni.corpo) && /2507/.test(r.buoni.corpo),
+        'la lista non dice quante ne sta mostrando su quante: ' + r.buoni.corpo.slice(0, 200));
+      /* Quattro conteggi, non uno: il totale, i lead, e i due «ce l'ha» da
+         cui si ricavano i buchi per differenza. */
+      deve(r.chiesti.length === 4, 'i conteggi chiesti non sono quattro: ' + r.chiesti.join(' · '));
+      deve(r.rotti.tutti === '·' && r.rotti.cli === '·' && r.rotti.lead === '·',
+        'quando il conteggio non riesce la schermata mostra un numero: ' + JSON.stringify(r.rotti));
+      deve(!/Ne vedi/.test(r.rotti.corpo), 'senza conteggio dice lo stesso quante ne mostra su quante');
+      return '2536 · 2507 clienti · 29 lead, e «·» quando non si è potuto contare';
+    });
 
     /* ══ BRIEF IAM #01 · M3 — anagrafica (19/09/2026) ═══════════════════════ */
     await prova('M3.1 · un parser solo del codice fiscale: le due porte della pagina passano dal motore', async () => {

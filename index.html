@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.18.0">
-<meta name="app-versione-nome" content="I collaboratori da un elenco solo, e un codice produttore che ha un periodo">
+<meta name="app-versione" content="0.19.0">
+<meta name="app-versione-nome" content="Il contatore dei clienti dice quanti ce ne sono davvero">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -84,7 +84,7 @@
 <script src="tariffe/motore/collaboratori.js?v=20260921"></script>
 <script src="tariffe/motore/registro.js?v=20260919"></script>
 <script src="tariffe/motore/assegnazione.js?v=20260921"></script>
-<script src="tariffe/motore/anagrafica.js?v=20260919"></script>
+<script src="tariffe/motore/anagrafica.js?v=20260921"></script>
 <!-- Il catalogo prodotti: l'importazione riconosce compagnie e prodotti con
      le stesse regole con cui li mostra IAM. Due riconoscimenti sarebbero due
      cataloghi della stessa agenzia. -->
@@ -22439,7 +22439,10 @@ async function awNostroClientePerCF(cf) {
 /* Dal 03/08/2026 il lead e' un campo vero (`lead`), non piu' una parola dentro
    le note. Il vecchio riconoscimento resta come rete: finche' non e' stata
    eseguita la migrazione, o per righe piu' vecchie, la nota vale ancora. */
-function awIsLead(r) { return !!(r && r.lead === true); }
+/* Che cos'è un lead lo dice il motore, come il consenso: la stessa condizione
+   la chiede anche il contatore al server, e due scritture sarebbero un numero
+   che non torna con la sua lista. */
+function awIsLead(r) { return !!(window.Anagrafica && Anagrafica.eLead(r)); }
 // Mappa il NOSTRO record sui campi del contraente (i nostri dati hanno la precedenza → sovrascrivo).
 function awMappaNostro(r) {
   const c = AUTO_DATA.contraente = AUTO_DATA.contraente || {};
@@ -26677,11 +26680,78 @@ let ANAG_FILTRO = null;    // null | 'senza-email' | 'senza-consenso' — «buco
    Devono coincidere: se la Scrivania contasse i buchi con una regola e le
    campagne scegliessero con un'altra, il numero direbbe una cosa e l'invio ne
    farebbe un'altra. La firma resta riconosciuta anche sulle anagrafiche
-   firmate prima che il campo esistesse. */
-function awConsensoMkt(a){
-  if (a && a.consenso_marketing === true) return true;
-  const pf = a && a.privacy_firma;
-  return !!(pf && pf.stato === 'firmata' && pf.consensi && pf.consensi.marketing_elettronico === true);
+   firmate prima che il campo esistesse.
+   La regola sta nel MOTORE dal 21/09/2026, perché da lì la legge anche il
+   contatore, che la chiede al server: due scritture della stessa condizione
+   sarebbero un contatore che non torna con la sua lista. */
+function awConsensoMkt(a){ return !!(window.Anagrafica && Anagrafica.conConsenso(a)); }
+
+/* I TRE CONTATORI NON SI CONTANO SULLE RIGHE CARICATE (21/09/2026).
+   La lista ne carica cinquanta apposta — nessuno scorre duemila righe — e i
+   contatori si contavano su quelle: con 2.536 anagrafiche in archivio la
+   schermata diceva «50». Un numero preso dalle righe caricate non conta
+   quello che c'è: conta quello che si è avuto voglia di scaricare, e
+   guardandolo non c'è modo di accorgersene.
+
+   Adesso li conta il server, con la STESSA ricerca della lista e le
+   condizioni del motore. `null` finché non si è potuto contare: «non si è
+   potuto leggere» non è «non ce n'è» (§12, §18), e un contatore che mente
+   in basso fa credere di aver finito. */
+let ANAG_CONTI = null;
+
+/* La ricerca, scritta una volta: la usano la lista e i contatori. Se le due
+   divergessero, il numero direbbe una cosa e l'elenco un'altra — che è il
+   guasto che questo lavoro sta togliendo, in una forma nuova. */
+function anagRicerca(query, q) {
+  if (!q) return query;
+  const like = `%${sbq(q)}%`;
+  return query.or(`nominativo.ilike.${like},codice_fiscale.ilike.${like},partita_iva.ilike.${like},telefono.ilike.${like},cellulare.ilike.${like}`);
+}
+
+/* Un conteggio solo, dal server, senza scaricare le righe. */
+async function anagQuanti(q, viste) {
+  let query = db.from('quote_anagrafiche').select('id', { count: 'exact', head: true });
+  query = anagRicerca(query, q);
+  (viste || []).forEach(v => { query = query.or(Anagrafica.VISTE[v].filtro); });
+  const { count, error } = await query;
+  if (error) throw error;
+  return count || 0;
+}
+
+async function anagConta(q) {
+  /* Si azzerano SUBITO: fra una ricerca e la risposta del server, i numeri
+     della ricerca di prima sarebbero numeri veri riferiti a un altro elenco —
+     e sono i peggiori, perché non hanno l'aria di essere sbagliati. */
+  ANAG_CONTI = null;
+  if (!db || !window.Anagrafica) return;
+  try {
+    /* Le condizioni sono scritte in positivo e i complementi si ricavano per
+       differenza: il server non sa negare un gruppo di condizioni senza
+       contorsioni, e una sottrazione non può divergere da se stessa. */
+    const vista = ANAG_FILTRO === 'senza-email' ? 'con_email'
+                : ANAG_FILTRO === 'senza-consenso' ? 'con_consenso' : null;
+    const [tutti, lead, conEmail, conConsenso, leadConVista] = await Promise.all([
+      anagQuanti(q, []),
+      anagQuanti(q, ['lead']),
+      anagQuanti(q, ['con_email']),
+      anagQuanti(q, ['con_consenso']),
+      /* Col filtro «buco» acceso servono anche i lead DENTRO quel buco, per
+         dividere il sottoinsieme fra clienti e lead. Cinque conteggi solo
+         quando servono: senza filtro il quinto non si chiede. */
+      vista ? anagQuanti(q, ['lead', vista]) : Promise.resolve(0)
+    ]);
+    const conVista = vista === 'con_email' ? conEmail : conConsenso;
+    ANAG_CONTI = {
+      tutti, lead, clienti: tutti - lead,
+      senzaEmail: tutti - conEmail, senzaConsenso: tutti - conConsenso,
+      /* Nel buco: il totale del buco, e come si divide. */
+      buco: vista ? { tutti: tutti - conVista, lead: lead - leadConVista,
+                      clienti: (tutti - conVista) - (lead - leadConVista) } : null
+    };
+  } catch (e) {
+    ANAG_CONTI = null;
+    console.warn('[anagrafiche] non si è potuto contare:', e.message || e);
+  }
 }
 const STATI_CIVILI = ['', 'Celibe/Nubile','Coniugato/a','Convivente','Separato/a','Divorziato/a','Vedovo/a'];
 const TIPI_SOCIETA = ['', 'S.r.l.','S.r.l.s.','S.p.A.','S.n.c.','S.a.s.','S.s.','Ditta individuale','Cooperativa','Associazione','Ente/Onlus','Altro'];
@@ -26735,11 +26805,11 @@ async function cercaAnagrafica() {
   body.innerHTML = '<tr><td colspan="6"><div class="empty-state">Ricerca…</div></td></tr>';
   try {
     // Col filtro «buco» attivo servono TUTTI i clienti, non solo i 50 più recenti.
-    let query = db.from('quote_anagrafiche').select('*').order('creato_il', { ascending: false }).limit(ANAG_FILTRO ? 1000 : 50);
-    if (q) {
-      const like = `%${sbq(q)}%`;
-      query = query.or(`nominativo.ilike.${like},codice_fiscale.ilike.${like},partita_iva.ilike.${like},telefono.ilike.${like},cellulare.ilike.${like}`);
-    }
+    let query = anagRicerca(
+      db.from('quote_anagrafiche').select('*').order('creato_il', { ascending: false }).limit(ANAG_FILTRO ? 1000 : 50), q);
+    /* I contatori partono insieme alla lista e non la aspettano: sono un'altra
+       domanda, e se non rispondono la lista si vede lo stesso (§35). */
+    const conteggio = anagConta(q);
     const { data, error } = await query;
     if (error) throw error;
     let risultati = data || [];
@@ -26762,6 +26832,8 @@ async function cercaAnagrafica() {
     }
     ANAG_CACHE = risultati;
     renderAnagResults();
+    await conteggio;
+    renderAnagResults();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella anagrafiche non trovata. Esegui lo script SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
   }
@@ -26776,15 +26848,25 @@ function renderAnagResults() {
      e Lead si spegnevano e la lista usciva mista, quindi i due pulsanti
      sembravano rotti. Adesso il filtro si applica prima, e la divisione
      clienti/lead resta viva sopra di esso. */
-  const pred = ANAG_FILTRO === 'senza-email' ? (a => !(a.email && String(a.email).trim()))
-             : ANAG_FILTRO === 'senza-consenso' ? (a => !awConsensoMkt(a))
+  const pred = ANAG_FILTRO === 'senza-email' ? Anagrafica.senzaEmail
+             : ANAG_FILTRO === 'senza-consenso' ? Anagrafica.senzaConsenso
              : null;
   const base = pred ? (ANAG_CACHE || []).filter(pred) : (ANAG_CACHE || []);
   const leads = base.filter(awIsLead);
   const clienti = base.filter(a => !awIsLead(a));
 
-  const n = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-  n('anag-cnt-tutti', base.length); n('anag-cnt-cli', clienti.length); n('anag-cnt-lead', leads.length);
+  /* I numeri li dice il SERVER, non le righe caricate. `·` finché non ha
+     risposto, e `·` anche se non risponde: un contatore che ripiega sulle
+     righe in mano direbbe «50» su duemilacinquecento, e nessuno potrebbe
+     accorgersene guardandolo (§12, §18 — «non si è potuto contare» non è
+     «non ce n'è»). Col filtro «buco» attivo i tre numeri sono quelli del
+     sottoinsieme, perché è quello che la lista sta mostrando. */
+  const C = ANAG_CONTI;
+  const quanti = !C ? null : (ANAG_FILTRO ? C.buco : C);
+  const n = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v == null ? '·' : v; };
+  n('anag-cnt-tutti', quanti ? quanti.tutti : null);
+  n('anag-cnt-cli', quanti ? quanti.clienti : null);
+  n('anag-cnt-lead', quanti ? quanti.lead : null);
 
   /* Cercato e trovato, ma nell'ALTRO elenco. Prima si leggeva «Nessun cliente
      trovato» mentre il nominativo c'era, solo fra i lead: da fuori la barra
@@ -26809,8 +26891,8 @@ function renderAnagResults() {
   if (ANAG_FILTRO) {
     const etich = ANAG_FILTRO === 'senza-email' ? 'senza email' : 'senza consenso marketing';
     chip = `<tr><td colspan="6" style="background:#fff8e1;border-bottom:1px solid #ffe08a;padding:8px 12px">
-      <span style="color:#8a6d00;font-weight:600"><i class="ti ti-filter" style="vertical-align:-1px"></i> Anagrafiche ${etich}: ${base.length}</span>
-      <span style="color:#8a6d00;font-size:12.5px;margin-left:8px">(${clienti.length} clienti · ${leads.length} lead)</span>
+      <span style="color:#8a6d00;font-weight:600"><i class="ti ti-filter" style="vertical-align:-1px"></i> Anagrafiche ${etich}: ${quanti ? quanti.tutti : '·'}</span>
+      <span style="color:#8a6d00;font-size:12.5px;margin-left:8px">${quanti ? `(${quanti.clienti} clienti · ${quanti.lead} lead)` : '(non si è potuto contare)'}</span>
       <a href="#" onclick="anagFiltro(null);return false" style="margin-left:12px;color:var(--blue);font-size:13px">Togli il filtro</a>
     </td></tr>`;
   }
@@ -26836,7 +26918,22 @@ function renderAnagResults() {
       <td style="font-size:13px">${esc(a.cellulare || a.telefono || a.email || '—')}</td>
       <td style="text-align:right"><button class="btn-emetti" style="padding:5px 12px${lead?';background:#f86200;border-color:#f86200':''}" onclick="apriAnagrafica('${a.id}')">Apri</button></td>
     </tr>`;
-  }).join('');
+  }).join('') + anagPiede(rows.length, quanti, vista);
+}
+
+/* «Ne vedi 50 su 2.507». Senza questa riga, un elenco che si ferma a
+   cinquanta e un contatore che dice duemilacinquecento si leggono come un
+   guasto — e chi cerca qualcuno smette di cercare credendo che non ci sia.
+   Compare solo quando i due numeri non coincidono: dirlo sempre sarebbe
+   rumore che si impara a saltare. */
+function anagPiede(mostrate, quanti, vista) {
+  if (!quanti) return '';
+  const tot = vista === 'lead' ? quanti.lead : (vista === 'clienti' ? quanti.clienti : quanti.tutti);
+  if (tot == null || mostrate >= tot) return '';
+  return `<tr><td colspan="6" style="padding:9px 12px;color:var(--txt3);font-size:12.5px;background:var(--surf2)">
+    Ne vedi <b>${mostrate}</b> su <b>${tot}</b>: la lista mostra le più recenti.
+    Per trovarne una precisa scrivi il nominativo, il codice fiscale o il telefono nella ricerca qui sopra.
+  </td></tr>`;
 }
 // Cambia sottoinsieme visualizzato (Clienti/Lead) senza rifare la query.
 function anagView(v) {
@@ -26849,14 +26946,17 @@ function anagView(v) {
 }
 // Apre la pagina Clienti già posizionata sul sottoinsieme richiesto (dalle voci di menu Clienti/Lead).
 function apriAnagView(v) { showPage('anagrafiche'); anagView(v); }
-// Applica o toglie il filtro «buco» (senza email / senza consenso) senza rifare la query.
+/* Applica o toglie il filtro «buco» (senza email / senza consenso).
+   RIFÀ la query: il filtro cambia quante righe si caricano e cambia i numeri
+   da contare, e disegnare con quelli di prima vorrebbe dire mostrare il
+   conteggio di un altro elenco. */
 function anagFiltro(f){
   ANAG_FILTRO = (f === 'senza-email' || f === 'senza-consenso') ? f : null;
   /* Arrivando dalla Scrivania si parte dalla scheda Clienti: il numero in lista
      deve combaciare con quello della scrivania, che conta solo i clienti. Il
      chip mostra quanti lead hanno lo stesso buco, se si vogliono vedere. */
   ANAG_VIEW = 'clienti';
-  renderAnagResults();
+  cercaAnagrafica();
 }
 
 /* ── Codice Fiscale → data di nascita ── */

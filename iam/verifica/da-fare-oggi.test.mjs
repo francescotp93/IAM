@@ -142,6 +142,45 @@ prova('i conteggi leggono le tabelle giuste', () => {
   return '5 tabelle, sola lettura';
 });
 
+/* ══ I DUE BUCHI DEL MARKETING LI CONTA IL SERVER (21/09/2026) ═════════════
+   Brief «Anagrafiche», punto 1. Fino a oggi si scaricavano le anagrafiche e
+   si contavano qui: il server ne manda al massimo mille per richiesta e in
+   archivio ce ne sono 2.536, quindi il numero era quello delle righe
+   arrivate. Nessun errore: un numero più piccolo, credibile, e più basso del
+   vero — che su un elenco di cose da fare è il modo peggiore di sbagliare. */
+prova('i buchi del marketing si contano sul server, non sulle righe scaricate', () => {
+  const buchi = corpo.slice(corpo.indexOf('quantiClienti'));
+  deve(/count: 'exact', head: true/.test(buchi),
+    'il conteggio scarica ancora le righe: con più di mille dice un numero sbagliato e non lo dice');
+  /* E non ne resta uno che filtra in memoria: basta quello per riavere il
+     difetto su una delle due voci. */
+  deve(!/\.filter\(a => !\(a\.email/.test(corpo), 'l\'email si conta ancora in memoria');
+  deve(!/const haConsenso = /.test(corpo), 'IAM si riscrive la regola del consenso invece di chiederla al motore');
+  return 'due conteggi, tutti e due dal server';
+});
+
+prova('la regola del consenso è QUELLA DEL MOTORE, non una copia di IAM', () => {
+  /* Fino al 21/09/2026 IAM guardava solo la privacy firmata e non la colonna
+     `consenso_marketing`: una seconda regola, che contava fra i buchi chi il
+     consenso l'aveva dato allo sportello. Due regole sullo stesso dato sono
+     due numeri diversi sulla stessa agenzia. */
+  deve(/Anagrafica\.VISTE\[/.test(corpo), 'la condizione non viene dal motore');
+  /* E il motore è caricato: si cerca il TAG, non la stringa — quel percorso
+     compare anche nei commenti (§18, §26). */
+  deve(/<script src="\/nuovo-preventivo\/tariffe\/motore\/anagrafica\.js\?v=/.test(html),
+    'IAM non carica il motore delle anagrafiche');
+  return 'una regola sola, caricata e non copiata';
+});
+
+prova('il marcatore LEAD nelle note non decide più chi è un lead', () => {
+  /* Misurato il 21/09/2026: una sola riga in tutto l'archivio ha quel
+     marcatore, e non è fra i clienti. Toglierlo non cambia un numero, e
+     lascia un modo solo di essere un lead invece di due. */
+  deve(!/\\bLEAD\\b/.test(corpo), 'il marcatore nelle note è ancora una seconda strada per essere lead');
+  deve(/eq\('lead', false\)/.test(corpo), 'i clienti non si scelgono dalla colonna lead');
+  return 'la colonna, e basta';
+});
+
 console.log('DA FARE OGGI');
 for (const [ok, nome, msg] of esiti) {
   console.log(`  ${ok ? 'ok ' : 'X  '} ${nome}${msg ? ' — ' + msg : ''}`);

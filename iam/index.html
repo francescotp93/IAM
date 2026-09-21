@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.18.0">
-<meta name="app-versione-nome" content="I collaboratori da un elenco solo, e un codice produttore che ha un periodo">
+<meta name="app-versione" content="0.19.0">
+<meta name="app-versione-nome" content="Il contatore dei clienti dice quanti ce ne sono davvero">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -35,6 +35,13 @@
      movimento perso è meglio di una schermata che non si apre. -->
 <script src="/nuovo-preventivo/tariffe/motore/registro.js?v=20260919"></script>
 <script src="/nuovo-preventivo/tariffe/motore/assegnazione.js?v=20260921"></script>
+<!-- Le anagrafiche: che cos'è un lead, che cos'è un consenso valido. Stesso
+     file del preventivatore, perché i due contatori — quello della Scrivania e
+     quello della lista Clienti — devono contare la stessa cosa. Fino al
+     21/09/2026 IAM aveva la sua copia della regola del consenso, e non
+     guardava la colonna `consenso_marketing`: due regole, e quella che
+     sbagliava era quella che nessuno guarda. -->
+<script src="/nuovo-preventivo/tariffe/motore/anagrafica.js?v=20260921"></script>
 <!-- I conti e le causali (brief #02 M1). Stesso file del preventivatore, per lo
      stesso motivo: il vocabolario della contabilità dev'essere uno solo. -->
 <script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260919"></script>
@@ -10339,29 +10346,47 @@ async function caricaDaFareOggi(forza) {
      Clienti già filtrati sul buco (page «anagrafiche:senza-email» / «-consenso»),
      che là parte dalla scheda Clienti, così il numero in lista combacia con questo. */
 
+  /* I DUE NUMERI LI CONTA IL SERVER (21/09/2026, brief Anagrafiche · punto 1).
+     Fino a oggi si scaricavano le righe e si contavano qui: il server ne manda
+     al massimo mille per richiesta, e in archivio ce ne sono 2.536 — quindi il
+     numero era quello delle righe arrivate, non di quelle che ci sono. Non
+     dava nessun errore: dava un numero più piccolo, credibile, e più basso del
+     vero, che su un elenco di cose da fare è il modo peggiore di sbagliare.
+
+     Si conta al contrario — quanti CE L'HANNO — e si sottrae: il server non sa
+     negare un gruppo di condizioni senza contorsioni, e una sottrazione non
+     può divergere da se stessa. La condizione la dà il motore, lo stesso che
+     usa il preventivatore.
+
+     Il marcatore `LEAD` scritto nelle note non si guarda più: chi è un lead lo
+     dice la colonna `lead`. Misurato il 21/09/2026: una sola riga in tutto
+     l'archivio ha quel marcatore, e non è fra i clienti — toglierlo non cambia
+     un numero, e lascia un modo solo di essere un lead invece di due. */
+  const quantiClienti = async (vista) => {
+    let q = db.from('quote_anagrafiche').select('id', { count: 'exact', head: true }).eq('lead', false);
+    if (vista) q = q.or(Anagrafica.VISTE[vista].filtro);
+    const { count, error } = await q;
+    if (error) throw error;
+    return count || 0;
+  };
+
   // 8. Clienti senza email
   await conta(async () => {
-    const { data, error } = await db.from('quote_anagrafiche').select('email,note').eq('lead', false);
-    if (error) throw error;
-    const cl = (data || []).filter(a => !/\bLEAD\b/i.test(a.note || ''));
-    const n = cl.filter(a => !(a.email && String(a.email).trim())).length;
+    const [tutti, conEmail] = await Promise.all([quantiClienti(null), quantiClienti('con_email')]);
+    const n = tutti - conEmail;
     if (!n) return;
     voci.push({ n, cls: '', l: n === 1 ? 'cliente senza email' : 'clienti senza email',
                 s: 'senza indirizzo non li raggiunge nessuna campagna', va: () => oggiApri('anagrafiche:senza-email') });
   });
 
-  // 9. Clienti senza consenso marketing (stessa regola di QUOTO: privacy firmata
-  //    con marketing_elettronico = true). Nel DB non c'è la colonna consenso_marketing,
-  //    quindi ci si basa solo su privacy_firma.
+  // 9. Clienti senza consenso marketing. La regola è quella del motore, quindi
+  //    la stessa di QUOTO: la colonna `consenso_marketing` OPPURE la privacy
+  //    firmata con la spunta. Fino a oggi IAM guardava solo la privacy firmata
+  //    — una seconda regola, che avrebbe contato fra i buchi chi il consenso
+  //    l'aveva dato allo sportello.
   await conta(async () => {
-    const { data, error } = await db.from('quote_anagrafiche').select('privacy_firma,note').eq('lead', false);
-    if (error) throw error;
-    const cl = (data || []).filter(a => !/\bLEAD\b/i.test(a.note || ''));
-    const haConsenso = a => {
-      const pf = a && a.privacy_firma;
-      return !!(pf && pf.stato === 'firmata' && pf.consensi && pf.consensi.marketing_elettronico === true);
-    };
-    const n = cl.filter(a => !haConsenso(a)).length;
+    const [tutti, conConsenso] = await Promise.all([quantiClienti(null), quantiClienti('con_consenso')]);
+    const n = tutti - conConsenso;
     if (!n) return;
     voci.push({ n, cls: '', l: n === 1 ? 'cliente senza consenso marketing' : 'clienti senza consenso marketing',
                 s: 'non entrano in una campagna finché non firmano', va: () => oggiApri('anagrafiche:senza-consenso') });

@@ -108,6 +108,31 @@ primaria, ed è un lavoro a sé. Scritto nella migrazione.
 
 ---
 
+## 21/09/2026 — Il contatore delle anagrafiche (0.19.0, brief Anagrafiche · punto 1)
+
+**Perimetro:** far dire ai contatori quante anagrafiche ci sono davvero.
+
+🟡 **Nessuna modifica al database.** I numeri li chiede il server con un
+conteggio, senza scaricare le righe. Misurato: 2.536 anagrafiche, 29 lead,
+2.507 clienti — la schermata diceva 50.
+
+🟡 **Il marcatore `LEAD` scritto nelle note non decide più chi è un lead**:
+decide la colonna `lead`. Misurato: una sola riga in tutto l'archivio ha quel
+marcatore, e non è fra i clienti — il numero non cambia.
+*Come tornare indietro:* si rimette il filtro sulle note in `caricaDaFareOggi`.
+
+🟡 **Il consenso marketing ha una regola sola per tutta la casa.** La Scrivania
+di IAM guardava solo la privacy firmata e non la colonna `consenso_marketing`:
+contava fra i buchi anche chi il consenso l'aveva dato allo sportello. Oggi i
+due numeri coincidono per caso (4 consensi, tutti da privacy firmata).
+*Come tornare indietro:* `git revert` del commit del punto 1.
+
+🟡 **Sotto l'elenco compare «Ne vedi 50 su 2.507».** Senza, una lista che si
+ferma a cinquanta e un contatore che ne dice duemilacinquecento si leggono come
+un guasto.
+
+---
+
 ## Fuori perimetro — annotato e non fatto
 
 - **`flusso-ssf.js:805 aggiungiMesi` duplica `PianoRate.sommaMesi`**: due copie

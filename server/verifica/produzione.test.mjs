@@ -225,6 +225,69 @@ prova('senza data di riferimento l’anno in corso lo dicono le righe, non l’o
   return '2026 dalle righe, e nessun taglio promesso';
 });
 
+/* ══ I TRE ZERI, CHE NON SONO LO STESSO ZERO (21/09/2026) ═══════════════════
+   Misurato sul portafoglio vero, disegnando le altezze delle barre: la
+   schermata faceva la stessa barra per tre fatti diversi.
+
+     · un mese in cui non è successo NIENTE            → premio 0, polizze 0
+     · un mese NON ANCORA ARRIVATO quest'anno          → premio 0, polizze 0
+       ma `fuori_confronto` acceso: ottobre 2026 non è un mese andato male,
+       è un mese che non c'è ancora — e accanto alla barra alta di ottobre
+       2025 si legge come un crollo verticale
+     · un mese con delle polizze e NESSUN PREMIO NOTO  → premio 0, polizze > 0
+       (181 polizze su 1720 non hanno un premio annuo): quel mese ha prodotto,
+       il premio non si sa. Zero sarebbe una bugia sul denaro.
+
+   Il motore li deve tenere distinguibili, altrimenti nessun grafico potrà
+   farlo: una barra è alta quanto il numero che le arriva. Questa prova non
+   dice COME si disegnano — dice che i tre casi arrivano separati. */
+prova('TRE ZERI DIVERSI: niente, non ancora arrivato, premio non noto', () => {
+  const righe = [
+    /* 2025 pieno fino a marzo, poi un mese senza niente */
+    { anno: 2025, mese: 1, polizze: 4, senza_premio: 0, premio: 1000, parziale: false, fuori_confronto: false },
+    { anno: 2025, mese: 3, polizze: 2, senza_premio: 0, premio: 500,  parziale: false, fuori_confronto: false },
+    /* ottobre 2025 c'è, ma quest'anno ottobre non è ancora arrivato */
+    { anno: 2025, mese: 10, polizze: 9, senza_premio: 0, premio: 9000, parziale: false, fuori_confronto: true },
+    { anno: 2026, mese: 1, polizze: 5, senza_premio: 0, premio: 2000, parziale: false, fuori_confronto: false },
+    /* febbraio 2026: tre polizze, nessuna col premio */
+    { anno: 2026, mese: 2, polizze: 3, senza_premio: 3, premio: 0,    parziale: false, fuori_confronto: false },
+    { anno: 2026, mese: 3, polizze: 1, senza_premio: 0, premio: 300,  parziale: true,  fuori_confronto: false }
+  ];
+  const c = P.confronto(righe, '2026-03-15');
+  const m = (n) => c.mesi.find(x => x.mese === n);
+
+  /* 1. Un mese in cui non è successo niente: zero e zero, e nessun marcatore. */
+  const feb25 = m(2);
+  deve(feb25.precedente.premio === 0 && feb25.precedente.polizze === 0,
+    'un mese senza righe non è a zero: ' + JSON.stringify(feb25.precedente));
+  deve(!feb25.fuori_confronto, 'un mese passato e vuoto risulta «non ancora arrivato»');
+
+  /* 2. Un mese non ancora arrivato PORTA IL SUO MARCATORE, ed è l'unica cosa
+        che permette di non disegnargli la barra dell'anno in corso. */
+  const ott = m(10);
+  deve(ott.fuori_confronto === true, 'ottobre non è marcato «fuori confronto»');
+  deve(ott.corrente.premio === 0 && ott.precedente.premio === 9000,
+    'ottobre non ha l’anno scorso pieno e l’anno in corso vuoto: ' + JSON.stringify(ott));
+  /* E non entra nei totali: è il motivo per cui esiste il marcatore. */
+  deve(c.totali.precedente.premio === 1500,
+    'i mesi non ancora arrivati entrano nei totali: ' + c.totali.precedente.premio);
+  deve(c.fuori.premio === 9000 && c.fuori.polizze === 9,
+    'quello che resta fuori non si conta a parte: ' + JSON.stringify(c.fuori));
+
+  /* 3. Polizze senza premio: il mese HA prodotto, e il premio non si sa.
+        `senza_premio` è il solo modo di non leggere quello zero come «niente». */
+  const feb26 = m(2);
+  deve(feb26.corrente.polizze === 3 && feb26.corrente.premio === 0,
+    'il mese senza premi noti non riporta le sue polizze: ' + JSON.stringify(feb26.corrente));
+  deve(feb26.corrente.senza_premio === 3,
+    'non si sa che quelle tre polizze un premio non ce l’hanno: ' + JSON.stringify(feb26.corrente));
+  /* E si dichiara in chiaro, perché un grafico da solo non può dirlo. */
+  deve(c.avvisi.some(a => /non valgono zero/.test(a)),
+    'nessun avviso dice che le polizze senza premio non valgono zero: ' + JSON.stringify(c.avvisi));
+
+  return 'niente ≠ non ancora arrivato ≠ premio non noto';
+});
+
 console.log('\n══ LA PRODUZIONE ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

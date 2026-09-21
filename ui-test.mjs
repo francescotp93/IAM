@@ -4306,7 +4306,16 @@ const avvio = async () => {
         return { esito, scritture: window.__COLLAUDO.db.filter(o => o.tabella === 'quote_titoli' && o.operazione === 'insert').length };
       });
       deve(r.scritture === 0, 'ha generato rate senza avere i dati');
-      deve(/manca/.test(r.esito.motivo || ''), 'non spiega perché non ha generato: ' + r.esito.motivo);
+      /* La REGOLA e' cresciuta (§15, §16, §33, §35): prima bastava che il
+         motivo contenesse «manca», e tre cause diverse — decorrenza, premio,
+         scadenza a rovescio — finivano nella stessa frase. Adesso il motivo
+         deve dire QUALE dato manca, altrimenti chi legge l'avviso non sa
+         quale campo tornare a compilare (§12, §18).
+         La regex e' insensibile alle maiuscole: la frase comincia con
+         «Manca», ed e' la trappola gia' presa in §23. */
+      const motivo = r.esito.motivo || '';
+      deve(/manca/i.test(motivo), 'non spiega perché non ha generato: ' + motivo);
+      deve(/decorrenza|premio/i.test(motivo), 'non dice QUALE dato manca: ' + motivo);
     });
 
     await prova('titoli: la pagina esiste e sostituisce la voce «in arrivo»', async () => {
@@ -9549,6 +9558,160 @@ const avvio = async () => {
       deve(/non si è potuta leggere/.test(c), 'una copertura non letta si confonde con una copertura piena');
       deve(/i filtri funzionano lo stesso/.test(c), 'la copertura non letta blocca il resto del modulo');
       return 'un riquadro, chiamato, e onesto quando cade';
+    });
+
+    /* ══ NUOVA POLIZZA — le tre richieste del 21/09/2026 ═══════════════════
+       «nuova polizza si deve trovare nel menu portafoglio»;
+       «l'interfaccia di questa sezione deve essere con il design IAM»;
+       «se metto semestrale deve creare in automatico un titolo da incassare
+        con la data tra sei mesi… la scadenza di contratto sara' esattamente
+        tra un anno ma tra 6 mesi ci sara' una rata intermedia».
+       ══════════════════════════════════════════════════════════════════════ */
+    await prova('nuova polizza: LA REGOLA DI FRANCESCO, dentro il modulo', async () => {
+      const r = await page.evaluate(() => {
+        const oggi = pnuOggi();
+        const piano = window.titPianoPieno({
+          data_effetto: oggi, data_scadenza: pnuPiuUnAnno(oggi),
+          frazionamento: 'Semestrale', premio_annuo: 220
+        });
+        return {
+          oggi, scadenza: pnuPiuUnAnno(oggi),
+          seiMesi: PianoRate.sommaMesi(oggi, 6),
+          rate: piano.rate.map(x => [x.data_decorrenza, x.importo_lordo])
+        };
+      });
+      /* La scadenza e' esattamente fra un anno: prima `pnuPiuUnAnno` passava
+         da `new Date` + `toISOString` e in Italia tornava indietro di un
+         giorno. Si confronta con la stessa data +12 mesi contata sui numeri. */
+      deve(r.scadenza === r.oggi.slice(0, 4) * 1 + 1 + r.oggi.slice(4),
+        'la scadenza non e\' esattamente fra un anno: ' + r.oggi + ' → ' + r.scadenza);
+      deve(r.rate.length === 2, 'con semestrale non nascono due rate: ' + JSON.stringify(r.rate));
+      deve(r.rate[1][0] === r.seiMesi, 'la rata intermedia non e\' a sei mesi: ' + r.rate[1][0] + ' invece di ' + r.seiMesi);
+      deve(r.rate[0][1] === 110 && r.rate[1][1] === 110, 'gli importi non sono meta\' del premio');
+      return 'scadenza ' + r.scadenza + ', rata intermedia ' + r.rate[1][0];
+    });
+
+    await prova('nuova polizza: chi scrive solo la RATA ottiene le sue rate', async () => {
+      /* Il difetto vero: `titPiano` leggeva solo `premio_annuo`, e chi
+         compilava «premio di rata» si ritrovava la polizza scritta e NESSUNA
+         rata. Senza rate non esistono gli insoluti. */
+      const r = await page.evaluate(async () => {
+        await pnuApri();
+        const set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); };
+        document.getElementById('pnu-fraz').value = 'Semestrale';
+        document.getElementById('pnu-fraz').dispatchEvent(new Event('change'));
+        set('pnu-rata', '110');
+        return {
+          annuo: document.getElementById('pnu-annuo').value,
+          rate: document.getElementById('pnu-rate').innerHTML
+        };
+      });
+      /* L'annuo si riempie NEL CAMPO, visibile e correggibile (§8.1): non si
+         calcola dietro le quinte. */
+      deve(parseFloat(r.annuo) === 220, 'scrivendo la rata l\'annuo non si riempie: «' + r.annuo + '»');
+      deve(/2 rate da incassare/.test(r.rate), 'l\'anteprima non mostra due rate: ' + r.rate.slice(0, 200));
+      deve(/110,00/.test(r.rate), 'gli importi delle rate non si vedono');
+      /* Nell'anteprima l'avviso «l'annuo viene dalle rate» NON deve comparire,
+         ed e' giusto: l'annuo e' stato scritto nel campo, quindi una persona
+         lo vede e lo puo' correggere — e' dichiarato. L'avviso serve al
+         motore, quando la polizza arriva con la sola rata (p.es. dal
+         portafoglio) e nessuno ha visto niente. */
+      deve(!/somma delle/.test(r.rate), 'l\'anteprima avverte di una deduzione che invece si vede nel campo');
+      const dalMotore = await page.evaluate(() => window.titPianoPieno({
+        data_effetto: '2026-09-21', data_scadenza: '2027-09-21',
+        frazionamento: 'Semestrale', premio_rata: 110
+      }).avvisi.map(a => a.codice));
+      deve(dalMotore.includes('annuo_dalle_rate'),
+        'senza l\'annuo nel campo il motore non dichiara da dove viene: ' + dalMotore.join(','));
+      return 'rata 110 → annuo 220 nel campo, due rate in anteprima';
+    });
+
+    await prova('nuova polizza: si apre dal MENU, e il tasto resta dov\'era', async () => {
+      /* La pagina composta `portafoglio:nuova`, stessa forma di
+         `anagrafiche:senza-email`. Il tasto in cima al Portafoglio resta: e'
+         la stessa porta raggiunta da dove la si cerca (§15, «Importa»). */
+      const r = await page.evaluate(async () => {
+        document.getElementById('pol-ov')?.remove();
+        showPage('portafoglio:nuova');
+        await new Promise(res => setTimeout(res, 150));
+        return {
+          modulo: !!document.getElementById('pnu-rate'),
+          pagina: !!document.getElementById('page-portafoglio')?.classList.contains('active'),
+          tasto: !!document.getElementById('pf-nuova')
+        };
+      });
+      deve(r.pagina, 'la pagina Portafoglio non si accende');
+      deve(r.modulo, 'il modulo non si apre dalla pagina composta');
+      deve(r.tasto, 'il tasto in cima al Portafoglio e\' sparito: era la porta gia\' in uso');
+      /* E il nome semplice NON deve aprire il modulo, o si aprirebbe a ogni
+         visita del Portafoglio. */
+      const semplice = await page.evaluate(async () => {
+        document.getElementById('pol-ov')?.remove();
+        showPage('portafoglio');
+        await new Promise(res => setTimeout(res, 150));
+        return !!document.getElementById('pnu-rate');
+      });
+      deve(!semplice, 'il modulo si apre a ogni visita del Portafoglio');
+      return 'portafoglio:nuova apre, portafoglio no';
+    });
+
+    await prova('nuova polizza: il design viene dai GETTONI condivisi, non da colori a mano', async () => {
+      /* «Deve essere con il design IAM e non diversa.» Il design di IAM sta
+         nei gettoni, e QUOTO carica gia' `withus-one-tokens.css`, che e' la
+         fonte unica del marchio. Quindi qui non si scrive un colore a mano:
+         se comparisse, la sezione comincerebbe a somigliare a IAM oggi e a
+         divergere al primo ritocco della tavolozza. */
+      const h = fs.readFileSync('index.html', 'utf8');
+      const i = h.indexOf('«NUOVA POLIZZA» CON IL DESIGN DI IAM');
+      deve(i > 0, 'manca il blocco di stile della nuova polizza');
+      const fine = h.indexOf('@media(max-width:640px){.pnu-griglia', i);
+      const css = h.slice(i, fine).split('\n').filter(r => !/^\s*(\/\*|\*)/.test(r)).join('\n');
+      /* Un colore a mano e' ammesso in UN posto solo: la dichiarazione, sul
+         contenitore, dei due gettoni che `withus-one-tokens.css` non porta.
+         Ovunque altro sarebbe una tavolozza che somiglia a IAM oggi e
+         diverge al primo ritocco. */
+      const fuoriDalContenitore = css.split('.pnu-kit{')[0] +
+        (css.split('.pnu-kit{')[1] || '').split('}').slice(1).join('}');
+      /* Il bianco su fondo verde non e' una scelta di tavolozza: e' il
+         contrasto del testo su un bottone pieno, e nei gettoni non esiste un
+         colore «sopra il verde». Il kit di IAM lo scrive allo stesso modo
+         (`.d-btn.primario{…color:#fff}`): ammetterlo qui tiene i due kit
+         identici, vietarlo li farebbe divergere. */
+      const aMano = (fuoriDalContenitore.match(/#[0-9a-fA-F]{3,8}\b/g) || [])
+        .filter(c => c.toLowerCase() !== '#fff' && c.toLowerCase() !== '#ffffff');
+      deve(aMano.length === 0, 'colori scritti a mano nel kit della nuova polizza: ' + aMano.join(' '));
+      /* E i gettoni dichiarati sul contenitore devono essere SOLO quelli che
+         mancano davvero: dichiararne uno che esiste gia' vorrebbe dire
+         sovrascrivere la fonte unica del marchio. */
+      const tokensQuoto = fs.readFileSync('withus-one-tokens.css', 'utf8');
+      const dichiarati = ((css.split('.pnu-kit{')[1] || '').split('}')[0].match(/--w1-[a-z0-9-]+(?=\s*:)/g) || []);
+      const gia = dichiarati.filter(t => new RegExp('^\\s*' + t + '\\s*:', 'm').test(tokensQuoto));
+      deve(!gia.length, 'la schermata ridichiara gettoni che la fonte unica ha gia\': ' + gia.join(' '));
+      for (const t of ['--w1-verde', '--w1-bordo', '--w1-card', '--w1-testo', '--w1-raggio', '--w1-ombra']) {
+        deve(css.includes('var(' + t), 'il kit non usa il gettone ' + t);
+      }
+      /* E il modulo usa davvero quelle classi. */
+      deve(/class="pnu-scheda"/.test(h) && /class="pnu-btn pnu-primario"/.test(h), 'il modulo non usa il kit');
+      deve(!/class="rin-az rin-primario" onclick="pnuSalva/.test(h), 'il tasto del modulo e\' rimasto quello vecchio');
+      return '0 colori a mano, 6 gettoni, schede e bottoni sul kit';
+    });
+
+    await prova('nuova polizza: nessuna rata oltre la fine del contratto', async () => {
+      /* `titPiano` faceva sempre le rate dell'annualita', anche su un
+         contratto piu' corto: emetteva rate che il contratto non copre. */
+      const r = await page.evaluate(() => {
+        const corto = window.titPianoPieno({ data_effetto: '2026-09-21', data_scadenza: '2027-03-21',
+          frazionamento: 'Semestrale', premio_annuo: 220 });
+        const lungo = window.titPianoPieno({ data_effetto: '2026-09-21', data_scadenza: '2028-09-21',
+          frazionamento: 'Semestrale', premio_annuo: 220 });
+        return { corto: corto.rate.length, lungo: lungo.rate.length,
+                 avvisoCorto: corto.avvisi.map(a => a.codice), avvisoLungo: lungo.avvisi.map(a => a.codice) };
+      });
+      deve(r.corto === 1, 'su un contratto di sei mesi escono ' + r.corto + ' rate semestrali');
+      deve(r.avvisoCorto.includes('annualita_incompleta'), 'non si dice che la somma non fa l\'annuo');
+      deve(r.lungo === 2, 'su due anni escono ' + r.lungo + ' rate');
+      deve(r.avvisoLungo.includes('contratto_oltre_l_anno'), 'non si dice che le altre nascono al rinnovo');
+      return '6 mesi → 1 rata, 2 anni → 2 rate, con gli avvisi';
     });
 
     await prova('blocco 2: nessun errore JavaScript', async () => {

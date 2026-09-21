@@ -1,8 +1,22 @@
 {
-  "versione": "0.13.0",
-  "nome": "Decisioni aperte",
+  "versione": "0.14.0",
+  "nome": "Nuova polizza: dal menu, con il design di casa, e le rate giuste",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.14.0",
+      "data": "2026-09-21",
+      "nome": "Nuova polizza: dal menu, con il design di casa, e le rate giuste",
+      "voci": [
+        "«Nuova polizza» adesso è una voce del menu Portafoglio, accanto a Polizze. Il tasto in cima alla pagina resta dov'era: è la stessa porta raggiunta da dove la si cerca.",
+        "Il modulo ha il design di IAM — schede, pittogrammi, bottoni e campi presi dagli stessi colori e dalle stesse misure del resto del gestionale, non da una tavolozza sua.",
+        "CORRETTO un difetto che si vedeva solo contando i giorni: la scadenza proposta nasceva sbagliata di UN GIORNO. Una polizza fatta il 21/09 scadeva il 20/09 dell'anno dopo, e quella data finiva nello scadenzario. Adesso è esattamente fra un anno.",
+        "Le rate si vedono PRIMA di salvare, con date e importi: semestrale su una polizza di oggi mostra la prima rata alla decorrenza e quella intermedia fra sei mesi.",
+        "Chi scrive solo il «premio di rata» — che è il numero che dice la compagnia — adesso ottiene le sue rate: il premio annuo si riempie nel campo, visibile e correggibile. Prima la polizza nasceva SENZA rate, e senza rate non esistono gli insoluti.",
+        "Le rate non escono più dalla fine del contratto: su una polizza di sei mesi con frazionamento semestrale nasce una rata sola, e il sistema dice perché la somma non fa il premio annuo.",
+        "Quando le rate non si possono calcolare, il messaggio dice QUALE dato manca — la decorrenza o il premio — invece di metterli nella stessa frase."
+      ]
+    },
     {
       "v": "0.13.0",
       "data": "2026-09-21",

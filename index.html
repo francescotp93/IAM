@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.13.0">
-<meta name="app-versione-nome" content="Decisioni aperte">
+<meta name="app-versione" content="0.14.0">
+<meta name="app-versione-nome" content="Nuova polizza: dal menu, con il design di casa, e le rate giuste">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -92,6 +92,7 @@
      il tetto al denaro che un collaboratore puo' tenere. -->
 <script src="tariffe/motore/sospensione.js?v=20260920"></script>
 <script src="tariffe/motore/foglio-cassa.js?v=20260919"></script>
+<script src="tariffe/motore/piano-rate.js?v=20260921"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -790,10 +791,64 @@ button{font-family:inherit}
 .rin-az.rin-primario:hover{filter:brightness(1.06)}
 /* La griglia del modulo «nuova polizza». Due colonne su schermo largo, una
    sola sul telefono: il brief chiede che ogni form resti usabile da mobile. */
-.pnu-griglia{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-top:6px}
-.pnu-griglia label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
-.pnu-griglia input,.pnu-griglia select{width:100%}
-@media(max-width:640px){.pnu-griglia{grid-template-columns:1fr}}
+/* ══ «NUOVA POLIZZA» CON IL DESIGN DI IAM (21/09/2026) ══════════════════════
+   Richiesta di Francesco: «l'interfaccia di questa sezione deve essere con il
+   design IAM e non diversa».
+
+   COME, e perche' non si e' copiato il kit di IAM sotto i suoi nomi.
+   Il design di IAM sta nei GETTONI, e i gettoni sono gia' condivisi: QUOTO
+   carica `withus-one-tokens.css` (riga 1621), che e' la fonte unica del
+   marchio — lo stesso verde, lo stesso raggio, la stessa ombra, gli stessi
+   neutri. Quindi qui non si scrive nemmeno un colore a mano: solo var(--w1-*).
+
+   Le REGOLE del kit (`.page-head`, `.d-btn`, `.d-card`…) restano dentro
+   `iam/index.html`, dove una prova pretende che stiano (kit-schermate).
+   Riscriverle qui con quei nomi porterebbe le classi in comune fra i due
+   documenti da 17 a 28, e quella soglia puo' solo SCENDERE
+   (`fusione-collisioni.test.mjs`, scarto zero). Quindi i nomi sono
+   prefissati, come gia' successo il 20/09 quando `primario` e' nata
+   `rin-primario` (§40). Stessi gettoni, stesso aspetto, nomi propri.
+   ═════════════════════════════════════════════════════════════════════════ */
+.pnu-kit{
+  /* I due gettoni che `withus-one-tokens.css` non porta (stanno in
+     `withus-one.css`, che QUOTO non carica) si dichiarano QUI, sul
+     contenitore, e non su :root — la tavolozza chiara di una schermata non
+     deve ridipingere tutto il resto del documento. E' la stessa scelta di
+     CLAUDE.md §31, dove promuovere i gettoni su :root avrebbe sfondato il
+     tema scuro di IAM. Senza questa riga `var(--w1-card)` non risolve e la
+     proprieta' viene ignorata IN SILENZIO: la scheda perde il fondo e nessun
+     errore lo dice. */
+  --w1-card:#fff;
+  --w1-ombra:var(--w1-ombra-sm);
+  --w1-ambra:#b7791f;
+  background:var(--w1-sfondo);margin:-14px -16px -16px;padding:16px;border-radius:0 0 var(--w1-raggio) var(--w1-raggio)}
+.pnu-scheda{background:var(--w1-card);border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);box-shadow:var(--w1-ombra);margin-bottom:12px}
+.pnu-scheda-t{display:flex;align-items:center;gap:9px;padding:13px 15px;border-bottom:1px solid var(--w1-bordo);font-size:13px;font-weight:700;color:var(--w1-testo)}
+.pnu-pitto{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:var(--w1-verde-tenue);color:var(--w1-verde-scuro);flex:none}
+.pnu-pitto i{font-size:16px}
+.pnu-scheda-c{padding:14px 15px}
+.pnu-griglia{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.pnu-griglia .pnu-largo{grid-column:1/-1}
+.pnu-griglia label,.pnu-scheda-c>label{display:block;font-size:11px;color:var(--w1-testo2);margin-bottom:4px;font-weight:600}
+.pnu-griglia input,.pnu-griglia select,.pnu-scheda-c>input{width:100%;height:34px;border-radius:var(--w1-raggio);border:1px solid var(--w1-bordo);
+  background:var(--w1-card);color:var(--w1-testo);padding:0 10px;font-size:13px;font-family:inherit}
+.pnu-griglia input:focus-visible,.pnu-griglia select:focus-visible,.pnu-scheda-c>input:focus-visible{outline:none;box-shadow:var(--w1-focus);border-color:var(--w1-verde)}
+.pnu-nota{font-size:11.5px;color:var(--w1-testo2);line-height:1.5;margin-top:8px}
+.pnu-az{display:flex;gap:8px;justify-content:flex-end;padding-top:4px;flex-wrap:wrap}
+.pnu-btn{height:34px;border-radius:var(--w1-raggio);border:1px solid var(--w1-bordo);background:var(--w1-card);color:var(--w1-testo);
+  padding:0 12px;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.pnu-btn:hover{background:var(--w1-verde-tenue)}
+.pnu-btn:focus-visible{outline:none;box-shadow:var(--w1-focus)}
+.pnu-btn.pnu-primario{border-color:var(--w1-verde);background:var(--w1-verde);color:#fff}
+.pnu-btn.pnu-primario:hover{background:var(--w1-verde-scuro)}
+/* L'anteprima delle rate: si vede che cosa nascera', prima di salvare. */
+.pnu-rate-t{font-size:12px;font-weight:700;color:var(--w1-testo);margin-bottom:6px}
+.pnu-rata{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--w1-bordo2);font-size:12.5px;color:var(--w1-testo)}
+.pnu-rata:first-of-type{border-top:0}
+.pnu-rata span{color:var(--w1-testo2)}
+.pnu-rate-vuoto{font-size:12px;color:var(--w1-testo2);line-height:1.5}
+.pnu-rate-avv{font-size:11.5px;color:var(--w1-ambra);line-height:1.5;margin-top:8px}
+@media(max-width:640px){.pnu-griglia{grid-template-columns:1fr}.pnu-kit{padding:12px}}
 /* Le attività recenti: una riga per movimento, e si apre solo quella che
    punta davvero a una riga. */
 .atr-r{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--line)}
@@ -10563,6 +10618,23 @@ function showPage(name) {
   } else if (name === 'anagrafiche') {
     ANAG_FILTRO = null; // ingresso normale dai menu: nessun filtro «buco»
   }
+  /* Il menu IAM puo' chiedere il Portafoglio con il modulo gia' aperto:
+     page «portafoglio:nuova» (21/09/2026, richiesta di Francesco «nuova
+     polizza si deve trovare nel menu portafoglio»).
+
+     E' la stessa forma gia' in casa per `utility:<scheda>` e
+     `anagrafiche:<filtro>`: nessun parametro nuovo nell'indirizzo, nessun id
+     di pagina nuovo, nessuna chiave `prod` — il contratto del menu
+     (INTERFACCIA-QUOTO-IAM.md §2.6) non si tocca.
+
+     Il suffisso si accetta solo se e' quello previsto: un nome che arriva da
+     fuori non diventa mai una chiamata (e' la regola dell'elenco CHIUSO che
+     la scocca applica a `quoto-apri`). */
+  let _pnuDaAprire = false;
+  if (typeof name === 'string' && name.indexOf('portafoglio:') === 0) {
+    _pnuDaAprire = name.slice('portafoglio:'.length) === 'nuova';
+    name = 'portafoglio';
+  }
   if (name !== PAGINA_CORRENTE) { PAGINA_PRECEDENTE = PAGINA_CORRENTE; PAGINA_CORRENTE = name; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + name);
@@ -10572,6 +10644,11 @@ function showPage(name) {
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
+  /* Il modulo si apre SOLO se e' stato chiesto: legandolo al nome semplice
+     «portafoglio» si aprirebbe a ogni visita. Il cancello non si riscrive —
+     `pnuApri` ha gia' il suo (`pnuPuo`/`isStaff`), e due cancelli scritti a
+     mano divergono al primo ruolo nuovo (§1). */
+  if (_pnuDaAprire && typeof pnuApri === 'function') pnuApri();
   if (name === 'foglio-cassa') fcCarica();         // M5: la cassa, dentro il Portafoglio
   if (name === 'controllo-documenti') cdocCarica();  // Lavoro 3 §3.8
   if (name === 'importa-flusso') fluRegistro();      // il registro dei caricamenti
@@ -16250,64 +16327,84 @@ async function pnuApri() {
 function pnuForm(guasti) {
   const bd = document.getElementById('pol-bd');
   if (!bd) return;
-  const oggi = new Date().toISOString().slice(0, 10);
+  const oggi = pnuOggi();
   const opzComp = '<option value="">— scegli —</option>' +
     PNU_COMPAGNIE.map(c => `<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join('');
   const opzRami = (window.Catalogo ? Catalogo.RAMI : [])
     .map(r => `<option value="${r}">${r}</option>`).join('');
-  bd.innerHTML = `
+  bd.innerHTML = `<div class="pnu-kit">
     ${(guasti || []).length ? `<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i>
       Non si è potuto leggere ${guasti.join(' e ')}. Non vuol dire che non ci sia:
       vuol dire che non si è potuto leggerlo. La polizza si può scrivere lo stesso.</div>` : ''}
     <div id="pnu-msg"></div>
 
-    <div class="pdoc-sez">Il cliente</div>
-    <div class="geo-wrap" style="position:relative">
-      <input id="pnu-cliente-q" type="text" placeholder="cerca per nome, codice fiscale o partita IVA…"
-             oninput="clpCerca(this)" autocomplete="off" style="width:100%">
+    <div class="pnu-scheda">
+      <div class="pnu-scheda-t"><span class="pnu-pitto"><i class="ti ti-user"></i></span> Il cliente</div>
+      <div class="pnu-scheda-c">
+        <div class="geo-wrap" style="position:relative">
+          <input id="pnu-cliente-q" type="text" placeholder="cerca per nome, codice fiscale o partita IVA…"
+                 oninput="clpCerca(this)" autocomplete="off">
+        </div>
+        <div id="pnu-cliente-sel" class="pnu-nota">Nessun cliente scelto: la polizza non si salva senza.</div>
+      </div>
     </div>
-    <div id="pnu-cliente-sel" class="cl-sub" style="margin-top:6px">Nessun cliente scelto: la polizza non si salva senza.</div>
 
-    <div class="pdoc-sez" style="margin-top:14px">Che cosa è</div>
-    <div class="pnu-griglia">
-      <div><label>Compagnia</label>
-        <select id="pnu-compagnia" onchange="pnuCompagniaCambiata()">${opzComp}</select></div>
-      <div><label>Prodotto</label>
-        <select id="pnu-prodotto" onchange="pnuProdottoCambiato()"><option value="">— scegli prima la compagnia —</option></select></div>
-      <div><label>Ramo</label><select id="pnu-ramo"><option value="">— scegli —</option>${opzRami}</select></div>
-      <div><label>Numero di polizza</label><input id="pnu-numero" type="text" placeholder="come lo scrive la compagnia"></div>
+    <div class="pnu-scheda">
+      <div class="pnu-scheda-t"><span class="pnu-pitto"><i class="ti ti-shield-check"></i></span> Che cosa è</div>
+      <div class="pnu-scheda-c">
+        <div class="pnu-griglia">
+          <div><label>Compagnia</label>
+            <select id="pnu-compagnia" onchange="pnuCompagniaCambiata()">${opzComp}</select></div>
+          <div><label>Prodotto</label>
+            <select id="pnu-prodotto" onchange="pnuProdottoCambiato()"><option value="">— scegli prima la compagnia —</option></select></div>
+          <div><label>Ramo</label><select id="pnu-ramo"><option value="">— scegli —</option>${opzRami}</select></div>
+          <div><label>Numero di polizza</label><input id="pnu-numero" type="text" placeholder="come lo scrive la compagnia"></div>
+        </div>
+        <div id="pnu-libero" class="pnu-nota" style="display:none"></div>
+      </div>
     </div>
-    <div id="pnu-libero" class="cl-sub" style="margin-top:6px;display:none"></div>
 
-    <div class="pdoc-sez" style="margin-top:14px">Quando e quanto</div>
-    <div class="pnu-griglia">
-      <div><label>Data di emissione</label><input id="pnu-emissione" type="date" value="${oggi}"></div>
-      <div><label>Decorrenza</label><input id="pnu-effetto" type="date" value="${oggi}" onchange="pnuEffettoCambiato()"></div>
-      <div><label>Scadenza</label><input id="pnu-scadenza" type="date" value="${pnuPiuUnAnno(oggi)}"></div>
-      <div><label>Frazionamento</label><select id="pnu-fraz" onchange="pnuRicalcolaRata()">
-        <option value="Annuale">Annuale</option><option value="Semestrale">Semestrale</option>
-        <option value="Quadrimestrale">Quadrimestrale</option><option value="Trimestrale">Trimestrale</option>
-        <option value="Mensile">Mensile</option><option value="">non dichiarato</option></select></div>
-      <div><label>Premio annuo (€)</label><input id="pnu-annuo" type="number" step="0.01" min="0" oninput="pnuRicalcolaRata()"></div>
-      <div><label>Premio di rata (€)</label><input id="pnu-rata" type="number" step="0.01" min="0"></div>
-      <div><label>Come paga</label><select id="pnu-mezzo">
-        <option value="">non dichiarato</option><option value="bonifico">bonifico</option>
-        <option value="contanti">contanti</option><option value="pos">POS</option>
-        <option value="assegno">assegno</option><option value="carta_di_credito">carta di credito</option>
-        <option value="rid">RID / SDD</option><option value="paypal">PayPal</option>
-        <option value="prepagata">prepagata</option><option value="altro">altro</option></select></div>
-      <div><label>Stato del pagamento</label><select id="pnu-stato">
-        <option value="non_pagato">Non pagato</option><option value="pagato">Pagato</option>
-        <option value="sospeso">Sospeso</option></select></div>
+    <div class="pnu-scheda">
+      <div class="pnu-scheda-t"><span class="pnu-pitto"><i class="ti ti-calendar-dollar"></i></span> Quando e quanto</div>
+      <div class="pnu-scheda-c">
+        <div class="pnu-griglia">
+          <div><label>Data di emissione</label><input id="pnu-emissione" type="date" value="${oggi}"></div>
+          <div><label>Decorrenza</label><input id="pnu-effetto" type="date" value="${oggi}" onchange="pnuEffettoCambiato()"></div>
+          <div><label>Scadenza</label><input id="pnu-scadenza" type="date" value="${pnuPiuUnAnno(oggi)}" onchange="pnuAnteprima()"></div>
+          <div><label>Frazionamento</label><select id="pnu-fraz" onchange="pnuRicalcolaRata()">
+            <option value="Annuale">Annuale</option><option value="Semestrale">Semestrale</option>
+            <option value="Quadrimestrale">Quadrimestrale</option><option value="Trimestrale">Trimestrale</option>
+            <option value="Mensile">Mensile</option><option value="">non dichiarato</option></select></div>
+          <div><label>Premio annuo (€)</label><input id="pnu-annuo" type="number" step="0.01" min="0" oninput="pnuRicalcolaRata('annuo')"></div>
+          <div><label>Premio di rata (€)</label><input id="pnu-rata" type="number" step="0.01" min="0" oninput="pnuRicalcolaRata('rata')"></div>
+          <div><label>Come paga</label><select id="pnu-mezzo">
+            <option value="">non dichiarato</option><option value="bonifico">bonifico</option>
+            <option value="contanti">contanti</option><option value="pos">POS</option>
+            <option value="assegno">assegno</option><option value="carta_di_credito">carta di credito</option>
+            <option value="rid">RID / SDD</option><option value="paypal">PayPal</option>
+            <option value="prepagata">prepagata</option><option value="altro">altro</option></select></div>
+          <div><label>Stato del pagamento</label><select id="pnu-stato">
+            <option value="non_pagato">Non pagato</option><option value="pagato">Pagato</option>
+            <option value="sospeso">Sospeso</option></select></div>
+          <div class="pnu-largo"><label>Note</label><input id="pnu-note" type="text" placeholder="facoltative"></div>
+        </div>
+      </div>
     </div>
-    <div><label>Note</label><input id="pnu-note" type="text" placeholder="facoltative"></div>
 
-    <div class="cl-sub" style="margin-top:12px">Salvando, le <b>rate nascono insieme alla polizza</b>:
-      senza rate non esistono gli insoluti, e i soldi non si recuperano.</div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-      <button class="rin-az" onclick="document.getElementById('pol-ov').remove()">Annulla</button>
-      <button class="rin-az rin-primario" onclick="pnuSalva()"><i class="ti ti-device-floppy"></i> Crea la polizza</button>
-    </div>`;
+    <div class="pnu-scheda">
+      <div class="pnu-scheda-t"><span class="pnu-pitto"><i class="ti ti-cash"></i></span> Le rate che nasceranno</div>
+      <div class="pnu-scheda-c">
+        <div id="pnu-rate"></div>
+        <div class="pnu-nota">Le rate nascono <b>insieme alla polizza</b>: senza rate non esistono gli insoluti,
+          e i soldi non si recuperano. Qui si vede che cosa verrà scritto, prima di scriverlo.</div>
+      </div>
+    </div>
+
+    <div class="pnu-az">
+      <button class="pnu-btn" onclick="document.getElementById('pol-ov').remove()">Annulla</button>
+      <button class="pnu-btn pnu-primario" onclick="pnuSalva()"><i class="ti ti-device-floppy"></i> Crea la polizza</button>
+    </div>
+  </div>`;
   /* Il componente cliente è quello di tutta la casa: registrato dopo che il
      campo esiste, altrimenti `clpCerca` non trova le sue opzioni. */
   clpInstalla('pnu-cliente-q', {
@@ -16320,13 +16417,28 @@ function pnuForm(guasti) {
         : 'Nessun cliente scelto: la polizza non si salva senza.';
     }
   });
+  /* L'anteprima si disegna subito: con i valori di partenza (oggi, +1 anno,
+     annuale) dice gia' che cosa manca — il premio. */
+  pnuAnteprima();
 }
 
+/* «Esattamente tra un anno» lo dice il motore, e non e' un vezzo: questa
+   funzione costruiva la data a mezzanotte LOCALE e la rileggeva in UTC, e in
+   Italia tornava indietro di un giorno — sempre, anche d'inverno.
+     prima:  2026-09-21 -> 2027-09-20
+     adesso: 2026-09-21 -> 2027-09-21
+   Nessun errore e nessuna schermata rotta: una data credibile e falsa che
+   finisce nello scadenzario e fa telefonare il giorno sbagliato. */
 function pnuPiuUnAnno(iso) {
   if (!iso) return '';
-  const d = new Date(iso + 'T00:00:00');
-  d.setFullYear(d.getFullYear() + 1);
-  return d.toISOString().slice(0, 10);
+  return (window.PianoRate ? PianoRate.piuUnAnno(iso) : null) || '';
+}
+/* La data di OGGI si legge dal calendario locale, non da `toISOString()`, che
+   e' UTC: fra mezzanotte e le due in Italia quello propone ieri. E' la stessa
+   trappola gia' presa nella Scrivania di IAM. */
+function pnuOggi() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 function pnuEffettoCambiato() {
   /* La scadenza si riempie a un anno dalla decorrenza, e SI VEDE nel campo:
@@ -16335,6 +16447,7 @@ function pnuEffettoCambiato() {
      senza che nessuno l'avesse letta. */
   const e = document.getElementById('pnu-effetto'), s = document.getElementById('pnu-scadenza');
   if (e && s) s.value = pnuPiuUnAnno(e.value);
+  pnuAnteprima();
 }
 
 function pnuCompagniaCambiata() {
@@ -16379,16 +16492,63 @@ function pnuProdottoCambiato() {
   if (r && ramo) r.value = ramo;
 }
 
-function pnuRicalcolaRata() {
-  const annuo = parseFloat(document.getElementById('pnu-annuo')?.value || '');
-  const fraz = (document.getElementById('pnu-fraz')?.value || '').toLowerCase();
-  const rata = document.getElementById('pnu-rata');
-  if (!rata || !isFinite(annuo)) return;
-  const n = { annuale: 1, semestrale: 2, quadrimestrale: 3, trimestrale: 4, mensile: 12 }[fraz];
-  /* Con un frazionamento non dichiarato non si divide per un numero inventato:
-     la rata resta com'è, e la scrive chi la sa. */
-  if (!n) return;
-  rata.value = (Math.round((annuo / n) * 100) / 100).toFixed(2);
+/* I due campi si riempiono NEI DUE VERSI, e il numero si scrive nel campo —
+   visibile e correggibile, mai dietro le quinte (§8.1).
+
+   Prima andava in un verso solo: chi conosceva la rata (che e' il numero che
+   dice la compagnia) lasciava l'annuo vuoto, e la polizza nasceva SENZA RATE.
+   Senza rate non esistono gli insoluti, e i soldi non si recuperano.
+
+   Dedurre l'annuo qui non e' la stima vietata da §14/§36: la' e' la compagnia
+   che manda un importo senza dire che periodo copre; qui e' una persona che
+   ha appena scritto «semestrale» e «110» nello stesso modulo. */
+function pnuRateAnno() {
+  const f = document.getElementById('pnu-fraz')?.value || '';
+  return window.PianoRate ? PianoRate.rateAnno(f) : null;
+}
+function pnuRicalcolaRata(da) {
+  const annuoEl = document.getElementById('pnu-annuo');
+  const rataEl = document.getElementById('pnu-rata');
+  const n = pnuRateAnno();
+  /* Con un frazionamento non dichiarato non si divide e non si moltiplica per
+     un numero inventato: i due campi restano come li ha scritti chi li sa. */
+  if (annuoEl && rataEl && n) {
+    const annuo = parseFloat(annuoEl.value || '');
+    const rata = parseFloat(rataEl.value || '');
+    if (da === 'rata' && isFinite(rata)) {
+      annuoEl.value = (Math.round(rata * n * 100) / 100).toFixed(2);
+    } else if (isFinite(annuo)) {
+      rataEl.value = (Math.round((annuo / n) * 100) / 100).toFixed(2);
+    }
+  }
+  pnuAnteprima();
+}
+
+/* Le rate si vedono PRIMA di salvare. «Deve creare in automatico un titolo da
+   incassare con la data tra sei mesi»: qui si legge che lo fara', con le date
+   e gli importi veri, invece di scoprirlo da un avviso a polizza gia' scritta. */
+function pnuAnteprima() {
+  const box = document.getElementById('pnu-rate');
+  if (!box) return;
+  const p = {
+    data_effetto: pnuVal('pnu-effetto'),
+    data_scadenza: pnuVal('pnu-scadenza'),
+    frazionamento: pnuVal('pnu-fraz'),
+    premio_annuo: pnuNum('pnu-annuo'),
+    premio_rata: pnuNum('pnu-rata')
+  };
+  const r = titPianoPieno(p);
+  const eur = (v) => (Number(v) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  const gg = (d) => { const x = String(d || '').split('-'); return x.length === 3 ? x[2] + '/' + x[1] + '/' + x[0] : '—'; };
+  if (!r.rate.length) {
+    box.innerHTML = '<div class="pnu-rate-vuoto">' + esc(r.motivo || 'Le rate non si possono ancora calcolare.') + '</div>';
+    return;
+  }
+  box.innerHTML = '<div class="pnu-rate-t">' + r.rate.length +
+      (r.rate.length === 1 ? ' rata da incassare' : ' rate da incassare') + '</div>' +
+    r.rate.map((x, i) => '<div class="pnu-rata"><span>' + (i === 0 ? 'alla decorrenza' : gg(x.data_decorrenza)) +
+      '</span><b>' + eur(x.importo_lordo) + '</b></div>').join('') +
+    (r.avvisi || []).map(a => '<div class="pnu-rate-avv">' + esc(a.testo) + '</div>').join('');
 }
 
 function pnuMsg(errori) {
@@ -16969,24 +17129,22 @@ const TIT_MEZZI = {
    L'ultima rata assorbe la differenza di arrotondamento, così la somma delle
    rate fa SEMPRE il premio annuo esatto — su 12 rate mensili di un premio da
    144,50 € il centesimo che avanza non si perde. */
-function titPiano(polizza) {
-  const n = titRateAnno(polizza.frazionamento);
-  const totale = Math.round((Number(polizza.premio_annuo) || 0) * 100);
-  if (!polizza.data_effetto || !totale) return [];
-  const passo = Math.floor(12 / n);            // mesi fra una rata e l'altra
-  const base = Math.floor(totale / n);
-  const rate = [];
-  for (let i = 0; i < n; i++) {
-    const cent = (i === n - 1) ? totale - base * (n - 1) : base;
-    rate.push({
-      tipo: i === 0 ? 'prima_rata' : 'rata',
-      data_decorrenza: sommaMesi(polizza.data_effetto, i * passo),
-      data_scadenza:   sommaMesi(polizza.data_effetto, i * passo),
-      importo_lordo: cent / 100
-    });
-  }
-  return rate;
+/* Le REGOLE stanno nel motore `tariffe/motore/piano-rate.js`, che si prova in
+   Node (§5). Qui resta l'involucro: `titPiano` torna il solo elenco delle
+   rate, che e' quello che i suoi punti di chiamata si aspettano da sempre;
+   chi ha bisogno anche dei motivi e degli avvisi chiama `titPianoPieno`.
+
+   Il motore ha corretto quattro difetti che questa funzione aveva, e tutti e
+   quattro producevano una riga di contabilita' credibile e sbagliata: la
+   scadenza spostata di un giorno dal fuso orario, la polizza senza rate
+   quando il premio era scritto nell'altro campo, le rate emesse oltre la fine
+   del contratto, e il frazionamento sconosciuto che diventava «annuale» senza
+   dirlo. Le prove stanno in `server/verifica/piano-rate.test.mjs`. */
+function titPianoPieno(polizza) {
+  if (!window.PianoRate) return { rate: [], motivo: 'Il motore del piano rate non si e\' caricato.', avvisi: [] };
+  return PianoRate.piano(polizza || {});
 }
+function titPiano(polizza) { return titPianoPieno(polizza).rate; }
 
 /* Genera le rate di una polizza. IDEMPOTENTE: se i titoli ci sono già non fa
    nulla, così si può ritentare senza creare doppioni. */
@@ -16996,17 +17154,22 @@ async function titGenera(polizzaId) {
     const { data: gia } = await db.from('quote_titoli').select('id').eq('polizza_id', polizzaId);
     if (gia && gia.length) return { creati: 0, motivo: 'rate già presenti' };
 
+    /* Si legge anche la SCADENZA e il premio di RATA: senza la prima il piano
+       non sa dove finisce il contratto, senza il secondo una polizza in cui e'
+       scritta solo la rata nasceva senza nessuna rata. */
     const { data: p, error } = await db.from('quote_polizze')
-      .select('id,data_effetto,premio_annuo,frazionamento').eq('id', polizzaId).single();
+      .select('id,data_effetto,data_scadenza,premio_annuo,premio_rata,frazionamento').eq('id', polizzaId).single();
     if (error || !p) throw (error || new Error('polizza non trovata'));
 
-    const piano = titPiano(p);
-    if (!piano.length) return { creati: 0, motivo: 'manca la data di effetto o il premio' };
+    const pieno = titPianoPieno(p);
+    /* Il motivo lo dice il motore, e dice QUALE dato manca: prima tre cause
+       diverse finivano in una frase sola (§12, §18). */
+    if (!pieno.rate.length) return { creati: 0, motivo: pieno.motivo || 'il piano delle rate e\' vuoto', avvisi: pieno.avvisi };
 
-    const righe = piano.map(r => ({ ...r, polizza_id: polizzaId, stato: 'aperto' }));
+    const righe = pieno.rate.map(r => ({ ...r, polizza_id: polizzaId, stato: 'aperto' }));
     const ins = await db.from('quote_titoli').insert(righe);
     if (ins.error) throw ins.error;
-    return { creati: righe.length };
+    return { creati: righe.length, avvisi: pieno.avvisi, annuo_da: pieno.annuo_da };
   } catch (e) {
     console.warn('titoli non generati per la polizza ' + polizzaId + ':', e.message || e);
     return { creati: 0, motivo: e.message || String(e) };

@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.24.0">
-<meta name="app-versione-nome" content="Abbinare un codice produttore lo applica davvero">
+<meta name="app-versione" content="0.25.0">
+<meta name="app-versione-nome" content="Il cliente si sceglie da una schermata vera">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -858,7 +858,52 @@ button{font-family:inherit}
 .pnu-rata span{color:var(--w1-testo2)}
 .pnu-rate-vuoto{font-size:12px;color:var(--w1-testo2);line-height:1.5}
 .pnu-rate-avv{font-size:11.5px;color:var(--w1-ambra);line-height:1.5;margin-top:8px}
-@media(max-width:640px){.pnu-griglia{grid-template-columns:1fr}.pnu-kit{padding:12px}}
+/* ─────────── SCEGLI UN CLIENTE: la stessa tavolozza, una schermata vera ───────
+   Il kit qui sopra e' nato sul modulo della polizza nuova, e il prefisso lo
+   dice: era la prima schermata di QUOTO a prendere il design di IAM. Adesso
+   che le schermate sono due, il kit NON SI COPIA — si usa: questa finestra
+   riprende le schede, i bottoni, la griglia e le note di sopra, e definisce
+   qui solo cio' che prima non esisteva (la finestra, la barra di ricerca, le
+   righe del risultato, le due linguette). E' la regola dei motori applicata
+   al foglio di stile: due copie della stessa tavolozza sono due tavolozze che
+   un giorno diranno cose diverse.
+   I gettoni mancanti si dichiarano sul contenitore, come sopra e per la stessa
+   ragione: su :root ridipingerebbero tutto il documento. */
+.clpk{--w1-card:#fff;--w1-ombra:var(--w1-ombra-sm);--w1-ambra:#b7791f}
+/* Il velo e' quello di casa (la finestra dei documenti), e lo z-index sta
+   SOPRA quello delle altre finestre: questa si apre da dentro il modulo della
+   polizza nuova, e una finestra che si apre sotto quella che l'ha chiamata
+   non si vede. */
+.clpk-ov{position:fixed;inset:0;background:rgba(10,20,30,.55);z-index:9600;display:flex;
+  align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto}
+.clpk-f{width:100%;max-width:720px;background:var(--w1-sfondo);border-radius:var(--w1-raggio);
+  box-shadow:0 18px 50px rgba(10,20,30,.3);overflow:hidden}
+.clpk-t{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--w1-card);
+  border-bottom:1px solid var(--w1-bordo)}
+.clpk-t h3{margin:0;font-size:15px;font-weight:700;color:var(--w1-testo)}
+.clpk-t .clpk-sub{font-size:11.5px;color:var(--w1-testo2);margin-top:2px}
+.clpk-x{margin-left:auto;background:none;border:0;cursor:pointer;color:var(--w1-testo2);font-size:20px;line-height:1;padding:4px 6px}
+.clpk-ling{display:flex;gap:6px;padding:10px 16px 0;background:var(--w1-card)}
+.clpk-ling button{border:1px solid var(--w1-bordo);border-bottom:0;background:var(--w1-sfondo);color:var(--w1-testo2);
+  border-radius:var(--w1-raggio) var(--w1-raggio) 0 0;padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.clpk-ling button.clpk-on{background:var(--w1-sfondo);color:var(--w1-testo);border-color:var(--w1-verde);box-shadow:inset 0 -2px 0 var(--w1-verde)}
+.clpk-c{padding:14px 16px 16px}
+.clpk-barra{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.clpk-barra input{flex:1;height:38px;border-radius:var(--w1-raggio);border:1px solid var(--w1-bordo);
+  background:var(--w1-card);color:var(--w1-testo);padding:0 12px;font-size:13.5px;font-family:inherit}
+.clpk-barra input:focus-visible{outline:none;box-shadow:var(--w1-focus);border-color:var(--w1-verde)}
+.clpk-lista{border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);background:var(--w1-card);
+  max-height:46vh;overflow:auto}
+.clpk-r{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;
+  border-top:1px solid var(--w1-bordo2);padding:10px 13px;cursor:pointer;font-family:inherit;color:var(--w1-testo)}
+.clpk-r:first-child{border-top:0}
+.clpk-r:hover,.clpk-r:focus-visible{background:var(--w1-verde-tenue);outline:none}
+.clpk-r b{font-size:13px}
+.clpk-r .clpk-det{font-size:11.5px;color:var(--w1-testo2);margin-top:2px}
+.clpk-tag{font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px;background:var(--w1-verde-tenue);color:var(--w1-verde-scuro);flex:none}
+.clpk-vuoto{padding:16px 13px;font-size:12.5px;color:var(--w1-testo2);line-height:1.5}
+@media(max-width:640px){.pnu-griglia{grid-template-columns:1fr}.pnu-kit{padding:12px}
+  .clpk-ov{padding:0}.clpk-f{max-width:none;border-radius:0;min-height:100%}}
 /* Le attività recenti: una riga per movimento, e si apre solo quella che
    punta davvero a una riga. */
 .atr-r{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--line)}
@@ -2079,8 +2124,13 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
              e ogni analisi resta agganciata a una scheda (componente clp*). -->
         <div class="aw-grid">
           <div class="aw-field geo-wrap" style="grid-column:1/-1"><label>Cliente (dall'anagrafica)</label>
-            <input id="pens-cliente-q" autocomplete="off" placeholder="Cerca per nome, codice fiscale o telefono… o censisci una persona nuova"
-                   oninput="clpCerca(this)" onfocus="clpCerca(this)"></div>
+            <!-- Il campo e' una PORTA, non una casella: il clic apre la
+                 schermata di scelta (clp*, 21/09/2026). Si legge da solo che
+                 cosa e' stato scelto, e non si puo' scriverci dentro un
+                 nominativo volante. -->
+            <input id="pens-cliente-q" autocomplete="off" readonly style="cursor:pointer"
+                   placeholder="Scegli un cliente dall'anagrafica, o censiscine uno nuovo…"
+                   onclick="clpCerca(this)" onfocus="clpCerca(this)"></div>
         </div>
         <div id="pens-da-cliente"></div>
         <div class="aw-grid">
@@ -16430,10 +16480,16 @@ function pnuForm(guasti) {
     <div class="pnu-scheda">
       <div class="pnu-scheda-t"><span class="pnu-pitto"><i class="ti ti-user"></i></span> Il cliente</div>
       <div class="pnu-scheda-c">
-        <div class="geo-wrap" style="position:relative">
-          <input id="pnu-cliente-q" type="text" placeholder="cerca per nome, codice fiscale o partita IVA…"
-                 oninput="clpCerca(this)" autocomplete="off">
-        </div>
+        <!-- Il campo e' una PORTA verso la schermata di scelta, non una barra
+             di ricerca appiccicata qui: il clic apre il componente «scegli un
+             cliente», che cerca in anagrafica o censisce il cliente nuovo con
+             lo stesso design. Niente apici inversi in questo commento: sta
+             dentro un template literal, e lo chiuderebbero a meta'. -->
+        <div class="pnu-griglia"><div class="pnu-largo">
+          <input id="pnu-cliente-q" type="text" readonly style="cursor:pointer"
+                 placeholder="Scegli un cliente dall'anagrafica, o censiscine uno nuovo…"
+                 onclick="clpCerca(this)" onfocus="clpCerca(this)" autocomplete="off">
+        </div></div>
         <div id="pnu-cliente-sel" class="pnu-nota">Nessun cliente scelto: la polizza non si salva senza.</div>
       </div>
     </div>
@@ -26731,128 +26787,299 @@ async function eliminaCollaboratore(id) {
   }
 }
 
-/* ══════════ SCEGLI UN CLIENTE — un componente solo (17/09/2026) ══════════
+/* ══════════ SCEGLI UN CLIENTE — una schermata sola (17/09 → 21/09/2026) ══════
    Lo stesso autocomplete sull'anagrafica era copiato venti volte, uno per
-   wizard, ognuno con la sua tendina, il suo timer e il suo bug. Questo e' il
-   componente unico, sul modello di casa (resComuneSearch): prende l'ELEMENTO
-   input, si costruisce la tendina dentro il .geo-wrap che lo contiene, cerca
-   su nominativo, codice fiscale, partita IVA e telefoni, e in fondo offre
-   «Censisci come nuovo cliente». La scheda nuova nasce con cognome, nome,
-   codice fiscale valido, data di nascita, professione e cellulare: niente
-   nominativi volanti, una persona in anagrafica o niente.
+   wizard, ognuno con la sua tendina, il suo timer e il suo bug. Dal 17/09/2026
+   il componente e' uno, e si registra con `clpInstalla`.
+
+   Il 21/09/2026 la tendina e' diventata una SCHERMATA, per una richiesta e per
+   un difetto misurato.
+
+   La richiesta: «quando si inserisce una polizza e si deve cercare un cliente
+   si dovrebbe aprire un'interfaccia intermedia dove posso cercare un cliente
+   esistente oppure inserirne uno nuovo. Sempre con lo stesso design di IAM,
+   compresa questa barra di ricerca che non c'entra nulla come design.»
+
+   Il difetto, ed e' la ragione per cui aveva ragione: la scheda «cliente
+   nuovo» si disegnava con le classi `aw-grid`, `pv-sec`, `pv-piccolo` e
+   `pv-azioni`, che nel foglio di stile esistono SOLO dentro il pannello della
+   previdenza. Nel modulo della polizza nuova — che vive in una finestra
+   appesa al body, fuori da quel pannello — quelle regole non si applicavano:
+   niente griglia, niente titolo, niente riga di bottoni, e il rosso
+   dell'errore arrivava da un ripiego scritto a mano. Non era una scelta
+   estetica sbagliata: erano regole che non arrivavano, e nessun errore lo
+   diceva. E' la stessa firma del gettone che non risolve (§44): la proprieta'
+   viene ignorata in silenzio.
+
+   Adesso la finestra si disegna col kit di IAM (le stesse schede, gli stessi
+   bottoni, gli stessi gettoni), sta appesa al body con il suo velo, e vale per
+   TUTTI i campi registrati: `clpCerca` non apre piu' una tendina, apre questa.
+   Cosi' i due punti che la usano — l'analisi pensione e la polizza nuova — non
+   hanno dovuto cambiare una riga, e il terzo che arrivera' l'avra' gratis.
 
    Uso:  <div class="aw-field geo-wrap"><label>Cliente</label>
-           <input id="xx-cliente-q" autocomplete="off" oninput="clpCerca(this)" onfocus="clpCerca(this)"></div>
+           <input id="xx-cliente-q" autocomplete="off" onfocus="clpCerca(this)"></div>
          clpInstalla('xx-cliente-q', { soloFisiche: true, onScelto: function (a) { ... } });
-   Il primo che lo usa e' il modulo pensione; gli altri venti si portano qui a
-   moduli, uno per PR, quando si tocca quel wizard. */
+   `soloFisiche` toglie le societa' (una societa' non ha un'eta'), e lo DICE
+   invece di far credere che quella persona non ci sia. */
 /* Il registro sta su window e nasce al primo uso: il modulo pensione chiama
    clpInstalla 17.000 righe PRIMA di questo blocco, quando un `var CLP` qui
    sarebbe ancora undefined. */
 function clpReg() { return (window.__CLP_REG = window.__CLP_REG || {}); }
 var clpTimer = null;
 function clpInstalla(inputId, opz) { clpReg()[inputId] = opz || {}; }
-function clpBox(input) {
-  var wrap = input.closest('.geo-wrap') || input.parentElement;
-  var box = wrap.querySelector('.clp-res');
-  if (!box) { box = document.createElement('div'); box.className = 'geo-res clp-res'; wrap.appendChild(box); }
-  return box;
-}
-function clpChiudi(inputId) {
-  var input = document.getElementById(inputId); if (!input) return;
-  var box = clpBox(input); box.classList.remove('show'); box.innerHTML = '';
-}
-function clpCerca(input) {
-  var box = clpBox(input);
+
+/* `clpCerca` conserva il nome e la firma di prima — prende l'ELEMENTO — perche'
+   e' scritta negli attributi `onfocus`/`oninput` dell'HTML: cambiarla avrebbe
+   voluto dire toccare ogni punto d'uso per un lavoro che non li riguarda. */
+function clpCerca(input) { if (input && input.id) clpApri(input.id); }
+
+function clpChiudi() {
   clearTimeout(clpTimer);
-  var q = String(input.value || '').trim();
-  if (q.length < 2) { box.classList.remove('show'); box.innerHTML = ''; return; }
-  var opz = clpReg()[input.id] || {};
-  clpTimer = setTimeout(async function () {
-    var righe = [];
-    try {
-      var qs = sbq(q);
-      var ric = db.from('quote_anagrafiche').select('id,tipo,nominativo,nome,cognome,codice_fiscale,partita_iva,data_nascita,professione,telefono,cellulare,email,comune,lead')
-        .or('nominativo.ilike.%' + qs + '%,codice_fiscale.ilike.%' + qs + '%,partita_iva.ilike.%' + qs + '%,telefono.ilike.%' + qs + '%,cellulare.ilike.%' + qs + '%')
-        .order('nominativo').limit(8);
-      var r = await ric;
-      righe = (r && r.data) || [];
-      if (opz.soloFisiche) righe = righe.filter(function (a) { return a.tipo !== 'giuridica'; });
-    } catch (e) { righe = []; }
-    window.__CLP = { inputId: input.id, righe: righe, q: q };
-    box.innerHTML = righe.map(function (a, i) {
-      var det = [a.codice_fiscale || a.partita_iva, a.comune, a.data_nascita ? ('nato/a ' + String(a.data_nascita).split('-').reverse().join('/')) : ''].filter(Boolean).join(' · ');
-      return '<div class="geo-item" onclick="clpScegli(' + i + ')"><b>' + esc(a.nominativo || [a.nome, a.cognome].filter(Boolean).join(' ')) + '</b>' +
-        (a.lead ? ' <span class="pv-piccolo">lead</span>' : '') + (det ? '<div class="pv-piccolo">' + esc(det) + '</div>' : '') + '</div>';
-    }).join('') +
-      (righe.length ? '' : '<div class="geo-item" style="color:var(--muted)">Nessun cliente con «' + esc(q) + '»</div>') +
-      '<div class="geo-item clp-nuovo" style="color:var(--blue);font-weight:600" onclick="clpNuovo()"><i class="ti ti-user-plus"></i> Censisci «' + esc(q) + '» come nuovo cliente</div>';
-    box.classList.add('show');
-  }, 300);
+  var ov = document.getElementById('clpk-ov'); if (ov) ov.remove();
+  document.removeEventListener('keydown', clpTasto);
 }
+function clpTasto(ev) { if (ev.key === 'Escape') clpChiudi(); }
+
+/* Apre la schermata per il campo `inputId`. Lo stato vive su window come il
+   registro, e per la stessa ragione. */
+function clpApri(inputId) {
+  var input = document.getElementById(inputId); if (!input) return;
+  var opz = clpReg()[inputId] || {};
+  clpChiudi();
+  window.__CLP = { inputId: inputId, righe: [], q: String(input.value || '').trim(), vista: 'cerca', quanti: null, guasto: false };
+  var ov = document.createElement('div');
+  ov.id = 'clpk-ov'; ov.className = 'clpk clpk-ov';
+  ov.onclick = function (ev) { if (ev.target === ov) clpChiudi(); };
+  ov.innerHTML =
+    '<div class="clpk-f" role="dialog" aria-modal="true">' +
+      '<div class="clpk-t"><span class="pnu-pitto"><i class="ti ti-user-search"></i></span>' +
+        '<div><h3>Il cliente</h3><div class="clpk-sub">' +
+          esc(opz.origine ? 'Per: ' + opz.origine : 'Si cerca in anagrafica, oppure si censisce qui.') +
+        '</div></div>' +
+        '<button class="clpk-x" title="Chiudi" onclick="clpChiudi()">&times;</button></div>' +
+      '<div class="clpk-ling">' +
+        '<button id="clpk-l-cerca" class="clpk-on" onclick="clpVista(\'cerca\')">Cerca in anagrafica</button>' +
+        '<button id="clpk-l-nuovo" onclick="clpVista(\'nuovo\')">Cliente nuovo</button>' +
+      '</div>' +
+      '<div class="clpk-c" id="clpk-c"></div>' +
+    '</div>';
+  document.body.appendChild(ov);
+  document.addEventListener('keydown', clpTasto);
+  clpVista('cerca');
+}
+
+function clpVista(v) {
+  var st = window.__CLP || {}; st.vista = v;
+  var lc = document.getElementById('clpk-l-cerca'), ln = document.getElementById('clpk-l-nuovo');
+  if (lc) lc.className = v === 'cerca' ? 'clpk-on' : '';
+  if (ln) ln.className = v === 'nuovo' ? 'clpk-on' : '';
+  if (v === 'cerca') clpFormCerca(); else clpNuovo();
+}
+
+function clpFormCerca() {
+  var st = window.__CLP || {}, opz = clpReg()[st.inputId] || {};
+  var c = document.getElementById('clpk-c'); if (!c) return;
+  c.innerHTML =
+    '<div class="clpk-barra">' +
+      '<input id="clpk-q" type="search" placeholder="nome, cognome, codice fiscale, partita IVA o telefono…" ' +
+        'autocomplete="off" value="' + esc(st.q || '') + '" oninput="clpDigita()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();clpTrova()}">' +
+      '<button class="pnu-btn pnu-primario" onclick="clpTrova()"><i class="ti ti-search"></i> Cerca</button>' +
+    '</div>' +
+    (opz.soloFisiche ? '<div class="pnu-nota" style="margin-top:0">Qui si scelgono <b>solo persone fisiche</b>: una società non ha un\'età, e questo calcolo la chiede.</div>' : '') +
+    '<div class="clpk-lista" id="clpk-lista"><div class="clpk-vuoto">Scrivi almeno due lettere: si cerca su nome, codice fiscale, partita IVA e telefoni.</div></div>' +
+    '<div class="pnu-nota" id="clpk-piede"></div>';
+  var q = document.getElementById('clpk-q');
+  if (q && q.focus) q.focus();
+  if ((st.q || '').length >= 2) clpTrova();
+}
+
+/* Si cerca mentre si scrive, con un freno: questa non e' una barra di filtri di
+   una lista (quelle aspettano il tasto Cerca, M2.2) — e' un campo di ricerca,
+   e il tasto c'e' lo stesso per chi preferisce premerlo. */
+function clpDigita() { clearTimeout(clpTimer); clpTimer = setTimeout(clpTrova, 320); }
+
+async function clpTrova() {
+  clearTimeout(clpTimer);
+  var st = window.__CLP || {}, opz = clpReg()[st.inputId] || {};
+  var campo = document.getElementById('clpk-q');
+  var lista = document.getElementById('clpk-lista'), piede = document.getElementById('clpk-piede');
+  if (!lista) return;
+  st.q = String((campo || {}).value || '').trim();
+  if (st.q.length < 2) {
+    st.righe = []; st.quanti = null; st.guasto = false;
+    lista.innerHTML = '<div class="clpk-vuoto">Scrivi almeno due lettere: si cerca su nome, codice fiscale, partita IVA e telefoni.</div>';
+    if (piede) piede.textContent = '';
+    return;
+  }
+  lista.innerHTML = '<div class="clpk-vuoto">Sto cercando…</div>';
+  var qs = sbq(st.q);
+  var ors = 'nominativo.ilike.%' + qs + '%,codice_fiscale.ilike.%' + qs + '%,partita_iva.ilike.%' + qs + '%,telefono.ilike.%' + qs + '%,cellulare.ilike.%' + qs + '%';
+  var righe = [], quanti = null, guasto = false;
+  try {
+    var r = await db.from('quote_anagrafiche')
+      .select('id,tipo,nominativo,nome,cognome,codice_fiscale,partita_iva,data_nascita,professione,telefono,cellulare,email,comune,lead', { count: 'exact' })
+      .or(ors).order('nominativo').limit(40);
+    if (r && r.error) throw r.error;
+    righe = (r && r.data) || [];
+    quanti = (r && typeof r.count === 'number') ? r.count : null;
+  } catch (e) { guasto = true; }
+  /* Le societa' si tolgono DOPO aver contato, e quello che si toglie si dice:
+     un elenco che si accorcia da solo fa cercare per mezz'ora una persona che
+     c'e' (§50, «un elenco non e' un conteggio»). */
+  var tolte = 0;
+  if (opz.soloFisiche) {
+    var prima = righe.length;
+    righe = righe.filter(function (a) { return a.tipo !== 'giuridica'; });
+    tolte = prima - righe.length;
+  }
+  st.righe = righe; st.quanti = quanti; st.guasto = guasto;
+  if (guasto) {
+    lista.innerHTML = '<div class="clpk-vuoto"><b>Non si è potuto leggere l\'anagrafica.</b> Non vuol dire che quel cliente non ci sia: vuol dire che non si è potuto cercarlo. Riprova fra poco.</div>';
+    if (piede) piede.textContent = '';
+    return;
+  }
+  lista.innerHTML = righe.length
+    ? righe.map(function (a, i) {
+        var det = [a.codice_fiscale || a.partita_iva, a.comune,
+          a.data_nascita ? ('nato/a ' + String(a.data_nascita).split('-').reverse().join('/')) : '',
+          a.cellulare || a.telefono || ''].filter(Boolean).join(' · ');
+        return '<button type="button" class="clpk-r" onclick="clpScegli(' + i + ')">' +
+          '<span style="flex:1"><b>' + esc(a.nominativo || [a.cognome, a.nome].filter(Boolean).join(' ')) + '</b>' +
+          (det ? '<span class="clpk-det">' + esc(det) + '</span>' : '') + '</span>' +
+          (a.lead ? '<span class="clpk-tag">lead</span>' : '') +
+          (a.tipo === 'giuridica' ? '<span class="clpk-tag">società</span>' : '') + '</button>';
+      }).join('')
+    : '<div class="clpk-vuoto">Nessun cliente con «' + esc(st.q) + '». Se è la prima volta che lo assicuri, lo censisci dalla linguetta <b>Cliente nuovo</b>.</div>';
+  if (piede) {
+    var parti = [];
+    /* «Non si e' potuto contare» non e' «non ce n'e'»: il totale che manca si
+       scrive con un punto, mai con uno zero (§50). */
+    if (quanti === null) parti.push('ne vedi ' + righe.length + ' (il totale non si è potuto contare)');
+    else if (quanti > righe.length + tolte) parti.push('ne vedi ' + righe.length + ' su ' + quanti + ': restringi la ricerca');
+    if (tolte) parti.push(tolte + (tolte === 1 ? ' società esclusa' : ' società escluse'));
+    piede.textContent = parti.join(' · ');
+  }
+}
+
 function clpScegli(i) {
   var st = window.__CLP || {}; var a = (st.righe || [])[i]; if (!a) return;
   var input = document.getElementById(st.inputId); if (!input) return;
-  input.value = a.nominativo || [a.nome, a.cognome].filter(Boolean).join(' ');
-  clpChiudi(st.inputId);
+  input.value = a.nominativo || [a.cognome, a.nome].filter(Boolean).join(' ');
+  clpChiudi();
   var opz = clpReg()[st.inputId] || {};
   if (typeof opz.onScelto === 'function') opz.onScelto(a);
 }
-/* La scheda nuova si compila QUI, nella tendina, senza cambiare pagina: il
-   consulente ha il cliente davanti. Il testo scritto nel campo di ricerca
-   prova a dividersi in cognome e nome (il primo pezzo e' il cognome, come nel
-   nominativo d'archivio), e resta correggibile. */
+
+/* La scheda nuova si compila QUI, senza cambiare pagina: il consulente ha il
+   cliente davanti. Il testo gia' scritto prova a dividersi in cognome e nome
+   (il primo pezzo e' il cognome, come nel nominativo d'archivio), e resta
+   correggibile. Le societa' ci sono perche' si assicurano anche quelle: senza
+   questa linguetta, l'unica strada era uscire dal modulo e andare in
+   Anagrafiche — cioe' perdere quello che si stava scrivendo. */
 function clpNuovo() {
-  var st = window.__CLP || {}; var input = document.getElementById(st.inputId); if (!input) return;
-  var box = clpBox(input);
+  var st = window.__CLP || {};
+  var c = document.getElementById('clpk-c'); if (!c) return;
+  var opz = clpReg()[st.inputId] || {};
   var pezzi = String(st.q || '').trim().split(/\s+/);
   var cognome = pezzi.length > 1 ? pezzi[0] : '', nome = pezzi.length > 1 ? pezzi.slice(1).join(' ') : (pezzi[0] || '');
-  var f = function (id, label, val, extra) {
-    return '<div class="aw-field"><label>' + label + '</label><input id="clp-' + id + '" value="' + esc(val || '') + '" ' + (extra || '') + '></div>';
+  var f = function (id, label, val, extra, largo) {
+    return '<div' + (largo ? ' class="pnu-largo"' : '') + '><label>' + label + '</label>' +
+      '<input id="clp-' + id + '" value="' + esc(val || '') + '" ' + (extra || '') + '></div>';
   };
-  box.innerHTML = '<div class="clp-form" onclick="event.stopPropagation()">' +
-    '<div class="pv-sec" style="margin:0 0 6px">Nuovo cliente in anagrafica</div>' +
-    '<div class="aw-grid">' +
-    f('cognome', 'Cognome *', cognome) + f('nome', 'Nome *', nome) +
-    f('cf', 'Codice fiscale *', '', 'maxlength="16" style="text-transform:uppercase"') +
+  c.innerHTML =
+    '<div class="pnu-scheda"><div class="pnu-scheda-t"><span class="pnu-pitto"><i class="ti ti-user-plus"></i></span> Nuovo cliente in anagrafica</div>' +
+    '<div class="pnu-scheda-c">' +
+      (opz.soloFisiche ? '' :
+        '<div class="pnu-griglia" style="margin-bottom:10px"><div class="pnu-largo"><label>Chi è</label>' +
+        '<select id="clp-tipo" onchange="clpNuovoTipo()">' +
+        '<option value="fisica">Persona fisica</option><option value="giuridica">Società, ditta o ente</option>' +
+        '</select></div></div>') +
+      '<div class="pnu-griglia" id="clp-campi">' + clpCampiFisica(f, cognome, nome) + '</div>' +
+      '<div id="clp-errore" class="pnu-rate-avv" style="min-height:1em"></div>' +
+      '<div class="pnu-nota">Il codice fiscale non è un formalismo: è la sola cosa con cui questa persona si ritrova la prossima volta, invece di nascere due volte.</div>' +
+    '</div></div>' +
+    '<div class="pnu-az">' +
+      '<button class="pnu-btn" onclick="clpVista(\'cerca\')">Torna a cercare</button>' +
+      '<button class="pnu-btn pnu-primario" onclick="clpSalvaNuovo()"><i class="ti ti-device-floppy"></i> Salva e scegli</button>' +
+    '</div>';
+  var p = document.getElementById('clp-cognome'); if (p && p.focus) p.focus();
+}
+function clpCampiFisica(f, cognome, nome) {
+  return f('cognome', 'Cognome *', cognome) + f('nome', 'Nome *', nome) +
+    f('cf', 'Codice fiscale *', '', 'maxlength="16" style="text-transform:uppercase" oninput="clpDaCF()"') +
     f('nascita', 'Data di nascita', '', 'type="date"') +
     f('professione', 'Professione', '') + f('cellulare', 'Cellulare', '', 'inputmode="tel"') +
-    '</div><div id="clp-errore" class="pv-piccolo" style="color:var(--pv-rosso,#c0392b);min-height:1em;margin-top:4px"></div>' +
-    '<div class="pv-azioni" style="margin-top:6px">' +
-    '<button type="button" class="btn-primary" onclick="clpSalvaNuovo()"><i class="ti ti-device-floppy"></i> Salva in anagrafica</button>' +
-    '<button type="button" class="btn-ghost" onclick="clpChiudi(\'' + esc(st.inputId) + '\')">Annulla</button></div></div>';
-  box.classList.add('show');
-  var c = document.getElementById('clp-cognome'); if (c && c.focus) c.focus();
+    f('email', 'Email', '', 'type="email"', true);
 }
+function clpNuovoTipo() {
+  var t = (document.getElementById('clp-tipo') || {}).value || 'fisica';
+  var g = document.getElementById('clp-campi'); if (!g) return;
+  var f = function (id, label, val, extra, largo) {
+    return '<div' + (largo ? ' class="pnu-largo"' : '') + '><label>' + label + '</label>' +
+      '<input id="clp-' + id + '" value="' + esc(val || '') + '" ' + (extra || '') + '></div>';
+  };
+  g.innerHTML = t === 'giuridica'
+    ? f('ragione', 'Ragione sociale *', '', '', true) +
+      f('piva', 'Partita IVA *', '', 'maxlength="11" inputmode="numeric"') +
+      f('cfg', 'Codice fiscale', '', 'maxlength="16" style="text-transform:uppercase"') +
+      f('cellulare', 'Telefono', '', 'inputmode="tel"') + f('email', 'Email', '', 'type="email"')
+    : clpCampiFisica(f, '', '');
+  var e = document.getElementById('clp-errore'); if (e) e.textContent = '';
+}
+/* La data di nascita si ricava dal codice fiscale con il motore di casa, che
+   e' lo stesso di §23: due porte, una regola. Si scrive solo se il campo e'
+   vuoto — chi l'ha corretta a mano sapeva qualcosa che il codice non sa. */
+function clpDaCF() {
+  var cf = cfNormalizza((document.getElementById('clp-cf') || {}).value || '');
+  var d = document.getElementById('clp-nascita'); if (!d || d.value) return;
+  if (!window.Anagrafica || !cfValido(cf)) return;
+  var n = Anagrafica.nascita(cf);
+  if (n && n.data) d.value = n.data;
+}
+
 async function clpSalvaNuovo() {
   var st = window.__CLP || {}; var input = document.getElementById(st.inputId); if (!input) return;
   var v = function (id) { return String((document.getElementById('clp-' + id) || {}).value || '').trim(); };
   var err = document.getElementById('clp-errore');
   var dica = function (t) { if (err) err.textContent = t; };
-  var cognome = v('cognome'), nome = v('nome'), cf = cfNormalizza(v('cf'));
-  if (!cognome || !nome) { dica('Servono cognome e nome.'); return; }
-  if (!cf) { dica('Serve il codice fiscale: senza, la persona non si riconosce la prossima volta.'); return; }
-  if (!cfValido(cf)) { dica(cfMotivo(cf) || 'Il codice fiscale non è valido.'); return; }
-  var gia = await anagGiaCensita(cf, '');
-  if (gia) { dica('Questo codice fiscale è già in anagrafica: ' + (gia.nominativo || '') + '. Lo riprendo.'); window.__CLP.righe = [gia]; clpScegli(0); return; }
-  var riga = { tipo: 'fisica', cognome: cognome, nome: nome, nominativo: (cognome + ' ' + nome).toUpperCase(), codice_fiscale: cf,
-               data_nascita: v('nascita') || null, professione: v('professione') || null, cellulare: v('cellulare') || null,
-               creato_da: currentUser ? currentUser.id : null };
+  var tipo = (document.getElementById('clp-tipo') || {}).value || 'fisica';
+  var riga, cf = '', piva = '';
+  if (tipo === 'giuridica') {
+    var ragione = v('ragione'); piva = String(v('piva')).replace(/\D/g, ''); cf = cfNormalizza(v('cfg'));
+    if (!ragione) { dica('Serve la ragione sociale.'); return; }
+    if (piva.length !== 11) { dica('La partita IVA è di undici cifre: senza, questa società non si ritrova la prossima volta.'); return; }
+    riga = { tipo: 'giuridica', nominativo: ragione.toUpperCase(), partita_iva: piva, codice_fiscale: cf || null };
+  } else {
+    var cognome = v('cognome'), nome = v('nome'); cf = cfNormalizza(v('cf'));
+    if (!cognome || !nome) { dica('Servono cognome e nome.'); return; }
+    if (!cf) { dica('Serve il codice fiscale: senza, la persona non si riconosce la prossima volta.'); return; }
+    if (!cfValido(cf)) { dica(cfMotivo(cf) || 'Il codice fiscale non è valido.'); return; }
+    riga = { tipo: 'fisica', cognome: cognome, nome: nome, nominativo: (cognome + ' ' + nome).toUpperCase(),
+             codice_fiscale: cf, data_nascita: v('nascita') || null, professione: v('professione') || null };
+  }
+  riga.cellulare = v('cellulare') || null;
+  riga.email = v('email') || null;
+  riga.creato_da = currentUser ? currentUser.id : null;
+  /* Aggancia solo se e' UNA: un codice fiscale gia' in archivio non produce un
+     doppione, riprende la persona che c'e'. */
+  var gia = await anagGiaCensita(cf, piva);
+  if (gia) {
+    dica((tipo === 'giuridica' ? 'Questa partita IVA' : 'Questo codice fiscale') + ' è già in anagrafica: ' + (gia.nominativo || '') + '. Lo riprendo.');
+    st.righe = [gia]; clpScegli(0); return;
+  }
   try {
     var r = await db.from('quote_anagrafiche').insert(riga).select('*').single();
     if (r.error) throw r.error;
     var a = Object.assign({}, riga, r.data || {});
-    if (typeof logMovimento === 'function') logMovimento('Nuovo cliente censito (' + ((clpReg()[st.inputId] || {}).origine || 'ricerca cliente') + ') · ' + riga.nominativo, 'cliente');
-    window.__CLP.righe = [a]; clpScegli(0);
+    /* Il movimento porta l'identificativo della riga creata (§18): senza, alla
+       domanda «chi ha censito QUESTO cliente» il registro non sa rispondere. */
+    if (typeof logMovimento === 'function') {
+      logMovimento('Nuovo cliente censito (' + ((clpReg()[st.inputId] || {}).origine || 'ricerca cliente') + ') · ' + riga.nominativo, 'cliente', null, a.id || null);
+    }
+    st.righe = [a]; clpScegli(0);
   } catch (e) { dica('Non è stato possibile salvare: ' + (e && e.message ? e.message : e)); }
 }
-/* Un clic fuori chiude la tendina. Dentro no: la scheda nuova ha sei campi. */
-document.addEventListener('mousedown', function (ev) {
-  document.querySelectorAll('.clp-res.show').forEach(function (box) {
-    var wrap = box.closest('.geo-wrap') || box.parentElement;
-    if (wrap && !wrap.contains(ev.target)) { box.classList.remove('show'); box.innerHTML = ''; }
-  });
-});
 
 /* ══════════ ANAGRAFICHE (modello Assieasy) ══════════ */
 let ANAG_TIPO = 'fisica';

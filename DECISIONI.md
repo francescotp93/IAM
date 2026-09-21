@@ -6,6 +6,44 @@ soltanto quello che Francesco potrebbe voler ribaltare.
 
 ---
 
+## 22/09/2026 — Il cliente si sceglie da una schermata vera (0.25.0)
+
+**Perimetro:** la barra di ricerca del cliente nel modulo «Nuova polizza».
+
+🟡 **Il campo del cliente non si scrive più a mano: si clicca e si apre una
+schermata.** Prima era una casella con una tendina; adesso è una porta
+(`readonly`) verso una finestra con due linguette — cerca in anagrafica,
+oppure censisci il cliente nuovo.
+*Come tornare indietro:* si toglie `readonly` dai due campi e si rimette
+`oninput` al posto di `onclick`; ma la tendina vecchia non c'è più, andrebbe
+riscritta.
+
+🟡 **Vale anche per l'analisi previdenziale**, che usa lo stesso componente. Non
+è un effetto collaterale: è il motivo per cui il componente è uno solo. Il
+comportamento è lo stesso — solo persone fisiche, codice fiscale controllato —
+solo che adesso si vede in una schermata invece che in una tendina.
+*Come tornare indietro:* si separano i due campi registrandoli con opzioni
+diverse; sconsigliato, sarebbero due schermate da tenere allineate.
+
+🟡 **Si può censire una società, con ragione sociale e partita IVA.** Prima
+solo persone fisiche: per una polizza a una ditta bisognava uscire dal modulo
+e andare in Anagrafiche, perdendo quello che si stava scrivendo.
+*Come tornare indietro:* si toglie la tendina «Chi è» dalla scheda nuova.
+
+🟢 **La data di nascita si ricava dal codice fiscale** mentre lo scrivi, con lo
+stesso motore dell'anagrafica, e non tocca quella che hai corretto a mano.
+
+🟢 **Il movimento a registro adesso punta alla riga creata.** Mancava: alla
+domanda «chi ha censito questo cliente» il registro non sapeva rispondere.
+
+**Niente database.** Nessuna migrazione, nessuna colonna, nessuna politica.
+
+📝 **Fuori perimetro, annotato:** gli altri diciotto wizard hanno ancora il
+loro autocomplete copiato; la ricerca si ferma a 40 righe e lo dichiara; il
+modulo non chiede ancora chi ha prodotto la polizza.
+
+---
+
 ## 22/09/2026 — Abbinare un codice produttore lo applica davvero (0.24.0)
 
 **Perimetro:** il codice produttore che abbinavi e che in Produzione restava

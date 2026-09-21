@@ -5316,3 +5316,72 @@ la fa diventare rossa con «righe lette: 1000».
   estratti conto escono senza coordinate, e lo dichiarano.
 - **Il foglio cassa non ha ancora un «nuovo movimento a mano»**: un incasso
   nasce nella pagina Titoli e il foglio lo legge (§25).
+
+### 53-bis. Il secondo ostacolo, e la regola che li unisce (21/09/2026)
+
+Tolta la credenziale mancante, il caricamento ha fatto un passo e si è fermato
+un metro più avanti:
+
+```
+EACCES: permission denied, mkdir '/var/lib/withus/archivio/41/d6'
+```
+
+Misurato sul VPS, e la causa è il classico permesso sul ramo invece che sulla
+foglia:
+
+```
+drwx------  3 root   root   /var/lib/withus            ← withus non la attraversa
+drwx------  2 withus root   /var/lib/withus/archivio   ← questa era già sua
+```
+
+Il servizio gira come `withus` e **non riusciva ad arrivare alla propria
+cartella**. Corretto sul server (`chown withus:withus` sul ramo e sulla
+foglia, `chmod 700` su tutte e due: solo il servizio entra).
+
+**Ma il difetto vero era nel codice**, ed è la terza volta nella stessa
+giornata che si presenta con la stessa faccia:
+
+| controllo | guardava | non guardava |
+|---|---|---|
+| le credenziali del database | che il modulo avesse una chiave di cifratura | che avesse **anche** quella per il database |
+| il vocabolario dei mezzi | che le due liste esistessero | che dicessero le **stesse** chiavi |
+| la cartella dell'archivio | che il percorso fosse **nel posto giusto** | che ci si potesse **scrivere** |
+
+> **Un controllo d'avvio che non PROVA la cosa che deve garantire non è un
+> controllo: è una dichiarazione di intenti.**
+
+`cartellaScrivibile` adesso crea una sottocartella e ci scrive un file, con gli
+stessi permessi di un caricamento vero, e poi ripulisce. Costa due millisecondi
+all'avvio. C'è una prova che controlla anche che **non lasci residui**: una
+cartella di prova dimenticata a ogni riavvio è spazzatura che si accumula
+dentro l'archivio dei documenti.
+
+#### La riga che restava indietro
+
+`archivioVps.js` scrive **prima la riga dei metadati, poi il file**, e il
+commento spiegava perché: *«una riga senza file si vede subito — il documento
+non si apre — ed è recuperabile»*.
+
+È vero solo se qualcuno la va a recuperare. Nei fatti, alle 15:44 del
+21/09/2026, in due minuti è nata una riga così: nel fascicolo del cliente
+compariva **«Certificato Galfano Vito.pdf»**, che si vedeva, si cliccava e non
+si apriva. Cioè un documento che **sembrava esserci** — che è peggio di uno che
+manca, perché nessuno lo ricarica.
+
+Adesso vale la regola dell'importazione (§47): **o entrano tutti e due o non
+entra niente.** Se il file non si salva, la riga si toglie — col token di chi
+sta caricando, non con la chiave di servizio: la pulizia non è una scorciatoia
+per scavalcare le politiche. E se nemmeno la pulizia riesce (rete che cade a
+metà) **si dice in faccia**, perché restare in silenzio sarebbe la stessa bugia
+un piano più in là.
+
+L'ordine delle due scritture **non è cambiato** ed è ancora quello giusto: un
+file cifrato senza la sua riga non è di nessuno, e nessuno lo andrà mai a
+cancellare.
+
+#### Una trappola del banco
+
+`fs.promises` è un **getter**: `Object.assign(Object.create(fs), { promises: … })`
+solleva *«Cannot set property promises of #<Object> which has only a getter»*.
+Il finto disco che serve a far cadere la scrittura si costruisce a mano, con i
+soli metodi che il modulo usa davvero.

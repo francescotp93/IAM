@@ -165,6 +165,50 @@ export function radiceConsentita(dir, servite) {
   return { ok: true, dir: d };
 }
 
+/* ══ 3-bis. LA CARTELLA SI PUÒ DAVVERO USARE? ══════════════════════════════
+   `radiceConsentita` guarda la FORMA del percorso: che sia assoluto e che non
+   stia dentro il sito. Non dice niente su quello che conta davvero — che
+   l'utente del servizio ci possa scrivere.
+
+   Il 21/09/2026 la forma era giusta e la sostanza no: la cartella esisteva ma
+   non era scrivibile dal servizio, e il caricamento e' fallito su
+   «EACCES: permission denied, mkdir». Fin qui sarebbe solo un messaggio
+   oscuro, ma il danno e' peggiore: la riga dei metadati era GIA' stata
+   scritta, quindi nel fascicolo e' comparso un documento che non si apre.
+
+   E' la terza volta oggi che si trova lo stesso schema — un controllo che
+   guarda la forma e non la sostanza (le credenziali dichiarate e non
+   verificate, la chiave dei mezzi uguale a occhio, il limite scritto e non
+   rispettato). La regola che ne esce:
+
+     **Un controllo d'avvio che non PROVA la cosa che deve garantire non e'
+     un controllo: e' una dichiarazione di intenti.**
+
+   Qui si prova sul serio: si crea una sottocartella e ci si scrive dentro,
+   con gli stessi permessi (0600) e nello stesso modo in cui lo fara' un
+   caricamento vero. Poi si ripulisce. Costa un paio di millisecondi
+   all'avvio e toglie una classe intera di guasti a meta'. */
+export function cartellaScrivibile(dir, disco) {
+  const fsx = disco || fs;
+  const prova = path.join(dir, '.prova-avvio');
+  try {
+    fsx.mkdirSync(prova, { recursive: true });
+    fsx.writeFileSync(path.join(prova, 'scrivo.tmp'), 'x', { mode: 0o600 });
+    fsx.rmSync(prova, { recursive: true, force: true });
+    return { ok: true };
+  } catch (e) {
+    /* Il rimedio e' sempre lo stesso e si scrive per esteso: chi legge questo
+       messaggio deve poterlo eseguire senza sapere altro. */
+    try { fsx.rmSync(prova, { recursive: true, force: true }); } catch (x) {}
+    return {
+      ok: false,
+      motivo: 'La cartella dell\'archivio (' + dir + ') non e\' scrivibile dall\'utente del servizio: '
+        + (e && e.code ? e.code : e && e.message ? e.message : String(e))
+        + '. Creala e dalle il proprietario giusto, poi riavvia il backend.',
+    };
+  }
+}
+
 /* Due livelli di sottocartelle dai primi caratteri dell'id: una cartella con
    centomila file dentro è lenta da elencare e scomoda da guardare. */
 export function percorsoDi(dir, id) {
@@ -213,6 +257,7 @@ export function archivioVpsRouter(opz = {}) {
   const dirGrezza = opz.dir || env.ARCHIVIO_DIR || '/var/lib/withus/archivio';
   const leggiRiga = opz.leggiRiga || leggiRigaSupabase;
   const scriviRiga = opz.scriviRiga || scriviRigaSupabase;
+  const togliRiga = opz.togliRiga || togliRigaSupabase;
 
   /* I due controlli che spengono tutto si fanno UNA VOLTA, all'avvio, e il
      motivo si porta dietro: una rotta che risponde «non configurato» dicendo
@@ -225,7 +270,12 @@ export function archivioVpsRouter(opz = {}) {
      pretendere lì delle variabili d'ambiente spegnerebbe il modulo per la
      strada invece che per il contenuto (§4). */
   const rest = (opz.leggiRiga || opz.scriviRiga) ? { ok: true } : chiaviRest(env);
-  const spento = !k.ok ? k.motivo : (!radice.ok ? radice.motivo : (!rest.ok ? rest.motivo : null));
+  /* E la cartella si prova DAVVERO, non si guarda soltanto: vedi 3-bis. */
+  const scrivibile = radice.ok ? cartellaScrivibile(radice.dir, disco) : { ok: true };
+  const spento = !k.ok ? k.motivo
+    : (!radice.ok ? radice.motivo
+    : (!rest.ok ? rest.motivo
+    : (!scrivibile.ok ? scrivibile.motivo : null)));
   if (spento) console.warn('archivio cifrato spento: ' + spento);
 
   const fermo = (res) => res.status(503).json({ error: 'Archivio cifrato non disponibile: ' + spento });
@@ -240,6 +290,7 @@ export function archivioVpsRouter(opz = {}) {
 
     const id = crypto.randomUUID();
     const dove = percorsoDi(radice.dir, id);
+    let scritta = false;
     try {
       /* Prima la riga, poi il file: se la riga non si scrive (permessi, rete),
          sul disco non resta un file cifrato che non è di nessuno e che nessuno
@@ -253,6 +304,7 @@ export function archivioVpsRouter(opz = {}) {
         creato_da: req.user && req.user.id,
       };
       await scriviRiga(rec, token(req));
+      scritta = true;
       await disco.promises.mkdir(path.dirname(dove), { recursive: true });
       /* 0600: il file lo legge l'utente del servizio e nessun altro. Cifrato o
          no, un documento di un cliente non è leggibile da chiunque abbia una
@@ -261,6 +313,22 @@ export function archivioVpsRouter(opz = {}) {
       return res.json({ ok: true, id, riferimento: 'vps:' + id, nome: p.nome, dimensione: rec.dimensione });
     } catch (e) {
       console.warn('archivio: caricamento non riuscito:', e.message || e);
+      /* O ENTRANO TUTTI E DUE O NON ENTRA NIENTE, come per l'importazione del
+         portafoglio (§47). «Una riga senza file è recuperabile» è vero solo
+         se qualcuno la va a recuperare: nel fascicolo quella riga diventa un
+         documento che si vede, si clicca e non si apre — cioè un documento
+         che sembra esserci. Il 21/09/2026 ne è nata una così in due minuti.
+         Se la pulizia a sua volta non riesce, si dice: restare in silenzio
+         sarebbe la stessa bugia un piano più in là. */
+      if (scritta) {
+        try { await togliRiga(id, token(req)); } catch (x) {
+          console.warn('archivio: la riga ' + id + ' è rimasta senza il suo file:', x.message || x);
+          return res.status(e.stato || 500).json({
+            error: 'Caricamento non riuscito: ' + (e.message || e)
+              + ' — e la riga dei metadati non si è potuta togliere: nel fascicolo comparirà un documento che non si apre.',
+          });
+        }
+      }
       return res.status(e.stato || 500).json({ error: 'Caricamento non riuscito: ' + (e.message || e) });
     }
   });
@@ -332,6 +400,19 @@ async function leggiRigaSupabase(id, token) {
   if (!r.ok) throw new Error('rest ' + r.status);
   const d = await r.json();
   return Array.isArray(d) && d.length ? d[0] : null;
+}
+
+/* Toglie la riga appena scritta quando il file non si è potuto salvare. Col
+   TOKEN DI CHI CARICA, non con la chiave di servizio: chi ha appena scritto
+   quella riga la può togliere, e se le politiche non glielo lasciano fare è
+   giusto che fallisca — la pulizia non è una scorciatoia per scavalcarle. */
+async function togliRigaSupabase(id, token) {
+  if (!token) return;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/iam_archivio?id=eq.${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { apikey: ANON(), Authorization: 'Bearer ' + token, Prefer: 'return=minimal' },
+  });
+  if (!r.ok) throw new Error('riga non tolta (' + r.status + ')');
 }
 
 async function scriviRigaSupabase(rec, token) {

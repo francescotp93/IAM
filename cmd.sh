@@ -1,20 +1,25 @@
-ENV=/opt/withus-backend/server/.env
-SRC=/opt/withus-backend/index.html
-echo "== prima =="
-grep -q '^SUPABASE_ANON_KEY=' "$ENV" && echo "SUPABASE_ANON_KEY: gia' presente" || echo "SUPABASE_ANON_KEY: assente"
-K=$(sed -nE "s/^const SUPABASE_KEY *= *'([^']+)'.*/\1/p" "$SRC" | head -1)
-if [ -z "$K" ]; then echo "NON TROVATA nel client: non tocco niente"; exit 1; fi
-echo "chiave pubblica letta dal client: ${#K} caratteri"
-if ! grep -q '^SUPABASE_ANON_KEY=' "$ENV"; then
-  cp -a "$ENV" "${ENV}.bak-$(date +%Y%m%d%H%M%S)"
-  printf '\n# 21/09/2026 — la chiave ANONIMA (pubblica, la stessa del client): serve al\n# modulo archivio per scrivere i metadati con il token di chi carica.\nSUPABASE_ANON_KEY=%s\n' "$K" >> "$ENV"
-  echo "scritta nel .env (backup accanto)"
-else
-  echo "non riscritta"
-fi
-systemctl restart withus-backend && sleep 4
+echo "== attendo l'autopull (fino a 3 minuti) =="
+for i in $(seq 1 18); do
+  v=$(grep -o 'app-versione" content="[^"]*"' /opt/withus-backend/iam/index.html 2>/dev/null | head -1)
+  case "$v" in *0.21.0*) echo "arrivata dopo ~$((i*10))s"; break;; esac
+  sleep 10
+done
+echo
+echo "== commit vivo sul VPS =="
+git -C /opt/withus-backend rev-parse --short HEAD
+echo
+echo "== versione nei due documenti =="
+grep -o 'app-versione[^>]*' /opt/withus-backend/iam/index.html | head -2
+grep -o 'app-versione[^>]*' /opt/withus-backend/index.html | head -2
+echo
+echo "== il backend ha la chiave e risponde =="
 pid=$(systemctl show withus-backend -p MainPID --value)
-echo "== dopo: il processo la vede? =="
-tr '\0' '\n' < "/proc/$pid/environ" | awk -F= '$1=="SUPABASE_ANON_KEY"{n=$1;v=substr($0,length(n)+2);printf "SUPABASE_ANON_KEY : %d caratteri\n", length(v)}'
+tr '\0' '\n' < "/proc/$pid/environ" | awk -F= '$1=="SUPABASE_ANON_KEY"{n=$1;v=substr($0,length(n)+2);printf "SUPABASE_ANON_KEY presente: %d caratteri\n", length(v)}'
 systemctl is-active withus-backend
-journalctl -u withus-backend -n 30 --no-pager | grep -i "archivio\|listen\|error" | tail -5
+echo
+echo "== IAM dal vivo =="
+curl -s -o /dev/null -w 'HTTP %{http_code}\n' https://iam.withusassicurazioni.it/
+curl -s https://iam.withusassicurazioni.it/ | grep -o 'app-versione[^>]*' | head -2
+echo
+echo "== errori dell'archivio negli ultimi minuti =="
+journalctl -u withus-backend --since "-10 min" --no-pager 2>/dev/null | grep -i "archivio" | tail -5 || echo "(nessuno)"

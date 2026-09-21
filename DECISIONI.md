@@ -220,6 +220,39 @@ Se un giorno l'archivio superasse il tetto dichiarato, lo scrive.
 
 ---
 
+## 21/09/2026 — L'archivio: il secondo ostacolo (0.21.1)
+
+**Perimetro:** far tornare a funzionare il caricamento dei documenti.
+
+🔴 **Cambiati i permessi di una cartella in PRODUZIONE, con autorizzazione
+esplicita.** `/var/lib/withus` era di `root` e il servizio gira come `withus`:
+non riusciva ad arrivare alla propria cartella dell'archivio. Ora tutte e due
+sono `withus:withus` con `chmod 700` — solo il servizio entra, nessun altro
+utente della macchina legge quei file.
+*Come tornare indietro:* si rimette `chown root:root /var/lib/withus` — ma il
+caricamento dei documenti torna a fallire.
+
+🔴 **Cancellata una riga dal database, con autorizzazione esplicita.**
+`iam_archivio` conteneva **una** riga orfana (`41d6999c-…`, «Certificato
+Galfano Vito.pdf», nata alle 15:44 dal guasto dei permessi): puntava a un file
+che sul disco non c'è mai stato (misurato: zero file cifrati presenti).
+Lasciarla vorrebbe dire mostrare nel fascicolo un documento che si vede, si
+clicca e non si apre.
+*Come tornare indietro:* non si torna indietro, e non serve — **quel documento
+va ricaricato**, perché il PDF non è mai arrivato sul server.
+
+🟡 **Il controllo d'avvio adesso PROVA a scrivere.** Prima guardava solo che il
+percorso fosse nel posto giusto. È la terza volta nella stessa giornata che si
+trova lo stesso schema: un controllo che guarda la forma e non la sostanza.
+*Come tornare indietro:* `git revert` del commit 0.21.1.
+
+🟡 **Se il file non si salva, la riga dei metadati si toglie.** Prima restava,
+e il commento diceva che «una riga senza file è recuperabile»: vero solo se
+qualcuno la recupera. L'ordine delle due scritture **non è cambiato** — un file
+cifrato senza la sua riga non è di nessuno.
+
+---
+
 ## Fuori perimetro — annotato e non fatto
 
 - **`flusso-ssf.js:805 aggiungiMesi` duplica `PianoRate.sommaMesi`**: due copie

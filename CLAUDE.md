@@ -5772,3 +5772,122 @@ rossa nessuna prova non assolve il codice: accusa la prova* (§15, §17, §18,
   riga per riga», ma quel codice è stato sostituito nello stesso commit. È la
   trappola dei commenti al contrario — un commento che NOMINA una via d'uscita
   non è quella via d'uscita.
+
+---
+
+## 57. Abbinare un codice produttore lo applica davvero (22/09/2026)
+
+> «Ho abbinato un codice produttore a un collaboratore, ma se vado nel report
+> produzione esce da abbinare» — Francesco.
+
+| pezzo | dove |
+|---|---|
+| la funzione che applica, una per tutti | `supabase/migrations/20260922c_applica_decisione_codice.sql` (applicata) |
+| la scheda del collaboratore | `ccpApplica`, `ccpEsitoTesto`, `ccpAggiungi` in `iam/index.html` |
+| l'anteprima del flusso | `asgDecidiUno` in `index.html` |
+| il pannello del pregresso, senza più il tetto | `asgPagina` / `asgCarica` in `index.html` |
+| prove | `assegnazione.test.mjs` (**47**), `codici-compagnia.test.mjs` (**22**), `ui-test.mjs` (**497**) |
+
+### La Produzione non sbagliava: diceva la verità su una colonna vuota
+
+Misurato prima di toccare niente:
+
+| | |
+|---|---|
+| `quote_codici_collaboratore` | 16 righe, **due decise** |
+| `quote_polizze.collaboratore_id` | **0 su 1.721** |
+| `quote_titoli.collaboratore_id` | **0 su 56** |
+
+La Produzione legge `quote_polizze.collaboratore_id` (vista
+`iam_produzione_mensile`); con la colonna vuota ogni riga esce col codice e la
+pastiglia «da abbinare». Il difetto sta a monte: **in IAM si poteva DECIDERE un
+codice e niente in IAM APPLICAVA quella decisione.**
+
+> **Prendere una decisione e applicarla sono due cose diverse, e due schermate
+> su tre facevano solo la prima.** `asgApplica` (Titoli › Assegna il pregresso)
+> scriveva decisione + rate + polizze; `asgDecidiUno` (anteprima del flusso) e
+> `ccpScrivi` (scheda del collaboratore) scrivevano **solo la riga di
+> decisione**.
+
+E la scheda non taceva: **affermava il contrario.** La conferma diceva *«le
+rate di quel codice sono sue, anche quelle già in archivio: si assegnano dai
+Titoli del preventivatore»* — un fatto sul pregresso che il codice non
+eseguiva, e un rimando a una pagina dove quel bottone non c'è. È la trappola
+dei commenti trasferita al testo che legge l'utente: **una frase che promette
+quello che il codice non fa è peggio di una frase che manca**, perché chi la
+legge smette di controllare.
+
+Il giro che ha fatto Francesco era chiuso anche a valle: la Produzione
+mandava in «Strumenti › Decisioni aperte», che **conta** le decisioni mancanti
+e non ne applica nessuna. Si decideva, si tornava, e c'era ancora «da
+abbinare».
+
+### La regola sta in Postgres, e non è una scorciatoia
+
+Le schermate che decidono sono **tre** e stanno in **due documenti** (IAM e il
+preventivatore). Tre copie di «quali righe prendere» sarebbero tre regole su
+chi viene pagato, e quella sbagliata sarebbe quella che nessuno guarda. Per i
+motori la risposta è §18 — *il motore si carica, non si copia* — ma qui la
+regola **scrive**, e una funzione che scrive non si carica da un `<script>`:
+sta in `iam_applica_decisione_codice`, `security invoker`, con dentro le stesse
+cinque regole di §19 e §49.
+
+Le due che si dimenticano:
+
+- **il periodo si confronta con la data della POLIZZA, non con oggi.** Con
+  «oggi», un abbinamento chiuso a giugno toglierebbe a quella persona anche le
+  polizze di marzo, che sono sue. C'è una prova che vieta `current_date` e
+  `now()` dentro quella funzione.
+- **le rate seguono la data della loro POLIZZA**, non la propria decorrenza:
+  guardando due date diverse la polizza finirebbe a uno e le sue rate a un
+  altro, e i due numeri non tornerebbero mai.
+
+E quello che non si tocca **si conta**: `fuori_periodo` e `di_altri` tornano a
+chi chiama insieme ai numeri veri. Uno zero non è un successo — può voler dire
+«è già tutto a posto» oppure «sono di un altro», e sono due cose diverse
+(§47, BUG 1).
+
+### Due difetti trovati per strada, tutti e due sui soldi
+
+1. **`asgCarica` leggeva le prime mille polizze**, con `.limit(2000)` scritto e
+   `.limit(5000)` sulle rate. PostgREST ne manda **mille** per richiesta
+   qualunque numero ci sia scritto: con 4.079 polizze il pannello ne avrebbe
+   attribuite circa mille e le altre sarebbero rimaste senza produttore, **in
+   silenzio**. È §50 e §53 per la terza volta, qui sulle provvigioni. Adesso si
+   pagina.
+2. **`fluChiDi` non chiamava `valeIl`**: era l'unica delle tre strade che
+   guardava solo se il codice era deciso, ignorando periodo e sospensione. Una
+   polizza importata sarebbe nata intestata a chi il codice non ce l'aveva più
+   — cioè il caso che §49 esiste per impedire. Oggi non si vedeva perché
+   nessuna riga ha un periodo; sarebbe scattato al primo dichiarato.
+
+### Quello che NON si è fatto
+
+**La Produzione non risolve il codice dal vivo.** Sarebbe bastato leggerlo
+dalla tabella delle decisioni e il sintomo sparirebbe — ma il consuntivo di un
+anno chiuso cambierebbe da solo il giorno in cui qualcuno cambia una decisione
+(§45). Il produttore si **congela sulla riga**, e si congela applicando.
+
+Resta però una cosa da sapere: **due schermate possono contraddirsi**. Il
+dettaglio polizza di QUOTO risolve dal vivo (`polProduttore`) e mostra già il
+nome; la Produzione mostra la colonna. Finché una decisione non è applicata,
+dicono due cose diverse sugli stessi dati. Con l'applicazione automatica la
+finestra è di un istante, ma esiste.
+
+### Le controprove
+
+- Tolta l'applicazione da `asgDecidiUno` → rossa la prova nel browser.
+- Tolta da `ccpAggiungi` → rossa la prova di IAM.
+- Tolto `valeIl` da `fluChiDi` → rossa la prova del motore.
+
+### Cosa resta aperto
+
+- **Quattordici codici su sedici sono ancora da decidere**, e sotto ci sono le
+  polizze di quasi tutto il portafoglio: `U25236` da sola ne ha 1.117.
+- **`asgApplica` scrive ancora gli update dal browser** invece di chiamare la
+  funzione: adesso legge tutto il portafoglio, quindi non sbaglia più i conti,
+  ma è la stessa regola scritta in due posti. Si unifica quando le sue prove
+  si potranno riscrivere sul verso giusto.
+- **Il confronto compagnia+codice non passa dagli alias** (§49): «HDI
+  Assicurazioni» sulla polizza e «HDI» in tabella non si ritrovano. Con una
+  compagnia sola non si vede; va guardato prima del secondo flusso.

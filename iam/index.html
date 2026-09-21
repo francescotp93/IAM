@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.23.0">
-<meta name="app-versione-nome" content="L'import non muore per una riga, e dice quello che lascia fuori">
+<meta name="app-versione" content="0.24.0">
+<meta name="app-versione-nome" content="Abbinare un codice produttore lo applica davvero">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -4942,6 +4942,10 @@ let CCP_PERSONE = [];
    aperto alla volta: due periodi in modifica insieme sono due «Salva» che si
    somigliano, e si salva quello sbagliato. */
 let CCP_MOD = null;
+/* L'esito dell'ultima applicazione, mostrato in cima ai codici. `var` e non
+   `let`: le prove lo leggono per nome, e con `let` la variabile del modulo e
+   `window.CCP_ESITO` sarebbero due cose diverse (§17, §32). */
+var CCP_ESITO = '';
 
 /* ═══ IL FIDO DELLA PERSONA (Blocco 3 · punto 6, 20/09/2026) ════════════════
    Un campo solo, e tre regole che lo rendono onesto:
@@ -5083,6 +5087,7 @@ function ccpRender() {
   });
 
   box.innerHTML = `
+    ${CCP_ESITO ? `<div class="pdoc-esito ok" style="margin-bottom:10px"><i class="ti ti-circle-check"></i> ${esc(CCP_ESITO)}</div>` : ''}
     ${suoi.length ? suoi.map(r => ccpRigaSua(r, ruiScheda, puo)).join('')
       : '<div class="cl-sub">Nessun codice compagnia abbinato a questa persona.</div>'}
 
@@ -5207,16 +5212,62 @@ async function ccpScrivi(compagnia, codice, valore, modifiche) {
   return riga;
 }
 
+/* DECIDERE UN CODICE ADESSO LO APPLICA DAVVERO (22/09/2026).
+   Fino a oggi questa scheda scriveva la decisione e basta. La conferma però
+   diceva «le rate di quel codice sono sue, anche quelle già in archivio»: era
+   un'affermazione sul pregresso che il codice non eseguiva, e mandava a una
+   pagina dove quel bottone non c'è. Risultato misurato: due codici decisi e
+   ZERO polizze con un produttore scritto, mentre la Produzione continuava a
+   dire «da abbinare» — che è esattamente il giro che ha fatto Francesco.
+
+   La regola di quali righe prendere sta in UN POSTO SOLO, la funzione
+   `iam_applica_decisione_codice` in Postgres: le schermate che decidono sono
+   tre e stanno in due documenti diversi (IAM e il preventivatore), e tre copie
+   della stessa regola diventerebbero tre regole su chi viene pagato. Là dentro
+   ci sono anche il periodo e la sospensione, che da qui non si vedono. */
+async function ccpApplica(compagnia, codice) {
+  const { data, error } = await db.rpc('iam_applica_decisione_codice',
+    { p_compagnia: compagnia, p_codice: codice });
+  if (error) throw error;
+  return data || {};
+}
+
 async function ccpAggiungi() {
   const v = document.getElementById('ccp-libero')?.value || '';
   if (!v || !CCP_PERSONA) return;
   const [compagnia, codice] = v.split('|');
-  if (!confirm('Abbinare il codice ' + codice + ' di ' + compagnia + ' a questa persona?\n\nDa questo momento le rate di quel codice sono sue, anche quelle già in archivio: si assegnano dai Titoli del preventivatore.')) return;
+  if (!confirm('Abbinare il codice ' + codice + ' di ' + compagnia + ' a questa persona?\n\n'
+    + 'Le polizze e le rate di quel codice che sono già in archivio passano a lei adesso, e quelle che arriveranno nascono già sue.\n\n'
+    + 'Quello che qualcuno ha assegnato a mano non viene toccato.')) return;
   try {
     await ccpScrivi(compagnia, codice, CCP_PERSONA);
+    /* La decisione è scritta: se l'applicazione non riesce non si perde la
+       decisione, si dichiara — e si riapplica premendo di nuovo. */
+    let esito = null, ko = null;
+    try { esito = await ccpApplica(compagnia, codice); }
+    catch (e) { ko = e.message || String(e); }
     logMovimento('Codice compagnia abbinato · ' + compagnia + ' ' + codice, 'collaboratore', codice, CCP_PERSONA);
+    CCP_ESITO = ko
+      ? 'Il codice ' + codice + ' è abbinato, ma il portafoglio non si è potuto aggiornare (' + ko + '). Riprova ad abbinarlo: quello che è già a posto viene saltato.'
+      : ccpEsitoTesto(codice, esito);
     ccpRender();
   } catch (e) { alert('Non riesco ad abbinare: ' + (e.message || e)); }
+}
+
+/* I NUMERI VERI, non quelli che ci si aspettava. Zero polizze mosse su un
+   codice che ne ha è un'informazione, non un successo silenzioso (§47). */
+function ccpEsitoTesto(codice, r) {
+  r = r || {};
+  if (r.stato === 'nessuno') return 'Il codice ' + codice + ' è deciso «nessuno»: è produzione diretta dell\'agenzia, e non si intesta a una persona.';
+  if (r.stato === 'sospeso') return 'L\'abbinamento del codice ' + codice + ' è sospeso: non assegna lavoro nuovo, e quello che è già assegnato resta dov\'è.';
+  if (r.stato && r.stato !== 'persona') return 'Il codice ' + codice + ' non risulta deciso: non è stato assegnato niente.';
+  const pol = Number(r.polizze || 0), rate = Number(r.rate || 0);
+  let t = codice + ': ' + pol + ' polizz' + (pol === 1 ? 'a attribuita' : 'e attribuite') + ' in produzione e '
+        + rate + ' rat' + (rate === 1 ? 'a assegnata' : 'e assegnate') + '.';
+  if (!pol && !rate) t = codice + ': non c\'era niente da assegnare — o è già tutto a posto, o quelle righe hanno già un altro padrone.';
+  if (r.fuori_periodo) t += ' ' + r.fuori_periodo + ' rest' + (r.fuori_periodo === 1 ? 'a' : 'ano') + ' fuori dal periodo dell\'abbinamento.';
+  if (r.di_altri) t += ' ' + r.di_altri + ' er' + (r.di_altri === 1 ? 'a già di un\'altra persona' : 'ano già di altre persone') + ' e non si tocc' + (r.di_altri === 1 ? 'a' : 'ano') + '.';
+  return t;
 }
 
 /* Il periodo e la nota. Le date vuote NON diventano zero e non diventano oggi:
@@ -10558,7 +10609,9 @@ function prdProduttoriHTML(p) {
     +   '<span class="prd-pil prd-' + r.stato + '">' + pil[r.stato] + '</span>'
     +   (r.stato === 'codice'
         ? '<div class="prd-sotto">Codice ' + esc(r.compagnia || '') + '. Nessuno ha ancora detto chi è: '
-          + 'finché non lo si decide, questa produzione non ha un nome. Si decide in Strumenti › Decisioni aperte.</div>'
+          + 'finché non lo si decide, questa produzione non ha un nome. '
+          + 'Si abbina dalla scheda del collaboratore (Strumenti › Collaboratori › Codici compagnia), '
+          + 'e da lì passa subito su queste polizze.</div>'
         : '')
     +   (r.senza_premio ? '<div class="prd-sotto">' + r.senza_premio
         + (r.senza_premio === 1 ? ' polizza senza premio annuo: fuori dall’importo, non vale zero.'
@@ -10573,7 +10626,8 @@ function prdProduttoriHTML(p) {
                              : ' codici produttore non sono ancora abbinati a una persona')
       + ' — sotto ci sono ' + prdNum(p.polizze_da_abbinare) + ' polizze per ' + prdEuro(p.premio_da_abbinare)
       + '. Il sistema non li abbina da solo: un nome scelto per somiglianza qui vuol dire attribuire '
-      + 'a una persona la produzione di un’altra.</div>'
+      + 'a una persona la produzione di un’altra. Si abbinano dalla scheda del collaboratore, '
+      + 'in Strumenti › Collaboratori › Codici compagnia.</div>'
     : '';
   return avviso
     + '<table class="prd-tab"><thead><tr><th>Chi</th><th class="prd-num">Polizze</th>'

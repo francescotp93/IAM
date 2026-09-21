@@ -290,7 +290,14 @@ await e.provaAsync('UN CODICE CHE NESSUNO HA DECISO NON PRENDE UN NOME', async (
   deve(/U200/.test(h), 'il codice non deciso non si mostra');
   deve(/da abbinare/.test(h), 'il codice non deciso non è marcato');
   deve(/Nessuno ha ancora detto chi è/.test(h), 'non dice perché quel codice non ha un nome');
-  deve(/Decisioni aperte/.test(h), 'non dice dove si decide');
+  /* REGOLA AGGIORNATA IL 22/09/2026, NON IL NUMERO. La schermata mandava in
+     «Strumenti › Decisioni aperte», che CONTA le decisioni mancanti e non ne
+     applica nessuna: chi seguiva l'indicazione decideva, tornava qui e vedeva
+     ancora «da abbinare». Il giro che ha fatto Francesco. Deve mandare dove
+     l'abbinamento si fa E si applica: la scheda del collaboratore. */
+  deve(/Codici compagnia/.test(h), 'non dice dove si abbina');
+  deve(!/Decisioni aperte/.test(h),
+    'manda ancora in «Decisioni aperte», che conta le decisioni e non ne applica nessuna');
   /* Nessun nome accostato a quel codice: la prova che conta. */
   const dopoCodice = h.slice(h.indexOf('U200'), h.indexOf('U200') + 400);
   deve(!/Neri Anna/.test(dopoCodice), 'al codice non deciso è stato accostato un nome');

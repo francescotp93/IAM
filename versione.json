@@ -1,8 +1,21 @@
 {
-  "versione": "0.23.0",
-  "nome": "L'import non muore per una riga, e dice quello che lascia fuori",
+  "versione": "0.24.0",
+  "nome": "Abbinare un codice produttore lo applica davvero",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.24.0",
+      "data": "2026-09-22",
+      "nome": "Abbinare un codice produttore lo applica davvero",
+      "voci": [
+        "Abbinavi un codice produttore a un collaboratore e nel report Produzione restava «da abbinare». Non era la Produzione a sbagliare: la decisione veniva scritta e non veniva MAI applicata alle polizze. Misurato: due codici decisi e zero polizze su 1.721 con un produttore scritto.",
+        "Peggio del silenzio, la conferma prometteva il contrario — «anche quelle già in archivio» — e mandava su una pagina dove quel bottone non c'è. Adesso abbinare un codice sposta subito le polizze e le rate già in archivio, e la scheda dice quante ne ha mosse davvero.",
+        "Quello che non si tocca si dice: le righe fuori dal periodo dell'abbinamento e quelle che hanno già un altro padrone si contano a parte. E se non si muove niente lo scrive, perché uno zero può voler dire «è già tutto a posto» oppure «sono di un altro», che sono due cose diverse.",
+        "Il pannello «Assegna il pregresso» leggeva solo le prime MILLE polizze, qualunque numero ci fosse scritto: con 4.000 polizze ne avrebbe attribuite mille e le altre sarebbero rimaste senza produttore in silenzio. Adesso le legge tutte.",
+        "L'importazione del flusso non intesta più una polizza a chi teneva il codice in un altro periodo: era l'unica delle tre strade che non guardava le date dell'abbinamento.",
+        "E la Produzione manda dove il lavoro si fa: la scheda del collaboratore, non la schermata che si limita a contare le decisioni mancanti."
+      ]
+    },
     {
       "v": "0.23.0",
       "data": "2026-09-22",

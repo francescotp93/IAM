@@ -341,6 +341,64 @@ prova('da telefono la riga si impila e i bottoni non escono', () => {
   return 'riga impilata, azioni a tutta larghezza, modulo a capo';
 });
 
+prova('abbinare un codice lo APPLICA al portafoglio, e non lo dice soltanto', () => {
+  /* IL GUASTO DEL 22/09/2026. Da questa scheda si poteva abbinare un codice, e
+     niente in IAM applicava la decisione: la riga finiva in
+     quote_codici_collaboratore e le polizze restavano senza produttore.
+     Misurato: due codici decisi, ZERO polizze con un nome — mentre il report
+     Produzione continuava a dire «da abbinare» su un codice appena deciso.
+
+     Peggio del silenzio: la conferma AFFERMAVA il contrario, «le rate di quel
+     codice sono sue, anche quelle già in archivio», e mandava sui Titoli del
+     preventivatore, dove quel bottone non c'è. Un testo che promette una cosa
+     che il codice non fa è peggio di un testo che tace. */
+  const agg = ritaglia('async function ccpAggiungi');
+  deve(/ccpScrivi\(/.test(agg), 'la scheda non scrive più la decisione');
+  deve(/ccpApplica\(/.test(agg), 'la scheda decide e non applica: è il guasto del 22/09/2026');
+  /* L'applicazione passa dalla funzione SQL, non da un update scritto qui: la
+     stessa regola in tre schermate e due documenti sarebbe tre regole su chi
+     viene pagato (§10, «il motore si carica, non si copia»). */
+  const app = ritaglia('async function ccpApplica');
+  deve(/db\.rpc\('iam_applica_decisione_codice'/.test(app),
+    'ccpApplica non chiama la funzione unica: ' + app.slice(0, 200));
+  /* E la regola NON ricompare qui sotto forma di update scritti a mano: si
+     guarda dentro le tre funzioni della scheda, non in tutto il documento —
+     IAM legge quote_polizze in mezza dozzina di schermate, e cercare quel
+     nome ovunque direbbe di sì sempre. */
+  for (const f of ['async function ccpScrivi', 'async function ccpApplica', 'async function ccpAggiungi']) {
+    const b = ritaglia(f);
+    deve(!/quote_polizze|quote_titoli/.test(b),
+      f + ' scrive polizze o rate per conto suo: la regola di chi viene pagato torna in due posti');
+  }
+  /* E la conferma non promette più una via d'uscita che non esiste. */
+  deve(!/si assegnano dai Titoli del preventivatore/.test(H),
+    'la conferma manda ancora dove quel bottone non c\'è');
+  deve(/non viene toccato/.test(agg),
+    'la conferma non dice che il lavoro fatto a mano resta dov\'è');
+  return 'decide, applica, e la conferma dice quello che succede';
+});
+
+prova('i numeri dell\'applicazione sono quelli VERI, e zero è un\'informazione', () => {
+  /* «Zero righe» non è un successo silenzioso (§47, BUG 1): se un codice non
+     muove niente bisogna saperlo, perché vuol dire o che è già tutto a posto o
+     che quelle righe hanno un altro padrone — due cose diverse. */
+  const t = ritaglia('function ccpEsitoTesto');
+  deve(/r\.polizze/.test(t) && /r\.rate/.test(t), 'non mostra quante righe si sono mosse davvero');
+  deve(/fuori_periodo/.test(t), 'non dice quante restano fuori dal periodo dell\'abbinamento');
+  deve(/di_altri/.test(t), 'non dice quante erano già di un\'altra persona');
+  deve(/non c'era niente da assegnare|niente da assegnare/.test(t),
+    'uno zero passa per un successo: non si distingue «già a posto» da «sono di un altro»');
+  /* I tre stati che NON scrivono si dicono col loro nome, invece di uscire
+     come «zero polizze». */
+  deve(/nessuno/.test(t) && /sospeso/.test(t) && /non risulta deciso/.test(t),
+    'gli stati che non assegnano non hanno un nome: ' + t.slice(0, 300));
+  /* E l'esito finisce davanti agli occhi, non in una variabile che non legge
+     nessuno (§1). */
+  deve(/CCP_ESITO/.test(ritaglia('function ccpRender')), 'l\'esito non si vede nella scheda');
+  deve(/var CCP_ESITO/.test(H), 'CCP_ESITO è `let`: le prove leggerebbero un\'altra variabile (§17, §32)');
+  return 'i numeri veri, i tre stati muti col loro nome, e si vedono';
+});
+
 /* Ritaglia una funzione dal sorgente: dalla firma alla prima graffa che chiude
    a colonna zero. Serve a non far scattare una prova su codice che sta altrove
    — cercare in tutto il documento vorrebbe dire trovare qualunque cosa. */

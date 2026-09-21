@@ -1,17 +1,21 @@
-id: 1790005832  exit: 0  2026-09-21 15:51:05
+id: 1790006290  exit: 0  2026-09-21 15:58:23
 ----
-== attendo l'autopull ==
-arrivata dopo ~10s
-854c1f1
-app-versione" content="0.21.1"
-app-versione-nome" content="L'archivio si prova all'avvio, non sul primo documento"
+== i file cifrati sul disco ==
+/var/lib/withus/archivio/b8/d7/b8d76ce4-400f-4204-b1fe-8cfcabaa8da1.bin
+  101993 byte  2026-09-21 15:57  utente withus:withus  permessi 600
+totale: 1
 
-== il modulo archivio, dopo il riavvio col codice nuovo ==
-active
-acceso: il controllo di scrittura e' passato
+== e' davvero cifrato col nostro formato? ==
+sigla in testa: WUS1
+occorrenze di %PDF nel file (deve essere 0): 0
+0
 
-== la cartella, e nessun residuo della prova d'avvio ==
-total 8
-drwx------ 2 withus withus 4096 Sep 21 15:51 .
-drwx------ 3 withus withus 4096 Sep 18 18:51 ..
-file cifrati: 0
+== residui della prova d'avvio (deve essere vuoto) ==
+(nessuno)
+
+== errori dell'archivio nell'ultima mezz'ora ==
+Sep 21 15:44:09 vps-d6443a46 node[3903008]: 2026-09-21T15:44:09.458Z POST   /archivio/carica 500 251ms u:a5ab0cd0
+Sep 21 15:57:21 vps-d6443a46 node[3905199]: 2026-09-21T15:57:21.752Z OPTIONS /archivio/carica 204 1ms u:-
+Sep 21 15:57:22 vps-d6443a46 node[3905199]: 2026-09-21T15:57:21.855Z POST   /archivio/carica 200 236ms u:a5ab0cd0
+Sep 21 15:57:27 vps-d6443a46 node[3905199]: 2026-09-21T15:57:27.531Z OPTIONS /archivio/apri/b8d76ce4-400f-4204-b1fe-8cfcabaa8da1 204 2ms u:-
+Sep 21 15:57:27 vps-d6443a46 node[3905199]: 2026-09-21T15:57:27.596Z GET    /archivio/apri/b8d76ce4-400f-4204-b1fe-8cfcabaa8da1 200 130ms u:a5ab0cd0

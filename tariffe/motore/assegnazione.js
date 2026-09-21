@@ -280,6 +280,64 @@
     return { assegna: assegna, saltate: saltate, sovrascritte: sovrascritte, perPersona: perPersona };
   }
 
+  /* ══ 4-bis. LO STESSO PIANO, SULLE POLIZZE (21/09/2026) ═══════════════════
+     `piano` dice di chi è una RATA, cioè a chi spetta la provvigione.
+     `pianoPolizze` dice chi ha PRODOTTO il contratto, ed è la domanda del
+     consuntivo di produzione.
+
+     NON è lo stesso dato scritto due volte. Una polizza vive anni e può
+     cambiare gestione: se la produzione si leggesse dalle rate, una polizza
+     riassegnata a marzo sposterebbe la produzione di gennaio, e il consuntivo
+     di un anno già chiuso cambierebbe da solo. La rata segue chi incassa, la
+     polizza resta di chi l'ha fatta.
+
+     Le regole sono le stesse, e sono le stesse per una ragione: sono le
+     regole della DECISIONE, non del posto in cui si scrive. Niente decisione,
+     niente assegnazione (regola 1); non si sovrascrive quello che c'è già,
+     perché chi ha assegnato a mano sapeva qualcosa che il codice non sa
+     (regola 2); la chiave è la coppia compagnia+codice (regola 3); «nessuno»
+     è una decisione e si rispetta (regola 4). */
+  function pianoPolizze(polizze, mappaCodici, opz) {
+    opz = opz || {};
+    var sovrascrivi = !!opz.sovrascrivi;
+    var soloChiavi = opz.soloChiavi ? indice(opz.soloChiavi) : null;
+
+    var assegna = [], saltate = [], sovrascritte = [], perPersona = {};
+
+    (polizze || []).forEach(function (p) {
+      if (!p || !p.id) return;
+      var c = codiceDi(p);
+      if (!c) return void saltate.push({ id: p.id, motivo: 'senza-codice' });
+      if (soloChiavi && !soloChiavi[c.chiave]) return;
+
+      var d = (mappaCodici || {})[c.chiave];
+      var stato = statoDecisione(d);
+      if (stato === 'non-deciso')    return void saltate.push({ id: p.id, motivo: 'codice-non-deciso', chiave: c.chiave });
+      if (stato === 'da-ridecidere') return void saltate.push({ id: p.id, motivo: 'codice-scoperto', chiave: c.chiave });
+      if (stato === 'nessuno')       return void saltate.push({ id: p.id, motivo: 'deciso-nessuno', chiave: c.chiave });
+
+      if (p.collaboratore_id) {
+        var gia = {
+          id: p.id, chiave: c.chiave,
+          motivo: p.collaboratore_id === d.collaboratore_id ? 'gia-a-posto' : 'gia-assegnata',
+          a: p.collaboratore_id
+        };
+        if (sovrascrivi && gia.motivo === 'gia-assegnata') {
+          assegna.push({ id: p.id, collaboratore_id: d.collaboratore_id, chiave: c.chiave });
+          perPersona[d.collaboratore_id] = (perPersona[d.collaboratore_id] || 0) + 1;
+          sovrascritte.push(gia);
+          return;
+        }
+        return void saltate.push(gia);
+      }
+
+      assegna.push({ id: p.id, collaboratore_id: d.collaboratore_id, chiave: c.chiave });
+      perPersona[d.collaboratore_id] = (perPersona[d.collaboratore_id] || 0) + 1;
+    });
+
+    return { assegna: assegna, saltate: saltate, sovrascritte: sovrascritte, perPersona: perPersona };
+  }
+
   /* ══ 5. LE PROPOSTE: PRIMA IL RUI, POI L'EMAIL ════════════════════════════
      Due campi del flusso corrispondono a qualcosa che abbiamo già, e non
      valgono uguale.
@@ -495,7 +553,7 @@
   var API = {
     VERSIONE: VERSIONE, NESSUNO: NESSUNO,
     chiave: chiave, codiceDi: codiceDi, statoDecisione: statoDecisione, mappa: mappa,
-    riepilogo: riepilogo, piano: piano,
+    riepilogo: riepilogo, piano: piano, pianoPolizze: pianoPolizze,
     proposteDaFlusso: proposteDaFlusso, proposte: proposte, suoi: suoi,
     rigaDecisione: rigaDecisione, cent: cent
   };

@@ -361,6 +361,69 @@ prova('le rate già assegnate si contano a parte', () => {
   return 'su questo codice qualcuno ha già lavorato a mano, e si vede prima di applicare';
 });
 
+/* ══ IL PIANO SULLE POLIZZE (21/09/2026) ════════════════════════════════
+   La stessa decisione, applicata all'altra domanda: non «di chi è questa
+   rata» ma «chi ha prodotto questo contratto». */
+const POL = (id, cod, chi) => ({
+  id: id, compagnia: 'PRIMA', collaboratore_id: chi || null,
+  dati: cod ? { ssf: { collaboratore: cod } } : {}
+});
+const DEC = (cod, chi, nessuno) => ({
+  compagnia: 'PRIMA', codice: cod, deciso: true,
+  collaboratore_id: chi || null, nessuno: !!nessuno
+});
+
+prova('POLIZZE · niente decisione, niente produttore', () => {
+  /* Regola 1, sull'altra tabella. Sedici codici stanno sulle polizze e la
+     tabella delle decisioni nasce vuota: se il piano ripiegasse su un
+     «quello che ha più polizze», il consuntivo di produzione direbbe dei
+     nomi che nessuno ha scelto. */
+  const p = A.pianoPolizze([POL('a', 'U1'), POL('b', 'U2')], A.mappa([DEC('U1', 'p1')]));
+  deve(p.assegna.length === 1 && p.assegna[0].id === 'a', 'non assegna solo la polizza decisa');
+  deve(p.saltate.some(s => s.id === 'b' && s.motivo === 'codice-non-deciso'),
+    'la polizza col codice non deciso non è saltata col motivo giusto');
+  return '1 assegnata, 1 lasciata da decidere';
+});
+
+prova('POLIZZE · non si sovrascrive chi c\'è già, e «sovrascrivi» si conta a parte', () => {
+  /* Regola 2. Chi ha attribuito a mano sapeva qualcosa che il codice non sa. */
+  const righe = [POL('a', 'U1', 'p9'), POL('b', 'U1', 'p1'), POL('c', 'U1')];
+  const m = A.mappa([DEC('U1', 'p1')]);
+  const p = A.pianoPolizze(righe, m);
+  deve(p.assegna.length === 1 && p.assegna[0].id === 'c', 'tocca una polizza già attribuita');
+  deve(p.saltate.find(s => s.id === 'a').motivo === 'gia-assegnata', 'il conflitto non si dichiara');
+  deve(p.saltate.find(s => s.id === 'b').motivo === 'gia-a-posto', 'chi è già a posto non si distingue dal conflitto');
+  const f = A.pianoPolizze(righe, m, { sovrascrivi: true });
+  deve(f.assegna.length === 2, 'con sovrascrivi non sposta il conflitto');
+  deve(f.sovrascritte.length === 1, 'le attribuzioni coperte non si contano a parte');
+  return 'una sola, e la forzatura si vede';
+});
+
+prova('POLIZZE · «nessuno» è una decisione: non assegna e non torna a chiedere', () => {
+  /* Regola 4. È la produzione diretta dell'agenzia, non un buco da riempire. */
+  const p = A.pianoPolizze([POL('a', 'U1')], A.mappa([DEC('U1', null, true)]));
+  deve(!p.assegna.length, 'assegna una polizza decisa «nessuno»');
+  deve(p.saltate[0].motivo === 'deciso-nessuno', 'non si distingue da un codice mai deciso: ' + p.saltate[0].motivo);
+  return 'decisa, e non ricompare';
+});
+
+prova('POLIZZE · una polizza senza codice non si attribuisce a chi ha importato', () => {
+  /* `creato_da` è una persona sola su tutte e 1720 le righe. Una polizza
+     senza codice non viene da un flusso: è l'agenzia, non un lavoro da fare. */
+  const p = A.pianoPolizze([POL('a', null)], A.mappa([DEC('U1', 'p1')]));
+  deve(!p.assegna.length, 'attribuisce una polizza senza codice');
+  deve(p.saltate[0].motivo === 'senza-codice', 'il motivo non è «senza codice»');
+  return 'senza codice = non si tocca';
+});
+
+prova('POLIZZE · la chiave resta la coppia compagnia+codice', () => {
+  /* Regola 3: due compagnie possono usare lo stesso codice per due persone. */
+  const altra = { id: 'z', compagnia: 'HDI', collaboratore_id: null, dati: { ssf: { collaboratore: 'U1' } } };
+  const p = A.pianoPolizze([POL('a', 'U1'), altra], A.mappa([DEC('U1', 'p1')]));
+  deve(p.assegna.length === 1 && p.assegna[0].id === 'a', 'il codice di una compagnia ha mosso quello di un\'altra');
+  return 'PRIMA|U1 non è HDI|U1';
+});
+
 /* ══ ARITMETICA ═════════════════════════════════════════════════════════ */
 prova('gli storni non guadagnano un centesimo dall\'arrotondamento', () => {
   deve(A.cent(-0.005) === -0.01, 'cent(-0.005) = ' + A.cent(-0.005));

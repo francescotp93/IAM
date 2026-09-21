@@ -4647,6 +4647,7 @@ const avvio = async () => {
           anteprima,
           dec: ops.filter(x => x.tabella === 'quote_codici_collaboratore' && x.operazione === 'upsert').map(x => x.payload),
           upd: ops.filter(x => x.tabella === 'quote_titoli' && x.operazione === 'update'),
+          pol: ops.filter(x => x.tabella === 'quote_polizze' && x.operazione === 'update'),
           log: ops.filter(x => x.tabella === 'quote_log' && x.operazione === 'insert').map(x => x.payload)
         };
       }, ASG_C1);
@@ -4661,10 +4662,22 @@ const avvio = async () => {
       /* Un update in blocco, non uno per rata. */
       deve(r.upd.length === 1, 'update sulle rate: ' + r.upd.length + ' (ne basta uno, in blocco)');
       deve(r.upd[0].payload.collaboratore_id === ASG_C1, 'assegnate a ' + JSON.stringify(r.upd[0].payload));
-      /* Un movimento per persona, non uno per rata, e con l'identificativo. */
-      deve(r.log.length === 1 && r.log[0].entita_id === ASG_C1,
+      /* E LA STESSA DECISIONE ATTRIBUISCE LA PRODUZIONE (21/09/2026).
+         Due cose diverse, non lo stesso dato scritto due volte: la rata dice
+         a chi spetta la provvigione, la polizza dice chi ha fatto il
+         contratto. Senza questa riga la colonna del produttore resterebbe
+         vuota per sempre e il consuntivo non avrebbe mai un nome.
+         Questa prova misurava un movimento solo: era il mondo di ieri, e si
+         aggiorna la regola, non il numero (§15, §16, §33, §35). */
+      deve(r.pol.length === 1, 'update sulle polizze: ' + r.pol.length + ' (ne basta uno, in blocco)');
+      deve(r.pol[0].payload.collaboratore_id === ASG_C1, 'attribuite a ' + JSON.stringify(r.pol[0].payload));
+      /* Un movimento per persona e per cosa, non uno per riga, e con
+         l'identificativo che porta alla scheda. */
+      deve(r.log.length === 2 && r.log.every(x => x.entita_id === ASG_C1),
            'il registro: ' + JSON.stringify(r.log));
-      return '1 decisione firmata, 1 update per 3 rate, 1 movimento';
+      deve(r.log.some(x => /[Rr]ate del pregresso/.test(x.azione)), 'manca il movimento delle rate');
+      deve(r.log.some(x => /[Pp]olizze attribuite/.test(x.azione)), 'manca il movimento della produzione');
+      return '1 decisione firmata, 3 rate e le polizze in un colpo, 2 movimenti';
     });
 
     await prova('assegnazione: una rata già assegnata a mano non viene coperta dal blocco', async () => {

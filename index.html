@@ -2952,6 +2952,15 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="page-title">Campagne</div>
       <div class="page-sub">Email ai clienti · liste, gruppi e segmenti · bozza, prova, e solo dopo l'invio</div>
 
+      <!-- «Compleanni di oggi» (spostato qui dalle Anagrafiche il 21/09/2026,
+           punto 2 del brief). Sta in cima e non in fondo perché è l'unica cosa
+           di questa pagina che scade: un compleanno si fa oggi, una campagna
+           si prepara quando si vuole. Le regole non sono cambiate di una riga:
+           l'invio è manuale, uno per persona — la lista serve anche a
+           ESCLUDERE (un sinistro aperto, un contenzioso) — e parte solo a chi
+           ha il consenso marketing e un recapito. -->
+      <div id="cpl-oggi" class="cpl-box"></div>
+
       <div class="cmp-griglia">
         <div class="cmp-col">
           <div class="cmp-sez">Nuova campagna</div>
@@ -3479,11 +3488,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <button class="ana-tab" id="anag-view-lead" onclick="anagView('lead')"><i class="ti ti-flag-2" style="vertical-align:-2px"></i> Lead <span id="anag-cnt-lead" class="cl-count" style="margin-left:4px">·</span></button>
         </div>
         <div id="anag-lead-hint" style="display:none;background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:8px 12px;margin-bottom:.7rem;font-size:12.5px"><i class="ti ti-info-circle" style="vertical-align:-2px"></i> I <b>Lead</b> sono nominativi senza privacy firmata (recuperati dal preventivatore o inseriti a mano). Firma la privacy dalla scheda per convertirli in clienti.</div>
-        <!-- M3.3/M3.4 (19/09/2026): chi compie gli anni oggi, e gli auguri
-             con un clic per persona. Invio manuale assistito, non automatico:
-             la lista serve anche a ESCLUDERE (un sinistro aperto, un
-             contenzioso). Solo con consenso marketing. -->
-        <div id="cpl-oggi" class="cpl-box"></div>
+        <!-- «Compleanni di oggi» stava QUI fino al 21/09/2026: è passato in
+             Campagne (Marketing), che è dove si decide che cosa si manda ai
+             clienti. Non resta niente al suo posto: un riquadro vuoto o un
+             rimando sarebbero il doppione di una schermata che è altrove. -->
         <div class="anag-search">
           <input id="anag-q" placeholder="Cerca per nominativo, codice fiscale, P.IVA o telefono…" onkeydown="if(event.key==='Enter')cercaAnagrafica()">
           <button class="btn-add" onclick="cercaAnagrafica()"><i class="ti ti-search"></i> Cerca</button>
@@ -17164,6 +17172,11 @@ async function loadMarketing() {
   }
   cmpCaricaDestinatari();
   loadCampagne();
+  /* I compleanni di oggi (21/09/2026). Sta in piedi da solo: se non si può
+     leggere l'anagrafica il riquadro lo dice e il resto della pagina si vede
+     lo stesso (§35) — sette letture che cadono insieme sono una schermata che
+     si spegne sette volte più spesso di quanto dovrebbe. */
+  cplCarica().catch(e => console.warn('compleanni non disponibili:', e.message || e));
 }
 
 /* ═══ BLOCCO A — LA CATENA DEL DENARO: titoli, incassi, insoluti ══════════════
@@ -26765,7 +26778,10 @@ function initAnagrafiche() {
   if (ts && !ts.options.length) ts.innerHTML = TIPI_SOCIETA.map(s => `<option value="${esc(s)}">${s || '—'}</option>`).join('');
   anagTab('cerca');
   cercaAnagrafica();   // mostra subito i clienti salvati (più recenti)
-  cplCarica().catch(e => console.warn('compleanni non disponibili:', e.message || e));
+  /* `cplCarica` non si chiama più da qui: i compleanni stanno in Campagne
+     (21/09/2026). Lasciare la chiamata senza il suo contenitore vorrebbe dire
+     leggere l'anagrafica intera a ogni apertura della pagina Clienti per
+     scrivere dentro un `div` che non c'è più. */
   // Intermediari per la tendina del nuovo cliente (default: il collaboratore stesso).
   caricaIntermediari().then(() => popolaSelectInterm('ag-intermediario', mioIntermediarioId()));
 }

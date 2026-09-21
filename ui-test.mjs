@@ -7405,6 +7405,48 @@ const avvio = async () => {
       return '2 in elenco, 1 contattabile, email + diario + registro';
     });
 
+    await prova('punto 2 · «Compleanni di oggi» vive in Campagne, e in Anagrafiche non resta niente', async () => {
+      /* Spostare una schermata vuol dire spostare TRE cose: il contenitore,
+         chi lo riempie, e chi NON deve più riempirlo. Lasciare indietro la
+         terza è il difetto più silenzioso: una pagina che legge l'anagrafica
+         intera a ogni apertura per scrivere dentro un `div` che non esiste
+         più. Le regole invece non si toccano: quelle le misura la prova
+         M3.3/M3.4 qui sopra, che chiama `cplCarica` e basta. */
+      const r = await page.evaluate(() => {
+        const dentro = (idPagina) => {
+          const p = document.getElementById(idPagina);
+          return !!(p && p.querySelector('#cpl-oggi'));
+        };
+        return {
+          inCampagne: dentro('page-campagne'),
+          inAnagrafiche: dentro('page-anagrafiche'),
+          quanti: document.querySelectorAll('#cpl-oggi').length,
+          /* Il riquadro sta in cima: un compleanno è l'unica cosa di quella
+             pagina che scade, e in fondo lo si legge domani. */
+          primaDellaGriglia: (() => {
+            const p = document.getElementById('page-campagne');
+            if (!p) return false;
+            const box = p.querySelector('#cpl-oggi'), gri = p.querySelector('.cmp-griglia');
+            return !!(box && gri && (box.compareDocumentPosition(gri) & Node.DOCUMENT_POSITION_FOLLOWING));
+          })()
+        };
+      });
+      deve(r.inCampagne, 'il riquadro dei compleanni non è nella pagina Campagne');
+      deve(!r.inAnagrafiche, 'il riquadro è rimasto anche in Anagrafiche: due schermate uguali');
+      deve(r.quanti === 1, 'il contenitore compare ' + r.quanti + ' volte: deve essere uno');
+      deve(r.primaDellaGriglia, 'i compleanni stanno sotto le campagne: in fondo si leggono domani');
+
+      const h = fs.readFileSync('index.html', 'utf8');
+      const marketing = (h.match(/async function loadMarketing\(\)[\s\S]*?\n\}/) || [''])[0];
+      const anag = (h.match(/function initAnagrafiche\(\)[\s\S]*?\n\}/) || [''])[0];
+      deve(/cplCarica\(\)/.test(marketing), 'nessuno riempie il riquadro quando si apre Campagne');
+      /* Si cerca la CHIAMATA, non la parola: il commento che spiega lo
+         spostamento nomina `cplCarica`, ed è la trappola già scritta dieci
+         volte (§10, §12, §18, §26, §29, §31, §33, §34, §37, §41). */
+      deve(!/cplCarica\(\)/.test(anag), 'le Anagrafiche leggono ancora l\'anagrafica intera per un riquadro che non hanno');
+      return 'un contenitore, in cima a Campagne, riempito da lì e non più dalle Anagrafiche';
+    });
+
     await prova('personalizzati: il premio non si mostra mai senza il suo frazionamento', async () => {
       const r = await page.evaluate(() => ({
         annuale: ppPremioTesto(480, 'annuale'),

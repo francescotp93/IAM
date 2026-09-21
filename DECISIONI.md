@@ -133,6 +133,26 @@ un guasto.
 
 ---
 
+## 21/09/2026 — «Compleanni di oggi» in Marketing (0.19.0, brief Anagrafiche · punto 2)
+
+**Perimetro:** spostare il riquadro dei compleanni da Clienti a Campagne.
+
+🔴 **CAMBIA CHI PUÒ VEDERLO, ed è da sapere.** La pagina Clienti la vede
+chiunque entri nel preventivatore; **Marketing è dietro il cancello
+`lab_abilitato`** (o super-admin). Un collaboratore senza Marketing abilitato
+**non vede più i compleanni**. Non è un effetto collaterale: è la conseguenza
+diretta di dove il brief chiede di mettere il riquadro.
+*Come tornare indietro:* o si abilita Marketing a chi serve, o si riporta il
+riquadro in Anagrafiche — una riga di HTML e una chiamata.
+
+🟡 **In Anagrafiche non resta niente**, né un riquadro vuoto né un rimando: un
+rimando a una schermata che sta altrove è il doppione che si voleva togliere.
+
+🟡 **Le regole non sono cambiate di una riga**: invio manuale uno per persona,
+solo con consenso marketing e un recapito, traccia nel diario e nel registro.
+
+---
+
 ## Fuori perimetro — annotato e non fatto
 
 - **`flusso-ssf.js:805 aggiungiMesi` duplica `PianoRate.sommaMesi`**: due copie

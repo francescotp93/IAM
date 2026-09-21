@@ -4986,3 +4986,41 @@ per condizione.
 la terza volta.** Il banco vive dentro un template literal: un nome di funzione
 scritto fra apici inversi lo chiude. Annotato qui perché è successo tre volte,
 e due di quelle scrivendo il commento che spiegava la volta prima.
+
+---
+
+## 51. Brief Anagrafiche — punto 2: «Compleanni di oggi» va in Marketing (21/09/2026)
+
+Il riquadro nasce il 19/09 in cima alla pagina Clienti (§23). Sta meglio dove
+si decide **che cosa si manda ai clienti**: in Campagne, che nel menu di IAM è
+la voce Marketing › Campagne email.
+
+| pezzo | dove |
+|---|---|
+| il contenitore | `#cpl-oggi`, adesso in `#page-campagne` (era in `#page-anagrafiche`) |
+| chi lo riempie | `loadMarketing()` (era `initAnagrafiche()`) |
+| le regole | invariate: blocco `cpl*` e `Anagrafica.delGiorno` / `contattabile` / `testoAuguri` |
+| prove | blocco «punto 2» in `ui-test.mjs` (**489**) |
+
+**Spostare una schermata vuol dire spostare tre cose**, e la terza è quella che
+si dimentica: il contenitore, chi lo riempie, e **chi non deve più riempirlo**.
+Lasciare indietro la terza è il difetto più silenzioso di tutti — la pagina
+Clienti avrebbe continuato a leggere l'anagrafica intera a ogni apertura per
+scrivere dentro un `div` che non esiste più. Nessun errore, solo una lettura in
+più per sempre. C'è una prova, e la controprova la fa diventare rossa.
+
+**Sta in cima e non in fondo**: un compleanno è l'unica cosa di quella pagina
+che scade. Una campagna si prepara quando si vuole; gli auguri si fanno oggi, e
+in fondo alla pagina si leggono domani.
+
+**In Anagrafiche non resta niente** — né un riquadro vuoto né un rimando: un
+rimando a una schermata che sta altrove è il doppione che si voleva togliere.
+
+> **E cambia chi può usarlo, ed è la cosa da sapere.** La pagina Clienti la
+> vede chiunque entri nel preventivatore; **Marketing è dietro il cancello
+> `lab_abilitato`** (o super-admin), letto dal pulsante `nb-marketing` della
+> scocca. Quindi un collaboratore senza Marketing abilitato **non vede più i
+> compleanni**. Non è un effetto collaterale nascosto in una riga: è la
+> conseguenza diretta di dove il brief chiede di metterlo, e si ribalta
+> abilitando Marketing a chi serve — oppure riportando il riquadro indietro,
+> che è una riga di HTML e una chiamata.

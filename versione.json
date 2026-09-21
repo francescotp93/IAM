@@ -12,7 +12,8 @@
         "Sotto l'elenco compare «Ne vedi 50 su 2.507»: senza, una lista che si ferma a cinquanta e un numero che ne dice duemilacinquecento si leggono come un guasto, e chi cerca qualcuno smette di cercare.",
         "Se il conteggio non riesce la schermata scrive «·» e non un numero: «non si è potuto contare» non è «non ce n'è», e un contatore che sbaglia verso il basso fa credere di aver finito.",
         "Anche i due numeri della Scrivania (clienti senza email, clienti senza consenso marketing) li conta il server: prima si fermavano alle prime mille righe scaricate.",
-        "Il consenso marketing adesso lo decide una regola sola per tutta la casa: la Scrivania guardava solo la privacy firmata e non la spunta raccolta allo sportello, quindi contava fra i buchi anche chi il consenso l'aveva già dato."
+        "Il consenso marketing adesso lo decide una regola sola per tutta la casa: la Scrivania guardava solo la privacy firmata e non la spunta raccolta allo sportello, quindi contava fra i buchi anche chi il consenso l'aveva già dato.",
+        "«Compleanni di oggi» si è spostato da Clienti a Campagne (Marketing): è lì che si decide che cosa si manda ai clienti. Le regole non cambiano — invio manuale, uno per persona, solo con consenso marketing e un recapito."
       ]
     },
     {

@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.22.0">
-<meta name="app-versione-nome" content="La contabilità a partita doppia: le fondamenta">
+<meta name="app-versione" content="0.22.1">
+<meta name="app-versione-nome" content="Le rate che sparivano ricaricando il file">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -19810,6 +19810,10 @@ async function fluConferma() {
           <div class="flu-num"><div class="flu-v">${Number(r.titoli || 0).toLocaleString('it-IT')}</div><div class="flu-k">rat${r.titoli === 1 ? 'a' : 'e'} caricat${r.titoli === 1 ? 'a' : 'e'}</div></div>
         </div>
         ${r.polizze_senza_cliente ? `<div class="cl-sub" style="margin-top:10px">${r.polizze_senza_cliente} polizz${r.polizze_senza_cliente === 1 ? 'a è rimasta fuori' : 'e sono rimaste fuori'}: il contraente non è in questo file.</div>` : ''}
+        ${r.titoli_senza_polizza ? `<div class="pdoc-esito ko" style="margin-top:10px"><i class="ti ti-alert-triangle"></i>
+          ${Number(r.titoli_senza_polizza).toLocaleString('it-IT')} rat${r.titoli_senza_polizza === 1 ? 'a è rimasta fuori' : 'e sono rimaste fuori'}:
+          la loro polizza non è in archivio e non è in questo file.
+          Rate proposte ${Number(r.titoli_proposti || 0).toLocaleString('it-IT')}, scritte ${Number(r.titoli || 0).toLocaleString('it-IT')}.</div>` : ''}
         ${r.titoli ? `<div class="cl-sub" style="margin-top:8px">${assegnate} rat${assegnate === 1 ? 'a è nata' : 'e sono nate'} già assegnat${assegnate === 1 ? 'a' : 'e'} dalle decisioni sui codici${
           assegnate < r.titoli ? `; le altre ${r.titoli - assegnate} aspettano che si decida di chi è il loro codice (Titoli › «Assegna il pregresso»)` : ''}.</div>` : ''}
         ${fatti.compagnie + fatti.prodotti ? `<div class="cl-sub" style="margin-top:6px">In catalogo ${fatti.compagnie} compagni${fatti.compagnie === 1 ? 'a' : 'e'} e ${fatti.prodotti} prodott${fatti.prodotti === 1 ? 'o' : 'i'}, marcati «da verificare».</div>` : ''}

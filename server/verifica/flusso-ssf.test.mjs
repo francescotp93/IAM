@@ -776,6 +776,79 @@ prova('l\'importazione scrive il premio annuo che ha ricavato, e dichiara quando
   return daTitoli.length + ' ricavate dalle rate, ' + senza.length + ' dichiarate';
 });
 
+/* ══ LA SCRITTURA, CHE STA IN POSTGRES ══════════════════════════════════════
+   La funzione `iam_importa_flusso` non si può eseguire in Node: si legge.
+   Si legge però l'ULTIMA migrazione che la definisce, perché è quella viva —
+   leggere la prima vorrebbe dire sorvegliare il mondo di ieri.
+
+   E si legge il PEZZO che conta, non tutto il file: i commenti di queste
+   migrazioni raccontano il difetto che stanno togliendo, e cercare una
+   parola dentro un commento dichiara rotto un codice giusto (CLAUDE.md §10,
+   §12, §18, §26, §29, §31, §33, §34, §37, §41, §42, §45). */
+const MIGRAZIONI = path.join(QUI, '..', '..', 'supabase', 'migrations');
+const SQL_IMPORT = (() => {
+  const f = fs.readdirSync(MIGRAZIONI).filter(n => n.endsWith('.sql')).sort()
+    .filter(n => fs.readFileSync(path.join(MIGRAZIONI, n), 'utf8')
+      .includes('create or replace function iam_importa_flusso'));
+  return { nome: f[f.length - 1], testo: fs.readFileSync(path.join(MIGRAZIONI, f[f.length - 1]), 'utf8') };
+})();
+/* Via i commenti, ma SOLO dentro la fetta che si sta guardando. */
+const soloCodice = (s) => s.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n')
+  .filter(r => !/^\s*--/.test(r)).join('\n');
+
+prova('le rate di una polizza GIA\' in archivio trovano la loro polizza', () => {
+  /* IL DIFETTO DEL 21/09/2026, misurato il giorno dopo sul database vero:
+     tre rate proposte su tre polizze in archivio, ZERO scritte.
+
+     La pagina manda nel lotto SOLO le polizze nuove (`p.polizze.nuove`): le
+     altre stanno in `p.polizze.gia` e non partono, ed è giusto così — sono
+     già scritte. Ma la mappa «chiave del file → polizza» si costruiva solo
+     dalle polizze del lotto, quindi una rata che nomina una polizza già in
+     archivio non trovava nessuna chiave e la giunzione la scartava SENZA UN
+     ERRORE, mentre il verbale dichiarava che era andato tutto bene.
+
+     È esattamente il caso di chi ricarica il file per recuperare le rate
+     mancanti — cioè il lavoro per cui quella funzione è nata. */
+  const i = SQL_IMPORT.testo.indexOf('create temp table _pol');
+  deve(i > 0, 'la mappa delle polizze non c\'è più in ' + SQL_IMPORT.nome);
+  const fine = SQL_IMPORT.testo.indexOf('on conflict (chiave) do nothing', i);
+  deve(fine > i, 'non ho trovato la fine del blocco della mappa');
+  const blocco = soloCodice(SQL_IMPORT.testo.slice(i, fine));
+  deve(/l\.tipo = 'polizze'/.test(blocco),
+    'la mappa non legge più le polizze del lotto: le polizze nuove non si aggancerebbero');
+  deve(/l\.tipo = 'titoli'/.test(blocco),
+    'la mappa NON legge le chiavi che le rate nominano: le rate delle polizze già in archivio tornano a sparire in silenzio');
+  deve(/\bunion\b/.test(blocco), 'le due provenienze non si uniscono: ' + blocco.slice(0, 200));
+  /* E si risolvono sulla tabella vera, non sul lotto: è quello che fa
+     valere la mappa anche per le polizze che il lotto non porta. */
+  deve(/join quote_polizze/.test(blocco), 'le chiavi non si risolvono su quote_polizze');
+  return SQL_IMPORT.nome;
+});
+
+prova('le rate che restano comunque fuori si contano, e il numero esce', () => {
+  /* Una riga scartata da una giunzione non dà errore: «zero righe» non è un
+     successo silenzioso (CLAUDE.md §47, BUG 1). Il numero deve arrivare al
+     verbale E alla pagina, altrimenti nessuno saprà mai che è successo. */
+  const c = soloCodice(SQL_IMPORT.testo);
+  deve(/titoli_senza_polizza/.test(c), 'le rate senza polizza non si contano');
+  const verbale = c.slice(c.indexOf('insert into quote_importazioni'));
+  deve(/'titoli_senza_polizza'/.test(verbale), 'il verbale non porta le rate rimaste fuori');
+  deve(/'titoli_proposti'/.test(verbale), 'il verbale non dice quante rate erano state proposte');
+  const ritorno = c.slice(c.indexOf('return jsonb_build_object'));
+  deve(/'titoli_senza_polizza'/.test(ritorno), 'la pagina non riceve le rate rimaste fuori');
+  /* E la pagina lo dice. Senza questa riga il numero esisterebbe e non lo
+     leggerebbe nessuno: è il guasto numero uno di questo repository (§1). */
+  const pagina = fs.readFileSync(path.join(QUI, '..', '..', 'index.html'), 'utf8');
+  /* L'ancora è il TESTO dell'esito, non la classe: `flu-fatto-t` compare
+     anche nel foglio di stile e in un altro riquadro, e una fetta che
+     comincia là dentro non contiene la parte che si vuole misurare. */
+  const da = pagina.indexOf('Import completato');
+  deve(da > 0, 'non ho trovato il riquadro dell\'esito dell\'importazione');
+  const fatto = pagina.slice(da, pagina.indexOf('flu-azioni', da));
+  deve(/r\.titoli_senza_polizza/.test(fatto), 'la schermata dell\'esito non dice quante rate sono rimaste fuori');
+  return 'contate, nel verbale, nella risposta e sullo schermo';
+});
+
 console.log('\n══ FLUSSO DI PORTAFOGLIO (SSF) ══');
 let ko = 0, salt = 0;
 for (const e of esiti) {

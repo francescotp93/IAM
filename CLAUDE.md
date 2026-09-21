@@ -5542,3 +5542,93 @@ non la rilettura: le prove sul sorgente non vedono i `CHECK` che non leggono.
 - **Le Fasi 2, 3 e 4** (incassi con più rate e più pagamenti, crediti verso
   clienti e collaboratori, estratti conto e cruscotto) sono il resto della
   specifica.
+
+---
+
+## 55. Le rate che sparivano ricaricando il file (22/09/2026)
+
+Francesco stava per premere «Importa» sul portafoglio PRIMA dell'anno
+(2.358 polizze, 3.149 rate) per recuperare le 1.700 polizze rimaste senza rate
+il 21/09 (§47). **Quel ricaricamento non avrebbe recuperato niente, e avrebbe
+detto di averlo fatto.**
+
+| pezzo | dove |
+|---|---|
+| la correzione | `supabase/migrations/20260922_import_rate_su_polizze_gia_dentro.sql` (applicata) |
+| l'esito che dichiara quello che resta fuori | `fluConferma` in `index.html` |
+| prove | `server/verifica/flusso-ssf.test.mjs` (**46**), blocco «import» in `ui-test.mjs` (**493**) |
+
+### Il difetto, in una riga
+
+La pagina manda nel foglio di brutta **solo le polizze nuove**
+(`aBlocchi('polizze', p.polizze.nuove …)`): le altre stanno in
+`p.polizze.gia` e non partono, ed è giusto — sono già scritte. Ma la mappa
+«chiave del file → polizza» si costruiva **solo dalle polizze del lotto**.
+Una rata che nomina una polizza già in archivio non trovava nessuna chiave, la
+giunzione dell'`insert` la scartava, e il verbale dichiarava lo stesso che era
+andato tutto bene.
+
+> **Una giunzione che non trova niente non è un errore: è zero righe.** È BUG 1
+> (§47) un piano più in là — lì era un `update` che non toccava nessuna riga,
+> qui è un `insert` che non ne produce nessuna. Stessa firma: nessun rosso,
+> nessun messaggio, e il numero sbagliato che ha l'aria di quello giusto.
+
+E il commento accanto a quel codice diceva l'opposto — *«comprende anche
+quelle che c'erano già: lasciarle fuori è il guasto che questa migrazione
+ripara»*. **Era l'intenzione, non il codice.** La trappola dei commenti (§10,
+§12, §18, §26, §29, §31, §33, §34, §37, §41, §42, §45) vista dal lato di chi
+scrive: un commento che descrive quello che si voleva fare fa smettere di
+controllare se è stato fatto.
+
+### Misurato, non dedotto
+
+Sul database vero, con una prova che si annulla da sola alla fine perché non
+resti niente:
+
+| | prima | dopo |
+|---|---|---|
+| tre rate su tre polizze **già in archivio** | **0 scritte** | 3 scritte |
+| una rata su una polizza che non esiste da nessuna parte | sparita | fuori, **e contata** |
+
+### La correzione, e il pezzo che vale quanto la correzione
+
+1. **La mappa nasce dall'unione di due elenchi di chiavi**: quelle delle
+   polizze del lotto e quelle che **le rate nominano**. Tutte e due si
+   risolvono su `quote_polizze` vera, quindi valgono anche per le polizze che
+   il lotto non porta. Per un file tutto nuovo non cambia niente: le due metà
+   coincidono. Cambia tutto per un file che si ricarica — che è il caso per cui
+   quella funzione è nata.
+2. **Quello che resta fuori si conta.** `titoli_proposti` e
+   `titoli_senza_polizza` finiscono nel verbale e tornano alla pagina, che li
+   scrive in rosso: *«12 rate sono rimaste fuori … proposte 100, scritte 88»*.
+   Senza questa metà, la prossima volta che una giunzione scarta qualcosa
+   nessuno lo saprà — e non sarà detto che sia per lo stesso motivo.
+
+Una polizza che la RLS non fa vedere a chi importa non entra nella mappa: la
+sua rata finisce **fra le contate**, non fra le sparite.
+
+### La scala, misurata prima di consigliare di premere il bottone
+
+`statement_timeout` del ruolo `authenticated` è **8 secondi**, e la funzione è
+una chiamata sola. Il carico vero — 2.358 polizze, 3.149 rate di cui 1.600 su
+polizze già in archivio, con le politiche attive — gira in **2.491 ms**. Tre
+volte di margine. Il 21/09 la stessa importazione era morta dopo 218 secondi
+perché scriveva **una richiesta di rete per riga**: è un'altra cosa, e va detto
+perché il ricordo di quei 218 secondi fa credere che il problema sia la mole.
+
+### Le controprove
+
+- Tolto dalla mappa l'elenco delle chiavi che le rate nominano → rossa la prova
+  «le rate di una polizza già in archivio trovano la loro polizza».
+- Tolto dall'esito l'avviso delle rate rimaste fuori → rosse **due** prove, una
+  sul sorgente e una che fa girare la schermata.
+
+### Cosa resta aperto
+
+- **Le rate perse il 21/09 si recuperano solo ricaricando il file della
+  compagnia**, che adesso le aggancia davvero. Finché non lo si fa, l'anomalia
+  «1.700 polizze senza rate» resta rossa, ed è giusto che lo sia.
+- **La prova sul sorgente legge l'ULTIMA migrazione** che definisce la
+  funzione, non la prima: leggere la prima vorrebbe dire sorvegliare il mondo
+  di ieri. Se un giorno la funzione si sposta in un terzo file, la prova lo
+  segue da sé.

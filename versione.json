@@ -1,8 +1,19 @@
 {
-  "versione": "0.22.0",
-  "nome": "La contabilità a partita doppia: le fondamenta",
-  "data": "2026-09-21",
+  "versione": "0.22.1",
+  "nome": "Le rate che sparivano ricaricando il file",
+  "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.22.1",
+      "data": "2026-09-22",
+      "nome": "Le rate che sparivano ricaricando il file",
+      "voci": [
+        "Ricaricare il file della compagnia per recuperare le rate mancanti non recuperava niente, e diceva di averlo fatto. Una rata la cui polizza è GIÀ in portafoglio veniva buttata via al momento della scrittura, senza un errore e senza una riga che lo dicesse: l'importazione dichiarava «completato» come sempre. Misurato sul database vero: tre rate proposte su tre polizze in archivio, zero scritte.",
+        "Adesso le rate si agganciano anche alle polizze che ci sono già. È la differenza fra un'importazione che ripara il portafoglio e una che sembra ripararlo — e riguarda le 1.700 polizze rimaste senza rate dopo l'importazione interrotta del 21 settembre.",
+        "E quello che resta comunque fuori si CONTA: se una rata non trova la sua polizza da nessuna parte, l'esito lo scrive in rosso, con quante rate erano state proposte e quante sono entrate. Una riga scartata in silenzio è il modo in cui un portafoglio comincia a non tornare senza che nessuno sappia dire da dove viene.",
+        "Misurato anche il tempo, perché un'importazione che si ferma a metà è come è nato tutto questo: 2.358 polizze e 3.149 rate scritte in 2,5 secondi, dentro una transazione sola, col limite del database a 8."
+      ]
+    },
     {
       "v": "0.22.0",
       "data": "2026-09-21",

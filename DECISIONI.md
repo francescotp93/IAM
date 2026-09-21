@@ -153,6 +153,31 @@ solo con consenso marketing e un recapito, traccia nel diario e nel registro.
 
 ---
 
+## 21/09/2026 — Il grafico dei volumi è un grafico (0.20.0)
+
+**Perimetro:** «per la dashboard volevo un grafico, non un indicatore».
+
+🟡 **Nessuna modifica al database.** Il grafico legge la funzione che c'era già.
+
+🟡 **Il grafico sta SOPRA i tre riquadri di indicatori.** La prima cosa che si
+vede aprendo IAM è l'andamento. I tre riquadri restano, sotto: rispondono a
+domande che il grafico non fa.
+*Come tornare indietro:* si riscambiano i due blocchi in `#panel-dashboard`.
+
+🟡 **Barre appaiate → due curve ad area.** Ventiquattro barre in dodici slot su
+un telefono sono trentadue pixel per mese: illeggibili. Con due curve la
+risposta si legge senza numeri — dove il grigio spunta sopra il verde, quel
+mese è andato peggio.
+*Come tornare indietro:* `git revert` del commit 0.20.0.
+
+🟡 **Corretta una regola del motore.** `fuori_confronto` si accendeva solo dove
+il database aveva mandato una riga: un mese vuoto in tutti e due gli anni non
+risultava «non ancora arrivato». Adesso lo decide la data, come già faceva il
+mese parziale. Cambia i dati che escono da `Produzione.confronto`, quindi lo
+usa anche la schermata Produzione.
+
+---
+
 ## Fuori perimetro — annotato e non fatto
 
 - **`flusso-ssf.js:805 aggiungiMesi` duplica `PianoRate.sommaMesi`**: due copie

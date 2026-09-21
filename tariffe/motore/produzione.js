@@ -175,7 +175,18 @@
        mese andato a zero, che è un'altra notizia. Il taglio lo decide la
        data, non la presenza di righe. */
     var meseAlIso = meseDi(alIso);
-    if (meseAlIso) mesi[meseAlIso - 1].parziale = true;
+    if (meseAlIso) {
+      mesi[meseAlIso - 1].parziale = true;
+      /* E PER LA STESSA IDENTICA RAGIONE, che qui non era stata applicata: un
+         mese OLTRE quello in corso non è arrivato, anche se né quest'anno né
+         l'anno scorso ci hanno prodotto niente. Prendere il segno solo dalle
+         righe vuol dire che novembre, se l'anno scorso è stato vuoto, risulta
+         un mese come gli altri: la curva dell'anno in corso ci passa dentro a
+         zero, e si legge come un crollo verticale invece che come un mese che
+         non c'è ancora. Trovato il 21/09/2026 scrivendo la prova del grafico,
+         una riga sotto il commento che dice la stessa cosa del mese parziale. */
+      for (var k = meseAlIso; k < 12; k++) mesi[k].fuori_confronto = true;
+    }
 
     var massimo = 0;
     mesi.forEach(function (c) {

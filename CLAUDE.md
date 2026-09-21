@@ -5024,3 +5024,104 @@ rimando a una schermata che sta altrove è il doppione che si voleva togliere.
 > conseguenza diretta di dove il brief chiede di metterlo, e si ribalta
 > abilitando Marketing a chi serve — oppure riportando il riquadro indietro,
 > che è una riga di HTML e una chiamata.
+
+---
+
+## 52. «Volevo un grafico, non un indicatore» (21/09/2026)
+
+> «Per la dashboard ti avevo detto che volevo un grafico no un indicatore»
+> — Francesco.
+
+Aveva ragione due volte, e la prima è quella che conta più di tutto il resto.
+
+### La causa prima: online c'era la 0.14.0
+
+Misurato su `quoto.withusassicurazioni.it` prima di toccare qualsiasi cosa:
+`app-versione 0.14.0`. Il grafico nasce con la **0.15.0** (§45) e viveva in una
+PR **ancora aperta** insieme ad altri quattro rilasci. Sulla Scrivania, in
+produzione, c'era soltanto `#kpi-riga` — i tre riquadri di numeri — perché è
+l'unica cosa che `main` aveva.
+
+> **Non stava guardando un grafico fatto male: stava guardando il posto dove il
+> grafico non era ancora arrivato.** È §2 in una forma nuova — il lavoro non
+> sparisce nei rami, ma finché la PR non è fusa non è vivo. E chi lavora non
+> vede una PR: vede una schermata.
+
+### La seconda: anche pubblicato, era una fila di indicatori
+
+`volHTML` apriva con `vol-testa` → tre riquadri di numeri grandi (2026 a oggi,
+2025 stesso periodo, Differenza) e metteva sotto un `vol-graf` alto 190 pixel
+con **ventiquattro barre larghe al massimo sedici pixel**. Su un telefono sono
+trentadue pixel per mese, cioè due barre da otto: illeggibili. La scheda si
+chiamava «grafico» ed era un cruscotto di cifre con una decorazione sotto.
+
+| pezzo | dove |
+|---|---|
+| il grafico | `volHTML`, `volDettaglio`, `volK`, `volMese` in `iam/index.html` |
+| lo stile | blocco `.vol-*` nel `<style>` di `iam/index.html` |
+| la regola che marca i mesi non arrivati | `confronto` in `tariffe/motore/produzione.js` |
+| prove | `produzione.test.mjs` (13), `volumi-produzione.test.mjs` (13) |
+
+**Adesso**: due serie ad area in SVG disegnato a mano — l'anno scorso in
+grigio, quest'anno in verde sopra. Dodici punti invece di ventiquattro barre.
+La risposta si legge senza numeri: **dove il grigio spunta sopra il verde,
+quel mese è andato peggio dell'anno scorso.** Il riepilogo è **una riga**, non
+tre riquadri, e il grafico sta **sopra** la riga di indicatori.
+
+### Due trappole dell'SVG che si pagano se si dimenticano
+
+`preserveAspectRatio="none"` fa stirare il disegno nel contenitore, ed è quello
+che serve per un grafico che deve riempire una scheda di larghezza qualunque.
+Ma stira **tutto**: dentro l'SVG non ci va nessun testo (le etichette stanno in
+HTML, fuori) e le linee portano `vector-effect="non-scaling-stroke"`, altrimenti
+si stira anche il loro spessore e la curva diventa più grassa in orizzontale che
+in verticale.
+
+### Tre difetti trovati facendo girare il motore sui numeri VERI
+
+Non dalla rilettura: stampando le altezze che la Scrivania avrebbe disegnato
+sul portafoglio dell'agenzia (2025 contro 2026, 348.193 € contro 128.875 €).
+
+1. **Uno zero e 300 € disegnavano la stessa barra.** L'altezza aveva un minimo
+   fisso del 2%: gennaio 2025 (nessuna polizza) e febbraio 2025 (300 €)
+   finivano allo stesso pixel. Adesso uno zero sta sulla linea di base.
+2. **I mesi non ancora arrivati avevano una barra.** Ottobre, novembre e
+   dicembre 2026 disegnavano una barra verde al 2% accanto alla barra grigia
+   alta di ottobre 2025 (61.515 €): si legge come un **crollo verticale**, e
+   invece è un mese che non c'è ancora. Adesso la curva dell'anno in corso si
+   **ferma**, e quella dell'anno scorso prosegue tratteggiata.
+3. **E il marcatore non arrivava sempre.** Il motore accendeva
+   `fuori_confronto` solo dove il database aveva mandato una riga: un mese in
+   cui *nessuno dei due anni* aveva prodotto niente non risultava «non ancora
+   arrivato», e la curva ci passava dentro a zero. **È lo stesso ragionamento
+   già scritto una riga più sotto per il mese parziale** — «prendere il segno
+   solo dalle righe vuol dire che un mese senza una polizza non risulta
+   parziale» — e non era stato applicato qui. Il taglio lo decide la data.
+
+### Il numero esatto si legge col dito
+
+Il tooltip nativo (`title`) funziona col mouse e **non esiste sul telefono**,
+che è dove IAM si guarda metà delle volte. Ogni mese è un bottone vero e il
+numero compare sotto, in parole — ed è lì che i **tre zeri restano tre**:
+«non è ancora arrivato» per il mese che non c'è, «premio non noto · 3 polizze»
+per il mese le cui polizze un premio non ce l'hanno, e zero per il mese in cui
+non è successo niente. Scrivere «0,00 €» sul secondo sarebbe il numero
+credibile e falso (§8.1).
+
+### Una trappola nuova: l'accento scritto come carattere combinante
+
+Le stringhe nuove erano state scritte con `e` + U+0300 (accento combinante)
+invece di `è` (U+00E8). **Si vede identico** e non combacia con niente: la
+prova cercava «non è ancora arrivato» e non lo trovava, su un testo che sullo
+schermo diceva esattamente quello. Sette occorrenze nel blocco, corrette
+normalizzando in NFC.
+
+> Un carattere che si vede giusto e non è quello che sembra costa mezz'ora, e
+> nessun rosso dice che cos'è: dice solo che la stringa non c'è.
+
+### Quello che NON si è tolto
+
+I tre riquadri di indicatori restano, sotto il grafico: rispondono a domande
+che il grafico non fa (quanto portafoglio ho in gestione, quanto converto), e
+il 4/8/2026 erano stati tolti per un motivo diverso — ripetevano i numeri di
+«Da fare oggi» (§42, punto 10). Qui non si ripete niente: si cambia l'ordine.

@@ -1,8 +1,22 @@
 {
-  "versione": "0.19.0",
-  "nome": "Il contatore dei clienti dice quanti ce ne sono davvero",
+  "versione": "0.20.0",
+  "nome": "Il grafico dei volumi è un grafico",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.20.0",
+      "data": "2026-09-21",
+      "nome": "Il grafico dei volumi è un grafico",
+      "voci": [
+        "Sulla Scrivania «Volumi di portafoglio» adesso è un GRAFICO vero: due curve, l'anno in corso in verde sopra l'anno scorso in grigio. Dove il grigio spunta sopra il verde, quel mese è andato peggio dell'anno scorso — si legge senza guardare un numero.",
+        "Il grafico sta SOPRA i tre riquadri di numeri: la prima cosa che si vede aprendo IAM è l'andamento, non tre cifre. Prima era il contrario, e la scheda si leggeva come l'ennesima fila di indicatori con un grafichino in fondo.",
+        "In cima al grafico c'è UNA riga di riepilogo invece di tre riquadri: quanto hai prodotto quest'anno a oggi, quante polizze, e di quanto sei sopra o sotto l'anno scorso nello stesso periodo.",
+        "Si tocca un mese e compaiono i numeri esatti di quel mese nei due anni: funziona col dito, non solo col mouse.",
+        "I mesi che non sono ancora arrivati non hanno più una linea verde a zero. Ottobre non è un mese andato male: è un mese che non c'è ancora, e adesso lo dice invece di disegnare un crollo verticale.",
+        "Un mese a zero e un mese da 300 euro non si disegnano più alla stessa altezza: c'era un minimo fisso che li appiattiva insieme.",
+        "Un mese le cui polizze non hanno un premio noto dice «premio non noto» e quante polizze sono, non «0,00 €»: quelle polizze ci sono, è l'importo che non si sa."
+      ]
+    },
     {
       "v": "0.19.0",
       "data": "2026-09-21",

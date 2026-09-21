@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.19.0">
-<meta name="app-versione-nome" content="Il contatore dei clienti dice quanti ce ne sono davvero">
+<meta name="app-versione" content="0.20.0">
+<meta name="app-versione-nome" content="Il grafico dei volumi è un grafico">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -108,43 +108,78 @@
 @media(max-width:900px){.kpi-riga{grid-template-columns:1fr}}
 
 /* ══ VOLUMI DI PORTAFOGLIO — il grafico anno su anno (21/09/2026) ═══════════
-   Disegnato a mano, come la Produzione di «KPI e gare»: IAM non carica
-   ApexCharts e non comincia adesso. Due tinte sole, con l'anno in corso sul
-   verde del marchio e quello prima in grigio: il colore dice quale dei due
-   e' «oggi», e la legenda lo ripete a parole per chi i colori non li
-   distingue. Prefissate `vol-`: nel foglio di stile un nome di classe e'
-   globale anche dentro un discendente (§26), e le classi in comune coi due
-   documenti sono a scarto zero (§10). */
-.vol-testa{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between;margin-bottom:12px}
-.vol-tot{display:flex;flex-wrap:wrap;gap:18px}
-.vol-t{min-width:120px}
-.vol-t .vol-k{font-size:11px;color:var(--w1-testo3);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
-.vol-t .vol-v{font-size:20px;font-weight:800;line-height:1.15;margin-top:2px}
-.vol-t .vol-s{font-size:11px;color:var(--w1-testo2);margin-top:3px}
-.vol-delta{font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;display:inline-block}
+   Disegnato a mano: IAM non carica ApexCharts e non comincia adesso (§10).
+
+   RIFATTO IL 21/09/2026, su segnalazione di Francesco: «volevo un grafico, non
+   un indicatore». La prima stesura apriva con tre riquadri di numeri grandi e
+   metteva il grafico sotto, alto 190 pixel, con ventiquattro barre larghe al
+   massimo sedici pixel. Su un telefono sono trentadue pixel per mese, cioe'
+   due barre da otto: illeggibili. E soprattutto si leggeva come l'ennesima
+   fila di indicatori con un grafichino in fondo, che e' esattamente quello
+   che era.
+
+   Adesso: DUE SERIE AD AREA. L'anno scorso in grigio, quest'anno in verde
+   sopra. La risposta si legge senza numeri — DOVE IL GRIGIO SPUNTA SOPRA IL
+   VERDE, quel mese e' andato peggio dell'anno scorso. Dodici punti invece di
+   ventiquattro barre: a 390 pixel ci stanno.
+
+   Perche' SVG e non dei div: un'area, una griglia e una linea che si ferma a
+   meta' anno con dei div non si fanno. `preserveAspectRatio="none"` stira il
+   disegno nel contenitore, e questo ha due conseguenze che si pagano se si
+   dimenticano — DENTRO l'SVG non ci va nessun testo, perche' si stirerebbe
+   con lui (le etichette stanno in HTML, fuori), e le linee portano
+   `vector-effect` perche' altrimenti si stira anche il loro spessore.
+
+   Prefissate `vol-`: nel foglio di stile un nome di classe e' globale anche
+   dentro un discendente (§26), e le classi in comune coi due documenti sono a
+   scarto zero (§10). */
+.vol-sintesi{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:14px}
+.vol-k{font-size:11px;color:var(--w1-testo3);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
+.vol-big{font-size:27px;font-weight:800;line-height:1.05;letter-spacing:-.015em}
+.vol-pol{font-size:12.5px;color:var(--w1-testo2);font-weight:600}
+.vol-vs{font-size:12.5px;color:var(--w1-testo2);flex-basis:100%}
+.vol-delta{font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:999px;display:inline-block}
 .vol-delta.vol-su{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
 .vol-delta.vol-giu{background:var(--w1-rosso-bg);color:var(--w1-rosso)}
 .vol-delta.vol-pari{background:var(--w1-sfondo);color:var(--w1-testo2)}
-.vol-legenda{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--w1-testo2);margin-bottom:10px}
+.vol-graf{position:relative;height:232px;margin-top:2px}
+.vol-svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.vol-a-prec{fill:#e2e8f0}
+.vol-a-ora{fill:var(--w1-verde-tenue)}
+.vol-l-prec{fill:none;stroke:#94a3b8;stroke-width:2}
+.vol-l-fuori{fill:none;stroke:#cbd5e1;stroke-width:2;stroke-dasharray:5 4}
+.vol-l-ora{fill:none;stroke:var(--w1-verde);stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.vol-banda{fill:rgba(15,23,42,.07)}
+.vol-griglia{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+.vol-g{height:0;border-top:1px dashed var(--w1-bordo);position:relative}
+.vol-gv{position:absolute;right:0;top:-8px;font-size:10px;font-weight:700;color:var(--w1-testo3);background:var(--w1-card);padding:0 4px;border-radius:3px}
+.vol-tocchi{position:absolute;inset:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr))}
+.vol-tocco{border:0;background:transparent;padding:0;margin:0;cursor:pointer;font:inherit;color:inherit}
+.vol-tocco:hover{background:rgba(15,23,42,.04)}
+.vol-mesi{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px;margin-top:7px}
+.vol-m{font-size:10px;color:var(--w1-testo3);text-align:center;text-transform:uppercase;letter-spacing:.02em}
+.vol-m.vol-parz{color:var(--w1-ambra);font-weight:800}
+.vol-m.vol-nonarr{color:var(--w1-bordo2,#e9edf1)}
+.vol-m.vol-msel{color:var(--w1-testo);font-weight:800}
+.vol-dett{margin-top:12px;font-size:12.5px;line-height:1.6;padding:10px 12px;border-radius:var(--w1-raggio);background:var(--w1-sfondo);border:1px solid var(--w1-bordo)}
+.vol-dett.vol-invito{color:var(--w1-testo3);background:transparent;border-style:dashed}
+.vol-dm{font-weight:800;text-transform:capitalize}
+.vol-dr{display:block}
+.vol-legenda{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--w1-testo2);margin-top:12px}
 .vol-leg{display:inline-flex;align-items:center;gap:6px}
 .vol-bollo{width:11px;height:11px;border-radius:2px;display:inline-block}
 .vol-bollo.vol-ora{background:var(--w1-verde)}
 .vol-bollo.vol-prima{background:#94a3b8}
 .vol-bollo.vol-fuori{background:#cbd5e1}
-.vol-graf{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;align-items:end;
-  height:190px;padding:0 2px;border-bottom:1px solid var(--w1-bordo)}
-.vol-col{display:flex;flex-direction:column;justify-content:flex-end;height:100%;min-width:0;gap:3px}
-.vol-barre{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:100%}
-.vol-b{width:46%;max-width:16px;border-radius:2px 2px 0 0;min-height:2px;transition:height .2s}
-.vol-b.vol-ora{background:var(--w1-verde)}
-.vol-b.vol-prima{background:#94a3b8}
-.vol-b.vol-prima.vol-fuori{background:#cbd5e1}
-.vol-mesi{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;margin-top:6px}
-.vol-m{font-size:10px;color:var(--w1-testo3);text-align:center;text-transform:uppercase;letter-spacing:.02em}
-.vol-m.vol-parz{color:var(--w1-ambra);font-weight:800}
-.vol-note{margin-top:12px;display:flex;flex-direction:column;gap:5px}
+.vol-note{margin-top:10px;display:flex;flex-direction:column;gap:5px}
 .vol-n{font-size:11.5px;color:var(--w1-testo2);line-height:1.5;padding-left:16px;position:relative}
-.vol-n::before{content:'·';position:absolute;left:6px;font-weight:800;color:var(--w1-testo3)}
+.vol-n::before{content:'\00b7';position:absolute;left:6px;font-weight:800;color:var(--w1-testo3)}
+@media(max-width:640px){
+  .vol-graf{height:184px}
+  .vol-big{font-size:23px}
+  .vol-m{font-size:9px}
+  .vol-mesi{gap:0}
+}
 .vol-ko{font-size:12px;color:var(--w1-ambra);background:var(--w1-ambra-bg);border-radius:var(--w1-raggio);padding:9px 11px;line-height:1.5}
 @media(max-width:700px){
   .vol-graf{height:140px}
@@ -2093,19 +2128,6 @@ input[type=file]{display:none;}
     </div>
   </section>
 
-  <!-- ── COME STA ANDANDO (Blocco 3 · punto 10, 21/09/2026) ──────────────────
-       Sta SOPRA «Da fare oggi» e non ripete i suoi numeri, che è la ragione
-       per cui il 4/8/2026 una striscia di indicatori era stata tolta da qui
-       (§13.3): quella ripeteva gli stessi conteggi a cento pixel di distanza.
-       Questi rispondono a un'altra domanda — «Da fare oggi» elenca il LAVORO
-       ARRETRATO, questi dicono COME STA ANDANDO. Un rinnovo da lavorare è un
-       compito di qualcuno; il portafoglio in gestione non è un compito.
-
-       Ogni riquadro è una LETTURA A SÉ (§35): quello che si può leggere si
-       mostra, e quello che non si può leggere lo dice col suo nome invece di
-       mostrare uno zero rassicurante (§12, §18). -->
-  <section class="kpi-riga" id="kpi-riga"></section>
-
   <!-- ── VOLUMI DI PORTAFOGLIO (21/09/2026) ──────────────────────────────────
        Il confronto anno su anno, letto dal portafoglio vero e aggregato dal
        DATABASE (`iam_produzione_confronto`): qui non arriva una polizza alla
@@ -2128,6 +2150,26 @@ input[type=file]{display:none;}
       <div class="prd-vuoto">Sto leggendo la produzione…</div>
     </div>
   </div>
+
+  <!-- ── COME STA ANDANDO (Blocco 3 · punto 10, 21/09/2026) ──────────────────
+       Sta SOPRA «Da fare oggi» e non ripete i suoi numeri, che è la ragione
+       per cui il 4/8/2026 una striscia di indicatori era stata tolta da qui
+       (§13.3): quella ripeteva gli stessi conteggi a cento pixel di distanza.
+       Questi rispondono a un'altra domanda — «Da fare oggi» elenca il LAVORO
+       ARRETRATO, questi dicono COME STA ANDANDO. Un rinnovo da lavorare è un
+       compito di qualcuno; il portafoglio in gestione non è un compito.
+
+       Ogni riquadro è una LETTURA A SÉ (§35): quello che si può leggere si
+       mostra, e quello che non si può leggere lo dice col suo nome invece di
+       mostrare uno zero rassicurante (§12, §18).
+
+       STA SOTTO IL GRAFICO dal 21/09/2026: «volevo un grafico, non un
+       indicatore». Tre numeri in cima alla Scrivania sono la prima cosa che
+       si vede, e facevano sembrare la pagina un cruscotto di cifre; il
+       grafico dice la stessa cosa e in più dice QUANDO. I tre riquadri
+       restano perché rispondono a domande che il grafico non fa (quanto
+       portafoglio ho in gestione, quanto converto), ma vengono dopo. -->
+  <section class="kpi-riga" id="kpi-riga"></section>
 
   <section class="dashboard-grid">
     <div class="stack">
@@ -9958,6 +10000,13 @@ async function caricaKpiScrivania(forza) {
    dei dati finti scriverebbe in una mentre il codice legge l'altra, restando
    verde senza aver misurato niente (§17, §32). */
 var VOL_ULTIMO = 0;
+/* Il confronto che il grafico sta disegnando, e il mese che qualcuno ha
+   toccato (null = nessuno). `var` e non `let`: con `let` la variabile del
+   blocco e `window.VOL_DATI` sono due cose diverse, e una prova che inietta
+   un confronto finto scriverebbe in una mentre il codice legge l'altra,
+   restando verde senza aver misurato niente (§17, §32). */
+var VOL_DATI = null;
+var VOL_MESE = null;
 var PRD_RIGHE  = null;   /* null = mai letto o lettura fallita; [] = niente */
 var PRD_PERSONE = [];
 var PRD_ULTIMO = 0;
@@ -9970,8 +10019,58 @@ function prdNum(n) { return (Number(n) || 0).toLocaleString('it-IT'); }
 
 function volDelta(v) {
   const cl = v.verso === 'su' ? 'vol-su' : v.verso === 'giu' ? 'vol-giu' : 'vol-pari';
-  const t = v.pct == null ? v.testo : v.testo;
-  return '<span class="vol-delta ' + cl + '">' + esc(t) + '</span>';
+  return '<span class="vol-delta ' + cl + '">' + esc(v.testo) + '</span>';
+}
+
+/* Gli importi dell'asse, corti: «95k» invece di «94.781,13 €». L'asse serve a
+   dare la misura, non il numero — il numero esatto si legge toccando un mese. */
+function volK(n) {
+  n = Math.round(Number(n) || 0);
+  if (n >= 1000000) return Math.round(n / 100000) / 10 + 'M';
+  if (n >= 1000)    return Math.round(n / 1000) + 'k';
+  return String(n);
+}
+
+/* IL DETTAGLIO DI UN MESE, e i TRE ZERI che non sono lo stesso zero.
+
+   Il tooltip nativo (`title`) funziona col mouse e NON esiste sul telefono,
+   dove IAM si guarda meta' delle volte: il valore esatto di un mese deve
+   essere raggiungibile con un dito. Si tocca la colonna e il numero compare
+   qui sotto, in parole.
+
+   E qui si tengono separati i tre zeri (`produzione.test.mjs`):
+     · il mese NON ANCORA ARRIVATO non ha un importo, ha una frase;
+     · il mese con delle polizze e nessun premio noto dice che il premio non
+       si sa, perche' zero sarebbe una bugia sul denaro (§8.1);
+     · il mese in cui non e' successo niente dice zero, ed e' vero. */
+function volDettaglio(c, i) {
+  if (i == null || !c.mesi[i]) {
+    return '<div class="vol-dett vol-invito">Tocca un mese del grafico per leggere i numeri esatti.</div>';
+  }
+  const m = c.mesi[i];
+  const quante = (d) => prdNum(d.polizze) + (d.polizze === 1 ? ' polizza' : ' polizze');
+  const riga = (anno, d, fuori) => {
+    if (fuori) return '<span class="vol-dr"><b>' + anno + '</b>: non è ancora arrivato.</span>';
+    if (!d.polizze) return '<span class="vol-dr"><b>' + anno + '</b>: nessuna polizza.</span>';
+    const senza = d.senza_premio
+      ? ' · <b>' + prdNum(d.senza_premio) + '</b> senza premio noto, fuori dall’importo'
+      : '';
+    /* Tutte le polizze del mese senza premio: l'importo non e' zero, e' non
+       noto. Scrivere «0,00 €» qui sarebbe il numero credibile e falso. */
+    const imp = (d.polizze && d.senza_premio === d.polizze)
+      ? 'premio non noto' : prdEuro(d.premio);
+    return '<span class="vol-dr"><b>' + anno + '</b>: ' + imp + ' · ' + quante(d) + senza + '</span>';
+  };
+  const conf = (!m.fuori_confronto && m.precedente.premio > 0)
+    ? ' ' + volDelta(Produzione.variazione(m.precedente.premio, m.corrente.premio))
+    : '';
+  return '<div class="vol-dett">'
+    + '<span class="vol-dm">' + esc(m.nome) + '</span>' + conf
+    + (m.parziale ? ' <span class="vol-pol">— contato fino a oggi in tutti e due gli anni</span>' : '')
+    + riga(c.anno, m.corrente, m.fuori_confronto)
+    + riga(c.anno_prec, m.precedente, false)
+    + (m.fuori_confronto ? '<span class="vol-dr vol-pol">Quel mese dell’anno scorso resta fuori dal confronto e dai totali.</span>' : '')
+    + '</div>';
 }
 
 function volHTML(c) {
@@ -9979,47 +10078,92 @@ function volHTML(c) {
   if (c.vuoto) return '<div class="prd-vuoto">Non c’è ancora produzione da confrontare. Le polizze entrano in portafoglio con l’importazione del flusso della compagnia o scrivendone una a mano.</div>';
 
   const t = c.totali, max = c.massimo || 1;
-  const alt = (v) => Math.max(2, Math.round((v / max) * 100));
+  const W = 720, H = 260, BASE = 254, ALTO = 246;
+  const x = (i) => Math.round(((i + 0.5) / 12) * W * 10) / 10;
+  /* UNO ZERO DISEGNA ZERO. La prima stesura aveva un minimo del 2%: un mese a
+     zero e un mese da 300 euro finivano alla stessa altezza, e a occhio erano
+     lo stesso fatto. Sono due fatti diversi (§8.1). */
+  const y = (v) => Math.round((BASE - (Math.max(0, Number(v) || 0) / max) * ALTO) * 10) / 10;
 
-  const colonne = c.mesi.map(m => {
-    const ora = m.corrente.premio, pri = m.precedente.premio;
-    const tit = m.nome + ': ' + prdEuro(ora) + ' nel ' + c.anno
-      + ' · ' + prdEuro(pri) + ' nel ' + c.anno_prec
-      + (m.fuori_confronto ? ' (fuori confronto)' : '')
-      + (m.parziale ? ' — mese in corso, contato fino a oggi' : '');
-    return '<div class="vol-col" title="' + esc(tit) + '">'
-      + '<div class="vol-barre">'
-      +   '<div class="vol-b vol-prima' + (m.fuori_confronto ? ' vol-fuori' : '') + '" style="height:' + alt(pri) + '%"></div>'
-      +   '<div class="vol-b vol-ora" style="height:' + alt(ora) + '%"></div>'
-      + '</div></div>';
-  }).join('');
+  /* L'ULTIMO MESE ARRIVATO quest'anno. Oltre, la serie dell'anno in corso si
+     FERMA: non scende a zero. Ottobre 2026 non è un mese andato male, è un
+     mese che non c'è ancora — e una linea che precipita accanto alla barra
+     alta di ottobre 2025 si legge come un crollo verticale. */
+  let ultimo = 11;
+  for (let k = 0; k < 12; k++) { if (c.mesi[k].fuori_confronto) { ultimo = k - 1; break; } }
 
-  const etichette = c.mesi.map(m =>
-    '<div class="vol-m' + (m.parziale ? ' vol-parz' : '') + '">' + esc(m.breve) + '</div>').join('');
+  const linea = (p) => p.map((q, k) => (k ? 'L' : 'M') + q[0] + ',' + q[1]).join(' ');
+  const area = (p) => !p.length ? '' : 'M' + p[0][0] + ',' + BASE
+    + p.map(q => ' L' + q[0] + ',' + q[1]).join('')
+    + ' L' + p[p.length - 1][0] + ',' + BASE + ' Z';
+
+  const prec = c.mesi.map((m, i) => [x(i), y(m.precedente.premio)]);
+  const dentro = prec.slice(0, ultimo + 1);
+  /* Parte dal punto di taglio, così il tratteggio si attacca alla linea piena
+     invece di cominciare staccato. */
+  const fuoriP = ultimo >= 0 ? prec.slice(ultimo) : prec;
+  const ora = c.mesi.slice(0, ultimo + 1).map((m, i) => [x(i), y(m.corrente.premio)]);
+
+  const banda = (VOL_MESE != null && c.mesi[VOL_MESE])
+    ? '<rect class="vol-banda" x="' + Math.round((VOL_MESE / 12) * W) + '" y="0" width="'
+      + Math.round(W / 12) + '" height="' + H + '"/>' : '';
+
+  const svg = '<svg class="vol-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true" focusable="false">'
+    + banda
+    + '<path class="vol-a-prec" d="' + area(dentro) + '"/>'
+    + '<path class="vol-a-ora" d="' + area(ora) + '"/>'
+    + (fuoriP.length > 1 ? '<path class="vol-l-fuori" d="' + linea(fuoriP) + '" vector-effect="non-scaling-stroke"/>' : '')
+    + '<path class="vol-l-prec" d="' + linea(dentro) + '" vector-effect="non-scaling-stroke"/>'
+    + '<path class="vol-l-ora" d="' + linea(ora) + '" vector-effect="non-scaling-stroke"/>'
+    + '</svg>';
+
+  const griglia = '<div class="vol-griglia">'
+    + [max, max / 2, 0].map(v => '<div class="vol-g"><span class="vol-gv">' + volK(v) + '</span></div>').join('')
+    + '</div>';
+
+  /* Le zone da toccare stanno SOPRA il disegno, una per mese, e sono dei
+     bottoni veri: si arrivano anche col tasto di tabulazione. */
+  const tocchi = '<div class="vol-tocchi">' + c.mesi.map((m, i) =>
+    '<button type="button" class="vol-tocco" onclick="volMese(' + i + ')" aria-label="'
+    + esc(m.nome) + '"></button>').join('') + '</div>';
+
+  const etichette = c.mesi.map((m, i) => '<div class="vol-m'
+    + (m.parziale ? ' vol-parz' : '') + (m.fuori_confronto ? ' vol-nonarr' : '')
+    + (VOL_MESE === i ? ' vol-msel' : '') + '">' + esc(m.breve) + '</div>').join('');
 
   return ''
-    + '<div class="vol-testa"><div class="vol-tot">'
-    +   '<div class="vol-t"><div class="vol-k">' + c.anno + ' a oggi</div>'
-    +     '<div class="vol-v">' + prdEuro(t.corrente.premio) + '</div>'
-    +     '<div class="vol-s">' + prdNum(t.corrente.polizze) + ' polizze</div></div>'
-    +   '<div class="vol-t"><div class="vol-k">' + c.anno_prec + ', stesso periodo</div>'
-    +     '<div class="vol-v">' + prdEuro(t.precedente.premio) + '</div>'
-    +     '<div class="vol-s">' + prdNum(t.precedente.polizze) + ' polizze</div></div>'
-    +   '<div class="vol-t"><div class="vol-k">Differenza</div>'
-    +     '<div class="vol-v">' + volDelta(c.variazione_premio) + '</div>'
-    +     '<div class="vol-s">' + (c.variazione_premio.delta >= 0 ? '+' : '−')
-    +       prdEuro(Math.abs(c.variazione_premio.delta)) + '</div></div>'
-    + '</div></div>'
+    /* IL RIEPILOGO È UNA RIGA, NON TRE RIQUADRI. Tre riquadri di numeri in
+       cima a una scheda che si chiama «grafico» sono tre indicatori, e il
+       grafico diventa la decorazione sotto. */
+    + '<div class="vol-sintesi">'
+    +   '<span class="vol-k">' + c.anno + ' a oggi</span>'
+    +   '<span class="vol-big">' + prdEuro(t.corrente.premio) + '</span>'
+    +   '<span class="vol-pol">' + prdNum(t.corrente.polizze) + ' polizze</span>'
+    +   volDelta(c.variazione_premio)
+    +   '<span class="vol-vs">contro <b>' + prdEuro(t.precedente.premio) + '</b> e '
+    +     prdNum(t.precedente.polizze) + ' polizze del ' + c.anno_prec + ', stesso periodo</span>'
+    + '</div>'
+    + '<div class="vol-graf">' + griglia + svg + tocchi + '</div>'
+    + '<div class="vol-mesi">' + etichette + '</div>'
+    + volDettaglio(c, VOL_MESE)
     + '<div class="vol-legenda">'
     +   '<span class="vol-leg"><i class="vol-bollo vol-ora"></i>' + c.anno + '</span>'
     +   '<span class="vol-leg"><i class="vol-bollo vol-prima"></i>' + c.anno_prec + '</span>'
     +   (c.fuori.polizze ? '<span class="vol-leg"><i class="vol-bollo vol-fuori"></i>'
         + c.anno_prec + ', mesi non ancora arrivati quest’anno</span>' : '')
     + '</div>'
-    + '<div class="vol-graf">' + colonne + '</div>'
-    + '<div class="vol-mesi">' + etichette + '</div>'
     + '<div class="vol-note">' + c.avvisi.map(a => '<div class="vol-n">' + esc(a) + '</div>').join('') + '</div>';
 }
+
+/* Il mese toccato. Si ridisegna tutto: la scheda è piccola, e tenere due
+   strade — una che disegna e una che aggiorna — vuol dire due disegni che un
+   giorno diranno due cose diverse. Ritoccare lo stesso mese lo richiude. */
+function volMese(i) {
+  VOL_MESE = (VOL_MESE === i) ? null : i;
+  const box = document.getElementById('vol-corpo');
+  if (box && VOL_DATI) box.innerHTML = volHTML(VOL_DATI);
+}
+
 
 async function volCarica(forza) {
   const box = document.getElementById('vol-corpo');
@@ -10035,9 +10179,20 @@ async function volCarica(forza) {
   try {
     const { data, error } = await db.rpc('iam_produzione_confronto', { p_al: oggi });
     if (error) throw error;
-    box.innerHTML = volHTML(Produzione.confronto(data || [], oggi));
+    /* Il confronto si tiene: il grafico lo ridisegna a ogni tocco su un mese,
+       e rileggere il database per aprire un dettaglio sarebbe una richiesta di
+       rete per un numero che si ha gia' in mano. */
+    VOL_DATI = Produzione.confronto(data || [], oggi);
+    VOL_MESE = null;
+    box.innerHTML = volHTML(VOL_DATI);
   } catch (e) {
     console.warn('Volumi di portafoglio:', e.message || e);
+    /* Una lettura caduta non lascia in giro i dati di prima: il grafico
+       sparisce e al suo posto c'e' la frase. Tenerli vorrebbe dire che un
+       tocco su un mese fa ricomparire un grafico che il database non ha
+       confermato (§12, §18). */
+    VOL_DATI = null;
+    VOL_MESE = null;
     box.innerHTML = volHTML(null);
   }
 }

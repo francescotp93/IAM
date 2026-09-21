@@ -266,6 +266,15 @@ prova('TRE ZERI DIVERSI: niente, non ancora arrivato, premio non noto', () => {
         che permette di non disegnargli la barra dell'anno in corso. */
   const ott = m(10);
   deve(ott.fuori_confronto === true, 'ottobre non è marcato «fuori confronto»');
+  /* E lo porta ANCHE SE NESSUNO DEI DUE ANNI ci ha prodotto niente: il segno
+     lo decide la data, non la presenza di una riga. Novembre e dicembre qui
+     non hanno nessuna riga, e non sono arrivati lo stesso. È lo stesso
+     ragionamento già scritto per il mese parziale — e fino al 21/09/2026 era
+     scritto solo per quello: senza, la curva dell'anno in corso passa dentro
+     a un mese che non c'è ancora e si legge come un crollo. */
+  deve(m(11).fuori_confronto === true && m(12).fuori_confronto === true,
+    'un mese oltre quello in corso e senza righe non risulta «non ancora arrivato»');
+  deve(m(3).fuori_confronto === false, 'un mese già passato risulta non ancora arrivato');
   deve(ott.corrente.premio === 0 && ott.precedente.premio === 9000,
     'ottobre non ha l’anno scorso pieno e l’anno in corso vuoto: ' + JSON.stringify(ott));
   /* E non entra nei totali: è il motivo per cui esiste il marcatore. */

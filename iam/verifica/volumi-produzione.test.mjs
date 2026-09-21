@@ -49,13 +49,20 @@ function conSchermata(risposte = {}) {
     }
   };
   const s = stanza(html, [
-    'volHTML', 'volDelta', 'volCarica', 'prdEuro', 'prdNum',
+    /* Dal 21/09/2026 il grafico e' diviso in piu' pezzi: la scala corta
+       dell'asse, il dettaglio del mese toccato e il tocco stesso. Se non si
+       ritagliano, `volHTML` chiama una funzione che nella stanza non esiste,
+       l'eccezione finisce nel `catch` di `volCarica` e la schermata mostra
+       «non si e' potuto leggere» — cioe' una prova rossa che accusa il codice
+       di un difetto del banco. */
+    'volHTML', 'volDelta', 'volK', 'volDettaglio', 'volMese', 'volCarica', 'prdEuro', 'prdNum',
     'prdCarica', 'prdRender', 'prdFiltri', 'prdRiempiFiltri', 'prdOpz',
     'prdTabella', 'prdProduttoriHTML', 'prdNonLetto', 'prdAzzera'
   ], {
     db,
     altro: {
-      VOL_ULTIMO: 0, PRD_RIGHE: null, PRD_PERSONE: [], PRD_ULTIMO: 0, PRD_ERRORE: '',
+      VOL_ULTIMO: 0, VOL_DATI: null, VOL_MESE: null,
+      PRD_RIGHE: null, PRD_PERSONE: [], PRD_ULTIMO: 0, PRD_ERRORE: '',
       wdsISO: () => '2026-09-21',
       kpiRiquadro: (t, v, s2) => '<div class="kpi-c"><b>' + t + '</b>' + v + '<i>' + (s2 || '') + '</i></div>',
       URL: { createObjectURL: () => 'blob:finto' },
@@ -152,6 +159,121 @@ await e.provaAsync('UNA LETTURA CHE CADE NON DIVENTA UN GRAFICO PIATTO', async (
   await v.ctx.volCarica(true);
   deve(/[Nn]on c’è ancora produzione/.test(corpo(v)), 'un portafoglio vuoto non si distingue da una lettura caduta');
   return 'caduta ≠ vuoto, e nessun grafico inventato';
+});
+
+/* ══ È UN GRAFICO, NON UN INDICATORE (21/09/2026) ═════════════════════════
+   Francesco: «per la dashboard ti avevo detto che volevo un grafico, non un
+   indicatore». La prima stesura apriva con tre riquadri di numeri grandi e
+   metteva sotto ventiquattro barre larghe al massimo sedici pixel. Queste
+   prove misurano la differenza, e sono scritte sulla forma VERA dei dati
+   dell'agenzia: 300 € a febbraio contro 95.000 a luglio, tre mesi dell'anno
+   in corso non ancora arrivati, e un mese le cui polizze un premio non ce
+   l'hanno. */
+const FORMA_VERA = [
+  /* Gennaio 2025 NON C'È: zero polizze, zero premio — e zero non è 300. */
+  { anno: 2025, mese: 2,  polizze:  1, senza_premio: 0, premio:   '300.00', parziale: false, fuori_confronto: false },
+  { anno: 2025, mese: 7,  polizze: 10, senza_premio: 0, premio: '95000.00', parziale: false, fuori_confronto: false },
+  { anno: 2025, mese: 11, polizze:  5, senza_premio: 0, premio:  '9000.00', parziale: false, fuori_confronto: true  },
+  { anno: 2026, mese: 7,  polizze: 12, senza_premio: 0, premio: '50000.00', parziale: false, fuori_confronto: false },
+  /* Settembre 2026: tre polizze, e di nessuna si sa il premio. */
+  { anno: 2026, mese: 9,  polizze:  3, senza_premio: 3, premio:     '0.00', parziale: true,  fuori_confronto: false }
+];
+/* I punti di un path SVG: «M12,34 L56,78» → [[12,34],[56,78]]. */
+const punti = (h, classe) => {
+  const m = h.match(new RegExp('class="' + classe + '" d="([^"]*)"'));
+  if (!m) return null;
+  return m[1].split(/[ML]/).filter(Boolean).map(p => p.trim().split(',').map(Number));
+};
+
+await e.provaAsync('IL GRAFICO È LA COSA GROSSA: un disegno, e UN numero, non tre riquadri', async () => {
+  const s = conSchermata({ 'rpc:iam_produzione_confronto': FORMA_VERA });
+  await s.ctx.volCarica(true);
+  const h = corpo(s);
+  /* Un grafico vero: un SVG con delle curve, non delle barre a percentuale. */
+  deve(/<svg class="vol-svg"/.test(h), 'non c’è nessun disegno: ' + h.slice(0, 200));
+  deve(/class="vol-l-ora" d="M/.test(h), 'manca la curva dell’anno in corso');
+  deve(/class="vol-a-prec" d="M/.test(h), 'manca l’area dell’anno scorso');
+  /* UN numero grande, non tre. Tre riquadri di cifre in cima a una scheda che
+     si chiama «grafico» sono tre indicatori, e il grafico diventa la
+     decorazione sotto — che è esattamente quello che era. */
+  deve((h.match(/class="vol-big"/g) || []).length === 1,
+    'i numeri grandi sono ' + (h.match(/class="vol-big"/g) || []).length + ', devono essere uno');
+  deve(!/vol-testa|vol-tot|class="vol-t"/.test(h), 'i tre riquadri di prima sono ancora lì');
+  /* E sulla Scrivania il grafico viene PRIMA della riga di indicatori: la
+     prima cosa che si vede aprendo IAM è l’andamento, non tre cifre. */
+  deve(html.indexOf('id="vol-card"') < html.indexOf('id="kpi-riga"'),
+    'la riga degli indicatori sta sopra il grafico');
+  return 'un SVG, un numero grande, e il grafico per primo';
+});
+
+await e.provaAsync('UNO ZERO DISEGNA ZERO: 300 € e «niente» non sono la stessa altezza', async () => {
+  /* Il difetto misurato sul portafoglio vero: l’altezza aveva un minimo del
+     2%, quindi gennaio 2025 (nessuna polizza) e febbraio 2025 (300 €)
+     finivano alla STESSA altezza. Sono due fatti diversi (§8.1). */
+  const s = conSchermata({ 'rpc:iam_produzione_confronto': FORMA_VERA });
+  await s.ctx.volCarica(true);
+  const p = punti(corpo(s), 'vol-l-prec');
+  deve(p && p.length >= 2, 'non si legge la curva dell’anno scorso');
+  const base = Math.max(...p.map(q => q[1]));
+  deve(p[0][1] === base, 'gennaio, che non ha nessuna polizza, non sta sulla linea di base: ' + p[0][1]);
+  deve(p[1][1] < base, 'febbraio, che ha 300 €, sta alla stessa altezza di un mese vuoto');
+  /* E luglio, che è il massimo, sta in cima. */
+  deve(p[6][1] === Math.min(...p.map(q => q[1])), 'il mese più grande non è il punto più alto');
+  return 'zero sulla base, 300 sopra, il massimo in cima';
+});
+
+await e.provaAsync('UN MESE NON ANCORA ARRIVATO NON HA UNA CURVA: la linea si FERMA', async () => {
+  /* Il difetto peggiore, e quello che si legge come una notizia falsa:
+     ottobre 2026 non è un mese andato male, è un mese che non c’è ancora. Una
+     curva che precipita a zero lì, accanto all’area alta di ottobre 2025, si
+     legge come un crollo verticale. */
+  const s = conSchermata({ 'rpc:iam_produzione_confronto': FORMA_VERA });
+  await s.ctx.volCarica(true);
+  const h = corpo(s);
+  const ora = punti(h, 'vol-l-ora');
+  deve(ora && ora.length === 9, 'la curva dell’anno in corso ha ' + (ora || []).length
+    + ' punti: deve fermarsi a settembre, cioè nove');
+  /* L’anno scorso invece prosegue, tratteggiato: è produzione vera. */
+  const fuori = punti(h, 'vol-l-fuori');
+  deve(fuori && fuori.length === 4, 'i mesi fuori confronto non proseguono tratteggiati: '
+    + (fuori || []).length + ' punti (attesi 4: da settembre a dicembre)');
+  /* E si attacca alla linea piena invece di cominciare staccato. */
+  const prec = punti(h, 'vol-l-prec');
+  deve(fuori[0][0] === prec[prec.length - 1][0], 'il tratteggio non parte dove finisce la linea piena');
+  return '9 punti quest’anno, il tratteggio attaccato per gli altri tre mesi';
+});
+
+await e.provaAsync('IL NUMERO ESATTO SI LEGGE COL DITO, e i tre zeri restano tre', async () => {
+  /* Il tooltip nativo non esiste sul telefono, ed è dove IAM si guarda metà
+     delle volte: ogni mese è un bottone vero, e il numero compare sotto. */
+  const s = conSchermata({ 'rpc:iam_produzione_confronto': FORMA_VERA });
+  await s.ctx.volCarica(true);
+  deve((corpo(s).match(/class="vol-tocco"/g) || []).length === 12,
+    'le zone da toccare non sono dodici');
+  deve(/Tocca un mese/.test(corpo(s)), 'non dice che si può toccare');
+
+  /* Luglio: i due numeri veri. */
+  s.ctx.volMese(6);
+  const lug = corpo(s);
+  deve(euro(50000).test(lug) && euro(95000).test(lug), 'il dettaglio di luglio non porta i due importi: ' + lug.slice(0, 300));
+
+  /* Ottobre: non è ancora arrivato — e NON è «0,00 €». */
+  s.ctx.volMese(9);
+  const ott = corpo(s);
+  deve(/non è ancora arrivato/.test(ott), 'ottobre non dice che non è ancora arrivato: ' + ott.slice(0, 300));
+  deve(/resta fuori dal confronto/.test(ott), 'non dice che quel mese resta fuori dai totali');
+
+  /* Settembre: tre polizze, nessun premio noto. Scrivere «0,00 €» qui sarebbe
+     il numero credibile e falso — quelle polizze ci sono. */
+  s.ctx.volMese(8);
+  const set = corpo(s);
+  deve(/premio non noto/.test(set), 'un mese senza premi noti dice zero: ' + set.slice(0, 400));
+  deve(/3 polizze/.test(set), 'non dice che quelle polizze ci sono');
+
+  /* E ritoccando lo stesso mese si richiude. */
+  s.ctx.volMese(8);
+  deve(/Tocca un mese/.test(corpo(s)), 'ritoccare lo stesso mese non richiude il dettaglio');
+  return 'luglio coi numeri, ottobre non arrivato, settembre senza premio noto';
 });
 
 await e.provaAsync('UN CODICE CHE NESSUNO HA DECISO NON PRENDE UN NOME', async () => {

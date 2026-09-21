@@ -1,8 +1,26 @@
 {
-  "versione": "0.14.0",
-  "nome": "Nuova polizza: dal menu, con il design di casa, e le rate giuste",
+  "versione": "0.15.0",
+  "nome": "Volumi di portafoglio anno su anno, e la produzione con un nome",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.15.0",
+      "data": "2026-09-21",
+      "nome": "Volumi di portafoglio anno su anno, e la produzione con un nome",
+      "voci": [
+        "Sulla Scrivania c'è «Volumi di portafoglio»: l'anno in corso contro quello prima, mese per mese, letto dal portafoglio vero e non digitato a mano.",
+        "I due anni sono contati fino allo STESSO GIORNO. Mettere dodici mesi dell'anno scorso accanto a nove di quest'anno disegna un crollo che non è successo, e succede undici mesi su dodici: adesso il confronto è fra periodi uguali, e la schermata scrive fino a che giorno ha contato.",
+        "I mesi dell'anno scorso che quest'anno non sono ancora arrivati si vedono lo stesso, in chiaro e fuori dal confronto: sono produzione vera, e sapere quanto c'è ancora da fare entro dicembre serve.",
+        "Nuova schermata Agenzia › Produzione: quanto è stato prodotto, da chi, con quale compagnia e su quale ramo, con i filtri e l'esportazione.",
+        "Le polizze adesso hanno una colonna «chi l'ha prodotta», diversa da «di chi è la rata»: una polizza può cambiare gestione senza che la produzione dell'anno in cui è nata cambi.",
+        "Decidere una volta a chi appartiene un codice produttore adesso attribuisce sia le rate sia le polizze, e il flusso della notte fa nascere le polizze già col nome giusto.",
+        "I sedici codici produttore che stanno sulle polizze sono stati registrati come domande da decidere: prima non c'era nemmeno il posto dove scrivere la risposta.",
+        "Un codice che nessuno ha deciso non prende mai un nome: si mostra il codice, quante polizze ci stanno sotto e dove si decide.",
+        "Le polizze senza premio annuo non valgono zero: restano fuori dagli importi, si contano a parte e la schermata lo dice.",
+        "Le somme le fa il database: aprendo la Scrivania non scendono più le polizze una per una.",
+        "I volumi digitati a mano nella scheda del collaboratore restano dove sono, con accanto scritto dove stanno quelli letti dal portafoglio: finché i due numeri non tornano sono due misure diverse."
+      ]
+    },
     {
       "v": "0.14.0",
       "data": "2026-09-21",

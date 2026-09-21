@@ -4339,3 +4339,193 @@ tardi.
   congelano aprendo il fascicolo dal Portafoglio.
 - **Il resto di QUOTO non è sul kit**: questa è la prima schermata. Le altre si
   portano una alla volta, come si è fatto in IAM (§31).
+
+---
+
+## 45. La produzione: anno su anno, e con un nome (21/09/2026)
+
+> «per produzione per collaboratore, aggiungi collaboratore id» — Francesco.
+
+Tre richieste in coda arrivate insieme al brief: rifare i «volumi di
+portafoglio» come confronto anno su anno, una schermata di dettaglio della
+produzione, e **le aggregazioni lato database, non scaricando le polizze nel
+browser**.
+
+| pezzo | dove |
+|---|---|
+| le regole | `tariffe/motore/produzione.js` |
+| prove in Node | `server/verifica/produzione.test.mjs` — 12, tre controprove |
+| la colonna, gli indici, la vista e la funzione | `supabase/migrations/20260921_produzione_collaboratore.sql` (applicata) |
+| il grafico sulla Scrivania | blocco `vol*` in `iam/index.html`, `#vol-card` |
+| la schermata di dettaglio | `#panel-produzione` e il blocco `prd*` in `iam/index.html` |
+| la voce di menu | `iam/withus-one.js`, Agenzia › Produzione |
+| il piano sulle polizze | `Assegnazione.pianoPolizze` + `asgApplica` e `fluConferma` in `index.html` |
+| prove sulle schermate | `iam/verifica/volumi-produzione.test.mjs` — 9, che fanno girare il codice |
+
+### La misura, e com'era cambiata dalla sera prima
+
+| | 20/09 sera | 21/09 |
+|---|---|---|
+| polizze in portafoglio | 484 | **1720** |
+| anagrafiche | ~600 | **2536** |
+| codici produttore distinti sulle polizze | — | **16** |
+| `quote_codici_collaboratore` | 0 righe | **0 righe** |
+| `creato_da` distinti sulle polizze | 1 | **1** |
+
+Fra le due misure Francesco ha importato il portafoglio completo. Cambia
+tutto: il 20/09 «produzione per collaboratore» non si poteva fare perché non
+c'era il dato, il 21/09 il dato c'è ed è ben distribuito — **415, 250, 246,
+224, 160 polizze** sui primi cinque codici.
+
+Quello che NON è cambiato è la colonna che conta: `creato_da` è **un solo
+utente su tutte e 1720 le righe**, ed è chi ha premuto il tasto
+dell'importazione. Attribuire lì vorrebbe dire dare l'intero portafoglio a una
+persona sola.
+
+**E la tabella delle decisioni era vuota**: sedici codici sulle polizze, zero
+righe dove scrivere chi sono. L'importazione grossa non ha annotato le
+evidenze. La migrazione le scrive — `deciso = false`, nessuna persona: **la
+domanda, mai la risposta** (§19).
+
+### Perché una colonna sulla polizza, se le rate ce l'hanno già
+
+`quote_titoli.collaboratore_id` esiste dal 18/09 (§17) e ci resta. Non è un
+doppione: sono due domande, e confonderle produce numeri credibili e
+sbagliati.
+
+> **Sulla RATA**: di chi è questo incasso, quindi a chi spetta la provvigione.
+> Sta sulla rata apposta, perché una polizza vive anni e può cambiare mano.
+> **Sulla POLIZZA**: chi ha PRODOTTO il contratto. La produzione di un anno non
+> cambia quando la gestione passa a un altro — se si leggesse dalle rate, una
+> polizza riassegnata a marzo sposterebbe la produzione di gennaio, **e il
+> consuntivo di un anno già chiuso cambierebbe da solo.**
+
+`Assegnazione.pianoPolizze` applica alla polizza la stessa decisione, con le
+stesse cinque regole: sono le regole della decisione, non del posto in cui si
+scrive. Decidere un codice una volta adesso muove **le rate e le polizze**, e
+il flusso della notte fa nascere le polizze già col nome giusto — senza quella
+riga ogni notte entrerebbero polizze senza produttore anche per i codici
+decisi, e il consuntivo tornerebbe da rifare a mano ogni mattina.
+
+### La regola che vale più di tutte: si confronta periodo con periodo
+
+**Mettere dodici mesi dell'anno scorso accanto a nove dell'anno in corso
+disegna un crollo che non è successo.** Non è un caso limite: succede undici
+mesi su dodici, e il numero sbagliato ha esattamente l'aria di quello giusto.
+
+Il taglio lo fa il database: `iam_produzione_confronto(p_al)` tiene solo i due
+anni e taglia il mese in corso **allo stesso giorno in tutti e due**. Sul
+portafoglio vero, al 21/09/2026, settembre 2025 passa da 140 a **95** polizze
+e settembre 2026 da 144 a **138**: stesso metro.
+
+E la differenza non è un dettaglio di cortesia. Col confronto sbagliato
+(2025 intero contro 2026 a oggi) la crescita risulta **+53%**; col confronto
+giusto (1 gennaio–21 settembre nei due anni) è **+109%**. In questo caso il
+metodo sbagliato *sottostima*, ma il punto non è il verso: è che il numero
+dipendeva dal giorno in cui si guardava.
+
+**I mesi dell'anno scorso oltre il mese in corso non si nascondono.** Sono
+produzione vera, e vedere quanto c'è ancora da fare entro dicembre serve:
+escono marcati `fuori_confronto`, si disegnano in chiaro e **non entrano in
+nessun totale**.
+
+### Le somme le fa il database, ed è una richiesta con una ragione
+
+`iam_produzione_confronto` restituisce ventiquattro righe, `iam_produzione_mensile`
+qualche centinaio. Nel browser non scende una polizza alla volta: 1720 righe a
+ogni apertura della Scrivania sono un programma che si apre lento e che
+peggiora ogni mese. C'è una prova che lo misura — legge il sorgente e pretende
+che quel blocco **non** chieda `quote_polizze`.
+
+**Tutte e due sono SECURITY INVOKER.** Non sono una scorciatoia intorno alle
+politiche: chi non può leggere una polizza non la vede nemmeno sommata,
+altrimenti un totale direbbe a un collaboratore quanto ha prodotto l'agenzia.
+
+### Le altre tre regole, tutte già scritte altrove
+
+- **Una polizza senza premio annuo non vale zero** (§36, §42): 182 su 1720 non
+  ce l'hanno. Restano fuori dagli importi, si contano a parte e si dichiarano.
+- **Da zero non si fa una percentuale**: «da 0 a 5» non è «+500%».
+- **«Non si è potuto leggere» non è «non c'è niente»** (§12, §18) — e su un
+  grafico di andamento è peggio che altrove: **un grafico piatto si legge come
+  un anno andato male**, non come un dato che non è arrivato.
+
+### Il modulo digitato a mano resta
+
+`iam_team.report_volumi`: **nove schede su dodici** hanno volumi digitati, e
+coprono esattamente 2025 e 2026 — gli stessi anni del portafoglio. I due
+numeri non coincidono (634.843 contro 228.540 sul 2025), ed è il motivo per
+cui quella schermata non si spegne: si spegne quando i numeri sono stati
+confrontati e tornano, non perché ne è nata una migliore (§17, §33). Accanto
+c'è scritto dove stanno gli altri.
+
+### Quattro cose trovate misurando, non ragionando
+
+**1. La trappola dei commenti, dodicesima volta — e stavolta sul guardiano
+che la documenta.** `fusione-collisioni.test.mjs` era **rosso su `main` dal
+20/09**, e non per una riga di codice sbagliata: il commento CSS scritto ieri
+in QUOTO spiegava perché il kit di IAM non si copia, e per spiegarlo nominava
+i tre nomi del kit col punto davanti e il nome di un file di prova. In un
+foglio di stile un nome col punto **è** un selettore, e un nome di file coi
+punti è una catena di selettori: cinque collisioni inventate, contate come
+vere. Due correzioni, come sempre — il commento non scrive più quei nomi,
+**e** la misura adesso toglie i commenti dai blocchi `<style>` prima di
+contare, che è quello che la prova voleva dire dall'inizio. La soglia è scesa
+da 17 a **15**: non è stato tolto un doppione, è stata corretta la misura.
+(E la prima stesura di quella correzione conteneva la sequenza che chiude un
+commento, e il file non si caricava più. §31 vale anche dentro §31.)
+
+**2. Un mese senza produzione non è un mese finito a zero.** La prima stesura
+marcava «parziale» il mese in corso solo se il database aveva mandato una riga
+per quel mese. Un mese senza nemmeno una polizza non risultava parziale — e un
+mese vuoto che sembra finito si legge come un mese andato a zero, che è
+un'altra notizia. Il taglio lo decide la data, non la presenza di righe.
+L'ha trovato la prova sui cinque fusi orari, non la rilettura.
+
+**3. Una prova che misurava il mondo di ieri.** «Decidere un codice assegna le
+sue rate» pretendeva **un** movimento a registro. Adesso ne scrive due, perché
+attribuisce anche le polizze. Si è aggiornata la regola e si è rafforzata —
+adesso pretende tutti e due i movimenti per nome (§15, §16, §33, §35).
+
+**4. Trappola d'ambiente, nuova.** `toLocaleString('it-IT')` in questo Node
+**non raggruppa le migliaia** (`1500,00`), nel browser sì (`1.500,00`). Una
+prova che cerca la forma col punto dichiara rotto un codice giusto. Si
+accettano tutte e due: quello che conta è il numero, non il separatore.
+
+**5. Un difetto che si vedeva solo passando un giorno.** Lanciando la suite,
+`collegamenti.test.mjs` era rosso — e rosso anche su `main`, cioè non per
+questo lavoro. Il monitor dei collegamenti (§42) calcolava il «da quanto è
+ferma» **sull'orologio della macchina** invece che sull'istante di
+riferimento: `confronta` passa quell'istante come numero di millisecondi, e
+`quando()` lo dava a `Date.parse`, che prima lo trasforma in stringa —
+«1758362400000» non è una data, è NaN, e si prendeva il ripiego `Date.now()`.
+
+In produzione i due coincidono quasi sempre, quindi non si è mai visto. Si è
+visto quando una prova scritta ieri, con un istante fisso, è diventata rossa
+oggi: **l'unico modo di accorgersene era che passasse un giorno.** È la
+famiglia del difetto delle date di §44 — una funzione che chiede l'ora al
+computer di chi guarda dà risposte diverse a due persone sullo stesso dato.
+
+E sotto ce n'era un secondo: `riepilogo` contava le compagnie ferme da oltre
+un giorno **cercando la parola «giorn» dentro l'etichetta**. Un numero
+ricavato da una frase cambia il giorno in cui qualcuno riscrive la frase, e
+nessuno collega le due cose. Adesso il conto viene dai millisecondi, che è
+quello che quella riga voleva dire. Due prove nuove, due controprove.
+
+### Cosa resta aperto
+
+- **I sedici codici sono tutti da decidere**, ed è il punto: il sistema ha
+  finito il suo lavoro quando ha chiesto. Finché nessuno risponde, la
+  produzione si legge per codice — che è un fatto vero della compagnia — e non
+  per nome. Adesso però si vede quanto pesa ognuno: **415 polizze** sul primo.
+- **«Nuova polizza» non chiede chi l'ha prodotta.** Una polizza scritta a mano
+  non ha un codice di compagnia, quindi nasce senza produttore. Il campo va
+  aggiunto con il componente unico dei collaboratori, che è il punto 4 del
+  brief Anagrafiche: farne uno adesso vorrebbe dire scriverne uno da buttare.
+- **Le politiche di `quote_polizze` non sono cambiate**: si legge ancora per
+  `creato_da`, che è un utente solo. Il giorno in cui un collaboratore dovrà
+  vedere «le sue» polizze, la colonna nuova è la strada — ma cambiare chi vede
+  che cosa è una decisione, non una conseguenza.
+- **La produzione non incrocia le provvigioni**: dice premi e polizze, non
+  quanto si è guadagnato. I due motori esistono tutti e due (§17, §28) e
+  metterli insieme è un lavoro a sé.

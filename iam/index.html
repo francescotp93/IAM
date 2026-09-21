@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.14.0">
-<meta name="app-versione-nome" content="Nuova polizza: dal menu, con il design di casa, e le rate giuste">
+<meta name="app-versione" content="0.15.0">
+<meta name="app-versione-nome" content="Volumi di portafoglio anno su anno, e la produzione con un nome">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -49,6 +49,7 @@
 <script src="/nuovo-preventivo/tariffe/motore/collegamenti.js?v=20260920"></script>
 <script src="/nuovo-preventivo/tariffe/motore/kpi.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/decisioni.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/produzione.js?v=20260921"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -97,6 +98,74 @@
 .kpi-c .kpi-v .kpi-u{font-size:13px;font-weight:600;color:var(--txt2)}
 .kpi-c .kpi-s{font-size:11px;color:var(--txt2);margin-top:5px;line-height:1.5}
 @media(max-width:900px){.kpi-riga{grid-template-columns:1fr}}
+
+/* ══ VOLUMI DI PORTAFOGLIO — il grafico anno su anno (21/09/2026) ═══════════
+   Disegnato a mano, come la Produzione di «KPI e gare»: IAM non carica
+   ApexCharts e non comincia adesso. Due tinte sole, con l'anno in corso sul
+   verde del marchio e quello prima in grigio: il colore dice quale dei due
+   e' «oggi», e la legenda lo ripete a parole per chi i colori non li
+   distingue. Prefissate `vol-`: nel foglio di stile un nome di classe e'
+   globale anche dentro un discendente (§26), e le classi in comune coi due
+   documenti sono a scarto zero (§10). */
+.vol-testa{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between;margin-bottom:12px}
+.vol-tot{display:flex;flex-wrap:wrap;gap:18px}
+.vol-t{min-width:120px}
+.vol-t .vol-k{font-size:11px;color:var(--w1-testo3);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
+.vol-t .vol-v{font-size:20px;font-weight:800;line-height:1.15;margin-top:2px}
+.vol-t .vol-s{font-size:11px;color:var(--w1-testo2);margin-top:3px}
+.vol-delta{font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;display:inline-block}
+.vol-delta.vol-su{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
+.vol-delta.vol-giu{background:var(--w1-rosso-bg);color:var(--w1-rosso)}
+.vol-delta.vol-pari{background:var(--w1-sfondo);color:var(--w1-testo2)}
+.vol-legenda{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--w1-testo2);margin-bottom:10px}
+.vol-leg{display:inline-flex;align-items:center;gap:6px}
+.vol-bollo{width:11px;height:11px;border-radius:2px;display:inline-block}
+.vol-bollo.vol-ora{background:var(--w1-verde)}
+.vol-bollo.vol-prima{background:#94a3b8}
+.vol-bollo.vol-fuori{background:#cbd5e1}
+.vol-graf{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;align-items:end;
+  height:190px;padding:0 2px;border-bottom:1px solid var(--w1-bordo)}
+.vol-col{display:flex;flex-direction:column;justify-content:flex-end;height:100%;min-width:0;gap:3px}
+.vol-barre{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:100%}
+.vol-b{width:46%;max-width:16px;border-radius:2px 2px 0 0;min-height:2px;transition:height .2s}
+.vol-b.vol-ora{background:var(--w1-verde)}
+.vol-b.vol-prima{background:#94a3b8}
+.vol-b.vol-prima.vol-fuori{background:#cbd5e1}
+.vol-mesi{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;margin-top:6px}
+.vol-m{font-size:10px;color:var(--w1-testo3);text-align:center;text-transform:uppercase;letter-spacing:.02em}
+.vol-m.vol-parz{color:var(--w1-ambra);font-weight:800}
+.vol-note{margin-top:12px;display:flex;flex-direction:column;gap:5px}
+.vol-n{font-size:11.5px;color:var(--w1-testo2);line-height:1.5;padding-left:16px;position:relative}
+.vol-n::before{content:'·';position:absolute;left:6px;font-weight:800;color:var(--w1-testo3)}
+.vol-ko{font-size:12px;color:var(--w1-ambra);background:var(--w1-ambra-bg);border-radius:var(--w1-raggio);padding:9px 11px;line-height:1.5}
+@media(max-width:700px){
+  .vol-graf{height:140px}
+  .vol-m{font-size:9px}
+}
+
+/* ══ PRODUZIONE — la schermata di dettaglio (21/09/2026) ════════════════════ */
+.prd-filtri{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+.prd-f label{display:block;font-size:11px;font-weight:800;color:var(--w1-testo3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+.prd-f select,.prd-f input{width:100%;padding:8px 10px;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);
+  font-family:inherit;font-size:13px;background:#fff;color:var(--w1-testo)}
+.prd-azioni{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.prd-tab{width:100%;border-collapse:collapse;font-size:13px}
+.prd-tab th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--w1-testo3);
+  font-weight:800;padding:8px 10px;border-bottom:1px solid var(--w1-bordo)}
+.prd-tab td{padding:9px 10px;border-bottom:1px solid var(--w1-bordo);vertical-align:top}
+.prd-tab tr:last-child td{border-bottom:none}
+.prd-tab .prd-num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.prd-tab tfoot td{font-weight:800;border-top:2px solid var(--w1-bordo);border-bottom:none}
+.prd-pil{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:.02em}
+.prd-pil.prd-persona{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
+.prd-pil.prd-codice{background:var(--w1-ambra-bg);color:var(--w1-ambra)}
+.prd-pil.prd-diretta{background:var(--w1-sfondo);color:var(--w1-testo2)}
+.prd-sotto{font-size:11px;color:var(--w1-testo2);margin-top:3px;line-height:1.45}
+.prd-quota{display:block;height:4px;border-radius:2px;background:var(--w1-verde);margin-top:5px;min-width:2px}
+.prd-vuoto{font-size:12.5px;color:var(--w1-testo2);padding:14px 2px;line-height:1.55}
+@media(max-width:700px){
+  .prd-tab th:nth-child(3),.prd-tab td:nth-child(3){display:none}
+}
 
 .cnt-r .cnt-apri{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor;cursor:pointer}
 .cnt-r .cnt-apri:hover{border-bottom-style:solid}
@@ -812,6 +881,7 @@ input[type=file]{display:none;}
 #contab-panel-anomalie,
 #contab-panel-storico,
 #panel-catalogo,
+#panel-produzione,
 #contab-panel-conto {
   --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
   --w1-sfondo:#f3f5f7; --w1-bordo:#e3e8ec;
@@ -2012,6 +2082,29 @@ input[type=file]{display:none;}
        mostra, e quello che non si può leggere lo dice col suo nome invece di
        mostrare uno zero rassicurante (§12, §18). -->
   <section class="kpi-riga" id="kpi-riga"></section>
+
+  <!-- ── VOLUMI DI PORTAFOGLIO (21/09/2026) ──────────────────────────────────
+       Il confronto anno su anno, letto dal portafoglio vero e aggregato dal
+       DATABASE (`iam_produzione_confronto`): qui non arriva una polizza alla
+       volta, arrivano ventiquattro righe già sommate.
+
+       I due anni sono contati fino allo STESSO GIORNO. Mettere dodici mesi
+       dell'anno scorso accanto a nove dell'anno in corso disegna un crollo
+       che non è successo, e succede undici mesi su dodici: è la cosa che, in
+       un grafico di andamento, si rompe senza che nessuno se ne accorga —
+       perché il numero sbagliato ha esattamente l'aria di quello giusto. -->
+  <div class="d-card" id="vol-card">
+    <div class="card-head">
+      <div class="card-title"><span class="pictogram"><i class="ti ti-chart-bar"></i></span> Volumi di portafoglio</div>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="volCarica(true)" title="Rileggi"><i class="ti ti-refresh"></i></button>
+        <button class="d-btn primario" type="button" onclick="goTab('produzione')">Vedi il dettaglio</button>
+      </div>
+    </div>
+    <div class="card-body" id="vol-corpo">
+      <div class="prd-vuoto">Sto leggendo la produzione…</div>
+    </div>
+  </div>
 
   <section class="dashboard-grid">
     <div class="stack">
@@ -3551,6 +3644,18 @@ input[type=file]{display:none;}
           <button onclick="aggiungiVolumeAnno()" style="font-size:11px;padding:3px 10px;background:var(--acc);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">+ Anno</button>
         </div>
         <div id="mc-report-volumi" style="margin-top:8px;"></div>
+        <!-- Questi volumi si DIGITANO, e restano (21/09/2026): nove schede su
+             dodici ne hanno, ed è l'unico storico che l'agenzia ha su queste
+             persone. Una schermata in uso si spegne quando i suoi numeri sono
+             stati confrontati con quelli nuovi e tornano, non perché ne è nata
+             una migliore (§17, §33). Accanto adesso c'è la produzione letta dal
+             portafoglio: finché le due non tornano, sono due misure, e sapere
+             che sono due è più utile che averne una sola sbagliata. -->
+        <div style="font-size:11px;color:var(--txt3);margin-top:6px;line-height:1.5;">
+          Questi numeri li scrive una persona. Quelli letti dal portafoglio stanno in
+          <b>Agenzia › Produzione</b>: finché i due non coincidono restano due misure diverse,
+          e la differenza è da guardare, non da nascondere.
+        </div>
       </div>
       <div class="fsec">
         <div class="fsec-title">Portafoglio attuale (€)</div>
@@ -3963,6 +4068,69 @@ input[type=file]{display:none;}
   </section>
   <section class="cnt-somma" id="dec-somma"></section>
   <section class="cnt-lista" id="dec-lista"><div class="cl-sub">Guardo che cosa manca…</div></section>
+</div>
+
+<!-- ══ PRODUZIONE — il dettaglio (21/09/2026) ═════════════════════════════════
+     La domanda «chi ha prodotto» ha una risposta sola in questa casa, e non è
+     `creato_da`: quella colonna, sulle 1720 polizze arrivate dal flusso, è una
+     persona sola — chi ha premuto il tasto dell'importazione. Attribuire lì
+     vorrebbe dire dare l'intero portafoglio a chi ha fatto un'importazione.
+
+     Il dato vero è il CODICE PRODUTTORE che la compagnia scrive sulla polizza.
+     Trasformarlo in un nome è una decisione umana (§19), e finché non è stata
+     presa la riga porta il codice e dice che è da abbinare — mai un nome
+     scelto per somiglianza, che qui vuol dire attribuire a una persona la
+     produzione di un'altra.
+
+     Le somme le fa il database (`iam_produzione_mensile`, SECURITY INVOKER):
+     qui non scende una polizza alla volta. -->
+<div class="panel" id="panel-produzione" style="overflow-y:auto;">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow">Agenzia</div>
+      <h1>Produzione</h1>
+      <div class="subtitle">Quanto è stato prodotto, da chi, con quale compagnia e su quale ramo.</div>
+    </div>
+    <div class="head-actions">
+      <button class="d-btn" type="button" onclick="prdCarica(true)"><i class="ti ti-refresh"></i> Rileggi</button>
+      <button class="d-btn primario" type="button" onclick="prdEsporta()"><i class="ti ti-download"></i> Esporta</button>
+    </div>
+  </section>
+
+  <div class="d-card">
+    <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-filter"></i></span> Filtri</div></div>
+    <div class="card-body">
+      <div class="prd-filtri">
+        <div class="prd-f"><label for="prd-anno">Anno</label><select id="prd-anno"></select></div>
+        <div class="prd-f"><label for="prd-compagnia">Compagnia</label><select id="prd-compagnia"><option value="">Tutte</option></select></div>
+        <div class="prd-f"><label for="prd-ramo">Ramo</label><select id="prd-ramo"><option value="">Tutti</option></select></div>
+        <div class="prd-f"><label for="prd-dal">Dal mese</label><select id="prd-dal"></select></div>
+        <div class="prd-f"><label for="prd-al">Al mese</label><select id="prd-al"></select></div>
+      </div>
+      <!-- Solo al clic su Cerca, come tutte le altre barre di IAM (§22). -->
+      <div class="prd-azioni">
+        <button class="d-btn" type="button" onclick="prdAzzera()">Azzera filtri</button>
+        <button class="d-btn primario" type="button" onclick="prdRender()">Cerca</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="kpi-riga" id="prd-somma"></section>
+
+  <div class="d-card">
+    <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-user-check"></i></span> Chi ha prodotto</div></div>
+    <div class="card-body" id="prd-produttori"><div class="prd-vuoto">Sto leggendo…</div></div>
+  </div>
+
+  <div class="d-card">
+    <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-building-bank"></i></span> Per compagnia</div></div>
+    <div class="card-body" id="prd-compagnie"><div class="prd-vuoto">Sto leggendo…</div></div>
+  </div>
+
+  <div class="d-card">
+    <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-category"></i></span> Per ramo</div></div>
+    <div class="card-body" id="prd-rami"><div class="prd-vuoto">Sto leggendo…</div></div>
+  </div>
 </div>
 
 <div class="panel" id="panel-catalogo" style="overflow-y:auto;">
@@ -8328,7 +8496,7 @@ async function loadLastSession() {
     // Blocco B: il lavoro del giorno si calcola all'avvio, qualunque scheda
     // venga ripristinata: così il numero è già pronto quando si apre la
     // scrivania, e non si vede mai la fascia "sto calcolando".
-    caricaDaFareOggi(); caricaKpiScrivania();
+    caricaDaFareOggi(); caricaKpiScrivania(); volCarica();
     // Vai a dashboard solo al primo login fresco, non su ogni ricarica pagina
     ripristinaScheda();
     setTimeout(() => buildStorico(), 500);
@@ -8736,7 +8904,8 @@ function goTab(t) {
   if (t === 'provvigioni') { prvTab(PRV_VISTA); prvCarica(true); }
   if (t === 'catalogo')    { catTab(CAT_VISTA); catCarica(true); }
   if (t === 'decisioni')   { decCarica(true); }
-  if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); caricaKpiScrivania(); }   // Blocco B
+  if (t === 'produzione')  { prdCarica(true); }
+  if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); caricaKpiScrivania(); volCarica(); }   // Blocco B
   if (t === 'agenti')    { loadAgentiAI(); }
   if (t === 'quoto') {
     // Splash screen fullscreen prima del redirect
@@ -9435,6 +9604,301 @@ async function caricaKpiScrivania(forza) {
   box.innerHTML = pezzi.join('');
 }
 
+/* ══ VOLUMI DI PORTAFOGLIO E PRODUZIONE (21/09/2026) ═════════════════════════
+
+   Le REGOLE stanno nel motore `/nuovo-preventivo/tariffe/motore/produzione.js`
+   (dodici prove in Node, tre controprove), che è lo stesso file che caricherà
+   il preventivatore: due copie della stessa somma sarebbero due produzioni
+   della stessa agenzia. Qui si legge, si filtra e si disegna.
+
+   LE SOMME LE FA IL DATABASE. `iam_produzione_confronto` restituisce
+   ventiquattro righe già aggregate e `iam_produzione_mensile` qualche
+   centinaio: nel browser non scende una polizza alla volta. Tutte e due sono
+   SECURITY INVOKER — non sono una scorciatoia intorno alle politiche, e chi
+   non può leggere una polizza non la vede nemmeno sommata.
+
+   Le variabili di stato sono `var` e non `let`: con `let` la variabile del
+   blocco e `window.PRD_RIGHE` sono due cose diverse, e una prova che inietta
+   dei dati finti scriverebbe in una mentre il codice legge l'altra, restando
+   verde senza aver misurato niente (§17, §32). */
+var VOL_ULTIMO = 0;
+var PRD_RIGHE  = null;   /* null = mai letto o lettura fallita; [] = niente */
+var PRD_PERSONE = [];
+var PRD_ULTIMO = 0;
+var PRD_ERRORE = '';
+
+function prdEuro(n) {
+  return (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+function prdNum(n) { return (Number(n) || 0).toLocaleString('it-IT'); }
+
+function volDelta(v) {
+  const cl = v.verso === 'su' ? 'vol-su' : v.verso === 'giu' ? 'vol-giu' : 'vol-pari';
+  const t = v.pct == null ? v.testo : v.testo;
+  return '<span class="vol-delta ' + cl + '">' + esc(t) + '</span>';
+}
+
+function volHTML(c) {
+  if (!c) return '<div class="vol-ko">Non si è potuto leggere la produzione. Non vuol dire che non ce ne sia: vuol dire che la lettura non è riuscita.</div>';
+  if (c.vuoto) return '<div class="prd-vuoto">Non c’è ancora produzione da confrontare. Le polizze entrano in portafoglio con l’importazione del flusso della compagnia o scrivendone una a mano.</div>';
+
+  const t = c.totali, max = c.massimo || 1;
+  const alt = (v) => Math.max(2, Math.round((v / max) * 100));
+
+  const colonne = c.mesi.map(m => {
+    const ora = m.corrente.premio, pri = m.precedente.premio;
+    const tit = m.nome + ': ' + prdEuro(ora) + ' nel ' + c.anno
+      + ' · ' + prdEuro(pri) + ' nel ' + c.anno_prec
+      + (m.fuori_confronto ? ' (fuori confronto)' : '')
+      + (m.parziale ? ' — mese in corso, contato fino a oggi' : '');
+    return '<div class="vol-col" title="' + esc(tit) + '">'
+      + '<div class="vol-barre">'
+      +   '<div class="vol-b vol-prima' + (m.fuori_confronto ? ' vol-fuori' : '') + '" style="height:' + alt(pri) + '%"></div>'
+      +   '<div class="vol-b vol-ora" style="height:' + alt(ora) + '%"></div>'
+      + '</div></div>';
+  }).join('');
+
+  const etichette = c.mesi.map(m =>
+    '<div class="vol-m' + (m.parziale ? ' vol-parz' : '') + '">' + esc(m.breve) + '</div>').join('');
+
+  return ''
+    + '<div class="vol-testa"><div class="vol-tot">'
+    +   '<div class="vol-t"><div class="vol-k">' + c.anno + ' a oggi</div>'
+    +     '<div class="vol-v">' + prdEuro(t.corrente.premio) + '</div>'
+    +     '<div class="vol-s">' + prdNum(t.corrente.polizze) + ' polizze</div></div>'
+    +   '<div class="vol-t"><div class="vol-k">' + c.anno_prec + ', stesso periodo</div>'
+    +     '<div class="vol-v">' + prdEuro(t.precedente.premio) + '</div>'
+    +     '<div class="vol-s">' + prdNum(t.precedente.polizze) + ' polizze</div></div>'
+    +   '<div class="vol-t"><div class="vol-k">Differenza</div>'
+    +     '<div class="vol-v">' + volDelta(c.variazione_premio) + '</div>'
+    +     '<div class="vol-s">' + (c.variazione_premio.delta >= 0 ? '+' : '−')
+    +       prdEuro(Math.abs(c.variazione_premio.delta)) + '</div></div>'
+    + '</div></div>'
+    + '<div class="vol-legenda">'
+    +   '<span class="vol-leg"><i class="vol-bollo vol-ora"></i>' + c.anno + '</span>'
+    +   '<span class="vol-leg"><i class="vol-bollo vol-prima"></i>' + c.anno_prec + '</span>'
+    +   (c.fuori.polizze ? '<span class="vol-leg"><i class="vol-bollo vol-fuori"></i>'
+        + c.anno_prec + ', mesi non ancora arrivati quest’anno</span>' : '')
+    + '</div>'
+    + '<div class="vol-graf">' + colonne + '</div>'
+    + '<div class="vol-mesi">' + etichette + '</div>'
+    + '<div class="vol-note">' + c.avvisi.map(a => '<div class="vol-n">' + esc(a) + '</div>').join('') + '</div>';
+}
+
+async function volCarica(forza) {
+  const box = document.getElementById('vol-corpo');
+  if (!box || !db || !window.Produzione) return;
+  const ora = Date.now();
+  if (!forza && VOL_ULTIMO && (ora - VOL_ULTIMO) < 60000) return;
+  VOL_ULTIMO = ora;
+
+  /* Ora LOCALE, non UTC: `toISOString()` fra mezzanotte e le due in Italia
+     restituisce il giorno prima, e qui il giorno decide dove tagliare i due
+     anni — il 1° gennaio sposterebbe il confronto di un anno intero (§44). */
+  const oggi = wdsISO(new Date());
+  try {
+    const { data, error } = await db.rpc('iam_produzione_confronto', { p_al: oggi });
+    if (error) throw error;
+    box.innerHTML = volHTML(Produzione.confronto(data || [], oggi));
+  } catch (e) {
+    console.warn('Volumi di portafoglio:', e.message || e);
+    box.innerHTML = volHTML(null);
+  }
+}
+
+/* ── LA SCHERMATA DI DETTAGLIO ──────────────────────────────────────────── */
+
+async function prdCarica(forza) {
+  if (!db || !window.Produzione) return;
+  const ora = Date.now();
+  if (!forza && PRD_ULTIMO && (ora - PRD_ULTIMO) < 60000) { prdRender(); return; }
+  PRD_ULTIMO = ora;
+  PRD_ERRORE = '';
+
+  /* Due letture separate: i nomi che mancano non devono portare giù i numeri
+     (§35). Senza l'elenco delle persone un collaboratore già deciso si legge
+     col suo identificativo invece che col nome — brutto, non falso. */
+  try {
+    const { data, error } = await db.from('iam_produzione_mensile')
+      .select('anno,mese,collaboratore_id,codice_produttore,compagnia,ramo,polizze,senza_premio,premio');
+    if (error) throw error;
+    PRD_RIGHE = data || [];
+  } catch (e) {
+    console.warn('Produzione:', e.message || e);
+    PRD_RIGHE = null;
+    PRD_ERRORE = e.message || String(e);
+  }
+  try {
+    const { data, error } = await db.from('quote_collaboratori').select('id,nome,cognome,email');
+    if (error) throw error;
+    PRD_PERSONE = data || [];
+  } catch (e) { console.warn('Produzione · persone:', e.message || e); PRD_PERSONE = []; }
+
+  prdRiempiFiltri();
+  prdRender();
+}
+
+function prdOpz(sel, valori, tutte) {
+  const el = document.getElementById(sel);
+  if (!el) return;
+  const scelto = el.value;
+  el.innerHTML = (tutte ? '<option value="">' + tutte + '</option>' : '')
+    + valori.map(v => '<option value="' + esc(String(v.v)) + '">' + esc(v.l) + '</option>').join('');
+  if (scelto && valori.some(v => String(v.v) === scelto)) el.value = scelto;
+}
+
+function prdRiempiFiltri() {
+  const righe = PRD_RIGHE || [];
+  const anni = Produzione.anniPresenti(righe);
+  prdOpz('prd-anno', anni.map(a => ({ v: a, l: String(a) })), 'Tutti gli anni');
+  const comp = [...new Set(righe.map(r => r.compagnia).filter(Boolean))].sort();
+  const rami = [...new Set(righe.map(r => r.ramo).filter(Boolean))].sort();
+  prdOpz('prd-compagnia', comp.map(c => ({ v: c, l: c })), 'Tutte');
+  prdOpz('prd-ramo', rami.map(c => ({ v: c, l: c })), 'Tutti');
+  const mesi = Produzione.MESI.map((m, i) => ({ v: i + 1, l: m.charAt(0).toUpperCase() + m.slice(1) }));
+  prdOpz('prd-dal', mesi, 'Da gennaio');
+  prdOpz('prd-al', mesi, 'A dicembre');
+}
+
+function prdFiltri() {
+  const v = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
+  return {
+    anno: v('prd-anno') || null,
+    compagnia: v('prd-compagnia') || null,
+    ramo: v('prd-ramo') || null,
+    dal_mese: v('prd-dal') || null,
+    al_mese: v('prd-al') || null
+  };
+}
+
+function prdAzzera() {
+  ['prd-anno', 'prd-compagnia', 'prd-ramo', 'prd-dal', 'prd-al'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.value = '';
+  });
+  prdRender();
+}
+
+function prdTabella(gruppo, etichetta) {
+  if (!gruppo || !gruppo.righe.length) return '<div class="prd-vuoto">Nessuna produzione con questi filtri.</div>';
+  const max = gruppo.righe[0].premio || 1;
+  const corpo = gruppo.righe.map(r => ''
+    + '<tr><td>' + esc(r.etichetta)
+    +   (r.senza_premio ? '<div class="prd-sotto">' + r.senza_premio
+        + (r.senza_premio === 1 ? ' polizza senza premio annuo: fuori dall’importo, non vale zero.'
+                                : ' polizze senza premio annuo: fuori dall’importo, non valgono zero.') + '</div>' : '')
+    +   '<span class="prd-quota" style="width:' + Math.max(2, Math.round(r.premio / max * 100)) + '%"></span></td>'
+    + '<td class="prd-num">' + prdNum(r.polizze) + '</td>'
+    + '<td class="prd-num">' + (r.quota == null ? '—' : String(r.quota).replace('.', ',') + '%') + '</td>'
+    + '<td class="prd-num">' + prdEuro(r.premio) + '</td></tr>').join('');
+  return '<table class="prd-tab"><thead><tr><th>' + esc(etichetta)
+    + '</th><th class="prd-num">Polizze</th><th class="prd-num">Quota</th><th class="prd-num">Premio</th></tr></thead>'
+    + '<tbody>' + corpo + '</tbody>'
+    + '<tfoot><tr><td>Totale</td><td class="prd-num">'
+    + prdNum(gruppo.righe.reduce((s, r) => s + r.polizze, 0)) + '</td><td class="prd-num"></td><td class="prd-num">'
+    + prdEuro(gruppo.totale) + '</td></tr></tfoot></table>';
+}
+
+function prdProduttoriHTML(p) {
+  if (!p) return prdNonLetto();
+  if (!p.righe.length) return '<div class="prd-vuoto">Nessuna produzione con questi filtri.</div>';
+  const max = p.righe[0].premio || 1;
+  const pil = { persona: 'deciso', codice: 'da abbinare', diretta: 'agenzia' };
+  const corpo = p.righe.map(r => ''
+    + '<tr><td><b>' + esc(r.etichetta) + '</b> '
+    +   '<span class="prd-pil prd-' + r.stato + '">' + pil[r.stato] + '</span>'
+    +   (r.stato === 'codice'
+        ? '<div class="prd-sotto">Codice ' + esc(r.compagnia || '') + '. Nessuno ha ancora detto chi è: '
+          + 'finché non lo si decide, questa produzione non ha un nome. Si decide in Strumenti › Decisioni aperte.</div>'
+        : '')
+    +   (r.senza_premio ? '<div class="prd-sotto">' + r.senza_premio
+        + (r.senza_premio === 1 ? ' polizza senza premio annuo: fuori dall’importo, non vale zero.'
+                                : ' polizze senza premio annuo: fuori dall’importo, non valgono zero.') + '</div>' : '')
+    +   '<span class="prd-quota" style="width:' + Math.max(2, Math.round(r.premio / max * 100)) + '%"></span></td>'
+    + '<td class="prd-num">' + prdNum(r.polizze) + '</td>'
+    + '<td class="prd-num">' + (r.quota == null ? '—' : String(r.quota).replace('.', ',') + '%') + '</td>'
+    + '<td class="prd-num">' + prdEuro(r.premio) + '</td></tr>').join('');
+  const avviso = p.da_abbinare
+    ? '<div class="vol-ko" style="margin-bottom:10px">' + p.da_abbinare
+      + (p.da_abbinare === 1 ? ' codice produttore non è ancora abbinato a una persona'
+                             : ' codici produttore non sono ancora abbinati a una persona')
+      + ' — sotto ci sono ' + prdNum(p.polizze_da_abbinare) + ' polizze per ' + prdEuro(p.premio_da_abbinare)
+      + '. Il sistema non li abbina da solo: un nome scelto per somiglianza qui vuol dire attribuire '
+      + 'a una persona la produzione di un’altra.</div>'
+    : '';
+  return avviso
+    + '<table class="prd-tab"><thead><tr><th>Chi</th><th class="prd-num">Polizze</th>'
+    + '<th class="prd-num">Quota</th><th class="prd-num">Premio</th></tr></thead>'
+    + '<tbody>' + corpo + '</tbody>'
+    + '<tfoot><tr><td>Totale</td><td class="prd-num">'
+    + prdNum(p.righe.reduce((s, r) => s + r.polizze, 0)) + '</td><td class="prd-num"></td><td class="prd-num">'
+    + prdEuro(p.totale) + '</td></tr></tfoot></table>';
+}
+
+function prdNonLetto() {
+  return '<div class="vol-ko">Non si è potuto leggere la produzione. Non vuol dire che non ce ne sia: '
+    + 'vuol dire che la lettura non è riuscita.' + (PRD_ERRORE ? ' (' + esc(PRD_ERRORE) + ')' : '') + '</div>';
+}
+
+function prdRender() {
+  const somma = document.getElementById('prd-somma');
+  const boxP = document.getElementById('prd-produttori');
+  const boxC = document.getElementById('prd-compagnie');
+  const boxR = document.getElementById('prd-rami');
+  if (!boxP || !window.Produzione) return;
+
+  if (PRD_RIGHE == null) {
+    if (somma) somma.innerHTML = '';
+    boxP.innerHTML = prdNonLetto();
+    if (boxC) boxC.innerHTML = prdNonLetto();
+    if (boxR) boxR.innerHTML = prdNonLetto();
+    return;
+  }
+
+  const righe = Produzione.filtra(PRD_RIGHE, prdFiltri()) || [];
+  const perProd = Produzione.perProduttore(righe, PRD_PERSONE);
+  const tot = righe.reduce((a, r) => {
+    a.polizze += Number(r.polizze) || 0;
+    a.premio += Number(r.premio) || 0;
+    a.senza += Number(r.senza_premio) || 0;
+    return a;
+  }, { polizze: 0, premio: 0, senza: 0 });
+
+  if (somma) {
+    somma.innerHTML = kpiRiquadro('Premio', prdEuro(tot.premio),
+        tot.senza ? tot.senza + (tot.senza === 1 ? ' polizza senza premio annuo, fuori da questo importo'
+                                                 : ' polizze senza premio annuo, fuori da questo importo')
+                  : 'Tutte le polizze hanno un premio annuo')
+      + kpiRiquadro('Polizze', prdNum(tot.polizze), 'Con i filtri applicati')
+      + kpiRiquadro('Da abbinare', prdNum(perProd ? perProd.da_abbinare : 0) + ' <span class="kpi-u">codici</span>',
+        perProd && perProd.da_abbinare
+          ? prdNum(perProd.polizze_da_abbinare) + ' polizze senza un nome'
+          : 'Ogni codice ha una persona');
+  }
+
+  boxP.innerHTML = prdProduttoriHTML(perProd);
+  if (boxC) boxC.innerHTML = prdTabella(Produzione.perChiave(righe, 'compagnia'), 'Compagnia');
+  if (boxR) boxR.innerHTML = prdTabella(Produzione.perChiave(righe, 'ramo'), 'Ramo');
+}
+
+/* L'esportazione parte dagli STESSI oggetti della schermata: se costruisse i
+   suoi, prima o poi il foglio e lo schermo direbbero due numeri diversi, e
+   quello sbagliato sarebbe quello che è uscito di casa (§17). */
+function prdEsporta() {
+  if (PRD_RIGHE == null) { alert('Non si è potuto leggere la produzione: non c’è niente da esportare.'); return; }
+  const righe = Produzione.filtra(PRD_RIGHE, prdFiltri()) || [];
+  const p = Produzione.perProduttore(righe, PRD_PERSONE);
+  const html = '<html><head><meta charset="utf-8"></head><body>'
+    + '<h3>Produzione</h3>'
+    + prdProduttoriHTML(p)
+    + '<h3>Per compagnia</h3>' + prdTabella(Produzione.perChiave(righe, 'compagnia'), 'Compagnia')
+    + '<h3>Per ramo</h3>' + prdTabella(Produzione.perChiave(righe, 'ramo'), 'Ramo')
+    + '</body></html>';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type: 'application/vnd.ms-excel' }));
+  a.download = 'produzione-' + wdsISO(new Date()) + '.xls';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
 async function caricaDaFareOggi(forza) {
   const box = document.getElementById('oggi-corpo');
   if (!box) return;
@@ -9740,6 +10204,7 @@ function buildDashboard() {
   renderDashboardAlerts();
   caricaDaFareOggi();   // Blocco B — un solo aggancio copre tutti i percorsi
   caricaKpiScrivania();  // Blocco 3 · punto 10 — i numeri, accanto al lavoro
+  volCarica();           // i volumi di portafoglio, anno su anno (21/09/2026)
 
   document.getElementById('d-empty').style.display = 'none';
   document.getElementById('d-content').style.display = 'block';
@@ -22784,8 +23249,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: d308c132 — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260921b"></script>
+<!-- impronta withus-one.js: 97e3a307 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260921c"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

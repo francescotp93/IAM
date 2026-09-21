@@ -588,6 +588,13 @@
            finestra dell'appuntamento si apre col tasto «Nuovo» dentro il Diario. */
         { l: 'Diario di lavoro', i: 'i-cal', act: 'workdiary', mirror: 'nb-workdiary', go: function () { vai('workdiary'); } },
         { l: 'KPI e gare', i: 'i-chart', act: 'performance', mirror: 'nb-performance', go: function () { vai('performance'); } },
+        /* «Produzione» (21/09/2026): quanto e' stato prodotto, da CHI, con
+           quale compagnia e su quale ramo. Non e' un doppione di «KPI e gare»,
+           che misura i preventivi e la conversione: qui si parte dalle polizze
+           in portafoglio, cioe' dal contratto fatto. La schermata esiste in
+           IAM e senza questa riga esisterebbe ed sarebbe invisibile — il
+           guasto numero uno di questo repository. */
+        { l: 'Produzione', i: 'i-chart', act: 'produzione', go: function () { vai('produzione'); } },
         { hr: true },
         /* Le convenzioni sono un accordo DELL'AGENZIA con un ente (il primo e'
            ASE Sicilia), non un prodotto: stanno qui, non nel preventivatore.
@@ -764,6 +771,7 @@
     pipeline:    ['Trattative', 'Clienti'],
     workdiary:   ['Diario di lavoro', 'Agenzia'],
     performance: ['KPI e gare', 'Agenzia'],
+    produzione:  ['Produzione', 'Agenzia'],
     marketing:   ['Marketing', 'Marketing'],
     utenti:      ['Utenti e permessi', 'Amministrazione'],
     azienda:     ['Azienda', 'Amministrazione'],
@@ -854,7 +862,7 @@
     incassi: 'carica',
     storico: 'carica', conto: 'carica', team: 'strumenti', operativa: 'strumenti',
     workdiary: 'agenzia',
-    performance: 'agenzia', pipeline: 'clienti',
+    performance: 'agenzia', produzione: 'agenzia', pipeline: 'clienti',
     fonti: 'strumenti', analisi: 'marketing', collegamenti: 'strumenti',
     posta: 'strumenti', conti: 'strumenti', compagnie: 'strumenti', provvigioni: 'strumenti',
     catalogo: 'strumenti', decisioni: 'strumenti',

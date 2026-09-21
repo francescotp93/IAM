@@ -1,12 +1,24 @@
-id: 1790003131  exit: 0  2026-09-21 15:05:49
+id: 1790004659  exit: 0  2026-09-21 15:31:33
 ----
-== prima ==
-SUPABASE_ANON_KEY: assente
-chiave pubblica letta dal client: 208 caratteri
-scritta nel .env (backup accanto)
-== dopo: il processo la vede? ==
-SUPABASE_ANON_KEY : 208 caratteri
+== attendo l'autopull (fino a 3 minuti) ==
+arrivata dopo ~20s
+
+== commit vivo sul VPS ==
+f5ed1b8
+
+== versione nei due documenti ==
+app-versione" content="0.21.0"
+app-versione-nome" content="I documenti tornano a salire, i contanti trovano la cassa"
+app-versione" content="0.21.0"
+app-versione-nome" content="I documenti tornano a salire, i contanti trovano la cassa"
+
+== il backend ha la chiave e risponde ==
+SUPABASE_ANON_KEY presente: 208 caratteri
 active
-Sep 21 15:00:51 vps-d6443a46 node[3895684]: 2026-09-21T15:00:51.429Z OPTIONS /archivio/carica 204 1ms u:-
-Sep 21 15:00:51 vps-d6443a46 node[3895684]: archivio: caricamento non riuscito: metadati non scritti (401): {"message":"No API key found in request","hint":"No `apikey` request header or url param was found."}
-Sep 21 15:00:51 vps-d6443a46 node[3895684]: 2026-09-21T15:00:51.499Z POST   /archivio/carica 403 204ms u:a5ab0cd0
+
+== IAM dal vivo ==
+HTTP 200
+app-versione" content="0.21.0"
+app-versione-nome" content="I documenti tornano a salire, i contanti trovano la cassa"
+
+== errori dell'archivio negli ultimi minuti ==

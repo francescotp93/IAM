@@ -1,23 +1,5 @@
-id: 1790011802  exit: 0  2026-09-21 17:30:46
+id: v0240-1790023433  exit: 0  2026-09-21 20:44:12
 ----
-== commit vivo ==
-95d125e 0.23.0 — L'import non muore per una riga, e dice quello che lascia fuori (#233)
-== versione servita ==
-app-versione" content="0.23.0"
-app-versione" content="0.23.0"
-== i pezzi nuovi nel file servito ==
-polizze_numero_doppio: 2
-polizze senza il contraente: 1
-non chiudere la pagina: 1
-CAMPI_OBBLIGATORI nel motore: 2
-== migrazioni ==
-20260922_contab_partita_doppia.sql
-20260922_import_rate_su_polizze_gia_dentro.sql
-20260922b_import_non_muore_per_una_riga.sql
-== il sito ==
-IAM 200
-app-versione" content="0.23.0"
-{
-  "versione": "0.23.0",
-  "nome": "L'import non muore per una riga, e dice quello che lascia fuori",
-dal sito, il motore aggiornato: 2
+e2c68f3 Abbinare un codice produttore lo applica davvero (0.24.0) (#234)
+app-versione" content="0.24.0"
+HTTP/2 200 

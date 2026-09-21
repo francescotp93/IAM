@@ -1,8 +1,18 @@
 {
-  "versione": "0.21.0",
-  "nome": "I documenti tornano a salire, i contanti trovano la cassa",
+  "versione": "0.21.1",
+  "nome": "L'archivio si prova all'avvio, non sul primo documento",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.21.1",
+      "data": "2026-09-21",
+      "nome": "L'archivio si prova all'avvio, non sul primo documento",
+      "voci": [
+        "Il caricamento dei documenti ha superato il primo ostacolo e ne ha trovato un secondo: la cartella dell'archivio sul server non era raggiungibile dall'utente del servizio — i permessi erano giusti sulla cartella e sbagliati su quella che la contiene. Corretto sul server.",
+        "E il controllo d'avvio adesso PROVA a scrivere davvero, invece di limitarsi a guardare che il percorso sia quello giusto: se non ci riesce il modulo si ferma subito e dice il motivo, invece di accettare il documento e fallire a meta'.",
+        "Se il file non si riesce a salvare, la riga dei metadati non resta piu' indietro: o entrano tutti e due o non entra niente. Prima nel fascicolo compariva un documento che si vedeva, si cliccava e non si apriva — cioe' un documento che sembrava esserci. E se nemmeno la pulizia riesce, adesso lo dice."
+      ]
+    },
     {
       "v": "0.21.0",
       "data": "2026-09-21",

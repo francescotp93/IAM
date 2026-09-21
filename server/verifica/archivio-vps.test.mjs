@@ -196,6 +196,111 @@ await prova('senza le credenziali del database il modulo si spegne e dice QUALE 
   return '503 col nome della variabile, niente scritto, quattro casi puri';
 });
 
+/* ══ 3-ter. LA CARTELLA SI PROVA, NON SI GUARDA ═══════════════════════════
+   Il secondo guasto del 21/09/2026, arrivato appena tolto il primo: la forma
+   del percorso era giusta e l'utente del servizio non ci poteva scrivere.
+   «EACCES: permission denied, mkdir» — e siccome la riga dei metadati si
+   scrive PRIMA del file, nel fascicolo è comparso un documento che non si
+   apre. */
+await prova('se la cartella non è scrivibile il modulo si spegne, invece di accorgersene sul primo file', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archivio-perm-'));
+  /* Un finto disco che rifiuta di creare cartelle, come un permesso negato. */
+  const negato = Object.assign(Object.create(fs), {
+    mkdirSync: () => { const e = new Error('EACCES: permission denied, mkdir'); e.code = 'EACCES'; throw e; },
+  });
+  const app = express();
+  app.use((req, res, next) => { req.user = { id: 'a' }; next(); });
+  app.use('/archivio', A.archivioVpsRouter({
+    dir, fs: negato, env: { ARCHIVIO_CHIAVE: CHIAVE_PROVA },
+    leggiRiga: async () => null, scriviRiga: async () => {},
+  }));
+  const srv = http.createServer(app);
+  await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const base = 'http://127.0.0.1:' + srv.address().port;
+  const r = await fetch(base + '/archivio/carica?' + new URLSearchParams({
+    nome: 'carta.pdf', tipo: 'application/pdf', entita: 'polizza', entita_id: UUID_POLIZZA,
+  }), { method: 'POST', headers: { Authorization: 'Bearer utente:a', 'content-type': 'application/pdf' }, body: FILE });
+  const t = await r.text();
+  await new Promise(x => srv.close(x));
+
+  deve(r.status === 503, 'con la cartella non scrivibile risponde ' + r.status + ' invece di 503');
+  deve(/non e. scrivibile/i.test(t), 'non dice che la cartella non è scrivibile: ' + t.slice(0, 200));
+  deve(/EACCES/.test(t), 'non riporta il motivo del sistema: ' + t.slice(0, 200));
+
+  /* La funzione pura, nei due versi — e la prova di scrittura deve RIPULIRE
+     dietro di sé: una cartella `.prova-avvio` lasciata lì a ogni riavvio è
+     spazzatura che si accumula nell'archivio dei documenti. */
+  const buona = fs.mkdtempSync(path.join(os.tmpdir(), 'archivio-ok-'));
+  deve(A.cartellaScrivibile(buona).ok, 'una cartella scrivibile viene rifiutata');
+  deve(!fs.readdirSync(buona).length, 'la prova di scrittura ha lasciato dei residui: ' + fs.readdirSync(buona).join(', '));
+  deve(!A.cartellaScrivibile(path.join(buona, 'x'), negato).ok, 'una cartella non scrivibile viene accettata');
+  return '503 col motivo del sistema, e la prova di scrittura non lascia residui';
+});
+
+await prova('se il file non si scrive, la riga dei metadati NON resta', async () => {
+  /* O entrano tutti e due o non entra niente (§47). Il 21/09/2026 ne è nata
+     una così in due minuti: un documento che nel fascicolo si vede, si clicca
+     e non si apre — cioè che sembra esserci. */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archivio-orfana-'));
+  const righe = new Map();
+  let tolte = 0;
+  /* Qui la cartella è scrivibile all'avvio, e il disco cede DOPO: è il caso
+     che nessun controllo d'avvio può prevenire — spazio finito, permesso
+     cambiato a caldo — ed è quello per cui serve la pulizia. */
+  /* `fs.promises` è un getter, quindi non si può sovrascrivere su una copia:
+     il finto disco si costruisce a mano, con i soli metodi che il modulo usa. */
+  const cedeDopo = {
+    mkdirSync: fs.mkdirSync, writeFileSync: fs.writeFileSync, rmSync: fs.rmSync,
+    promises: {
+      mkdir: fs.promises.mkdir,
+      readFile: fs.promises.readFile,
+      writeFile: async () => { const e = new Error('ENOSPC: no space left on device'); e.code = 'ENOSPC'; throw e; },
+    },
+  };
+  const app = express();
+  app.use((req, res, next) => { req.user = { id: 'a' }; next(); });
+  app.use('/archivio', A.archivioVpsRouter({
+    dir, fs: cedeDopo, env: { ARCHIVIO_CHIAVE: CHIAVE_PROVA },
+    leggiRiga: async (id) => righe.get(id) || null,
+    scriviRiga: async (rec) => { righe.set(rec.id, rec); },
+    togliRiga: async (id) => { tolte++; righe.delete(id); },
+  }));
+  const srv = http.createServer(app);
+  await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const base = 'http://127.0.0.1:' + srv.address().port;
+  const r = await fetch(base + '/archivio/carica?' + new URLSearchParams({
+    nome: 'carta.pdf', tipo: 'application/pdf', entita: 'polizza', entita_id: UUID_POLIZZA,
+  }), { method: 'POST', headers: { Authorization: 'Bearer utente:a', 'content-type': 'application/pdf' }, body: FILE });
+  const t = await r.text();
+  await new Promise(x => srv.close(x));
+
+  deve(!r.ok, 'il caricamento è riuscito con il disco pieno: ' + r.status);
+  deve(tolte === 1, 'la riga non è stata tolta: tolte ' + tolte);
+  deve(righe.size === 0, 'è rimasta una riga senza il suo file: ' + righe.size);
+  deve(/ENOSPC/.test(t), 'non riporta il motivo vero: ' + t.slice(0, 200));
+
+  /* E se nemmeno la pulizia riesce, si DICE: restare in silenzio sarebbe la
+     stessa bugia un piano più in là. */
+  const righe2 = new Map();
+  const app2 = express();
+  app2.use((req, res, next) => { req.user = { id: 'a' }; next(); });
+  app2.use('/archivio', A.archivioVpsRouter({
+    dir, fs: cedeDopo, env: { ARCHIVIO_CHIAVE: CHIAVE_PROVA },
+    leggiRiga: async () => null,
+    scriviRiga: async (rec) => { righe2.set(rec.id, rec); },
+    togliRiga: async () => { throw new Error('rete assente'); },
+  }));
+  const srv2 = http.createServer(app2);
+  await new Promise(x => srv2.listen(0, '127.0.0.1', x));
+  const r2 = await fetch('http://127.0.0.1:' + srv2.address().port + '/archivio/carica?' + new URLSearchParams({
+    nome: 'carta.pdf', tipo: 'application/pdf', entita: 'polizza', entita_id: UUID_POLIZZA,
+  }), { method: 'POST', headers: { Authorization: 'Bearer utente:a', 'content-type': 'application/pdf' }, body: FILE });
+  const t2 = await r2.text();
+  await new Promise(x => srv2.close(x));
+  deve(/non si apre|non si . potuta togliere/i.test(t2), 'non avverte che la riga è rimasta: ' + t2.slice(0, 260));
+  return 'riga tolta, e quando non si può togliere lo dice';
+});
+
 /* E il contrario: quando gli accessi SONO iniettati (tutte le altre prove di
    questo file) il controllo non deve scattare, altrimenti il banco
    diventerebbe rosso per la strada invece che per il contenuto (§4). */

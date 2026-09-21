@@ -9372,6 +9372,42 @@ const avvio = async () => {
       return '0 righe scritte, brutta pulita, si può riprovare';
     });
 
+    await prova('import: le rate rimaste fuori si VEDONO, invece di sparire', async () => {
+      /* IL GUASTO DEL 21/09/2026, trovato il giorno dopo mentre Francesco
+         stava per ricaricare il file per recuperare le rate mancanti: una
+         rata la cui polizza c'è già in archivio veniva scartata dalla
+         giunzione SQL senza errore, e l'esito diceva lo stesso che era
+         andato tutto bene. La funzione adesso le conta; questa prova
+         controlla che il numero arrivi davanti agli occhi.
+         «Zero righe» non è un successo silenzioso (§47, BUG 1). */
+      await scegli([]);
+      const r = await page.evaluate(async () => {
+        window.confirm = () => true;
+        window.__COLLAUDO.db = [];
+        window.__COLLAUDO.risposte['rpc:iam_importa_flusso'] = { data: {
+          verbale: 'verbale-finto', clienti: 0, polizze: 4,
+          titoli: 88, titoli_proposti: 100, titoli_senza_polizza: 12,
+          polizze_senza_cliente: 0 }, error: null };
+        await fluConferma();
+        const out = { html: document.getElementById('flu-esito').innerHTML };
+        delete window.__COLLAUDO.risposte['rpc:iam_importa_flusso'];
+        return out;
+      });
+      deve(/Import completato/.test(r.html), 'l\'esito non è quello di un import riuscito: ' + r.html.slice(0, 200));
+      deve(/12 rate sono rimaste fuori/.test(r.html),
+        'non dice quante rate sono rimaste fuori: ' + r.html.slice(0, 400));
+      /* I due numeri accanto: «proposte 100, scritte 88» è l'unica forma in
+         cui uno scarto si può controllare senza aprire il database. */
+      deve(/100/.test(r.html) && /88/.test(r.html),
+        'non mette a confronto le rate proposte con quelle scritte');
+      /* E l'avviso è ROSSO: una riga qualunque in fondo a una schermata di
+         successo non la legge nessuno. */
+      const i = r.html.indexOf('rimaste fuori');
+      deve(/pdoc-esito ko/.test(r.html.slice(Math.max(0, i - 400), i)),
+        'lo scarto è scritto in grigio come una nota: passa inosservato');
+      return '12 fuori su 100 proposte, dette in faccia';
+    });
+
     await prova('import: il bottone si spegne al primo clic, e la barra segue le scritture vere', async () => {
       /* Un secondo clic su un'importazione da millesettecento righe non è un
          fastidio: è un portafoglio doppio. E la barra misura i blocchi

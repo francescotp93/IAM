@@ -6,6 +6,39 @@ soltanto quello che Francesco potrebbe voler ribaltare.
 
 ---
 
+## 22/09/2026 — Le rate che sparivano ricaricando il file (0.22.1)
+
+**Perimetro:** l'importazione del portafoglio dalla compagnia. Sei venuto con
+l'anteprima del file PRIMA dell'anno aperta e il dito sul bottone: prima di
+dirti «premi» ho guardato che cosa sarebbe successo, e non sarebbe successo
+quello che volevi.
+
+🔴 **Applicato al database, con la tua autorizzazione permanente.**
+`20260922_import_rate_su_polizze_gia_dentro.sql`: riscrive **una sola
+funzione**, `iam_importa_flusso`. Nessuna tabella, nessuna colonna, nessuna
+politica, nessuna riga esistente toccata.
+*Come tornare indietro:* si riapplica la funzione com'era in
+`20260921_import_tutto_o_niente.sql` (righe 118-318). Attenzione: tornare
+indietro rimette il difetto — ricaricare un file non recupera più le rate
+delle polizze già in portafoglio.
+
+🟡 **Ho fermato il tuo import invece di lasciartelo fare.** Avrebbe scritto le
+polizze nuove e buttato via, senza dirlo, le rate delle polizze che ci sono
+già — cioè proprio quelle delle 1.700 polizze che volevi sistemare. Alla fine
+avresti letto «Import completato» e il problema sarebbe rimasto lì.
+*Come tornare indietro:* niente da ribaltare, ma se preferisci che non ti
+fermi mai e ti lasci provare, dimmelo.
+
+🟡 **L'esito adesso dice in rosso quante rate sono rimaste fuori**, con
+«proposte X, scritte Y». Prima quel riquadro diceva solo quello che era
+entrato: se qualcosa veniva scartato non c'era modo di accorgersene.
+*Come tornare indietro:* è un riquadro in `fluConferma`, si toglie in una riga.
+
+🟡 **La versione sale a 0.22.1 e non a 0.23.0.** È una correzione, non una
+funzione nuova: il numero di mezzo lo tengo per le cose che aggiungono.
+
+---
+
 ## 21/09/2026 — Volumi di portafoglio e produzione (0.15.0)
 
 **Perimetro:** il confronto anno su anno in Scrivania e la schermata Produzione.

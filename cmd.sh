@@ -1,15 +1,15 @@
-echo "== variabili d'ambiente del backend: PRESENZA e LUNGHEZZA, mai il valore =="
-for v in SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY SUPABASE_SERVICE_KEY ARCHIVIO_CHIAVE ARCHIVIO_DIR; do
-  val=$(systemctl show withus-backend -p Environment 2>/dev/null | tr ' ' '\n' | grep "^${v}=" | head -1 | cut -d= -f2-)
-  if [ -n "$val" ]; then echo "$v: PRESENTE (${#val} caratteri)"; else echo "$v: ASSENTE"; fi
-done
+pid=$(systemctl show withus-backend -p MainPID --value 2>/dev/null)
+echo "pid backend: ${pid:-(non trovato)}"
+if [ -n "$pid" ] && [ -r "/proc/$pid/environ" ]; then
+  echo "== nomi delle variabili viste DAL PROCESSO, con la sola lunghezza del valore =="
+  tr '\0' '\n' < "/proc/$pid/environ" | awk -F= '{n=$1; v=substr($0,length(n)+2); printf "%s : %d\n", n, length(v)}' | sort
+else
+  echo "non leggibile"
+fi
 echo
-echo "== e nel file .env se esiste =="
-for f in /opt/withus-backend/.env /etc/withus-backend.env /opt/withus-backend/server/.env; do
-  [ -f "$f" ] && { echo "--- $f"; sed -E 's/=.*/= <valore, '"$(echo)"'nascosto>/' "$f" | head -30; }
-done
+echo "== il modulo archivio risponde? =="
+curl -s -o /dev/null -w 'POST /archivio/carica -> %{http_code}\n' -X POST http://127.0.0.1:8080/archivio/carica 2>/dev/null
+curl -s http://127.0.0.1:8080/archivio/carica -X POST 2>/dev/null | head -c 300
 echo
-echo "== la cartella dell'archivio cifrato =="
-d=$(systemctl show withus-backend -p Environment 2>/dev/null | tr ' ' '\n' | grep '^ARCHIVIO_DIR=' | cut -d= -f2-)
-echo "ARCHIVIO_DIR=${d:-(non impostata)}"
-ls -la "${d:-/opt/withus-archivio}" 2>/dev/null | head -10
+echo "== avvisi all'avvio nei log =="
+journalctl -u withus-backend -n 200 --no-pager 2>/dev/null | grep -i "archivio" | tail -10

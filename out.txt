@@ -1,19 +1,12 @@
-id: np-1789974187  exit: 0  2026-09-21 07:03:27
+id: np2-1789974235  exit: 0  2026-09-21 07:04:29
 ----
-== commit ==
-0c5eb51 Decisioni aperte: in un posto solo quello che il sistema sta aspettando (#223)
-== versione ==
-  "versione": "0.13.0",
-  "nome": "Decisioni aperte",
-== motore ==
-ls: cannot access 'tariffe/motore/piano-rate.js': No such file or directory
-== rotta e menu ==
-index.html:0
-iam/withus-one.js:0
-== scocca ==
-withus-one.js?v=20260921a
-== HTTP ==
-iam=200 quoto=200
-== servito ==
-<meta name="app-versione" content="0.13.0">
-piano-rate.js=404
+cfa6710 Nuova polizza: dal menu, col design di casa, e le rate giuste (#224)
+  "versione": "0.14.0",
+  "nome": "Nuova polizza: dal menu, con il design di casa, e le rate giuste",
+tariffe/motore/piano-rate.js
+rotta+menu:
+index.html:1
+iam/withus-one.js:3
+<meta name="app-versione" content="0.14.0">
+piano-rate.js=200
+scocca=200

@@ -1,12 +1,26 @@
-id: b3b-1789945971  exit: 0  2026-09-20 23:13:01
+id: b3-fine-1789969603  exit: 0  2026-09-21 05:47:16
 ----
-== commit vivo
-055ea0c Blocco 3 · punti 3 e 6: le sospensioni e il fido (#221)
-== IAM servito
-name="app-versione" content="0.11.0">
-name="app-versione-nome" content="Sospensioni e fido">
-== i motori nuovi rispondono
-sospensione    HTTP/2 200 
-catalogo       HTTP/2 200 
-== QUOTO servito
-3
+== commit vivo ==
+02e8f4e Blocco 3 · punti 7, 12-bis, 10 e 4: il conto, il monitor, i numeri, i filtri (#222)
+== versione.json ==
+  "versione": "0.12.0",
+  "nome": "Il conto, il monitor, i numeri e i filtri",
+== meta IAM ==
+<meta name="app-versione" content="0.12.0">
+<meta name="app-versione-nome" content="Il conto, il monitor, i numeri e i filtri">
+== motori nuovi ==
+-rw-r--r-- 1 root root 8455 Sep 21 05:47 tariffe/motore/collegamenti.js
+-rw-r--r-- 1 root root 9798 Sep 21 05:47 tariffe/motore/kpi.js
+== dco/kpi nel documento ==
+6
+== HTTP iam ==
+200
+== versione servita ==
+<meta name="app-versione" content="0.12.0">
+== versione.json servito ==
+{
+  "versione": "0.12.0",
+  "nome": "Il conto, il monitor, i numeri e i filtri",
+  "data": "2026-09-21",
+  "storia": [
+ 

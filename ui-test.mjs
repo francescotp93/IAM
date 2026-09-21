@@ -9489,6 +9489,68 @@ const avvio = async () => {
       return '1 oltre di 300 €, 1 senza fido fuori dai totali';
     });
 
+    /* ══ BLOCCO 3 · PUNTO 4 — I FILTRI DEL MARKETING (21/09/2026) ═══════════
+       Misurato prima di scrivere: `membriSegmento` sul server onorava VENTI
+       filtri, e la schermata ne chiedeva quattordici. Sei — comune,
+       professione, casa di proprieta', intermediario, gruppo preciso, «ha
+       almeno una polizza» — erano codice funzionante che nessuno poteva
+       raggiungere. E' il guasto §1 in versione marketing, ed e' lo stesso
+       difetto della ricerca globale che trovava il 17% del portafoglio (§40).
+       ══════════════════════════════════════════════════════════════════════ */
+    await prova('blocco 3 · filtri: le due liste combaciano, NEI DUE VERSI', async () => {
+      const h = fs.readFileSync('index.html', 'utf8');
+      const srv = fs.readFileSync('server/marketingDestinatari.js', 'utf8');
+      const corpo = srv.slice(srv.indexOf('export async function membriSegmento'),
+                              srv.indexOf('/* ═══ IL PONTE'));
+      const server = [...new Set([...corpo.matchAll(/\bf\.([a-z_]+)/g)].map(m => m[1]))].sort();
+      const sf = h.slice(h.indexOf('function segFiltri()'), h.indexOf('async function segCopertura'));
+      const ui = [...new Set([...sf.matchAll(/f\.([a-z_]+)\s*=/g)].map(m => m[1]))].sort();
+      deve(server.length >= 20, 'il server onora meno filtri di prima: ' + server.length);
+      /* Verso 1: la schermata non promette quello che il server ignora. Un
+         filtro che non viene applicato non fa un segmento piu' largo — fa un
+         segmento che chi lo ha costruito crede stretto. */
+      const promessi = ui.filter(x => !server.includes(x));
+      deve(!promessi.length, 'la schermata offre filtri che il server ignora: ' + promessi.join(', '));
+      /* Verso 2: il server non tiene regole che nessuna schermata puo'
+         chiedere — e' il codice che arriva e non viene collegato a niente. */
+      const irraggiungibili = server.filter(x => !ui.includes(x));
+      deve(!irraggiungibili.length, 'il server sa filtrare e nessuno puo\' chiederlo: ' + irraggiungibili.join(', '));
+      return server.length + ' filtri, e nessuno dei due lati ne ha uno in piu\'';
+    });
+
+    await prova('blocco 3 · filtri: un «no» che e\' un default non si spaccia per un no', async () => {
+      /* `sposato`, `ha_figli` e `casa_proprieta` sul database sono `not null
+         default false`: un `false` vuol dire «nessuno l'ha mai chiesto». Una
+         campagna «per chi non ha figli» andrebbe quasi tutta a persone di cui
+         non sappiamo niente — ed e' §8.1 applicata al marketing. Non si puo'
+         distinguere a posteriori, quindi il ramo negativo si CHIAMA con il suo
+         nome; quello affermativo resta affidabile, perche' un `true` l'ha
+         scritto qualcuno. */
+      const h = fs.readFileSync('index.html', 'utf8');
+      const f = h.slice(h.indexOf('function segOpzNo('), h.indexOf('function segFiltri()'));
+      deve(/No, o mai chiesto/.test(f), 'il ramo negativo si chiama ancora «No»');
+      deve(/segOpzNo\('Con figli'\)/.test(f), 'i figli non usano l\'etichetta onesta');
+      deve(/segOpzNo\('Sì'\)/.test(f), 'stato civile e casa non usano l\'etichetta onesta');
+      /* E la nota lo spiega, perche' un\'etichetta da sola non dice perche'. */
+      deve(/nascono a «no» sulla scheda/.test(f), 'non e\' spiegato perche\' i due casi si assomigliano');
+      return 'tre tendine, e la ragione scritta accanto';
+    });
+
+    await prova('blocco 3 · filtri: la copertura si legge, e se non si legge lo dice', async () => {
+      /* Un filtro su una colonna che quasi nessuno ha compilato produce un
+         segmento vuoto che sembra un guasto del programma: sul portafoglio
+         vero professione e' 1 su 61. Saperlo prima evita mezz'ora di ricerca
+         di un bug che non c'e'. */
+      const h = fs.readFileSync('index.html', 'utf8');
+      const c = h.slice(h.indexOf('async function segCopertura'), h.indexOf('async function segAnteprima'));
+      deve(/id="seg-copertura"/.test(h), 'manca il riquadro della copertura');
+      deve(/segCopertura\(\);/.test(h), 'la copertura non la chiama nessuno');
+      deve(/non è un guasto|non è un guasto/.test(c), 'un segmento piccolo sembra un guasto');
+      deve(/non si è potuta leggere/.test(c), 'una copertura non letta si confonde con una copertura piena');
+      deve(/i filtri funzionano lo stesso/.test(c), 'la copertura non letta blocca il resto del modulo');
+      return 'un riquadro, chiamato, e onesto quando cade';
+    });
+
     await prova('blocco 2: nessun errore JavaScript', async () => {
       deve(erroriB2.length === 0, erroriB2.slice(0, 3).join(' | '));
     });

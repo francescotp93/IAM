@@ -695,6 +695,114 @@ prova('il controllo dell\'IBAN è UNO, e sta qui', () => {
 });
 
 
+
+/* ═══ IL DETTAGLIO DI UN CONTO (Blocco 3 · punto 7, 20/09/2026) ═════════════
+
+   L'elenco dei conti dice un saldo per riga; queste prove sorvegliano la
+   schermata che risponde a «perché è quello», e le due cose che, sbagliate,
+   producono un conto credibile e falso: un progressivo che riparte da metà
+   strada, e uno storico di quadrature che nasconde una scrittura retroattiva.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const D_CONTO = { id: 'd1', nome: 'Conto di prova', tipologia: 'banca', natura: 'aziendale', saldo_iniziale: 1000 };
+const D_INC = byCod('provvigioni_entrata').id;   /* entrata, incide sull'utile */
+const D_USC = byCod('affitti').id;               /* uscita */
+const D_MOV = [
+  { id: 'd-a', conto_id: 'd1', data: '2026-01-10', importo: 100, causale_id: D_INC },
+  { id: 'd-b', conto_id: 'd1', data: '2026-02-10', importo: 40,  causale_id: D_USC },
+  { id: 'd-c', conto_id: 'd1', data: '2026-03-10', importo: 200, causale_id: D_INC },
+  /* di un altro conto: non deve entrare da nessuna parte */
+  { id: 'd-x', conto_id: 'd9', data: '2026-02-11', importo: 5000, causale_id: D_INC }
+];
+
+prova('il dettaglio somma solo i movimenti DI QUEL conto', () => {
+  const d = C.dettaglioConto(D_CONTO, D_MOV, [], { causali: CAU });
+  deve(d.saldo === 1260, 'il saldo del conto non è 1000+100-40+200: ' + d.saldo);
+  deve(d.totali === 3, 'sono entrate righe di un altro conto: ' + d.totali);
+  deve(!d.righe.some(r => r.movimento.id === 'd-x'), 'il movimento di un altro conto è finito nel dettaglio');
+  return '1.260 €, tre righe';
+});
+
+prova('il progressivo parte SEMPRE dall\'inizio, anche guardando un periodo', () => {
+  /* La regola che rende onesta la finestra: un saldo progressivo che riparte
+     dal saldo iniziale in mezzo a un periodo è un numero falso, e falso in un
+     modo che nessuno controlla — sembra un saldo. */
+  const d = C.dettaglioConto(D_CONTO, D_MOV, [], { causali: CAU, dal: '2026-02-01', al: '2026-12-31' });
+  deve(d.mostrate === 2, 'la finestra non mostra due righe: ' + d.mostrate);
+  deve(d.totali === 3, 'la finestra ha cambiato il conteggio totale');
+  /* Il saldo di apertura del periodo è quello che il conto aveva PRIMA. */
+  deve(d.apertura === 1100, 'il saldo di apertura del periodo non è 1.100: ' + d.apertura);
+  /* E la prima riga mostrata porta il progressivo VERO, non uno che riparte. */
+  deve(d.righe[0].saldo === 1060, 'il progressivo è ripartito da capo: ' + d.righe[0].saldo);
+  deve(d.saldo === 1260, 'il saldo del conto è stato tagliato dal periodo: ' + d.saldo);
+  return 'apertura 1.100, prima riga 1.060, saldo 1.260';
+});
+
+prova('quello che resta fuori dal saldo si CONTA e si dichiara', () => {
+  /* Un movimento la cui causale non esiste più non ha verso e non entra nel
+     saldo — ed è giusto, non si indovina. Ma un saldo che ignora delle righe
+     in silenzio è un saldo di cui nessuno può fidarsi. */
+  const conFuori = D_MOV.concat([{ id: 'd-orfano', conto_id: 'd1', data: '2026-04-01', importo: 77, causale_id: 'sparita' }]);
+  const d = C.dettaglioConto(D_CONTO, conFuori, [], { causali: CAU });
+  deve(d.saldo === 1260, 'un movimento senza verso è entrato nel saldo: ' + d.saldo);
+  deve(d.fuori_dal_saldo.righe === 1, 'la riga fuori dal saldo non viene contata');
+  deve(d.fuori_dal_saldo.importo === 77, 'il peso di quello che resta fuori non si legge: ' + d.fuori_dal_saldo.importo);
+  /* Senza segno, perché il verso è proprio la cosa che non si sa. */
+  deve(d.righe.some(r => r.incerto && r.delta === 0), 'la riga incerta non è marcata, o le è stato dato un verso');
+  return '1 riga, 77 € senza verso';
+});
+
+prova('un movimento annullato non è un movimento, e si dice quanti sono', () => {
+  const conAnn = D_MOV.concat([{ id: 'd-ann', conto_id: 'd1', data: '2026-05-01', importo: 500, causale_id: D_INC, annullato_il: '2026-05-02' }]);
+  const d = C.dettaglioConto(D_CONTO, conAnn, [], { causali: CAU });
+  deve(d.saldo === 1260, 'un movimento annullato è entrato nel saldo: ' + d.saldo);
+  deve(d.annullati === 1, 'gli annullati non si contano');
+  return 'fuori dal saldo, dentro al conteggio';
+});
+
+prova('lo storico confronta OGNI dichiarazione alla SUA data', () => {
+  /* Oggi l'elenco confronta solo la più recente: una quadratura di gennaio
+     che non tornava restava invisibile per sempre. */
+  const dich = [
+    { conto_id: 'd1', data: '2026-01-31', saldo_dichiarato: 1100 },   /* giusto */
+    { conto_id: 'd1', data: '2026-02-28', saldo_dichiarato: 1000 },   /* sbagliato di 60 */
+    { conto_id: 'd9', data: '2026-02-28', saldo_dichiarato: 1 }       /* di un altro conto */
+  ];
+  const st = C.storicoQuadrature(D_CONTO, D_MOV, dich, { causali: CAU });
+  deve(st.length === 2, 'lo storico non ha due righe (o ha preso quella di un altro conto): ' + st.length);
+  deve(st[0].data === '2026-02-28', 'lo storico non parte dalla più recente');
+  deve(st[0].quadra === false && st[0].differenza === 60, 'febbraio non risulta sbagliato di 60: ' + st[0].differenza);
+  deve(st[1].quadra === true, 'gennaio non risulta quadrato');
+  return 'gennaio quadra, febbraio no';
+});
+
+prova('una scrittura RETROATTIVA fa smettere di quadrare un giorno che quadrava', () => {
+  /* La decisione che distingue questo storico da un fascicolo congelato
+     (CLAUDE.md §11 regola 4): la dichiarazione è un fatto della banca e non
+     cambia, la ricostruzione è quello che il sistema dice OGGI per quella
+     data. Congelando la differenza, la scrittura con la data vecchia
+     sparirebbe dalla vista — cioè si nasconderebbe proprio il caso per cui la
+     quadratura esiste. */
+  const dich = [{ conto_id: 'd1', data: '2026-01-31', saldo_dichiarato: 1100 }];
+  deve(C.storicoQuadrature(D_CONTO, D_MOV, dich, { causali: CAU })[0].quadra === true,
+    'la premessa è sbagliata: gennaio non quadrava già prima');
+  const conRetro = D_MOV.concat([{ id: 'd-retro', conto_id: 'd1', data: '2026-01-05', importo: 300, causale_id: D_INC }]);
+  const dopo = C.storicoQuadrature(D_CONTO, conRetro, dich, { causali: CAU })[0];
+  deve(dopo.quadra === false, 'un movimento scritto con una data vecchia non fa saltare la quadratura di gennaio');
+  deve(dopo.differenza === 300, 'la differenza non è quella del movimento retroattivo: ' + dopo.differenza);
+  deve(/in più della dichiarazione/.test(dopo.motivo || ''), 'non dice da che parte sta la differenza');
+  return 'gennaio quadrava, adesso no: +300';
+});
+
+prova('«mai dichiarato» resta una riga vuota, non una riga verde', () => {
+  const d = C.dettaglioConto(D_CONTO, D_MOV, [], { causali: CAU });
+  deve(d.quadrature.length === 0, 'senza dichiarazioni lo storico inventa una riga');
+  /* E il riepilogo per causale segue la finestra che si sta guardando. */
+  const p = C.dettaglioConto(D_CONTO, D_MOV, [], { causali: CAU, dal: '2026-03-01' });
+  deve(p.per_causale.length === 1 && p.per_causale[0].totale === 200,
+    'il riepilogo per causale non segue il periodo');
+  return 'nessuna riga inventata';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

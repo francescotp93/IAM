@@ -25,7 +25,9 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'module';
 import { ritaglia, stanza, esiti, deve, RADICE } from './banco.mjs';
+const require = createRequire(import.meta.url);
 
 const html = fs.readFileSync(path.join(RADICE, 'index.html'), 'utf8');
 const scocca = fs.readFileSync(path.join(RADICE, 'withus-one.js'), 'utf8');
@@ -50,11 +52,25 @@ const SALUTE = {
 function conSchermata(extra = {}) {
   const chiamate = [];
   const risposte = extra.risposte || {};
-  const s = stanza(html, ['collegStato', 'collegDiagnosi', 'collegCarica', 'collegDisegna', 'collegAccedi', 'collegSegui', 'collegCodice'], {
+  /* Il MOTORE vero, non un finto: le regole del «da quando» hanno le loro
+     prove in server/verifica/collegamenti.test.mjs, e qui si controlla che la
+     schermata le usi davvero. Un motore finto proverebbe la schermata contro
+     una regola inventata per l'occasione. */
+  const Collegamenti = require(path.join(RADICE, '..', 'tariffe', 'motore', 'collegamenti.js'));
+  const timer = { creati: 0, fermati: 0, fn: null, ms: null };
+  const s = stanza(html, ['collegStato', 'collegDiagnosi', 'collegMonitor', 'collegStoria', 'collegRicorda',
+                          'collegCarica', 'collegDisegna', 'collegAccedi', 'collegSegui', 'collegCodice'], {
+    db: extra.db,
+    righeArchivio: extra.righeArchivio || [],
     altro: {
       COLLEG: extra.COLLEG === undefined ? null : extra.COLLEG,
       COLLEG_ULTIMO: 0,
       COLLEG_LAVORO: extra.COLLEG_LAVORO || {},
+      COLLEG_STORIA: extra.COLLEG_STORIA || [],
+      COLLEG_DURATE: {}, COLLEG_ORDINE: [], COLLEG_TIMER: null,
+      logMovimento: (...a) => { chiamate.push({ registro: a }); },
+      setInterval: (fn, ms) => { timer.creati++; timer.fn = fn; timer.ms = ms; return 7; },
+      clearInterval: () => { timer.fermati++; },
       setTimeout: (fn) => { if (extra.seguiRicorsivo) fn(); return 0; },
       quotoFetch: async (percorso, opz) => {
         chiamate.push({ percorso, metodo: (opz && opz.method) || 'GET', corpo: opz && opz.corpo });
@@ -65,7 +81,10 @@ function conSchermata(extra = {}) {
       },
     },
   });
-  return { ...s, chiamate };
+  /* `window` della stanza non è il contesto: il motore si appoggia lì. */
+  s.ctx.window.Collegamenti = Collegamenti;
+  s.ctx.Collegamenti = Collegamenti;
+  return { ...s, chiamate, timer, Collegamenti };
 }
 
 const html2 = (s, id) => (s.browser.elemento(id).innerHTML || '');
@@ -134,13 +153,19 @@ e.prova('«cosa manca» dice anche cosa fare', () => {
   deve(/Aggiorna la password/.test(manca), 'dice qual e\' il problema ma non cosa farci');
 });
 
-e.prova('il conto in cima è quello vero, non una stima', () => {
+e.prova('il conto in cima non SOMMA i forse con i lavori da fare', () => {
+  /* Fino al 20/09/2026 questo riquadro diceva «2 da collegare»: una sola
+     dichiara di essere fuori, l'altra non dice niente. La prova contava due, e
+     misurava il mondo di ieri — un numero di lavori da fare che comprende dei
+     forse manda a sistemare una compagnia che magari e' a posto. Si e'
+     aggiornata la REGOLA, non il numero (§15, §16, §33, §35). */
   const s = conSchermata({ COLLEG: SALUTE });
   s.ctx.collegDisegna();
   const somma = html2(s, 'cl-somma');
-  deve(/>1</.test(somma), 'non dice quante sono pronte');
-  deve(/>2</.test(somma), 'non dice quante sono da collegare');
   deve(/>3</.test(somma), 'non dice quante compagnie ci sono');
+  deve(/>1<\/b><span>pronte a quotare adesso/.test(somma), 'non dice quante sono pronte');
+  deve(/>1<\/b><span>da collegare/.test(somma), 'le da collegare non sono una sola: e\' tornata la somma coi forse');
+  deve(/non lo dicono/.test(somma), 'quella che non si sa sparisce invece di dichiararsi');
 });
 
 // ── 3. «Collegata» lo dice il motore ────────────────────────────────────────
@@ -256,6 +281,134 @@ e.prova('aprendola si rilegge lo stato, non si mostra quello di mezz\'ora fa', (
   deve(c && /collegamenti'\)\s*\{\s*collegCarica\(true\)/.test(c.replace(/\s+/g, ' ').replace(/ \{ /g, '{ ')) ||
        /t === 'collegamenti'/.test(c),
     'aprendo la scheda non si ricarica niente');
+});
+
+
+// ── 5. IL MONITOR (Blocco 3 · punto 12-bis, 20/09/2026) ─────────────────────
+//
+//  Prima questa schermata si aggiornava SOLO al clic. Lasciata aperta su un
+//  secondo schermo mostrava per ore lo stato di quando era stata aperta: un
+//  pannello che non si aggiorna da solo non e' un monitor, e' una fotografia
+//  con l'ora sbagliata. E non sapeva dire «da quando», che e' la domanda che
+//  distingue un intoppo di dieci minuti da sei giorni di portafoglio non
+//  quotato.
+
+await e.provaAsync('L\'AGGIORNAMENTO AUTOMATICO NON FORZA I PORTALI', async () => {
+  /* La regola che conta piu' di tutte in questo punto. `forza=1` salta la
+     cache del motore e va a bussare ai portali: farlo ogni due minuti vuol
+     dire bussare settecento volte al giorno, e dopo tre accessi falliti il
+     freno ferma quella compagnia per un quarto d'ora. Insistere e' il modo di
+     farsi bloccare l'utenza — che si sblocca solo telefonando. */
+  const s = conSchermata({ risposte: { '/fonti/salute': SALUTE, '/fonti/salute?forza=1': SALUTE } });
+  await s.ctx.collegCarica(false, true);          // giro automatico
+  deve(s.chiamate.some(c => c.percorso === '/fonti/salute'), 'il giro automatico non ha letto niente');
+  deve(!s.chiamate.some(c => /forza=1/.test(c.percorso)), 'il giro automatico forza i portali');
+  /* A forzare e' il clic, che e' una persona che ha appena sistemato qualcosa. */
+  const m = conSchermata({ risposte: { '/fonti/salute?forza=1': SALUTE } });
+  await m.ctx.collegCarica(true);
+  deve(m.chiamate.some(c => /forza=1/.test(c.percorso)), 'il clic su Aggiorna non forza piu\'');
+});
+
+await e.provaAsync('il monitor si accende leggendo, e si SPEGNE se la lettura non riesce', async () => {
+  /* Continuare a ripetere una chiamata che non risponde non la fa rispondere,
+     e la schermata direbbe «riprovo» mentre non riprova niente di utile. */
+  const s = conSchermata({ risposte: { '/fonti/salute': SALUTE } });
+  await s.ctx.collegCarica(true);
+  deve(s.timer.creati === 1, 'il monitor non parte dopo una lettura riuscita');
+  deve(s.timer.ms === s.Collegamenti.INTERVALLO_MS,
+    'la cadenza del monitor non e\' quella del motore: due numeri in due posti diventano due cadenze');
+  /* E un monitor gia' acceso si SPEGNE: la prima lettura riesce, la seconda
+     no. Provarlo su una schermata mai caricata non dimostrerebbe niente —
+     lì non c'e' nessun cronometro da fermare. */
+  let primo = true;
+  const ko = conSchermata({ risposte: { '/fonti/salute': () => {
+    if (primo) { primo = false; return SALUTE; }
+    throw new Error('il motore non risponde');
+  } } });
+  await ko.ctx.collegCarica(false, true);
+  deve(ko.timer.creati === 1, 'la premessa e\' sbagliata: il monitor non si era acceso');
+  await ko.ctx.collegCarica(false, true);
+  deve(ko.timer.creati === 1, 'il monitor continua a ripetere una chiamata che non risponde');
+  deve(ko.timer.fermati >= 1, 'il monitor non viene fermato quando la lettura fallisce');
+});
+
+await e.provaAsync('«DA QUANDO» non riparte a ogni giro, e la prima volta si dichiara', async () => {
+  /* Riscrivere `dal` a ogni lettura azzererebbe l'unica cosa che questa
+     memoria serve a sapere: ogni compagnia risulterebbe scollegata «da poco»
+     per sempre. Le regole stanno nel motore; qui si controlla che la
+     schermata le porti fino allo schermo. */
+  const treGiorniFa = new Date(Date.now() - 3 * 86400000).toISOString();
+  const s = conSchermata({
+    risposte: { '/fonti/salute': SALUTE },
+    righeArchivio: [{ fonte: 'groupama', nome: 'Groupama', stato: 'fuori', dal: treGiorniFa,
+                      visto_il: new Date(Date.now() - 60000).toISOString(), cambi: 1 }]
+  });
+  await s.ctx.collegCarica(false, true);
+  const lista = html2(s, 'cl-lista');
+  deve(/da 3 giorni/.test(lista), 'il «da quando» non arriva nella lista: ' + lista.slice(0, 200));
+  /* E quella mai vista lo dichiara, invece di far credere che il guasto sia
+     appena cominciato: di notte non guarda nessuno. */
+  deve(/visto adesso per la prima volta/.test(lista),
+    'una fonte mai osservata mostra un cronometro che parte da ora senza dirlo');
+});
+
+await e.provaAsync('la memoria si scrive solo quando serve, e il registro segna i CAMBI', async () => {
+  const s = conSchermata({
+    risposte: { '/fonti/salute': SALUTE },
+    righeArchivio: [{ fonte: 'groupama', nome: 'Groupama', stato: 'dentro',
+                      dal: new Date(Date.now() - 86400000).toISOString(),
+                      visto_il: new Date(Date.now() - 60000).toISOString(), cambi: 0 }]
+  });
+  await s.ctx.collegCarica(false, true);
+  /* La memoria si scrive DOPO aver disegnato, e senza farsi aspettare: chi
+     guarda non deve attendere una scrittura per vedere lo stato. Quindi qui si
+     lascia finire il giro prima di misurare. */
+  await new Promise(r => setTimeout(r, 0));
+  const scritte = s.archivio.stato.upsert.filter(u => u.tabella === 'iam_collegamenti_stato');
+  deve(scritte.length >= 1, 'non si scrive niente nemmeno quando uno stato cambia');
+  /* Un cambio di stato e' un fatto dell'agenzia e va a registro: «da quando
+     PRIMA non risponde» e' una domanda che arriva settimane dopo (§18). */
+  deve(s.chiamate.some(c => c.registro && /Groupama/.test(String(c.registro[0]))),
+    'il cambio di stato non lascia traccia a registro');
+
+  /* E QUESTA È LA PARTE CHE SI ROMPE IN SILENZIO. Quando lo stato NON è
+     cambiato ma l'ultima occhiata è vecchia, la riga si riscrive per dire
+     «l'ho guardato adesso» — e in quella riscrittura `dal` deve restare
+     quello di prima. Guardando solo quello che si VEDE, un `dal` corrotto in
+     scrittura non si nota: la schermata mostra il numero giusto adesso, e
+     quello sbagliato domani. Si misura quello che si SCRIVE. */
+  const vecchio = new Date(Date.now() - 4 * 86400000).toISOString();
+  const eco = conSchermata({
+    risposte: { '/fonti/salute': SALUTE },
+    righeArchivio: [{ fonte: 'groupama', nome: 'Groupama', stato: 'fuori', dal: vecchio,
+                      visto_il: new Date(Date.now() - 30 * 60000).toISOString(), cambi: 1 }]
+  });
+  await eco.ctx.collegCarica(false, true);
+  await new Promise(r => setTimeout(r, 0));
+  const righe = eco.archivio.stato.upsert
+    .filter(u => u.tabella === 'iam_collegamenti_stato')
+    /* Il finto archivio fa `{...riga}` su quello che riceve: un elenco di
+       righe diventa un oggetto con le chiavi numeriche. Si rilegge così. */
+    .flatMap(u => (Array.isArray(u.riga) ? u.riga : Object.values(u.riga || {})))
+    .filter(r => r && typeof r === 'object' && r.fonte);
+  const g = righe.find(r => r && r.fonte === 'groupama');
+  deve(g, 'l\'occhiata vecchia non viene aggiornata: «è così da tre giorni» e «nessuno la guarda da tre giorni» si leggerebbero uguali');
+  deve(g.dal === vecchio, 'la riscrittura periodica ha spostato il cronometro: ' + g.dal);
+  deve(g.visto_il !== vecchio, 'l\'ultima occhiata non viene aggiornata');
+  deve(g.cambi === 1, 'una riscrittura senza cambiamenti conta come un cambio');
+});
+
+await e.provaAsync('se la memoria non si legge, lo stato si mostra lo stesso', async () => {
+  /* La memoria e' un di piu': chi guarda non deve restare senza lo stato delle
+     compagnie perche' una tabella non risponde (§35, una lettura per sezione). */
+  const s = conSchermata({
+    risposte: { '/fonti/salute': SALUTE },
+    db: { from: () => ({ select: () => Promise.resolve({ data: null, error: new Error('permesso negato') }) }) }
+  });
+  await s.ctx.collegCarica(false, true);
+  const lista = html2(s, 'cl-lista');
+  deve(/Groupama/.test(lista), 'senza la memoria la schermata resta vuota');
+  deve(!/da quando non si sa/.test(lista), 'senza la memoria si stampa un cronometro rotto');
 });
 
 e.stampa();

@@ -80,7 +80,7 @@ function apparecchia(schedaMemorizzata) {
       loadTrattDB: async()=>{}, renderLead(){}, loadLeadDB: async()=>{},
       loadWD_DB: async()=>{}, selWDTab(){}, renderWDCal(){}, subscribeWD(){},
       mostraResiduiKPI(){}, selPerfTab(){}, loadREFromDB(){}, loadAzienda(){},
-      loadTickets(){}, caricaDaFareOggi(){}, loadAgentiAI(){}, caricaProfilo: async()=>null,
+      loadTickets(){}, caricaDaFareOggi(){}, caricaKpiScrivania(){}, loadAgentiAI(){}, caricaProfilo: async()=>null,
       renderUtenti(){}, renderKpiCtrl(){}, renderGestioneObiettivi(){}, renderAuditLog(){},
       renderHubList(){}, renderPannelloPersonale(){}, renderObiettiviOperatore(){},
       quotoUrl: async()=>'', applicaPermessi(){}, PERF_CUR: 'gare',

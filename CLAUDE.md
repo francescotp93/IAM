@@ -3830,3 +3830,230 @@ vedeva.
   contabilità.
 - **Il Blocco 3 non è finito**: restano i punti 7 (dettaglio conto), 12-bis
   (monitor stato collegamenti), 10 (dashboard KPI) e 4 (filtri marketing).
+
+---
+
+## 42. Brief IAM — Blocco 3: il conto, il monitor, i numeri, i filtri (20-21/09/2026)
+
+Gli ultimi quattro punti del Blocco 3. Tre dei quattro hanno la stessa forma,
+che a questo punto è la forma di mezzo repository: **la cosa esisteva già e non
+serviva a chi lavora** (§1). Il quarto è un pezzo che mancava del tutto.
+
+| punto | dove | misurato prima di scrivere |
+|---|---|---|
+| 7 dettaglio conto | `dco*` in `iam/index.html`, `Contabilita.dettaglioConto` | l'elenco dei conti dava un saldo per riga e nessun modo di sapere perché |
+| 12-bis monitor collegamenti | `collegCarica`/`collegMonitor` in `iam/index.html`, `tariffe/motore/collegamenti.js` | si aggiornava **solo al clic**, e non c'era nessuno storico: `grep setInterval` trovava solo il controllo versione e la posta |
+| 10 KPI sulla Scrivania | `kpi*` in `iam/index.html`, `tariffe/motore/kpi.js` | la Scrivania diceva che cosa **fare** e mai come sta andando |
+| 4 filtri marketing | `seg*` in `index.html` | il server onorava **20** filtri, la schermata ne chiedeva **14** |
+
+| pezzo | prove |
+|---|---|
+| `Contabilita.dettaglioConto` / `storicoQuadrature` | `contabilita.test.mjs` → **43** (erano 36) |
+| `tariffe/motore/collegamenti.js` | `collegamenti.test.mjs` — 9 |
+| `tariffe/motore/kpi.js` | `kpi.test.mjs` — 8 |
+| la finestra del conto | `iam/verifica/dettaglio-conto.test.mjs` — 9 |
+| il monitor | `stato-collegamenti.test.mjs` → **24** (erano 19), e fa girare il codice |
+| i numeri della Scrivania | `iam/verifica/kpi-scrivania.test.mjs` — 5, che fa girare il codice |
+| i filtri | blocco «Blocco 3 · filtri» in `ui-test.mjs` → **476** |
+
+---
+
+### Punto 7 — lo storico delle quadrature NON si congela, ed è il contrario di un fascicolo
+
+La decisione che vale tutto il punto, e va letta accanto a §11 regola 4, dove
+si fa l'opposto:
+
+> **La dichiarazione è un fatto della banca e non cambia mai; la ricostruzione
+> è quello che il sistema dice OGGI per quella data.** Quindi ogni quadratura
+> passata si **ricalcola**.
+
+Se qualcuno scrive un movimento con una data vecchia, un giorno che quadrava
+smette di quadrare — ed è **esattamente la cosa che si vuole vedere**.
+Congelando la differenza al momento della dichiarazione, la scrittura
+retroattiva sparirebbe dalla vista: si nasconderebbe proprio il caso per cui la
+quadratura esiste. Nel fascicolo si congela per la ragione opposta e altrettanto
+vera: lì il cambiamento arriva da **fuori** (una compagnia che aggiunge un
+requisito) e rifarebbe incomplete delle pratiche chiuse.
+
+**Il progressivo parte sempre dall'inizio.** `dal`/`al` tagliano le righe da
+*mostrare*, non quelle da *contare*, e il saldo di apertura del periodo è
+scritto sopra la prima riga. Un saldo progressivo che riparte dal saldo
+iniziale in mezzo a un periodo è un numero falso in un modo che nessuno
+controlla: **sembra un saldo**.
+
+**Guardare non è scrivere.** La finestra ha un overlay suo e non passa da
+`pntApri`, che è chiuso a chi non è admin. Chi vede l'elenco dei conti vede già
+i saldi: negargli il perché vuol dire dargli un numero e togliergli il modo di
+controllarlo.
+
+**Quello che resta fuori dal saldo si conta.** Un movimento la cui causale non
+esiste più non ha verso e non entra — giusto, non si indovina — ma un saldo che
+ignora delle righe in silenzio è un saldo di cui non ci si può fidare. Si dice
+quante sono e quanto pesano, **senza segno**, perché il verso è la cosa che non
+si sa.
+
+---
+
+### Punto 12-bis — l'aggiornamento automatico NON forza, e non è un dettaglio
+
+`forza=1` salta la cache del motore e va a **bussare ai portali delle
+compagnie**. Farlo ogni due minuti vuol dire bussare settecento volte al
+giorno, e dopo tre accessi falliti il freno ferma quella compagnia per un
+quarto d'ora: insistere è il modo di **farsi bloccare l'utenza**, che si
+sblocca solo telefonando. Il monitor rilegge quello che il motore ha già; a
+forzare è il clic, che è una persona che ha appena sistemato qualcosa.
+
+Il monitor si **spegne** quando la lettura non riesce: ripetere una chiamata
+che non risponde non la fa rispondere, e la schermata direbbe «riprovo» mentre
+non riprova niente di utile.
+
+**«Da quando» è da quando qualcuno HA GUARDATO**, non da quando è successo.
+`/fonti/salute` è una fotografia e non tiene memoria; la memoria è
+`iam_collegamenti_stato`, **una riga per fonte e non un registro di eventi** —
+un diario riga-per-osservazione crescerebbe di migliaia di righe al giorno e
+per rispondere bisognerebbe comunque leggerne solo l'ultima. Di notte non
+guarda nessuno: una compagnia caduta alle due risulta caduta alle otto, e la
+prima osservazione **si dichiara** invece di far credere che il guasto sia
+appena cominciato.
+
+Tre regole di scrittura, tutte nel motore:
+- **stesso stato → `dal` non si tocca.** Riscriverlo a ogni giro azzererebbe
+  l'unica cosa che questa tabella serve a sapere.
+- **si riscrive ogni dieci minuti** solo per dire «l'ho guardato adesso»: senza
+  `visto_il`, «è così da tre giorni» e «nessuno la guarda da tre giorni» si
+  leggono uguali.
+- **cambio di stato → il cronometro riparte, e il cambio va a registro** (§18).
+
+**Il riepilogo non somma «da collegare» con «non lo dice».** Un numero di lavori
+da fare che comprende dei forse manda a sistemare una compagnia che magari è a
+posto. La prova che contava «2 da collegare» misurava il mondo di ieri: si è
+aggiornata la **regola**, non il numero (§15, §16, §33, §35).
+
+E `collegStato` è salita nel motore: era una regola scritta dentro una
+schermata, e una regola in una schermata non si prova senza aprire un browser
+(§5).
+
+---
+
+### Punto 10 — perché questi numeri non sono quelli tolti il 4/8/2026
+
+Il 4/8/2026 una striscia di quattro indicatori era stata **tolta** da questa
+stessa pagina (§13.3) perché ripeteva i numeri di «Da fare oggi» a cento pixel
+di distanza. Quella decisione vale ancora, e questi tre non la violano:
+
+> **«Da fare oggi» elenca il LAVORO ARRETRATO — cose che qualcuno deve
+> sbrigare. Questi dicono COME STA ANDANDO.** Un rinnovo da lavorare è un
+> compito; il portafoglio in gestione non è un compito di nessuno.
+
+C'è una prova che lo misura invece di fidarsi: nessuna delle tabelle di «Da
+fare oggi» compare nel blocco dei KPI.
+
+**Le polizze senza premio non valgono zero.** Cinque su trenta non hanno un
+premio annuo (§36): sommare zero farebbe un portafoglio **più povero** del
+vero, e un numero più basso, su una scrivania, nessuno lo mette in dubbio.
+Restano fuori dal totale e il riquadro dice quante sono. Stessa cosa per una
+polizza **senza scadenza**: non è né attiva né scaduta, e metterla da una delle
+due parti gonfierebbe o svuoterebbe il portafoglio.
+
+**Da zero non si fa una percentuale.** «Da 0 a 5» non è «+500%»: è «prima non
+ce n'erano». È il modo più veloce di mettere in prima pagina un numero enorme
+che non vuol dire niente. E la conversione non si divide per zero — mentre
+**sopra il cento è vera** e si mostra: vuol dire che si sta emettendo
+l'arretrato.
+
+**Ogni riquadro è una lettura a sé** (§35): una tabella che non risponde toglie
+il suo riquadro e lo dice col suo nome. La controprova (le tre letture in una
+`Promise.all` che rilancia) fa diventare rossa la prova che lo sorveglia.
+
+---
+
+### Punto 4 — il server sapeva filtrare, e nessuno poteva chiederglielo
+
+Misurato prima di scrivere: `membriSegmento` onorava **venti** filtri e la
+schermata ne chiedeva **quattordici**. Sei — `comune`, `professione`,
+`casa_proprieta`, `intermediario_id`, `gruppo_id`, `con_polizze` — erano codice
+funzionante che nessuno poteva raggiungere. È §1 in versione marketing, ed è lo
+stesso difetto della ricerca globale che trovava il 17% del portafoglio (§40).
+
+La prova misura le due liste **nei due versi**, e non è simmetrica per caso:
+- la schermata non offre un filtro che il server ignora — un filtro non
+  applicato non fa un segmento più largo, fa **un segmento che chi lo ha
+  costruito crede stretto**;
+- il server non tiene una regola che nessuna schermata può chiedere.
+
+#### Un «no» che è un valore di partenza
+
+Misurato sul database: `sposato`, `ha_figli` e `casa_proprieta` sono
+`not null default false`. Un `false` vuol dire **«nessuno l'ha mai chiesto»**,
+non «no» — e sul portafoglio vero sono 58, 59 e 60 su 61. La schermata offriva
+già «Senza figli» e «No»: una campagna così sarebbe andata quasi tutta a
+persone di cui non sappiamo niente.
+
+Non si può distinguere a posteriori, e indovinare sarebbe §8.1. Quindi **il
+ramo negativo si chiama con il suo nome** («No, o mai chiesto») e la nota dice
+perché; il ramo affermativo resta affidabile, perché **un `true` l'ha scritto
+qualcuno**. Cambiare le colonne a nullable non risolverebbe niente: i `false`
+già scritti resterebbero ambigui, e riscriverli sarebbe inventare.
+
+#### La copertura dei campi, prima di costruire il segmento
+
+Professione 1 su 61, intermediario 1 su 61, comune 31 su 61. Un filtro su una
+colonna quasi vuota produce un segmento vuoto **che sembra un guasto del
+programma**: saperlo prima evita mezz'ora di ricerca di un bug che non c'è. Se
+la copertura non si legge si tace su quella riga e i filtri restano usabili
+(§35).
+
+---
+
+### Quattro cose trovate lavorando, e che non erano nel ragionamento
+
+**1. La trappola dei commenti ha una veste nuova: il testo che l'utente legge.**
+Undicesima occorrenza (§10, §12, §18, §26, §29, §31, §33, §34, §37, §41). Il
+guardiano di `conti-causali` cercava `saldo:` dentro un blocco enorme, ed è
+diventato rosso su una **frase dell'interfaccia** — «Resta fuori dal saldo:
+senza verso non si indovina». Due correzioni, come sempre: la frase è stata
+riscritta **e** la prova adesso cerca un campo dentro una chiamata di
+scrittura (`.update`/`.insert`/`.upsert`), che è quello che voleva dire
+dall'inizio. Cercare una parola dove si voleva cercare una scrittura funziona
+finché nessuno scrive quella parola in italiano.
+
+**2. Una controprova restata verde perché la prova guardava quello che si VEDE
+invece di quello che si SCRIVE.** Corrompendo `dal` in scrittura (scriverci
+`visto_il`), tutte le prove del monitor restavano verdi: la schermata mostrava
+il numero giusto **adesso**, e quello sbagliato **domani**. È il difetto §19
+del banco che non vedeva le scritture, un piano più in là. La prova adesso
+rilegge la riga scritta, non il riquadro disegnato.
+
+**3. Un processo in sottofondo che ripristina un file sotto una prova.** Una
+controprova lanciata mentre un `node ui-test.mjs` precedente era ancora vivo
+è restata verde: il processo vecchio, finendo, ha rimesso il file buono mentre
+la prova nuova lo stava leggendo. Non era la prova a essere debole. **Una
+controprova si lancia quando il banco è fermo** — e se resta verde senza una
+ragione chiara, la prima cosa da guardare è chi altro sta scrivendo su quel
+file.
+
+**4. Una voce nuova nel vocabolario del registro, senza tabella.** `fonte` è lo
+stato di un collegamento: `iam_collegamenti_stato` ha per chiave il **nome
+della fonte**, che non è un identificativo di riga da aprire. Niente tabella,
+niente puntatore — un puntatore che non apre niente è peggio di un puntatore
+assente (§18, regola 1). L'ha presa il guardiano di `registro-movimenti`, non
+la rilettura.
+
+---
+
+### Cosa resta aperto
+
+- **Il dettaglio conto è vuoto finché non ci sono movimenti**, ed è giusto: la
+  prima nota nasce vuota (§29) e i saldi iniziali dei conti sono a zero. La
+  finestra lo dice invece di far credere che il saldo iniziale sia quello di
+  oggi.
+- **`iam_collegamenti_stato` nasce vuota**: il «da quando» comincia a contare
+  la prima volta che qualcuno apre la schermata, e lo dichiara. Non c'è nessun
+  controllo notturno: per averlo servirebbe qualcosa che gira sul VPS, ed è un
+  lavoro a sé.
+- **I KPI della Scrivania sono d'agenzia, non per collaboratore.** Produzione ›
+  KPI e gare filtra già per persona; portare lo stesso filtro qui vuol dire
+  decidere che cosa vede un collaboratore del portafoglio, e non è una
+  decisione da prendere di sfuggita.
+- **I segmenti restano zero**: la tabella `quote_segmenti` è vuota. I filtri
+  adesso ci sono tutti, ma il primo segmento lo costruisce una persona.

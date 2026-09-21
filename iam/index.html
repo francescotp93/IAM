@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.11.0">
-<meta name="app-versione-nome" content="Sospensioni e fido">
+<meta name="app-versione" content="0.12.0">
+<meta name="app-versione-nome" content="Il conto, il monitor, i numeri e i filtri">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -46,6 +46,8 @@
 <!-- Sospensioni e fido (Blocco 3): stesso file del preventivatore, perche'
      il tetto al credito di una persona non puo' avere due regole. -->
 <script src="/nuovo-preventivo/tariffe/motore/sospensione.js?v=20260920"></script>
+<script src="/nuovo-preventivo/tariffe/motore/collegamenti.js?v=20260920"></script>
+<script src="/nuovo-preventivo/tariffe/motore/kpi.js?v=20260921"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -84,6 +86,27 @@
   border-radius:var(--rs);background:var(--surf);margin-bottom:8px}
 .cnt-r.cnt-spento{opacity:.55}
 .cnt-r .cnt-nome{font-weight:700;font-size:14px}
+/* I numeri della Scrivania (Blocco 3 · punto 10). Prefissati: nel foglio di
+   stile un nome di classe e' globale, anche dentro un discendente (§26). */
+.kpi-riga{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.kpi-c{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:13px 15px;min-width:0}
+.kpi-c.kpi-ko{border-left:3px solid #f59e0b}
+.kpi-c .kpi-k{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
+.kpi-c .kpi-v{font-size:22px;font-weight:800;margin-top:4px;line-height:1.1}
+.kpi-c .kpi-v .kpi-u{font-size:13px;font-weight:600;color:var(--txt2)}
+.kpi-c .kpi-s{font-size:11px;color:var(--txt2);margin-top:5px;line-height:1.5}
+@media(max-width:900px){.kpi-riga{grid-template-columns:1fr}}
+
+.cnt-r .cnt-apri{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor;cursor:pointer}
+.cnt-r .cnt-apri:hover{border-bottom-style:solid}
+/* Il dettaglio di un conto (Blocco 3 · punto 7). */
+.dco-riga{display:grid;grid-template-columns:86px 1fr 96px 110px;gap:10px;align-items:baseline;
+  padding:8px 14px;border-top:1px solid var(--bord);font-size:12.5px}
+.dco-riga.dco-testa{font-weight:800;border-top:0;color:var(--txt3);font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+.dco-riga .dco-imp{text-align:right;font-variant-numeric:tabular-nums}
+.dco-riga .dco-sal{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.dco-riga.dco-incerta{background:rgba(245,158,11,.1)}
+@media(max-width:700px){.dco-riga{grid-template-columns:1fr 1fr;gap:4px}}
 .cnt-r .cnt-sotto{font-size:11.5px;color:var(--txt3);margin-top:2px}
 .cnt-r .cnt-saldo{margin-left:auto;text-align:right;font-weight:800;font-size:15px;white-space:nowrap}
 .cnt-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;
@@ -1934,6 +1957,18 @@ input[type=file]{display:none;}
     <div id="pnt-box" style="background:var(--surf);border-radius:var(--r);width:min(620px,100%);
          max-height:88vh;overflow:auto;box-shadow:var(--shd2)"></div>
   </div>
+
+  <!-- ══ IL DETTAGLIO DI UN CONTO (Blocco 3 · punto 7) ═══════════════════════
+       Overlay SUO, e non quello della prima nota, per una ragione sola:
+       `pntApri` è chiuso a chi non può scrivere, e guardare non è scrivere.
+       Chi vede l'elenco dei conti vede già i loro saldi: negargli il perché
+       vorrebbe dire dargli un numero e togliergli il modo di controllarlo. -->
+  <div id="dco-ov" style="display:none;position:fixed;inset:0;z-index:601;background:rgba(0,0,0,.55);
+       backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px"
+       onclick="if(event.target===this)dcoChiudi()">
+    <div id="dco-box" style="background:var(--surf);border-radius:var(--r);width:min(860px,100%);
+         max-height:90vh;overflow:auto;box-shadow:var(--shd2)"></div>
+  </div>
 </div>
 
 <!-- DASHBOARD -->
@@ -1963,6 +1998,19 @@ input[type=file]{display:none;}
       <button class="d-btn primario" type="button" onclick="openWDModal(null)"><i class="ti ti-plus"></i> Inizia una nuova attività</button>
     </div>
   </section>
+
+  <!-- ── COME STA ANDANDO (Blocco 3 · punto 10, 21/09/2026) ──────────────────
+       Sta SOPRA «Da fare oggi» e non ripete i suoi numeri, che è la ragione
+       per cui il 4/8/2026 una striscia di indicatori era stata tolta da qui
+       (§13.3): quella ripeteva gli stessi conteggi a cento pixel di distanza.
+       Questi rispondono a un'altra domanda — «Da fare oggi» elenca il LAVORO
+       ARRETRATO, questi dicono COME STA ANDANDO. Un rinnovo da lavorare è un
+       compito di qualcuno; il portafoglio in gestione non è un compito.
+
+       Ogni riquadro è una LETTURA A SÉ (§35): quello che si può leggere si
+       mostra, e quello che non si può leggere lo dice col suo nome invece di
+       mostrare uno zero rassicurante (§12, §18). -->
+  <section class="kpi-riga" id="kpi-riga"></section>
 
   <section class="dashboard-grid">
     <div class="stack">
@@ -3955,6 +4003,14 @@ input[type=file]{display:none;}
   <section class="cl-lista" id="cl-lista"><div class="cl-vuoto"><i class="ti ti-loader"></i>Chiedo alle compagnie come stanno…</div></section>
 
   <p class="cl-nota">
+    Questa pagina si aggiorna da sola ogni due minuti finché resta aperta, e
+    <b>non forza</b> l'accesso ai portali: rilegge quello che il motore ha già.
+    A forzare è il tasto «Aggiorna», che è una persona che ha appena sistemato
+    qualcosa. Il «da quando» accanto a ogni compagnia è da quando <b>qualcuno ha
+    guardato</b> e ha visto quello stato: di notte non guarda nessuno, quindi una
+    caduta delle due di notte risulta della mattina.
+  </p>
+  <p class="cl-nota">
     Le password non passano mai da qui: il motore dice solo se ci sono.
     Dopo tre accessi falliti il freno ferma quella compagnia per un quarto d'ora —
     è quello che ci evita di farci bloccare l'utenza, e da qui non si scavalca.
@@ -5542,7 +5598,8 @@ function pntRenderQuadrature() {
                 : '<span class="cnt-tag">mai verificato</span>';
     return `<div class="cnt-r">
       <div style="flex:1;min-width:0">
-        <div class="cnt-nome">${esc(r.nome || '—')} ${stato}
+        <div class="cnt-nome"><a href="#" class="cnt-apri"
+             onclick="event.preventDefault();dcoApri('${esc(r.conto_id)}')">${esc(r.nome || '—')}</a> ${stato}
           <span class="cnt-tag ${r.natura === 'premi' ? 'premi' : 'aziendale'}">${esc(r.natura || '')}</span></div>
         <div class="cnt-sotto">Saldo di oggi: <b>${Contabilita.euro(r.saldo_oggi)}</b> · ${r.movimenti} movimenti fino al confronto</div>
         ${r.dichiarato != null
@@ -5557,6 +5614,175 @@ function pntRenderQuadrature() {
       </div>
     </div>`;
   }).join('');
+}
+
+/* ═══ IL DETTAGLIO DI UN CONTO (Blocco 3 · punto 7, 20/09/2026) ═══════════════
+
+   L'elenco dei conti diceva un saldo per riga, e basta. «Perché è quello?» non
+   aveva risposta da nessuna parte: bisognava aprire la prima nota e filtrarla a
+   mano, cioè rifare a mano il lavoro che il conto dovrebbe fare da sé.
+
+   Tre cose che questa finestra fa e che vanno lette insieme:
+
+   1. IL PROGRESSIVO PARTE DALL'INIZIO. Il periodo taglia le righe da mostrare,
+      non quelle da contare — il saldo di apertura del periodo è scritto sopra
+      la prima riga. Un progressivo che riparte da metà strada è un numero
+      falso che sembra un saldo, e nessuno lo controlla.
+   2. LO STORICO DELLE QUADRATURE SI RICALCOLA. Se qualcuno scrive un movimento
+      con una data vecchia, un giorno che quadrava smette di quadrare: è la
+      cosa che si vuole vedere. Le regole stanno nel motore.
+   3. QUELLO CHE RESTA FUORI DAL SALDO SI DICHIARA. Un movimento senza verso non
+      si indovina — ma un saldo che ignora delle righe in silenzio è un saldo di
+      cui non ci si può fidare.
+
+   Non si scrive niente da qui: si guarda. Per questo non passa dal cancello di
+   scrittura della prima nota. */
+var DCO_CONTO = null;            /* `var`: le prove leggono window.DCO_* (§17) */
+var DCO_DAL = '', DCO_AL = '';
+
+function dcoChiudi() {
+  const o = document.getElementById('dco-ov');
+  if (o) o.style.display = 'none';
+  DCO_CONTO = null;
+}
+
+async function dcoApri(contoId) {
+  DCO_CONTO = contoId;
+  DCO_DAL = ''; DCO_AL = '';
+  const ov = document.getElementById('dco-ov');
+  if (ov) ov.style.display = 'flex';
+  /* Si può arrivare qui da un istradamento diretto, con la contabilità mai
+     letta: allora si legge, invece di mostrare una finestra vuota. */
+  if (!PNT_CARICATO && typeof pntCarica === 'function') {
+    const box = document.getElementById('dco-box');
+    if (box) box.innerHTML = '<div style="padding:22px"><div class="cl-sub">Leggo i movimenti…</div></div>';
+    try { await pntCarica(); } catch (e) { /* lo dice dcoRender */ }
+  }
+  dcoRender();
+}
+
+/* I due campi delle date si leggono al clic su «Cerca», non mentre si scrive:
+   è la regola della M2, e vale anche dentro una finestra. */
+function dcoCerca() {
+  DCO_DAL = (document.getElementById('dco-dal')?.value || '').trim();
+  DCO_AL = (document.getElementById('dco-al')?.value || '').trim();
+  dcoRender();
+}
+function dcoAzzera() { DCO_DAL = ''; DCO_AL = ''; dcoRender(); }
+
+function dcoRender() {
+  const box = document.getElementById('dco-box');
+  if (!box || !DCO_CONTO) return;
+  if (!window.Contabilita) {
+    box.innerHTML = '<div style="padding:22px"><div class="cnt-avv">Il motore della contabilità non si è caricato: '
+      + 'non vuol dire che il conto sia vuoto, vuol dire che non si è potuto leggere.</div></div>';
+    return;
+  }
+  const c = pntConto(DCO_CONTO);
+  if (!c) {
+    box.innerHTML = '<div style="padding:22px"><div class="cnt-avv">Questo conto non risulta fra quelli letti. '
+      + 'Se è stato appena creato, chiudi e riapri la schermata.</div>'
+      + '<div style="text-align:right;padding-top:14px"><button class="d-btn" type="button" onclick="dcoChiudi()">Chiudi</button></div></div>';
+    return;
+  }
+  const d = Contabilita.dettaglioConto(c, PNT_MOVIMENTI, PNT_QUADRATURE,
+                                       { causali: PNT_CAUSALI, dal: DCO_DAL || null, al: DCO_AL || null });
+  const periodo = !!(DCO_DAL || DCO_AL);
+  const cau = id => pntCausale(id);
+
+  /* Le righe si mostrano dalla più recente, ma il progressivo è calcolato
+     dalla più vecchia: si inverte solo la vista. */
+  const righe = d.righe.slice().reverse();
+
+  box.innerHTML = `
+    <div style="padding:18px 18px 0">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div class="eyebrow">Conto</div>
+          <div style="font-size:19px;font-weight:800">${esc(c.nome || '—')}</div>
+          <div class="cl-sub" style="margin-top:3px">
+            ${esc(Contabilita.etichetta(Contabilita.NATURE, c.natura) || c.natura || '')} ·
+            ${esc(Contabilita.etichetta(Contabilita.TIPOLOGIE, c.tipologia) || c.tipologia || '')}
+            ${c.attivo === false ? ' · <b>spento</b>' : ''}</div>
+        </div>
+        <button class="d-btn" type="button" onclick="dcoChiudi()">Chiudi</button>
+      </div>
+    </div>
+
+    <div class="cnt-somma" style="padding:14px 18px 0">
+      <div class="cnt-card"><div class="cnt-k">Saldo di oggi</div>
+        <div class="cnt-v">${Contabilita.euro(d.saldo)}</div>
+        <div class="cnt-s">saldo iniziale dichiarato ${Contabilita.euro(d.iniziale)}</div></div>
+      <div class="cnt-card"><div class="cnt-k">Movimenti</div>
+        <div class="cnt-v">${d.totali}</div>
+        <div class="cnt-s">${d.primo ? 'dal ' + esc(pntData(d.primo)) + ' al ' + esc(pntData(d.ultimo)) : 'nessuno ancora'}${
+          d.annullati ? ' · ' + d.annullati + ' annullati, fuori da ogni totale' : ''}</div></div>
+      <div class="cnt-card"><div class="cnt-k">Fuori dal saldo</div>
+        <div class="cnt-v">${d.fuori_dal_saldo.righe}</div>
+        <div class="cnt-s">${d.fuori_dal_saldo.righe
+          ? Contabilita.euro(d.fuori_dal_saldo.importo) + ' di importi senza verso: la causale non esiste più'
+          : 'nessuna riga senza verso'}</div></div>
+    </div>
+
+    <div style="padding:14px 18px 0;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div class="fld" style="margin:0"><label>Dal</label><input type="date" id="dco-dal" value="${esc(DCO_DAL)}"></div>
+      <div class="fld" style="margin:0"><label>Al</label><input type="date" id="dco-al" value="${esc(DCO_AL)}"></div>
+      <button class="d-btn" type="button" onclick="dcoCerca()"><i class="ti ti-search"></i> Cerca</button>
+      <button class="d-btn" type="button" onclick="dcoAzzera()" ${periodo ? '' : 'disabled'}>Azzera</button>
+    </div>
+
+    ${!d.totali ? `<div style="padding:16px 18px"><div class="cnt-avv">
+        Su questo conto non è ancora passato nessun movimento: il saldo che si legge è
+        quello iniziale dichiarato, non il saldo di oggi ricostruito.</div></div>` : `
+
+    <div style="padding:16px 18px 0"><b style="font-size:13px">I movimenti</b>
+      <div class="cl-sub">${periodo
+        ? 'Dal ' + esc(pntData(DCO_DAL || d.primo)) + ' al ' + esc(pntData(DCO_AL || d.ultimo))
+          + ': ' + d.mostrate + ' righe su ' + d.totali + '. Il saldo progressivo NON riparte dal periodo — '
+          + 'all\'apertura il conto era a ' + Contabilita.euro(d.apertura) + '.'
+        : 'Dalla più recente. Il saldo a destra è quello che il conto aveva dopo quella riga.'}</div></div>
+    <div style="padding:8px 4px 0">
+      <div class="dco-riga dco-testa"><div>Data</div><div>Causale</div><div class="dco-imp">Importo</div><div class="dco-sal">Saldo</div></div>
+      ${righe.length ? righe.map(r => {
+        const m = r.movimento, k = cau(m.causale_id);
+        return `<div class="dco-riga${r.incerto ? ' dco-incerta' : ''}">
+          <div>${esc(pntData(m.data))}</div>
+          <div>${esc(k ? k.nome : 'Causale sconosciuta')}${
+            m.descrizione ? '<div class="cl-sub">' + esc(m.descrizione) + '</div>' : ''}${
+            r.incerto ? '<div class="cl-sub">Resta fuori dal saldo — senza verso non si indovina.</div>' : ''}</div>
+          <div class="dco-imp">${r.verso ? (r.verso > 0 ? '+' : '−') : ''}${Contabilita.euro(Math.abs(Contabilita.numero(m.importo) || 0))}</div>
+          <div class="dco-sal">${Contabilita.euro(r.saldo)}</div>
+        </div>`;
+      }).join('') : '<div class="dco-riga"><div>—</div><div>Nessun movimento in questo periodo.</div><div></div><div></div></div>'}
+    </div>
+
+    ${d.per_causale.length ? `<div style="padding:18px 18px 0"><b style="font-size:13px">Che cosa ha mosso questo conto</b>
+      <div class="cl-sub">${periodo ? 'Nel periodo scelto' : 'Da sempre'}, causale per causale.</div></div>
+      <div class="cnt-lista" style="padding:8px 18px 0">${d.per_causale.map(r => `
+        <div class="cnt-r"><div style="flex:1"><div class="cnt-nome">${esc(r.nome)}
+          ${r.ignota ? '<span class="cnt-tag">tipo sconosciuto</span>'
+            : '<span class="cnt-tag ' + (r.segno === 'entrata' ? 'entrata' : 'uscita') + '">' + esc(r.segno || '') + '</span>'}</div>
+          <div class="cnt-sotto">${r.righe} movimenti</div></div>
+          <div class="cnt-saldo">${Contabilita.euro(r.totale)}</div></div>`).join('')}</div>` : ''}
+    `}
+
+    <div style="padding:18px 18px 0"><b style="font-size:13px">Le quadrature di questo conto</b>
+      <div class="cl-sub">Ogni dichiarazione confrontata con quello che il sistema dice <b>oggi</b> per quella data.
+        Se un giorno smette di quadrare, qualcuno ha scritto un movimento con una data vecchia.</div></div>
+    <div class="cnt-lista" style="padding:8px 18px 18px">
+      ${d.quadrature.length ? d.quadrature.map(q => `
+        <div class="cnt-r"><div style="flex:1;min-width:0">
+          <div class="cnt-nome">${esc(pntData(q.data))}
+            ${q.quadra === true ? '<span class="cnt-tag utile">quadra</span>'
+              : q.quadra === false ? '<span class="cnt-tag uscita">non quadra</span>'
+              : '<span class="cnt-tag">non si legge</span>'}</div>
+          <div class="cnt-sotto">Dichiarato ${Contabilita.euro(q.dichiarato)} · il sistema dice ${Contabilita.euro(q.ricostruito)}
+            (${q.movimenti} movimenti)${q.nota ? ' · ' + esc(q.nota) : ''}</div>
+          ${q.motivo ? '<div class="cnt-sotto">' + esc(q.motivo) + '</div>' : ''}
+        </div></div>`).join('')
+      : `<div class="cnt-avv">Su questo conto non è mai stato dichiarato un saldo.
+           Non vuol dire che quadri: vuol dire che non è mai stato confrontato con niente.</div>`}
+    </div>`;
 }
 
 function pntApriQuadratura(contoId) {
@@ -7851,7 +8077,7 @@ async function loadLastSession() {
     // Blocco B: il lavoro del giorno si calcola all'avvio, qualunque scheda
     // venga ripristinata: così il numero è già pronto quando si apre la
     // scrivania, e non si vede mai la fascia "sto calcolando".
-    caricaDaFareOggi();
+    caricaDaFareOggi(); caricaKpiScrivania();
     // Vai a dashboard solo al primo login fresco, non su ogni ricarica pagina
     ripristinaScheda();
     setTimeout(() => buildStorico(), 500);
@@ -8258,7 +8484,7 @@ function goTab(t) {
   if (t === 'compagnie')   { prvCarica(true); }
   if (t === 'provvigioni') { prvTab(PRV_VISTA); prvCarica(true); }
   if (t === 'catalogo')    { catTab(CAT_VISTA); catCarica(true); }
-  if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); }   // Blocco B
+  if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); caricaKpiScrivania(); }   // Blocco B
   if (t === 'agenti')    { loadAgentiAI(); }
   if (t === 'quoto') {
     // Splash screen fullscreen prima del redirect
@@ -8843,6 +9069,120 @@ function oggiDisegna(voci) {
 }
 
 let OGGI_ULTIMO = 0;
+/* ═══ COME STA ANDANDO — i numeri della Scrivania ══════════════════════════════
+   (Blocco 3 · punto 10, 21/09/2026)
+
+   Tre riquadri, e nessuno ripete un numero di «Da fare oggi»: quello elenca il
+   LAVORO ARRETRATO, questi dicono COME STA ANDANDO. È la distinzione per cui
+   la striscia tolta il 4/8/2026 (§13.3) non torna: quella ripeteva gli stessi
+   conteggi a cento pixel di distanza.
+
+   OGNI RIQUADRO È UNA LETTURA A SÉ. Il 20/09/2026 sette letture in una
+   `Promise.all` che rilancia hanno spento una schermata intera per una colonna
+   sbagliata (§35). Qui una tabella che non risponde toglie il SUO riquadro e lo
+   dice col suo nome — e «non si è potuto leggere» non diventa uno zero, che su
+   una scrivania è la bugia più comoda (§12, §18).
+
+   I conti stanno nel motore (`tariffe/motore/kpi.js`, otto prove in Node): qui
+   si legge e si disegna. */
+var KPI_ULTIMO = 0;
+
+function kpiRiquadro(titolo, valore, sotto, extra) {
+  return '<div class="kpi-c' + (extra && extra.guasto ? ' kpi-ko' : '') + '">'
+    + '<div class="kpi-k">' + esc(titolo) + '</div>'
+    + '<div class="kpi-v">' + valore + '</div>'
+    + '<div class="kpi-s">' + (sotto || '') + '</div></div>';
+}
+
+function kpiEuro(n) {
+  return (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+async function caricaKpiScrivania(forza) {
+  const box = document.getElementById('kpi-riga');
+  if (!box || !db || !window.Kpi) return;
+  const ora = Date.now();
+  if (!forza && KPI_ULTIMO && (ora - KPI_ULTIMO) < 60000) return;
+  KPI_ULTIMO = ora;
+  if (!box.innerHTML) box.innerHTML = '<div class="kpi-c"><div class="kpi-k">Sto leggendo…</div></div>';
+
+  const oggi = wdsISO(new Date());
+  const m = Kpi.mese(oggi), mPrima = Kpi.meseMeno(m, 1);
+
+  /* Una lettura per riquadro: quello che si legge si mostra, quello che non si
+     legge dichiara il suo nome. Mai una `Promise.all` che rilancia (§35). */
+  const leggi = async (nome, fn) => {
+    try { return { ok: true, dati: await fn() }; }
+    catch (e) { console.warn('KPI ' + nome + ':', e.message || e); return { ok: false, nome }; }
+  };
+
+  const [pol, prev, tit] = await Promise.all([
+    leggi('portafoglio', async () => {
+      const { data, error } = await db.from('quote_polizze')
+        .select('data_scadenza,premio_annuo,stato_pagamento');
+      if (error) throw error;
+      return Kpi.portafoglio(data || [], oggi);
+    }),
+    leggi('produzione', async () => {
+      const { data, error } = await db.from('quote_preventivi')
+        .select('creato_il,polizza_emessa,polizza_il,dati')
+        .gte('creato_il', Kpi.primoDelMese(mPrima));
+      if (error) throw error;
+      return { ora: Kpi.produzione(data || [], m), prima: Kpi.produzione(data || [], mPrima) };
+    }),
+    leggi('incassato', async () => {
+      const { data, error } = await db.from('quote_titoli')
+        .select('data_incasso,importo_lordo')
+        .gte('data_incasso', Kpi.primoDelMese(mPrima));
+      if (error) throw error;
+      const fine = (d) => { const x = new Date(d + '-01'); x.setMonth(x.getMonth() + 1); x.setDate(0); return wdsISO(x); };
+      return {
+        ora: Kpi.incassato(data || [], Kpi.primoDelMese(m), fine(m)),
+        prima: Kpi.incassato(data || [], Kpi.primoDelMese(mPrima), fine(mPrima))
+      };
+    })
+  ]);
+
+  const guasto = (r) => kpiRiquadro(r.nome === 'portafoglio' ? 'Portafoglio'
+      : r.nome === 'produzione' ? 'Questo mese' : 'Incassato questo mese',
+    '—', 'Non si è potuto leggere. Non vuol dire che non ci sia niente: vuol dire che la lettura non è riuscita.',
+    { guasto: true });
+
+  const pezzi = [];
+
+  if (!pol.ok) pezzi.push(guasto(pol));
+  else {
+    const p = pol.dati;
+    pezzi.push(kpiRiquadro('Portafoglio', kpiEuro(p.premio),
+      '<b>' + p.attive + '</b> polizze attive · premio annuo in gestione'
+      + (p.motivo ? '<br>' + esc(p.motivo) : '')
+      + (p.senza_scadenza ? '<br>' + p.senza_scadenza + ' senza scadenza: non si può dire se corrono.' : '')));
+  }
+
+  if (!prev.ok) pezzi.push(guasto(prev));
+  else {
+    const a = prev.dati.ora, b = prev.dati.prima;
+    const c = Kpi.confronto(a.polizze, b.polizze);
+    pezzi.push(kpiRiquadro('Questo mese', String(a.polizze) + ' <span class="kpi-u">polizze</span>',
+      '<b>' + a.preventivi + '</b> preventivi'
+      + (a.conversione != null ? ' · conversione <b>' + a.conversione + '%</b>'
+         : ' · conversione: nessun preventivo, non si calcola')
+      + '<br>' + esc(c.testo) + ' (' + b.polizze + ' a ' + esc(mPrima) + ')'
+      + (a.emissione_stimata ? '<br>' + a.emissione_stimata + ' senza data di emissione: contate nel mese del preventivo.' : '')));
+  }
+
+  if (!tit.ok) pezzi.push(guasto(tit));
+  else {
+    const a = tit.dati.ora, b = tit.dati.prima;
+    const c = Kpi.confronto(a.importo, b.importo);
+    pezzi.push(kpiRiquadro('Incassato questo mese', kpiEuro(a.importo),
+      '<b>' + a.righe + '</b> rate · ' + esc(c.testo)
+      + (a.motivo ? '<br>' + esc(a.motivo) : '')));
+  }
+
+  box.innerHTML = pezzi.join('');
+}
+
 async function caricaDaFareOggi(forza) {
   const box = document.getElementById('oggi-corpo');
   if (!box) return;
@@ -9147,6 +9487,7 @@ function buildDashboard() {
   renderPlatformUpdates();
   renderDashboardAlerts();
   caricaDaFareOggi();   // Blocco B — un solo aggancio copre tutti i percorsi
+  caricaKpiScrivania();  // Blocco 3 · punto 10 — i numeri, accanto al lavoro
 
   document.getElementById('d-empty').style.display = 'none';
   document.getElementById('d-content').style.display = 'block';
@@ -16118,15 +16459,25 @@ async function quotoFetch(percorso, opzioni) {
 //  in italiano, non con un pallino rosso.
 // ═══════════════════════════════════════════════════════════════════════════════
 let COLLEG = null, COLLEG_ULTIMO = 0, COLLEG_LAVORO = {};
+/* La memoria del «da quando», letta da iam_collegamenti_stato e ricalcolata a
+   ogni giro dal motore. `var`: il banco la legge da window (§17). */
+var COLLEG_STORIA = [];      /* le righe salvate */
+var COLLEG_DURATE = {};      /* fonte → riga del motore */
+var COLLEG_ORDINE = [];      /* le stesse righe, nell'ordine deciso dal motore */
+var COLLEG_TIMER = null;     /* il monitor, mentre la schermata è aperta */
 
-/* Il motore distingue «non è dentro» da «non lo dice», e la differenza conta:
-   la prima è una cosa da sistemare, la seconda vuol dire che non lo sappiamo.
-   Confonderle manderebbe a cercare un guasto dalla parte sbagliata. */
+/* La classificazione sta nel MOTORE condiviso, non qui: era una regola scritta
+   dentro una schermata, e una regola in una schermata non si prova senza aprire
+   un browser (§5). Qui resta solo la traduzione in classi CSS.
+
+   La regola che quella funzione custodisce: «non è dentro» e «non lo dice» sono
+   due cose diverse. La prima è un lavoro da fare, la seconda vuol dire che non
+   lo sappiamo — e confonderle, oltre a mandare a cercare un guasto dalla parte
+   sbagliata, farebbe ripartire il cronometro del «da quando» a ogni
+   oscillazione fra i due. */
 function collegStato(f) {
-  if (!f.raggiungibile) return { chiave: 'spento', tag: 'non risponde', classe: 'spento' };
-  if (f.loggato === true) return { chiave: 'dentro', tag: 'collegata', classe: 'dentro' };
-  if (f.loggato === false) return { chiave: 'fuori', tag: 'da collegare', classe: 'fuori' };
-  return { chiave: 'boh', tag: 'non lo dice', classe: '' };
+  const k = window.Collegamenti ? Collegamenti.stato(f) : (f && f.raggiungibile ? 'boh' : 'spento');
+  return { chiave: k, tag: window.Collegamenti ? Collegamenti.etichetta(k) : k, classe: k === 'boh' ? '' : k };
 }
 
 /* Fra le diagnosi del motore si mostra la più grave: metterle tutte
@@ -16137,20 +16488,93 @@ function collegDiagnosi(f) {
   return d.find(x => x.gravita === 'alta') || d.find(x => x.gravita === 'media') || d[0] || null;
 }
 
-async function collegCarica(forza) {
+/* ═══ IL MONITOR (Blocco 3 · punto 12-bis, 20/09/2026) ════════════════════════
+
+   Prima questa schermata si aggiornava SOLO al clic su «Aggiorna»: lasciata
+   aperta su un secondo schermo, mostrava per ore lo stato di quando era stata
+   aperta. Un pannello che non si aggiorna da solo non è un monitor, è una
+   fotografia con l'ora sbagliata.
+
+   ── L'AGGIORNAMENTO AUTOMATICO NON FORZA, E NON È UN DETTAGLIO ────────────
+   `forza=1` salta la cache del motore e va a bussare ai portali delle
+   compagnie. Farlo ogni due minuti vorrebbe dire bussare settecento volte al
+   giorno: dopo tre accessi falliti il freno ferma quella compagnia per un
+   quarto d'ora, e insistere è il modo di farsi bloccare l'utenza. Quindi il
+   monitor legge la risposta che il motore ha già; a forzare è il clic, che è
+   una persona che ha appena sistemato qualcosa e vuole vedere l'effetto.
+
+   ── SI FERMA QUANDO NESSUNO GUARDA ───────────────────────────────────────
+   Scheda in secondo piano o pannello chiuso: il cronometro si spegne. Un giro
+   di rete ogni due minuti per una schermata che nessuno sta guardando è
+   traffico che non serve a nessuno — e la memoria del «da quando» non ne
+   guadagna niente, perché registra quello che qualcuno ha VISTO. */
+function collegMonitor(acceso) {
+  if (COLLEG_TIMER) { clearInterval(COLLEG_TIMER); COLLEG_TIMER = null; }
+  if (!acceso || !window.Collegamenti) return;
+  COLLEG_TIMER = setInterval(() => {
+    const p = document.getElementById('panel-collegamenti');
+    if (!p || !p.classList.contains('act') || document.hidden) return;
+    collegCarica(false, true);
+  }, Collegamenti.INTERVALLO_MS);
+}
+
+/* La memoria del «da quando». Se non si può leggere non si inventa: la riga
+   dice che il cronometro non c'è, non che lo stato è di adesso (§12, §18). */
+async function collegStoria() {
+  try {
+    const { data, error } = await db.from('iam_collegamenti_stato')
+      .select('fonte,nome,stato,dal,visto_il,cambi');
+    if (error) throw error;
+    COLLEG_STORIA = data || [];
+    return true;
+  } catch (e) { COLLEG_STORIA = null; return false; }
+}
+
+/* Si scrive solo quello che il motore dice di scrivere: una riga nuova, un
+   cambio di stato, o un'occhiata vecchia di dieci minuti. Mai a ogni giro —
+   sarebbero migliaia di righe al giorno per non dire niente di più. */
+async function collegRicorda(esito) {
+  if (!esito || !esito.daScrivere.length) return;
+  try {
+    const { error } = await db.from('iam_collegamenti_stato').upsert(
+      esito.daScrivere.map(r => ({
+        fonte: r.fonte, nome: r.nome, stato: r.stato, dal: r.dal,
+        visto_il: r.visto_il, cambi: r.cambi, messaggio: r.messaggio
+      })), { onConflict: 'fonte' });
+    if (error) throw error;
+    /* Un cambio di stato è un fatto dell'agenzia e va a registro: «da quando
+       PRIMA non risponde» è una domanda che arriva settimane dopo (§18). */
+    esito.cambiate.forEach(r => {
+      if (typeof logMovimento === 'function')
+        logMovimento('Collegamento ' + r.etichetta + ' · ' + r.nome, 'fonte', r.nome + ' → ' + r.etichetta);
+    });
+  } catch (e) { console.warn('Stato collegamenti, memoria non scritta:', e.message || e); }
+}
+
+async function collegCarica(forza, automatico) {
   const box = document.getElementById('cl-lista');
   if (!box) return;
   const ora = Date.now();
-  if (!forza && COLLEG && (ora - COLLEG_ULTIMO) < 20000) { collegDisegna(); return; }
+  if (!forza && !automatico && COLLEG && (ora - COLLEG_ULTIMO) < 20000) { collegDisegna(); return; }
   const btn = document.getElementById('cl-ric');
-  if (btn) btn.disabled = true;
+  if (btn && !automatico) btn.disabled = true;
   try {
     /* forza=1 salta la cache del motore: è quello che serve dopo aver
        sistemato una credenziale, altrimenti si rilegge la risposta vecchia e
-       sembra che non sia cambiato niente. */
+       sembra che non sia cambiato niente. L'automatico non forza mai. */
     COLLEG = await quotoFetch('/fonti/salute' + (forza ? '?forza=1' : ''));
     COLLEG_ULTIMO = ora;
-    collegDisegna();
+    if (window.Collegamenti) {
+      await collegStoria();
+      const esito = Collegamenti.confronta(COLLEG.fonti || [], COLLEG_STORIA || [], new Date());
+      COLLEG_DURATE = {}; COLLEG_ORDINE = esito.righe;
+      esito.righe.forEach(r => { COLLEG_DURATE[r.fonte] = r; });
+      collegDisegna();
+      /* Si disegna PRIMA di scrivere: la memoria è un di più, e chi guarda non
+         deve aspettare una scrittura per vedere lo stato. */
+      if (COLLEG_STORIA !== null) collegRicorda(esito);
+    } else { collegDisegna(); }
+    collegMonitor(true);
   } catch (e) {
     /* Tre guasti diversi con tre rimedi diversi: dirli tutti e tre «errore»
        costringe ad aprire la console del browser per sapere quale sia. */
@@ -16167,7 +16591,12 @@ async function collegCarica(forza) {
       + '<span style="opacity:.7">' + esc(String(e.message || e)) + '</span></div>';
     const sm = document.getElementById('cl-somma'); if (sm) sm.innerHTML = '';
     const mn = document.getElementById('cl-manca'); if (mn) mn.innerHTML = '';
-  } finally { if (btn) btn.disabled = false; }
+    /* Il monitor si SPEGNE quando la lettura non riesce: continuare a
+       ripetere una chiamata che non risponde non la fa rispondere, e la
+       schermata direbbe «riprovo» mentre non riprova niente di utile. Si
+       riaccende al clic su «Aggiorna». */
+    collegMonitor(false);
+  } finally { if (btn && !automatico) btn.disabled = false; }
 }
 
 function collegDisegna() {
@@ -16175,17 +16604,31 @@ function collegDisegna() {
   if (!box || !COLLEG) return;
   const fonti = COLLEG.fonti || [];
   const r = COLLEG.riepilogo || {};
+  /* Se si disegna senza essere passati dalla lettura (un rendering chiamato da
+     solo), le righe del motore si calcolano adesso: senza memoria non c'è il
+     «da quando», ma l'ordine e i conteggi restano quelli veri. Una schermata
+     che si disegna in ordine casuale quando manca un pezzo è peggio di una che
+     non si disegna. */
+  if (window.Collegamenti && !COLLEG_ORDINE.length && fonti.length) {
+    const e = Collegamenti.confronta(fonti, COLLEG_STORIA || [], new Date());
+    COLLEG_ORDINE = e.righe;
+    COLLEG_DURATE = {}; e.righe.forEach(x => { COLLEG_DURATE[x.fonte] = x; });
+  }
 
   const sm = document.getElementById('cl-somma');
   if (sm) {
-    const dentro = fonti.filter(f => f.loggato === true).length;
-    const daFare = fonti.filter(f => f.loggato !== true).length;
+    /* Il riepilogo lo fa il motore, e NON somma «da collegare» con «non lo
+       dice»: un numero di lavori da fare che comprende dei forse è un numero
+       che non si può lavorare. */
+    const ri = (window.Collegamenti && COLLEG_ORDINE.length) ? Collegamenti.riepilogo(COLLEG_ORDINE) : null;
+    const dentro = ri ? ri.dentro : fonti.filter(f => f.loggato === true).length;
     sm.innerHTML =
         '<div class="cl-m"><b>' + fonti.length + '</b><span>compagnie collegate al preventivatore</span></div>'
       + '<div class="cl-m ok"><b>' + dentro + '</b><span>pronte a quotare adesso</span></div>'
-      + '<div class="cl-m' + (daFare ? ' male' : '') + '"><b>' + daFare + '</b><span>da collegare</span></div>'
-      + '<div class="cl-m"><b>' + (r.raggiungibili != null ? r.raggiungibili : fonti.filter(f => f.raggiungibile).length)
-      + '</b><span>servizi accesi</span></div>';
+      + '<div class="cl-m' + (ri && ri.fuori ? ' male' : '') + '"><b>' + (ri ? ri.fuori : '—')
+      + '</b><span>da collegare' + (ri && ri.incerte ? ' · ' + ri.incerte + ' non lo dicono' : '') + '</span></div>'
+      + '<div class="cl-m' + (ri && ri.ferme_da_oltre_un_giorno ? ' male' : '') + '"><b>'
+      + (ri ? ri.ferme_da_oltre_un_giorno : '—') + '</b><span>ferme da più di un giorno</span></div>';
   }
 
   /* «Cosa manca» sta in cima e raccoglie solo i problemi gravi, con il rimedio
@@ -16207,9 +16650,15 @@ function collegDisegna() {
     return;
   }
 
-  /* Prima quelle da sistemare: chi apre questa schermata lo fa per quelle. */
-  const ordine = { spento: 0, fuori: 1, boh: 2, dentro: 3 };
-  const elenco = fonti.slice().sort((a, b) => ordine[collegStato(a).chiave] - ordine[collegStato(b).chiave]);
+  /* Prima quelle da sistemare, e a parità di stato quella ferma da più tempo.
+     L'ordine lo decide il MOTORE, che l'ha già calcolato: un secondo ordine
+     scritto qui diverge dal primo alla prima modifica, e la schermata
+     mostrerebbe le righe in un ordine che il riepilogo non conosce. */
+  const perId = {}; fonti.forEach(f => { perId[f.id] = f; });
+  const ordinate = COLLEG_ORDINE.length
+    ? COLLEG_ORDINE.map(r => perId[r.fonte]).filter(Boolean)
+    : null;
+  const elenco = (ordinate && ordinate.length === fonti.length) ? ordinate : fonti.slice();
 
   box.innerHTML = elenco.map(f => {
     const st = collegStato(f);
@@ -16217,9 +16666,17 @@ function collegDisegna() {
     const vs = f.visto_dal_servizio || {};
     const lavoro = COLLEG_LAVORO[f.id] || {};
     const puoAccedere = st.chiave !== 'dentro' && f.raggiungibile;
+    const dur = COLLEG_DURATE[f.id] || null;
+    /* «Da quando» è da quando QUALCUNO HA GUARDATO, non da quando è successo:
+       di notte non guarda nessuno. La prima osservazione lo dichiara, invece
+       di far credere che il guasto sia appena cominciato. */
+    const daQuando = !dur ? ''
+      : dur.nuovo ? '<span class="cl-tag">visto adesso per la prima volta</span>'
+      : '<span class="cl-tag">' + esc(dur.da_quanto) + '</span>';
     return '<article class="cl-f" data-fonte="' + esc(f.id) + '">'
       + '<div class="cl-f-top"><b>' + esc(f.nome || f.id) + '</b>'
-      + '<span class="cl-tag ' + st.classe + '">' + esc(st.tag) + '</span></div>'
+      + '<span class="cl-tag ' + st.classe + '">' + esc(st.tag) + '</span>'
+      + daQuando + '</div>'
       + (vs.ultimo_messaggio ? '<p class="cl-perche">' + esc(vs.ultimo_messaggio) + '</p>' : '')
       + (dg && dg.cosa_fare ? '<p class="cl-fare"><i class="ti ti-arrow-right"></i>' + esc(dg.cosa_fare) + '</p>' : '')
       + (puoAccedere

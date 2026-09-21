@@ -1072,6 +1072,120 @@
     return (conti || []).map(function (c) { return quadratura(c, movimenti, dichiarazioni, opz); });
   }
 
+  /* ═══ IL DETTAGLIO DI UN CONTO (Blocco 3 · punto 7, 20/09/2026) ═══════════
+
+     L'elenco dei conti dice un saldo per riga. «Perché è quello?» non aveva
+     risposta da nessuna parte: per saperlo bisognava aprire la prima nota e
+     filtrarla a mano, cioè fare a mano il lavoro che il conto dovrebbe fare
+     da sé.
+
+     ── LO STORICO DELLE QUADRATURE NON SI CONGELA, E NON È UNA DIMENTICANZA ──
+     Ogni dichiarazione passata viene RICALCOLATA con i movimenti di adesso.
+     È l'opposto di quello che si fa coi requisiti di un fascicolo, che si
+     congelano (CLAUDE.md §11 regola 4), e la differenza è la natura dei due
+     numeri: la dichiarazione è un fatto della banca e non cambia mai, la
+     ricostruzione è quello che il SISTEMA dice oggi per quella data.
+
+     Se qualcuno scrive un movimento con una data vecchia, un giorno che
+     quadrava smette di quadrare — ed è esattamente la cosa che si vuole
+     vedere. Congelando la differenza, la scrittura retroattiva sparirebbe
+     dalla vista: cioè si nasconderebbe proprio il caso per cui la quadratura
+     esiste. */
+  function storicoQuadrature(conto, movimenti, dichiarazioni, opz) {
+    opz = opz || {};
+    var mie = (dichiarazioni || []).filter(function (d) {
+      return d && conto && d.conto_id === conto.id && testo(d.data);
+    }).sort(function (a, b) { return a.data < b.data ? 1 : a.data > b.data ? -1 : 0; });
+
+    return mie.map(function (d) {
+      var s = saldo(conto, movimenti, { causali: opz.causali, al: d.data });
+      var dich = numero(d.saldo_dichiarato);
+      var out = {
+        data: d.data, nota: d.nota || null,
+        dichiarato: dich == null ? null : cent(dich),
+        ricostruito: s.saldo, movimenti: s.movimenti,
+        differenza: null, quadra: null, motivo: null
+      };
+      if (dich == null) {
+        out.motivo = 'Il saldo dichiarato non si legge come un numero.';
+        return out;
+      }
+      out.differenza = cent(out.ricostruito - out.dichiarato);
+      out.quadra = Math.abs(out.differenza) <= TOLLERANZA;
+      if (!out.quadra) {
+        out.motivo = out.differenza > 0
+          ? 'A quella data il sistema ha ' + euro(Math.abs(out.differenza)) + ' in più della dichiarazione.'
+          : 'A quella data la dichiarazione ha ' + euro(Math.abs(out.differenza)) + ' in più del sistema.';
+      }
+      return out;
+    });
+  }
+
+  /* Tutto quello che serve per guardare UN conto.
+
+     ── IL PROGRESSIVO PARTE SEMPRE DALL'INIZIO ──
+     `dal`/`al` tagliano le righe da MOSTRARE, non quelle da contare: un saldo
+     progressivo che riparte dal saldo iniziale in mezzo a un periodo è un
+     numero falso, e falso in un modo che nessuno controlla — sembra un saldo.
+     Quindi il conto si fa su tutto e si mostra una finestra, con il saldo di
+     apertura del periodo scritto accanto.
+
+     ── QUELLO CHE RESTA FUORI DAL SALDO SI DICHIARA ──
+     Un movimento senza verso (causale sparita) o con un importo illeggibile
+     non entra nel saldo, ed è giusto: non si indovina. Ma un saldo che ignora
+     delle righe in silenzio è un saldo di cui nessuno può fidarsi, quindi si
+     conta quante sono e quanto pesano — senza segno, perché il verso è
+     proprio la cosa che non si sa. */
+  function dettaglioConto(conto, movimenti, dichiarazioni, opz) {
+    opz = opz || {};
+    var causali = opz.causali || null;
+    var miei = (movimenti || []).filter(function (m) {
+      return m && conto && m.conto_id === conto.id;
+    });
+    var tutte = progressivo(conto, miei, { causali: causali });   /* solo i vivi */
+    var dal = testo(opz.dal) || null, al = testo(opz.al) || null;
+
+    var dentro = tutte, apertura = numero(conto && conto.saldo_iniziale) || 0;
+    if (dal || al) {
+      dentro = [];
+      for (var i = 0; i < tutte.length; i++) {
+        var d = testo(tutte[i].movimento.data);
+        /* Un movimento senza data non si può collocare in un periodo: resta
+           nel saldo di oggi ma fuori dalla finestra, e si dice. */
+        var ok = !!d && (!dal || d >= dal) && (!al || d <= al);
+        if (ok) dentro.push(tutte[i]);
+        else if (!dentro.length) apertura = tutte[i].saldo;   /* tutto ciò che precede */
+      }
+    }
+
+    var incerte = tutte.filter(function (r) { return r.incerto; });
+    var fuori = 0;
+    incerte.forEach(function (r) {
+      var imp = numero(r.movimento.importo);
+      if (imp != null) fuori = cent(fuori + Math.abs(imp));
+    });
+    var annullati = miei.filter(function (m) { return !vivo(m); });
+    var date = tutte.map(function (r) { return testo(r.movimento.data); }).filter(Boolean);
+
+    return {
+      conto: conto || null,
+      iniziale: cent(numero(conto && conto.saldo_iniziale) || 0),
+      saldo: saldo(conto, miei, { causali: causali }).saldo,
+      apertura: cent(apertura),
+      righe: dentro,                 /* in ordine di data, dalla più vecchia */
+      totali: tutte.length,
+      mostrate: dentro.length,
+      primo: date.length ? date[0] : null,
+      ultimo: date.length ? date[date.length - 1] : null,
+      annullati: annullati.length,
+      fuori_dal_saldo: { righe: incerte.length, importo: fuori },
+      /* Il riepilogo per causale segue la FINESTRA che si sta guardando: è la
+         risposta a «in questo periodo, che cosa ha mosso questo conto». */
+      per_causale: perCausale(miei, opz.causali || [], { dal: dal || null, al: al || null }),
+      quadrature: storicoQuadrature(conto, miei, dichiarazioni, { causali: causali })
+    };
+  }
+
   var API = {
     VERSIONE: VERSIONE,
     TIPOLOGIE: TIPOLOGIE, NATURE: NATURE, SEGNI: SEGNI,
@@ -1084,6 +1198,8 @@
     /* M3 — la prima nota e la quadratura */
     validaMovimento: validaMovimento, riepilogo: riepilogo, perCausale: perCausale,
     quadratura: quadratura, quadrature: quadrature,
+    /* Blocco 3 · punto 7 — il dettaglio di un conto */
+    dettaglioConto: dettaglioConto, storicoQuadrature: storicoQuadrature,
     vivo: vivo, vivi: vivi, versoDi: versoDi, TOLLERANZA: TOLLERANZA,
     /* M4 — gli incassi da accreditare */
     MEZZI: MEZZI, mezzo: mezzo, contoPerMezzo: contoPerMezzo, destinoIncasso: destinoIncasso,

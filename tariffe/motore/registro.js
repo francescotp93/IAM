@@ -100,6 +100,14 @@
        chi l'ha scritto, chi l'ha corretto e chi l'ha annullato si leggono
        dalla riga stessa, come per una polizza. */
     movimento:     { l: 'Movimento',     i: 'ti-arrows-exchange',  tabella: 'iam_movimenti', id: 'uuid' },
+    /* Lo stato dei collegamenti (Blocco 3 · punto 12-bis, 21/09/2026). Quando
+       una compagnia smette di rispondere o rientra, resta scritto: «da quando
+       PRIMA non risponde» e' una domanda che arriva settimane dopo.
+       NIENTE TABELLA, e non e' una dimenticanza: `iam_collegamenti_stato` ha
+       per chiave il nome della fonte, che non e' un identificativo di riga da
+       aprire — e un puntatore che non apre niente e' peggio di un puntatore
+       assente (§18, regola 1). */
+    fonte:         { l: 'Collegamento',  i: 'ti-plug-connected',   tabella: null },
     /* Il catalogo prodotti (20/09/2026). Due voci e non una: un prodotto di
        compagnia e un prodotto STANDARD vivono in due tabelle, e una voce sola
        aprirebbe la riga sbagliata la meta' delle volte — un id che apre la

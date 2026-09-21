@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.11.0">
-<meta name="app-versione-nome" content="Sospensioni e fido">
+<meta name="app-versione" content="0.12.0">
+<meta name="app-versione-nome" content="Il conto, il monitor, i numeri e i filtri">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -16599,10 +16599,42 @@ function cmpRenderListe() {
 
    `senza_prodotto` è il filtro che vale più di tutti: è il cross-selling, cioè
    chi ha una cosa sola e potrebbe averne due. */
-function segApri() {
+/* ── I FILTRI CHE IL SERVER SAPEVA GIÀ FARE (Blocco 3 · punto 4, 21/09/2026) ──
+   Misurato prima di scrivere: `membriSegmento` sul server onorava VENTI
+   filtri, e questa schermata ne chiedeva quattordici. Sei — comune,
+   professione, casa di proprietà, intermediario, gruppo preciso, «ha almeno
+   una polizza» — erano codice funzionante che nessuno poteva raggiungere: il
+   guasto §1 di questo repository, in versione marketing.
+
+   Adesso ci sono tutti, e una prova misura le due liste nei DUE VERSI: la
+   schermata non offre un filtro che il server ignora (sarebbe una promessa
+   che il conteggio non mantiene), e il server non tiene un filtro che nessuna
+   schermata può chiedere.
+
+   ── E UN «NO» CHE NON È UN NO ────────────────────────────────────────────
+   `sposato`, `ha_figli` e `casa_proprieta` sul database sono `not null
+   default false`: un `false` vuol dire «nessuno l'ha mai chiesto», non «no».
+   Sul portafoglio vero il 21/09/2026 sono 58 su 61, 59 su 61 e 60 su 61. Una
+   campagna «per chi non ha figli» andrebbe quasi tutta a persone di cui non
+   sappiamo niente. Non si può distinguere a posteriori — e indovinare sarebbe
+   §8.1 — quindi il ramo negativo si CHIAMA con il suo nome e la nota lo dice.
+   Il ramo affermativo invece è affidabile: un `true` l'ha scritto qualcuno. */
+function segOpzNo(etichettaSi) {
+  return '<option value="">Indifferente</option>'
+    + '<option value="si">' + etichettaSi + '</option>'
+    + '<option value="no">No, o mai chiesto</option>';
+}
+
+async function segApri() {
+  /* La tendina degli intermediari legge la cache che tutta la casa usa gia'
+     (`INTERM_CACHE`): un secondo elenco degli stessi collaboratori sarebbe due
+     elenchi che un giorno dicono due cose diverse. Se e' vuota si riempie —
+     una tendina vuota farebbe credere che non ci sia nessuno. */
+  if (typeof caricaIntermediari === 'function') { try { await caricaIntermediari(); } catch (_) {} }
+  const gruppi = (typeof CMP_GRUPPI !== 'undefined' ? CMP_GRUPPI : []) || [];
   const html = `
   <div class="modal-ov" id="seg-ov" onclick="if(event.target.id==='seg-ov')this.remove()">
-    <div class="modal" style="width:620px;max-width:95vw">
+    <div class="modal" style="width:680px;max-width:95vw">
       <div class="modal-title">Nuovo segmento</div>
       <div class="seg-form">
         <div class="full"><label>Nome</label><input id="seg-nome" placeholder="es. Clienti auto senza polizza casa"></div>
@@ -16615,12 +16647,29 @@ function segApri() {
         <div><label>Scadenza al</label><input id="seg-scad-a" type="date"></div>
         <div><label>Compagnia</label><input id="seg-compagnia" placeholder="—"></div>
         <div><label>Provincia</label><input id="seg-provincia" placeholder="—"></div>
+        <div><label>Comune</label><input id="seg-comune" placeholder="—"></div>
+        <div><label>Professione</label><input id="seg-professione" placeholder="—"></div>
         <div><label>Tipo</label><select id="seg-tipo"><option value="">Tutti</option><option value="fisica">Persone fisiche</option><option value="giuridica">Aziende</option></select></div>
-        <div><label>Figli</label><select id="seg-figli"><option value="">Indifferente</option><option value="si">Con figli</option><option value="no">Senza figli</option></select></div>
-        <div><label>Coniugati</label><select id="seg-sposato"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No</option></select></div>
+        <div><label>Figli</label><select id="seg-figli">${segOpzNo('Con figli')}</select></div>
+        <div><label>Coniugati</label><select id="seg-sposato">${segOpzNo('Sì')}</select></div>
+        <div><label>Casa di proprietà</label><select id="seg-casa">${segOpzNo('Sì')}</select></div>
+        <div><label>In portafoglio</label><select id="seg-con-polizze"><option value="">Indifferente</option><option value="si">Solo chi ha già una polizza</option></select></div>
+        <div><label>Intermediario</label><select id="seg-intermediario"><option value="">Tutti</option>${
+          ((typeof INTERM_CACHE !== 'undefined' && INTERM_CACHE) || []).map(c =>
+            `<option value="${esc(c.id)}">${esc([c.cognome, c.nome].filter(Boolean).join(' ') || c.email || c.id)}</option>`).join('')}</select></div>
         <div><label>Tipo di gruppo</label><select id="seg-gruppo-tipo"><option value="">Indifferente</option>${Object.entries(typeof GRUPPO_TIPI !== 'undefined' ? GRUPPO_TIPI : {}).map(([k, v]) => `<option value="${k}">${v.l}</option>`).join('')}</select></div>
+        <div><label>Un gruppo preciso</label><select id="seg-gruppo"><option value="">Indifferente</option>${
+          gruppi.map(g => `<option value="${esc(g.id)}">${esc(g.nome)}</option>`).join('')}</select></div>
         <div class="full"><label>Chi</label><select id="seg-chi"><option value="clienti">Solo clienti</option><option value="tutti">Clienti e lead</option><option value="lead">Solo lead</option></select></div>
       </div>
+      <div class="cl-empty" style="margin-top:10px;text-align:left">
+        <b>«No, o mai chiesto» vuol dire proprio questo.</b> Figli, stato civile e casa di proprietà
+        nascono a «no» sulla scheda e ci restano finché qualcuno non li cambia: chi non è mai stato
+        chiesto e chi ha detto no si assomigliano, e non c'è modo di separarli a posteriori.
+        Su un segmento di conoscenza («con figli», «sposato») usa il ramo affermativo, che l'ha
+        scritto una persona.
+      </div>
+      <div id="seg-copertura" class="cmp-conta" style="margin-top:8px"></div>
       <div class="cmp-conta" id="seg-anteprima" style="margin-top:14px">Premi «Anteprima» per vedere quanti sono.</div>
       <div class="cmp-azioni">
         <button class="cmp-mini" onclick="segAnteprima()"><i class="ti ti-eye"></i> Anteprima</button>
@@ -16630,6 +16679,7 @@ function segApri() {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  segCopertura();
 }
 
 function segFiltri() {
@@ -16644,14 +16694,55 @@ function segFiltri() {
   if (v('seg-scad-a')) f.scadenza_a = v('seg-scad-a');
   if (v('seg-compagnia')) f.compagnia = v('seg-compagnia');
   if (v('seg-provincia')) f.provincia = v('seg-provincia');
+  if (v('seg-comune')) f.comune = v('seg-comune');
+  if (v('seg-professione')) f.professione = v('seg-professione');
   if (v('seg-tipo')) f.tipo = v('seg-tipo');
   if (v('seg-gruppo-tipo')) f.gruppo_tipo = v('seg-gruppo-tipo');
+  if (v('seg-gruppo')) f.gruppo_id = v('seg-gruppo');
+  if (v('seg-intermediario')) f.intermediario_id = v('seg-intermediario');
+  if (v('seg-con-polizze') === 'si') f.con_polizze = true;
   if (b('seg-figli') !== undefined) f.ha_figli = b('seg-figli');
   if (b('seg-sposato') !== undefined) f.sposato = b('seg-sposato');
+  if (b('seg-casa') !== undefined) f.casa_proprieta = b('seg-casa');
   const chi = v('seg-chi');
   if (chi === 'clienti') f.solo_clienti = true;
   if (chi === 'lead') f.solo_lead = true;
   return f;
+}
+
+/* ── QUANTI POSSONO RISPONDERE A QUESTO FILTRO ────────────────────────────────
+   Un filtro su una colonna che quasi nessuno ha compilato produce un segmento
+   vuoto che sembra un guasto del programma. Sul portafoglio vero il
+   21/09/2026: professione 1 su 61, comune 31 su 61, intermediario 1 su 61.
+   Saperlo PRIMA di costruire il segmento evita mezz'ora di ricerca di un bug
+   che non c'è.
+
+   Una lettura sola, sulle sole colonne che servono, e se non riesce si tace su
+   questa riga: la copertura è un di più, e non deve impedire di salvare un
+   segmento (§35). */
+async function segCopertura() {
+  const el = document.getElementById('seg-copertura');
+  if (!el || !db) return;
+  try {
+    const { data, error } = await db.from('quote_anagrafiche')
+      .select('comune,provincia,professione,intermediario_id,data_nascita');
+    if (error) throw error;
+    const n = (data || []).length;
+    if (!n) { el.textContent = 'La rubrica è vuota: qualunque filtro darebbe zero.'; return; }
+    const quanti = (k) => (data || []).filter(a => a[k] != null && String(a[k]).trim() !== '').length;
+    const magre = [
+      ['comune', 'Comune'], ['provincia', 'Provincia'], ['professione', 'Professione'],
+      ['intermediario_id', 'Intermediario'], ['data_nascita', 'Età']
+    ].map(([k, l]) => ({ l, q: quanti(k) })).filter(x => x.q < n);
+    el.innerHTML = magre.length
+      ? 'Su <b>' + n + '</b> in rubrica, non tutti hanno il dato: '
+        + magre.map(x => esc(x.l) + ' ' + x.q + '/' + n).join(' · ')
+        + '.<br>Un filtro su un campo poco compilato dà un segmento piccolo, e non è un guasto.'
+      : 'Tutti i <b>' + n + '</b> in rubrica hanno i dati su cui si filtra.';
+  } catch (e) {
+    /* «Non si è potuto leggere» non è «va tutto bene» (§12, §18). */
+    el.textContent = 'La copertura dei campi non si è potuta leggere: i filtri funzionano lo stesso.';
+  }
 }
 
 async function segAnteprima() {

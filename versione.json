@@ -1,8 +1,25 @@
 {
-  "versione": "0.11.0",
-  "nome": "Sospensioni e fido",
-  "data": "2026-09-20",
+  "versione": "0.12.0",
+  "nome": "Il conto, il monitor, i numeri e i filtri",
+  "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.12.0",
+      "data": "2026-09-21",
+      "nome": "Il conto, il monitor, i numeri e i filtri",
+      "voci": [
+        "Contabilità › Quadratura conti: il nome di un conto adesso si clicca e si apre. Dentro ci sono i suoi movimenti con il saldo che cresce riga per riga, che cosa ha mosso quel conto causale per causale, e tutte le quadrature dichiarate — non solo l'ultima.",
+        "Ogni quadratura passata viene riconfrontata con i movimenti di oggi: se un giorno che quadrava smette di quadrare, vuol dire che qualcuno ha scritto un movimento con una data vecchia. È la cosa che prima non si vedeva in nessun modo.",
+        "Stato collegamenti si aggiorna da solo ogni due minuti finché resta aperto, e NON va a bussare ai portali: rilegge quello che il motore ha già, perché insistere è il modo di farsi bloccare l'utenza. A forzare resta il tasto «Aggiorna».",
+        "Accanto a ogni compagnia c'è da quanto è in quello stato: «da 3 giorni» invece di un pallino rosso uguale a quello di dieci minuti fa. Il conteggio parte da quando qualcuno guarda — di notte non guarda nessuno — e la prima volta lo dice.",
+        "Il riquadro in cima non somma più «da collegare» con «non lo dice»: un elenco di lavori da fare che comprende dei forse manda a sistemare una compagnia che magari è a posto.",
+        "Scrivania: sopra «Da fare oggi» tre numeri che dicono come sta andando — il portafoglio in gestione, le polizze del mese con la conversione, e quanto si è incassato. Non ripetono i conteggi del lavoro da fare: rispondono a un'altra domanda.",
+        "Le polizze senza premio annuo non valgono zero nel portafoglio: restano fuori dal totale e il riquadro dice quante sono. E da un mese vuoto non esce mai un «+500%», che è il numero enorme e falso che una scrivania produce da sola.",
+        "Marketing › segmenti: sei filtri che il server sapeva già applicare e che nessuno poteva chiedere — comune, professione, casa di proprietà, intermediario, un gruppo preciso, «solo chi ha già una polizza».",
+        "Figli, stato civile e casa di proprietà: il «no» adesso si chiama «No, o mai chiesto», perché sulla scheda quei campi nascono a no e chi non è mai stato chiesto non si distingue da chi ha risposto di no. Per un segmento affidabile si usa il ramo affermativo.",
+        "Aprendo un segmento si legge quanti dei contatti in rubrica hanno davvero il dato su cui si sta filtrando: un segmento piccolo per un campo poco compilato non è un guasto del programma, ed è meglio saperlo prima."
+      ]
+    },
     {
       "v": "0.11.0",
       "data": "2026-09-20",

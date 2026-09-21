@@ -154,8 +154,18 @@ prova('il saldo non si scrive da nessuna parte: la colonna non esiste', () => {
   const tab = SQL.slice(SQL.indexOf('create table if not exists public.iam_conti'), SQL.indexOf('create unique index if not exists iam_conti_nome_uni'));
   deve(/saldo_iniziale\s+numeric/.test(tab), 'manca il saldo iniziale');
   deve(!/^\s*saldo\s+numeric/m.test(tab), 'è comparsa una colonna `saldo` memorizzata');
+  /* Si guarda la SCRITTURA, non la parola. La prima stesura cercava
+     `saldo:` ovunque nel blocco, e il 21/09/2026 e' diventata rossa su una
+     frase dell'interfaccia — «Resta fuori dal saldo: senza verso non si
+     indovina». E' la trappola gia' scritta dieci volte (§10, §12, §18, §26,
+     §29, §31, §33, §34, §37, §41), qui in una veste nuova: non un commento
+     ma un TESTO che l'utente legge. Due correzioni, come sempre: la frase e'
+     stata riscritta e la prova adesso cerca un campo dentro una chiamata di
+     scrittura, che e' quello che voleva dire dall'inizio. */
   const b = blocco();
-  deve(!/\.update\(\{[^}]*saldo:/.test(b) && !/saldo:\s*[^_]/.test(b.replace(/saldo: s\.saldo/g, '')), 'il pannello scrive un saldo nel database');
+  const scritture = [...b.matchAll(/\.(update|insert|upsert)\(\s*(\{[\s\S]{0,400}?\})/g)].map(m => m[2]);
+  const colpevoli = scritture.filter(x => /(^|[{,\s])saldo\s*:/.test(x));
+  deve(!colpevoli.length, 'il pannello scrive un saldo nel database: ' + (colpevoli[0] || '').slice(0, 120));
   return 'solo saldo_iniziale, il resto si calcola';
 });
 

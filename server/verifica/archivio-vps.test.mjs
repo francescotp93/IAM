@@ -143,6 +143,70 @@ await prova('senza chiave l\'archivio non lavora e lo dice, invece di ripiegare'
   return '503 con il motivo, niente scritto, chiavi storte rifiutate';
 });
 
+/* ══ 3-bis. LA TERZA CREDENZIALE, QUELLA CHE IL 21/09/2026 MANCAVA ════════
+   Il modulo aveva DUE controlli d'avvio — la chiave di cifratura e la
+   cartella — e ne servivano tre. La chiave anonima, quella con cui si parla
+   col database, non era controllata: il modulo partiva acceso, prendeva in
+   carico il file e falliva al primo passo con «metadati non scritti (401):
+   No API key found in request». Un messaggio che parla di header HTTP non
+   dice a chi lavora che cosa deve fare.
+
+   Qui il banco NON inietta gli accessi: è la strada vera, quella in cui le
+   credenziali servono davvero. */
+await prova('senza le credenziali del database il modulo si spegne e dice QUALE manca', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archivio-rest-'));
+  const su = async (env) => {
+    const app = express();
+    app.use((req, res, next) => { req.user = { id: 'a' }; next(); });
+    app.use('/archivio', A.archivioVpsRouter({ dir, env: { ARCHIVIO_CHIAVE: CHIAVE_PROVA, ...env } }));
+    const srv = http.createServer(app);
+    await new Promise(r => srv.listen(0, '127.0.0.1', r));
+    const base = 'http://127.0.0.1:' + srv.address().port;
+    const r = await fetch(base + '/archivio/carica?' + new URLSearchParams({
+      nome: 'carta.pdf', tipo: 'application/pdf', entita: 'polizza', entita_id: UUID_POLIZZA,
+    }), { method: 'POST', headers: { Authorization: 'Bearer utente:a', 'content-type': 'application/pdf' }, body: FILE });
+    const t = await r.text();
+    await new Promise(x => srv.close(x));
+    return { stato: r.status, testo: t };
+  };
+
+  /* Senza la chiave anonima: 503, e il nome della variabile nel messaggio. */
+  const senza = await su({ SUPABASE_URL: 'https://esempio.supabase.co' });
+  deve(senza.stato === 503, 'senza la chiave anonima il caricamento risponde ' + senza.stato + ' invece di 503');
+  deve(/SUPABASE_ANON_KEY/.test(senza.testo), 'non dice quale credenziale manca: ' + senza.testo.slice(0, 200));
+
+  /* Senza l'indirizzo: stessa regola, altro nome. */
+  const senzaUrl = await su({ SUPABASE_ANON_KEY: 'finta' });
+  deve(senzaUrl.stato === 503, 'senza SUPABASE_URL risponde ' + senzaUrl.stato + ' invece di 503');
+  deve(/SUPABASE_URL/.test(senzaUrl.testo), 'non dice che manca l\'indirizzo: ' + senzaUrl.testo.slice(0, 200));
+
+  /* E niente è stato scritto sul disco: un modulo spento non prende in carico
+     nessun file. Se ne scrivesse uno, resterebbe un cifrato senza la riga che
+     dice che cos'è — e nessuno potrebbe più riaprirlo. */
+  deve(!fs.readdirSync(dir).length, 'ha scritto qualcosa da spento: ' + fs.readdirSync(dir).join(', '));
+
+  /* La funzione pura, nei quattro casi. */
+  deve(!A.chiaviRest({}).ok, 'un ambiente vuoto viene accettato');
+  deve(!A.chiaviRest({ SUPABASE_URL: 'x' }).ok, 'senza la chiave anonima viene accettato');
+  deve(!A.chiaviRest({ SUPABASE_ANON_KEY: 'x' }).ok, 'senza l\'indirizzo viene accettato');
+  deve(A.chiaviRest({ SUPABASE_URL: 'x', SUPABASE_ANON_KEY: 'y' }).ok, 'un ambiente completo viene rifiutato');
+  /* Uno spazio non è una chiave: un `.env` con la riga lasciata vuota è il
+     modo più comune di avere una variabile «presente» e inutile. */
+  deve(!A.chiaviRest({ SUPABASE_URL: 'x', SUPABASE_ANON_KEY: '   ' }).ok, 'una chiave fatta di spazi viene accettata');
+  return '503 col nome della variabile, niente scritto, quattro casi puri';
+});
+
+/* E il contrario: quando gli accessi SONO iniettati (tutte le altre prove di
+   questo file) il controllo non deve scattare, altrimenti il banco
+   diventerebbe rosso per la strada invece che per il contenuto (§4). */
+await prova('col banco iniettato le credenziali del database non si pretendono', async () => {
+  const b = await banco();
+  const su = await b.carica(FILE);
+  deve(su.status === 200, 'con gli accessi iniettati il caricamento risponde ' + su.status);
+  await b.chiudi();
+  return 'nessuna variabile d\'ambiente pretesa nelle prove';
+});
+
 await prova('con la chiave sbagliata non esce niente, nemmeno un pezzo', async () => {
   const cifrato = A.cifra(CHIAVE, FILE);
   const altra = crypto.randomBytes(32);

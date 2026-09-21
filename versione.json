@@ -1,8 +1,23 @@
 {
-  "versione": "0.20.0",
-  "nome": "Il grafico dei volumi è un grafico",
+  "versione": "0.21.0",
+  "nome": "I documenti tornano a salire, i contanti trovano la cassa",
   "data": "2026-09-21",
   "storia": [
+    {
+      "v": "0.21.0",
+      "data": "2026-09-21",
+      "nome": "I documenti tornano a salire, i contanti trovano la cassa",
+      "voci": [
+        "I documenti del fascicolo tornano a caricarsi. Al server mancava una delle tre credenziali che gli servono per parlare col database: il caricamento partiva, il file veniva preso in carico, e falliva all'ultimo passo con un messaggio che parlava di header HTTP. Adesso quella credenziale c'e', e se un giorno ne mancasse un'altra il modulo si ferma prima e dice QUALE, invece di far cercare nel posto sbagliato.",
+        "Un incasso in contanti adesso trova la sua cassa. Il gestionale e la contabilita' chiamavano i contanti con due parole diverse, una al singolare e una al plurale: la cassa configurata non poteva incrociare nessuna rata, e la spunta «Contanti» era inerte per costruzione. Stessa cosa per la domiciliazione SDD. Adesso il vocabolario e' uno solo, ed e' quello che il database accetta.",
+        "Nel modulo «Nuova polizza» la tendina «Come paga» aveva tre voci che il database rifiuta: chi le sceglieva non otteneva un campo sbagliato, otteneva una polizza che NON si salvava. Adesso quella tendina si costruisce dall'elenco vero.",
+        "Contabilita' › Anomalie dice tre cose nuove: quando due conti dichiarano di ricevere lo stesso mezzo (e finche' e' cosi' quegli incassi restano fermi), quando un conto riceve i contanti ma non e' classificato come cassa (e il fondo cassa non lo conta), e quante polizze in portafoglio non hanno nemmeno una rata.",
+        "Quell'ultimo numero oggi e' 1.700 polizze su 1.720, per 574.264 € di premio: sono quelle dell'importazione interrotta di ieri mattina, e per il sistema quei premi non li deve nessuno. Si recuperano ricaricando lo stesso file della compagnia, che adesso e' tutto-o-niente.",
+        "Il foglio cassa puo' guardare la DATA DI EMISSIONE e non solo quella dell'incasso: una polizza fatta oggi compare nel foglio di oggi anche se il cliente non ha ancora pagato. Ogni riga porta tutte e due le date, e i due totali restano separati — «premi emessi» e «di cui incassati» non si sommano mai, perche' in cassa c'e' solo quello che e' entrato.",
+        "Le provvigioni continuano a contare solo le rate incassate, e adesso il foglio lo scrive: una rata emessa e non pagata non ha prodotto un compenso per nessuno.",
+        "Il foglio cassa leggeva al massimo mille polizze e scartava in silenzio le rate di tutte le altre: con 1.720 polizze in portafoglio degli incassi sparivano dalla cassa senza che niente lo dicesse. Adesso legge tutto, e se un giorno l'archivio fosse piu' grande di quello che riesce a leggere lo dichiara invece di mostrare un totale parziale."
+      ]
+    },
     {
       "v": "0.20.0",
       "data": "2026-09-21",

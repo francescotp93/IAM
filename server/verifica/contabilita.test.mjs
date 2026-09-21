@@ -397,19 +397,23 @@ prova('le tabelle della M3 esistono nella migrazione, con i divieti nel DATABASE
 
 /* Due conti che dichiarano che cosa ricevono: e' la configurazione che la M4
    chiede, e che sul database vero non c'e' ancora. */
-const CASSA_C = { id: 'kc', nome: 'Cassa', natura: 'premi', attivo: true, mezzi: ['contanti'] };
+/* La chiave è quella che il vincolo del database ammette, e non è una scelta
+   di questo banco: fino al 21/09/2026 qui ne stava un'altra, e il banco era
+   verde mentre in produzione nessun incasso in contanti trovava la sua cassa.
+   Un banco che si scrive un vocabolario suo misura un mondo che non esiste. */
+const CASSA_C = { id: 'kc', nome: 'Cassa', natura: 'premi', attivo: true, mezzi: ['contante'] };
 const BANCA_C = { id: 'kb', nome: 'Banca premi', natura: 'premi', attivo: true, mezzi: ['pos', 'bonifico', 'carta_credito'] };
 const CONTI_M4 = [CASSA_C, BANCA_C];
 
 prova('i CONTANTI entrano in cassa, tutto il resto e\' denaro per strada', () => {
   /* Regola 8. E' la distinzione su cui poggia tutta la M4: se cade, il saldo
      del conto dice di avere dei soldi che arriveranno fra tre giorni. */
-  const c = C.destinoIncasso({ mezzo_pagamento: 'contanti', importo_lordo: 100, incassato_il: '2026-09-20' }, CONTI_M4);
+  const c = C.destinoIncasso({ mezzo_pagamento: 'contante', importo_lordo: 100, incassato_il: '2026-09-20' }, CONTI_M4);
   deve(c.tipo === 'cassa', 'i contanti non entrano in cassa: ' + c.tipo);
   deve(c.conto.id === 'kc', 'i contanti non vanno sulla cassa');
   deve(c.giorni_attesi === 0, 'i contanti hanno un tempo di attesa');
-  for (const m of ['pos', 'bonifico', 'assegno', 'carta_credito', 'paypal', 'rid']) {
-    const r = C.destinoIncasso({ mezzo_pagamento: m, importo_lordo: 100 }, [CASSA_C, BANCA_C, { id: 'kx', nome: 'Altro', attivo: true, mezzi: ['assegno', 'paypal', 'rid'] }]);
+  for (const m of ['pos', 'bonifico', 'assegno', 'carta_credito', 'paypal', 'domiciliazione']) {
+    const r = C.destinoIncasso({ mezzo_pagamento: m, importo_lordo: 100 }, [CASSA_C, BANCA_C, { id: 'kx', nome: 'Altro', attivo: true, mezzi: ['assegno', 'paypal', 'domiciliazione'] }]);
     deve(r.tipo === 'sospeso', m + ' non produce un incasso da accreditare: ' + r.tipo);
   }
   /* E il vocabolario dice solo dei CONTANTI che sono immediati. */
@@ -801,6 +805,123 @@ prova('«mai dichiarato» resta una riga vuota, non una riga verde', () => {
   deve(p.per_causale.length === 1 && p.per_causale[0].totale === 200,
     'il riepilogo per causale non segue il periodo');
   return 'nessuna riga inventata';
+});
+
+/* ═══ IL VOCABOLARIO DEI MEZZI DI PAGAMENTO È UNO SOLO (21/09/2026) ═══════
+   Il guardiano che mancava, e la sua mancanza è costata un guasto muto: due
+   elenchi della stessa cosa, scritti a due giorni di distanza, con due chiavi
+   diverse su nove — e una delle due era quella dei contanti.
+
+   Le chiavi si leggono dagli OGGETTI, non dal sorgente: un commento che
+   nomina una chiave vecchia per spiegare perché è stata tolta farebbe
+   diventare rossa questa prova su un codice giusto (§10, §12, §18, §26, §29,
+   §31, §33, §34, §37, §41, §42). Il solo posto che va letto come testo è la
+   migrazione, e lì si tolgono le righe di commento. */
+prova('il vocabolario dei mezzi di pagamento è uno solo, e comanda il database', () => {
+  const sql = readFileSync(join(RADICE, 'supabase', 'migrations', '20260918_mezzo_pagamento_e_collaboratori.sql'), 'utf8')
+    .split('\n').filter(r => !/^\s*--/.test(r)).join('\n');
+  const blocco = sql.match(/quote_titoli_mezzo_pagamento_check[\s\S]{0,400}?\)\s*;/);
+  deve(blocco, 'non trovo il vincolo dei mezzi nella migrazione');
+  const dalDb = [...blocco[0].matchAll(/'([a-z_]+)'/g)].map(m => m[1]).sort();
+  deve(dalDb.length >= 8, 'il vincolo letto dalla migrazione ha solo ' + dalDb.length + ' voci');
+
+  const dalMotore = C.MEZZI.map(m => m.k).sort();
+  deve(JSON.stringify(dalMotore) === JSON.stringify(dalDb),
+    'contabilita.js non dice le stesse chiavi del database.\n      database: ' + dalDb.join(', ') +
+    '\n      motore:   ' + dalMotore.join(', '));
+
+  /* Il lettore dei flussi riempie la stessa colonna: se scrivesse altre
+     chiavi, il vincolo le rifiuterebbe una per una all'importazione. */
+  const F = require('../../tariffe/motore/flusso-ssf.js');
+  const dalFlusso = (F.MEZZI || []).map(m => m.id).sort();
+  deve(JSON.stringify(dalFlusso) === JSON.stringify(dalDb),
+    'flusso-ssf.js non dice le stesse chiavi del database.\n      flusso: ' + dalFlusso.join(', '));
+
+  /* E la tendina con cui si corregge a mano, in QUOTO. Qui si legge il
+     sorgente perché è un monolite: si ritaglia il solo oggetto. */
+  const html = readFileSync(join(RADICE, 'index.html'), 'utf8');
+  const tit = html.match(/const TIT_MEZZI = \{[\s\S]*?\};/);
+  deve(tit, 'non trovo TIT_MEZZI in index.html');
+  const dallaTendina = [...tit[0].matchAll(/([a-z_]+):\s*'/g)].map(m => m[1]).sort();
+  deve(JSON.stringify(dallaTendina) === JSON.stringify(dalDb),
+    'la tendina dei Titoli non dice le stesse chiavi del database.\n      tendina: ' + dallaTendina.join(', '));
+
+  /* E il quinto posto, che il 21/09/2026 era il più rotto di tutti: la
+     tendina «Come paga» di «Nuova polizza» era scritta a mano e portava TRE
+     chiavi che il vincolo non ammette. Chi le sceglieva non otteneva un campo
+     sbagliato: otteneva una polizza che non si salvava. Adesso quella tendina
+     si costruisce dal vocabolario, e questa prova pretende che resti così. */
+  const pnu = html.match(/<label>Come paga<\/label><select id="pnu-mezzo">[\s\S]{0,400}?<\/select>/);
+  deve(pnu, 'non trovo la tendina «Come paga» di Nuova polizza');
+  const scritte = [...pnu[0].matchAll(/<option value="([a-z_]+)"/g)].map(m => m[1]);
+  const fuori = scritte.filter(k => !dalDb.includes(k));
+  deve(!fuori.length, 'la tendina di Nuova polizza scrive a mano chiavi che il database rifiuta: ' + fuori.join(', '));
+  deve(/pnuOpzioniMezzo\(\)/.test(pnu[0]), 'la tendina di Nuova polizza non si costruisce dal vocabolario');
+  return dalDb.length + ' chiavi identiche in cinque posti';
+});
+
+/* Il guasto vero, rifatto in laboratorio: una rata incassata in contanti deve
+   trovare la sua cassa. Prima del 21/09/2026 non la trovava mai — e non per
+   una configurazione sbagliata, ma perché le due parole non erano la stessa. */
+prova('una rata incassata in contanti trova la cassa e si registra oggi', () => {
+  const cassa = Object.assign({}, CASSA, { mezzi: ['contante'] });
+  const r = C.destinoIncasso({ mezzo_pagamento: 'contante', importo_lordo: 45, incassato_il: '2026-09-16' }, [cassa]);
+  deve(r.tipo === 'cassa', 'un incasso in contanti risulta «' + r.tipo + '»: ' + (r.motivo || ''));
+  deve(r.conto && r.conto.id === cassa.id, 'non ha trovato la cassa');
+  /* E la controprova dell'altro verso: una chiave che il database non ammette
+     non si fa passare per somiglianza. */
+  const storto = C.destinoIncasso({ mezzo_pagamento: 'contanti', importo_lordo: 45 }, [cassa]);
+  deve(storto.tipo === 'non-si-sa', 'una chiave fuori vocabolario è stata accettata: ' + storto.tipo);
+  return 'contanti in cassa lo stesso giorno, e niente somiglianze';
+});
+
+/* ═══ LE TRE ANOMALIE CHE MANCAVANO (21/09/2026) ═════════════════════════ */
+prova('due conti che dichiarano lo stesso mezzo si dicono, prima che arrivi una rata', () => {
+  const a = { id: 'x1', nome: 'Cassa', tipologia: 'cassa', natura: 'premi', attivo: true, mezzi: ['contante'] };
+  const b = { id: 'x2', nome: 'Conto HDI', tipologia: 'banca', natura: 'premi', attivo: true, mezzi: ['contante', 'pos'] };
+  const conf = C.mezziInConflitto([a, b]);
+  deve(conf.length === 1, 'conflitti trovati: ' + conf.length + ' invece di 1');
+  deve(conf[0].mezzo === 'contante' && conf[0].conti.length === 2, 'il conflitto non nomina i due conti');
+  /* Un conto spento non litiga con nessuno: è uscito dalle tendine. */
+  deve(!C.mezziInConflitto([a, Object.assign({}, b, { attivo: false })]).length, 'un conto spento conta come conflitto');
+  /* E un mezzo su un conto solo non è una notizia. */
+  deve(!C.mezziInConflitto([a]).length, 'un mezzo su un conto solo risulta in conflitto');
+
+  const an = C.anomalie({ conti: [a, b], oggi: '2026-09-21' });
+  const v = an.find(x => /stesso mezzo/i.test(x.titolo));
+  deve(v, 'l\'anomalia dei mezzi doppi non compare: ' + an.map(x => x.titolo).join(' | '));
+  deve(/Cassa/.test(v.dafare) && /Conto HDI/.test(v.dafare), 'non dice QUALI conti: ' + v.dafare);
+  return 'il conflitto si vede quando si configura, non quando si incassa';
+});
+
+prova('i contanti su un conto che non è una cassa si dicono: il fondo cassa non lo conta', () => {
+  const finto = { id: 'y1', nome: 'CASSA CONTANTI', tipologia: 'altro', natura: 'premi', attivo: true, mezzi: ['contante'] };
+  const an = C.anomalie({ conti: [finto], oggi: '2026-09-21' });
+  const v = an.find(x => /non e.* una cassa/i.test(x.titolo));
+  deve(v, 'non lo dice: ' + an.map(x => x.titolo).join(' | '));
+  deve(/CASSA CONTANTI/.test(v.dafare), 'non nomina il conto: ' + v.dafare);
+  /* Il nome non basta e non deve bastare: è la TIPOLOGIA che il fondo cassa
+     somma. Con quella giusta l'anomalia sparisce. */
+  const ok = C.anomalie({ conti: [Object.assign({}, finto, { tipologia: 'cassa' })], oggi: '2026-09-21' });
+  deve(!ok.find(x => /non e.* una cassa/i.test(x.titolo)), 'con la tipologia giusta lo dice lo stesso');
+  deve(C.fondoCassa([finto], []).quante === 0, 'il fondo cassa conta un conto che non è una cassa');
+  return 'il nome non conta, la tipologia sì';
+});
+
+prova('le polizze senza nemmeno una rata sono un\'anomalia rossa, col verbo', () => {
+  const an = C.anomalie({ conti: CONTI, oggi: '2026-09-21', portafoglio: { senza_rate: 1700, premio: 412345.67 } });
+  const v = an.find(x => /senza nemmeno una rata/i.test(x.titolo));
+  deve(v, 'non compare: ' + an.map(x => x.titolo).join(' | '));
+  deve(v.gravita === 'rosso', 'non è rossa ma «' + v.gravita + '»');
+  deve(v.quanti === 1700, 'quante: ' + v.quanti);
+  deve(/ricaricando lo stesso file/i.test(v.dafare), 'non dice che cosa fare: ' + v.dafare);
+  /* Zero polizze senza rate non è una notizia, e nemmeno un conteggio che non
+     si è potuto fare: «non lo so» non è «ce ne sono» (§12, §18). */
+  deve(!C.anomalie({ conti: CONTI, portafoglio: { senza_rate: 0 } }).find(x => /senza nemmeno una rata/i.test(x.titolo)),
+    'con zero polizze la mostra lo stesso');
+  deve(!C.anomalie({ conti: CONTI }).find(x => /senza nemmeno una rata/i.test(x.titolo)),
+    'senza il conteggio se lo inventa');
+  return '1.700 righe con il premio e il verbo';
 });
 
 console.log('\n══ CONTI E CAUSALI ══');

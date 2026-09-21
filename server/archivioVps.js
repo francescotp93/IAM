@@ -82,6 +82,39 @@ export function chiaveDaAmbiente(env) {
   return { ok: true, chiave: buf };
 }
 
+/* ══ 1-bis. LE CREDENZIALI PER PARLARE COL DATABASE ════════════════════════
+   Il 21/09/2026 un caricamento è fallito con «metadati non scritti (401): No
+   API key found in request», e il messaggio non diceva niente a chi lavora.
+   La causa, misurata nell'ambiente del processo: `SUPABASE_ANON_KEY` non era
+   configurata sul server. Il modulo però partiva ACCESO, perché i controlli
+   d'avvio erano due — la chiave di cifratura e la cartella — e questa terza
+   credenziale non era fra loro.
+
+   È la regola già scritta per `ARCHIVIO_CHIAVE`, applicata a metà: «senza
+   chiave il modulo si spegne, risponde 503 e dice che cosa manca». Applicata
+   a metà vuol dire che il modulo accetta il file, lo prende in carico, e
+   fallisce al primo passo con un errore del database che parla di header
+   HTTP. Una rotta che risponde «non configurato» dicendo IL NOME DELLA
+   VARIABILE si sistema in un minuto; una che risponde 401 costa un pomeriggio
+   e manda a cercare la chiave sbagliata.
+
+   Perché la chiave ANONIMA e non quella di servizio: i metadati si scrivono e
+   si rileggono col token di chi chiede, e Supabase vuole `apikey` ACCANTO al
+   token. Con la chiave di servizio al posto dell'anonima, un token assente o
+   malformato non farebbe fallire la richiesta: la farebbe passare come
+   servizio, cioè scavalcando le politiche — esattamente la regola che questo
+   modulo esiste per applicare. */
+export function chiaviRest(env) {
+  const e = env || {};
+  if (!String(e.SUPABASE_URL || '').trim()) {
+    return { ok: false, motivo: 'SUPABASE_URL non è configurata: senza, i metadati dei documenti non si scrivono.' };
+  }
+  if (!String(e.SUPABASE_ANON_KEY || '').trim()) {
+    return { ok: false, motivo: 'SUPABASE_ANON_KEY non è configurata: il database rifiuta la richiesta con «No API key found» e il documento non si carica.' };
+  }
+  return { ok: true };
+}
+
 /* ══ 2. CIFRARE E DECIFRARE ════════════════════════════════════════════════ */
 export function cifra(chiave, dati) {
   const iv = crypto.randomBytes(LUNG_IV);
@@ -187,7 +220,12 @@ export function archivioVpsRouter(opz = {}) {
      pomeriggio. */
   const k = chiaveDaAmbiente(env);
   const radice = radiceConsentita(dirGrezza, opz.radiciServite);
-  const spento = !k.ok ? k.motivo : (!radice.ok ? radice.motivo : null);
+  /* Le credenziali del database si controllano SOLO se si userà la strada
+     vera: nelle prove i due accessi sono iniettati, non c'è nessuna rete, e
+     pretendere lì delle variabili d'ambiente spegnerebbe il modulo per la
+     strada invece che per il contenuto (§4). */
+  const rest = (opz.leggiRiga || opz.scriviRiga) ? { ok: true } : chiaviRest(env);
+  const spento = !k.ok ? k.motivo : (!radice.ok ? radice.motivo : (!rest.ok ? rest.motivo : null));
   if (spento) console.warn('archivio cifrato spento: ' + spento);
 
   const fermo = (res) => res.status(503).json({ error: 'Archivio cifrato non disponibile: ' + spento });

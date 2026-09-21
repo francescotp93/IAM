@@ -1326,14 +1326,20 @@ const avvio = async () => {
         out.nav = document.getElementById('nav-portafoglio').classList.contains('active');
         window.TIT_COLLAB = [{ id: 'c-1', nome: 'Anna', cognome: 'Neri' }];
         window.TIT_COLLAB_NOMI = { 'c-1': 'Neri Anna' };
-        FC_POLIZZE = { p1: { id: 'p1', numero_polizza: 'NP-1', cliente: 'ROSSI MARIO', cliente_id: 'cli-1', compagnia: 'PRIMA', prodotto: 'RC Auto' },
-                       p2: { id: 'p2', numero_polizza: 'NP-2', cliente: 'VERDI LUCA', compagnia: 'HDI', prodotto: 'Casa' } };
+        /* Le date di emissione servono da quando il foglio sa guardare anche
+           quelle (21/09/2026): la riga di agosto sta su una polizza emessa ad
+           agosto, così resta fuori da TUTTE E DUE le letture — e la prova
+           misura la stessa cosa con il selettore da una parte e dall'altra. */
+        FC_POLIZZE = { p1: { id: 'p1', numero_polizza: 'NP-1', cliente: 'ROSSI MARIO', cliente_id: 'cli-1', compagnia: 'PRIMA', prodotto: 'RC Auto', data_emissione: '2026-09-05' },
+                       p2: { id: 'p2', numero_polizza: 'NP-2', cliente: 'VERDI LUCA', compagnia: 'HDI', prodotto: 'Casa', data_emissione: '2026-09-08' },
+                       p3: { id: 'p3', numero_polizza: 'NP-3', cliente: 'NERI UGO', compagnia: 'PRIMA', prodotto: 'RC Auto', data_emissione: '2026-08-01' } };
         FC_SCHEMI = { 'c-1': [{ prodotto: 'RC Auto', perc: 60 }] };
         FC_TITOLI = [
           { id: FC_T1, polizza_id: 'p1', stato: 'incassato', incassato_il: '2026-09-10', importo_lordo: 390, provvigione: 41.21, mezzo_pagamento: 'contante', collaboratore_id: 'c-1', fonte: 'ssf' },
           { id: 't2', polizza_id: 'p2', stato: 'incassato', incassato_il: '2026-09-12', importo_lordo: 200, provvigione: 20, mezzo_pagamento: 'bonifico' },
-          { id: 't3', polizza_id: 'p1', stato: 'incassato', incassato_il: '2026-08-01', importo_lordo: 999, provvigione: 99, mezzo_pagamento: 'contante' } ];
+          { id: 't3', polizza_id: 'p3', stato: 'incassato', incassato_il: '2026-08-01', importo_lordo: 999, provvigione: 99, mezzo_pagamento: 'contante' } ];
         document.getElementById('fc-da').value = '2026-09-01'; document.getElementById('fc-a').value = '2026-09-30';
+        document.getElementById('fc-su').value = 'incasso';
         document.getElementById('fc-mezzo').innerHTML = '<option value="">Tutti</option><option value="contante">Contante</option><option value="bonifico">Bonifico</option>';
         window.fcRender();
         out.sum = document.getElementById('fc-summary').textContent;
@@ -1341,11 +1347,35 @@ const avvio = async () => {
         out.body = document.getElementById('fc-body').textContent;
         out.quad = document.querySelectorAll('#fc-quadrature table.fc-quad').length;
         out.quadTesto = document.getElementById('fc-quadrature').textContent;
+
+        /* E la stessa cosa guardata per EMISSIONE (21/09/2026): le stesse due
+           righe, perché quelle polizze sono state emesse in settembre. Una
+           polizza emessa oggi con la rata non ancora incassata compare qui e
+           NON compare fra gli incassi — è il caso che mancava del tutto. */
+        FC_POLIZZE.p4 = { id: 'p4', numero_polizza: 'NP-4', cliente: 'GIALLI ANNA', compagnia: 'Allianz', prodotto: 'Veicoli Storici', data_emissione: '2026-09-21' };
+        FC_TITOLI.push({ id: 't4', polizza_id: 'p4', stato: 'aperto', data_scadenza: '2026-09-21', importo_lordo: 148, provvigione: 22 });
+        document.getElementById('fc-su').value = 'emissione';
+        window.fcRender();
+        out.emRighe = document.querySelectorAll('#fc-body .fc-riga').length;
+        out.emSum = document.getElementById('fc-summary').textContent;
+        out.emBody = document.getElementById('fc-body').textContent;
+        /* E tornando agli incassi la rata aperta sparisce: non è un incasso. */
+        document.getElementById('fc-su').value = 'incasso';
+        window.fcRender();
+        out.incRighe = document.querySelectorAll('#fc-body .fc-riga').length;
         return out;
       }, FC_T1);
       deve(r.porta, 'dal Portafoglio non c\'è la porta del foglio cassa');
       deve(r.attiva && r.nav, 'la pagina non si apre o non evidenzia Portafoglio nel menu');
       deve(r.righe === 2, 'movimenti nel periodo: ' + r.righe + ' (attesi 2: quello di agosto resta fuori)');
+      /* Le due letture, e la riga che le distingue. */
+      deve(r.emRighe === 3, 'per emissione: ' + r.emRighe + ' righe (attese 3: le due di settembre più la polizza nuova)');
+      deve(r.incRighe === 2, 'per incasso la rata aperta è entrata lo stesso: ' + r.incRighe);
+      deve(/Premi emessi/.test(r.emSum) && /Di cui incassati/.test(r.emSum),
+        'per emissione mancano i due totali separati: ' + r.emSum);
+      deve(/Ancora da incassare/.test(r.emSum) && /148,00/.test(r.emSum),
+        'non dice quanto resta da incassare: ' + r.emSum);
+      deve(/da incassare/i.test(r.emBody), 'la riga non dichiara di non essere stata incassata');
       deve(/590,00/.test(r.sum) && /Premi incassati/.test(r.sum), 'i premi incassati non sono 590: ' + r.sum);
       /* dirette 20 (bonifico, agenzia) · indirette 41,21 (c-1 al 60% → 24,73) */
       deve(/Provvigioni dirette/.test(r.sum) && /20,00/.test(r.sum), 'le dirette non ci sono: ' + r.sum);
@@ -1354,6 +1384,61 @@ const avvio = async () => {
       deve(r.quad === 3 && /per mezzo/.test(r.quadTesto) && /per compagnia/.test(r.quadTesto) && /per collaboratore/.test(r.quadTesto), 'le tre quadrature: ' + r.quad);
       deve(/Agenzia \(produzione diretta\)/.test(r.quadTesto), 'la produzione diretta non ha la sua riga nella quadratura per collaboratore');
       return '2 movimenti · 590 · dirette 20 · indirette 41,21 (quota 24,73) · 3 quadrature';
+    });
+
+    await prova('foglio cassa · si leggono TUTTE le righe, non le prime mille', async () => {
+      /* Il difetto, misurato il 21/09/2026: `.limit(5000)` su PostgREST non
+         fa arrivare cinquemila righe — ne arrivano mille, che è il tetto del
+         server. Con 1.720 polizze in portafoglio il foglio cassa ne caricava
+         1.000 e scartava in silenzio le rate delle altre 720: degli incassi
+         sparivano dalla cassa senza che nessuna riga lo dicesse.
+         Qui la funzione gira davvero, con un finto che si comporta come il
+         server: pagine piene finché ce n'è. */
+      const r = await page.evaluate(async () => {
+        const out = {};
+        const pagina = (totale) => {
+          const viste = [];
+          return { viste, fabbrica: () => ({ range: (da, a) => {
+            viste.push([da, a]);
+            const quante = Math.max(0, Math.min(totale - da, a - da + 1));
+            return Promise.resolve({ data: Array.from({ length: quante }, (_, i) => ({ id: 'x' + (da + i) })), error: null });
+          } }) };
+        };
+        /* 2.400 righe: tre pagine, e nessuna persa. */
+        const a = pagina(2400);
+        const ra = await window.fcLeggiTutte(a.fabbrica);
+        out.quante = ra.righe.length;
+        out.pagine = a.viste.length;
+        out.primaPagina = a.viste[0];
+        out.troncato = ra.troncato;
+        out.distinte = new Set(ra.righe.map(x => x.id)).size;
+        /* Un archivio più grande del tetto: si smette, e SI DICHIARA. Un
+           «troncato» che resta falso farebbe credere di aver letto tutto. */
+        const b = pagina(999999);
+        const rb = await window.fcLeggiTutte(b.fabbrica);
+        out.troncatoGrande = rb.troncato;
+        out.quanteGrande = rb.righe.length;
+        return out;
+      });
+      deve(r.quante === 2400, 'righe lette: ' + r.quante + ' invece di 2.400');
+      deve(r.distinte === 2400, 'ha letto due volte le stesse righe: ' + r.distinte + ' distinte su ' + r.quante);
+      deve(r.pagine === 3, 'pagine chieste: ' + r.pagine + ' (attese 3)');
+      deve(JSON.stringify(r.primaPagina) === JSON.stringify([0, 999]), 'la prima pagina non è 0-999: ' + JSON.stringify(r.primaPagina));
+      deve(r.troncato === false, 'dichiara troncato un archivio che ha letto tutto');
+      deve(r.troncatoGrande === true, 'oltre il tetto non dichiara di essersi fermato');
+      return '2.400 righe in 3 pagine, nessuna persa, e il tetto si dichiara';
+    });
+
+    await prova('foglio cassa · nessun limite scritto a mano nelle letture', async () => {
+      /* La controprova del difetto di sopra, sul sorgente: un `.limit(` qui
+         dentro vuol dire che qualcuno ha rimesso il tetto che non funziona. */
+      const sorgente = await page.evaluate(() => String(window.fcCarica));
+      deve(!/\.limit\(/.test(sorgente), 'fcCarica scrive ancora un limite a mano: ' + (sorgente.match(/\.limit\([^)]*\)/g) || []).join(', '));
+      deve(/fcLeggiTutte/.test(sorgente), 'fcCarica non pagina: legge una volta sola');
+      /* E la data di emissione deve arrivare, altrimenti la lettura per
+         emissione non avrebbe su che cosa lavorare. */
+      deve(/data_emissione/.test(sorgente), 'fcCarica non chiede la data di emissione delle polizze');
+      return 'niente limiti a mano, si pagina, e la data di emissione arriva';
     });
 
     await prova('M5 · i filtri valgono al clic su Cerca, e l\'Excel rispetta i filtri applicati', async () => {

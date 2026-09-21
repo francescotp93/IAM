@@ -849,6 +849,83 @@ prova('le rate che restano comunque fuori si contano, e il numero esce', () => {
   return 'contate, nel verbale, nella risposta e sullo schermo';
 });
 
+prova('una riga che il database rifiuterebbe si dichiara PRIMA, non fa morire il resto', () => {
+  /* IL DIFETTO CHE NON ERA ANCORA SUCCESSO, e sarebbe successo al primo file
+     grosso. Con la scrittura tutto-o-niente il prezzo di una riga rifiutata
+     non è quella riga: è l'importazione intera che muore con un messaggio
+     grezzo del database, DOPO che l'anteprima aveva detto che andava bene.
+     Misurato sullo schema vero il 22/09/2026: `data_effetto` su quote_polizze
+     e `data_decorrenza`/`importo_lordo` su quote_titoli sono NOT NULL, e il
+     motore lascia vuoto quello che non sa leggere invece di inventarlo. */
+  const p = F.piano({
+    clienti: [{ _chiave: 'C1', codice_fiscale: 'RSSMRA80A01H501U', nominativo: 'Rossi Mario' }],
+    polizze: [
+      { _fonte_id: 'P1', _cliente: 'C1', numero_polizza: 'A1', data_effetto: '2026-01-01' },
+      { _fonte_id: 'P2', _cliente: 'C1', numero_polizza: 'A2', data_effetto: null }
+    ],
+    titoli: [
+      { _fonte_id: 'T1', _polizza: 'P1', data_decorrenza: '2026-01-01', importo_lordo: 100 },
+      { _fonte_id: 'T2', _polizza: 'P1', data_decorrenza: null, importo_lordo: 100 },
+      { _fonte_id: 'T3', _polizza: 'P1', data_decorrenza: '2026-01-01', importo_lordo: null }
+    ]
+  }, {});
+  deve(p.incomplete, 'il piano non dichiara le righe incomplete');
+  deve(p.incomplete.polizze.length === 1, 'polizze incomplete: ' + p.incomplete.polizze.length + ' (attesa 1)');
+  deve(p.incomplete.polizze[0]._fonte_id === 'P2', 'ha marcato la polizza sbagliata');
+  deve(p.incomplete.titoli.length === 2, 'rate incomplete: ' + p.incomplete.titoli.length + ' (attese 2)');
+  /* Restano nel piano: si dichiarano, non si nascondono. Toglierle qui
+     vorrebbe dire che l'anteprima mostra un numero e il file ne ha un altro,
+     e nessuno saprebbe quali righe mancano. */
+  deve(p.polizze.nuove.length === 2, 'la polizza incompleta è sparita dal piano invece di essere dichiarata');
+  deve(p.titoli.nuovi.length === 3, 'le rate incomplete sono sparite dal piano invece di essere dichiarate');
+  return '1 polizza e 2 rate dichiarate, e il piano resta intero';
+});
+
+prova('il motore e la funzione SQL pretendono le STESSE colonne obbligatorie', () => {
+  /* Due elenchi che divergono vorrebbero dire un'anteprima che promette una
+     riga e una scrittura che la butta — o, peggio, una scrittura che la
+     accetta e muore. È la disciplina di CLAUDE.md §50: la stessa regola
+     scritta in due lingue sta una accanto all'altra, e una prova le fa dire
+     la stessa cosa. */
+  const c = soloCodice(SQL_IMPORT.testo);
+  deve(F.CAMPI_OBBLIGATORI, 'il motore non dichiara le colonne obbligatorie');
+
+  /* SI GUARDA DENTRO LE DUE `insert`, NON NEL FILE INTERO. La prima stesura
+     cercava la colonna ovunque, e restava verde con il filtro tolto
+     dall'inserimento: quelle stesse colonne compaiono anche nel blocco che
+     CONTA gli scarti. Cioè la prova avrebbe accettato una funzione che conta
+     correttamente le righe rifiutate e poi muore provando a scriverle.
+     L'ha detto la controprova, non la rilettura (§15, §17, §18, §19, §41). */
+  const fetta = (da) => {
+    const i = c.indexOf(da);
+    deve(i > 0, 'non trovo la scrittura «' + da + '»');
+    return c.slice(i, c.indexOf('returning 1', i));
+  };
+  const insPol = fetta('insert into quote_polizze');
+  const insTit = fetta('insert into quote_titoli');
+  for (const campo of F.CAMPI_OBBLIGATORI.titoli) {
+    deve(insTit.includes("nullif(righe.r->>'" + campo + "', '') is not null"),
+      'l\'inserimento delle rate non si difende da «' + campo + '» vuoto: una riga così fa morire tutta l\'importazione');
+  }
+  /* Sulle polizze il guardiano è il marcatore `senza_data`, calcolato una
+     volta sola e usato sia per contare sia per filtrare. */
+  deve(/senza_data/.test(insPol) && /not righe\.senza_data/.test(insPol),
+    'l\'inserimento delle polizze non esclude quelle senza data di effetto');
+  deve(c.includes("nullif(righe.r->>'" + F.CAMPI_OBBLIGATORI.polizze[0] + "', '') is null"),
+    'il marcatore delle polizze non guarda la colonna che il motore dichiara obbligatoria');
+  deve(/not righe\.numero_preso/.test(insPol) && /righe\.rn = 1/.test(insPol),
+    'l\'inserimento delle polizze non esclude i numeri di polizza già presi');
+  /* E il numero di polizza già preso: è l'altro modo in cui una riga sola
+     abortisce la transazione, perché l'indice unico su numero_polizza NON è
+     l'arbitro dell'on conflict e un conflitto su un indice diverso
+     dall'arbitro non viene assorbito dal do nothing. */
+  deve(/numero_preso/.test(c), 'la funzione non si difende dal numero di polizza già preso');
+  deve(/row_number\(\) over/.test(c), 'due righe dello stesso file con lo stesso numero si scontrerebbero fra loro');
+  deve(/'polizze_numero_doppio'/.test(c) && /'polizze_senza_dati'/.test(c) && /'titoli_senza_dati'/.test(c),
+    'gli scarti nuovi non si contano: una riga buttata in silenzio è il modo in cui un portafoglio comincia a non tornare');
+  return F.CAMPI_OBBLIGATORI.polizze.concat(F.CAMPI_OBBLIGATORI.titoli).join(', ');
+});
+
 console.log('\n══ FLUSSO DI PORTAFOGLIO (SSF) ══');
 let ko = 0, salt = 0;
 for (const e of esiti) {

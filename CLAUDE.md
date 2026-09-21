@@ -5632,3 +5632,143 @@ perché il ricordo di quei 218 secondi fa credere che il problema sia la mole.
   funzione, non la prima: leggere la prima vorrebbe dire sorvegliare il mondo
   di ieri. Se un giorno la funzione si sposta in un terzo file, la prova lo
   segue da sé.
+
+---
+
+## 56. L'import non muore per una riga, e dice quello che lascia fuori (22/09/2026)
+
+Stessa giornata di §55, stesso file di PRIMA aperto in anteprima. Corretto il
+guasto delle rate, il lavoro è continuato leggendo il resto della strada — e
+la strada aveva altre tre buche, due delle quali avrebbero fatto fallire
+l'importazione in blocco.
+
+| pezzo | dove |
+|---|---|
+| gli scarti che non fanno morire la transazione | `supabase/migrations/20260922b_import_non_muore_per_una_riga.sql` (applicata) |
+| le colonne obbligatorie, dichiarate una volta sola | `CAMPI_OBBLIGATORI` e `piano().incomplete` in `tariffe/motore/flusso-ssf.js` |
+| i tre secchi per nome, le polizze perse con un elenco | `fluMostra` / `fluDettaglio` in `index.html` |
+| la barra, l'esito e gli avvisi | `fluConferma` in `index.html` |
+| prove | `server/verifica/flusso-ssf.test.mjs` (**48**), blocco «import» in `ui-test.mjs` (**495**) |
+
+### Una riga rifiutata costava cinquemila righe
+
+Il tutto-o-niente del 21/09 (§47) ha un prezzo che nessuno aveva messo in
+conto: **se una riga su cinquemila viene rifiutata dal database, non si perde
+quella riga — si perde tutto**, con un messaggio grezzo di Postgres, dopo che
+l'anteprima aveva detto che andava bene.
+
+Due cose la rifiutano, e nessuna delle due è un caso limite. Misurate sullo
+schema vero, con tre inserimenti veri annullati alla fine:
+
+| riga | risposta del database |
+|---|---|
+| polizza senza `data_effetto` | `23502` — violazione di NOT NULL |
+| polizza il cui `numero_polizza` è già in archivio | `23505` — chiave duplicata, **nonostante** `on conflict (fonte, fonte_id) do nothing` |
+| rata senza `importo_lordo` | `23502` |
+
+> **Un `on conflict` protegge dal SUO arbitro, non dagli altri indici unici.**
+> `quote_polizze_numero_polizza_uidx` è unico su tutta la tabella; l'arbitro
+> dichiarato è `(fonte, fonte_id)`. Un conflitto su un indice diverso
+> dall'arbitro **non viene assorbito dal `do nothing`**: solleva un errore e
+> annulla la transazione. E PRIMA non ha tacito rinnovo — a ogni scadenza
+> nasce una polizza nuova (§14, regola 4) — quindi lo stesso numero che torna
+> in un file di dodici mesi è la normalità, non l'eccezione.
+
+Il primo caso è la regola di casa §8.1 che si ritorce: il motore lascia vuoto
+quello che non sa leggere invece di inventarlo — giusto là, fatale qui.
+
+**La regola nuova: quello che non può entrare si esclude e SI CONTA.** Mai in
+silenzio. Tre numeri nuovi (`polizze_senza_dati`, `polizze_numero_doppio`,
+`titoli_senza_dati`) nel verbale e sullo schermo. Una riga esclusa è un
+problema da guardare; cinquemila righe perse per colpa sua sono una giornata.
+
+Il doppione di numero si cerca **in due direzioni**: contro l'archivio e
+**dentro il lotto**. Due righe dello stesso file con lo stesso numero si
+scontrerebbero fra loro, e il `not exists` non le vede — guarda la tabella
+com'era prima dell'istruzione.
+
+### «568 righe non importabili» erano tre cose diverse
+
+E una delle tre non era un guasto.
+
+| secchio | che cosa si perde | si chiude |
+|---|---|---|
+| polizze senza il contraente | **una polizza intera**, con scadenzario, fascicolo e rate | chiedendo alla compagnia un file che porti quei contraenti |
+| rate di tipo sconosciuto | una riga di contabilità, coi soldi dentro | decidendo che cosa significano quei codici (§16) |
+| rate senza la loro polizza | quasi niente: sono i **rinnovi emessi e non pagati** | non si chiude, perché è la regola 3 che funziona |
+
+Sommarle sotto «non importabili» faceva sembrare un guasto il comportamento
+voluto e nascondeva i due che guasti lo sono. E **il secchio più caro era
+l'unico senza un contatore**: le polizze senza contraente esistevano solo come
+N riquadri di avviso identici — leggibili con tre polizze, un muro con
+trecento. Adesso hanno una sezione, un numero e un elenco.
+
+Per raccoglierli, il motore etichetta l'avviso con una **chiave di famiglia**
+(`k: 'polizza-senza-cliente'`): raggrupparli riconoscendoli dal testo
+funzionerebbe finché qualcuno non riscrive la frase, e poi smetterebbe di
+funzionare in silenzio.
+
+**Nessuno dei tre cala ricaricando il file**, ed è scritto in schermata: si
+calcolano confrontando il file con se stesso, prima di qualunque lettura del
+database. Chi legge «568» dopo un'importazione andata male prova a ricaricare
+per rimediare, e si ritrova lo stesso 568.
+
+### Tre cose più piccole, che dicevano il falso
+
+- **La barra arrivava al 100% e POI cominciava a scrivere.** La scrittura è
+  una chiamata sola e può durare; una barra piena mentre il database lavora fa
+  chiudere la scheda — che è esattamente come il 21/09 si è perso mezzo
+  portafoglio. Adesso un ottavo resta alla scrittura, e il passo dice di non
+  chiudere la pagina. Era il difetto che il commento due righe sopra
+  dichiarava di voler evitare, arrivato da un'altra porta.
+- **«In archivio non è stato scritto niente» era incondizionato e falso**: il
+  catalogo si scrive PRIMA della transazione ed è una scelta dichiarata (§39,
+  regola 6). Adesso dice che cosa non è stato toccato — il portafoglio — e che
+  il catalogo invece c'è. È §12 e §18 dal lato della scrittura: una
+  rassicurazione più larga di quello che si può garantire è una bugia.
+- **L'importazione non annotava più nome, email e RUI dei codici produttore**,
+  persi nella riscrittura del 21/09. Misurato: 16 righe in
+  `quote_codici_collaboratore`, **zero con un nome**. Senza quelle evidenze
+  ogni flusso lascia sigle nude e il lavoro di riconoscerle si rifà da capo
+  (§19). Rimesse, fuori dalla transazione: sono evidenze, non portafoglio.
+
+### La stessa regola in due lingue, una accanto all'altra
+
+`Flusso.CAMPI_OBBLIGATORI` dichiara le colonne che il database pretende, il
+piano porta `incomplete` e l'anteprima le mostra **prima** di scrivere; la
+funzione SQL le filtra, perché è l'ultima porta. Due elenchi che divergono
+vorrebbero dire un'anteprima che promette una riga e una scrittura che la
+butta: c'è una prova che li fa dire la stessa cosa (la disciplina di §50).
+
+### Una controprova restata verde, e la prova era debole
+
+Tolto dall'`insert` delle rate il filtro sui dati obbligatori, la prova è
+restata **verde**: cercava quelle colonne nel file intero, e le stesse colonne
+compaiono anche nel blocco che *conta* gli scarti. Cioè avrebbe accettato una
+funzione che conta correttamente le righe rifiutate e poi muore provando a
+scriverle. Adesso guarda **dentro le due `insert`**, e tutte e due le
+controprove la fanno diventare rossa. *Una controprova che non fa diventare
+rossa nessuna prova non assolve il codice: accusa la prova* (§15, §17, §18,
+§19, §41, §46).
+
+### Cosa resta aperto
+
+- **Il timeout è stato misurato, non è un rischio oggi**: `statement_timeout`
+  del ruolo `authenticated` è 8 secondi e il carico vero gira in 2.491 ms
+  (§55). Ma **non esiste una ripresa**: se un giorno non bastasse, non c'è
+  niente di più piccolo da riprovare — il secondo tentativo ricarica gli
+  stessi blocchi e rilancia la stessa chiamata.
+- **`quote_anagrafiche` non ha un indice unico su `(fonte, fonte_id)`**: la
+  difesa contro i doppioni è un `not exists` nel codice, cioè proprio il
+  controllo che la migrazione del 18/09 dichiara insufficiente. Oggi non morde
+  (zero clienti nuovi), ma è la stessa famiglia del difetto che ha prodotto il
+  portafoglio a metà.
+- **Il meccanismo `_chiavi` per i doppioni interni al file è codice morto**:
+  `piano()` toglie le righe marcate `_duplicatoDi` da `clienti.nuovi`, e
+  `chiaviDi()` poi le cerca proprio lì. Non morde finché non arriva un file
+  con clienti nuovi doppi.
+- **Il blocco ROLLBACK della migrazione del 21/09 non riporta a
+  un'importazione funzionante**: prometteva che «la schermata torna a scrivere
+  riga per riga», ma quel codice è stato sostituito nello stesso commit. È la
+  trappola dei commenti al contrario — un commento che NOMINA una via d'uscita
+  non è quella via d'uscita.

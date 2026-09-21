@@ -368,7 +368,12 @@ function mezzoDa(codice) {
       p._piva = cli ? cli.partita_iva : null;
       p.cliente = cli ? cli.nominativo : null;
       if (!cli) {
-        avvisi.push({ g: 'avviso', t: 'La polizza ' + (p.numero_polizza || p._fonte_id) + ' è intestata a un\'anagrafica che non è nel flusso: non si importa a metà.' });
+        /* `k` e' l'etichetta della famiglia, e serve a chi disegna: con
+           trecento polizze senza contraente trecento riquadri identici sono
+           un muro, e la schermata deve poterli raccogliere in una sezione
+           sola SENZA riconoscerli dal testo (una frase si riscrive, e allora
+           il raggruppamento smette di funzionare in silenzio). */
+        avvisi.push({ g: 'avviso', k: 'polizza-senza-cliente', t: 'La polizza ' + (p.numero_polizza || p._fonte_id) + ' è intestata a un\'anagrafica che non è nel flusso: non si importa a metà.' });
         p._senzaCliente = true;
       }
       if (p._offerta) offerte.push(p); else polizze.push(p);
@@ -963,6 +968,11 @@ function mezzoDa(codice) {
      scritti il cliente sul sito, e la scheda in agenzia è stata sistemata a
      mano da qualcuno: sovrascriverla vorrebbe dire buttare via quel lavoro
      ogni notte. Alla polizza nuova si aggancia la scheda che c'è. */
+  /* Le colonne che il database pretende, elencate qui perche' la funzione SQL
+     che scrive deve filtrare le stesse: due elenchi che divergono vorrebbero
+     dire un'anteprima che promette una riga e una scrittura che la butta. */
+  var CAMPI_OBBLIGATORI = { polizze: ['data_effetto'], titoli: ['data_decorrenza', 'importo_lordo'] };
+
   function piano(analisi, esistenti) {
     var e = esistenti || {};
     var perCf = e.clientiPerCf || {};
@@ -1017,6 +1027,20 @@ function mezzoDa(codice) {
       tracciato: analisi.tracciato,
       clienti: { nuovi: clientiNuovi, gia: clientiGia, idPerChiave: idPerChiave },
       polizze: { nuove: polizzeNuove, gia: polizzeGia, senzaCliente: polizzeSenzaCliente },
+      /* LE RIGHE CHE IL DATABASE RIFIUTEREBBE (22/09/2026).
+         `data_effetto` su una polizza, `data_decorrenza` e `importo_lordo` su
+         una rata sono NOT NULL. Il motore lascia vuoto quello che non sa
+         leggere invece di inventarlo — ed e' la regola di casa 8.1 — quindi
+         una colonna illeggibile nel file diventa un vuoto, e il vuoto, con la
+         scrittura tutto-o-niente, diventa un'importazione morta: non si perde
+         quella riga, si perde tutto, con un messaggio grezzo del database e
+         DOPO che l'anteprima aveva detto che andava bene.
+         Si dichiarano PRIMA di scrivere: le esclude poi la funzione SQL, che
+         e' l'ultima porta, ma chi guarda deve saperlo adesso. */
+      incomplete: {
+        polizze: polizzeNuove.filter(function (x) { return !x.data_effetto; }),
+        titoli: titoliNuovi.filter(function (t) { return !t.data_decorrenza || t.importo_lordo == null; })
+      },
       titoli: {
         nuovi: titoliNuovi, gia: titoliGia, senzaPolizza: titoliSenzaPolizza,
         /* Quante di quelle rate le ha mandate la compagnia e quante le abbiamo
@@ -1148,7 +1172,7 @@ function mezzoDa(codice) {
     data: data, numero: numero,
     versoAnagrafica: versoAnagrafica, versoPolizza: versoPolizza, versoTitolo: versoTitolo,
     aggiungiMesi: aggiungiMesi, rataDaIncassare: rataDaIncassare, premioAnnuo: premioAnnuo,
-    analizza: analizza, piano: piano,
+    analizza: analizza, piano: piano, CAMPI_OBBLIGATORI: CAMPI_OBBLIGATORI,
     apriZip: apriZip
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

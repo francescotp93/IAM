@@ -1,8 +1,21 @@
 {
-  "versione": "0.22.1",
-  "nome": "Le rate che sparivano ricaricando il file",
+  "versione": "0.23.0",
+  "nome": "L'import non muore per una riga, e dice quello che lascia fuori",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.23.0",
+      "data": "2026-09-22",
+      "nome": "L'import non muore per una riga, e dice quello che lascia fuori",
+      "voci": [
+        "Una riga sola che il database rifiuta non costava più quella riga: costava l'importazione intera, con un messaggio incomprensibile e dopo che l'anteprima aveva detto che andava tutto bene. Bastava una polizza senza data di effetto, o una rata senza importo, o un numero di polizza che torna al rinnovo — su un file di dodici mesi non è un'ipotesi di scuola. Adesso quelle righe si escludono, SI CONTANO, e il resto entra lo stesso.",
+        "«568 righe non importabili» adesso si legge per nome, perché erano tre cose diverse messe insieme: le polizze senza il contraente (le più care: se ne va la polizza intera con le sue rate), le rate di tipo sconosciuto (soldi che non entrano in contabilità) e le rate dei rinnovi emessi e non pagati — che è una regola che funziona, non un guasto.",
+        "Le polizze senza contraente hanno finalmente un numero e un elenco: erano l'unica cosa che si perdeva davvero e l'unica senza un contatore da nessuna parte. E c'è scritto che ricaricare il file non le recupera, perché il confronto è fra il file e se stesso, non con l'archivio.",
+        "La barra non arriva più in fondo prima di cominciare a scrivere. Riserva l'ultimo tratto alla scrittura vera — l'unica fase che può durare — e dice di non chiudere la pagina. Una barra piena mentre il database lavora è il modo in cui il 21 settembre si è perso mezzo portafoglio.",
+        "Se l'importazione va male, la schermata non promette più che «non è stato scritto niente»: dice che il portafoglio non è stato toccato, e che il catalogo invece sì. Era una rassicurazione più larga di quello che si poteva garantire.",
+        "L'importazione torna ad annotare nome, email e RUI accanto ai codici produttore della compagnia — si era persa in una riscrittura. Senza, dopo ogni flusso quei codici restano sigle nude e il lavoro di riconoscerli si rifà da capo."
+      ]
+    },
     {
       "v": "0.22.1",
       "data": "2026-09-22",

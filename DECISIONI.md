@@ -6,6 +6,52 @@ soltanto quello che Francesco potrebbe voler ribaltare.
 
 ---
 
+## 22/09/2026 — L'import non muore per una riga, e dice che cosa lascia fuori (0.23.0)
+
+**Perimetro:** la stessa schermata di poco fa. Corretto il guasto delle rate ho
+letto il resto della strada prima di dirti «premi», e c'erano altre due cose
+che avrebbero fatto fallire l'importazione in blocco.
+
+🔴 **Applicato al database, con la tua autorizzazione permanente.**
+`20260922b_import_non_muore_per_una_riga.sql`: riscrive **una sola funzione**,
+`iam_importa_flusso`. Nessuna tabella, nessuna colonna, nessuna politica,
+nessuna riga esistente toccata.
+*Come tornare indietro:* si riapplica la funzione com'è in
+`20260922_import_rate_su_polizze_gia_dentro.sql`. Tornare indietro rimette il
+difetto: una riga rifiutata torna a far morire l'importazione intera.
+
+🟡 **Una riga che il database rifiuta adesso resta fuori invece di far morire
+tutto.** È una scelta, e va detta: se il file contiene una polizza senza data
+di effetto, o una rata senza importo, o un numero di polizza che è già in
+archivio, quella riga **non entra** — prima non entrava neanche lei, ma con
+lei non entrava nient'altro. Ogni esclusione è contata e scritta sullo
+schermo.
+*Come tornare indietro:* si toglie il filtro dalla funzione, ma si torna a
+un'importazione che muore per una riga.
+
+🟡 **Le polizze escluse per numero già preso sono da guardare.** Quando una
+polizza si rinnova, PRIMA fa nascere una riga nuova e il numero spesso resta
+lo stesso: quelle righe restano fuori e il numero te lo dice l'esito. Se
+scopriamo che è la normalità e non un errore, la regola si cambia — ma
+cambiarla vuol dire decidere che due polizze possono avere lo stesso numero,
+e quella decisione è tua.
+
+🟡 **«568 righe non importabili» diventa tre voci con il loro nome**, perché
+erano tre cose diverse e una delle tre non è un guasto (le rate dei rinnovi
+non pagati: è giusto che restino fuori dal portafoglio).
+*Come tornare indietro:* è un elenco in `fluMostra`, si torna a un numero solo
+in tre righe.
+
+🟡 **La barra non arriva più in fondo prima di scrivere**, e l'esito di un
+errore non promette più che «non è stato scritto niente»: il catalogo si
+scrive prima della transazione, quindi quella frase non era vera.
+
+📝 **Rimessa una cosa che si era persa**: l'importazione torna ad annotare
+nome, email e RUI accanto ai codici produttore. Misurato: 16 codici in
+tabella, zero con un nome.
+
+---
+
 ## 22/09/2026 — Le rate che sparivano ricaricando il file (0.22.1)
 
 **Perimetro:** l'importazione del portafoglio dalla compagnia. Sei venuto con

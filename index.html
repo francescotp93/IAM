@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.23.0">
-<meta name="app-versione-nome" content="L'import non muore per una riga, e dice quello che lascia fuori">
+<meta name="app-versione" content="0.24.0">
+<meta name="app-versione-nome" content="Abbinare un codice produttore lo applica davvero">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -17553,20 +17553,39 @@ async function asgApri() {
 /* Le polizze si rileggono qui con `dati` dentro, che `loadTitoli` non carica:
    il codice collaboratore sta lì. È un peso che si paga solo aprendo questo
    pannello, non a ogni apertura della pagina Titoli. */
+/* PostgREST ne manda MILLE per richiesta, qualunque numero si scriva dentro
+   `limit`. Qui c'era `.limit(2000)` sulle polizze e `.limit(5000)` sulle rate:
+   con 4.000 polizze in portafoglio ne arrivavano mille e le altre sparivano in
+   silenzio — e in QUESTA schermata quel silenzio vuol dire polizze che restano
+   senza produttore, cioè provvigioni che non si attribuiscono, senza che
+   nessuno lo sappia. È lo stesso difetto di §50 e §53, la terza volta.
+   Si pagina finché una pagina torna più corta del passo. */
+async function asgPagina(fai) {
+  const PASSO = 1000, out = [];
+  for (let da = 0; da < 200000; da += PASSO) {
+    const { data, error } = await fai(da, da + PASSO - 1);
+    if (error) throw error;
+    const blocco = data || [];
+    out.push(...blocco);
+    if (blocco.length < PASSO) break;
+  }
+  return out;
+}
+
 async function asgCarica() {
   ASG_SCELTE = {};
-  let qp = db.from('quote_polizze').select('id,cliente,compagnia,prodotto,data_effetto,dati').limit(2000);
   const ids = await visibleUserIds();
-  if (ids) qp = qp.in('creato_da', ids);
-  const { data: pol, error: errP } = await qp;
-  if (errP) throw errP;
-  ASG_POLIZZE = pol || [];
+  ASG_POLIZZE = await asgPagina((da, a) => {
+    let q = db.from('quote_polizze').select('id,cliente,compagnia,prodotto,data_effetto,dati').range(da, a);
+    if (ids) q = q.in('creato_da', ids);
+    return q;
+  });
 
   const perId = {};
   ASG_POLIZZE.forEach(p => { perId[p.id] = p; });
-  const { data: tit, error: errT } = await db.from('quote_titoli').select('id,polizza_id,collaboratore_id,importo_lordo,provvigione').limit(5000);
-  if (errT) throw errT;
-  ASG_TITOLI = (tit || []).filter(t => perId[t.polizza_id]);
+  const tit = await asgPagina((da, a) => db.from('quote_titoli')
+    .select('id,polizza_id,collaboratore_id,importo_lordo,provvigione').range(da, a));
+  ASG_TITOLI = tit.filter(t => perId[t.polizza_id]);
 
   const { data: cod, error: errC } = await db.from('quote_codici_collaboratore').select('*');
   if (errC) throw errC;
@@ -17705,6 +17724,29 @@ async function asgDecidiUno(chiave, valore, evidenze) {
   const { error } = await db.from('quote_codici_collaboratore')
     .upsert([riga], { onConflict: 'compagnia,codice' });
   if (error) throw error;
+
+  /* E LA DECISIONE SI APPLICA (22/09/2026). Fino a oggi questa strada scriveva
+     la riga e basta: le polizze e le rate già in archivio restavano senza
+     padrone, e la Produzione continuava a dire «da abbinare» su un codice che
+     una persona aveva appena deciso. Misurato: 2 codici decisi su 16, 0
+     polizze su 1.721 con un produttore scritto.
+
+     La regola di quali righe prendere sta in UN POSTO SOLO — la funzione
+     `iam_applica_decisione_codice` in Postgres — perché le schermate che
+     decidono sono tre e stanno in due documenti diversi: tre copie della
+     stessa regola diventerebbero tre regole su chi viene pagato. */
+  riga._applicato = null;
+  try {
+    const { data, error: e2 } = await db.rpc('iam_applica_decisione_codice',
+      { p_compagnia: riga.compagnia, p_codice: riga.codice });
+    if (e2) throw e2;
+    riga._applicato = data || {};
+  } catch (e) {
+    /* La decisione è scritta: perderla perché l'applicazione non è riuscita
+       sarebbe peggio. Si dichiara, e si riapplica premendo di nuovo. */
+    riga._applicaKo = e.message || String(e);
+  }
+
   try {
     logMovimento('Codice compagnia abbinato · ' + riga.compagnia + ' ' + riga.codice,
       'collaboratore', riga.codice, riga.collaboratore_id || null);
@@ -19672,7 +19714,15 @@ function fluChiDi(polizza, mappaCodici) {
   const c = Assegnazione.codiceDi(polizza);
   if (!c) return null;
   const d = mappaCodici[c.chiave];
-  return Assegnazione.statoDecisione(d) === 'persona' ? d.collaboratore_id : null;
+  if (Assegnazione.statoDecisione(d) !== 'persona') return null;
+  /* E IL PERIODO (22/09/2026). Questa era l'unica delle tre strade che non
+     passava da `valeIl`: guardava solo se il codice era deciso. Un abbinamento
+     sospeso, o con un periodo che non copre la data di effetto della polizza,
+     faceva nascere quella polizza e le sue rate intestate lo stesso — cioè
+     proprio il caso che §49 esiste per impedire: provvigioni attribuite a chi
+     non teneva più il codice. Le altre due strade (pianoPolizze e
+     polProduttore) il controllo lo facevano già. */
+  return Assegnazione.valeIl(d, polizza.data_effetto).vale ? d.collaboratore_id : null;
 }
 
 /* ══ LA SCRITTURA: O ENTRA TUTTO, O NON ENTRA NIENTE (21/09/2026) ═══════════

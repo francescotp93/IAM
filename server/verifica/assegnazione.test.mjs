@@ -9,9 +9,13 @@
 //
 //  Dati tutti inventati: nessun nome e nessuna cifra vera (regola di casa §8.3).
 // ═══════════════════════════════════════════════════════════════════════════════
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const A = require('../../tariffe/motore/assegnazione.js');
+const QUI = path.dirname(fileURLToPath(import.meta.url));
 
 const esiti = [];
 const prova = (nome, fn) => esiti.push({ nome, fn });
@@ -565,6 +569,125 @@ prova('gli storni non guadagnano un centesimo dall\'arrotondamento', () => {
   deve(A.cent(-0.005) === -0.01, 'cent(-0.005) = ' + A.cent(-0.005));
   deve(A.cent(0.005) === 0.01, 'cent(0.005) = ' + A.cent(0.005));
   return 'simmetrico, come in estratto-conto.js';
+});
+
+/* ══ DECIDERE È APPLICARE (22/09/2026) ══════════════════════════════════════
+   Una decisione presa e non applicata è il guasto che Francesco ha visto: due
+   codici decisi, ZERO polizze con un produttore scritto, e la Produzione che
+   continuava a dire «da abbinare». Le schermate che decidono sono tre e stanno
+   in DUE documenti diversi: la regola di quali righe prendere non può stare in
+   pagina, o sarebbero tre regole su chi viene pagato. Sta in Postgres, e
+   queste prove controllano che dica le stesse cose del motore. */
+const MIGRAZIONI = path.join(QUI, '..', '..', 'supabase', 'migrations');
+const SQL_APPLICA = (() => {
+  const f = fs.readdirSync(MIGRAZIONI).filter(n => n.endsWith('.sql')).sort()
+    .filter(n => fs.readFileSync(path.join(MIGRAZIONI, n), 'utf8')
+      .includes('create or replace function iam_applica_decisione_codice'));
+  deve(f.length, 'nessuna migrazione definisce iam_applica_decisione_codice');
+  return fs.readFileSync(path.join(MIGRAZIONI, f[f.length - 1]), 'utf8');
+})();
+/* Via i commenti, se no una regola NOMINATA per spiegare perché non c'è
+   risulterebbe presente (CLAUDE.md §10, §12, §18, §26, §29, §31…). */
+const soloSql = (s) => s.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n')
+  .filter(r => !/^\s*--/.test(r)).join('\n');
+
+prova('la funzione che applica conosce gli stessi quattro stati del motore', () => {
+  const c = soloSql(SQL_APPLICA);
+  for (const stato of ['non-deciso', 'persona', 'nessuno', 'da-ridecidere']) {
+    deve(c.includes("'" + stato + "'"), 'la funzione SQL non conosce lo stato «' + stato + '»');
+  }
+  /* E li riconosce con le stesse condizioni: `deciso` prima di tutto, poi la
+     persona, poi «nessuno». Invertendo, un codice deciso «nessuno» passerebbe
+     per «da-ridecidere» e viceversa. */
+  deve(/not coalesce\(r\.deciso, false\)/.test(c), 'la funzione non guarda `deciso`: una riga di sole evidenze assegnerebbe');
+  deve(/r\.collaboratore_id is not null/.test(c), 'la funzione non distingue «persona»');
+  deve(/coalesce\(r\.nessuno, false\)/.test(c), 'la funzione non distingue «nessuno»');
+  /* Solo «persona» scrive: «nessuno» è una decisione e non ha una persona a
+     cui intestare, «da-ridecidere» e «non-deciso» non decidono niente. */
+  deve(/v_stato <> 'persona'/.test(c), 'la funzione scrive anche quando non c\'è una persona');
+  return 'quattro stati, e solo uno scrive';
+});
+
+prova('la funzione che applica rispetta il periodo, e lo confronta con la data della POLIZZA', () => {
+  const c = soloSql(SQL_APPLICA);
+  /* §49: la data che decide è quella della polizza, non oggi. Con «oggi» un
+     abbinamento chiuso a giugno toglierebbe a quella persona anche le polizze
+     di marzo, che sono sue. */
+  deve(!/current_date|now\(\)/.test(c),
+    'la funzione guarda l\'orologio: un abbinamento chiuso toglierebbe anche le polizze di prima');
+  deve(/r\.data_inizio is null or p\.data_effetto >= r\.data_inizio/.test(c),
+    'il periodo non si confronta con la data di effetto della polizza');
+  deve(/r\.data_fine\s+is null or p\.data_effetto <= r\.data_fine/.test(c),
+    'la fine del periodo non si guarda');
+  /* Le rate seguono la data della LORO polizza, non la propria decorrenza:
+     guardando due date diverse la polizza finirebbe a uno e le sue rate a un
+     altro, e i due numeri non tornerebbero mai (§49, regola 3). */
+  const rate = c.slice(c.indexOf('update quote_titoli'));
+  deve(/p\.data_effetto/.test(rate) && !/t\.data_decorrenza/.test(rate),
+    'le rate guardano la propria decorrenza invece della data della loro polizza');
+  /* `attivo` sospeso non assegna, ma `attivo` NULL non vale come spento. */
+  deve(/r\.attivo is false/.test(c), 'una sospensione non ferma l\'assegnazione');
+  deve(!/r\.attivo is not true|not coalesce\(r\.attivo/.test(c),
+    'un `attivo` mai riempito viene letto come «spento»');
+  return 'periodo sulla polizza, sospensione rispettata, orologio mai guardato';
+});
+
+prova('quello che NON si tocca si conta, e non si sovrascrive a sorpresa', () => {
+  const c = soloSql(SQL_APPLICA);
+  /* Regola 2: chi ha assegnato a mano sapeva qualcosa che il codice non sa. */
+  deve(/p\.collaboratore_id is null/.test(c), 'la funzione riscrive anche chi ha già un padrone');
+  deve(/p_sovrascrivi/.test(c), 'sovrascrivere non è una scelta esplicita');
+  /* E i due numeri di quello che resta fuori tornano a chi chiama: una riga
+     saltata in silenzio è il modo in cui una provvigione non si attribuisce e
+     nessuno lo sa (§47, BUG 1). */
+  deve(/'fuori_periodo'/.test(c) && /'di_altri'/.test(c),
+    'le righe lasciate fuori non si contano');
+  deve(/'polizze', v_pol/.test(c) && /'rate', v_rate/.test(c),
+    'non torna quante righe ha mosso davvero');
+  return 'non sovrascrive, e dichiara quello che lascia fuori';
+});
+
+prova('le tre schermate che decidono applicano tutte, e tutte dalla stessa funzione', () => {
+  /* Il guasto era qui: in IAM si poteva abbinare un codice e niente in IAM
+     applicava la decisione. La conferma prometteva addirittura il contrario. */
+  const quoto = fs.readFileSync(path.join(QUI, '..', '..', 'index.html'), 'utf8');
+  const iam   = fs.readFileSync(path.join(QUI, '..', '..', 'iam', 'index.html'), 'utf8');
+  const chiama = (s) => (s.match(/iam_applica_decisione_codice/g) || []).length;
+  deve(chiama(quoto) >= 1, 'il preventivatore decide senza applicare');
+  deve(chiama(iam) >= 1, 'IAM decide senza applicare: è il guasto del 22/09/2026');
+  /* Nel preventivatore la chiamata sta DENTRO asgDecidiUno, che è la strada
+     dell'anteprima del flusso: cercarla nel file intero direbbe di sì anche se
+     fosse in una funzione che non chiama nessuno (§1). */
+  const uno = quoto.slice(quoto.indexOf('async function asgDecidiUno'),
+                          quoto.indexOf('async function asgApplica'));
+  deve(/iam_applica_decisione_codice/.test(uno),
+    'decidere un codice dall\'anteprima del flusso non lo applica al pregresso');
+  /* In IAM la chiamata è in ccpApplica, e ccpAggiungi deve chiamarla. */
+  const agg = iam.slice(iam.indexOf('async function ccpAggiungi'),
+                        iam.indexOf('function ccpEsitoTesto'));
+  deve(/ccpApplica\(/.test(agg), 'la scheda del collaboratore decide e non applica');
+  /* E la conferma non promette più una cosa che il codice non fa. */
+  deve(!/si assegnano dai Titoli del preventivatore/.test(iam),
+    'la conferma manda ancora su una pagina dove quel bottone non c\'è');
+  return 'preventivatore e IAM, la stessa funzione';
+});
+
+prova('il flusso non fa nascere una polizza intestata fuori dal periodo', () => {
+  /* fluChiDi era l'unica delle tre strade che non passava da valeIl: guardava
+     solo se il codice era deciso. Un abbinamento sospeso, o con un periodo che
+     non copre la data di effetto, faceva nascere la polizza intestata lo
+     stesso — provvigioni a chi non teneva più il codice (§49). */
+  const quoto = fs.readFileSync(path.join(QUI, '..', '..', 'index.html'), 'utf8');
+  const f = quoto.slice(quoto.indexOf('function fluChiDi'), quoto.indexOf('function fluChiDi') + 1200);
+  deve(/Assegnazione\.valeIl\(/.test(f), 'fluChiDi non guarda il periodo dell\'abbinamento');
+  deve(/data_effetto/.test(f), 'fluChiDi non confronta la data della polizza');
+  /* E la regola vale davvero: il motore, su un periodo che non copre, non dà
+     la persona. Si fa girare, non si legge. */
+  const d = { compagnia: 'PRIMA', codice: 'U1', collaboratore_id: 'p1', deciso: true,
+              data_inizio: '2026-01-01', data_fine: '2026-06-30' };
+  deve(A.valeIl(d, '2026-03-01').vale === true, 'dentro il periodo non vale');
+  deve(A.valeIl(d, '2026-09-01').vale === false, 'fuori dal periodo vale lo stesso');
+  return 'valeIl chiamato, e il periodo morde';
 });
 
 console.log('\n══ ASSEGNAZIONE DELLE RATE ══');

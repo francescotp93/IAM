@@ -4905,6 +4905,58 @@ const avvio = async () => {
       return 'Assegnazione ' + r.v;
     });
 
+    await prova('assegnazione: decidere un codice lo APPLICA anche al pregresso', async () => {
+      /* IL GUASTO DEL 22/09/2026, visto da Francesco dalla parte opposta: due
+         codici decisi e la Produzione che continuava a dire «da abbinare».
+         Questa strada — l'abbinamento uno per volta, quello dell'anteprima del
+         flusso — scriveva la decisione e basta: le polizze e le rate già in
+         archivio restavano senza padrone.
+         La regola di QUALI righe prendere non sta qui: sta nella funzione
+         `iam_applica_decisione_codice` in Postgres, perché le schermate che
+         decidono sono tre e stanno in due documenti (§10). */
+      await asgBanco([], ASG_TIT);
+      const r = await page.evaluate(async (C1) => {
+        window.__COLLAUDO.db = [];
+        await window.asgDecidiUno('PRIMA|U100', C1, {});
+        const ops = window.__COLLAUDO.db;
+        return {
+          ordine: ops.filter(x => x.operazione === 'upsert' || x.operazione === 'rpc').map(x => x.tabella),
+          rpc: ops.filter(x => x.tabella === 'rpc:iam_applica_decisione_codice').map(x => x.payload),
+          /* La schermata NON deve scriversi gli update da sé: sarebbe la
+             stessa regola in un secondo posto. */
+          updatePol: ops.filter(x => x.tabella === 'quote_polizze' && x.operazione === 'update').length
+        };
+      }, ASG_C1);
+      deve(r.rpc.length === 1, 'la decisione non viene applicata al pregresso: ' + r.ordine.join(' → '));
+      deve(r.rpc[0].p_compagnia === 'PRIMA' && r.rpc[0].p_codice === 'U100',
+        'applica il codice sbagliato: ' + JSON.stringify(r.rpc[0]));
+      /* Prima si scrive la decisione, poi la si applica: nell'ordine opposto
+         si assegnerebbe in base a una decisione che non è ancora in tabella. */
+      const iDec = r.ordine.indexOf('quote_codici_collaboratore');
+      const iApp = r.ordine.indexOf('rpc:iam_applica_decisione_codice');
+      deve(iDec >= 0 && iApp > iDec, 'si applica prima di aver scritto la decisione: ' + r.ordine.join(' → '));
+      deve(r.updatePol === 0, 'la pagina si riscrive le polizze da sé: la regola è tornata in due posti');
+      return 'decisione scritta, poi applicata, una chiamata sola';
+    });
+
+    await prova('assegnazione: il pannello legge TUTTO il portafoglio, non i primi mille', async () => {
+      /* PostgREST ne manda mille per richiesta, qualunque numero si scriva
+         dentro `limit`. Qui c'era `.limit(2000)` sulle polizze e `.limit(5000)`
+         sulle rate: con 4.000 polizze ne arrivavano mille e le altre sparivano
+         in silenzio — e in questa schermata quel silenzio vuol dire polizze che
+         restano senza produttore, cioè provvigioni che non si attribuiscono.
+         È §50 e §53, la terza volta. */
+      const src = await page.evaluate(() => String(window.asgCarica) + String(window.asgPagina || ''));
+      deve(!/limit\(\s*[2-9]\d{3}\s*\)/.test(src),
+        'c\'è ancora un limit più grande di mille: PostgREST lo ignora e scarta il resto');
+      deve(/asgPagina\(/.test(src), 'non si pagina: le polizze oltre le prime mille non arrivano');
+      deve(/\.range\(/.test(src), 'la paginazione non chiede le pagine successive');
+      /* E si ferma quando la pagina torna più corta del passo: senza quel
+         controllo il ciclo non finirebbe mai. */
+      deve(/< PASSO/.test(src), 'il ciclo non ha una fine: ' + src.slice(0, 200));
+      return 'paginato a mille, e si ferma da sé';
+    });
+
     await prova('assegnazione: un codice mai deciso non muove niente, e porta le evidenze per riconoscerlo', async () => {
       const html = await asgBanco([], ASG_TIT);
       const r = await page.evaluate(async () => {

@@ -6,6 +6,47 @@ soltanto quello che Francesco potrebbe voler ribaltare.
 
 ---
 
+## 22/09/2026 — Abbinare un codice produttore lo applica davvero (0.24.0)
+
+**Perimetro:** il codice produttore che abbinavi e che in Produzione restava
+«da abbinare».
+
+🔴 **Applicato al database, con la tua autorizzazione permanente.**
+`20260922c_applica_decisione_codice.sql`: una funzione NUOVA,
+`iam_applica_decisione_codice`. Non scrive niente quando viene applicata:
+scrive solo quando una schermata la chiama. Nessuna tabella, nessuna colonna,
+nessuna politica.
+*Come tornare indietro:* si cancella la funzione. Le schermate tornano a
+decidere senza applicare, cioè al guasto. Le righe già assegnate restano dove
+sono: il dato sta sulla polizza e sulla rata.
+
+🟡 **Abbinare un codice adesso muove il portafoglio subito.** Prima la scheda
+scriveva solo la decisione. Ora, nel momento in cui abbini, le polizze e le
+rate di quel codice già in archivio passano a quella persona — e la scheda ti
+dice quante ne ha mosse.
+*Come tornare indietro:* si toglie la chiamata da `ccpAggiungi`; ma quello che
+è già stato assegnato resta assegnato.
+
+🟡 **Non tocco quello che è stato assegnato a mano.** Se una polizza ha già un
+altro produttore scritto, l'abbinamento la salta e te lo conta a parte. Chi
+l'aveva assegnata sapeva qualcosa che il sistema non sa.
+
+🟡 **Ho applicato io le due decisioni che avevi già preso** (U25337 e U25963):
+erano scritte e non avevano mosso niente. Applicare una decisione presa da te
+non è indovinare — è finire il lavoro che si era fermato a metà.
+*Come tornare indietro:* si azzera `collaboratore_id` su quelle polizze; i
+numeri esatti sono nel riepilogo.
+
+🟡 **La Produzione manda dove il lavoro si fa** (la scheda del collaboratore)
+invece che in «Decisioni aperte», che conta le decisioni mancanti e non ne
+applica nessuna.
+
+📝 **Due difetti trovati per strada, tutti e due sui soldi:** «Assegna il
+pregresso» leggeva solo le prime mille polizze (su 4.079), e l'importazione
+non guardava il periodo dell'abbinamento. Corretti tutti e due.
+
+---
+
 ## 22/09/2026 — L'import non muore per una riga, e dice che cosa lascia fuori (0.23.0)
 
 **Perimetro:** la stessa schermata di poco fa. Corretto il guasto delle rate ho

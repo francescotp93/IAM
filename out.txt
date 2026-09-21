@@ -1,12 +1,28 @@
-id: np2-1789974235  exit: 0  2026-09-21 07:04:29
+id: 1790001876  exit: 0  2026-09-21 14:44:53
 ----
-cfa6710 Nuova polizza: dal menu, col design di casa, e le rate giuste (#224)
-  "versione": "0.14.0",
-  "nome": "Nuova polizza: dal menu, con il design di casa, e le rate giuste",
-tariffe/motore/piano-rate.js
-rotta+menu:
-index.html:1
-iam/withus-one.js:3
-<meta name="app-versione" content="0.14.0">
-piano-rate.js=200
-scocca=200
+== commit vivo sul VPS ==
+e23f0a4
+0.15.0 → 0.20.0 — Produzione, import tutto-o-niente, brief Anagrafiche, e il grafico della Scrivania (#225)
+
+== versione annotata nei due documenti ==
+app-versione" content="0.20.0"
+app-versione-nome" content="Il grafico dei volumi è un grafico"
+app-versione" content="0.20.0"
+app-versione-nome" content="Il grafico dei volumi è un grafico"
+
+== versione.json servito ==
+{
+  "versione": "0.20.0",
+  "nome": "Il grafico dei volumi è un grafico",
+  "data": "2026-09-21",
+  "storia": [
+    {
+      "v": "0.20.0",
+      "data": "2026
+== il grafico c'e'? ==
+6
+
+== IAM risponde dal vivo ==
+200
+app-versione" content="0.20.0"
+app-versione-nome" content="Il grafico dei volumi è un grafico"

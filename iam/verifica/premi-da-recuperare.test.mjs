@@ -65,7 +65,12 @@ function blocco() {
 }
 
 prova('la schermata esiste, è raggiungibile e ha il suo inizializzatore', () => {
-  deve(/id="ctab-recuperi"/.test(H), 'manca la linguetta');
+  /* La striscia delle linguette non c'è più (22/09/2026): ogni schermata di
+     Contabilità è una pagina sua, e si apre dal menu. Quello che questa prova
+     voleva garantire non era «il bottone esiste»: era che la schermata fosse
+     RAGGIUNGIBILE. Si misura sulla ROTTA, che è la cosa che la apre davvero —
+     e la rotta serve anche a chi ci arriva da un collegamento vecchio (§6b). */
+  deve(/'recuperi'/.test(H.slice(H.indexOf('function selContabTab'))), 'la rotta «recuperi» non c\'è più');
   deve(/id="contab-panel-recuperi"/.test(H), 'manca il pannello');
   deve(/'incassa','recuperi'/.test(H), 'la sotto-scheda non è nell\'elenco che accende i pannelli');
   deve(/if \(sub==='recuperi'\) recApri\(\)/.test(H),
@@ -74,7 +79,7 @@ prova('la schermata esiste, è raggiungibile e ha il suo inizializzatore', () =>
   /* E la linguetta «Sospesi» che legge l'Excel della compagnia RESTA: una
      schermata in uso non si spegne perché ne è nata una migliore, si spegne
      quando i suoi numeri sono stati confrontati (§17, §33). */
-  deve(/id="ctab-sospesi"/.test(H), 'la linguetta «Sospesi» è stata spenta prima di confrontare i numeri');
+  deve(/id="contab-panel-sospesi"/.test(H), 'la schermata «Sospesi» è stata spenta prima di confrontare i numeri');
   return 'linguetta, pannello, inizializzatore, e «Sospesi» resta';
 });
 

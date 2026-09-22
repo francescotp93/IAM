@@ -59,7 +59,16 @@ function blocco() {
 const soloJs = s => s.split('\n').filter(r => !/^\s*(\/\/|\*|\/\*)/.test(r)).join('\n');
 
 prova('la schermata esiste, è raggiungibile e ha il suo inizializzatore', () => {
-  deve(/id="ctab-incassa"/.test(H), 'manca la linguetta');
+  /* La striscia delle linguette non c'è più (22/09/2026): ogni schermata di
+     Contabilità è una pagina sua, e si apre dal menu. Quello che questa prova
+     voleva garantire non era «il bottone esiste»: era che la schermata fosse
+     RAGGIUNGIBILE. Si misura sulla ROTTA, che è la cosa che la apre davvero —
+     e la rotta serve anche a chi ci arriva da un collegamento vecchio (§6b). */
+  deve(/'incassa'/.test(H.slice(H.indexOf('function selContabTab'))), 'la rotta «incassa» non c\'è più');
+  /* E resta raggiungibile da dove serve: il tasto «Incassa» dentro Sospesi.
+     Una schermata che scrive in contabilità e non ha nessuna porta è il
+     guasto §1 — qui la porta c'è, ed è quella giusta. */
+  deve(/selContabTab\('incassa'\)/.test(H), 'da Sospesi non si arriva più a incassare la rata');
   deve(/id="contab-panel-incassa"/.test(H), 'manca il pannello');
   /* Quello che conta è che «incassa» sia NELL'elenco che accende i pannelli,
      non che sia il terzo: la prima stesura fissava la posizione, ed è

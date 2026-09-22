@@ -55,8 +55,14 @@ prova('CONTABILITÀ · le cinque voci del brief sono nel menu, una per una', () 
   const i = SCOCCA.indexOf("key: 'carica', l: 'Contabilità'");
   deve(i >= 0, 'non trovo la voce Contabilità nel menu');
   const blocco = SCOCCA.slice(i, SCOCCA.indexOf("key: 'agenzia'", i));
-  for (const [voce, rotta] of [['Prima nota', 'primanota'], ['Quadratura conti', 'quadconti'],
-                               ['Incassi da accreditare', 'incassi'], ['Anomalie', 'anomalie'],
+  /* Erano cinque il 20/09. Il 22/09 Francesco ha chiesto di togliere «Incassi
+     da accreditare» insieme alla striscia delle linguette, e il Cruscotto —
+     che era raggiungibile SOLO dalla striscia — ha preso il suo posto: senza,
+     sarebbe diventato una schermata senza porta, cioè il guasto §1.
+     Si è aggiornata la REGOLA, non il numero (§15, §16, §33, §35): quello che
+     contava era «ogni schermata di Contabilità ha la sua voce». */
+  for (const [voce, rotta] of [['Cruscotto', 'cruscotto'], ['Prima nota', 'primanota'],
+                               ['Quadratura conti', 'quadconti'], ['Anomalie', 'anomalie'],
                                ['Sospesi', 'sospesi']]) {
     deve(blocco.includes("l: '" + voce + "'"), 'manca la voce «' + voce + '»');
     deve(blocco.includes("vai('" + rotta + "')"), 'la voce «' + voce + '» non porta a ' + rotta);
@@ -64,11 +70,15 @@ prova('CONTABILITÀ · le cinque voci del brief sono nel menu, una per una', () 
   /* Le due voci che il brief chiede di togliere non ci sono più. */
   deve(!/l: 'Carica documenti'/.test(blocco), '«Carica documenti» è tornata nel menu');
   deve(!/l: 'Conto'/.test(blocco), '«Conto» è tornata nel menu');
+  /* E le tre tolte il 22/09 non sono tornate. */
+  for (const via of ['Incassi da accreditare', 'Incassa una rata', 'Premi da recuperare']) {
+    deve(!blocco.includes("l: '" + via + "'"), '«' + via + '» è tornata nel menu');
+  }
   /* Ma il foglio di cassa a mano e il suo storico restano raggiungibili: sono
      i 68 giorni già scritti, e si spengono quando i numeri torneranno (§17). */
   deve(/l: 'Quadratura di giornata'/.test(blocco), 'il foglio di cassa a mano non è più raggiungibile');
   deve(/l: 'Storico movimenti'/.test(blocco), 'lo storico delle giornate non è più raggiungibile');
-  return '5 voci nuove, 2 tolte, 2 tenute';
+  return '5 voci, 5 tolte, 2 tenute';
 });
 
 prova('i vecchi nomi portano dove il contenuto è andato, non su un riquadro vuoto', () => {
@@ -154,6 +164,12 @@ prova('aprendo una voce di Contabilità si vede quella e basta', () => {
     pntCarica() {}, incCarica() {}, gioCarica() {}, sprCarica() {}
   };
   vm.createContext(ctx);
+  /* Il cancello dei permessi, vero e non stubbato: dal 22/09 `selContabTab` lo
+     chiama sulla porta invece di nascondere un bottone. Senza `PROFILO` la
+     funzione solleva e il suo `catch` risponde «puo'» — il comportamento
+     dichiarato quando il profilo non si legge. */
+  const ic = H.indexOf('function contabPuo');
+  vm.runInContext(H.slice(H.indexOf('var CONTAB_PERM'), H.indexOf('function selContabTab', ic)), ctx);
   const i = H.indexOf('function selContabTab');
   vm.runInContext(H.slice(i, H.indexOf('async function caricaDatiPerData', i)), ctx);
   const aperte = (sub) => { ctx.selContabTab(sub); return chiavi.filter(k => visibili[k] !== 'none'); };

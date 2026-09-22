@@ -131,6 +131,14 @@ function apparecchia() {
     pntCarica() {}, incCarica() {}, gioCarica() {}, loadContoDB() {}, sprCarica() {},
   };
   vm.createContext(ctx);
+  /* Il cancello VERO, non uno stub: dal 22/09 i permessi di Contabilità li
+     applica `contabPuo` sulla porta, e stubbarlo qui vorrebbe dire misurare
+     una porta senza serratura. Con `permessiEffettivi` assente la funzione
+     solleva, e il suo `catch` risponde «può» — che è il comportamento
+     dichiarato quando il profilo non si è potuto leggere. La prova che
+     misura il rifiuto lo fornisce. */
+  vm.runInContext(ritaglia(src, 'contabPuo'), ctx);
+  vm.runInContext('var CONTAB_PERM = ' + (src.match(/var CONTAB_PERM = \{[^}]*\};/) || [''])[0].replace(/^var CONTAB_PERM = /, ''), ctx);
   vm.runInContext(ritaglia(src, 'selContabTab'), ctx);
   return { ctx, visibili, attivi, chiavi };
 }
@@ -193,6 +201,66 @@ e.prova('i numeri della scrivania portano alla quadratura', () => {
   const n = (src.match(/goTab\('quadratura'\)/g) || []).length;
   deve(n >= 6, 'solo ' + n + ' scorciatoie portano alla quadratura');
   return n + ' scorciatoie';
+});
+
+// ── 5. La striscia non c'è più, e il cancello si è spostato sulla porta ─────
+e.prova('la striscia di linguette non c\'è più: ogni voce è una pagina sua', () => {
+  /* Richiesta di Francesco (22/09/2026): «queste voci in Contabilità non si
+     devono vedere in un'unica pagina ma in pagine separate».
+     Dieci linguette in cima facevano sembrare Contabilità UNA schermata con
+     dentro dieci cose, e per arrivare alla Prima nota bisognava passare da
+     quella aperta. Le ROTTE non sono cambiate, quindi un collegamento vecchio
+     non apre un riquadro vuoto (§6b). */
+  deve(!/id="contab-tabs"/.test(src), 'la striscia delle linguette è tornata');
+  for (const k of ['cruscotto', 'primanota', 'quadconti', 'anomalie', 'sospesi', 'storico']) {
+    deve(new RegExp("'" + k + "'").test(src.slice(src.indexOf('function selContabTab'))),
+      'la rotta «' + k + '» non c\'è più: un collegamento vecchio aprirebbe il vuoto');
+  }
+  /* E le tre che il brief chiede di togliere non hanno più una voce di menu. */
+  /* Solo il sotto-menu di Contabilità: il titolo «Incassi da accreditare»
+     vive ancora in TITOLI, ed è giusto — la rotta resta, e senza il titolo
+     chi ci arriva da un collegamento vecchio vedrebbe la briciola della
+     schermata precedente. Cercare nel file intero troverebbe quello. */
+  const da = one.indexOf("key: 'carica'");
+  const menu = one.slice(one.indexOf('sub: [', da), one.indexOf('] },', da));
+  for (const via of ['Incassi da accreditare', 'Incassa una rata', 'Premi da recuperare']) {
+    deve(!menu.includes(via), '«' + via + '» è tornata nel menu di Contabilità');
+  }
+  deve(menu.includes('Cruscotto'), 'il Cruscotto non ha una voce: era raggiungibile solo dalla striscia');
+  /* E le tre tolte dal menu NON restano senza porta — sarebbe il guasto §1,
+     e per due di loro sarebbe anche peggio: sono le schermate che aprono un
+     sospeso e che portano un incasso in contabilità. La porta c'è, e sta dove
+     serve:
+       · «Incassa una rata»        dal tasto «Incassa» dentro Sospesi
+       · «Premi da recuperare»     dal riquadro dei crediti nel Cruscotto
+       · «Incassi da accreditare»  dal riquadro dei sospesi nel Cruscotto */
+  deve(/selContabTab\('incassa'\)/.test(src), 'da Sospesi non si arriva più a incassare la rata');
+  deve(/crediti: \['recuperi'/.test(src), 'dal Cruscotto non si arriva più ai premi da recuperare');
+  deve(/sospesi: \['incassi'/.test(src), 'dal Cruscotto non si arriva più agli incassi da accreditare');
+  return 'niente striscia, il Cruscotto ha la sua voce, e le tre tolte hanno una porta';
+});
+
+e.prova('IL CANCELLO STA SULLA PORTA: chi non può vedere i Sospesi non li apre', () => {
+  /* Prima i permessi si applicavano NASCONDENDO le linguette. Tolta la
+     striscia quel cancello non terrebbe più niente — e non teneva granché
+     nemmeno prima: le stesse schermate hanno una voce nel menu e `goTab` si
+     chiama dalla console. Un bottone nascosto non è un permesso.
+     Qui il profilo si fornisce davvero, così la prova misura il RIFIUTO e non
+     solo che la funzione esista (§1). */
+  const { ctx, visibili, chiavi } = apparecchia();
+  ctx.isSuperAdmin = () => false;
+  ctx.PROFILO = {};
+  ctx.permessiEffettivi = () => ({ sospesi: false, anomalie: true, storico: true, conto: true });
+  ctx.cruCarica = () => {};
+  ctx.selContabTab('sospesi');
+  const aperte = chiavi.filter(k => visibili[k] !== 'none');
+  deve(!aperte.includes('sospesi'), 'i Sospesi si aprono a chi non può vederli');
+  /* E quello che può vedere si apre normalmente: un cancello che chiude tutto
+     è un guasto travestito da permesso. */
+  ctx.selContabTab('anomalie');
+  const dopo = chiavi.filter(k => visibili[k] !== 'none');
+  deve(dopo.length === 1 && dopo[0] === 'anomalie', 'aperte: ' + (dopo.join(', ') || 'nessuna'));
+  return 'rifiutato quello vietato, aperto quello permesso';
 });
 
 e.stampa();

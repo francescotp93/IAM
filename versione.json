@@ -1,8 +1,19 @@
 {
-  "versione": "0.32.0",
-  "nome": "Il pagamento lo dicono le rate, e una spesa non si somma al conto",
+  "versione": "0.33.0",
+  "nome": "Contabilità in pagine separate",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.33.0",
+      "data": "2026-09-22",
+      "nome": "Contabilità in pagine separate",
+      "voci": [
+        "CONTABILITÀ NON È PIÙ UNA PAGINA SOLA. La striscia di dieci linguette in cima non c'è più: ogni voce è una pagina sua, con il suo titolo, e si apre dal menu. Prima per arrivare alla Prima nota bisognava passare dalla schermata che era aperta.",
+        "Nel menu Contabilità adesso c'è anche il Cruscotto, che era l'unica schermata raggiungibile SOLO dalla striscia.",
+        "Tolte dal menu, come chiesto: «Incassa una rata», «Premi da recuperare» e «Incassi da accreditare». Nessuna delle tre è sparita: «Incassa una rata» si apre dal tasto Incassa dentro Sospesi, le altre due dai riquadri del Cruscotto — che è dove servono, quando il cruscotto ti dice che c'è qualcosa da fare.",
+        "I permessi su Anomalie, Sospesi, Storico e Conto adesso li applica la PORTA, non un bottone nascosto. Prima bastava una voce di menu o un collegamento diretto per aprire una schermata che il profilo non doveva vedere: un bottone nascosto non è un permesso."
+      ]
+    },
     {
       "v": "0.32.0",
       "data": "2026-09-22",

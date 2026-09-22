@@ -130,7 +130,13 @@ prova('il cancello dell\'admin esiste ED È CHIAMATO', () => {
 prova('le due linguette esistono e hanno il loro inizializzatore', () => {
   /* §6b: una schermata il cui contenuto lo scrive il codice, senza una riga
      che lo avvii, apre un riquadro vuoto. */
-  deve(/id="ctab-primanota"/.test(H) && /id="ctab-quadconti"/.test(H), 'mancano le due linguette');
+  /* La striscia delle linguette non c'è più (22/09/2026): ogni schermata di
+     Contabilità è una pagina sua, e si apre dal menu. Quello che questa prova
+     voleva garantire non era «il bottone esiste»: era che la schermata fosse
+     RAGGIUNGIBILE. Si misura sulla ROTTA, che è la cosa che la apre davvero —
+     e la rotta serve anche a chi ci arriva da un collegamento vecchio (§6b). */
+  const rotte = H.slice(H.indexOf('function selContabTab'));
+  deve(/'primanota'/.test(rotte) && /'quadconti'/.test(rotte), 'mancano le due rotte');
   deve(/id="contab-panel-primanota"/.test(H) && /id="contab-panel-quadconti"/.test(H), 'mancano i due sotto-pannelli');
   /* La sotto-scheda della quadratura dei conti si chiama `quadconti` e non
      `conti` dal 20/09/2026: `conti` è il pannello di Strumenti › Conti e

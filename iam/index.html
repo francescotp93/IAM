@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.32.0">
-<meta name="app-versione-nome" content="Il pagamento lo dicono le rate, e una spesa non si somma al conto">
+<meta name="app-versione" content="0.33.0">
+<meta name="app-versione-nome" content="Contabilità in pagine separate">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1778,19 +1778,17 @@ input[type=file]{display:none;}
 
 <!-- CONTABILITÀ -->
 <div class="panel act" id="panel-carica">
-  <!-- Sotto-tab Contabilità -->
-  <div class="ptabs" id="contab-tabs">
-    <button class="ptab act" id="ctab-cruscotto" onclick="selContabTab('cruscotto')">Cruscotto</button>
-    <button class="ptab"     id="ctab-quadratura" onclick="selContabTab('quadratura')">Quadratura</button>
-    <button class="ptab"     id="ctab-primanota" onclick="selContabTab('primanota')">Prima nota</button>
-    <button class="ptab"     id="ctab-incassa"   onclick="selContabTab('incassa')">Incassa una rata</button>
-    <button class="ptab"     id="ctab-recuperi"  onclick="selContabTab('recuperi')">Premi da recuperare</button>
-    <button class="ptab"     id="ctab-quadconti" onclick="selContabTab('quadconti')">Quadratura conti</button>
-    <button class="ptab"     id="ctab-incassi"   onclick="selContabTab('incassi')">Incassi da accreditare</button>
-    <button class="ptab"     id="ctab-anomalie" onclick="selContabTab('anomalie')">Anomalie<span class="nbadge" id="n-anom-tab" style="display:none;position:static;margin-left:4px;"></span></button>
-    <button class="ptab"     id="ctab-sospesi"  onclick="selContabTab('sospesi')">Sospesi</button>
-    <button class="ptab"     id="ctab-storico"  onclick="selContabTab('storico')">Storico</button>
-  </div>
+  <!-- LA STRISCIA DELLE LINGUETTE NON C'È PIÙ (22/09/2026, richiesta di
+       Francesco: «queste voci in Contabilità non si devono vedere in un'unica
+       pagina ma in pagine separate»).
+       Dieci linguette in cima facevano sembrare Contabilità UNA schermata con
+       dentro dieci cose, e per arrivare alla Prima nota bisognava passare da
+       quella che era aperta. Ognuna è invece una pagina sua, con il suo
+       titolo e la sua briciola, e si apre dal menu — dove le voci c'erano
+       già (Blocco 1 · punto 5).
+       Le ROTTE non sono cambiate: `goTab('primanota')` e gli indirizzi
+       salvati continuano a funzionare, altrimenti un collegamento vecchio
+       aprirebbe un riquadro vuoto (§6b). -->
 
   <!-- SUB: Carica documenti — qui dentro ci sono solo i file da caricare.
        Prima stava insieme ai dati della giornata: chi apriva «Carica
@@ -11011,6 +11009,29 @@ function showSavemsg(txt) {
 }
 
 // ─── TAB NAV ──────────────────────────────────────────────────────────────────
+/* Quali schermate di Contabilità può aprire chi sta guardando. Le chiavi sono
+   quelle di PERMESSI, che esistono da prima: qui si dice soltanto quale
+   schermata dipende da quale. Le altre non hanno una spunta loro e seguono
+   `carica`, che è il permesso della Contabilità. */
+var CONTAB_PERM = {
+  anomalie: 'anomalie', sospesi: 'sospesi', storico: 'storico', quadconti: 'conto'
+};
+function contabPuo(sub) {
+  try {
+    if (typeof isSuperAdmin === 'function' && isSuperAdmin()) return true;
+    var k = CONTAB_PERM[sub];
+    if (!k) return true;
+    var perm = permessiEffettivi(typeof PROFILO !== 'undefined' ? PROFILO : null);
+    return perm[k] !== false;
+  } catch (e) {
+    /* Se il profilo non si è potuto leggere NON si chiude tutto: chiudere
+       sarebbe un guasto travestito da permesso, e chi lavora vedrebbe sparire
+       delle schermate senza sapere perché. Le politiche del database restano
+       il cancello vero. */
+    return true;
+  }
+}
+
 function selContabTab(sub) {
   /* Ogni voce di Contabilità apre la sua schermata e basta: «Carica documenti»
      mostra i file, «Quadratura» i numeri della giornata. (01/08/2026) */
@@ -11024,6 +11045,16 @@ function selContabTab(sub) {
      quadratura, e stanno dentro di lei. Chi ha il vecchio nome in memoria
      finisce là, non su un riquadro vuoto (§6b). */
   if (sub === 'conto') sub = 'quadconti';
+  /* IL CANCELLO STA SULLA PORTA, NON SUL BOTTONE (22/09/2026).
+     Fino a oggi i permessi su Anomalie, Sospesi, Storico e Conto si
+     applicavano NASCONDENDO le linguette in cima alla pagina. Tolta la
+     striscia, quel cancello non avrebbe più tenuto niente — e non teneva
+     granché nemmeno prima, perché le stesse schermate hanno una voce nel menu
+     e `goTab` si può chiamare dalla console. Un bottone nascosto non è un
+     permesso: è una porta che non si vede. Adesso è la porta a rifiutare, e
+     chi non può entrare finisce sul Cruscotto invece che su un riquadro che
+     non dovrebbe vedere. */
+  if (!contabPuo(sub)) sub = 'cruscotto';
   ['cruscotto','quadratura','primanota','incassa','recuperi','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
     const btn = document.getElementById('ctab-'+s);
     const pnl = document.getElementById('contab-panel-'+s);
@@ -16972,10 +17003,9 @@ function applicaPermessi(ruolo) {
   const tabs = {
     'nb-carica':      perm.carica,
     'nb-dashboard':   perm.dashboard,
-    'ctab-anomalie':  perm.anomalie,
-    'ctab-sospesi':   perm.sospesi,
-    'ctab-storico':   perm.storico,
-    'ctab-conto':     perm.conto,
+    /* Le quattro linguette di Contabilità non ci sono più: il permesso lo
+       applica `contabPuo`, sulla porta (§65-bis). Nascondere un bottone che
+       non esiste era un controllo che non controllava niente. */
     'nb-team':        perm.team,
     'nb-pipeline':    perm.pipeline,
     'nb-workdiary':   perm.workdiary,
@@ -25757,8 +25787,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: 97e3a307 — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260921c"></script>
+<!-- impronta withus-one.js: 59be1d80 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260922a"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

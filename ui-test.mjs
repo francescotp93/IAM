@@ -11087,7 +11087,7 @@ const avvio = async () => {
       /* L'elenco cresce quando una schermata nuova entra nel kit: e' una
          CATEGORIA, non un nome proprio (§58). `.pol-kit{` e' il dettaglio
          polizza, portato sul kit il 22/09/2026. */
-      const CONTENITORI = ['.pnu-kit{', '.clpk{', '.pol-kit{'];
+      const CONTENITORI = ['.pnu-kit{', '.clpk{', '.pol-kit{', '.fc-kit{', '.clk-kit{'];
       let fuoriDalContenitore = css;
       for (const c of CONTENITORI) {
         deve(css.includes(c), 'il kit non dichiara i gettoni mancanti sul contenitore ' + c);
@@ -11392,6 +11392,124 @@ const avvio = async () => {
       deve(r.testa && r.piede, 'la finestra non ha testata e piede');
       deve(r.margine === '0px', 'i margini negativi del modulo sbordano dentro la finestra: ' + r.margine);
       return r.classi.length + ' classi tutte definite, cornice ' + r.bordo;
+    });
+
+    await prova('scheda cliente: l\'identita\' sta in CIMA, e i campi sono SPOSTATI non copiati', async () => {
+      /* Stessa richiesta della scheda polizza, stesso giorno: «la scheda
+         cliente… non riusciamo a fare qualcosa di simile? Magari risulta un
+         po' piu' pratico da vedere?».
+         Qui non c'era una classe mancante: c'era l'identita' del cliente
+         chiusa in una colonna da 300 pixel divisa in due, da scorrere. E la
+         cosa che questa prova sorveglia piu' di tutte e' che i campi siano
+         stati SPOSTATI e non COPIATI: un codice fiscale scritto due volte
+         nella stessa finestra e' il doppione che, il giorno in cui uno dei
+         due si aggiorna e l'altro no, fa non fidarsi di nessuno dei due. */
+      const r = await page.evaluate(async () => {
+        document.getElementById('anag-overlay')?.remove();
+        /* `ANAG_CACHE` e' una `let`: `window.ANAG_CACHE` sarebbe un'altra
+           cosa, e il codice leggerebbe quella del modulo (§17). */
+        ANAG_CACHE = [{ id: 'cli-k', nominativo: 'ROSSI MARIO', tipo: 'fisica',
+          codice_fiscale: 'RSSMRA80A01H501U', data_nascita: '1980-01-01', professione: 'Impiegato',
+          indirizzo: 'Via Roma', civico: '1', cap: '90100', comune: 'Palermo', provincia: 'PA',
+          email: 'mario@rossi.test', cellulare: '3331112222' }];
+        await apriAnagrafica('cli-k');
+        const ov = document.getElementById('anag-overlay');
+        if (!ov) return { manca: true };
+        const css = [...document.styleSheets].flatMap(f => {
+          try { return [...f.cssRules].map(x => x.cssText); } catch (e) { return []; }
+        }).join(' ');
+        const usate = new Set();
+        ov.querySelectorAll('*').forEach(el => el.classList.forEach(c => {
+          if (/^[a-z][a-z0-9]*-[a-z0-9-]+$/.test(c) && !c.startsWith('ti-')) usate.add(c);
+        }));
+        const testa = ov.querySelector('.clk-testa');
+        const linguette = ov.querySelector('.cl-tabs');
+        const st = testa ? getComputedStyle(testa) : null;
+        const testo = ov.textContent;
+        const out = {
+          classi: [...usate],
+          mancanti: [...usate].filter(c => css.indexOf('.' + c) < 0),
+          campi: testa ? testa.querySelectorAll('.clk-r').length : 0,
+          /* Le colonne ci sono DAVVERO: cercare la regola nel foglio non
+             basta, potrebbe non arrivare all'elemento. */
+          colonne: st ? st.gridTemplateColumns.split(/\s+/).filter(Boolean).length : 0,
+          cf: (testo.match(/RSSMRA80A01H501U/g) || []).length,
+          email: (testo.match(/mario@rossi\.test/g) || []).length,
+          /* E sta PRIMA delle linguette: in fondo alla finestra si legge
+             dopo aver scorso tutto il resto, che e' il punto di partenza. */
+          prima: !!(testa && linguette &&
+            (testa.compareDocumentPosition(linguette) & Node.DOCUMENT_POSITION_FOLLOWING))
+        };
+        ov.remove();
+        return out;
+      });
+      deve(!r.manca, 'la scheda cliente non si e\' aperta');
+      deve(!r.mancanti.length,
+        'classi che nessun foglio di stile conosce, quindi ignorate in silenzio: ' + r.mancanti.join(', '));
+      deve(r.campi >= 8, 'la testata ha ' + r.campi + ' campi: non e\' una scheda');
+      deve(r.colonne >= 2, 'la testata non si dispone in colonne: ' + r.colonne);
+      deve(r.cf === 1, 'il codice fiscale compare ' + r.cf + ' volte: i campi sono stati copiati, non spostati');
+      deve(r.email === 1, 'l\'email compare ' + r.email + ' volte: i campi sono stati copiati, non spostati');
+      deve(r.prima, 'l\'identita\' non sta sopra le linguette');
+      return r.campi + ' campi in ' + r.colonne + ' colonne, nessun doppione, ' + r.classi.length + ' classi definite';
+    });
+
+    await prova('foglio cassa: la barra dei totali, e i due avvisi che uscivano NUDI', async () => {
+      /* Il difetto vero di questa schermata: scriveva `cnt-avv` e `cnt-err`,
+         che sono classi di IAM e in QUESTO documento non esistono. I tre
+         avvisi — «questi totali sono parziali», «le provvigioni contano solo
+         le rate incassate» — uscivano come testo semplice, senza cornice e
+         senza colore: cioe' senza dire di essere avvisi, che e' l'unica cosa
+         che un avviso deve fare. Una classe che non esiste viene ignorata IN
+         SILENZIO (§65), e l'unico modo di accorgersene e' misurarlo. */
+      const r = await page.evaluate(async () => {
+        window.showPage('foglio-cassa');
+        await new Promise(r => setTimeout(r, 200));
+        FC_POLIZZE = { pz: { id: 'pz', numero_polizza: 'NP-Z', cliente: 'ROSSI MARIO',
+          compagnia: 'PRIMA', prodotto: 'RC Auto', data_emissione: '2026-09-05' } };
+        FC_TITOLI = [
+          { id: 'z1', polizza_id: 'pz', stato: 'incassato', incassato_il: '2026-09-10', importo_lordo: 300, provvigione: 30, mezzo_pagamento: 'contante' },
+          { id: 'z2', polizza_id: 'pz', stato: 'aperto', data_scadenza: '2026-09-20', importo_lordo: 100, provvigione: 10 } ];
+        document.getElementById('fc-da').value = '2026-09-01';
+        document.getElementById('fc-a').value = '2026-09-30';
+        document.getElementById('fc-su').value = 'emissione';
+        /* Il portafoglio troncato accende l'avviso rosso. */
+        window.FC_TRONCATO = true;
+        window.fcRender();
+        const pagina = document.getElementById('page-foglio-cassa');
+        const css = [...document.styleSheets].flatMap(f => {
+          try { return [...f.cssRules].map(x => x.cssText); } catch (e) { return []; }
+        }).join(' ');
+        const usate = new Set();
+        pagina.querySelectorAll('*').forEach(el => el.classList.forEach(c => {
+          if (/^[a-z][a-z0-9]*-[a-z0-9-]+$/.test(c) && !c.startsWith('ti-')) usate.add(c);
+        }));
+        const avv = pagina.querySelector('.fc-avv'), err = pagina.querySelector('.fc-err');
+        const sa = avv ? getComputedStyle(avv) : null, se = err ? getComputedStyle(err) : null;
+        const out = {
+          classi: [...usate],
+          mancanti: [...usate].filter(c => css.indexOf('.' + c) < 0),
+          caselle: pagina.querySelectorAll('#fc-summary .fc-bar .fc-t').length,
+          bordoAvv: sa ? sa.borderTopWidth : '', bordoErr: se ? se.borderTopWidth : '',
+          fondoAvv: sa ? sa.backgroundColor : '',
+          totale: !!pagina.querySelector('#fc-body tr.fc-totale'),
+          zebra: pagina.querySelectorAll('#fc-body tr.fc-riga').length,
+          /* Le due classi di IAM non devono tornare. */
+          iam: pagina.innerHTML.indexOf('cnt-avv') >= 0 || pagina.innerHTML.indexOf('cnt-err') >= 0
+        };
+        window.FC_TRONCATO = false;
+        return out;
+      });
+      deve(!r.mancanti.length,
+        'classi che nessun foglio di stile conosce, quindi ignorate in silenzio: ' + r.mancanti.join(', '));
+      deve(!r.iam, 'il foglio cassa scrive di nuovo le classi di IAM, che qui non esistono');
+      deve(r.caselle >= 5, 'la barra dei totali ha ' + r.caselle + ' caselle');
+      deve(r.bordoAvv && r.bordoAvv !== '0px', 'l\'avviso non ha una cornice: e\' testo semplice');
+      deve(r.bordoErr && r.bordoErr !== '0px', 'l\'errore non ha una cornice: e\' testo semplice');
+      deve(r.fondoAvv && r.fondoAvv !== 'rgba(0, 0, 0, 0)', 'l\'avviso non ha un fondo che lo distingua');
+      deve(r.totale, 'la riga del totale non si distingue dalle altre');
+      deve(r.zebra >= 1, 'nessuna riga nella tabella: la prova non sta misurando');
+      return r.caselle + ' caselle, avviso e errore con la cornice, ' + r.classi.length + ' classi definite';
     });
 
     await prova('blocco 2: nessun errore JavaScript', async () => {

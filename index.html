@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.34.0">
-<meta name="app-versione-nome" content="La polizza a colpo d’occhio">
+<meta name="app-versione" content="0.35.0">
+<meta name="app-versione-nome" content="La scheda cliente e il foglio cassa">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -851,6 +851,13 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
   --w1-card:#fff;
   --w1-ombra:var(--w1-ombra-sm);
   --w1-ambra:#b7791f;
+  /* Il rosso era USATO in fondo a questo blocco e non dichiarato da nessuna
+     parte: la riga d'errore della finestra «Come paga» prendeva il colore del
+     testo intorno invece del rosso. Stesso difetto della classe che non
+     esiste — un errore che non si vede come un errore. I valori sono quelli
+     di IAM, perche' i due kit devono restare identici. */
+  --w1-rosso:#a3352a;
+  --w1-rosso-bg:#fff6f5;
   background:var(--w1-sfondo);margin:-14px -16px -16px;padding:16px;border-radius:0 0 var(--w1-raggio) var(--w1-raggio)}
 .pnu-scheda{background:var(--w1-card);border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);box-shadow:var(--w1-ombra);margin-bottom:12px}
 .pnu-scheda-t{display:flex;align-items:center;gap:9px;padding:13px 15px;border-bottom:1px solid var(--w1-bordo);font-size:13px;font-weight:700;color:var(--w1-testo)}
@@ -1007,6 +1014,89 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .pol-rata-aperta td{background:var(--w1-ambra-bg)}
 .pol-firma{margin-top:14px;padding-top:10px;border-top:1px solid var(--w1-bordo);
   font-size:11.5px;color:var(--w1-testo2);line-height:1.6}
+/* ═══ IL FOGLIO CASSA E LA SCHEDA CLIENTE, CON LA DENSITA' DI UN GESTIONALE ═══
+   «Questo e' come si vede una polizza su un gestionale, e la scheda cliente,
+   Foglio cassa: non riusciamo a fare qualcosa di simile?» — Francesco.
+
+   MISURATO PRIMA DI DISEGNARE, e anche qui c'era un difetto vero, non una
+   scelta di grafica: il foglio cassa scriveva `cnt-avv` e `cnt-err`, che sono
+   classi di IAM e in QUESTO documento non esistono. I tre avvisi — «questi
+   totali sono parziali», «le provvigioni contano solo le rate incassate»,
+   «le quadrature contano le rate incassate» — uscivano come testo semplice,
+   senza cornice e senza colore. Sono esattamente le righe che devono
+   saltare all'occhio, ed erano quelle che non si vedevano.
+   Stessa firma di CLAUDE.md §65 e del dettaglio polizza: una classe che non
+   esiste viene ignorata IN SILENZIO.
+
+   La scheda cliente non aveva classi mancanti: aveva l'identita' del cliente
+   chiusa in una colonna da 300 pixel, divisa in due, da scorrere. Adesso sta
+   in cima, larga quanto la finestra, in colonne — e NON e' un doppione: quei
+   campi sono stati spostati, non copiati. */
+.fc-kit{
+  /* I gettoni che la fonte unica non porta si dichiarano qui, sul
+     contenitore e mai su :root (§31, §44). */
+  --w1-card:#fff;
+  --w1-ombra:var(--w1-ombra-sm);
+  --w1-ambra:#b7791f;
+  --w1-ambra-bg:#fff4e6;
+  --w1-rosso:#a3352a;
+  --w1-rosso-bg:#fff6f5;
+  --w1-zebra:#fafbfc}
+/* La barra dei totali: caselle affiancate, etichetta piccola sopra e cifra
+   grande sotto. Le tessere di prima erano alte il doppio e stavano su due
+   righe: gli stessi numeri, con meta' della pagina occupata. */
+.fc-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));
+  gap:1px;background:var(--w1-bordo);border:1px solid var(--w1-bordo);
+  border-radius:var(--w1-raggio);overflow:hidden;margin:10px 0 12px}
+.fc-t{background:var(--w1-card);padding:9px 12px;min-width:0}
+.fc-t span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--w1-testo2);font-weight:700;margin-bottom:2px}
+.fc-t b{display:block;font-size:17px;font-weight:800;color:var(--w1-testo);
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.fc-t small{display:block;font-size:11px;color:var(--w1-testo2);line-height:1.4;margin-top:2px}
+.fc-t.fc-verde b{color:var(--w1-verde-scuro)}
+.fc-t.fc-ambra b{color:var(--w1-ambra)}
+/* I due avvisi, che prima uscivano nudi. */
+.fc-avv{background:var(--w1-ambra-bg);border:1px solid var(--w1-ambra);color:var(--w1-ambra);
+  border-radius:var(--w1-raggio);padding:8px 11px;font-size:12px;line-height:1.5;margin:8px 0}
+.fc-err{background:var(--w1-rosso-bg);border:1px solid var(--w1-rosso);color:var(--w1-rosso);
+  border-radius:var(--w1-raggio);padding:8px 11px;font-size:12px;line-height:1.5;margin:8px 0}
+/* La tabella densa: righe basse, intestazione che resta in cima mentre si
+   scorre, e le cifre in colonna con le stesse larghezze (tabular-nums) —
+   senza, due importi incolonnati non si confrontano a occhio. */
+.fc-densa{font-size:12px}
+.fc-densa thead th{position:sticky;top:0;z-index:1;background:var(--w1-sfondo);
+  font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--w1-testo2);
+  padding:6px 8px;white-space:nowrap}
+.fc-densa td{padding:5px 8px;vertical-align:top}
+.fc-densa .soldi{font-variant-numeric:tabular-nums;white-space:nowrap}
+.fc-riga td{border-top:1px solid var(--w1-bordo2)}
+.fc-riga:nth-of-type(even) td{background:var(--w1-zebra)}
+.fc-riga:hover td{background:var(--w1-verde-tenue)}
+.fc-totale td{background:var(--w1-verde-tenue);border-top:2px solid var(--w1-bordo)}
+.fc-quad{font-size:12px}
+.fc-quad th{font-size:10px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--w1-testo2);padding:6px 8px}
+.fc-quad td{padding:5px 8px;border-top:1px solid var(--w1-bordo2)}
+/* ── LA SCHEDA CLIENTE ─────────────────────────────────────────────────────
+   L'identita' sta in cima, larga quanto la finestra. */
+.clk-kit{--w1-card:#fff;--w1-ombra:var(--w1-ombra-sm);--w1-ambra:#b7791f}
+.clk-testa{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+  gap:1px;background:var(--w1-bordo);border:1px solid var(--w1-bordo);
+  border-radius:var(--w1-raggio);overflow:hidden;margin:0 0 14px}
+.clk-r{background:var(--w1-card);padding:7px 11px;min-width:0}
+.clk-r.clk-largo{grid-column:span 2}
+.clk-r span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--w1-testo2);font-weight:700;margin-bottom:1px}
+.clk-r b{display:block;font-size:13px;font-weight:700;color:var(--w1-testo);word-break:break-word}
+.clk-r.clk-vuoto b{color:var(--w1-testo3);font-weight:400}
+/* Due modificatori che erano solo appigli: una riga di polizza e una di
+   sinistro adesso si distinguono a colpo d'occhio dal filetto di sinistra. */
+.cl-polizza{border-left:3px solid var(--w1-verde)}
+.cl-sinistro{border-left:3px solid var(--w1-ambra)}
+.gruppi-add-btn{white-space:nowrap}
+@media(max-width:640px){.clk-testa{grid-template-columns:1fr 1fr}.clk-r.clk-largo{grid-column:span 2}
+  .fc-bar{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.pol-due{grid-template-columns:1fr}.pol-testa{gap:6px 12px}}
 @media(max-width:640px){.pnu-griglia{grid-template-columns:1fr}.pnu-kit{padding:12px}
   .clpk-ov{padding:0}.clpk-f{max-width:none;border-radius:0;min-height:100%}}
@@ -3277,14 +3367,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <button class="pf-exp" onclick="fcExportPdf()" title="Stampa il foglio cassa filtrato"><i class="ti ti-file-type-pdf"></i> PDF</button>
         </div>
       </div>
-      <div id="fc-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
-      <div class="table-wrap">
-        <table class="storico-table">
-          <thead><tr><th>Emissione · incasso</th><th>Cliente</th><th>Polizza</th><th>Mezzo · chi paga</th><th class="soldi">Premio</th><th class="soldi">Provv. compagnia</th><th>Collaboratore</th><th class="soldi">Resta all'agenzia</th><th></th></tr></thead>
-          <tbody id="fc-body"><tr><td colspan="9"><div class="empty-state">Carico la cassa…</div></td></tr></tbody>
-        </table>
+      <div class="fc-kit">
+        <div id="fc-summary"></div>
+        <div class="table-wrap">
+          <table class="storico-table fc-densa">
+            <thead><tr><th>Emissione · incasso</th><th>Cliente</th><th>Polizza</th><th>Mezzo · chi paga</th><th class="soldi">Premio</th><th class="soldi">Provv. compagnia</th><th>Collaboratore</th><th class="soldi">Resta all'agenzia</th><th></th></tr></thead>
+            <tbody id="fc-body"><tr><td colspan="9"><div class="empty-state">Carico la cassa…</div></td></tr></tbody>
+          </table>
+        </div>
+        <div id="fc-quadrature"></div>
       </div>
-      <div id="fc-quadrature"></div>
     </div>
 
     <div class="page" id="page-scadenzario">
@@ -28301,10 +28393,6 @@ async function apriAnagrafica(id) {
   }
   if (!a) { alert('Anagrafica non trovata.'); return; }
   const isG = a.tipo === 'giuridica';
-  const val = v => (v != null && String(v).trim() !== '')
-    ? `<div class="sc-val">${esc(v)}</div>`
-    : `<div class="sc-val empty">—</div>`;
-  const f = (label, v, full) => `<div class="sc-f${full ? ' full' : ''}"><div class="sc-lbl">${label}</div>${val(v)}</div>`;
   const indir = [a.indirizzo, a.civico].filter(Boolean).join(' ');
   const luogo = [a.cap, a.comune, a.provincia ? '(' + a.provincia + ')' : '', a.nazione && a.nazione !== 'Italia' ? '· ' + a.nazione : ''].filter(Boolean).join(' ');
   const indirCompleto = [indir, luogo].filter(Boolean).join(', ');
@@ -28321,43 +28409,66 @@ async function apriAnagrafica(id) {
     [a.res_dich_indirizzo, a.res_dich_civico].filter(Boolean).join(' '),
     [a.res_dich_cap, a.res_dich_comune, a.res_dich_provincia ? '(' + a.res_dich_provincia + ')' : ''].filter(Boolean).join(' '),
   ].filter(Boolean).join(', ');
+  /* ── LA TESTATA DELLA SCHEDA (22/09/2026) ───────────────────────────────────
+     «La scheda cliente: non riusciamo a fare qualcosa di simile? Magari
+     risulta un po' più pratico da vedere» — Francesco, con la schermata del
+     suo gestionale: in cima una striscia con chi è il cliente, e sotto le
+     linguette.
+     Questi campi PRIMA stavano nella colonna di sinistra, larga 300 pixel e
+     divisa in due: sei o sette righe da scorrere per leggere un codice
+     fiscale. Adesso stanno qui, larghi quanto la finestra, in colonne — e
+     NON sono un doppione: sono stati SPOSTATI, non copiati. Nella colonna di
+     sinistra resta quello che si modifica (residenza dichiarata, consensi,
+     note), che è un'altra cosa dal leggere chi è il cliente. */
+  const kr = (et, v, largo) => {
+    const pieno = v != null && String(v).trim() !== '';
+    return `<div class="clk-r${largo ? ' clk-largo' : ''}${pieno ? '' : ' clk-vuoto'}"><span>${et}</span><b>${pieno ? esc(v) : '—'}</b></div>`;
+  };
+  const krHtml = (et, html, largo) =>
+    `<div class="clk-r${largo ? ' clk-largo' : ''}${html ? '' : ' clk-vuoto'}"><span>${et}</span><b>${html || '—'}</b></div>`;
   const dataFields = isG ? [
-    f('Ragione sociale', a.ragione_sociale || a.nominativo),
-    f('Partita IVA', a.partita_iva),
-    f('Codice fiscale', a.codice_fiscale),
-    f('Tipo società', a.tipo_societa)
+    kr('Ragione sociale', a.ragione_sociale || a.nominativo, true),
+    kr('Partita IVA', a.partita_iva),
+    kr('Codice fiscale', a.codice_fiscale),
+    kr('Tipo società', a.tipo_societa)
   ] : [
-    f('Nominativo', a.nominativo, true),
-    f('Codice fiscale', a.codice_fiscale),
+    kr('Codice fiscale', a.codice_fiscale),
     /* M3.2: l'età si CALCOLA, non si salva — un'età in tabella è sbagliata
-       dal giorno dopo. Non passa da `f()`, che fa l'escape del valore. */
+       dal giorno dopo. Non passa da `kr()`, che fa l'escape del valore. */
     (function () {
       const d = a.data_nascita ? new Date(a.data_nascita).toLocaleDateString('it-IT') : '';
       const e = (a.data_nascita && window.Anagrafica) ? Anagrafica.eta(a.data_nascita) : null;
-      return `<div class="sc-f"><div class="sc-lbl">Data di nascita</div>${d
-        ? `<div class="sc-val">${esc(d)}${e != null ? ` <span class="sc-eta">(${e} anni)</span>` : ''}</div>`
-        : '<div class="sc-val empty">—</div>'}</div>`;
+      return krHtml('Data di nascita', d ? esc(d) + (e != null ? ` <span class="sc-eta">(${e} anni)</span>` : '') : '');
     })(),
-    f('Professione', a.professione, true),
+    kr('Professione', a.professione),
     (function () {
       const c = [];
       if (a.sposato) c.push('<span class="sc-flag"><i class="ti ti-heart"></i> Sposato/a</span>');
       if (a.ha_figli) c.push('<span class="sc-flag"><i class="ti ti-users"></i> Ha figli</span>');
       if (a.casa_proprieta) c.push('<span class="sc-flag"><i class="ti ti-home"></i> Casa di proprietà</span>');
-      return `<div class="sc-f full"><div class="sc-lbl">Profilo</div>${c.length ? `<div class="sc-flags">${c.join('')}</div>` : '<div class="sc-val empty">—</div>'}</div>`;
+      return krHtml('Profilo', c.length ? `<span class="sc-flags">${c.join('')}</span>` : '', true);
     })()
   ];
+  const testaCliente = `<div class="clk-testa">${dataFields.join('')}
+    ${kr('Indirizzo', indirCompleto, true)}
+    ${kr('Email', a.email, true)}
+    ${kr('PEC', a.pec)}
+    ${kr('Cellulare', a.cellulare)}
+    ${kr('Telefono', a.telefono)}
+    <div class="clk-r${a.intermediario_id ? '' : ' clk-vuoto'}"><span>Intermediario</span><b id="sc-interm">${esc(intermediarioNome(a.intermediario_id) || '—')}</b></div>
+  </div>`;
   const html = `
   <div class="modal-ov" id="anag-overlay" onclick="if(event.target.id==='anag-overlay')this.remove()">
-    <div class="modal" style="width:920px;max-width:96vw;max-height:90vh;overflow:auto">
+    <div class="modal clk-kit" style="width:980px;max-width:96vw;max-height:90vh;overflow:auto">
       <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">
         <span>${esc(a.nominativo)}${(!isG && window.Anagrafica && Anagrafica.compleannoOggi(a.data_nascita)) ? ' <span class="sc-torta" title="Oggi compie gli anni"><i class="ti ti-cake"></i></span>' : ''} <span class="${isG ? 'badge-admin' : 'badge-collab'}" style="margin-left:8px;font-size:11px">${isG ? 'Giuridica' : 'Fisica'}</span>${awIsLead(a) ? ` <span style="margin-left:6px;font-size:11px;font-weight:800;background:#f86200;color:#fff;border-radius:6px;padding:2px 8px;letter-spacing:.3px"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> LEAD</span>` : ''}</span>
         <button class="ghost" style="padding:6px 10px" onclick="document.getElementById('anag-overlay').remove()"><i class="ti ti-x"></i></button>
       </div>
+      ${testaCliente}
       <div class="sc-grid">
         <div class="sc-card">
           <div class="sc-card-head">
-            <span class="sc-name">Dati cliente</span>
+            <span class="sc-name">Consensi e note</span>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <button class="sc-edit" onclick="aprModificaAnag('${a.id}')"><i class="ti ti-pencil"></i> Modifica</button>
               ${!isG ? `<button class="sc-edit" style="background:#eaf7f0;color:#02984e;border-color:#b9e3cd" onclick="pensDaCliente('${a.id}')"><i class="ti ti-chart-arrows-vertical"></i> Calcola pensione</button>` : ''}
@@ -28365,8 +28476,6 @@ async function apriAnagrafica(id) {
             </div>
           </div>
           <div class="sc-data">
-            ${dataFields.join('')}
-            ${f('Indirizzo', indirCompleto, true)}
             ${resDich ? `<div class="sc-f full"><div class="sc-lbl" style="color:#b06a00">
                 <i class="ti ti-alert-triangle-filled" style="vertical-align:-2px"></i> Residenza indicata dall'interessato${a.res_dich_il ? ' il ' + esc(dataIt(a.res_dich_il)) : ''}${a.res_dich_origine ? ' · ' + esc(a.res_dich_origine) : ''}</div>
               <div class="sc-val" style="background:#fff8ec;border:1px solid #f6dfb8;border-radius:9px;padding:8px 11px;line-height:1.5">
@@ -28376,11 +28485,6 @@ async function apriAnagrafica(id) {
                   <button class="sc-edit" onclick="scartaResidenzaDichiarata('${a.id}')"><i class="ti ti-x"></i> Tieni la nostra</button>
                 </div>
               </div></div>` : ''}
-            ${f('Email', a.email)}
-            ${f('PEC', a.pec)}
-            ${f('Cellulare', a.cellulare)}
-            ${f('Telefono', a.telefono)}
-            <div class="sc-f full"><div class="sc-lbl">Intermediario di riferimento</div><div class="sc-val${a.intermediario_id ? '' : ' empty'}" id="sc-interm">${esc(intermediarioNome(a.intermediario_id) || '—')}</div></div>
             <!-- Il consenso marketing sta qui e non nel modulo di modifica: si
                  dà o si toglie nel momento in cui il cliente lo dice, che è
                  l'unico momento in cui si sa davvero. Senza questo campo una
@@ -28454,7 +28558,7 @@ async function apriAnagrafica(id) {
   caricaGruppiCliente(a.id);
   // L'intermediario può non essere ancora in cache (scheda aperta senza passare da
   // Clienti): lo carico e riempio la riga quando c'è.
-  if (a.intermediario_id) caricaIntermediari().then(() => { const el = document.getElementById('sc-interm'); if (el) { const n = intermediarioNome(a.intermediario_id); if (n) { el.textContent = n; el.classList.remove('empty'); } } });
+  if (a.intermediario_id) caricaIntermediari().then(() => { const el = document.getElementById('sc-interm'); if (el) { const n = intermediarioNome(a.intermediario_id); if (n) { el.textContent = n; el.parentElement?.classList.remove('clk-vuoto'); } } });
 }
 
 /* ══════════ PRIVACY DI AGENZIA ══════════
@@ -28975,26 +29079,34 @@ function fcRender() {
   FC_VISTA.filtri = f;
   const t = FC_VISTA.totali;
   const perEmissione = f.su === 'emissione';
-  if (sum) sum.innerHTML =
-    /* Guardando per emissione i due numeri sono DUE, e stanno in due tessere
+  /* Una casella della barra dei totali. Prima erano le tessere di `ecpCard`,
+     alte il doppio e su due righe: gli stessi numeri con metà pagina
+     occupata. Qui l'etichetta sta sopra, piccola, e la cifra sotto. */
+  const cassa = (numero, etichetta, sotto, tinta) =>
+    `<div class="fc-t${tinta ? ' ' + tinta : ''}"><span>${esc(etichetta)}</span><b>${numero}</b>${sotto ? `<small>${sotto}</small>` : ''}</div>`;
+  if (sum) sum.innerHTML = `<div class="fc-bar">` +
+    /* Guardando per emissione i due numeri sono DUE, e stanno in due caselle
        separate: una somma sola direbbe che in cassa ci sono anche i soldi che
        il cliente non ha ancora versato. */
     (perEmissione
-      ? ecpCard(pfEuro(t.premi_emessi), 'Premi emessi', t.righe_emesse + ' rate emesse nel periodo')
-        + ecpCard(pfEuro(t.premi), 'Di cui incassati', t.righe_incassate + ' rate entrate — la data dell\'incasso può essere un\'altra')
-        + (t.righe_da_incassare ? ecpCard(pfEuro(t.premi_da_incassare), 'Ancora da incassare', t.righe_da_incassare + ' rate: emesse, non pagate') : '')
-      : ecpCard(pfEuro(t.premi), 'Premi incassati', t.movimenti + ' movimenti nel filtro attivo'))
-    + ecpCard(pfEuro(t.provvigioni_dirette), 'Provvigioni dirette', 'produzione dell\'agenzia, senza collaboratore')
-    + ecpCard(pfEuro(t.provvigioni_indirette), 'Provvigioni indirette', 'di cui ai collaboratori ' + pfEuro(t.quota_collaboratori))
-    + ecpCard(pfEuro(t.margine_agenzia), 'Resta all\'agenzia', 'dirette + margine sulle indirette')
-    + (t.daConfermare ? ecpCard(t.daConfermare, 'Da confermare', 'provvigione non dichiarata o percentuale non concordata: premi sì, provvigioni no') : '')
+      ? cassa(pfEuro(t.premi_emessi), 'Premi emessi', t.righe_emesse + ' rate nel periodo')
+        + cassa(pfEuro(t.premi), 'Di cui incassati', t.righe_incassate + ' rate entrate — la data dell\'incasso può essere un\'altra', 'fc-verde')
+        + (t.righe_da_incassare ? cassa(pfEuro(t.premi_da_incassare), 'Ancora da incassare', t.righe_da_incassare + ' rate: emesse, non pagate', 'fc-ambra') : '')
+      : cassa(pfEuro(t.premi), 'Premi incassati', t.movimenti + ' movimenti nel filtro attivo', 'fc-verde'))
+    + cassa(pfEuro(t.provvigioni_dirette), 'Provvigioni dirette', 'produzione dell\'agenzia, senza collaboratore')
+    + cassa(pfEuro(t.provvigioni_indirette), 'Provvigioni indirette', 'di cui ai collaboratori ' + pfEuro(t.quota_collaboratori))
+    + cassa(pfEuro(t.margine_agenzia), 'Resta all\'agenzia', 'dirette + margine sulle indirette', 'fc-verde')
+    + (t.daConfermare ? cassa(String(t.daConfermare), 'Da confermare', 'provvigione non dichiarata o percentuale non concordata: premi sì, provvigioni no', 'fc-ambra') : '')
+    + `</div>`
     /* Le provvigioni, in tutti e due i casi, sono SOLO sulle rate incassate
        (§17): una rata emessa e non pagata non ha prodotto niente per nessuno.
        Dirlo qui evita che qualcuno legga il margine come «quello che ho
-       guadagnato questo mese» quando metà del periodo è ancora da incassare. */
+       guadagnato questo mese» quando metà del periodo è ancora da incassare.
+       I due avvisi scrivevano classi di IAM, che qui non esistono: uscivano
+       come testo semplice, cioè senza dire che erano avvisi. */
     + (perEmissione && t.righe_da_incassare
-      ? `<div class="cnt-avv" style="flex-basis:100%;margin-top:4px">Le provvigioni contano solo le rate incassate: quelle ancora da incassare sono nei premi emessi e non nei compensi.</div>` : '')
-    + (FC_TRONCATO ? `<div class="cnt-err" style="flex-basis:100%;margin-top:4px">Il portafoglio è più grande di quello che si è riusciti a leggere: questi totali sono parziali.</div>` : '');
+      ? `<div class="fc-avv">Le provvigioni contano solo le rate incassate: quelle ancora da incassare sono nei premi emessi e non nei compensi.</div>` : '')
+    + (FC_TRONCATO ? `<div class="fc-err">Il portafoglio è più grande di quello che si è riusciti a leggere: questi totali sono parziali.</div>` : '');
   if (!FC_VISTA.righe.length) {
     /* Il vuoto dice quale delle due letture è vuota, e perché: «nessun
        incasso» su una schermata che sta guardando le emissioni manderebbe a
@@ -29026,7 +29138,7 @@ function fcRender() {
       <button class="rin-az" onclick="fcModifica('${esc(r.titolo_id)}')" title="Correggi data, mezzo, chi ha pagato"><i class="ti ti-pencil"></i></button>
       <button class="rin-az" onclick="polDettaglio('${esc(r.polizza_id)}')" title="Apri la polizza"><i class="ti ti-file-invoice"></i></button></div></td>
   </tr>`).join('')
-  + `<tr><td colspan="4"><b>${perEmissione ? 'Totale emesso' : 'Totale'}</b>${
+  + `<tr class="fc-totale"><td colspan="4"><b>${perEmissione ? 'Totale emesso' : 'Totale'}</b>${
       perEmissione ? `<div class="cl-sub">di cui incassati ${pfEuro(t.premi)}</div>` : ''}</td>`
     + `<td class="soldi"><b>${pfEuro(perEmissione ? t.premi_emessi : t.premi)}</b></td><td class="soldi"><b>${pfEuro(t.provvigioni)}</b></td><td style="font-size:12px">ai collaboratori <b>${pfEuro(t.quota_collaboratori)}</b></td><td class="soldi"><b>${pfEuro(t.margine_agenzia)}</b></td><td></td></tr>`;
 
@@ -29040,7 +29152,7 @@ function fcRender() {
      incassata in cassa non c'è. Detto, perché altrimenti i numeri qui sotto
      sembrerebbero non tornare con quelli qui sopra. */
   if (quad) quad.innerHTML = (perEmissione && t.righe_da_incassare
-      ? `<div class="cnt-avv" style="margin-top:14px">Le quadrature contano le <b>${t.righe_incassate}</b> rate incassate: le ${t.righe_da_incassare} ancora da incassare non sono in cassa.</div>` : '')
+      ? `<div class="fc-avv" style="margin-top:14px">Le quadrature contano le <b>${t.righe_incassate}</b> rate incassate: le ${t.righe_da_incassare} ancora da incassare non sono in cassa.</div>` : '')
     + tab('Quadratura per mezzo di pagamento', FC_VISTA.quadrature.perMezzo, 'Mezzo')
     + tab('Quadratura per compagnia', FC_VISTA.quadrature.perCompagnia, 'Compagnia')
     + tab('Quadratura per collaboratore', FC_VISTA.quadrature.perCollaboratore, 'Collaboratore');

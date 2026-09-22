@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.37.0">
-<meta name="app-versione-nome" content="La spesa sottrae, e i sospesi hanno un nome">
+<meta name="app-versione" content="0.38.0">
+<meta name="app-versione-nome" content="I sospesi delle persone si vedono per primi">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -136,6 +136,11 @@
 .spr-fam{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--txt3);
   margin:9px 0 2px;padding-top:7px;border-top:1px dashed var(--bord)}
 .spr-fam:first-child{border-top:0;padding-top:2px}
+.spr-sez{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);
+  margin:14px 0 7px;display:flex;align-items:center;gap:7px}
+.spr-sez:first-child{margin-top:0}
+.spr-g.spr-pers{border-left:3px solid var(--acc)}
+.spr-g.spr-pers.spr-urg{border-left-color:#ef4444}
 .spr-riga .spr-come{font-size:11px;color:var(--txt3)}
 /* L'effetto atteso di un movimento, prima di salvarlo (22/09/2026): «se c'e'
    uscita deve sempre sottrarre da quel conto la'» si controlla guardandolo. */
@@ -5860,6 +5865,7 @@ var SPR_ESITO = null;
 var SPR_ERR = null;
 var SPR_PARZIALE = false;
 var SPR_APERTI = {};      /* quale gruppo è aperto */
+var SPR_TOCCATO = false;  /* qualcuno ha aperto o chiuso a mano */
 var SPR_GIRO = 0;         /* due caricamenti insieme non si sommano (§63-bis) */
 
 function sprOggi() { return typeof cntOggiIso === 'function' ? cntOggiIso() : null; }
@@ -5942,10 +5948,18 @@ async function sprCarica(forza) {
   if (mio !== SPR_GIRO) return;
   SPR_ERR = err; SPR_PARZIALE = parziale; SPR_RATE = rate; SPR_MODALITA = mod;
   SPR_ESITO = err ? null : Contabilita.daIncassare(rate, mod, { oggi: sprOggi() });
+  /* I gruppi delle persone si aprono da soli, finche' nessuno ha toccato
+     niente: sono pochi ed e' il lavoro da fare. I mezzi no — sono centinaia
+     di righe, e aprirli tutti seppellirebbe di nuovo quello che conta. */
+  if (SPR_ESITO && !SPR_TOCCATO) {
+    SPR_ESITO.gruppi.forEach(function (g) {
+      if (g.sezione === 'persone') SPR_APERTI[g.voce || '(vuoto)'] = true;
+    });
+  }
   sprRender();
 }
 
-function sprGruppo(k) { SPR_APERTI[k] = !SPR_APERTI[k]; sprRender(); }
+function sprGruppo(k) { SPR_TOCCATO = true; SPR_APERTI[k] = !SPR_APERTI[k]; sprRender(); }
 
 function sprRender() {
   var box = document.getElementById('spr-lista');
@@ -5964,6 +5978,7 @@ function sprRender() {
 
   if (somma) {
     somma.innerHTML = ''
+      + sprCard('Li tiene una persona', e.persone + (e.persone === 1 ? ' persona' : ' persone'), pfEuro(e.totale_persone))
       + sprCard('Sospesi in tutto', e.righe + (e.righe === 1 ? ' rata' : ' rate'), pfEuro(e.totale))
       + sprCard('Già incassati, da versare', e.da_versare + (e.da_versare === 1 ? ' rata' : ' rate'), pfEuro(e.totale_da_versare))
       + sprCard('Fermi da troppo', e.in_ritardo + (e.in_ritardo === 1 ? ' rata' : ' rate'), pfEuro(e.totale_ritardo))
@@ -5988,13 +6003,28 @@ function sprRender() {
     box.innerHTML = avvisi + '<div class="cl-sub" style="padding:18px 0">Nessuna rata da incassare e nessuno che tenga dei premi.</div>';
     return;
   }
+  /* Due sezioni, e la prima e' sempre quella delle persone. Misurato il
+     22/09/2026 sul portafoglio vero: i mezzi raccolgono 135, 86, 80 e 75
+     rate, una persona ne ha due — ordinando tutto insieme per importo Oddo
+     Francesco era l'ultimo di sette, sotto 418 righe, e per chi guardava NON
+     C'ERA. Un mezzo accredita da solo; una persona e' qualcuno a cui
+     telefonare, e non si cerca: si vede. */
+  var sezPrec = null;
   box.innerHTML = avvisi
     + e.gruppi.map(function (g) {
+      var testa = '';
+      if (g.sezione !== sezPrec) {
+        sezPrec = g.sezione;
+        testa = '<div class="spr-sez">' + (g.sezione === 'persone'
+          ? '<i class="ti ti-users"></i> Chi tiene i premi &mdash; a loro si chiede'
+          : '<i class="ti ti-credit-card"></i> Per mezzo di pagamento &mdash; arrivano da soli') + '</div>';
+      }
       var chiave = g.voce || '(vuoto)';
       var aperto = !!SPR_APERTI[chiave];
       var icona = g.tipo === 'collaboratore' ? 'ti-user'
         : g.tipo === 'da-dichiarare' ? 'ti-help-circle' : 'ti-credit-card';
-      return '<div class="spr-g ' + (g.in_ritardo ? 'spr-urg' : '') + '">'
+      return testa + '<div class="spr-g ' + (g.sezione === 'persone' ? 'spr-pers ' : '')
+        + (g.in_ritardo ? 'spr-urg' : '') + '">'
         + '<div class="spr-t" onclick="sprGruppo(\'' + esc(chiave) + '\')">'
         + '<i class="ti ' + icona + ' spr-i"></i>'
         + '<div class="spr-n"><div class="cnt-nome">' + esc(g.etichetta)

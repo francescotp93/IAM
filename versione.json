@@ -1,8 +1,19 @@
 {
-  "versione": "0.37.0",
-  "nome": "La spesa sottrae, e i sospesi hanno un nome",
+  "versione": "0.38.0",
+  "nome": "I sospesi delle persone si vedono per primi",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.38.0",
+      "data": "2026-09-22",
+      "nome": "I sospesi delle persone si vedono per primi",
+      "voci": [
+        "CHI TIENE I PREMI STA IN CIMA. In Contabilità › Sospesi ci sono due sezioni: prima «Chi tiene i premi», cioè le persone a cui bisogna chiedere i soldi, poi «Per mezzo di pagamento», che arrivano da soli.",
+        "Prima erano un elenco solo ordinato per importo, e un mezzo raccoglie centinaia di rate mentre una persona ne ha due: Oddo Francesco era l'ultimo di sette gruppi, sotto 418 righe. C'era, e non si vedeva.",
+        "I gruppi delle persone si aprono già aperti, perché sono pochi e sono il lavoro da fare; i mezzi restano chiusi. Appena tocchi un gruppo comanda quello che hai scelto tu.",
+        "E in testa c'è un contatore nuovo: quante persone tengono dei premi e per quanti euro, così lo leggi senza scorrere niente."
+      ]
+    },
     {
       "v": "0.37.0",
       "data": "2026-09-22",

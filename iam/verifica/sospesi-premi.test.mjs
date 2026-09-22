@@ -350,6 +350,26 @@ prova('una PERSONA non è un conto, e l\'incasso si registra lo stesso', () => {
   return 'il vocabolario arriva, e il conto si sceglie dopo';
 });
 
+prova('la schermata disegna DUE SEZIONI, e le persone si aprono da sole', () => {
+  /* «ho messo una polizza Carpitella Guido 400 € come pagamento Oddo
+     Francesco, quindi dovrebbe andare tra i sospesi... ma non c'è.»
+     C'era: era l'ultimo di sette gruppi, sotto 418 righe. */
+  const b = blocco();
+  deve(/spr-sez/.test(b), 'le due sezioni non hanno un\'intestazione');
+  deve(/Chi tiene i premi/.test(b), 'la sezione delle persone non si chiama col suo nome');
+  deve(/g\.sezione/.test(b), 'la schermata non usa la sezione decisa dal motore');
+  /* I gruppi delle persone sono pochi e sono il lavoro: si aprono da soli
+     finché nessuno ha toccato niente. I mezzi no, sono centinaia di righe. */
+  deve(/SPR_TOCCATO/.test(b), 'non si distingue l\'apertura automatica da quella a mano');
+  deve(/g\.sezione === 'persone'\) SPR_APERTI/.test(b),
+    'i gruppi delle persone non si aprono da soli');
+  deve(/function sprGruppo\(k\) \{ SPR_TOCCATO = true;/.test(b),
+    'aprire o chiudere a mano non spegne l\'apertura automatica');
+  /* E il riepilogo in testa dice quante persone tengono dei premi. */
+  deve(/Li tiene una persona/.test(b), 'il riepilogo non conta le persone');
+  return 'due sezioni, persone in cima e già aperte';
+});
+
 console.log('\n══ SOSPESI E MODALITÀ ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

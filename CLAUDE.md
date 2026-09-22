@@ -6683,3 +6683,222 @@ che nessuno alza è una dichiarazione che non arriva mai.*
   nuove (`CRU_*`, `PNT_PARZIALE`, `CNT_PARZIALE`, `REC_PARZIALE`) sono `var`.
 - **La regola del CSV sta in pagina, non nel motore**: è l'unica cosa che esce
   di casa, e §5 dice che va nel motore.
+
+---
+
+## 63. Lo scadenzario: la proroga di 15 giorni, e il rinnovo che si riconosce (22/09/2026)
+
+> «riusciamo ad inserire nello scadenzario dei filtri rapidi che fanno vedere le
+> polizze non rinnovate, che sono vicine ai 15 giorni, che sono nei 15 giorni e
+> che sono fuori i 15 giorni? tutte le polizze hanno una proroga di 15 giorni.
+> Ovviamente fa fede la data scadenza polizza, o scadenza rata e non la data
+> d'incasso.» — Francesco.
+
+| pezzo | dove |
+|---|---|
+| tutte le regole | `tariffe/motore/scadenzario.js` |
+| prove in Node | `server/verifica/scadenzario.test.mjs` — **22**, con cinque controprove |
+| la vista che porta targa, sospensioni e `sostituisce_id` | `supabase/migrations/20260922h_scadenzario_targa_sospensioni.sql` (applicata) |
+| la schermata | blocco `rin*` in `index.html`, `#page-scadenzario` |
+| prove nella pagina | blocco «scadenzario» in `ui-test.mjs` — **506** |
+
+### Le tre misure che hanno deciso il lavoro
+
+Prese sul database vero prima di scrivere una riga.
+
+| | |
+|---|---|
+| polizze non annullate | **4.003** — e la lista ne leggeva **1.000** |
+| scadute | 1.665 |
+| con `sostituisce_id` valorizzato | **0 su 4.003** |
+| scadute che hanno già una polizza nuova (stessa targa o stesso cliente+ramo) | **1.018** |
+| scadute davvero senza successore | **647** |
+| rate aperte | 418 — 117 già scadute, 19 dentro i 15 giorni, 99 fuori |
+
+### 1. La data che fa testo, e quella che non c'entra
+
+Su una quietanza di frazionamento semestrale il portafoglio vero dice
+`data_decorrenza` **2026-09-02** e `data_scadenza` **2027-03-02**: la seconda è
+la fine del periodo che quella rata copre. **Per una rata la scadenza è la
+DECORRENZA** — leggere l'altra vorrebbe dire credere che una rata scaduta venti
+giorni fa scada fra sei mesi, cioè togliere dal lavoro di oggi tutto quello che
+c'è da incassare.
+
+E l'incasso non entra da nessuna parte: c'è una prova che legge il sorgente del
+motore e diventa rossa se quel campo ricompare.
+
+### 2. La proroga: «scaduta» non è «scoperta»
+
+Quindici giorni per tutte le polizze, dichiarati da Francesco (è il termine di
+mora dell'art. 1901 c.c. per le rate successive alla prima). Quattro fasce che
+**non si sovrappongono** — è la regola di §22, con i confini spostati dal
+rinnovo alla copertura:
+
+```
+più avanti  · oltre i 15 giorni          · non è ancora lavoro
+vicine      · da 15 giorni a 0           · si chiama adesso
+in proroga  · scaduta da 1 a 15 giorni   · SCADUTA E ANCORA COPERTA
+scoperte    · scaduta da più di 15 gg    · la proroga è finita
+```
+
+Il giorno 0 sta fra le «vicine»: oggi la copertura c'è ancora. Il −15 è
+l'ultimo giorno coperto, il −16 il primo scoperto. C'è una prova che percorre
+81 giorni e pretende che ognuno cada in **una** fascia sola, e un'altra che
+somma le quattro fasce e pretende che tornino col totale.
+
+**Il rosso è riservato a chi la copertura l'ha persa.** Una polizza scaduta da
+sette giorni con otto giorni di proroga davanti in rosso si legge come un
+cliente perso, e invece è un cliente che si salva con una telefonata.
+
+La proroga si può stringere (`opz.giorni`) il giorno in cui una compagnia ne
+dichiarerà una diversa: è un parametro, non una riscrittura.
+
+### 3. «Non rinnovata» non si legge da `sostituisce_id`
+
+È la parte che conta di più, e nasce da una misura che non tornava.
+
+> Quella colonna è **vuota su tutte e 4.003 le polizze**, e la schermata la
+> leggeva: dichiarava non rinnovate tutte e 1.665 le scadute. Ma **1.018 di
+> quelle hanno già la loro polizza nuova.** Un elenco di lavoro con due terzi
+> di rumore non lo guarda più nessuno dopo la terza telefonata a vuoto — e
+> allora non si guardano nemmeno i 647 veri.
+
+Non è un difetto di chi ha importato: PRIMA non ha tacito rinnovo, alla scadenza
+la polizza storna e ne **nasce una nuova** (§14, regola 4), e il tracciato non
+dice quale sostituisce quale.
+
+Quindi il successore si **riconosce**, e ha tre risposte — la stessa regola dei
+codici produttore (§19) e del catalogo prodotti (§39):
+
+| risposta | come |
+|---|---|
+| **Rinnovata** | `sostituisce_id`: qualcuno l'ha scritto. Vince sempre |
+| **Sembra rinnovata** | c'è una polizza nuova a cavallo della scadenza, e si dice quale e perché |
+| **Non rinnovata** | non se n'è trovata nessuna |
+
+**Un indizio non è una dichiarazione**, e le due parole sono diverse in
+schermata. Chiamarlo rinnovo nasconderebbe un cliente da richiamare, che è
+l'errore più caro dei due: una telefonata a chi ha già rinnovato costa due
+minuti, un cliente perso costa un anno di premio.
+
+**La targa viene prima del cliente**, perché è lo stesso veicolo e non una
+somiglianza; il **nome non si guarda mai**, e c'è una prova che legge il
+sorgente per dimostrarlo. Una targa sotto le cinque cifre utili (`N.D.`, `-`)
+non è una targa: senza quella riga mezzo portafoglio si aggancerebbe a se
+stesso.
+
+E la finestra è dichiarata: da 5 giorni prima della scadenza (un rinnovo si
+emette anche in anticipo) a 30 dopo (i 15 di proroga più il ritardo di chi paga
+tardi). Sono i valori con cui la misura è stata fatta.
+
+### 4. La regola trovata contando, non ragionando
+
+La prima stesura diceva «Non rinnovata» anche a una polizza che scade fra
+dieci mesi. È letteralmente vero — nessun successore esiste, ed è vero per tutto
+il portafoglio sano — ed è una risposta vera che porta a fare la cosa sbagliata.
+
+> **«Non rinnovata» si dice solo a una polizza la cui scadenza è arrivata, o
+> sta arrivando.** Le altre sono **non ancora scadute**, che è un quinto stato
+> e si chiama col suo nome.
+
+L'ha trovata un conteggio in una prova del browser (5 invece di 4), non la
+rilettura. È §12 e §18 visti dall'altro lato: lì il difetto è dire «non c'è»
+quando non si è potuto leggere, qui è dire una verità che si legge come
+un'istruzione operativa sbagliata.
+
+### Il tetto delle mille righe, quarta volta
+
+`.limit(2000)` su `quote_scadenzario`: PostgREST ne manda **mille** per
+richiesta qualunque numero ci sia scritto (§50, §53, §57, §61). I contatori
+delle fasce erano calcolati su **un quarto** del portafoglio, e nessun numero lo
+diceva. Adesso si pagina, e quando la paginazione si ferma davvero **la
+schermata lo scrive**: un totale parziale che non si dichiara è il difetto
+rimesso dentro.
+
+Il taglio che resta è solo nel **disegno**: la tabella ne mostra 500 e lo dice.
+I contatori contano tutto.
+
+### Due cose che non si perdono
+
+- **Una rata la cui polizza non si vede non sparisce: si conta** (§55). La
+  visibilità non si riscrive — una rata si vede se si vede la sua polizza, e la
+  giunzione in memoria lo garantisce da sé.
+- **Se le rate non si leggono, la schermata resta in piedi e lo dice** (§35,
+  §12, §18): le polizze restano, e accanto al totale c'è scritto che le rate
+  mancano. Senza quella riga la lista sembrerebbe completa.
+
+### L'ordine: più vicino a oggi, nei due versi
+
+Ordinare per data e basta mette in cima la polizza scaduta nel 2023, che è la
+riga meno utile che ci sia. Si ordina per **distanza da oggi**: una scadenza fra
+due giorni e una scaduta due giorni fa sono le due cose da fare adesso. La prova
+che pretendeva l'ordine cronologico misurava il mondo di ieri, e si è aggiornata
+la regola (§15, §16, §33, §35, §42).
+
+Stessa cosa per il numero sulla voce di menu: contava tutto entro 60 giorni,
+comprese le polizze scadute tre anni fa. Un avviso che comprende la storia non è
+un avviso; adesso conta le vicine e quelle in proroga.
+
+### `create or replace view` butta via `security_invoker`
+
+**La trappola più cara di questa giornata, e non l'avrebbe presa nessuna prova
+del repository.** Sostituita la vista per aggiungerle tre colonne, `reloptions`
+è tornato **vuoto**: la vista girava con i diritti di chi la possiede invece che
+con quelli di chi legge, cioè **scavalcando le politiche**. Nessun errore,
+nessuna schermata rotta — solo un collaboratore che dallo scadenzario avrebbe
+visto il portafoglio di tutta l'agenzia.
+
+Misurato subito dopo l'applicazione e rimesso con `alter view … set
+(security_invoker = true)`, che adesso sta nel file della migrazione **e nel
+suo rollback**. Vale per qualunque `create or replace view` in questo
+repository: *dopo averla sostituita, si rileggono le sue opzioni.*
+
+### Togliere un tetto nascosto fa emergere il costo che quel tetto nascondeva
+
+Misurato **dopo** aver tolto il `.limit`, e non l'avrebbe detto nessuna prova.
+La vista porta una colonna `sostituzioni` che conta le polizze con
+`sostituisce_id = questa`, e su quella colonna **non c'era un indice**: il
+conto era una scansione completa della tabella per ogni riga.
+
+| | |
+|---|---|
+| mille righe, prima | **896 ms** — `Seq Scan`, `loops=1000` |
+| mille righe, dopo l'indice | **3,2 ms** — `Index Only Scan`, `Heap Fetches: 0` |
+
+Il difetto c'era da sempre e non si vedeva perché la schermata leggeva solo la
+prima pagina. Leggendole tutte e quattro sarebbe passata da 0,9 a **3,5
+secondi**, cioè si sarebbe consegnata una schermata corretta e lenta — e la
+lentezza la scopre chi lavora, non chi scrive.
+
+> **Quando si toglie un tetto, si rimisura il costo nello stesso lavoro.**
+> L'indice sta in `supabase/migrations/20260922i_scadenzario_indice_sostituisce.sql`
+> ed è parziale, perché quella colonna oggi è vuota su tutte e 4.003 le righe.
+
+### La trappola dei commenti, diciassettesima volta — e il rimedio vero
+
+Le due prove che vietano al motore di leggere la data d'incasso e di
+riconvertire una data via UTC sono diventate rosse **sul motore corretto**,
+perché i miei commenti nominavano quelle due cose. Il filtro che toglie i
+commenti a inizio riga non le ha prese: erano righe *interne* di un commento su
+più righe (§33, §61).
+
+Due correzioni, come sempre: il commento non scrive più quelle parole, **e** la
+prova adesso toglie i commenti leggendo il file carattere per carattere e
+tenendo lo stato «sono dentro un commento» — mai una regex globale, che su
+`index.html` si mangia 450.000 caratteri (§12). Ma il rimedio che funziona
+resta quello di §31: **non si scrive la parola vietata dentro il file che la
+vieta.**
+
+### Cosa resta aperto
+
+- **Nessun rinnovo è dichiarato.** «Riquota» apre il preventivatore e non scrive
+  `sostituisce_id`: finché quel collegamento non si scrive all'emissione, ogni
+  rinnovo resta un indizio. È il pezzo che chiude il giro, e tocca l'emissione.
+- **La proroga è una sola per tutte le compagnie.** Il motore accetta un
+  parametro, ma nessuno ha ancora dichiarato una proroga diversa per una
+  compagnia: il giorno in cui succede, è una riga in `quote_compagnie` e una in
+  chi chiama.
+- **Le polizze sospese sono zero**, quindi la scadenza vera oggi coincide con
+  quella scritta: la regola c'è (§41) e si accenderà alla prima sospensione.
+- **La tabella mostra 500 righe.** Con i filtri non si sente; se un giorno si
+  sentisse, la strada è la paginazione della vista, non un numero più grande.

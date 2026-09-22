@@ -1,5 +1,5 @@
-id: v0270-1790053015  exit: 0  2026-09-22 04:57:18
+id: v0270b-1790053053  exit: 0  2026-09-22 04:57:52
 ----
-df0aa63 Contabilità · Fase 2 — l'incasso di una o più rate (0.26.0) (#236)
-app-versione" content="0.26.0"
+a22f64f Contabilità · Fase 3 — i sospesi, i premi a copertura e non ricevuti (0.27.0) (#237)
+app-versione" content="0.27.0"
 HTTP/2 200 

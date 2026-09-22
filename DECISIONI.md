@@ -660,3 +660,52 @@ due dei quali scritti nella 0.28.0 stessa.
 nessuno; `fondoCassa` che somma nature diverse; `eliminabile` che non guarda le
 quadrature; `PNT_*`/`CNT_*` ancora `let`; la regola del CSV in pagina invece
 che nel motore.
+
+---
+
+## 22/09/2026 — Scadenzario: la proroga di 15 giorni (0.30.0)
+
+**Perimetro:** i filtri rapidi chiesti da Francesco nello scadenzario, con la
+data che fa testo (scadenza polizza o scadenza rata, mai l'incasso).
+
+### 🟡 Scelte prese, e come tornare indietro
+
+- **«Vicine ai 15 giorni» letto come i 15 giorni PRIMA della scadenza.** La
+  frase si poteva leggere anche come «vicine alla fine della proroga». Ho
+  scelto la lettura simmetrica: 15 giorni prima si chiama, 15 giorni dopo si è
+  ancora in copertura, oltre no. *Indietro:* è il `test` della fascia `vicine`
+  in `tariffe/motore/scadenzario.js`, una riga.
+- **Il rinnovo si riconosce dalla targa e dal cliente+ramo**, con una finestra
+  da −5 a +30 giorni dalla scadenza. Restava l'alternativa di non riconoscerlo
+  affatto e dichiarare non rinnovate tutte e 1.665 le scadute, che è quello che
+  faceva prima. *Indietro:* `FINESTRA_PRIMA`/`FINESTRA_DOPO` nel motore, oppure
+  far tornare `rinnovo()` sempre `nessuno` quando `sostituzioni` è zero.
+- **Il tacito rinnovo non sta fra le «non rinnovate».** Si rinnova da solo e va
+  verificato, non richiamato: chi guarda quell'elenco deve telefonare.
+  *Indietro:* togliere la riga del tacito da `statoLavoro`.
+- **Una polizza non ancora scaduta non è «non rinnovata».** *Indietro:*
+  togliere la riga `fascia === 'avanti'` da `statoLavoro`; una prova Node e tre
+  del browser diventano rosse.
+- **L'ordine è per distanza da oggi**, non cronologico: in cima c'è quello che
+  è più vicino a oggi nei due versi. *Indietro:* `rinOrdina` in `index.html`.
+- **Il numero sulla voce di menu** conta vicine + in proroga, non più tutto
+  entro 60 giorni. *Indietro:* `rinBadge`.
+- **La tabella disegna 500 righe** e lo dichiara; i contatori contano tutto.
+  *Indietro:* `RIN_MAX`.
+
+### 🔴 Serve il tuo ok — le stesse tre di ieri, nessuna è cambiata
+
+1. **Mancano tre conti**: il debito verso una compagnia, il conto dei sospesi,
+   e una cassa contanti classificata «cassa».
+2. **La provvigione matura all'incasso o alla rimessa?**
+3. **I conti «Abbuoni» sono di natura `premi`**: dovrebbero essere aziendali.
+
+### 📝 Fuori perimetro, annotato
+
+- **`create or replace view` butta via `security_invoker`.** Trovato
+  applicando la migrazione di oggi e rimesso subito, ma vale per tutte le viste
+  del repository: nessuna prova lo sorveglia. Sarebbe una prova che rilegge
+  `reloptions` di ogni vista dopo ogni migrazione.
+- **`sostituisce_id` non lo scrive nessuno.** Finché «Riquota» non collega la
+  polizza nuova alla vecchia all'emissione, ogni rinnovo resta un indizio.
+- Le sei voci di ieri (CLAUDE.md §62) restano tutte aperte.

@@ -5567,36 +5567,70 @@ const avvio = async () => {
       deve(/Documenti 3/.test(t), 'non mostra il numero dei mancanti accanto al tasto: ' + t.slice(0, 200));
     });
 
-    /* ── CRM Punto 4: scadenzario e rinnovi ──────────────────────────────── */
-    const gg = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+    /* ── SCADENZARIO: LA PROROGA DI 15 GIORNI (22/09/2026) ───────────────
+       Le fasce di prima (scadute / entro 30 / da 31 a 90) misuravano il
+       RINNOVO. Queste misurano la COPERTURA, che è la domanda che si fa
+       guardando un elenco di scadenze: c'è ancora tempo? La regola non è
+       cambiata — le fasce non si sovrappongono — sono cambiati i confini.
+
+       `gg()` conta sulle parti LOCALI e non passando da UTC: il motore fa
+       così (§44), e due orologi diversi sullo stesso giorno fanno fallire
+       la prova di notte e non di giorno. */
+    const gg = n => {
+      const d = new Date(); d.setDate(d.getDate() + n);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+        + '-' + String(d.getDate()).padStart(2, '0');
+    };
     const SCADENZE_FINTE = [
-      // scaduta e non riquotata: il caso che fa perdere soldi
+      // scaduta da 15 giorni: l'ULTIMO giorno di proroga, ancora in copertura
       { id: 's1', numero: 1, numero_polizza: 'AXA/1', cliente: 'Verdi Luca', modulo: 'rca',
-        prodotto: 'RC Auto', compagnia: 'AXA', data_scadenza: gg(-15), premio_annuo: 500,
-        tacito_rinnovo: false, sostituzioni: 0, giorni_alla_scadenza: -15, creato_nome: 'Luigi', preventivo_id: 'prev-a' },
-      // urgente, ancora da lavorare
+        prodotto: 'RC Auto', compagnia: 'AXA', data_effetto: gg(-380), data_scadenza: gg(-15), premio_annuo: 500,
+        tacito_rinnovo: false, sostituzioni: 0, targa: 'AA111AA', creato_nome: 'Luigi', preventivo_id: 'prev-a' },
+      // scade fra 12 giorni: si chiama adesso
       { id: 's2', numero: 2, numero_polizza: 'HDI/2', cliente: 'Rossi Mario', modulo: 'persona',
-        prodotto: 'RC Vita Privata', compagnia: 'HDI', data_scadenza: gg(12), premio_annuo: 144,
-        tacito_rinnovo: false, sostituzioni: 0, giorni_alla_scadenza: 12, creato_nome: 'Anna', preventivo_id: 'prev-b' },
-      // già riquotata: non va richiamata
+        prodotto: 'RC Vita Privata', compagnia: 'HDI', data_effetto: gg(-353), data_scadenza: gg(12), premio_annuo: 144,
+        tacito_rinnovo: false, sostituzioni: 0, creato_nome: 'Anna', preventivo_id: 'prev-b' },
+      // rinnovo DICHIARATO: qualcuno l'ha scritto
       { id: 's3', numero: 3, numero_polizza: 'HDI/3', cliente: 'Bianchi Srl', modulo: 'beni',
-        prodotto: 'Rischi Catastrofali', compagnia: 'HDI', data_scadenza: gg(45), premio_annuo: 60,
-        tacito_rinnovo: false, sostituzioni: 1, giorni_alla_scadenza: 45, creato_nome: 'Anna', preventivo_id: null },
+        prodotto: 'Rischi Catastrofali', compagnia: 'HDI', data_effetto: gg(-320), data_scadenza: gg(45), premio_annuo: 60,
+        tacito_rinnovo: false, sostituzioni: 1, creato_nome: 'Anna', preventivo_id: null },
       // tacito rinnovo: si rinnova da sé ma va verificata
       { id: 's4', numero: 4, numero_polizza: 'GRP/4', cliente: 'Costruzioni Alfa', modulo: 'impresa',
-        prodotto: 'Multirischio impresa', compagnia: 'Groupama', data_scadenza: gg(80), premio_annuo: 2400,
-        tacito_rinnovo: true, sostituzioni: 0, giorni_alla_scadenza: 80, creato_nome: 'Luigi', preventivo_id: null },
-      // fuori fascia (oltre 90 giorni)
+        prodotto: 'Multirischio impresa', compagnia: 'Groupama', data_effetto: gg(-285), data_scadenza: gg(80), premio_annuo: 2400,
+        tacito_rinnovo: true, sostituzioni: 0, creato_nome: 'Luigi', preventivo_id: null },
       { id: 's5', numero: 5, numero_polizza: 'HDI/5', cliente: 'Neri Spa', modulo: 'beni',
-        prodotto: 'Casa', compagnia: 'HDI', data_scadenza: gg(200), premio_annuo: 300,
-        tacito_rinnovo: false, sostituzioni: 0, giorni_alla_scadenza: 200, creato_nome: 'Anna', preventivo_id: null }
+        prodotto: 'Casa', compagnia: 'HDI', data_effetto: gg(-165), data_scadenza: gg(200), premio_annuo: 300,
+        tacito_rinnovo: false, sostituzioni: 0, creato_nome: 'Anna', preventivo_id: null },
+      // scaduta da 30 giorni e SENZA successore: il cliente da richiamare
+      { id: 's6', numero: 6, numero_polizza: 'AXA/6', cliente: 'Gialli Paolo', modulo: 'rca',
+        prodotto: 'RC Auto', compagnia: 'AXA', data_effetto: gg(-395), data_scadenza: gg(-30), premio_annuo: 100,
+        tacito_rinnovo: false, sostituzioni: 0, targa: 'AB 123 CD', creato_nome: 'Luigi', preventivo_id: null },
+      // scaduta da 40 giorni, ma sulla stessa targa ne è nata una nuova:
+      // sostituisce_id è vuoto, quindi il rinnovo si RICONOSCE, non si legge
+      { id: 's7', numero: 7, numero_polizza: 'AXA/7', cliente: 'Blu Marco', modulo: 'rca',
+        prodotto: 'RC Auto', compagnia: 'AXA', data_effetto: gg(-405), data_scadenza: gg(-40), premio_annuo: 100,
+        tacito_rinnovo: false, sostituzioni: 0, targa: 'ZZ999ZZ', creato_nome: 'Luigi', preventivo_id: null },
+      { id: 's8', numero: 8, numero_polizza: 'AXA/8', cliente: 'Blu Marco', modulo: 'rca',
+        prodotto: 'RC Auto', compagnia: 'AXA', data_effetto: gg(-40), data_scadenza: gg(325), premio_annuo: 100,
+        tacito_rinnovo: false, sostituzioni: 0, targa: 'zz999zz', creato_nome: 'Luigi', preventivo_id: null }
+    ];
+    /* La quietanza di frazionamento dell'esempio di Francesco: scaduta da 5
+       giorni, non incassata, e ancora in copertura. La data che fa testo è
+       la DECORRENZA — la sua `data_scadenza` è sei mesi più in là. */
+    const RATE_FINTE = [
+      { id: 'r1', polizza_id: 's2', tipo: 'quietanza', stato: 'aperto',
+        data_decorrenza: gg(-5), data_scadenza: gg(178), importo_lordo: 200 },
+      // una rata la cui polizza non si vede: non sparisce, si conta
+      { id: 'r2', polizza_id: 'NON-VISIBILE', tipo: 'rata', stato: 'aperto',
+        data_decorrenza: gg(-3), importo_lordo: 50 }
     ];
 
-    await page.evaluate(async (finte) => {
-      window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: finte, error: null };
+    await page.evaluate(async (d) => {
+      window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: d.p, error: null };
+      window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: d.r, error: null };
       showPage('scadenzario');
       await window.loadScadenzario();
-    }, SCADENZE_FINTE);
+    }, { p: SCADENZE_FINTE, r: RATE_FINTE });
 
     await prova('M2.1 · sinistri e storico: l\'intervallo di date filtra, e solo al clic', async () => {
       const r = await page.evaluate(() => {
@@ -5643,79 +5677,166 @@ const avvio = async () => {
         'la voce di navigazione non si evidenzia');
     });
 
-    await prova('scadenzario: le card-contatore contano stati che NON si sovrappongono (M2.3)', async () => {
-      /* Prima erano cinque fasce cumulative (entro 30 / 60 / 90): la stessa
-         polizza stava in tre contatori, e un numero che si somma con se
-         stesso non si legge. Ora: scadute, imminenti (0-30), prossime (31-90),
-         tutte. La prova di prima misurava il mondo di ieri. */
+    await prova('scadenzario: le fasce sono quelle della PROROGA di 15 giorni, e non si sovrappongono', async () => {
+      /* Le fasce di prima (scadute / 0-30 / 31-90) misuravano il rinnovo;
+         queste misurano la copertura. La regola è la stessa — una scadenza
+         cade in UNA fascia sola — e i numeri devono tornare con il totale. */
       const f = await page.evaluate(() => [...document.querySelectorAll('#rin-fasce .rin-fascia')]
-        .map(b => ({ n: b.querySelector('b').textContent, l: b.querySelector('span').textContent,
+        .map(b => ({ n: Number(b.querySelector('b').textContent), l: b.querySelector('span').textContent,
                      sub: (b.querySelector('.rin-card-sub') || {}).textContent, cls: b.className })));
-      const per = l => Number(f.find(x => x.l === l)?.n);
-      deve(f.length === 4, 'card presenti: ' + f.length + ' — ' + f.map(x => x.l).join(', '));
-      deve(per('Scadute') === 1, 'scadute: ' + per('Scadute'));
-      deve(per('Imminenti') === 1, 'imminenti (0-30): ' + per('Imminenti'));
-      deve(per('Prossime') === 2, 'prossime (31-90, i 45 e gli 80): ' + per('Prossime'));
-      deve(per('Tutte') === 5, 'tutte: ' + per('Tutte'));
-      /* Un colore per stato, e ogni card dice i premi in gioco. */
-      deve(/urg/.test(f[0].cls) && /avv/.test(f[1].cls) && /\bok\b/.test(f[2].cls), 'le card non hanno un colore per stato: ' + f.map(x => x.cls).join(' | '));
-      deve(f.every(x => /€/.test(x.sub || '')), 'una card non dice i premi in gioco');
-      /* Il clic sulla card filtra la lista sotto, subito. */
+      const per = l => f.find(x => x.l === l)?.n;
+      deve(f.length === 5, 'card presenti: ' + f.length + ' — ' + f.map(x => x.l).join(', '));
+      deve(per('Fuori i 15 giorni') === 2, 'fuori i 15 (s6 a −30, s7 a −40): ' + per('Fuori i 15 giorni'));
+      deve(per('Nei 15 giorni') === 2, 'nei 15 (s1 a −15 e la quietanza a −5): ' + per('Nei 15 giorni'));
+      deve(per('Vicine ai 15 giorni') === 1, 'vicine (s2 a +12): ' + per('Vicine ai 15 giorni'));
+      deve(per('Più avanti') === 4, 'più avanti (s3, s4, s5, s8): ' + per('Più avanti'));
+      deve(per('Tutte') === 9, 'tutte: ' + per('Tutte'));
+      const somma = ['Fuori i 15 giorni', 'Nei 15 giorni', 'Vicine ai 15 giorni', 'Più avanti']
+        .reduce((a, l) => a + per(l), 0);
+      deve(somma === per('Tutte'), 'le fasce si sovrappongono o perdono righe: ' + somma + ' contro ' + per('Tutte'));
+      deve(/urg/.test(f[0].cls) && /avv/.test(f[1].cls) && /\bok\b/.test(f[2].cls),
+        'le card non hanno un colore per stato: ' + f.map(x => x.cls).join(' | '));
+      deve(f.every(x => /€/.test(x.sub || '')), 'una card non dice gli importi in gioco');
       const n = await page.evaluate(() => {
-        [...document.querySelectorAll('#rin-fasce .rin-fascia')].find(b => /Scadute/.test(b.textContent)).click();
+        [...document.querySelectorAll('#rin-fasce .rin-fascia')].find(b => /Nei 15 giorni/.test(b.textContent)).click();
         return [...document.querySelectorAll('#rin-body tr')].filter(t => t.querySelector('td')).length;
       });
-      deve(n === 1, 'il clic sulla card «Scadute» non filtra la lista: ' + n + ' righe');
-      return '1 scaduta, 1 imminente, 2 prossime, 5 in tutto; il clic filtra';
+      deve(n === 2, 'il clic sulla card «Nei 15 giorni» non filtra la lista: ' + n + ' righe');
+      return '2 fuori, 2 in proroga, 1 vicina, 4 avanti, 9 in tutto; il clic filtra';
     });
 
-    await prova('scadenzario: si vede se il rinnovo è già stato lavorato', async () => {
-      // È la colonna che distingue uno strumento da un elenco di date.
+    await prova('scadenzario: L\'ESEMPIO DI FRANCESCO — la quietanza scaduta è ANCORA IN COPERTURA', async () => {
+      /* La rata semestrale non incassata, scaduta da pochi giorni, è dentro
+         la proroga: il cliente è coperto e si può ancora salvare. E la data
+         che fa testo è la decorrenza, non la `data_scadenza` della rata, che
+         qui è sei mesi più in là. */
       const r = await page.evaluate(() => {
-        document.getElementById('rin-stato').value = ''; window.rinFasciaScegli('tutte');
+        window.rinFasciaScegli('proroga');
         return [...document.querySelectorAll('#rin-body tr')].map(t => t.textContent.replace(/\s+/g, ' ').trim());
       });
-      deve(r.some(t => /Verdi Luca/.test(t) && /Da lavorare/.test(t)), 'la scaduta non è segnata da lavorare');
-      deve(r.some(t => /Bianchi/.test(t) && /Riquotata/.test(t)), 'la già riquotata non è riconosciuta');
-      deve(r.some(t => /Costruzioni Alfa/.test(t) && /Tacito rinnovo/.test(t)), 'il tacito rinnovo non è distinto');
+      const q = r.find(t => /Rossi Mario/.test(t));
+      deve(q, 'la quietanza non compare fra quelle in proroga: ' + r.join(' || '));
+      deve(/Quietanza di frazionamento/.test(q), 'non dice che cos\'è: ' + q);
+      deve(/ancora in copertura/.test(q), 'non dice che la copertura c\'è ancora: ' + q);
+      deve(/di proroga/.test(q), 'non dice quanti giorni di proroga restano: ' + q);
+      const badge = await page.evaluate(() => {
+        const r = [...document.querySelectorAll('#rin-body tr')].find(x => /Quietanza/.test(x.textContent));
+        return r ? r.querySelector('td:nth-child(3) .tk-badge').textContent.trim() : '';
+      });
+      deve(badge === 'Rata', 'non si distingue una rata da una scadenza di polizza: «' + badge + '»');
+      return 'quietanza scaduta da 5 gg, ancora coperta, 10 di proroga davanti';
     });
 
-    await prova('scadenzario: l\'urgenza si legge a colpo d\'occhio', async () => {
-      const t = await page.evaluate(() => document.getElementById('rin-body').textContent);
-      deve(/scaduta da 15 gg/.test(t), 'non dice da quanto è scaduta: ' + t.slice(0, 120));
+    await prova('scadenzario: «sembra rinnovata» non è «rinnovata», e non è «non rinnovata»', async () => {
+      /* Sul portafoglio vero `sostituisce_id` è vuoto su tutte e 4.003 le
+         polizze: letto da lì, l'elenco delle non rinnovate è tre volte più
+         lungo del vero. Il successore si riconosce dalla targa — ed è un
+         INDIZIO, con scritto che nessuno l'ha dichiarato. */
+      const r = await page.evaluate(() => {
+        window.rinFasciaScegli('tutte');
+        return [...document.querySelectorAll('#rin-body tr')].map(t => ({
+          testo: t.textContent.replace(/\s+/g, ' ').trim(),
+          spiega: (t.querySelector('td:nth-child(5) .tk-badge') || {}).title || ''
+        }));
+      });
+      const di = nome => r.find(x => new RegExp(nome).test(x.testo));
+      deve(/Sembra rinnovata/.test(di('Blu Marco').testo), 's7 non è riconosciuta dalla targa: ' + di('Blu Marco').testo);
+      deve(/Stessa targa/.test(di('Blu Marco').spiega) && /Nessuno l'ha dichiarato/.test(di('Blu Marco').spiega),
+        'non spiega su che cosa si basa l\'indizio: ' + di('Blu Marco').spiega);
+      deve(/Non rinnovata/.test(di('Gialli Paolo').testo), 's6 senza successore non è segnata da richiamare');
+      deve(/Rinnovata/.test(di('Bianchi').testo) && !/Sembra/.test(di('Bianchi').testo),
+        'il rinnovo dichiarato non si distingue: ' + di('Bianchi').testo);
+      deve(/Tacito rinnovo/.test(di('Costruzioni Alfa').testo), 'il tacito rinnovo non è distinto');
+      return 'dichiarata / sembra / non rinnovata / tacito: quattro parole diverse';
+    });
+
+    await prova('scadenzario: il filtro rapido «solo non rinnovate» e quello che lascia fuori', async () => {
+      /* Un conteggio che non dice che cosa lascia fuori si legge come se
+         fosse tutto: accanto al numero sta scritto quante «sembrano»
+         rinnovate, perché quelle sono esattamente le righe su cui il
+         sistema non si prende la responsabilità. */
+      const r = await page.evaluate(() => {
+        const out = {};
+        window.rinFasciaScegli('tutte');
+        out.nota = document.getElementById('rin-extra').textContent.replace(/\s+/g, ' ').trim();
+        document.querySelector('#rin-extra .rin-chip').click();
+        out.righe = [...document.querySelectorAll('#rin-body tr')].map(t => t.textContent.replace(/\s+/g, ' ').trim());
+        out.acceso = document.querySelector('#rin-extra .rin-chip').className;
+        document.querySelector('#rin-extra .rin-chip').click();
+        out.dopo = [...document.querySelectorAll('#rin-body tr')].filter(t => t.querySelector('td')).length;
+        return out;
+      });
+      deve(/Solo non rinnovate 3/.test(r.nota), 'il numero delle non rinnovate è sbagliato: ' + r.nota);
+      deve(/1 sembrano rinnovate/.test(r.nota), 'non dice quante sembrano rinnovate: ' + r.nota);
+      deve(/1 dichiarate rinnovate/.test(r.nota), 'non dice quante sono dichiarate: ' + r.nota);
+      deve(/1 a tacito rinnovo/.test(r.nota), 'non dice quante sono a tacito rinnovo: ' + r.nota);
+      deve(/2 non ancora scadute/.test(r.nota), 'non dice quante non sono ancora scadute: ' + r.nota);
+      deve(r.righe.length === 3, 'il filtro non tiene 3 righe: ' + r.righe.length);
+      deve(!r.righe.some(t => /Neri Spa/.test(t)),
+        'una polizza che scade fra sei mesi è finita fra quelle da richiamare: non è «non rinnovata», non è ancora scaduta');
+      deve(!r.righe.some(t => /Blu Marco|Bianchi|Costruzioni Alfa/.test(t)),
+        'fra le «non rinnovate» è finita una che non lo è: ' + r.righe.join(' || '));
+      deve(!r.righe.some(t => /\bRata\b/.test(t)), 'una rata è finita fra le non rinnovate: una rata non si rinnova');
+      deve(/att/.test(r.acceso), 'il filtro non si accende');
+      deve(r.dopo === 9, 'il secondo clic non lo spegne: ' + r.dopo);
+      return '3 da richiamare, 1 «sembra», 1 dichiarata, 1 tacito, 2 non ancora scadute';
+    });
+
+    await prova('scadenzario: l\'urgenza si legge a colpo d\'occhio, e «scaduta» non è «scoperta»', async () => {
+      const t = await page.evaluate(() => { window.rinFasciaScegli('tutte'); return document.getElementById('rin-body').textContent; });
+      deve(/scaduta da 15 gg · ancora in copertura/.test(t), 'non dice che a −15 la copertura c\'è ancora: ' + t.slice(0, 200));
       deve(/fra 12 gg/.test(t), 'non dice fra quanto scade');
-      const rosso = await page.evaluate(() => !!document.querySelector('#rin-body .st-scad'));
-      deve(rosso, 'la scaduta non è in rosso');
+      const c = await page.evaluate(() => {
+        const rosso = [...document.querySelectorAll('#rin-body tr')].filter(r => r.querySelector('.st-scad'))
+          .map(r => r.textContent.replace(/\s+/g, ' ').trim());
+        return rosso;
+      });
+      deve(c.length === 2, 'il rosso non è riservato a chi la copertura l\'ha persa: ' + c.length);
+      deve(c.every(x => /Gialli Paolo|Blu Marco/.test(x)), 'in rosso è finita una polizza ancora coperta: ' + c.join(' || '));
+      return 'il rosso solo a chi è fuori dai 15 giorni';
     });
 
-    await prova('scadenzario: filtri e ordinamento per scadenza', async () => {
+    await prova('scadenzario: l\'ordine mette per primo quello che è più vicino a OGGI', async () => {
+      /* Ordinare per data e basta mette in cima la polizza scaduta da più
+         tempo, che è la riga meno utile che ci sia. Qui si ordina per
+         distanza da oggi, nei due versi. La prova di prima pretendeva
+         l'ordine cronologico: misurava il mondo di ieri. */
       const r = await page.evaluate(() => {
         const conta = () => [...document.querySelectorAll('#rin-body tr')].filter(t => t.querySelector('td')).length;
         const out = {};
         window.rinFasciaScegli('tutte');
-        out.ordine = [...document.querySelectorAll('#rin-body tr td:first-child strong')].map(e => e.textContent);
+        out.ordine = [...document.querySelectorAll('#rin-body tr td:nth-child(2) strong')].map(e => e.textContent);
         document.getElementById('rin-stato').value = 'lavorato'; window.rinRender();
-        out.lavorate = conta();
-        document.getElementById('rin-stato').value = 'da_lavorare'; window.rinRender();
+        out.dichiarate = conta();
+        document.getElementById('rin-stato').value = 'nessuno'; window.rinRender();
         out.daFare = conta();
         document.getElementById('rin-stato').value = ''; document.getElementById('rin-tacito').value = 'si'; window.rinRender();
         out.tacite = conta();
-        document.getElementById('rin-tacito').value = ''; document.getElementById('rin-cliente').value = 'neri'; window.rinRender();
+        document.getElementById('rin-tacito').value = ''; document.getElementById('rin-che').value = 'rata'; window.rinRender();
+        out.soloRate = conta();
+        document.getElementById('rin-che').value = ''; document.getElementById('rin-cliente').value = 'neri'; window.rinRender();
         out.cliente = conta();
         window.rinAzzera();
         out.dopoAzzera = conta();
         return out;
       });
-      // la data in italiano gg/mm/aaaa: si confronta ribaltandola
-      const iso = s => s.split('/').reverse().join('-');
-      const ordinate = [...r.ordine].sort((a, b) => iso(a).localeCompare(iso(b)));
-      deve(JSON.stringify(r.ordine) === JSON.stringify(ordinate), 'non è ordinato per scadenza: ' + r.ordine.join(', '));
-      deve(r.lavorate === 1, 'filtro già riquotate: ' + r.lavorate);
-      deve(r.daFare === 4, 'filtro da lavorare: ' + r.daFare);
+      deve(r.ordine[0] === 'Rossi Mario', 'in cima non c\'è la scadenza più vicina a oggi: ' + r.ordine.join(', '));
+      deve(r.ordine[r.ordine.length - 1] === 'Blu Marco', 'in fondo non c\'è la più lontana: ' + r.ordine.join(', '));
+      deve(r.dichiarate === 1, 'filtro rinnovo dichiarato: ' + r.dichiarate);
+      deve(r.daFare === 3, 'filtro non rinnovate: ' + r.daFare);
       deve(r.tacite === 1, 'filtro tacito rinnovo: ' + r.tacite);
+      deve(r.soloRate === 1, 'filtro «solo rate»: ' + r.soloRate);
       deve(r.cliente === 1, 'filtro cliente: ' + r.cliente);
-      deve(r.dopoAzzera === 5, 'Azzera non ripristina tutto: ' + r.dopoAzzera);
-      return 'ordinamento + quattro filtri';
+      deve(r.dopoAzzera === 9, 'Azzera non ripristina tutto: ' + r.dopoAzzera);
+      return 'più vicino a oggi prima, e cinque filtri';
+    });
+
+    await prova('scadenzario: una rata che non si può mostrare NON sparisce, si conta', async () => {
+      /* §55: una giunzione che non trova niente non è un errore, è zero
+         righe — e in silenzio nessuno lo sa. */
+      const t = await page.evaluate(() => { window.rinFasciaScegli('tutte'); return document.getElementById('rin-totali').textContent.replace(/\s+/g, ' '); });
+      deve(/1 rate non si vedono/.test(t), 'non dichiara la rata rimasta fuori: ' + t);
+      return 'la rata orfana è contata e dichiarata';
     });
 
     await prova('scadenzario: le polizze senza scadenza non ci entrano', async () => {
@@ -5723,32 +5844,74 @@ const avvio = async () => {
       // solo rumore, perché non si può rinnovare ciò che non scade.
       const n = await page.evaluate(async () => {
         window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: [
-          { id: 'x1', cliente: 'Senza Scadenza', modulo: 'beni', prodotto: 'X', data_scadenza: null, giorni_alla_scadenza: null, sostituzioni: 0 }
+          { id: 'x1', cliente: 'Senza Scadenza', modulo: 'beni', prodotto: 'X', data_scadenza: null, sostituzioni: 0 }
         ], error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: [], error: null };
         await window.loadScadenzario();
         return [...document.querySelectorAll('#rin-body tr')].filter(t => /Senza Scadenza/.test(t.textContent)).length;
       });
       deve(n === 0, 'una polizza senza scadenza è finita nello scadenzario');
     });
 
-    await prova('scadenzario: il numero sulla voce di menu avvisa da solo', async () => {
-      const b = await page.evaluate(async (finte) => {
-        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: finte, error: null };
+    await prova('scadenzario: il numero sulla voce di menu è il lavoro di ADESSO', async () => {
+      /* Prima contava tutto quello che scadeva entro 60 giorni, comprese le
+         polizze scadute tre anni fa: un avviso che comprende la storia non
+         è un avviso. Ora conta quello che scade entro la proroga e quello
+         che è ancora dentro la proroga. */
+      const b = await page.evaluate(async (d) => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: d.p, error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: d.r, error: null };
         await window.loadScadenzario();
         const e = document.getElementById('scad-badge');
         return { testo: e.textContent, visibile: e.style.display !== 'none' };
-      }, SCADENZE_FINTE);
-      // entro 60 giorni: la scaduta, quella a 12 e quella a 45
+      }, { p: SCADENZE_FINTE, r: RATE_FINTE });
       deve(b.testo === '3', 'conteggio avviso sbagliato: ' + b.testo);
       deve(b.visibile, 'l\'avviso non si vede');
-      return b.testo + ' entro 60 giorni';
+      return b.testo + ' fra vicine e in proroga';
     });
 
-    await prova('scadenzario: i totali dicono quanto vale il rinnovo', async () => {
-      const t = await page.evaluate(() => { window.rinFasciaScegli('tutte'); return document.getElementById('rin-totali').textContent; });
-      deve(/5\s*scadenze/.test(t), 'conteggio assente: ' + t);
-      deve(/3\.404,00/.test(t), 'somma dei premi in rinnovo sbagliata: ' + t);
-      deve(/4 da lavorare/.test(t), 'non dice quante da lavorare: ' + t);
+    await prova('scadenzario: i totali, e l\'importo che manca non vale zero', async () => {
+      const t = await page.evaluate(() => { window.rinFasciaScegli('tutte'); return document.getElementById('rin-totali').textContent.replace(/\s+/g, ' '); });
+      deve(/9\s*scadenze/.test(t), 'conteggio assente: ' + t);
+      deve(/3\.904,00/.test(t), 'somma degli importi sbagliata: ' + t);
+      deve(/3 da richiamare/.test(t), 'non dice quante da richiamare: ' + t);
+    });
+
+    await prova('scadenzario: le letture sono PAGINATE, perché il server ne manda mille per volta', async () => {
+      /* Il difetto trovato misurando, ed è la quarta volta in questo
+         repository (§50, §53, §57, §61): `.limit(2000)` su 4.003 polizze ne
+         legge 1.000, e i contatori delle fasce risultavano calcolati su un
+         quarto del portafoglio senza che nessun numero lo dicesse. Un
+         limite più grande non è una correzione: è la stessa cosa scritta
+         con un numero diverso. */
+      const corpo = await page.evaluate(() => {
+        const t = window.loadScadenzario.toString();
+        return t.split('\n').filter(l => !/^\s*(\/\*|\*|\/\/)/.test(l)).join('\n');
+      });
+      deve(!/\.limit\(/.test(corpo), 'loadScadenzario ha ancora un limite scritto a mano');
+      const quante = (corpo.match(/rinTutte\(/g) || []).length;
+      deve(quante === 2, 'le letture paginate dovrebbero essere due (polizze e rate): ' + quante);
+      deve(/parziale/.test(corpo), 'non si accorge di essersi fermata: un totale parziale che non lo dice è il difetto rimesso dentro');
+      return 'nessun limite a mano, due letture paginate, parzialità dichiarata';
+    });
+
+    await prova('scadenzario: se le rate non si leggono, la schermata resta in piedi e LO DICE', async () => {
+      /* §35: le letture stanno in piedi una per una. E §12/§18: «non si è
+         potuto leggere» non è «non ce n'è» — senza quella riga la lista
+         sembrerebbe completa. */
+      const r = await page.evaluate(async (d) => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: d.p, error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: null, error: { message: 'giù' } };
+        await window.loadScadenzario();
+        const out = { righe: [...document.querySelectorAll('#rin-body tr')].filter(x => x.querySelector('td')).length,
+          tot: document.getElementById('rin-totali').textContent.replace(/\s+/g, ' ') };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: d.r, error: null };
+        await window.loadScadenzario();
+        return out;
+      }, { p: SCADENZE_FINTE, r: RATE_FINTE });
+      deve(r.righe === 8, 'le polizze non si vedono più: ' + r.righe);
+      deve(/rate non si sono potute leggere/.test(r.tot), 'non dichiara la lettura mancata: ' + r.tot);
+      return '8 polizze restano, e la mancanza è scritta';
     });
 
     await prova('sessione: nessun errore JavaScript navigando', async () => {

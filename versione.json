@@ -1,8 +1,22 @@
 {
-  "versione": "0.29.0",
-  "nome": "Contabilità · le entrate sono il denaro che si muove",
+  "versione": "0.30.0",
+  "nome": "Scadenzario · la proroga di 15 giorni",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.30.0",
+      "data": "2026-09-22",
+      "nome": "Scadenzario · la proroga di 15 giorni",
+      "voci": [
+        "Nello Scadenzario ci sono i filtri rapidi che hai chiesto: fuori i 15 giorni, nei 15 giorni (scadute ma ANCORA IN COPERTURA), vicine ai 15 giorni, più avanti. Ogni riga dice quanti giorni di proroga restano e fino a quando.",
+        "Adesso ci sono anche le RATE non incassate, non solo le scadenze di polizza: la quietanza di frazionamento del semestre compare il giorno in cui è dovuta. La data che fa testo è la scadenza della rata, mai quella dell'incasso.",
+        "Correzione grossa: la lista leggeva 1.000 polizze su 4.003, e i contatori erano calcolati su un quarto del portafoglio senza che nessun numero lo dicesse. Adesso le legge tutte.",
+        "«Non rinnovata» adesso dice la verità. Prima lo leggeva da un collegamento che sul portafoglio è vuoto su tutte e 4.003 le polizze, quindi dichiarava non rinnovate tutte e 1.665 le scadute: 1.018 di quelle hanno già la loro polizza nuova. Adesso il rinnovo si riconosce dalla targa e si dice se è dichiarato o solo un indizio — un indizio non è una dichiarazione, e accanto al numero c'è scritto quante restano fuori e perché.",
+        "Una polizza che scade fra dieci mesi non è «non rinnovata»: non è ancora scaduta, e non finisce più nell'elenco di chi richiamare.",
+        "Il numero sulla voce di menu conta il lavoro di adesso — quello che scade entro la proroga e quello che è ancora dentro la proroga — e non più le polizze scadute tre anni fa.",
+        "L'elenco mette per primo quello che è più vicino a oggi, nei due versi: una scadenza fra due giorni e una scaduta due giorni fa sono le due cose da fare adesso."
+      ]
+    },
     {
       "v": "0.29.0",
       "data": "2026-09-22",

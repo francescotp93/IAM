@@ -1,8 +1,21 @@
 {
-  "versione": "0.26.0",
-  "nome": "Contabilità · si incassa una rata",
+  "versione": "0.27.0",
+  "nome": "Contabilità · i premi da recuperare",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.27.0",
+      "data": "2026-09-22",
+      "nome": "Contabilità · i premi da recuperare",
+      "voci": [
+        "Contabilità › «Premi da recuperare»: quando metti una polizza a copertura e il premio non è ancora arrivato, adesso quel credito esiste. Si apre da lì, si vede nello scadenzario con quanto manca e da quanto, e si recupera anche un pezzo per volta.",
+        "La cosa che conta: mettere a copertura NON chiude la rata. «A copertura» vuol dire che la compagnia è a posto, non che il cliente ha pagato — la rata resta fra quelle da incassare finché il denaro non arriva davvero. Altrimenti la provvigione maturerebbe su un premio mai ricevuto.",
+        "La rata si chiude sola quando il credito arriva a zero. Se storni il sospeso, torna aperta: niente si cancella, e ogni recupero si rovescia col suo movimento.",
+        "Le due strade non si incrociano: una rata a copertura non si può incassare dalla schermata degli incassi (te lo dice, e ti manda a registrare il recupero), e una rata già incassata non si può mettere a copertura. Senza questo controllo il debito verso la compagnia nascerebbe due volte.",
+        "Più del residuo non si registra: un di più del cliente è un'eccedenza e va da un'altra parte. E il residuo non è un numero scritto in colonna, si calcola dai recuperi — così non può scostarsi dalla verità.",
+        "Corretto un vincolo che misurava il mondo di ieri: una rata poteva avere un solo movimento contabile. Con i sospesi ne ha tre o più, e il secondo recupero sarebbe morto contro un indice dopo che la schermata aveva detto «registro»."
+      ]
+    },
     {
       "v": "0.26.0",
       "data": "2026-09-22",

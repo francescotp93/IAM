@@ -6167,3 +6167,137 @@ rossa. Le rate della Fase 2 tolte da `incDaPortare` → rossa.
   il conto separato. Da correggere prima che ci si scriva sopra la prima riga.
 - **Le Fasi 3 e 4** (sospesi e recuperi; prima nota consultabile, estratto
   conto, quadratura, cruscotto) sono il resto della specifica.
+
+---
+
+## 60. Contabilità · Fase 3 — i sospesi, i premi a copertura e non ricevuti (22/09/2026)
+
+Il caso che in agenzia succede tutti i giorni: la polizza si emette e si mette
+a copertura perché il cliente non può restare scoperto, ma il premio non è
+ancora arrivato. Da quel momento l'agenzia **deve** il premio alla compagnia e
+**vanta** un credito verso il cliente. Sono due fatti, e in IAM non ne esisteva
+nessuno dei due.
+
+| pezzo | dove |
+|---|---|
+| le regole | `tariffe/motore/contabilita.js` — `righeApertura`, `righeRecupero`, `residuoCredito`, `statoCredito`, `recuperabile`, `recuperiVivi`, `scadenzarioCrediti` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **78** (erano 72) |
+| le due tabelle, i trigger, le tre funzioni | `20260922f_contab_fase3_sospesi.sql` + `20260922g_contab_fase3_indurita.sql` (applicate) |
+| la schermata | linguetta «Premi da recuperare», `#contab-panel-recuperi`, blocco `rec*` in `iam/index.html` |
+| prove sulla schermata | `iam/verifica/premi-da-recuperare.test.mjs` — 10 |
+
+### Misurato prima di scrivere
+
+**418 rate aperte, di cui 117 già scadute, per 98.488,84 €.** Quelle 117 sono
+esattamente i candidati. E: zero conti dei sospesi, zero conti di debito verso
+una compagnia — la schermata lo dice e non apre niente.
+
+### La decisione che regge tutta la fase
+
+> **L'apertura NON chiude la rata.** «A copertura» vuol dire che la compagnia è
+> a posto, non che il cliente ha pagato: la rata resta APERTA e resta nello
+> scadenzario, perché è vero che il cliente non ha pagato.
+
+Chiuderla come incassata farebbe maturare la provvigione su un premio mai
+ricevuto (§17, decisione 1) — cioè pagherebbe un collaboratore con i soldi di
+nessuno. La rata si chiude **quando il credito arriva a zero**, con la data
+dell'ultimo recupero, e torna aperta allo storno.
+
+```
+APERTURA   Dare  Sospesi clienti    Avere  Conto compagnia
+RECUPERO   Dare  Cassa / Banca…     Avere  Sospesi clienti
+```
+
+**Il recupero non ricrea il debito verso la compagnia**: quello è nato
+all'apertura. Rifarlo lo conterebbe due volte, e il conto della compagnia
+direbbe il doppio di quello che si deve — un numero grande, credibile e falso.
+
+### Il residuo si calcola, e i recuperi spenti non contano
+
+Nessuna colonna `residuo`: originale meno i recuperi **vivi**. Un residuo
+memorizzato si aggiorna da un'altra parte, e il giorno in cui si scosta dalla
+somma dei recuperi nessuno sa più quale dei due sia quello vero — è la stessa
+decisione per cui i conti non hanno un `saldo` (§26). E i recuperi spenti dallo
+storno non riducono niente: se contassero, un sospeso stornato risulterebbe
+chiuso e sparirebbe dallo scadenzario.
+
+### Le due strade non si incrociano
+
+Una rata messa a copertura alle 9 e incassata dalla Fase 2 alle 11 farebbe
+nascere **due volte** il debito verso la compagnia — e nessuno dei due indici
+unici morde, perché stanno su due tabelle diverse. **Un vincolo fra due tabelle
+Postgres non lo sa fare**: lo fanno le due funzioni, ognuna guardando l'altra,
+e il rifiuto dice che cosa fare invece («il denaro si registra come recupero»).
+
+### Il credito verso i COLLABORATORI non si rifà qui
+
+Esiste dal 19/09: sono le rate che un collaboratore ha incassato e non ha
+ancora rimesso (`EstrattoConto.creditoAgenzia`, §24). Rifarlo sarebbe il
+secondo archivio dello stesso fatto, e il giorno in cui uno dei due si chiude i
+due elenchi direbbero numeri diversi sulla stessa persona. `iam_credito_apri`
+**rifiuta** il tipo `collaboratore` e dice dove sta già quel credito.
+
+### Quattro difetti trovati dal collaudo e dalla rilettura ostile
+
+1. **`iam_movimenti_titolo_uno` diceva: una rata ha UN solo movimento.** Vero
+   quando una rata produceva una scrittura sola (M4); dalla Fase 3 ne produce
+   tre o più, e il secondo recupero moriva contro un indice **dopo** che la
+   schermata aveva detto «registro». Non si è tolto: si è **ristretto** a quello
+   che voleva dire (`origine in ('titolo','sospeso')`). La protezione vera sta
+   negli indici delle due tabelle e nei controlli incrociati.
+2. **`origine` non aveva né `credito` né `recupero`**: apertura e recupero
+   finivano dentro `sospeso`, che in casa è un'altra cosa (§32).
+3. **Le causali non esistevano.** `GENERI` dichiara `apertura_credito` e
+   `recupero_credito` dal 19/09 e nessuna causale li portava: usare «Incasso
+   premi» per un'apertura sarebbe stato chiamare incasso una cosa che incasso
+   non è. `incide_su_utile` è **falso** su tutte e due — un premio a copertura è
+   denaro di qualcun altro, e contarlo come ricavo direbbe che l'agenzia ha
+   guadagnato il premio intero (§26).
+4. **Il residuo si ricalcola con la riga BLOCCATA** (`for update`): leggerlo
+   dalla schermata vorrebbe dire fidarsi di un numero letto mezz'ora fa, e due
+   recuperi partiti insieme lo porterebbero sotto zero.
+
+### Due cose trovate dalle prove, non dal ragionamento
+
+- **Lo scadenzario metteva in cima un sospeso stornato.** Ordinare per data
+  attesa e basta mette righe morte davanti a quelle da chiamare: uno
+  scadenzario è una lista di lavoro. Adesso prima i vivi, poi per data.
+- **Una controprova restata verde, e la prova era debole.** Rinominata
+  `recPagina` in `recPaginaVia`, la prova che cercava `function recPagina`
+  restava verde: cercava il **nome**, non la chiamata. Adesso cerca
+  `recPagina(` e pretende che sia chiamata **due** volte — paginare solo i
+  sospesi e non i recuperi lascia il residuo calcolato su metà dei recuperi,
+  cioè si va a chiedere dei soldi a chi li ha già dati. *Una controprova che
+  non fa diventare rossa nessuna prova accusa la prova* (§15, §17, §18, §19,
+  §41, §46, §56).
+
+### E una regola di casa presa in flagrante
+
+Le funzioni indurite erano nel database e **non nel file**. L'ha trovato una
+prova, che cercava il corpo corretto e leggeva la migrazione precedente — cioè
+il mondo di mezz'ora prima. **Una funzione che vive solo nel database è una
+regola che nessuno può rileggere**: il file è la fonte di verità, e la prova
+adesso legge il corpo di *quella* funzione e non il file intero (§34: si cerca
+dentro la chiamata, non nel blocco).
+
+### Collaudato sul database vero, e annullato
+
+apertura → **la rata resta aperta**; secondo sospeso sulla stessa rata →
+rifiutato; incasso su una rata a copertura → rifiutato; recupero parziale →
+residuo 6,00 e rata ancora aperta; oltre il residuo → rifiutato; tipo
+`collaboratore` → rifiutato; recupero finale → rata **incassata**; storno → 2
+recuperi rovesciati e rata di nuovo aperta. Saldo del conto sospesi e del conto
+compagnia alla fine: **0,00 e 0,00**.
+
+### Cosa resta aperto
+
+- **I conti non ci sono ancora**: nessun conto dei sospesi, nessun conto di
+  debito. La schermata lo dice e non apre niente.
+- **L'abbuono per chiudere un residuo che non arriverà mai** non c'è: un
+  residuo di 0,50 € resta nello scadenzario per sempre. La strada è un recupero
+  marcato sul conto «Abbuoni passivi», che però oggi è `natura: 'premi'` e va
+  corretto prima (aperta già dichiarata in §59).
+- **L'eccedenza** (il cliente dà più del residuo) si rifiuta e si dichiara: non
+  ha ancora una strada sua.
+- **La Fase 4** (prima nota consultabile, estratto conto, quadratura,
+  esportazione, cruscotto) è il resto della specifica.

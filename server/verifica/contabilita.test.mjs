@@ -1451,6 +1451,119 @@ prova('Fase 2 · il saldo di un conto legge le RIGHE, non la testata', () => {
   return 'cassa 120, banca 180, compagnia −300; senza righe si legge la testata';
 });
 
+/* ═══════════ FASE 3 — I SOSPESI ════════════════════════════════════════ */
+
+const F3_CONTI = F2_CONTI.concat([
+  { id: 'sosp2', nome: 'Sospesi clienti', tipologia: 'credito', natura: 'premi', attivo: true,
+    e_conto_sospeso: true, e_mezzo_pagamento: true }
+]);
+const F3_CRED = { id: 'k1', titolo_id: 't1', cliente_id: 'cl1', polizza_id: 'p1',
+                  conto_sospeso_id: 'sosp2', importo_originale: 500, aperto_il: '2026-09-01',
+                  previsto_il: '2026-09-15', compagnia: 'Prima Assicurazioni', attivo: true };
+
+prova('Fase 3 · l\'apertura: Dare sui sospesi, Avere sulla compagnia', () => {
+  const r = C.righeApertura({ titolo_id: 't1', importo: 500, conto_sospeso_id: 'sosp2',
+    compagnia: 'Prima Assicurazioni', cliente_id: 'cl1' },
+    { conti: F3_CONTI, compagnie: F2_COMP });
+  deve(r.ok, 'non ha prodotto le righe: ' + r.motivo);
+  deve(r.righe.length === 2, 'un\'apertura ha due righe, non ' + r.righe.length);
+  deve(r.righe[0].conto_id === 'sosp2' && r.righe[0].dare === 500, 'il credito non nasce sul conto dei sospesi');
+  deve(r.righe[1].conto_id === 'dPRI' && r.righe[1].avere === 500, 'il debito non nasce sul conto della compagnia');
+  deve(C.bilanciato(r.righe).ok, 'le righe non quadrano');
+  /* Un credito su un conto di denaro direbbe che quei soldi ci sono. */
+  const su = C.righeApertura({ titolo_id: 't1', importo: 500, conto_sospeso_id: 'cassa',
+    compagnia: 'PRIMA' }, { conti: F3_CONTI, compagnie: F2_COMP });
+  deve(!su.ok && /non è un conto di sospesi/i.test(su.motivo),
+    'un credito è finito su un conto di denaro: ' + su.motivo);
+  return 'Dare sospesi 500, Avere compagnia 500; conto di denaro rifiutato';
+});
+
+prova('Fase 3 · il residuo si CALCOLA, e lo stato si deriva', () => {
+  deve(C.residuoCredito(F3_CRED, []).residuo === 500, 'senza recuperi il residuo non è l\'originale');
+  deve(C.statoCredito(F3_CRED, []) === 'aperto', 'senza recuperi non è aperto');
+  const uno = [{ credito_id: 'k1', importo: 200, attivo: true }];
+  deve(C.residuoCredito(F3_CRED, uno).residuo === 300, 'il residuo non scende');
+  deve(C.statoCredito(F3_CRED, uno) === 'parziale', 'con un recupero parziale non è «parziale»');
+  const tutti = uno.concat([{ credito_id: 'k1', importo: 300, attivo: true }]);
+  deve(C.statoCredito(F3_CRED, tutti) === 'chiuso', 'recuperato tutto non è «chiuso»');
+  /* Un recupero spento dallo storno non conta: se contasse, un credito
+     stornato risulterebbe chiuso e sparirebbe dallo scadenzario. */
+  const spento = [{ credito_id: 'k1', importo: 500, attivo: false }];
+  deve(C.residuoCredito(F3_CRED, spento).residuo === 500, 'un recupero spento riduce ancora il residuo');
+  /* E i recuperi di un ALTRO credito non riducono questo. */
+  deve(C.residuoCredito(F3_CRED, [{ credito_id: 'altro', importo: 500, attivo: true }]).residuo === 500,
+    'il recupero di un altro sospeso riduce questo');
+  deve(C.statoCredito(Object.assign({}, F3_CRED, { stornato_il: 'x' }), []) === 'stornato', 'lo storno non si vede');
+  return '500 → 300 → chiuso; spenti e altrui non contano';
+});
+
+prova('Fase 3 · il recupero riduce i SOSPESI, non ricrea il debito verso la compagnia', () => {
+  const r = C.righeRecupero(F3_CRED, { conto_id: 'cassa', importo: 200 },
+    { conti: F3_CONTI, recuperi: [], causale: F2_CAU });
+  deve(r.ok, 'non ha prodotto le righe: ' + r.motivo);
+  deve(r.righe[0].conto_id === 'cassa' && r.righe[0].dare === 200, 'il denaro non entra sul conto scelto');
+  deve(r.righe[1].conto_id === 'sosp2' && r.righe[1].avere === 200, 'l\'Avere non riduce il conto dei sospesi');
+  /* Se l'Avere andasse sulla compagnia, il debito nascerebbe due volte. */
+  deve(!r.righe.some(x => x.conto_id === 'dPRI'),
+    'il recupero tocca il conto della compagnia: il debito verso di lei nascerebbe due volte');
+  deve(!r.chiude, 'un recupero parziale dichiara di chiudere');
+  const fine = C.righeRecupero(F3_CRED, { conto_id: 'cassa', importo: 300 },
+    { conti: F3_CONTI, recuperi: [{ credito_id: 'k1', importo: 200, attivo: true }], causale: F2_CAU });
+  deve(fine.ok && fine.chiude && fine.residuo_dopo === 0, 'l\'ultimo recupero non dichiara di chiudere');
+  return 'Dare cassa, Avere sospesi, niente compagnia; chiude solo l\'ultimo';
+});
+
+prova('Fase 3 · più del residuo non si recupera, e un credito non si recupera con un altro credito', () => {
+  const troppo = C.recuperabile(F3_CRED, [{ credito_id: 'k1', importo: 200, attivo: true }], 400);
+  deve(!troppo.si && /residuo/i.test(troppo.motivo) && /eccedenza/i.test(troppo.motivo),
+    'accetta più del residuo, o non dice dove va il di più: ' + troppo.motivo);
+  deve(!C.recuperabile(Object.assign({}, F3_CRED, { stornato_il: 'x' }), [], 10).si, 'si recupera un sospeso stornato');
+  deve(!C.recuperabile(F3_CRED, [{ credito_id: 'k1', importo: 500, attivo: true }], 10).si, 'si recupera un sospeso chiuso');
+  const cc = C.righeRecupero(F3_CRED, { conto_id: 'sosp2', importo: 100 },
+    { conti: F3_CONTI, recuperi: [], causale: F2_CAU });
+  deve(!cc.ok && /credito/i.test(cc.motivo), 'un credito si recupera con un altro credito: ' + cc.motivo);
+  return 'oltre il residuo no, stornato no, chiuso no, credito-su-credito no';
+});
+
+prova('Fase 3 · lo scadenzario somma solo i vivi, e il ritardo lo dice la data prevista', () => {
+  const crediti = [
+    F3_CRED,
+    { id: 'k2', titolo_id: 't2', conto_sospeso_id: 'sosp2', importo_originale: 100,
+      aperto_il: '2026-09-10', previsto_il: '2026-10-30', attivo: true },
+    { id: 'k3', titolo_id: 't3', conto_sospeso_id: 'sosp2', importo_originale: 80,
+      aperto_il: '2026-08-01', previsto_il: '2026-08-15', attivo: false, stornato_il: 'x' }
+  ];
+  const rec = [{ credito_id: 'k1', importo: 200, attivo: true }];
+  const sc = C.scadenzarioCrediti(crediti, rec, { oggi: '2026-09-22' });
+  deve(sc.aperti === 2, 'i sospesi vivi non sono due: ' + sc.aperti);
+  deve(sc.da_recuperare === 400, 'il totale da recuperare non è 300+100: ' + sc.da_recuperare);
+  deve(sc.in_ritardo === 1 && sc.totale_ritardo === 300, 'il ritardo non è quello del 15/09: ' + JSON.stringify(sc));
+  deve(sc.stornati === 1, 'lo stornato non si conta a parte');
+  /* Lo stornato NON entra nei totali: se entrasse, si andrebbe a chiedere dei
+     soldi per un credito che non esiste più. */
+  deve(sc.da_recuperare !== 480, 'un sospeso stornato è ancora nei totali');
+  /* E l'ordine è per data attesa: lo scadenzario serve a sapere chi chiamare
+     prima. */
+  deve(sc.righe[0].credito.id === 'k1', 'lo scadenzario non mette per primo quello atteso prima');
+  return '2 vivi, 400 da recuperare, 1 in ritardo per 300';
+});
+
+prova('Fase 3 · il motore non chiede l\'ora al computer', () => {
+  /* Un motore che guarda l'orologio dà risposte diverse a due persone sullo
+     stesso dato (§44, §45). `oggi` lo passa chi chiama. */
+  const src = readFileSync(join(RADICE, 'tariffe', 'motore', 'contabilita.js'), 'utf8');
+  const da = src.indexOf('FASE 3 — I SOSPESI');
+  const a = src.indexOf('var API = {', da);
+  deve(da > 0 && a > da, 'non trovo il blocco della Fase 3');
+  const blocco = src.slice(da, a).split('\n').filter(r => !/^\s*(\/\/|\*|\/\*)/.test(r)).join('\n');
+  deve(!/new Date\(\s*\)/.test(blocco), 'la Fase 3 chiede l\'ora al computer di chi guarda');
+  deve(!/Date\.now\(/.test(blocco), 'la Fase 3 chiede l\'ora al computer di chi guarda');
+  /* E senza `oggi` non si inventa un ritardo. */
+  const sc = C.scadenzarioCrediti([F3_CRED], [], {});
+  deve(sc.righe[0].in_ritardo === false, 'senza sapere che giorno è, dichiara un ritardo');
+  return 'nessun orologio, e senza «oggi» nessun ritardo inventato';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

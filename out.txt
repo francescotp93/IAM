@@ -1,4 +1,4 @@
-id: v0260b-1790049433  exit: 0  2026-09-22 03:57:26
+id: v0270-1790053015  exit: 0  2026-09-22 04:57:18
 ----
 df0aa63 Contabilità · Fase 2 — l'incasso di una o più rate (0.26.0) (#236)
 app-versione" content="0.26.0"

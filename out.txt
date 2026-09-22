@@ -1,4 +1,4 @@
-id: v0250b-1790025311  exit: 0  2026-09-21 21:15:29
+id: v0260-1790049375  exit: 0  2026-09-22 03:56:54
 ----
 eb09fe3 Il cliente si sceglie da una schermata vera (0.25.0) (#235)
 app-versione" content="0.25.0"

@@ -7619,3 +7619,145 @@ linguette ne accendano **una sola**.
   19/09/2026 (§18): su un cliente vecchio il riquadro è vuoto e lo dice.
 - **Le rate si leggono per le prime 200 polizze del cliente**: nessuno ne ha
   così tante, ma il tetto esiste e non è ancora dichiarato in schermata.
+
+---
+
+## 66. La spesa che non sottraeva, e i sospesi senza nome (22/09/2026)
+
+Due segnalazioni nello stesso messaggio, e la prima era già stata «corretta»
+il giorno prima. Tutte e due si sono risolte **misurando prima di toccare**, e
+tutte e due la misura ha detto una cosa diversa da quella che sembrava.
+
+| pezzo | dove |
+|---|---|
+| le regole | `contropartiteAmmesse`, `effettoAtteso`, `chiTiene` in `tariffe/motore/contabilita.js` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **119** (erano 107), 4 controprove |
+| la tendina e l'effetto | `pntContro` / `pntEffetto` in `iam/index.html` |
+| i sospesi a due famiglie | blocco `spr*` in `iam/index.html` |
+| prove sulle schermate | `prima-nota` (18), `sospesi-premi` (21), `incassi-accreditare` (11) |
+
+### 1. «Se c'è uscita deve sempre sottrarre. Tuttora non funziona.»
+
+**Il cancello funzionava. Era quello il problema.** Misurato prima di
+cambiare una riga: girato sui conti veri, `righeSemplici` rifiutava
+«CARTA DI CREDITO → CONTO AZIENDALE» e accettava «CARTA DI CREDITO → Costi
+di agenzia». E sul database i due movimenti sbagliati erano stati **annullati
+alle 18:50**, senza che ne nascesse uno nuovo.
+
+> Quindi «non funziona» non voleva dire «scrive il numero sbagliato»: voleva
+> dire **non si riesce più a registrare la spesa**. La tendina offriva tutti
+> i conti, lui sceglieva l'unico che gli veniva in mente — quello su cui la
+> carta è appoggiata — e si prendeva un muro di testo.
+
+**Una domanda che ha una sola risposta onesta non si fa: si propone la
+risposta.** E le risposte disoneste non si mettono in elenco, perché un
+elenco che contiene la risposta sbagliata è un invito a darla. La tendina
+adesso offre solo conti di costo per un'uscita che incide sul risultato, solo
+conti di ricavo per un'entrata, tutto il resto per un giroconto — e se ne
+resta uno solo è già scelto («aggancia solo se è una», §19).
+
+**E l'effetto si vede prima di salvare**, in euro col segno:
+*CARTA DI CREDITO UNICREDIT −170,00 € · Costi di agenzia +170,00 €*. La
+regola si controlla guardandola, e le righe disegnate sono **quelle che
+verranno scritte** — non un secondo conto fatto a parte, che un giorno
+direbbe un numero diverso.
+
+**Un buco che ha trovato la prova, non la rilettura.** La prova che confronta
+la tendina col rifiuto su tutte le combinazioni ha scoperto che
+`righeSemplici` **accettava** una spesa con contropartita su «Ricavi di
+agenzia»: il cancello guardava solo i conti di liquidità. Un ricavo in
+contropartita di una spesa direbbe che l'agenzia ha guadagnato quello che ha
+speso. Adesso il salvataggio chiama la **stessa** funzione che riempie la
+tendina: una regola sola, non due che si somigliano.
+
+### 2. «Nei sospesi non c'ho nessun tipo di sospeso»
+
+Misurato sul database, e la misura spiega tutto: la voce «Oddo Francesco»
+esiste ed è scritta su **due polizze** e su **zero rate**. Le loro due rate
+risultano **già incassate** — una dice «carta di credito», l'altra non dice
+niente. `daIncassare` leggeva solo `quote_titoli.mezzo_pagamento` e solo le
+rate aperte: nessuna delle due poteva comparire, e l'elenco era vuoto senza
+sbagliare niente.
+
+Da qui la distinzione che regge tutto il resto, e che i due campi avevano già
+addosso senza che nessuno l'avesse scritta:
+
+> **`quote_titoli.mezzo_pagamento` dice COME il cliente ha pagato** quella
+> rata: è un fatto della compagnia.
+> **`quote_polizze.mezzo_pagamento` dice come paga questo cliente** (§16), ed
+> è una risposta che si corregge a mano. Quando quella risposta è una
+> **PERSONA** non è una strada di pagamento: è **qualcuno che tiene quei
+> soldi e ne deve rendere conto.**
+
+Le due cose non si escludono: il cliente ha pagato Oddo con la carta, e Oddo
+ha i soldi. Quindi una persona sulla polizza vince sul mezzo della rata per
+la domanda «chi lo tiene», e il mezzo della rata resta scritto accanto come
+«pagata con…». Dove non c'è nessuna persona vale il mezzo della rata, e se la
+rata non lo dichiara si legge quello della polizza **marcato ereditato** —
+leggere quello che la polizza dichiara non è inventare, ma va detto: «lo dice
+la rata» e «lo dice la polizza» non sono la stessa cosa. Sul portafoglio vero
+sono **339 rate su 380** che smettono di essere «Da dichiarare».
+
+La regola sta in **una funzione sola** (`chiTiene`), perché la usano due
+schermate — i Sospesi e gli Incassi da accreditare — e due regole su chi ha in
+mano un premio sarebbero due elenchi che un giorno dicono cose diverse sulla
+stessa persona.
+
+**Due famiglie dentro lo stesso gruppo**, e confonderle vorrebbe dire non
+sapere a chi telefonare:
+
+| famiglia | che cos'è | il verbo |
+|---|---|---|
+| `versare` | il cliente ha pagato, i soldi li tiene lui | **Scarica** → Incassi da accreditare |
+| `incassare` | il cliente deve ancora pagare | **Incassa** → Incassa una rata |
+
+Prima viene sempre `versare`: è denaro che esiste e che si può farsi dare
+oggi. **Telefonare a chi ha già pagato è il modo più veloce di perdere un
+cliente.**
+
+**E una rata incassata conta come sospeso solo se a tenerla è una persona.**
+Per un POS o un bonifico il ritardo è di giorni e lo sorveglia «Incassi da
+accreditare» (§32): quelle **si contano e si dichiarano**, con il numero,
+l'importo e la porta dove si lavorano (§55). Una rata già entrata in
+contabilità esce da qui, e i posti in cui quel fatto è scritto sono
+**quattro** — guardarne uno solo li dichiara tutti mancanti (§62).
+
+### Un difetto vecchio di un giorno, e non si vedeva
+
+`destinoIncasso` chiamava `mezzo(k)` **senza il vocabolario**: leggeva solo le
+nove voci di casa, e la voce «Oddo Francesco» — nata in tabella il 22/09 —
+risultava «non nel vocabolario». Conseguenza: nessun bottone, e quel premio
+fuori dalla contabilità per sempre. È il difetto del vocabolario spostato in
+tabella (§64) lasciato indietro in una funzione, e l'ha preso la prova.
+
+**Una persona non è un conto**, e adesso lo dice: il sospeso nasce **senza
+conto** e il conto si sceglie quando i soldi arrivano davvero. Inventarne uno
+sarebbe §8.1; rispondere «non si sa» toglierebbe il bottone, che è peggio.
+
+### Una controprova che restava verde perché la prova cercava il NOME
+
+`mezzo_polizza: null` passava una prova che cercava `/mezzo_polizza:/`. Il
+campo c'era e non portava niente. Adesso la prova cerca **il valore**
+(`mezzo_polizza: p.mezzo_pagamento`). *Una prova che cerca un nome invece di
+un valore assolve qualunque codice che quel nome lo scriva.*
+
+### E quattro prove finite nel posto sbagliato
+
+Le prove nuove di `prima-nota` erano state inserite **dopo il ciclo che le
+esegue**: finivano nell'elenco, il totale saliva da 14 a 18, e **non girava
+nessuna**. Tre controprove di fila sono restate verdi senza che il codice
+fosse giusto. *Quando una controprova resta verde, prima di accusare la prova
+si guarda se la prova è stata eseguita: il totale che sale e le righe stampate
+che non salgono sono il sintomo.*
+
+### Cosa resta aperto
+
+- **I due movimenti sbagliati restano annullati**, ed è giusto: un movimento
+  registrato non si riscrive. La spesa di Roma si rifà con «Costi di agenzia»
+  come contropartita.
+- **Nessun conto dichiara ancora quali mezzi riceve** (§32): finché è così,
+  scaricare un sospeso chiede il conto a mano, che è la strada giusta ma più
+  lenta.
+- **Le 339 rate che ereditano la voce dalla polizza** adesso si vedono nei
+  sospesi divise per mezzo: sono premi in transito veri, ma nessuno li aveva
+  mai guardati tutti insieme.

@@ -190,6 +190,25 @@ prova('il cancello dell\'admin esiste ED E\' CHIAMATO', () => {
   return 'bottoni + finestra + RLS';
 });
 
+prova('una rata che non dichiara il mezzo, ma che TIENE una persona, si registra lo stesso', () => {
+  /* Misurato sul portafoglio vero: delle due rate di Oddo Francesco una non
+     dice con che mezzo il cliente ha pagato. Leggendo solo la rata, quella
+     restava «non si sa» e senza bottone — cioè un premio che nessuno poteva
+     più portare in contabilità. La regola «chi tiene i soldi» sta nel motore
+     e vale per tutte e due le schermate. */
+  const j = H.split('\n').filter(r => !/^\s*(\/\/|\*|\/\*)/.test(r)).join('\n');
+  deve(/quote_polizze\(mezzo_pagamento\)/.test(j),
+    'le rate incassate si leggono senza il mezzo dichiarato sulla polizza');
+  deve(/mezzo_polizza: \(t\.quote_polizze \|\| \{\}\)\.mezzo_pagamento/.test(j),
+    'il mezzo della polizza non arriva al motore');
+  /* E il motore fa quello che serve: la persona sulla polizza vince. */
+  const V = [{ codice: 'col_x', nome: 'Rossi Mario', contabilizza: 'sospeso', collaboratore_id: 'c1' }];
+  const d = C.destinoIncasso({ mezzo_pagamento: null, mezzo_polizza: 'col_x', importo_lordo: 100 }, [], V);
+  deve(d.tipo === 'sospeso' && d.persona === true,
+    'una rata senza mezzo ma tenuta da una persona resta «non si sa»: ' + d.tipo);
+  return 'la polizza dice chi la tiene, e il bottone c\'è';
+});
+
 console.log('\n══ INCASSI DA ACCREDITARE (IAM) ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

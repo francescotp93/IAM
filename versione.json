@@ -1,8 +1,20 @@
 {
-  "versione": "0.36.0",
-  "nome": "La scheda cliente come un gestionale",
+  "versione": "0.37.0",
+  "nome": "La spesa sottrae, e i sospesi hanno un nome",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.37.0",
+      "data": "2026-09-22",
+      "nome": "La spesa sottrae, e i sospesi hanno un nome",
+      "voci": [
+        "LE SPESE. Registrando un movimento non si sceglie più «l'altro conto» fra tutti: la tendina offre solo quelli che hanno senso per quella causale — una spesa vuole un conto di costo, un incasso un conto di ricavo, un giroconto gli altri conti di denaro. Se la risposta giusta è una sola, è già scelta.",
+        "E PRIMA DI SALVARE SI VEDE CHE COSA SUCCEDE AI SALDI: «CARTA DI CREDITO −170,00 €», scritto in chiaro sotto il modulo. Un'uscita sottrae sempre dal conto che l'ha pagata, e adesso lo si controlla guardandolo invece di fidarsi.",
+        "I SOSPESI ORA HANNO UN NOME. Se su una polizza dichiari che i premi li tiene un collaboratore, Contabilità › Sospesi lo mostra con quante rate tiene e per quanti euro — anche quando il cliente ha già pagato, che è proprio il caso in cui quei soldi non sono ancora in agenzia.",
+        "Dentro il gruppo le due cose restano separate e non si confondono: «il cliente ha già pagato, questi soldi li tiene lui» (si scarica dicendo su quale conto sono arrivati) e «il cliente deve ancora pagare» (si incassa). Telefonare a chi ha già pagato è il modo più veloce di perdere un cliente.",
+        "E quello che resta fuori si conta e si dichiara: le rate incassate con POS, bonifico o carta non stanno fra i sospesi di nessuno — arrivano da sole — e la schermata dice quante sono, per quanto, e dove si seguono."
+      ]
+    },
     {
       "v": "0.36.0",
       "data": "2026-09-22",

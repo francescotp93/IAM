@@ -270,6 +270,86 @@ prova('il vocabolario ha un ripiego: una tendina vuota è peggio di una corta', 
   return 'nove voci di sempre quando la tabella non risponde';
 });
 
+
+/* ═══ LA PERSONA STA SULLA POLIZZA (22/09/2026) ════════════════════════════
+   «se vado in contabilità e sospesi non c'ho nessun tipo di sospeso.
+    Realmente lì mi dovrebbe far vedere che Oddo Francesco ha un sospeso, due
+    sospesi, tre sospesi, per il valore in euro del totale.»
+   Misurato: la voce era su DUE POLIZZE e su ZERO RATE, e la schermata leggeva
+   solo la rata — e solo le rate aperte. */
+
+prova('la schermata legge anche il mezzo della POLIZZA, non solo quello della rata', () => {
+  const b = blocco();
+  deve(/quote_polizze!?[a-z]*\([^)]*mezzo_pagamento/.test(b),
+    'non chiede al database il mezzo dichiarato sulla polizza');
+  /* Il campo non basta che ci sia: deve portare il valore della POLIZZA.
+     Un `mezzo_polizza: null` passa qualunque prova che cerchi solo il nome —
+     e la controprova lo ha dimostrato restando verde. */
+  deve(/mezzo_polizza: p\.mezzo_pagamento/.test(b),
+    'il campo c\'è ma non porta il mezzo dichiarato sulla polizza');
+  return 'la polizza dice chi tiene i soldi';
+});
+
+prova('le rate GIÀ INCASSATE di chi tiene i premi si leggono, e solo quelle', () => {
+  const b = blocco();
+  deve(/\.eq\('stato', 'incassato'\)/.test(b), 'le rate incassate non si leggono mai');
+  /* Non si scaricano tutte e 2.787: solo quelle di una polizza che una persona
+     tiene. Per un mezzo una rata incassata è un accredito in arrivo (§32). */
+  deve(/collaboratore_id/.test(b), 'le incassate si leggono senza restringere a chi le tiene');
+  deve(/\.in\('quote_polizze\.mezzo_pagamento'/.test(b),
+    'non si restringe alle polizze di una persona: scaricherebbe tutto l\'archivio');
+  return 'solo le rate di chi le tiene';
+});
+
+prova('una rata già in contabilità non ricompare: i posti sono QUATTRO', () => {
+  /* §62: guardarne uno solo li dichiara tutti mancanti. */
+  const b = blocco();
+  ['iam_movimenti', 'iam_movimenti_righe', 'iam_incassi_rate', 'iam_sospesi'].forEach(t => {
+    deve(new RegExp("'" + t + "'").test(b), 'non guarda ' + t);
+  });
+  deve(/in_contabilita/.test(b), 'non dice al motore che quella rata è già entrata');
+  /* E se una di queste letture non riesce, la schermata resta in piedi: si
+     vedono più sospesi del vero, che è il verso meno pericoloso. */
+  deve(/cntMorbida\(/.test(b), 'una tabella che non risponde spegne la schermata');
+  return 'quattro strade, e nessuna la fa cadere';
+});
+
+prova('le due famiglie si vedono separate, e ognuna porta il suo verbo', () => {
+  const b = blocco();
+  deve(/spr-fam/.test(b), 'le due famiglie non si distinguono');
+  deve(/Il cliente ha gi/.test(b) && /deve ancora pagare/.test(b),
+    'non si dice in parole che cosa distingue le due famiglie');
+  /* Due azioni diverse: un premio che qualcuno ha in mano si SCARICA dicendo
+     su quale conto è arrivato; una rata non pagata si INCASSA. */
+  deve(/sprAccredita\(\)/.test(b), 'manca il tasto per scaricare quello che qualcuno tiene');
+  deve(/function sprAccredita\(\)\s*\{\s*selContabTab\('incassi'\)/.test(b),
+    'scaricare non porta agli incassi da accreditare');
+  return 'Scarica e Incassa, e non si confondono';
+});
+
+prova('quello che resta fuori si CONTA e si dichiara, con la porta', () => {
+  /* §55: un elenco che fa sparire delle righe senza contarle non dice quante
+     ne restano e perché. */
+  const b = blocco();
+  deve(/incassate_fuori/.test(b), 'le rate incassate con un mezzo spariscono senza un numero');
+  deve(/Incassi da accreditare/.test(b), 'non dice dove si lavorano');
+  return 'il numero, l\'importo e la porta';
+});
+
+prova('una PERSONA non è un conto, e l\'incasso si registra lo stesso', () => {
+  /* Prima di oggi `destinoIncasso` leggeva la lista di casa: una voce
+     aggiunta in schermata risultava «non nel vocabolario», il bottone non
+     compariva, e quel premio restava fuori dalla contabilità per sempre. */
+  const j = soloJs(H);
+  deve(/destinoIncasso\(t, INC_CONTI, INC_MODALITA\)/.test(j),
+    'la schermata degli incassi non passa il vocabolario al motore');
+  deve(/INC_MODALITA = md\.error \? \[\] : \(md\.data \|\| \[\]\)/.test(j),
+    'il vocabolario non si legge, oppure un guasto spegne la schermata');
+  deve(/conto_id: d\.conto \? d\.conto\.id : null/.test(j),
+    'un sospeso senza conto non si può scrivere: il conto di una persona non esiste');
+  return 'il vocabolario arriva, e il conto si sceglie dopo';
+});
+
 console.log('\n══ SOSPESI E MODALITÀ ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

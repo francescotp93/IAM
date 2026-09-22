@@ -2142,6 +2142,203 @@ prova('un GIROCONTO fra due conti resta possibile: non è un costo', () => {
   return 'giroconto sì, e senza i conti non si indovina';
 });
 
+
+/* ═══ LA CONTROPARTITA SI PROPONE, E L'EFFETTO SI VEDE (22/09/2026) ════════
+   Seconda segnalazione sulla stessa riga: «se c'è uscita deve sempre
+   sottrarre da quel conto là, tuttora non funziona». Misurato: il cancello
+   RIFIUTAVA, e la tendina continuava a offrire la risposta sbagliata. */
+const CONTI_CP = CONTI_SP.concat([
+  { id: 'ricavi', nome: 'Ricavi di agenzia', tipologia: 'ricavo', natura: 'aziendale' },
+  { id: 'cassa', nome: 'CASSA CONTANTI', tipologia: 'cassa', natura: 'premi' },
+  { id: 'spento', nome: 'Vecchio conto', tipologia: 'costo', natura: 'aziendale', attivo: false }
+]);
+const CAUS_CP = CAUS_SP.concat([
+  { id: 'pr', codice: 'provvigioni_entrata', nome: 'Provvigioni in entrata', segno: 'entrata', incide_su_utile: true }
+]);
+
+prova('una SPESA offre solo conti di costo, e propone il solo che c\'è', () => {
+  const a = C.contropartiteAmmesse({ conto_id: 'carta', causale_id: 'sp' },
+    { causali: CAUS_CP, conti: CONTI_CP });
+  deve(a.conti.length === 1 && a.conti[0].id === 'costi',
+    'la tendina offre ' + a.conti.map(x => x.nome).join(', '));
+  deve(a.proposto === 'costi', 'non propone la sola risposta onesta');
+  /* Il conto spento non si offre, e nemmeno il conto che si sta muovendo:
+     un movimento da un conto a se stesso non muove niente. */
+  deve(!a.conti.some(x => x.id === 'spento'), 'offre un conto spento');
+  deve(!a.conti.some(x => x.id === 'carta'), 'offre il conto stesso come contropartita');
+  return '1 sola voce, ed è proposta';
+});
+
+prova('un INCASSO vuole un ricavo, non un costo: non si mescolano', () => {
+  const a = C.contropartiteAmmesse({ conto_id: 'carta', causale_id: 'pr' },
+    { causali: CAUS_CP, conti: CONTI_CP });
+  deve(a.conti.length === 1 && a.conti[0].id === 'ricavi', 'offre ' + a.conti.map(x => x.nome).join(', '));
+  /* Un ricavo in contropartita di una spesa direbbe che l'agenzia ha
+     guadagnato quello che ha speso. */
+  const sp = C.contropartiteAmmesse({ conto_id: 'carta', causale_id: 'sp' }, { causali: CAUS_CP, conti: CONTI_CP });
+  deve(!sp.conti.some(x => x.id === 'ricavi'), 'una spesa può finire su un conto di ricavo');
+  return 'ricavo all\'entrata, costo all\'uscita';
+});
+
+prova('un GIROCONTO offre i conti di denaro e NON quelli di costo', () => {
+  const a = C.contropartiteAmmesse({ conto_id: 'carta', causale_id: 'gir' },
+    { causali: CAUS_CP, conti: CONTI_CP });
+  deve(a.conti.some(x => x.id === 'az') && a.conti.some(x => x.id === 'cassa'), 'non offre i conti di denaro');
+  deve(!a.conti.some(x => x.tipologia === 'costo' || x.tipologia === 'ricavo'),
+    'un giroconto può finire su un conto di costo');
+  deve(a.proposto === null, 'con due risposte possibili ne propone una');
+  return 'denaro sì, costo no, e con due non si indovina';
+});
+
+prova('la tendina e il rifiuto sono la STESSA regola', () => {
+  /* Se divergessero, la schermata proporrebbe quello che il salvataggio poi
+     respinge — che è esattamente il muro contro cui Francesco ha sbattuto. */
+  const casi = [['sp', 'carta'], ['pr', 'carta'], ['gir', 'carta']];
+  for (const [cz, conto] of casi) {
+    const a = C.contropartiteAmmesse({ conto_id: conto, causale_id: cz }, { causali: CAUS_CP, conti: CONTI_CP });
+    for (const c of CONTI_CP) {
+      if (c.id === conto || c.attivo === false) continue;
+      const offerto = a.conti.some(x => x.id === c.id);
+      const r = C.righeSemplici({ conto_id: conto, contropartita_id: c.id, causale_id: cz, importo: 10 },
+        { causali: CAUS_CP, conti: CONTI_CP });
+      if (offerto && !r.ok) throw new Error('offre «' + c.nome + '» su ' + cz + ' e poi lo rifiuta: ' + r.motivo);
+      if (!offerto && r.ok && (cz === 'sp' || cz === 'pr'))
+        throw new Error('non offre «' + c.nome + '» su ' + cz + ' e poi lo accetta');
+    }
+  }
+  return '3 causali × 5 conti, nessuna divergenza';
+});
+
+prova('senza causale non si offre niente, e si dice perché', () => {
+  const a = C.contropartiteAmmesse({ conto_id: 'carta' }, { causali: CAUS_CP, conti: CONTI_CP });
+  deve(a.conti.length === 0, 'offre dei conti senza sapere che movimento è');
+  deve(/causale/i.test(a.motivo || ''), 'non dice che serve la causale');
+  /* E se un conto di costo non c'è, lo dice e dice dove si crea: un elenco
+     vuoto senza spiegazione è un muro (§12, §18). */
+  const senza = C.contropartiteAmmesse({ conto_id: 'carta', causale_id: 'sp' },
+    { causali: CAUS_CP, conti: CONTI_CP.filter(c => c.tipologia !== 'costo') });
+  deve(senza.conti.length === 0 && /[Cc]onti e causali/.test(senza.motivo || ''),
+    'senza conti di costo non manda a crearne uno: ' + senza.motivo);
+  return 'la causale prima, e il buco si dichiara';
+});
+
+prova('L\'EFFETTO SI VEDE: una spesa SOTTRAE dal conto che l\'ha pagata', () => {
+  /* La richiesta, con le sue parole: «se c'è uscita deve sempre sottrarre da
+     quel conto là». Le righe sono quelle che verranno scritte davvero. */
+  const r = C.righeSemplici({ conto_id: 'carta', contropartita_id: 'costi', causale_id: 'sp', importo: 170 },
+    { causali: CAUS_CP, conti: CONTI_CP });
+  const e = C.effettoAtteso(r.righe, CONTI_CP);
+  const carta = e.find(x => x.conto_id === 'carta');
+  deve(carta && carta.delta === -170, 'la carta non scende di 170: ' + JSON.stringify(e));
+  deve(carta.nome === 'CARTA DI CREDITO', 'il conto non si chiama col suo nome');
+  /* E un'entrata sale. */
+  const r2 = C.righeSemplici({ conto_id: 'carta', contropartita_id: 'ricavi', causale_id: 'pr', importo: 80 },
+    { causali: CAUS_CP, conti: CONTI_CP });
+  deve(C.effettoAtteso(r2.righe, CONTI_CP).find(x => x.conto_id === 'carta').delta === 80,
+    'un incasso non fa salire il conto');
+  return '−170 sulla carta, +80 su un incasso';
+});
+
+/* ═══ I SOSPESI DI UNA PERSONA (22/09/2026) ═══════════════════════════════ */
+const VOC_P = [
+  { codice: 'contante', nome: 'Contanti', contabilizza: 'subito', ordine: 10 },
+  { codice: 'carta_credito', nome: 'Carta di credito', contabilizza: 'sospeso', ordine: 50, giorni_attesi: 2 },
+  { codice: 'col_oddo', nome: 'Oddo Francesco', contabilizza: 'sospeso', collaboratore_id: 'c1', ordine: 100 }
+];
+/* Le due polizze vere di Francesco: la voce «Oddo Francesco» è sulla POLIZZA
+   e su nessuna rata, e tutte e due le rate risultano già incassate. */
+const RATE_P = [
+  { id: 'r1', stato: 'incassato', incassato_il: '2026-09-18', mezzo_pagamento: 'carta_credito',
+    mezzo_polizza: 'col_oddo', importo_lordo: 400, cliente: 'CARPITELLA GUIDO', numero_polizza: 'BLP831839290' },
+  { id: 'r2', stato: 'incassato', incassato_il: '2026-09-16', mezzo_pagamento: null,
+    mezzo_polizza: 'col_oddo', importo_lordo: 262.98, cliente: 'SPADA VINCENZO', numero_polizza: 'BLP918634492' },
+  { id: 'r3', stato: 'incassato', incassato_il: '2026-09-01', mezzo_pagamento: 'carta_credito',
+    mezzo_polizza: 'carta_credito', importo_lordo: 99, cliente: 'ALTRO' },
+  { id: 'r4', stato: 'aperto', data_decorrenza: '2026-08-01', mezzo_pagamento: null,
+    mezzo_polizza: 'col_oddo', importo_lordo: 50, cliente: 'TERZO' },
+  { id: 'r5', stato: 'aperto', data_decorrenza: '2026-08-01', mezzo_pagamento: null,
+    mezzo_polizza: 'carta_credito', importo_lordo: 70, cliente: 'QUARTO' },
+  { id: 'r6', stato: 'aperto', data_decorrenza: '2026-08-01', importo_lordo: 30, cliente: 'QUINTO' }
+];
+
+prova('IL DIFETTO DI FRANCESCO: la persona sta sulla POLIZZA, e i suoi premi si vedono', () => {
+  /* «se vado in contabilità e sospesi non c'ho nessun tipo di sospeso.
+      Realmente lì mi dovrebbe far vedere che Oddo Francesco ha un sospeso,
+      due sospesi, tre sospesi, per il valore in euro del totale.» */
+  const e = C.daIncassare(RATE_P, VOC_P, { oggi: '2026-09-22' });
+  const g = e.gruppi.find(x => x.etichetta === 'Oddo Francesco');
+  deve(g, 'Oddo Francesco non compare fra i gruppi');
+  deve(g.tipo === 'collaboratore', 'non è riconosciuto come persona');
+  deve(g.n_versare === 2 && Math.abs(g.totale_versare - 662.98) < 0.005,
+    'le rate che tiene sono ' + g.n_versare + ' per ' + g.totale_versare + ' (attese 2 per 662,98)');
+  deve(e.da_versare === 2 && Math.abs(e.totale_da_versare - 662.98) < 0.005, 'il riepilogo non torna');
+  return '2 rate per 662,98 €, ed è in cima';
+});
+
+prova('«pagata con la carta» e «li tiene Oddo» sono due fatti, e restano tutti e due', () => {
+  const e = C.daIncassare(RATE_P, VOC_P, { oggi: '2026-09-22' });
+  const g = e.gruppi.find(x => x.etichetta === 'Oddo Francesco');
+  const r1 = g.righe.find(x => x.id === 'r1');
+  deve(r1.mezzo_rata_l === 'Carta di credito', 'il mezzo con cui il cliente ha pagato si perde');
+  /* E dove la rata non dichiara niente, la voce la eredita dalla polizza — ma
+     lo DICE: «lo dice la rata» e «lo dice la polizza» non sono la stessa cosa. */
+  const q = e.gruppi.find(x => x.etichetta === 'Carta di credito').righe.find(x => x.id === 'r5');
+  deve(q.ereditato === true, 'la voce ereditata dalla polizza non si dichiara');
+  const nostro = g.righe.find(x => x.id === 'r1');
+  deve(nostro.ereditato === false, 'una voce scritta sulla rata risulta ereditata');
+  return 'il mezzo resta scritto, e l\'eredità si dichiara';
+});
+
+prova('una rata GIÀ IN CONTABILITÀ non è più un sospeso', () => {
+  const con = RATE_P.map(r => (r.id === 'r1' ? Object.assign({}, r, { in_contabilita: true }) : r));
+  const e = C.daIncassare(con, VOC_P, { oggi: '2026-09-22' });
+  const g = e.gruppi.find(x => x.etichetta === 'Oddo Francesco');
+  deve(g.n_versare === 1, 'una rata accreditata resta fra i sospesi: ' + g.n_versare);
+  deve(e.incassate_fuori === 2, 'non si conta quello che resta fuori: ' + e.incassate_fuori);
+  return 'ne resta 1, e quella accreditata si conta fuori';
+});
+
+prova('una rata incassata con un MEZZO non è un sospeso: è un accredito in arrivo', () => {
+  const e = C.daIncassare(RATE_P, VOC_P, { oggi: '2026-09-22' });
+  const g = e.gruppi.find(x => x.etichetta === 'Carta di credito');
+  deve(g.n_versare === 0, 'una carta incassata finisce fra i sospesi di qualcuno');
+  /* Non sparisce: si conta e si dichiara, con la porta dove si lavora (§55). */
+  deve(e.incassate_fuori === 1 && e.totale_incassate_fuori === 99,
+    'quello che resta fuori non si conta: ' + e.incassate_fuori + ' / ' + e.totale_incassate_fuori);
+  return '1 rata fuori per 99 €, contata e dichiarata';
+});
+
+prova('le due famiglie non si confondono, e prima viene quello che qualcuno ha in mano', () => {
+  const e = C.daIncassare(RATE_P, VOC_P, { oggi: '2026-09-22' });
+  const g = e.gruppi.find(x => x.etichetta === 'Oddo Francesco');
+  deve(g.n === g.n_versare + g.n_incassare, 'le due famiglie non sommano al gruppo');
+  deve(Math.abs(g.totale - (g.totale_versare + g.totale_incassare)) < 0.005, 'i due totali non tornano');
+  deve(g.righe[0].famiglia === 'versare' && g.righe[g.righe.length - 1].famiglia === 'incassare',
+    'l\'ordine mette prima le rate che il cliente deve ancora pagare');
+  /* Una rata sta in UNA famiglia sola: telefonare a chi ha già pagato è il
+     modo più veloce di perdere un cliente. */
+  deve(g.righe.filter(r => r.famiglia === 'versare').length === 2, 'le famiglie si mescolano');
+  return '3 rate: 2 da versare e 1 da incassare, in quest\'ordine';
+});
+
+prova('una PERSONA non è un conto: l\'incasso si può registrare lo stesso', () => {
+  /* Prima di oggi `destinoIncasso` leggeva solo la lista di casa: una voce
+     aggiunta in schermata risultava «non nel vocabolario», il bottone non
+     compariva e quel premio restava fuori dalla contabilità per sempre. */
+  const conti = [{ id: 'cassa', nome: 'CASSA', tipologia: 'cassa', mezzi: ['contante'] }];
+  const d = C.destinoIncasso({ mezzo_pagamento: 'col_oddo', importo_lordo: 400, incassato_il: '2026-09-18' },
+    conti, VOC_P);
+  deve(d.tipo === 'sospeso', 'una persona non produce un sospeso: ' + d.tipo + ' — ' + (d.motivo || ''));
+  deve(d.persona === true, 'non si dichiara che a tenerli è una persona');
+  deve(d.conto == null, 'inventa un conto per una persona');
+  deve(/Oddo Francesco/.test(d.motivo || ''), 'il motivo non dice chi li tiene');
+  /* Senza il vocabolario, invece, quella voce non si conosce — ed è giusto
+     che lo dica invece di indovinare. */
+  const cieco = C.destinoIncasso({ mezzo_pagamento: 'col_oddo', importo_lordo: 400 }, conti);
+  deve(cieco.tipo === 'non-si-sa', 'senza vocabolario indovina una voce che non conosce');
+  return 'sospeso senza conto, e il conto si sceglie all\'accredito';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

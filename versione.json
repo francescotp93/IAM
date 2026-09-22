@@ -1,8 +1,19 @@
 {
-  "versione": "0.33.0",
-  "nome": "Contabilità in pagine separate",
+  "versione": "0.34.0",
+  "nome": "La polizza a colpo d’occhio",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.34.0",
+      "data": "2026-09-22",
+      "nome": "La polizza a colpo d’occhio",
+      "voci": [
+        "LA SCHEDA DELLA POLIZZA HA LA DENSITÀ DI UN GESTIONALE. In cima una riga con numero, compagnia, prodotto, targa e stato del pagamento; sotto tutti i campi in colonne invece che uno sotto l'altro; e le RATE e i SINISTRI affiancati, che sono le due cose che si guardano aprendo una polizza.",
+        "La causa per cui si vedeva male non era una scelta di grafica: due nomi di stile che quella scheda usava NON ESISTEVANO nel foglio di stile, quindi le regole venivano ignorate in silenzio e la scheda usciva nuda. Stessa cosa per la finestra «Come paga», che ora ha una cornice, una testata e un piede.",
+        "Una prova nuova prende ogni classe che quelle due schermate scrivono e pretende di ritrovarla nel foglio di stile: è l'unico modo di accorgersi di un difetto che non dà nessun errore.",
+        "I sinistri della polizza si leggono dal dettaglio, e da lì se ne apre uno nuovo. Se la lettura non riesce lo dice, invece di scrivere «nessun sinistro»."
+      ]
+    },
     {
       "v": "0.33.0",
       "data": "2026-09-22",

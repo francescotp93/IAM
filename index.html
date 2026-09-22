@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.33.0">
-<meta name="app-versione-nome" content="Contabilità in pagine separate">
+<meta name="app-versione" content="0.34.0">
+<meta name="app-versione-nome" content="La polizza a colpo d’occhio">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -922,6 +922,92 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .clpk-r .clpk-det{font-size:11.5px;color:var(--w1-testo2);margin-top:2px}
 .clpk-tag{font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px;background:var(--w1-verde-tenue);color:var(--w1-verde-scuro);flex:none}
 .clpk-vuoto{padding:16px 13px;font-size:12.5px;color:var(--w1-testo2);line-height:1.5}
+/* ── LA POLIZZA A COLPO D'OCCHIO (22/09/2026) ────────────────────────────
+   Richiesta di Francesco, con sotto gli occhi la scheda polizza del suo
+   gestionale: «non riusciamo a fare qualcosa di simile? Magari risulta un po'
+   piu' pratico da vedere? ovviamente sempre con interfaccia IAM».
+
+   MISURATO PRIMA DI DISEGNARE, e la causa non era una scelta estetica:
+   `.pol-griglia` e `.pol-r` NON ESISTEVANO in questo foglio di stile. Il
+   dettaglio polizza e la finestra del pagamento scrivevano quei nomi e nessuna
+   regola li raggiungeva — quindi uscivano nudi, una riga sotto l'altra, senza
+   colonne e senza cornice. E' lo stesso difetto preso sui Sospesi di IAM
+   (CLAUDE.md §65): **una classe che non esiste viene ignorata in silenzio**,
+   e chi la guarda pensa a un disegno fatto male.
+
+   I gettoni sono quelli condivisi (`withus-one-tokens.css`): niente colori
+   scritti a mano, come per il modulo della polizza nuova (§44). I due che
+   quel file non porta si dichiarano sul contenitore, mai su :root. */
+.pol-kit{
+  /* I gettoni che `withus-one-tokens.css` non porta si dichiarano QUI, sul
+     contenitore e mai su :root — la tavolozza di una schermata non deve
+     ridipingere il resto del documento (§31, §44). Senza, `var(--w1-card)`
+     non risolve e la proprieta' viene ignorata IN SILENZIO. */
+  --w1-card:#fff;
+  --w1-ombra:var(--w1-ombra-sm);
+  --w1-ambra-bg:#fff4e6}
+/* La testata densa: quello che si legge per primo su una polizza sta su una
+   riga sola — numero, compagnia, prodotto, targa. */
+.pol-testa{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:baseline;
+  padding:10px 12px;margin-bottom:12px;border:1px solid var(--w1-bordo);
+  border-radius:var(--w1-raggio);background:var(--w1-verde-tenue)}
+.pol-testa .pol-num{font-family:ui-monospace,monospace;font-size:15px;font-weight:800;color:var(--w1-verde-scuro)}
+.pol-testa .pol-et{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--w1-testo2);display:block}
+.pol-testa .pol-v{font-size:13px;font-weight:700;color:var(--w1-testo)}
+/* Il corpo: TRE colonne su schermo largo, come la scheda di un gestionale.
+   Una riga per campo, etichetta piccola sopra e valore sotto: in verticale si
+   legge tutto insieme invece di scorrere. */
+.pol-griglia{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));
+  gap:1px;background:var(--w1-bordo);border:1px solid var(--w1-bordo);
+  border-radius:var(--w1-raggio);overflow:hidden;margin-bottom:14px}
+.pol-r{background:var(--w1-card);padding:7px 11px;min-width:0}
+.pol-r span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--w1-testo2);margin-bottom:1px}
+.pol-r b{font-size:13px;font-weight:700;color:var(--w1-testo);word-break:break-word}
+.pol-r b .cl-sub{font-weight:400}
+/* Le due tabelle affiancate: rate a sinistra, sinistri a destra — e su
+   telefono una sotto l'altra. */
+.pol-due{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px;margin-bottom:6px}
+.pol-cassetto{border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);background:var(--w1-card);overflow:hidden}
+.pol-cassetto > h4{margin:0;padding:8px 11px;font-size:11px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--w1-testo2);background:var(--w1-sfondo);border-bottom:1px solid var(--w1-bordo);
+  display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.pol-cassetto > h4 .pol-azione{text-transform:none;letter-spacing:0;font-weight:700;font-size:11.5px;
+  color:var(--w1-verde-scuro);cursor:pointer;text-decoration:underline}
+.pol-cassetto .pol-vuoto{padding:11px;font-size:12px;color:var(--w1-testo2);line-height:1.5}
+.pol-cassetto table{width:100%;border-collapse:collapse;font-size:12px}
+.pol-cassetto th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--w1-testo2);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--w1-bordo)}
+.pol-cassetto td{padding:6px 8px;border-top:1px solid var(--w1-bordo2);vertical-align:top}
+.pol-cassetto .soldi{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* La finestra «Come paga»: `.pnu-ov` e le sue parti non esistevano, quindi
+   quella finestra usciva come un elenco di campi appoggiati sulla pagina —
+   e' la stessa storia di `.pol-griglia`. */
+.pnu-ov{position:fixed;inset:0;z-index:1200;background:rgba(16,36,54,.45);
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.pnu-box{background:var(--w1-card);border:1px solid var(--w1-bordo);
+  border-radius:var(--w1-raggio);box-shadow:var(--w1-ombra);
+  width:100%;max-height:90vh;overflow:auto}
+/* `.pnu-box` NON eredita i margini negativi di `.pnu-kit`: quelli servono a
+   incastrare il modulo dentro una scheda, e dentro una finestra farebbero
+   sbordare il contenuto. */
+.pnu-ov .pnu-kit{margin:0;padding:0;background:var(--w1-card)}
+.pnu-testa{padding:14px 18px 10px;border-bottom:1px solid var(--w1-bordo);font-size:14px}
+.pnu-corpo{padding:14px 18px}
+.pnu-lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+  font-weight:700;color:var(--w1-testo2);margin-bottom:5px}
+.pnu-piede{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;
+  border-top:1px solid var(--w1-bordo);background:var(--w1-sfondo)}
+.pnu-ko{color:var(--w1-rosso);font-size:12px;margin-top:6px}
+/* Tre nomi che erano SOLO appigli per le prove e nessuna regola li toccava.
+   Un appiglio senza regola e' una classe che non esiste, e il guardiano
+   «ogni classe che la pagina scrive esiste» non puo' distinguerla da un
+   refuso: adesso ognuna fa qualcosa di piccolo e vero. */
+.pol-produttore{font-weight:700}
+.pol-rata-aperta td{background:var(--w1-ambra-bg)}
+.pol-firma{margin-top:14px;padding-top:10px;border-top:1px solid var(--w1-bordo);
+  font-size:11.5px;color:var(--w1-testo2);line-height:1.6}
+@media(max-width:640px){.pol-due{grid-template-columns:1fr}.pol-testa{gap:6px 12px}}
 @media(max-width:640px){.pnu-griglia{grid-template-columns:1fr}.pnu-kit{padding:12px}
   .clpk-ov{padding:0}.clpk-f{max-width:none;border-radius:0;min-height:100%}}
 /* Le attività recenti: una riga per movimento, e si apre solo quella che
@@ -15780,15 +15866,39 @@ async function polDettaglio(id) {
   const prod = await polProduttore(p, rate);
 
   const riga = (et, val) => `<div class="pol-r"><span>${et}</span><b>${val}</b></div>`;
+  /* I SINISTRI DI QUESTA POLIZZA, accanto alle rate (22/09/2026). Nella scheda
+     del gestionale che Francesco usa stanno affiancati, ed è giusto: sono le
+     due cose che si guardano aprendo una polizza. Se la lettura non riesce
+     NON si scrive «nessun sinistro» — sarebbe la bugia peggiore possibile su
+     questa tabella (§12, §18). */
+  let sin = [], sinKo = '';
+  try {
+    const r = await db.from('quote_sinistri')
+      .select('id,numero_sx,ramo,stato,data_accadimento,data_denuncia')
+      .eq('polizza_id', id).order('data_accadimento', { ascending: false });
+    if (r.error) throw r.error;
+    sin = r.data || [];
+  } catch (e) { sinKo = e.message || String(e); }
   document.getElementById('pol-ov').querySelector('.pdoc-sub').textContent =
     (p.cliente || '') + (p.prodotto ? ' · ' + p.prodotto : '');
-  const pag = PF_PAG[p.stato_pagamento] || null;
+  /* Lo stato del pagamento lo dicono le RATE, non la colonna (§65): la stessa
+     regola e la stessa funzione del pannello del pagamento — due letture
+     dello stesso stato sono due stati. */
+  const stp = Contabilita.statoPagamento(p, rate, mezVoc());
   const mezzo = pfMezzoNome(p.mezzo_pagamento);
   document.getElementById('pol-bd').innerHTML = `
+    <div class="pol-kit">
+    <!-- LA TESTATA: quello che si legge per primo su una polizza sta su una
+         riga sola, come nella scheda di un gestionale (22/09/2026). -->
+    <div class="pol-testa">
+      <div><span class="pol-et">Polizza</span><span class="pol-num">${esc(p.numero_polizza || pfNumero(p))}</span></div>
+      <div><span class="pol-et">Compagnia</span><span class="pol-v">${esc(p.compagnia || '—')}</span>${
+        ssf.compagnia_rischio ? `<div class="cl-sub">rischio: ${esc(ssf.compagnia_rischio)}</div>` : ''}</div>
+      <div><span class="pol-et">Prodotto</span><span class="pol-v">${esc(p.prodotto || p.modulo || '—')}</span></div>
+      ${v && v.targa ? `<div><span class="pol-et">Targa</span><span class="pol-num">${esc(v.targa)}</span></div>` : ''}
+      <div><span class="pol-et">Stato del pagamento</span><span class="pol-v">${esc((stp || {}).etichetta || '—')}</span></div>
+    </div>
     <div class="pol-griglia">
-      ${riga('Numero di compagnia', esc(p.numero_polizza || '—'))}
-      ${riga('Compagnia', esc(p.compagnia || '—') + (ssf.compagnia_rischio ? ' <span class="pdoc-opt">rischio: ' + esc(ssf.compagnia_rischio) + '</span>' : ''))}
-      ${riga('Prodotto', esc(p.prodotto || p.modulo || '—'))}
       ${riga('Emissione', `<input type="date" id="pol-emissione" value="${esc(p.data_emissione || '')}" onchange="polSalvaEmissione('${esc(p.id)}')" style="font:inherit;border:1px solid var(--line);border-radius:4px;padding:2px 4px">`
           + (p.data_emissione ? '' : ' <span class="cl-sub">da indicare</span>'))}
       ${riga('Effetto → scadenza', polData(p.data_effetto) + ' → ' + (p.data_scadenza ? polData(p.data_scadenza) : '<span class="tk-badge st-aperto">da confermare</span>') + sosRigaScadenza(p))}
@@ -15797,16 +15907,26 @@ async function polDettaglio(id) {
       ${riga('Frazionamento', esc(p.frazionamento || '—') + (p.tacito_rinnovo ? ' · tacito rinnovo' : ' · senza tacito rinnovo'))}
       ${riga('Premio', (p.premio_annuo != null ? 'annuo ' + pfEuro(p.premio_annuo) : '<span class="cl-sub">annuo da confermare</span>')
           + (p.premio_rata != null ? ' · rata ' + pfEuro(p.premio_rata) : ''))}
-      ${riga('Pagamento', (mezzo ? esc(mezzo) : '<span class="cl-sub">mezzo da indicare</span>') + (pag ? ' · ' + esc(pag[0]) : '')
+      ${riga('Come paga', (mezzo ? esc(mezzo) : '<span class="cl-sub">da indicare</span>')
           + ` <a href="#" onclick="event.preventDefault();polPagamento('${esc(p.id)}')" style="font-size:11px;color:var(--blue);text-decoration:underline">correggi</a>`)}
+      ${riga('Stato del pagamento', esc((stp || {}).etichetta || '—')
+          + '<div class="cl-sub" style="font-weight:400">' + esc((stp || {}).motivo || '') + '</div>')}
       ${riga('Produttore', (prod.avviso
           ? `<span class="tk-badge st-aperto pol-produttore">${esc(prod.testo)}</span>`
           : `<span class="pol-produttore">${esc(prod.testo)}</span>`)
         + (prod.da ? ' <span class="cl-sub">' + esc(prod.da) + '</span>' : ''))}
     </div>
 
-    <div class="flu-sez">Rate in scadenza</div>
-    ${polRateInScadenza(rate)}
+    <!-- Le due cose che si guardano aprendo una polizza, AFFIANCATE: le rate
+         e i sinistri. Su telefono una sotto l'altra. -->
+    <div class="pol-due">
+      <div class="pol-cassetto"><h4>Rate — ${rate.length || 'nessuna'}
+        <span class="pol-azione" onclick="polPagamento('${esc(p.id)}')">tutte e l'incasso</span></h4>
+        ${polRateInScadenza(rate)}</div>
+      <div class="pol-cassetto"><h4>Sinistri — ${sinKo ? '?' : (sin.length || 'nessuno')}
+        ${p.cliente_id ? `<span class="pol-azione" onclick="document.getElementById('pol-ov').remove();apriNuovoSinistro('${esc(p.cliente_id)}')">apri un sinistro</span>` : ''}</h4>
+        ${polSinistri(sin, sinKo)}</div>
+    </div>
 
     <div class="flu-sez">Garanzie — ${gar.length || 'nessuna nel flusso'}</div>
     ${gar.length ? `<table class="storico-table"><thead><tr><th>Garanzia</th><th class="soldi">Netto</th><th class="soldi">Tasse</th><th class="soldi">Lordo</th></tr></thead><tbody>
@@ -15828,7 +15948,8 @@ async function polDettaglio(id) {
       <button class="rin-az" onclick="polPagamento('${esc(p.id)}')"><i class="ti ti-cash"></i> Pagamento</button>
       <button class="rin-az" onclick="document.getElementById('pol-ov').remove();pdocApri('${esc(p.id)}')"><i class="ti ti-folder"></i> Documenti</button>
     </div>
-    ${polFirma(p)}`;
+    ${polFirma(p)}
+    </div>`;
   regInstalla('pol-storia', 'polizza', p.id, { nome: p.creato_nome, il: p.creato_il, azione: 'Polizza creata' });
 }
 
@@ -16012,14 +16133,30 @@ async function sosScadenzario() {
       </tr>`).join('')}</tbody></table></div>`;
 }
 
+/* I sinistri della polizza, accanto alle rate. «Non si è potuto leggere» non
+   è «non ce ne sono» (§12, §18): su una tabella di sinistri è la bugia
+   peggiore possibile — chi la legge smette di cercare. */
+function polSinistri(sin, ko) {
+  if (ko) return '<div class="pol-vuoto">Non riesco a leggere i sinistri.<br><small>' + esc(ko)
+    + ' — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerli.</small></div>';
+  if (!sin || !sin.length) return '<div class="pol-vuoto">Nessun sinistro su questa polizza.</div>';
+  return `<table><thead><tr><th>Accadimento</th><th>Numero</th><th>Ramo</th><th>Stato</th></tr></thead><tbody>
+    ${sin.map(x => `<tr>
+      <td>${polData(x.data_accadimento)}</td>
+      <td style="font-family:ui-monospace,monospace">${esc(x.numero_sx || '—')}</td>
+      <td>${esc(x.ramo || '—')}</td>
+      <td><span class="tk-badge st-aperto">${esc(x.stato || 'aperto')}</span></td></tr>`).join('')}
+    </tbody></table>`;
+}
+
 function polRateInScadenza(rate) {
   const oggi = new Date().toISOString().slice(0, 10);
   const aperte = (rate || [])
     .filter(r => r.stato !== 'incassato' && r.stato !== 'annullato' && r.stato !== 'stornato')
     .sort((a, b) => String(a.data_decorrenza || '') < String(b.data_decorrenza || '') ? -1 : 1);
-  if (!rate || !rate.length) return '<div class="cl-sub">Nessuna rata registrata: arrivano dal flusso della compagnia o dalla pagina Titoli.</div>';
-  if (!aperte.length) return `<div class="cl-sub">Tutte le ${rate.length} rate sono incassate: niente in scadenza.</div>`;
-  return `<table class="storico-table"><thead><tr><th>Decorrenza</th><th>Tipo</th><th class="soldi">Importo</th><th>Stato</th></tr></thead><tbody>
+  if (!rate || !rate.length) return '<div class="pol-vuoto">Nessuna rata registrata: arrivano dal flusso della compagnia o dalla pagina Titoli.</div>';
+  if (!aperte.length) return `<div class="pol-vuoto">Tutte le ${rate.length} rate sono incassate: niente in scadenza.</div>`;
+  return `<table><thead><tr><th>Decorrenza</th><th>Tipo</th><th class="soldi">Importo</th><th>Stato</th></tr></thead><tbody>
     ${aperte.slice(0, 5).map(r => {
       const scaduta = r.data_decorrenza && String(r.data_decorrenza).slice(0, 10) < oggi;
       return `<tr class="pol-rata-aperta"><td style="font-size:12px">${polData(r.data_decorrenza)}</td>
@@ -16027,7 +16164,7 @@ function polRateInScadenza(rate) {
         <td class="soldi">${pfEuro(r.importo_lordo)}</td>
         <td><span class="tk-badge ${scaduta ? 'st-scad' : 'st-aperto'}">${scaduta ? 'scaduta' : esc(r.stato || 'aperta')}</span></td></tr>`;
     }).join('')}
-    </tbody></table>${aperte.length > 5 ? `<div class="cl-sub">e altre ${aperte.length - 5}: tutte nel pagamento.</div>` : ''}`;
+    </tbody></table>${aperte.length > 5 ? `<div class="pol-vuoto">e altre ${aperte.length - 5}: tutte nel pagamento.</div>` : ''}`;
 }
 
 /* CHI HA PRODOTTO QUESTA POLIZZA. Tre risposte possibili, nessuna indovinata:

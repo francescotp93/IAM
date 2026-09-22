@@ -875,3 +875,31 @@ Le stesse di prima, più niente di nuovo:
 
 - Se un giorno «Premi da recuperare» o «Incassi da accreditare» dovessero
   tornare nel menu, è una riga in `iam/withus-one.js` (più `?v=` e impronta).
+
+---
+
+## 22/09/2026 · 0.34.0 — la polizza a colpo d'occhio
+
+### 🟡 Scelte prese e dichiarate
+
+- **La scheda polizza ha una testata densa, una griglia a colonne e rate e
+  sinistri affiancati.** *Indietro:* è tutto dentro `polDettaglio` e il blocco
+  `.pol-*`.
+- **Definite le classi che non esistevano** (`pol-griglia`, `pol-r`, `pnu-ov`
+  e le parti della finestra «Come paga»): era la causa vera del «si vede male».
+- **Tre appigli per le prove adesso fanno qualcosa di vero**
+  (`pol-produttore`, `pol-rata-aperta`, `pol-firma`): un appiglio senza regola
+  il guardiano non lo distingue da un refuso.
+- **I sinistri della polizza si leggono dal dettaglio**, con una lettura sua:
+  se cade lo dice invece di scrivere «nessun sinistro».
+
+### 🔴 Serve il tuo ok
+
+Le stesse di prima. Niente di nuovo.
+
+### 📝 Fuori perimetro, annotato
+
+- **Scheda cliente e foglio cassa**: la richiesta è fatta per metà. Mancano le
+  linguette della scheda cliente (polizze/titoli/sinistri/pagamenti/sospesi) e
+  la tabella più densa del foglio cassa — due lavori a sé, e nessuno dei due
+  ha classi mancanti da riparare.

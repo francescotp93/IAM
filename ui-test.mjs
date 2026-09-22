@@ -1298,7 +1298,14 @@ const avvio = async () => {
         return { prima, deciso, upd, log };
       }, { POL, COL });
       deve(r.prima.emissione === '2026-09-10', 'la data di emissione non si vede nel campo: ' + r.prima.emissione);
-      deve(/Bonifico/.test(r.prima.html) && /Pagato/.test(r.prima.html), 'il pagamento (mezzo e stato) non si legge nel dettaglio');
+      /* La colonna diceva «pagato», ma la polizza ha una rata ANCORA APERTA
+         con il bonifico dichiarato: dal 22/09 lo stato lo dicono le rate, e la
+         risposta vera e' «Sospeso» — premio in copertura, non ancora in casa
+         (§65). La prova misurava il mondo di ieri: si e' aggiornata la REGOLA
+         (il mezzo e lo stato si leggono, col motivo), non il numero. */
+      deve(/Bonifico/.test(r.prima.html), 'il mezzo di pagamento non si legge nel dettaglio');
+      deve(/Sospeso/.test(r.prima.html), 'lo stato dedotto dalle rate non si legge nel dettaglio');
+      deve(/rata aperta/.test(r.prima.html), 'lo stato non dice PERCHE\': un\'etichetta senza motivo non si controlla');
       deve(r.prima.rateAperte === 1 && /16\/03\/2027/.test(r.prima.html), 'le rate in scadenza: ' + r.prima.rateAperte + ' (attesa 1, quella del 16/03/2027)');
       /* La frase è cambiata il 21/09/2026 («non associato», la parola del
          brief) e la prova non la insegue: quello che deve restare vero è che
@@ -11077,7 +11084,10 @@ const avvio = async () => {
          era scritta al singolare perche' allora ce n'era uno solo, e un
          guardiano che ammette l'eccezione a un nome proprio invece che a una
          categoria costringe a riscriverlo a ogni schermata nuova. */
-      const CONTENITORI = ['.pnu-kit{', '.clpk{'];
+      /* L'elenco cresce quando una schermata nuova entra nel kit: e' una
+         CATEGORIA, non un nome proprio (§58). `.pol-kit{` e' il dettaglio
+         polizza, portato sul kit il 22/09/2026. */
+      const CONTENITORI = ['.pnu-kit{', '.clpk{', '.pol-kit{'];
       let fuoriDalContenitore = css;
       for (const c of CONTENITORI) {
         deve(css.includes(c), 'il kit non dichiara i gettoni mancanti sul contenitore ' + c);
@@ -11268,6 +11278,120 @@ const avvio = async () => {
       deve(r.lungo === 2, 'su due anni escono ' + r.lungo + ' rate');
       deve(r.avvisoLungo.includes('contratto_oltre_l_anno'), 'non si dice che le altre nascono al rinnovo');
       return '6 mesi → 1 rata, 2 anni → 2 rate, con gli avvisi';
+    });
+
+    await prova('polizza: la scheda ha la DENSITA\' di un gestionale, e ogni classe esiste', async () => {
+      /* Richiesta di Francesco (22/09/2026), con sotto gli occhi la scheda
+         polizza del suo gestionale: «non riusciamo a fare qualcosa di simile?
+         Magari risulta un po' piu' pratico da vedere?».
+         E la causa non era una scelta estetica: `.pol-griglia` e `.pol-r` NON
+         ESISTEVANO nel foglio di stile. Quella scheda usciva nuda, una riga
+         sotto l'altra. E' lo stesso difetto preso sui Sospesi di IAM (§65):
+         una classe che non esiste viene ignorata IN SILENZIO, e l'unico modo
+         di accorgersene e' misurarlo. */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: [
+          { id: 'r1', polizza_id: 'p1', stato: 'aperto', tipo: 'prima_rata',
+            importo_lordo: 148, data_decorrenza: '2026-09-17', mezzo_pagamento: 'pos' }
+        ] };
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { error: null, data: [] };
+        await window.polDettaglio('p1');
+        await new Promise(r => setTimeout(r, 120));
+        const bd = document.getElementById('pol-bd');
+        delete window.__COLLAUDO.risposte['quote_titoli:lista'];
+        delete window.__COLLAUDO.risposte['quote_sinistri:lista'];
+        if (!bd) return { manca: true };
+        /* Ogni classe PREFISSATA che la scheda scrive dev'essere definita da
+           qualche parte nei fogli di stile della pagina. Le sigle senza
+           trattino e i pittogrammi `ti-*` arrivano da altri fogli. */
+        const css = [...document.styleSheets].flatMap(f => {
+          try { return [...f.cssRules].map(x => x.cssText); } catch (e) { return []; }
+        }).join(' ');
+        const usate = new Set();
+        bd.querySelectorAll('*').forEach(el => el.classList.forEach(c => {
+          if (/^[a-z][a-z0-9]*-[a-z0-9-]+$/.test(c) && !c.startsWith('ti-')) usate.add(c);
+        }));
+        return {
+          classi: [...usate],
+          mancanti: [...usate].filter(c => css.indexOf('.' + c) < 0),
+          testa: !!bd.querySelector('.pol-testa .pol-num'),
+          griglia: bd.querySelectorAll('.pol-griglia .pol-r').length,
+          due: !!bd.querySelector('.pol-due .pol-cassetto'),
+          cassetti: bd.querySelectorAll('.pol-due .pol-cassetto').length,
+          sinistri: (bd.querySelector('.pol-due .pol-cassetto:last-child') || {}).textContent || ''
+        };
+      });
+      deve(!r.manca, 'il dettaglio non si e\' aperto');
+      deve(r.classi.length >= 6, 'la scheda scrive quasi nessuna classe: la prova non sta misurando');
+      deve(!r.mancanti.length,
+        'classi che nessun foglio di stile conosce, quindi ignorate in silenzio: ' + r.mancanti.join(', '));
+      deve(r.testa, 'manca la testata densa: numero, compagnia, prodotto e targa su una riga');
+      deve(r.griglia >= 6, 'la griglia dei campi ha ' + r.griglia + ' righe: non e\' una scheda');
+      deve(r.cassetti === 2, 'le rate e i sinistri non sono affiancati: ' + r.cassetti + ' cassetti');
+      deve(/[Nn]essun sinistro/.test(r.sinistri), 'il cassetto dei sinistri non dice che non ce ne sono');
+      return r.classi.length + ' classi tutte definite, testata + ' + r.griglia + ' campi + 2 cassetti';
+    });
+
+    await prova('polizza: «non si e\' potuto leggere i sinistri» non e\' «non ce ne sono»', async () => {
+      /* Su una tabella di sinistri e' la bugia peggiore possibile: chi la
+         legge smette di cercare (§12, §18). */
+      const t = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: [] };
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { data: null, error: { message: 'giu\'' } };
+        await window.polDettaglio('p1');
+        await new Promise(r => setTimeout(r, 120));
+        const bd = document.getElementById('pol-bd');
+        delete window.__COLLAUDO.risposte['quote_titoli:lista'];
+        delete window.__COLLAUDO.risposte['quote_sinistri:lista'];
+        return bd ? bd.textContent : '';
+      });
+      deve(/non si è potuto leggerli/.test(t), 'un guasto della lettura diventa «nessun sinistro»');
+      deve(!/Nessun sinistro su questa polizza/.test(t), 'dice tutte e due le cose');
+      return 'il guasto si dichiara, e non si spaccia per un elenco vuoto';
+    });
+
+    await prova('«Come paga»: la finestra ha una cornice, e ogni classe esiste', async () => {
+      /* Stessa storia della scheda polizza: `.pnu-ov` e le sue parti non
+         esistevano, quindi quella finestra usciva come un elenco di campi
+         appoggiati sulla pagina. Il difetto non si vede leggendo il codice —
+         si vede misurando (§65). */
+      const r = await page.evaluate(async () => {
+        window.PF_ROWS = [{ id: 'px', cliente: 'Rossi Mario', mezzo_pagamento: 'pos' }];
+        await window.pfCambiaMezzo('px');
+        await new Promise(r => setTimeout(r, 60));
+        const ov = document.querySelector('.pnu-ov');
+        if (!ov) return { manca: true };
+        const css = [...document.styleSheets].flatMap(f => {
+          try { return [...f.cssRules].map(x => x.cssText); } catch (e) { return []; }
+        }).join(' ');
+        const usate = new Set();
+        ov.querySelectorAll('*').forEach(el => el.classList.forEach(c => {
+          if (/^[a-z][a-z0-9]*-[a-z0-9-]+$/.test(c) && !c.startsWith('ti-')) usate.add(c);
+        }));
+        ov.classList.forEach(c => usate.add(c));
+        const box = ov.querySelector('.pnu-box');
+        const st = box ? getComputedStyle(box) : null;
+        const out = {
+          classi: [...usate],
+          mancanti: [...usate].filter(c => css.indexOf('.' + c) < 0),
+          /* La cornice c'e' DAVVERO: un bordo e uno sfondo che non sono
+             quelli della pagina. Cercare la regola nel foglio non basta —
+             potrebbe non arrivare all'elemento. */
+          bordo: st ? st.borderTopWidth : '',
+          testa: !!ov.querySelector('.pnu-testa'), piede: !!ov.querySelector('.pnu-piede'),
+          /* E i margini negativi di `.pnu-kit` non sbordano dentro la finestra. */
+          margine: box ? getComputedStyle(box.querySelector('.pnu-kit') || box).marginLeft : ''
+        };
+        ov.remove();
+        return out;
+      });
+      deve(!r.manca, 'la finestra «Come paga» non si e\' aperta');
+      deve(!r.mancanti.length,
+        'classi che nessun foglio di stile conosce, quindi ignorate in silenzio: ' + r.mancanti.join(', '));
+      deve(r.bordo && r.bordo !== '0px', 'la finestra non ha una cornice: e\' un elenco di campi sulla pagina');
+      deve(r.testa && r.piede, 'la finestra non ha testata e piede');
+      deve(r.margine === '0px', 'i margini negativi del modulo sbordano dentro la finestra: ' + r.margine);
+      return r.classi.length + ' classi tutte definite, cornice ' + r.bordo;
     });
 
     await prova('blocco 2: nessun errore JavaScript', async () => {

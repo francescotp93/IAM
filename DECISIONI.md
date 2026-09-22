@@ -947,3 +947,47 @@ Le stesse di prima. Niente di nuovo.
   liste oggi vivono in Contabilità e nel dettaglio della polizza. Portarle qui
   vuol dire decidere se sono la stessa lista vista da un'altra parte o un
   secondo elenco.
+
+---
+
+## 22/09/2026 — I due conti di costo e di ricavo, creati
+
+> «Crea i conti Costi di agenzia e Ricavi di agenzia» — Francesco.
+
+### ✅ Fatto
+
+Creati in `iam_conti`, esattamente come li propone `Contabilita.CONTI_MINIMI`:
+
+| nome | tipologia | natura | si quadra? | mezzo di pagamento? |
+|---|---|---|---|---|
+| Costi di agenzia | `costo` | aziendale | no | no |
+| Ricavi di agenzia | `ricavo` | aziendale | no | no |
+
+- **Natura AZIENDALE, non «premi»**: un affitto non è denaro di un cliente in
+  transito verso la compagnia (art. 117 CAP).
+- **Non si quadrano**: un costo non si conta aprendo un cassetto né leggendolo
+  su un estratto conto — si legge nel conto economico.
+- **Non sono modi di pagare**: non compaiono fra le modalità di incasso.
+- **Saldo iniziale 0 e NESSUNA data di dichiarazione**: zero è anche un saldo
+  vero, e quella data è l'unica cosa che distingue «è zero» da «nessuno l'ha
+  mai scritto».
+- **Non entrano nella liquidità del Cruscotto**: `LIQUIDE` è un elenco
+  dichiarato (cassa, banca, conto assicurativo, transitorio), quindi i due
+  conti nuovi non gonfiano «soldi dell'agenzia».
+
+Due righe a registro (`quote_log`, entità `conto`), firmate, con scritto che
+sono nati su richiesta esplicita dalla console.
+
+### 🔴 Serve ancora il tuo ok
+
+- **Il movimento «Pagamento Stanza ROMA» (170 €, 22/09) è ancora sbagliato.**
+  Le sue due gambe dicono `CARTA DI CREDITO UNICREDIT` Avere 170 e
+  `CONTO AZIENDALE` **Dare** 170: quel conto risulta aver *ricevuto* 170 €
+  mai arrivati. Un movimento registrato non si riscrive — si **storna**, e lo
+  storno lo firma una persona. Adesso il conto giusto esiste: da Contabilità ›
+  Prima nota, aprilo, «Storna», e rifallo con contropartita **Costi di
+  agenzia**.
+- **«ACQUISTO ACQUA» (25 €, 21/09) non ha gambe**: è nato prima della partita
+  doppia, quindi non si storna — non si rovescia quello che non c'è. Si
+  **annulla col motivo** e si riscrive, oppure si lascia com'è: resta a
+  registro e non sbilancia nessun conto di liquidità.

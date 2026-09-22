@@ -1,8 +1,21 @@
 {
-  "versione": "0.25.0",
-  "nome": "Il cliente si sceglie da una schermata vera",
+  "versione": "0.26.0",
+  "nome": "Contabilità · si incassa una rata",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.26.0",
+      "data": "2026-09-22",
+      "nome": "Contabilità · si incassa una rata",
+      "voci": [
+        "Contabilità › «Incassa una rata»: si cercano le rate aperte di un cliente, se ne scelgono una o più, si dice come ha pagato (anche in più modi: metà contanti e metà bonifico), e si registra. La scrittura contabile la fa IAM: tu scegli le rate e i pagamenti.",
+        "Il tasto «Registra» resta chiuso finché la differenza non è zero. Se il cliente porta 199,50 su 200 non si mente sull'importo: si mette la differenza su «Abbuoni», così si vede nel movimento e nella quadratura invece di sparire dentro un arrotondamento.",
+        "Un incasso sbagliato si storna, col motivo: il movimento si rovescia, le rate tornano aperte e la storia resta. Niente si cancella.",
+        "Se manca il conto di debito verso una compagnia, o la causale, la schermata lo dice PRIMA di farti compilare e manda a crearlo. Non se ne inventa uno: un incasso appoggiato al primo conto che passa è un debito attribuito alla compagnia sbagliata.",
+        "Premere due volte «Registra» non fa due incassi, e due persone non possono incassare la stessa rata: lo decide il database, non un controllo che si può perdere.",
+        "Corretto un difetto che si sarebbe visto solo coi numeri: il saldo di un conto leggeva la testata del movimento. Con un incasso su due conti ne avrebbe attribuito tutto a uno — un numero credibile e falso. Adesso legge le righe."
+      ]
+    },
     {
       "v": "0.25.0",
       "data": "2026-09-22",

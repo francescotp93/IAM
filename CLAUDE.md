@@ -6007,3 +6007,163 @@ rossa. La data dedotta che sovrascrive quella a mano → rossa. La scelta
   17/09, e adesso la meta è una schermata invece di una tendina).
 - **Il modulo non chiede ancora chi ha prodotto la polizza** (§45): resta il
   punto 4 del brief Anagrafiche.
+
+---
+
+## 59. Contabilità · Fase 2 — l'incasso di una o più rate (22/09/2026)
+
+La Fase 1 ha dato alla prima nota due gambe. Questa fase le collega al
+portafoglio: **una rata che si incassa adesso muove un conto, e il conto lo sa.**
+
+| pezzo | dove |
+|---|---|
+| le regole | `tariffe/motore/contabilita.js` — `incassabile`, `contoCompagnia`, `contoIncasso`, `righeIncasso`, `mezzoIncasso`, `effettoSuConto`, `perMovimento` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **72** (erano 64) |
+| le tre tabelle, i trigger, le due funzioni | `supabase/migrations/20260922d_contab_fase2_incassi.sql` + `20260922e_contab_fase2_indurita.sql` (applicate) |
+| la schermata | linguetta «Incassa una rata», `#contab-panel-incassa` e blocco `inca*` in `iam/index.html` |
+| prove sulla schermata | `iam/verifica/incassa-rata.test.mjs` — 10 |
+
+### Misurato prima di scrivere
+
+| | |
+|---|---|
+| `quote_titoli` | 418 aperte, **2.787 già incassate** |
+| `iam_conti` | 6, di cui **2** dichiarano un mezzo, **0** di debito, **0** di sospesi |
+| `iam_movimenti` / righe | 1 / 0 |
+
+Da cui la cosa da dire subito: **nessun conto di debito verso una compagnia
+esiste.** Finché non ne esiste uno la schermata non registra niente e lo dice.
+Non se ne inventa uno — un incasso appoggiato al primo conto che passa è un
+debito attribuito alla compagnia sbagliata, e non se ne accorge nessuno finché
+non si va a rimettere il denaro.
+
+### Il difetto che rendeva la Fase 2 impossibile, e che non si vedeva
+
+`saldo()` leggeva la **testata** del movimento: un conto, un importo, il verso
+dalla causale. Con un incasso di 300 € pagato 120 in contanti e 180 in banca,
+la testata ne porta **uno**: la cassa risulterebbe +300 con 120 nel cassetto,
+la banca +0, e il debito verso la compagnia **non si muoverebbe mai**.
+
+> **Un movimento a più righe letto dalla testata dà numeri credibili e falsi in
+> ogni conto che tocca.** E la quadratura troverebbe la differenza senza saper
+> dire da dove viene — cioè il guasto peggiore: un errore che si vede e non si
+> spiega.
+
+Adesso `effettoSuConto` risponde a «quanto questo movimento muove questo
+conto»: se il movimento ha righe è `Dare − Avere` di quelle righe, e il
+movimento **appartiene a ogni conto che tocca**, non solo a quello in testata.
+Se non le ha — ed è ogni movimento scritto prima del 20/09/2026 — si legge la
+testata, come prima. Non si inventa una contropartita che nessuno ha scritto.
+`saldo`, `progressivo` e `dettaglioConto` passano tutti di lì; le 64 prove
+della Fase 1 sono restate verdi, perché senza `opz.righe` il motore si comporta
+identico a prima.
+
+### Le righe, e le tre cose che il motore NON fa
+
+Specifica §7.1: **DARE** una riga per ogni modalità di pagamento, **AVERE** una
+riga per ogni compagnia delle rate scelte.
+
+1. **Non inventa il conto della compagnia.** Prima quello intestato a lei, poi
+   quello generico — ma **la compagnia dev'essere risolta a un identificativo**,
+   passando dagli alias (§11, §28: sulla polizza «HDI Assicurazioni», in
+   anagrafica «HDI»). La riga di prima nota porta sempre `compagnia_id`, quindi
+   **anche su un conto condiviso il partitario resta ricostruibile**. Una
+   compagnia che l'anagrafica non conosce, invece, ferma l'incasso: il debito
+   non si saprebbe verso chi nasce.
+2. **Non incassa mezza rata.** Il pezzo che manca è un sospeso, e i sospesi sono
+   la Fase 3. Una rata chiusa per un importo, con un residuo che non sta da
+   nessuna parte, è peggio di una rata aperta. Per la stessa ragione un conto
+   `e_conto_sospeso` **non è ammesso** come modalità: scriverne la sola
+   scrittura contabile lascerebbe un credito che non compare nell'elenco di chi
+   deve pagare — una cosa che sembra fatta e non lo è.
+3. **Non chiude la differenza da sola.** L'abbuono si mette come modalità di
+   pagamento, e allora si vede nel movimento e nella quadratura invece di
+   sparire dentro un arrotondamento.
+
+E una quarta, che è una **decisione aperta**: l'Avere è il premio **lordo**,
+come dice la specifica. La provvigione dell'agenzia non viene separata
+all'incasso, quindi il conto della compagnia porta il lordo e il conto
+economico su quell'incasso dice zero. Se la provvigione si rilevi all'incasso o
+alla rimessa è una decisione contabile che nessuno ha preso: **la schermata la
+scrive in faccia invece di sceglierla da sola.**
+
+### `compatibile` esisteva dalla M1 e non veniva chiamata dove serviva di più
+
+Un premio del cliente su un conto aziendale passava senza un errore, e da quel
+momento i due mucchi dell'art. 117 CAP erano uno solo (§26). `righeIncasso`
+adesso chiama `compatibile` su ogni conto e rifiuta nominando il conto e la
+causale. **Una funzione di controllo che non chiama nessuno è il guasto numero
+uno di questo repository** (§1), e qui era la scrittura principale del sistema.
+
+### Quattro difetti trovati dal collaudo sul database vero, non dalla rilettura
+
+Tutti e quattro producono numeri credibili e sbagliati; tre li ha trovati un
+incasso finto girato sul database e poi annullato.
+
+1. **`origine = 'incasso'` non era nel vincolo.** Il primo incasso sarebbe morto
+   contro un CHECK **dopo** che la schermata aveva detto «registro». È lo stesso
+   inciampo della Fase 1 con «storno»: un vocabolario che vive in un CHECK non
+   lo vede nessuno, e le prove sul sorgente non leggono i CHECK.
+2. **L'idempotenza era un SELECT seguito da un INSERT**, senza lock. Due clic
+   simultanei passano tutti e due il controllo, il secondo muore sul vincolo, e
+   la schermata dice «errore» su un incasso **riuscito**: chi riprova con una
+   chiave nuova ne fa due. Adesso lo decide Postgres con `on conflict do
+   nothing`, e **la chiave nasce all'apertura della schermata, non al clic** —
+   generata al clic, il secondo tentativo dopo un timeout ne avrebbe una nuova.
+3. **`update quote_titoli` non guardava che la rata fosse ancora aperta**, e in
+   plpgsql un update che tocca zero righe non solleva niente: è BUG 1 (§47)
+   dentro il database invece che in PostgREST. Sulle 2.787 rate già incassate
+   un secondo incasso avrebbe sovrascritto `incassato_il` e creato un secondo
+   debito verso la compagnia per un premio entrato una volta sola.
+4. **Il trigger di immutabilità bloccava la NASCITA.** La testata si prenota
+   prima del movimento (è la prenotazione a decidere chi vince fra due clic), e
+   il `movimento_id` arriva un istante dopo: per il trigger era una correzione.
+   L'eccezione è dichiarata ed è una sola — da vuoto a pieno, e niente altro
+   cambia. Scritta larga avrebbe permesso di riagganciare un incasso a un altro
+   movimento mesi dopo, che è il buco che quel trigger esiste per chiudere.
+
+### Lo storno esiste davvero
+
+«Un incasso registrato si storna» è scritto nei trigger: senza una funzione
+sarebbe una promessa che il codice non mantiene, e chi sbaglia un incasso
+resterebbe con una rata chiusa e nessuna strada per riaprirla. In una
+transazione: movimento inverso (letto dalle righe **scritte**, non
+ricostruito), incasso a «stornato» col motivo, righe spente, **rate riaperte**.
+E la rata dimentica chi l'aveva incassata — lasciare il pagatore vorrebbe dire
+che l'estratto conto continua a maturare una provvigione su un incasso che non
+c'è più (§17, decisione 1). `mezzo_pagamento` invece resta: dice come quel
+cliente paga, ed è vero anche dopo lo storno.
+
+### Una doppia contabilizzazione già pronta a succedere
+
+`incDaPortare` («Incassi da accreditare») considerava «da portare» ogni rata
+incassata che nessun movimento nomina — e guardava `iam_movimenti.titolo_id`,
+cioè la **testata**. Un incasso di tre rate scrive un movimento solo: le altre
+due sarebbero risultate da portare, e un clic avrebbe fatto nascere un secondo
+debito verso la compagnia. Adesso guarda anche `iam_movimenti_righe` e
+`iam_incassi_rate`, che sono i posti in cui quel fatto è scritto davvero. Le
+due letture nuove **non fanno cadere la schermata**: se non rispondono si vedono
+più rate «da portare» del vero, che è il verso meno pericoloso dell'errore.
+
+### Controprove
+
+`compatibile` tolta → rossa. Gli alias tolti → rosse **due**. `saldo` che torna
+a leggere la testata → rossa. `and stato = 'aperto'` tolto dalla funzione →
+rossa. Le rate della Fase 2 tolte da `incDaPortare` → rossa.
+
+### Cosa resta aperto
+
+- **I conti non ci sono ancora**: nessun conto di debito verso una compagnia,
+  nessuna cassa contanti classificata `cassa`, nessun conto di sospesi. La
+  schermata lo dice e non registra: è la prima cosa da fare, e sono decisioni
+  di una persona.
+- **La provvigione all'incasso o alla rimessa** è la decisione contabile
+  dichiarata qui sopra, e non la prende un programma.
+- **«Incassi diretti in compagnia»** è fra i conti minimi con
+  `e_mezzo_pagamento`, ma non è un modo di pagare: è un tipo di incasso in cui
+  in agenzia non entra un euro. Va rifatto quando lo si userà.
+- **Gli abbuoni sono `natura: 'premi'`** nei conti minimi. Un abbuono è una
+  perdita dell'agenzia: messo fra i premi non tocca il conto economico e sporca
+  il conto separato. Da correggere prima che ci si scriva sopra la prima riga.
+- **Le Fasi 3 e 4** (sospesi e recuperi; prima nota consultabile, estratto
+  conto, quadratura, cruscotto) sono il resto della specifica.

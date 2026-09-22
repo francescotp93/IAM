@@ -1302,6 +1302,155 @@ prova('un movimento senza righe non si storna: si annulla', () => {
   return 'si annulla col motivo, e resta a registro';
 });
 
+/* ═══════════ FASE 2 — L'INCASSO DI UNA O PIÙ RATE ═══════════════════════ */
+
+const F2_CONTI = [
+  { id: 'cassa', nome: 'Cassa contanti', tipologia: 'cassa', natura: 'premi', attivo: true,
+    e_mezzo_pagamento: true, e_conto_sospeso: false, mezzi: ['contante'] },
+  { id: 'banca', nome: 'Banca assicurativa', tipologia: 'conto_assicurativo', natura: 'premi', attivo: true,
+    e_mezzo_pagamento: true, e_conto_sospeso: false, mezzi: ['bonifico'] },
+  { id: 'azien', nome: 'Conto aziendale', tipologia: 'banca', natura: 'aziendale', attivo: true,
+    e_mezzo_pagamento: true, e_conto_sospeso: false },
+  { id: 'sosp', nome: 'Sospesi clienti', tipologia: 'credito', natura: 'premi', attivo: true,
+    e_mezzo_pagamento: true, e_conto_sospeso: true },
+  { id: 'dPRI', nome: 'Conto compagnia PRIMA', tipologia: 'debito', natura: 'premi', attivo: true,
+    e_mezzo_pagamento: false, compagnia_id: 'cPRI' },
+  { id: 'dGEN', nome: 'Conto compagnia', tipologia: 'debito', natura: 'premi', attivo: true,
+    e_mezzo_pagamento: false }
+];
+const F2_COMP = [
+  { id: 'cPRI', nome: 'PRIMA', alias: ['Prima Assicurazioni'] },
+  { id: 'cHDI', nome: 'HDI', alias: ['HDI Assicurazioni'] }
+];
+const F2_CAU = { id: 'cau', codice: 'incasso_premi', nome: 'Incasso premi', segno: 'entrata', natura: 'premi' };
+const f2opz = { conti: F2_CONTI, compagnie: F2_COMP, causale: F2_CAU };
+
+prova('Fase 2 · le righe: un Dare per modalità, un Avere per compagnia', () => {
+  const r = C.righeIncasso({
+    cliente_id: 'cl1',
+    rate: [{ titolo_id: 't1', importo: 200, compagnia: 'Prima Assicurazioni' },
+           { titolo_id: 't2', importo: 100, compagnia: 'HDI Assicurazioni' }],
+    pagamenti: [{ conto_id: 'cassa', importo: 120, mezzo: 'contante' },
+                { conto_id: 'banca', importo: 180, mezzo: 'bonifico' }]
+  }, f2opz);
+  deve(r.ok, 'non ha prodotto le righe: ' + r.motivo);
+  deve(r.righe.length === 4, 'righe attese 4 (2 Dare + 2 Avere), trovate ' + r.righe.length);
+  const dare = r.righe.filter(x => x.dare > 0), avere = r.righe.filter(x => x.avere > 0);
+  deve(dare.length === 2 && avere.length === 2, 'non c\'è un Dare per pagamento e un Avere per compagnia');
+  deve(C.bilanciato(r.righe).ok, 'le righe non quadrano');
+  /* L'Avere di PRIMA va sul SUO conto, quello di HDI sul generico — e la riga
+     porta lo stesso l'identificativo della compagnia, altrimenti il partitario
+     non si potrebbe ricostruire. */
+  const aPri = avere.find(x => x.conto_id === 'dPRI');
+  const aHdi = avere.find(x => x.conto_id === 'dGEN');
+  deve(aPri && aPri.avere === 200, 'l\'Avere di PRIMA non è 200 sul suo conto');
+  deve(aHdi && aHdi.avere === 100 && aHdi.compagnia_id === 'cHDI',
+    'l\'Avere di HDI non porta la compagnia: il debito diventa illeggibile');
+  return '2 Dare, 2 Avere, alias risolti, partitario ricostruibile';
+});
+
+prova('Fase 2 · gli alias: «Prima Assicurazioni» trova il conto di «PRIMA»', () => {
+  /* È la trappola di §11 e §28: senza gli alias quel conto non si trova mai,
+     senza errore, e il debito finisce sul generico. */
+  const con = C.contoCompagnia(F2_CONTI, { nome: 'Prima Assicurazioni' }, { compagnie: F2_COMP });
+  deve(con.conto && con.conto.id === 'dPRI', 'non ha risolto l\'alias: ' + (con.motivo || ''));
+  deve(con.compagnia_id === 'cPRI', 'non ha risolto l\'identificativo della compagnia');
+  /* Una compagnia che l'anagrafica non conosce non si aggancia al generico:
+     il debito non si saprebbe verso chi nasce. */
+  const ign = C.contoCompagnia(F2_CONTI, { nome: 'Sconosciuta Spa' }, { compagnie: F2_COMP });
+  deve(!ign.conto && /non è in anagrafica/i.test(ign.motivo), 'aggancia una compagnia sconosciuta: ' + JSON.stringify(ign));
+  return 'alias risolto, compagnia ignota rifiutata col motivo';
+});
+
+prova('Fase 2 · senza il conto della compagnia non si scrive niente, e si dice quale manca', () => {
+  const soloMezzi = F2_CONTI.filter(c => c.tipologia !== 'debito');
+  const r = C.righeIncasso({
+    rate: [{ titolo_id: 't1', importo: 50, compagnia: 'PRIMA' }],
+    pagamenti: [{ conto_id: 'cassa', importo: 50, mezzo: 'contante' }]
+  }, { conti: soloMezzi, compagnie: F2_COMP, causale: F2_CAU });
+  deve(!r.ok && !r.righe.length, 'ha scritto le righe senza il conto della compagnia');
+  deve(/PRIMA/.test(r.motivo) && /Conti e causali/i.test(r.motivo),
+    'non dice quale compagnia manca né dove si crea: ' + r.motivo);
+  return 'rifiutato, con il nome della compagnia e la strada';
+});
+
+prova('Fase 2 · la differenza si dichiara, e non si chiude da sola', () => {
+  const s = C.contoIncasso([{ importo: 200 }], [{ importo: 199.5 }]);
+  deve(!s.quadra && s.differenza === -0.5, 'la differenza non è misurata: ' + JSON.stringify(s));
+  deve(/Abbuoni/i.test(s.motivo), 'non dice dove si mette la differenza: ' + s.motivo);
+  const su = C.contoIncasso([{ importo: 200 }], [{ importo: 200.5 }]);
+  deve(su.differenza === 0.5 && /Eccedenze/i.test(su.motivo), 'il di più non è indirizzato: ' + su.motivo);
+  /* E con la differenza le righe NON nascono. */
+  const r = C.righeIncasso({
+    rate: [{ titolo_id: 't1', importo: 200, compagnia: 'PRIMA' }],
+    pagamenti: [{ conto_id: 'cassa', importo: 199.5, mezzo: 'contante' }]
+  }, f2opz);
+  deve(!r.ok && !r.righe.length, 'ha registrato un incasso che non quadra');
+  return 'differenza misurata, indirizzata, e niente righe';
+});
+
+prova('Fase 2 · un premio non finisce su un conto aziendale, e un conto sospesi non è un modo di pagare', () => {
+  /* §26, art. 117 CAP: le due nature del denaro non si mescolano. `compatibile`
+     esisteva dalla M1 e non veniva chiamata qui — la scrittura principale del
+     sistema passava senza controllo. */
+  const az = C.righeIncasso({
+    rate: [{ titolo_id: 't1', importo: 50, compagnia: 'PRIMA' }],
+    pagamenti: [{ conto_id: 'azien', importo: 50 }]
+  }, f2opz);
+  deve(!az.ok && /117|aziendale|premi/i.test(az.motivo), 'un premio è finito su un conto aziendale: ' + az.motivo);
+
+  /* Mettere una rata a copertura senza il denaro è un SOSPESO, e i sospesi
+     sono la Fase 3: scriverne solo la scrittura contabile lascerebbe un
+     credito che non compare nell'elenco di chi deve pagare. */
+  const so = C.righeIncasso({
+    rate: [{ titolo_id: 't1', importo: 50, compagnia: 'PRIMA' }],
+    pagamenti: [{ conto_id: 'sosp', importo: 50 }]
+  }, f2opz);
+  deve(!so.ok && /sospesi/i.test(so.motivo), 'un conto di sospesi è passato come modo di pagare: ' + so.motivo);
+  return 'conto aziendale rifiutato, conto sospesi rifiutato';
+});
+
+prova('Fase 2 · una rata già incassata, annullata o negativa si rifiuta COL MOTIVO', () => {
+  deve(C.incassabile({ id: 't', stato: 'aperto', importo_lordo: 10 }).si, 'una rata aperta non è incassabile');
+  const gia = C.incassabile({ id: 't', stato: 'incassato', importo_lordo: 10, incassato_il: '2026-09-01' });
+  deve(!gia.si && /01\/09\/2026/.test(gia.motivo), 'non dice quando è stata incassata: ' + gia.motivo);
+  deve(!C.incassabile({ id: 't', stato: 'stornato', importo_lordo: 10 }).si, 'una rata stornata si incassa');
+  const neg = C.incassabile({ id: 't', stato: 'aperto', importo_lordo: -120 });
+  deve(!neg.si && /rimborso|riduzione/i.test(neg.motivo),
+    'una rata negativa non viene spiegata: sparirebbe dalla ricerca senza dire perché — ' + neg.motivo);
+  return 'aperta sì; incassata, stornata e negativa no, ognuna col suo motivo';
+});
+
+prova('Fase 2 · il mezzo si scrive sulla rata solo se è UNO', () => {
+  deve(C.mezzoIncasso([{ mezzo: 'contante' }, { mezzo: 'contante' }]) === 'contante', 'due volte lo stesso mezzo non si scrive');
+  deve(C.mezzoIncasso([{ mezzo: 'contante' }, { mezzo: 'bonifico' }]) === null,
+    'con due mezzi diversi ne ha scelto uno: sarebbe metà della verità');
+  deve(C.mezzoIncasso([{ mezzo: 'inventato' }]) === null, 'ha accettato un mezzo fuori vocabolario');
+  return 'uno solo si scrive, due no, uno inventato no';
+});
+
+prova('Fase 2 · il saldo di un conto legge le RIGHE, non la testata', () => {
+  /* È il difetto che rendeva la Fase 2 impossibile: un incasso su due conti
+     ha una testata sola, e leggendo quella il saldo di uno dei due sarebbe
+     stato falso — credibile e falso, in silenzio. */
+  const conti = [{ id: 'cassa', saldo_iniziale: 0 }, { id: 'banca', saldo_iniziale: 0 }, { id: 'dPRI', saldo_iniziale: 0 }];
+  const mov = [{ id: 'm1', data: '2026-09-22', conto_id: 'cassa', causale_id: 'cau', importo: 300 }];
+  const righe = [
+    { movimento_id: 'm1', conto_id: 'cassa', dare: 120, avere: 0, ordine: 0 },
+    { movimento_id: 'm1', conto_id: 'banca', dare: 180, avere: 0, ordine: 1 },
+    { movimento_id: 'm1', conto_id: 'dPRI', dare: 0, avere: 300, ordine: 2 }
+  ];
+  const opz = { causali: [F2_CAU], righe: righe };
+  deve(C.saldo(conti[0], mov, opz).saldo === 120, 'la cassa non prende i suoi 120: ' + C.saldo(conti[0], mov, opz).saldo);
+  deve(C.saldo(conti[1], mov, opz).saldo === 180, 'la banca non prende i suoi 180: ' + C.saldo(conti[1], mov, opz).saldo);
+  deve(C.saldo(conti[2], mov, opz).saldo === -300, 'il debito verso la compagnia non si muove: ' + C.saldo(conti[2], mov, opz).saldo);
+  /* E senza righe si legge la testata, come prima: i movimenti scritti prima
+     della partita doppia non si inventano una contropartita. */
+  deve(C.saldo(conti[0], mov, { causali: [F2_CAU] }).saldo === 300,
+    'un movimento senza righe non si legge più dalla testata');
+  return 'cassa 120, banca 180, compagnia −300; senza righe si legge la testata';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

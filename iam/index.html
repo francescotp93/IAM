@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.25.0">
-<meta name="app-versione-nome" content="Il cliente si sceglie da una schermata vera">
+<meta name="app-versione" content="0.26.0">
+<meta name="app-versione-nome" content="Contabilità · si incassa una rata">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -96,6 +96,26 @@
   border-radius:var(--rs);background:var(--surf);margin-bottom:8px}
 .cnt-r.cnt-spento{opacity:.55}
 .cnt-r .cnt-nome{font-weight:700;font-size:14px}
+/* Incassa una rata (Fase 2). Ogni nome prefissato: nel foglio di stile una
+   classe e' globale anche dentro un discendente, e il guardiano delle
+   collisioni fra i due documenti sta a scarto zero (§26, §40). */
+.inca-barra{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.inca-barra input{flex:1;height:36px;border-radius:var(--rs);border:1px solid var(--bord);
+  background:var(--surf);color:var(--txt);padding:0 11px;font-size:13px;font-family:inherit}
+.inca-rata{cursor:pointer}
+.inca-rata input[type=checkbox]{width:17px;height:17px;flex:none;cursor:pointer}
+.inca-pag{display:grid;grid-template-columns:1.4fr 1fr .8fr 1fr auto;gap:8px;margin-bottom:8px}
+.inca-pag select,.inca-pag input{height:34px;border-radius:var(--rs);border:1px solid var(--bord);
+  background:var(--surf);color:var(--txt);padding:0 9px;font-size:12.5px;font-family:inherit;min-width:0}
+.inca-somma{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;margin:12px 0 4px}
+.inca-tot{display:flex;gap:7px;align-items:baseline;font-size:13px;color:var(--txt3)}
+.inca-tot b{font-size:16px;color:var(--txt)}
+.inca-tot.inca-ok b{color:var(--acc)}
+.inca-tot.inca-no b{color:var(--red-txt,#b42318)}
+.inca-righe{margin-top:10px;padding:10px 12px;border:1px dashed var(--bord);border-radius:var(--rs)}
+.inca-righe-t{font-size:12px;font-weight:700;margin-bottom:6px}
+.inca-riga{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;font-size:12.5px;padding:3px 0}
+@media(max-width:700px){.inca-pag{grid-template-columns:1fr 1fr}}
 /* I numeri della Scrivania (Blocco 3 · punto 10). Prefissati: nel foglio di
    stile un nome di classe e' globale, anche dentro un discendente (§26). */
 .kpi-riga{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
@@ -1740,6 +1760,7 @@ input[type=file]{display:none;}
   <div class="ptabs" id="contab-tabs">
     <button class="ptab act" id="ctab-quadratura" onclick="selContabTab('quadratura')">Quadratura</button>
     <button class="ptab"     id="ctab-primanota" onclick="selContabTab('primanota')">Prima nota</button>
+    <button class="ptab"     id="ctab-incassa"   onclick="selContabTab('incassa')">Incassa una rata</button>
     <button class="ptab"     id="ctab-quadconti" onclick="selContabTab('quadconti')">Quadratura conti</button>
     <button class="ptab"     id="ctab-incassi"   onclick="selContabTab('incassi')">Incassi da accreditare</button>
     <button class="ptab"     id="ctab-anomalie" onclick="selContabTab('anomalie')">Anomalie<span class="nbadge" id="n-anom-tab" style="display:none;position:static;margin-left:4px;"></span></button>
@@ -2035,6 +2056,66 @@ input[type=file]{display:none;}
     <div id="co-content" style="display:none;"></div>
     <div id="co-sospeso" style="display:none;"></div>
     <div style="height:16px;"></div>
+  </div>
+
+  <!-- ══ SUB: INCASSA UNA RATA (Fase 2) ═══════════════════════════════════
+       La specifica §16: «l'operatore non deve conoscere la partita doppia per
+       registrare un incasso». Sceglie le rate e come il cliente ha pagato; le
+       righe Dare/Avere le costruisce il motore e si leggono nel movimento.
+
+       PERCHE' UNA LINGUETTA NUOVA e non quella qui sotto: «Incassi da
+       accreditare» risponde a «il cliente ha pagato e il denaro non e' ancora
+       sul conto». Questa risponde a «il cliente sta pagando adesso». Sono due
+       momenti diversi dello stesso euro, e due schermate con lo stesso nome
+       sarebbero due elenchi che non si incrociano (§18). -->
+  <div id="contab-panel-incassa" style="display:none;">
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>Incassa una rata</h1>
+        <div class="subtitle">Si scelgono una o più rate aperte e si dice come il cliente ha pagato. La scrittura contabile la fa IAM: si vede nel movimento.</div>
+      </div>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="incaApri(true)"><i class="ti ti-refresh"></i> Ricomincia</button>
+      </div>
+    </section>
+
+    <section id="inca-pronti"></section>
+
+    <div class="d-card">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-search"></i></span> Le rate da incassare</div></div>
+      <div class="card-body">
+        <div class="inca-barra">
+          <input id="inca-q" type="search" placeholder="cliente, numero di polizza o targa…"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault();incaCerca()}">
+          <button class="d-btn primario" type="button" onclick="incaCerca()"><i class="ti ti-search"></i> Cerca</button>
+        </div>
+        <div id="inca-risultati"><div class="cl-sub">Scrivi almeno due lettere e premi Cerca.</div></div>
+      </div>
+    </div>
+
+    <div class="d-card">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-cash"></i></span> Come ha pagato</div></div>
+      <div class="card-body">
+        <div id="inca-pagamenti"></div>
+        <button class="d-btn" type="button" onclick="incaAggiungiPag()"><i class="ti ti-plus"></i> Un altro modo di pagare</button>
+        <div id="inca-somma" class="inca-somma"></div>
+        <div id="inca-righe" class="inca-righe"></div>
+        <div class="head-actions" style="margin-top:12px">
+          <button class="d-btn primario" type="button" id="inca-registra" onclick="incaRegistra()">
+            <i class="ti ti-device-floppy"></i> Registra l'incasso</button>
+        </div>
+        <div id="inca-esito"></div>
+      </div>
+    </div>
+
+    <div class="d-card">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-history"></i></span> Gli ultimi incassi</div></div>
+      <div class="card-body"><div id="inca-storico"><div class="cl-sub">…</div></div></div>
+    </div>
   </div>
 
   <!-- ══ SUB: INCASSI DA ACCREDITARE ══════════════════════════════════════
@@ -7046,11 +7127,376 @@ function gioRenderConto() {
    modulo e `window.INC_SOSPESI` sono due cose diverse, e una prova che inietta
    dei dati finti scriverebbe in una mentre il codice legge l'altra — restando
    verde senza aver misurato niente. */
+/* ═══════════ INCASSA UNA RATA — Contabilità · Fase 2 (22/09/2026) ═════════
+
+   Il flusso A della specifica: si cercano le rate aperte, se ne scelgono una o
+   più, si dice come il cliente ha pagato (uno o più modi), e si conferma solo
+   quando la differenza è zero. Le righe Dare/Avere le costruisce il motore
+   (`Contabilita.righeIncasso`) e la scrittura è una transazione sola
+   (`iam_incasso_registra`): incasso, rate, pagamenti, prima nota e chiusura
+   delle rate stanno insieme o non stanno.
+
+   Quattro cose che questa schermata NON fa, e ognuna è una regola di casa:
+
+   · **Non inventa il conto della compagnia.** Se manca, lo dice e manda a
+     crearlo. Un incasso appoggiato al primo conto che passa è un debito
+     attribuito alla compagnia sbagliata, e non se ne accorge nessuno finché
+     non si va a rimettere il denaro (§8.1).
+   · **Non incassa mezza rata.** Il pezzo che manca è un sospeso, e i sospesi
+     sono la Fase 3. Una rata chiusa per un importo, con un residuo che non sta
+     da nessuna parte, è peggio di una rata aperta.
+   · **Non chiude la differenza da sola.** L'abbuono si mette come modalità di
+     pagamento, così si vede nel movimento e nella quadratura invece di sparire
+     dentro un arrotondamento.
+   · **Non separa la provvigione dell'agenzia.** L'Avere è il LORDO verso la
+     compagnia, come dice la specifica §7.1. È una decisione contabile che
+     Francesco non ha ancora preso — se la provvigione si rileva all'incasso o
+     alla rimessa — e la schermata la scrive in faccia invece di sceglierla da
+     sola.
+
+   `var` e non `let`, come sotto: §17. */
+var INCA_CONTI = [];
+var INCA_CAUSALE = null;
+var INCA_COMPAGNIE = [];
+var INCA_RATE = [];        /* le rate trovate dalla ricerca */
+var INCA_SCELTE = {};      /* titolo_id → riga scelta */
+var INCA_PAGAMENTI = [];
+var INCA_GUASTI = [];
+var INCA_CHIAVE = null;    /* la chiave di idempotenza: nasce all'apertura,
+                              NON al clic. Generata al clic, il secondo
+                              tentativo dopo un timeout ne avrebbe una nuova e
+                              l'idempotenza non servirebbe a niente. */
+
+function incaCent(n) { return window.Contabilita ? Contabilita.cent(n) : Math.round(n * 100) / 100; }
+function incaEuro(n) { return window.Contabilita ? Contabilita.euro(n) : String(n); }
+
+/* Una chiave che non si ripete e non chiede l'ora al computer per decidere
+   qualcosa: serve solo a essere diversa dalla precedente. */
+function incaNuovaChiave() {
+  var r = '';
+  for (var i = 0; i < 4; i++) r += Math.random().toString(36).slice(2, 10);
+  return 'inc-' + r.slice(0, 28);
+}
+
+async function incaApri(ricomincia) {
+  if (!db) return;
+  INCA_CHIAVE = incaNuovaChiave();
+  INCA_SCELTE = {}; INCA_RATE = []; INCA_PAGAMENTI = [];
+  var q = document.getElementById('inca-q'); if (q && ricomincia) q.value = '';
+  var r = document.getElementById('inca-risultati');
+  if (r) r.innerHTML = '<div class="cl-sub">Scrivi almeno due lettere e premi Cerca.</div>';
+  var e = document.getElementById('inca-esito'); if (e) e.innerHTML = '';
+  await incaLeggiConfigurazione();
+  incaPronti();
+  incaAggiungiPag();
+  incaDisegnaPagamenti();
+  incaStorico();
+}
+
+/* Ogni lettura sta in piedi da sola e dichiara il proprio guasto col suo nome
+   (§35): sette letture in una Promise.all che rilancia sono una schermata che
+   si spegne sette volte più spesso di quanto dovrebbe. */
+async function incaLeggi(nome, query, vuoto) {
+  try {
+    var r = await query;
+    if (r && r.error) throw r.error;
+    return (r && r.data) || vuoto;
+  } catch (e) { INCA_GUASTI.push(nome); return vuoto; }
+}
+
+async function incaLeggiConfigurazione() {
+  INCA_GUASTI = [];
+  INCA_CONTI = await incaLeggi('i conti',
+    db.from('iam_conti').select('*').eq('attivo', true).order('ordine'), []);
+  INCA_COMPAGNIE = await incaLeggi('l\'anagrafica delle compagnie',
+    db.from('quote_compagnie').select('id,nome,alias'), []);
+  var cs = await incaLeggi('le causali',
+    db.from('iam_causali').select('*').eq('codice', 'incasso_premi').eq('attiva', true), []);
+  INCA_CAUSALE = cs[0] || null;
+}
+
+/* Che cosa manca PRIMA di cercare una rata: chi apre questa schermata deve
+   sapere subito se può registrare qualcosa, non scoprirlo dopo aver compilato.
+   È la lezione di «Decisioni aperte» (§43): il sistema ha finito il suo lavoro
+   quando ha chiesto, e la domanda va dove la si legge. */
+function incaPronti() {
+  var box = document.getElementById('inca-pronti'); if (!box) return;
+  var mancano = [];
+  if (INCA_GUASTI.length) {
+    box.innerHTML = '<div class="cnt-lista"><div class="cl-sub">Non si è potuto leggere ' +
+      esc(INCA_GUASTI.join(' e ')) + '. Non vuol dire che non ci sia: vuol dire che non si è potuto leggerlo.</div></div>';
+    return;
+  }
+  if (!INCA_CAUSALE) mancano.push('la causale «Incasso premi» (è spenta o non c\'è)');
+  if (!INCA_CONTI.filter(function (c) { return c.e_mezzo_pagamento; }).length) {
+    mancano.push('un conto che dichiari di essere un modo di pagare');
+  }
+  if (!INCA_CONTI.filter(function (c) { return c.tipologia === 'debito'; }).length) {
+    mancano.push('un conto di debito verso la compagnia (il «Conto compagnia» dei conti minimi)');
+  }
+  box.innerHTML = mancano.length
+    ? '<div class="cnt-lista"><div class="cl-r"><div><b>Prima di incassare serve ' +
+      (mancano.length === 1 ? 'una cosa' : mancano.length + ' cose') + '.</b>' +
+      '<div class="cl-sub">Manca ' + mancano.map(esc).join('; manca ') +
+      '. Si sistema in Strumenti › Conti e causali: finché manca, un incasso non si registra — e non se ne inventa uno.</div></div></div></div>'
+    : '';
+}
+
+async function incaCerca() {
+  var campo = document.getElementById('inca-q');
+  var box = document.getElementById('inca-risultati');
+  if (!box) return;
+  var q = String((campo || {}).value || '').trim();
+  if (q.length < 2) { box.innerHTML = '<div class="cl-sub">Scrivi almeno due lettere e premi Cerca.</div>'; return; }
+  box.innerHTML = '<div class="cl-sub">Cerco…</div>';
+  var qs = q.replace(/[,()*%\\]/g, ' ').trim();
+  var pol = [], guasto = false;
+  try {
+    var r = await db.from('quote_polizze')
+      .select('id,numero_polizza,compagnia,cliente,cliente_id,dati')
+      .or('numero_polizza.ilike.%' + qs + '%,cliente.ilike.%' + qs + '%')
+      .limit(40);
+    if (r && r.error) throw r.error;
+    pol = r.data || [];
+  } catch (e) { guasto = true; }
+  if (guasto) {
+    box.innerHTML = '<div class="cl-sub"><b>Non si è potuto leggere il portafoglio.</b> Non vuol dire che quella polizza non ci sia: vuol dire che non si è potuto cercarla.</div>';
+    return;
+  }
+  if (!pol.length) { box.innerHTML = '<div class="cl-sub">Nessuna polizza con «' + esc(q) + '».</div>'; return; }
+  var ids = pol.map(function (p) { return p.id; });
+  var rate = await incaLeggi('le rate',
+    db.from('quote_titoli').select('*').in('polizza_id', ids).eq('stato', 'aperto')
+      .order('data_decorrenza').limit(200), []);
+  var perPol = {}; pol.forEach(function (p) { perPol[p.id] = p; });
+  INCA_RATE = rate.map(function (t) {
+    var p = perPol[t.polizza_id] || {};
+    return { titolo: t, polizza: p };
+  });
+  incaDisegnaRate();
+}
+
+function incaDisegnaRate() {
+  var box = document.getElementById('inca-risultati'); if (!box) return;
+  if (!INCA_RATE.length) {
+    box.innerHTML = '<div class="cl-sub">Quelle polizze non hanno rate aperte. Le rate già incassate non compaiono: si correggono stornando l\'incasso.</div>';
+    return;
+  }
+  box.innerHTML = INCA_RATE.map(function (r) {
+    var t = r.titolo, p = r.polizza;
+    var ok = window.Contabilita ? Contabilita.incassabile(t) : { si: true };
+    var sel = !!INCA_SCELTE[t.id];
+    return '<label class="cl-r inca-rata">' +
+      '<input type="checkbox" ' + (sel ? 'checked' : '') + (ok.si ? '' : ' disabled') +
+      ' onchange="incaScegli(\'' + esc(t.id) + '\', this.checked)">' +
+      '<div style="flex:1"><b>' + esc(p.cliente || '—') + '</b> · ' + esc(p.compagnia || '—') +
+      '<div class="cl-sub">polizza ' + esc(p.numero_polizza || '—') +
+      ' · decorre il ' + esc((t.data_decorrenza || '').split('-').reverse().join('/')) +
+      (ok.si ? '' : ' · <b>' + esc(ok.motivo) + '</b>') + '</div></div>' +
+      '<div><b>' + incaEuro(t.importo_lordo) + '</b></div></label>';
+  }).join('');
+}
+
+function incaScegli(id, acceso) {
+  var r = INCA_RATE.find(function (x) { return x.titolo.id === id; });
+  if (!r) return;
+  if (acceso) INCA_SCELTE[id] = r; else delete INCA_SCELTE[id];
+  incaSomma();
+}
+
+function incaAggiungiPag() {
+  INCA_PAGAMENTI.push({ conto_id: '', importo: '', mezzo: '', riferimento: '' });
+  incaDisegnaPagamenti();
+}
+function incaTogliPag(i) { INCA_PAGAMENTI.splice(i, 1); incaDisegnaPagamenti(); }
+function incaCambiaPag(i, campo, v) {
+  if (!INCA_PAGAMENTI[i]) return;
+  INCA_PAGAMENTI[i][campo] = v;
+  if (campo === 'conto_id') {
+    /* Il mezzo si propone da quello che il conto dichiara di ricevere, e solo
+       se ne dichiara UNO: con due, scegliere sarebbe indovinare (§32). */
+    var c = INCA_CONTI.find(function (x) { return x.id === v; });
+    var m = (c && c.mezzi) || [];
+    if (m.length === 1) INCA_PAGAMENTI[i].mezzo = m[0];
+    incaDisegnaPagamenti();
+    return;
+  }
+  incaSomma();
+}
+
+function incaDisegnaPagamenti() {
+  var box = document.getElementById('inca-pagamenti'); if (!box) return;
+  var mezzi = (window.Contabilita ? Contabilita.MEZZI : []) || [];
+  var conti = INCA_CONTI.filter(function (c) { return c.e_mezzo_pagamento; });
+  box.innerHTML = INCA_PAGAMENTI.map(function (p, i) {
+    return '<div class="inca-pag">' +
+      '<select onchange="incaCambiaPag(' + i + ',\'conto_id\',this.value)"><option value="">— su quale conto —</option>' +
+      conti.map(function (c) {
+        return '<option value="' + esc(c.id) + '"' + (p.conto_id === c.id ? ' selected' : '') + '>' + esc(c.nome) + '</option>';
+      }).join('') + '</select>' +
+      '<select onchange="incaCambiaPag(' + i + ',\'mezzo\',this.value)"><option value="">— come —</option>' +
+      mezzi.map(function (m) {
+        return '<option value="' + esc(m.k) + '"' + (p.mezzo === m.k ? ' selected' : '') + '>' + esc(m.l) + '</option>';
+      }).join('') + '</select>' +
+      '<input type="number" step="0.01" min="0" placeholder="importo" value="' + esc(p.importo) +
+      '" oninput="incaCambiaPag(' + i + ',\'importo\',this.value)">' +
+      '<input type="text" placeholder="CRO, assegno, POS…" value="' + esc(p.riferimento || '') +
+      '" oninput="incaCambiaPag(' + i + ',\'riferimento\',this.value)">' +
+      (INCA_PAGAMENTI.length > 1 ? '<button class="d-btn" type="button" onclick="incaTogliPag(' + i + ')"><i class="ti ti-x"></i></button>' : '') +
+      '</div>';
+  }).join('');
+  incaSomma();
+}
+
+/* Il piano che si passa al motore: le rate scelte e i pagamenti compilati. */
+function incaPiano() {
+  var rate = Object.keys(INCA_SCELTE).map(function (id) {
+    var r = INCA_SCELTE[id];
+    return { titolo_id: r.titolo.id, polizza_id: r.titolo.polizza_id,
+             importo: Number(r.titolo.importo_lordo),
+             compagnia: r.polizza.compagnia || '',
+             cliente_id: r.polizza.cliente_id || null };
+  });
+  var pag = INCA_PAGAMENTI
+    .filter(function (p) { return p.conto_id && Number(p.importo) > 0; })
+    .map(function (p) { return { conto_id: p.conto_id, importo: Number(p.importo), mezzo: p.mezzo || '', riferimento: p.riferimento || '' }; });
+  var uno = Object.keys(INCA_SCELTE).map(function (k) { return INCA_SCELTE[k]; })[0];
+  return { rate: rate, pagamenti: pag,
+           cliente: uno ? (uno.polizza.cliente || '') : '',
+           cliente_id: uno ? (uno.polizza.cliente_id || null) : null };
+}
+
+function incaSomma() {
+  var box = document.getElementById('inca-somma'); if (!box) return;
+  var piano = incaPiano();
+  var s = window.Contabilita ? Contabilita.contoIncasso(piano.rate, piano.pagamenti)
+                             : { totale_rate: 0, totale_pagamenti: 0, differenza: 0, quadra: false, motivo: '' };
+  box.innerHTML =
+    '<div class="inca-tot"><span>Rate scelte</span><b>' + incaEuro(s.totale_rate) + '</b></div>' +
+    '<div class="inca-tot"><span>Pagamenti</span><b>' + incaEuro(s.totale_pagamenti) + '</b></div>' +
+    '<div class="inca-tot' + (s.quadra ? ' inca-ok' : ' inca-no') + '"><span>Differenza</span><b>' +
+      incaEuro(s.differenza) + '</b></div>' +
+    (s.motivo ? '<div class="cl-sub">' + esc(s.motivo) + '</div>' : '');
+  incaRighe(piano);
+  var b = document.getElementById('inca-registra');
+  if (b) b.disabled = !s.quadra;
+}
+
+/* Le righe che nasceranno, prima di scriverle: chi incassa non deve conoscere
+   la partita doppia, ma deve poterla vedere. */
+function incaRighe(piano) {
+  var box = document.getElementById('inca-righe'); if (!box) return;
+  if (!window.Contabilita || !piano.rate.length || !piano.pagamenti.length) { box.innerHTML = ''; return; }
+  var r = Contabilita.righeIncasso(piano, { conti: INCA_CONTI, compagnie: INCA_COMPAGNIE, causale: INCA_CAUSALE });
+  if (!r.ok) {
+    box.innerHTML = '<div class="cl-sub"><b>Non si può registrare.</b> ' +
+      r.errori.map(esc).join('<br>') + '</div>';
+    return;
+  }
+  var perId = {}; INCA_CONTI.forEach(function (c) { perId[c.id] = c; });
+  box.innerHTML = '<div class="inca-righe-t">La scrittura che nascerà</div>' +
+    r.righe.map(function (x) {
+      var c = perId[x.conto_id] || {};
+      return '<div class="inca-riga"><span>' + esc(c.nome || '—') + '</span>' +
+        '<span>' + (x.dare ? 'Dare ' + incaEuro(x.dare) : '') + '</span>' +
+        '<span>' + (x.avere ? 'Avere ' + incaEuro(x.avere) : '') + '</span></div>';
+    }).join('') +
+    (r.per_compagnia.some(function (g) { return g.come === 'generico'; })
+      ? '<div class="cl-sub">Una compagnia non ha ancora il suo conto: il debito va sul conto generico, ma la riga porta il nome della compagnia, quindi il partitario resta ricostruibile.</div>' : '') +
+    '<div class="cl-sub">L\'Avere è il premio <b>lordo</b>: la provvigione dell\'agenzia non viene separata qui. Se debba esserlo all\'incasso o alla rimessa è una decisione contabile che nessuno ha ancora preso.</div>';
+}
+
+async function incaRegistra() {
+  var b = document.getElementById('inca-registra');
+  var esito = document.getElementById('inca-esito');
+  var piano = incaPiano();
+  if (!window.Contabilita) return;
+  var r = Contabilita.righeIncasso(piano, { conti: INCA_CONTI, compagnie: INCA_COMPAGNIE, causale: INCA_CAUSALE });
+  if (!r.ok) { if (esito) esito.innerHTML = '<div class="cl-sub">' + esc(r.motivo) + '</div>'; return; }
+  if (b) b.disabled = true;
+  if (esito) esito.innerHTML = '<div class="cl-sub">Registro…</div>';
+  try {
+    var res = await db.rpc('iam_incasso_registra', {
+      p_incasso: {
+        data: incOggi(), conto_id: piano.pagamenti[0].conto_id,
+        cliente: piano.cliente, cliente_id: piano.cliente_id,
+        chiave_idempotenza: INCA_CHIAVE,
+        mezzo: Contabilita.mezzoIncasso(piano.pagamenti) || '',
+        righe: r.righe
+      },
+      p_rate: piano.rate.map(function (x) {
+        var g = r.per_compagnia.find(function (y) { return y.compagnia === x.compagnia; });
+        return { titolo_id: x.titolo_id, polizza_id: x.polizza_id, importo: x.importo,
+                 compagnia: x.compagnia, compagnia_id: g ? g.compagnia_id : null };
+      }),
+      p_pagamenti: piano.pagamenti
+    });
+    if (res.error) throw res.error;
+    var d = res.data || {};
+    if (esito) esito.innerHTML = '<div class="cl-r"><div><b>' +
+      (d.gia_fatto ? 'Era già registrato' : 'Incasso registrato') + '.</b>' +
+      '<div class="cl-sub">' + (d.rate || piano.rate.length) + ' rate, ' + incaEuro(d.totale || 0) +
+      '. Il movimento si legge in Prima nota.</div></div></div>';
+    if (typeof logMovimento === 'function' && !d.gia_fatto) {
+      logMovimento('Incasso registrato · ' + incaEuro(d.totale || 0), 'incasso', null, d.incasso_id || null);
+    }
+    INCA_SCELTE = {}; INCA_PAGAMENTI = []; INCA_CHIAVE = incaNuovaChiave();
+    incaAggiungiPag();
+    await incaCerca();
+    incaStorico();
+  } catch (e) {
+    if (esito) esito.innerHTML = '<div class="cl-sub"><b>Non registrato.</b> ' +
+      esc((e && e.message) || String(e)) + '</div>';
+  } finally { if (b) b.disabled = false; }
+}
+
+async function incaStorico() {
+  var box = document.getElementById('inca-storico'); if (!box) return;
+  var righe = null;
+  try {
+    var r = await db.from('iam_incassi').select('*').order('creato_il', { ascending: false }).limit(20);
+    if (r && r.error) throw r.error;
+    righe = r.data || [];
+  } catch (e) { righe = null; }
+  if (righe === null) {
+    box.innerHTML = '<div class="cl-sub"><b>Non si è potuto leggere gli incassi.</b> Non vuol dire che non ce ne siano.</div>';
+    return;
+  }
+  if (!righe.length) { box.innerHTML = '<div class="cl-sub">Nessun incasso registrato da qui.</div>'; return; }
+  box.innerHTML = righe.map(function (x) {
+    return '<div class="cl-r"><div style="flex:1"><b>' + esc(x.cliente || '—') + '</b>' +
+      '<div class="cl-sub">' + esc((x.data || '').split('-').reverse().join('/')) +
+      (x.stato === 'stornato' ? ' · <b>stornato</b>' + (x.storno_perche ? ' (' + esc(x.storno_perche) + ')' : '') : '') +
+      '</div></div><div><b>' + incaEuro(x.totale) + '</b></div>' +
+      (x.stato === 'registrato'
+        ? '<button class="d-btn" type="button" onclick="incaStorna(\'' + esc(x.id) + '\')">Storna</button>' : '') +
+      '</div>';
+  }).join('');
+}
+
+async function incaStorna(id) {
+  var perche = prompt('Perché si storna questo incasso? Uno storno senza motivo è un buco.');
+  if (!perche || !perche.trim()) return;
+  try {
+    var r = await db.rpc('iam_incasso_storna', { p_incasso_id: id, p_perche: perche.trim() });
+    if (r.error) throw r.error;
+    var d = r.data || {};
+    if (typeof logMovimento === 'function') logMovimento('Incasso stornato · ' + perche.trim(), 'incasso', null, id);
+    alert('Stornato. Rate tornate aperte: ' + (d.rate_riaperte || 0) +
+      ((d.rate_non_riaperte || 0) ? '. Attenzione: ' + d.rate_non_riaperte + ' non sono tornate aperte, guardale.' : '.'));
+    incaStorico();
+  } catch (e) { alert('Non stornato: ' + ((e && e.message) || e)); }
+}
+
 var INC_SOSPESI = [];
 var INC_CONTI = [];
 var INC_CAUSALI = [];
 var INC_TITOLI = [];
 var INC_MOVIMENTI = [];
+var INC_MOV_RIGHE = [];   /* le righe dei movimenti: dalla Fase 2 una rata
+                             contabilizzata si riconosce da qui, non dalla
+                             testata */
+var INC_FASE2 = [];       /* le rate degli incassi della Fase 2, vive */
 var INC_CARICATO = false;
 
 function incPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
@@ -7064,15 +7510,23 @@ async function incCarica(forza) {
     if (l) l.innerHTML = '<div class="cl-sub">Carico gli incassi…</div>';
   }
   try {
-    const [so, co, ca, mo] = await Promise.all([
+    const [so, co, ca, mo, mr, f2] = await Promise.all([
       db.from('iam_sospesi').select('*').order('data_incasso', { ascending: false }),
       db.from('iam_conti').select('*').order('ordine').order('nome'),
       db.from('iam_causali').select('*').order('ordine'),
-      db.from('iam_movimenti').select('id,titolo_id,sospeso_id,annullato_il')
+      db.from('iam_movimenti').select('id,titolo_id,sospeso_id,annullato_il'),
+      db.from('iam_movimenti_righe').select('movimento_id,titolo_id').not('titolo_id', 'is', null),
+      db.from('iam_incassi_rate').select('titolo_id').eq('attiva', true)
     ]);
     for (const r of [so, co, ca, mo]) if (r.error) throw r.error;
     INC_SOSPESI = so.data || []; INC_CONTI = co.data || [];
     INC_CAUSALI = ca.data || []; INC_MOVIMENTI = mo.data || [];
+    /* Queste due letture non fanno cadere la schermata: se non rispondono si
+       vedono più rate «da portare» del vero, che è il verso meno pericoloso
+       dell'errore — si guarda e non si scrive. Farle cadere insieme alle altre
+       vorrebbe dire spegnere la schermata per una tabella nuova (§35). */
+    INC_MOV_RIGHE = (mr && !mr.error && mr.data) || [];
+    INC_FASE2 = (f2 && !f2.error && f2.data) || [];
     /* Le rate incassate le legge il portafoglio, che e' di QUOTO: qui servono
        solo quelle con una data di incasso — senza, non c'e' niente da portare
        in contabilita'. */
@@ -7096,8 +7550,18 @@ async function incCarica(forza) {
 /* Le rate incassate che non sono ancora entrate in contabilità: nessun
    movimento e nessun incasso da accreditare le nomina. È l'elenco che dice
    quanto lavoro c'è, e da cui si parte. */
+/* «Da portare in contabilità» = le rate incassate che nessuna scrittura
+   nomina. Guardava solo `iam_movimenti.titolo_id`, cioè la TESTATA — e con la
+   Fase 2 un incasso di tre rate scrive un movimento solo, che in testata può
+   portarne una. Le altre due sarebbero risultate «da portare», e un clic
+   avrebbe fatto nascere un secondo movimento per rate già contabilizzate:
+   due debiti verso la compagnia per un premio entrato una volta.
+   Adesso si guardano anche le RIGHE del movimento e le rate degli incassi
+   della Fase 2, che sono i posti in cui quel fatto è scritto davvero. */
 function incDaPortare() {
   const conMov = new Set(INC_MOVIMENTI.filter(m => !m.annullato_il && m.titolo_id).map(m => m.titolo_id));
+  (INC_MOV_RIGHE || []).forEach(r => { if (r && r.titolo_id) conMov.add(r.titolo_id); });
+  (INC_FASE2 || []).forEach(r => { if (r && r.titolo_id) conMov.add(r.titolo_id); });
   const conSosp = new Set(INC_SOSPESI.filter(s => s.stato !== 'annullato' && s.titolo_id).map(s => s.titolo_id));
   return INC_TITOLI.filter(t => !conMov.has(t.id) && !conSosp.has(t.id));
 }
@@ -9299,7 +9763,7 @@ function selContabTab(sub) {
      quadratura, e stanno dentro di lei. Chi ha il vecchio nome in memoria
      finisce là, non su un riquadro vuoto (§6b). */
   if (sub === 'conto') sub = 'quadconti';
-  ['quadratura','primanota','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
+  ['quadratura','primanota','incassa','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
     const btn = document.getElementById('ctab-'+s);
     const pnl = document.getElementById('contab-panel-'+s);
     if (btn) btn.classList.toggle('act', s===sub);
@@ -9312,6 +9776,7 @@ function selContabTab(sub) {
      inizializzatore, altrimenti la linguetta apre un riquadro vuoto. */
   if (sub==='primanota' || sub==='quadconti') pntCarica();
   if (sub==='incassi') incCarica();
+  if (sub==='incassa') incaApri();
   /* La contabilità ricostruita (M5) sta SOPRA quattro schermate che esistevano
      già: la giornata, le anomalie, lo storico e il conto. Una lettura sola le
      serve tutte e quattro, e non si ripete se è già stata fatta. */
@@ -9471,7 +9936,7 @@ function ripristinaScheda() {
   RIPRISTINO_IN_CORSO = true;
   try {
     if (!lastTab) { goTab('dashboard'); return; }
-    const contabSub = ['quadratura','primanota','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
+    const contabSub = ['quadratura','primanota','incassa','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
     if (contabSub.includes(lastTab)) { goTab('carica'); selContabTab(lastTab); }
     else if (lastTab === 'quoto') goTab('dashboard');
     /* «lab» era la vecchia pagina-hub, ora rimossa (Marketing vive nel riquadro,

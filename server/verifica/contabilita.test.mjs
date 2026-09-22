@@ -1564,6 +1564,197 @@ prova('Fase 3 · il motore non chiede l\'ora al computer', () => {
   return 'nessun orologio, e senza «oggi» nessun ritardo inventato';
 });
 
+
+/* ═══ FASE 4 — LE RIGHE ARRIVANO DOVUNQUE SI SOMMI ════════════════════════
+
+   Dalla Fase 2 un movimento può toccare più conti. `effettoSuConto` sa già
+   leggere le righe, ma sapere non basta: le righe vanno PASSATE, e chi
+   somma sono nove funzioni annidate una dentro l'altra. Una che dimentica
+   di passarle non dà nessun errore — dà un numero, e il numero ha l'aria di
+   quello giusto.
+
+   Questo è il banco che lo misura: un incasso da 500 diviso 200 in cassa e
+   300 in banca, con la testata che (come la scrive la schermata) porta il
+   PRIMO conto e il totale. Chi legge la testata dice «500 in cassa, 0 in
+   banca». Chi legge le righe dice «200 e 300». */
+const F4_CASSA = { id: 'c-cassa', nome: 'Cassa', natura: 'premi', tipologia: 'cassa', saldo_iniziale: 0, attivo: true };
+const F4_BANCA = { id: 'c-banca', nome: 'Banca', natura: 'premi', tipologia: 'banca', saldo_iniziale: 0, attivo: true };
+const F4_DEB   = { id: 'c-deb', nome: 'Debito compagnia', natura: 'premi', tipologia: 'altro', saldo_iniziale: 0, attivo: true };
+const F4_CAU   = [{ id: 'cau-inc', codice: 'incasso_premi', nome: 'Incasso premi', segno: 'entrata', natura: 'premi', incide_su_utile: false }];
+const F4_MOV   = [{ id: 'm1', data: '2026-09-22', creato_il: '2026-09-22T10:00:00Z',
+                    conto_id: 'c-cassa', causale_id: 'cau-inc', importo: 500, annullato_il: null }];
+const F4_RIGHE = [
+  { id: 'r1', movimento_id: 'm1', conto_id: 'c-cassa', dare: 200, avere: 0, ordine: 1 },
+  { id: 'r2', movimento_id: 'm1', conto_id: 'c-banca', dare: 300, avere: 0, ordine: 2 },
+  { id: 'r3', movimento_id: 'm1', conto_id: 'c-deb',   dare: 0,   avere: 500, ordine: 3 },
+];
+const F4 = { causali: F4_CAU, righe: F4_RIGHE };
+
+prova('Fase 4 · la quadratura ricostruisce dalle righe, non dalla testata', () => {
+  /* La banca dichiara 300, che è quello che ci è davvero arrivato. Letto
+     dalla testata il conto banca risulterebbe a 0, e la quadratura direbbe
+     «la banca ha 300 in più del sistema»: una differenza inventata, e
+     qualcuno andrebbe a cercare in banca un movimento che non manca. */
+  const dich = [{ conto_id: 'c-banca', data: '2026-09-22', saldo_dichiarato: 300 }];
+  const q = C.quadratura(F4_BANCA, F4_MOV, dich, F4);
+  deve(q.ricostruito === 300, 'la quadratura legge la testata invece delle righe: ricostruito ' + q.ricostruito);
+  deve(q.quadra === true, 'un conto che quadra risulta storto');
+  /* E lo storico, che è un\'altra funzione e un\'altra strada. */
+  const st = C.storicoQuadrature(F4_BANCA, F4_MOV, dich, F4);
+  deve(st.length === 1 && st[0].ricostruito === 300, 'lo storico delle quadrature legge la testata');
+  return 'ricostruito 300 su banca, quadra, e lo storico dice lo stesso';
+});
+
+prova('Fase 4 · il fondo cassa conta i contanti veri, non il totale dell\'incasso', () => {
+  /* Il fondo cassa somma le CASSE. Dalla testata risulterebbe 500 — cioè
+     duecento euro di contanti e trecento che in cassa non ci sono mai
+     stati. Chi conta il cassetto la sera troverebbe 200 e crederebbe di
+     aver perso 300. */
+  const f = C.fondoCassa([F4_CASSA, F4_BANCA], F4_MOV, F4);
+  deve(f.totale === 200, 'il fondo cassa legge la testata: ' + f.totale);
+  deve(f.quante === 1, 'conta come cassa un conto che non lo è');
+  return 'fondo cassa 200, non 500';
+});
+
+prova('Fase 4 · la giornata ripartisce per conto dalle righe', () => {
+  const g = C.giornata('2026-09-22', F4_MOV, [F4_CASSA, F4_BANCA, F4_DEB], F4);
+  /* Entrate e uscite della giornata restano quelle del MOVIMENTO: a partita
+     doppia le due gambe si annullano, quindi le righe non saprebbero dire
+     se la giornata ha incassato o pagato. */
+  deve(g.entrate === 500, 'le entrate della giornata non sono quelle del movimento: ' + g.entrate);
+  deve(g.per_conto.length === 3, 'la giornata vede ' + g.per_conto.length + ' conti invece di 3');
+  const trova = (id) => g.per_conto.filter(x => x.conto_id === id)[0];
+  deve(trova('c-cassa').saldo === 200, 'la cassa della giornata legge la testata');
+  deve(trova('c-banca').saldo === 300, 'la banca della giornata non compare col suo importo');
+  deve(trova('c-deb').saldo === -500, 'il debito verso la compagnia non risulta in Avere');
+  /* E il saldo di fine giornata di ogni conto passa dalle righe. */
+  deve(trova('c-banca').saldo_fine === 300, 'il saldo di fine giornata legge la testata');
+  return 'tre conti, 200 / 300 / -500, e il saldo di fine giornata torna';
+});
+
+prova('Fase 4 · le anomalie giudicano la quadratura sulle righe', () => {
+  /* Un conto che quadra non deve finire fra «i conti che non quadrano»: un
+     elenco di anomalie che ne contiene una falsa si smette di guardare. */
+  const dich = [{ conto_id: 'c-banca', data: '2026-09-22', saldo_dichiarato: 300 }];
+  const an = C.anomalie({ oggi: '2026-09-22', conti: [F4_BANCA], movimenti: F4_MOV,
+                          causali: F4_CAU, quadrature: dich, righe: F4_RIGHE });
+  const storti = an.filter(a => /non quadrano/.test(a.titolo));
+  deve(storti.length === 0, 'le anomalie dichiarano storto un conto che quadra');
+  return 'nessuna differenza inventata';
+});
+
+prova('Fase 4 · il dettaglio conto porta le righe fino allo storico', () => {
+  const dich = [{ conto_id: 'c-banca', data: '2026-09-22', saldo_dichiarato: 300 }];
+  const d = C.dettaglioConto(F4_BANCA, F4_MOV, dich, { causali: F4_CAU, righe: F4_RIGHE });
+  deve(d.saldo === 300, 'il dettaglio del conto legge la testata: ' + d.saldo);
+  deve(d.righe.length === 1, 'il movimento non compare nell\'estratto della banca');
+  deve(d.quadrature.length === 1 && d.quadrature[0].quadra === true,
+       'lo storico dentro il dettaglio non riceve le righe');
+  return 'saldo 300, il movimento c\'è, e lo storico quadra';
+});
+
+prova('Fase 4 · senza righe il motore si comporta come prima', () => {
+  /* Le righe sono facoltative, e devono restare tali: i movimenti scritti
+     prima del 20/09/2026 non ne hanno, e un motore che desse per scontato
+     «nessuna riga» direbbe che non muovono niente. */
+  const f = C.fondoCassa([F4_CASSA], F4_MOV, { causali: F4_CAU });
+  deve(f.totale === 500, 'senza righe il motore non legge più la testata: ' + f.totale);
+  const g = C.giornata('2026-09-22', F4_MOV, [F4_CASSA], { causali: F4_CAU });
+  deve(g.per_conto.length === 1 && g.per_conto[0].conto_id === 'c-cassa',
+       'senza righe la giornata non ripartisce sulla testata');
+  return 'testata, come prima del 20/09';
+});
+
+
+prova('Fase 4 · un conto che vive solo nelle righe non risulta cancellabile', () => {
+  /* Il debito verso una compagnia e il conto dei sospesi non stanno MAI in
+     testata: nascono dalla gamba Avere di un incasso. Contando per testata
+     risultano senza movimenti, e la schermata offre di cancellarli — che
+     renderebbe orfani proprio i movimenti che li hanno mossi. */
+  const senza = C.eliminabile(F4_DEB, F4_MOV);
+  deve(senza.ok === true, 'il banco non riproduce il difetto: senza righe dovrebbe sembrare cancellabile');
+  const con = C.eliminabile(F4_DEB, F4_MOV, { righe: F4_RIGHE });
+  deve(con.ok === false, 'un conto toccato solo da una riga Avere risulta cancellabile');
+  return 'con le righe non si cancella, e il motivo dice quanti movimenti ci sono passati';
+});
+
+prova('Fase 4 · nel dettaglio conto le causali contano il PEZZO, non il movimento intero', () => {
+  /* Un incasso da 500 che su questo conto ne ha portati 300 deve contare 300.
+     Contando 500, il riepilogo per causale non tornerebbe col saldo scritto
+     due riquadri più su, nella stessa finestra. */
+  const d = C.dettaglioConto(F4_BANCA, F4_MOV, [], { causali: F4_CAU, righe: F4_RIGHE });
+  deve(d.per_causale.length === 1, 'il riepilogo per causale non vede il movimento');
+  deve(d.per_causale[0].totale === 300,
+       'il riepilogo per causale conta il movimento intero: ' + d.per_causale[0].totale);
+  deve(d.per_causale[0].totale === d.saldo, 'il riepilogo per causale non torna col saldo del conto');
+  /* Senza `conto` resta la lettura della prima nota: il movimento intero. */
+  const pn = C.perCausale(F4_MOV, F4_CAU, {});
+  deve(pn[0].totale === 500, 'la prima nota non conta più il movimento intero');
+  return '300 nel conto, 500 nella prima nota, e sono due domande diverse';
+});
+
+
+/* ═══ FASE 4 — IL CRUSCOTTO ══════════════════════════════════════════════ */
+const F4_DASH = {
+  conti: [F4_CASSA, F4_BANCA, { id: 'c-deb2', nome: 'Debito PRIMA', natura: 'premi',
+                                tipologia: 'debito', saldo_iniziale: 0, attivo: true }],
+  causali: F4_CAU,
+  movimenti: [{ id: 'md', data: '2026-09-22', conto_id: 'c-cassa', causale_id: 'cau-inc',
+                importo: 500, annullato_il: null }],
+  righe: [{ movimento_id: 'md', conto_id: 'c-cassa', dare: 500, avere: 0 },
+          { movimento_id: 'md', conto_id: 'c-deb2', dare: 0, avere: 500 }],
+  crediti: [], recuperi: [], sospesi: [], oggi: '2026-09-22', letto: {}
+};
+
+prova('Fase 4 · il cruscotto non conta il debito come denaro in cassa', () => {
+  /* Il conto di debito è di natura «premi» ma non è liquidità. Sommandolo,
+     un incasso da 500 (cassa +500, debito −500) direbbe «premi dei clienti:
+     0 €» il giorno stesso in cui sono entrati cinquecento euro — e il numero
+     avrebbe l'aria di quello giusto. */
+  const c = C.cruscotto(F4_DASH);
+  const p = c.righe.filter(r => r.k === 'premi')[0];
+  const d = c.righe.filter(r => r.k === 'debito')[0];
+  deve(p.valore === 500, 'i premi dei clienti in cassa sono ' + p.valore + ' invece di 500');
+  deve(d.valore === 500, 'i premi da rimettere sono ' + d.valore + ' invece di 500');
+  /* E il debito si mostra SENZA segno: sta in Avere, quindi il saldo è
+     negativo, ma «−500» accanto a dei saldi positivi si legge come un
+     ammanco invece che come un debito. */
+  deve(d.valore > 0, 'il debito esce col segno meno');
+  return 'cassa 500 e debito 500, e non si annullano in un totale solo';
+});
+
+prova('Fase 4 · ogni riquadro del cruscotto dice che cosa fare', () => {
+  /* Un numero senza il verbo è un numero che si guarda una volta e poi si
+     smette (§33, §43). Dove non c'è niente da fare il verbo manca, ed è
+     giusto; dove qualcosa manca, c'è. */
+  const c = C.cruscotto(Object.assign({}, F4_DASH, { conti: [F4_CASSA] }));
+  const az = c.righe.filter(r => r.k === 'aziendale')[0];
+  deve(!!az.dafare && /Conti e causali/.test(az.dafare),
+       'senza un conto aziendale il cruscotto non dice dove crearlo');
+  const deb = c.righe.filter(r => r.k === 'debito')[0];
+  deve(!!deb.dafare && /Conti e causali/.test(deb.dafare),
+       'senza un conto di debito il cruscotto non dice che senza non si registra');
+  /* E ogni riquadro ha comunque il suo perché. */
+  c.righe.forEach(r => deve(!!r.motivo, 'il riquadro «' + r.titolo + '» non dice niente'));
+  return 'cinque riquadri, e dove manca qualcosa c\'è il verbo';
+});
+
+prova('Fase 4 · un riquadro cieco non mostra zero', () => {
+  /* Su un cruscotto di contabilità uno zero falso è la bugia peggiore: fa
+     smettere di cercare proprio dove c'è il buco (§12, §18, §43). */
+  const c = C.cruscotto(Object.assign({}, F4_DASH, { letto: { conti: false } }));
+  const ciechi = c.righe.filter(r => r.valore === null);
+  deve(ciechi.length === 3, 'i riquadri ciechi sono ' + ciechi.length + ' invece di 3');
+  ciechi.forEach(r => {
+    deve(r.valore !== 0, 'un riquadro che non si è potuto leggere mostra zero');
+    deve(/non si è potuto|non si sono potuti/i.test(r.motivo),
+         'un riquadro cieco non dice di esserlo: «' + r.motivo + '»');
+  });
+  deve(c.completo === false, 'il cruscotto si dichiara completo con tre riquadri ciechi');
+  deve(c.ciechi === 3, 'il cruscotto non conta i riquadri ciechi');
+  return '3 riquadri ciechi, nessuno zero, e il cruscotto sa di non sapere';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

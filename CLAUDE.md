@@ -6301,3 +6301,231 @@ compagnia alla fine: **0,00 e 0,00**.
   ha ancora una strada sua.
 - **La Fase 4** (prima nota consultabile, estratto conto, quadratura,
   esportazione, cruscotto) è il resto della specifica.
+
+---
+
+## 61. Contabilità · Fase 4 — il cruscotto, e i saldi che leggono le righe (22/09/2026)
+
+Ultimo pezzo della specifica del 21/09. Il lavoro si è aperto con una misura, e
+la misura ha cambiato l'ordine delle cose da fare:
+
+```
+$ grep -n "opz.righe\|righe:" iam/index.html | grep -i contabilita
+(nessun risultato)
+```
+
+> **Nessuna schermata passava le righe al motore.** Dopo la Fase 2 e la Fase 3
+> ogni saldo di IAM si calcolava dalla **testata** del movimento.
+
+### Il difetto non era nel motore: era nella propagazione
+
+`effettoSuConto` sa leggere la partita doppia dalla Fase 2 (§59). Ma sapere non
+basta: le righe vanno **passate**, e chi somma sono nove funzioni annidate una
+dentro l'altra. Sei chiamate interne **scartavano una chiave che avevano in
+mano**:
+
+| funzione | chiamava | e ometteva |
+|---|---|---|
+| `quadratura` | `saldo` × 2 | `opz.righe` |
+| `storicoQuadrature` | `saldo` | `opz.righe` |
+| `fondoCassa` | `saldo` | `opz.righe` |
+| `giornata` | `saldo` (saldo_fine) | `opz.righe`, **e ripartiva per `m.conto_id`** |
+| `anomalie` | `quadrature` × 2 | `opz.righe` |
+| `dettaglioConto` | `storicoQuadrature`, `perCausale` | `opz.righe` |
+
+> **Il confine non è fra le funzioni che accettano `opz.righe` e quelle che non
+> lo accettano: è fra quelle che lo PROPAGANO e quelle che lo scartano
+> internamente.** Nel secondo caso nessun chiamante può correggerle, e il
+> parametro sembra esserci.
+
+Su un incasso da 500 € — 200 in contanti, 300 in banca, 500 di debito verso la
+compagnia — la testata porta **il primo conto e il totale**. Quindi, prima di
+questo lavoro:
+
+| numero | diceva | è |
+|---|---|---|
+| saldo banca | 0,00 | 300,00 |
+| fondo cassa | 500,00 | 200,00 |
+| quadratura banca contro l'estratto | «la banca ha 300 in più del sistema» | quadra |
+
+L'ultima riga è la peggiore: non è un numero sbagliato, è un **giudizio** con
+un'istruzione operativa sbagliata. Chi la legge va a cercare in banca un
+movimento che non manca.
+
+**Il danno era latente**, e per questo non si era visto: finché nessun
+movimento ha righe, le funzioni a testata si comportano identiche a prima. Si
+sarebbe acceso il giorno del primo incasso a più modi di pagamento.
+
+### Due difetti che ha trovato la mappa, non la rilettura
+
+1. **`eliminabile` contava per testata.** Un conto che vive **solo nelle
+   righe** — il debito verso una compagnia, il conto dei sospesi, che in
+   testata non compaiono mai — risultava senza movimenti, e la schermata
+   offriva di cancellarlo. Cancellarlo renderebbe orfani proprio i movimenti
+   che lo hanno mosso: è la regola 4 aggirata senza che nessuno l'abbia
+   decisa.
+2. **`perCausale` dentro il dettaglio conto contava il movimento intero.** Un
+   incasso da 500 che su quel conto ne ha portati 300 contava 300… no, contava
+   500 — e il riepilogo per causale non tornava col saldo scritto due riquadri
+   più su, **nella stessa finestra**. Due numeri diversi sullo stesso conto,
+   uno accanto all'altro, sono il modo di non fidarsi più di nessuno dei due.
+   Adesso `perCausale` accetta `opz.conto` e conta il **pezzo**; senza,
+   continua a contare il movimento intero, che è la risposta giusta per la
+   prima nota.
+
+### Sette tetti nascosti, e uno era su 2.787 rate
+
+È §50 e §53 per la quarta volta, e stavolta su tutta la contabilità:
+
+| lettura | diceva | serviva |
+|---|---|---|
+| `pntCarica` → `iam_movimenti` | `.limit(1000)` | paginare |
+| `pntCarica` → `iam_movimenti_righe` | **nessun limit** (PostgREST ne manda 1000) | paginare |
+| `gioCarica` → `iam_movimenti` | `.limit(2000)` → ne riceveva 1000 | paginare |
+| `gioCarica` / `incCarica` → `quote_titoli` | `.limit(500)` su **2.787 rate** | paginare |
+| `pntCarica` / `gioCarica` → `iam_quadrature` | nessun limit | paginare |
+| `incCarica` → `iam_sospesi`, `iam_incassi_rate` | nessun limit | paginare |
+
+Il quarto è quello che mordeva già: «da portare in contabilità» mostrava **meno
+di un quinto** dell'arretrato, e chi lo guardava credeva fosse tutto.
+
+`cntTutte(fai)` pagina e torna `{righe, parziale}`; `cntMorbida` fa lo stesso
+senza far cadere la schermata. **Il tetto esiste e si DICHIARA**: `parziale`
+arriva in schermata, perché un totale parziale che non lo dice è il difetto
+rimesso dentro.
+
+E le tre letture di controllo di `incCarica` hanno un verso dell'errore che non
+è neutro: se si troncano, l'elenco «da portare» mostra **più** rate del vero, e
+un clic ne registrerebbe una già in contabilità. Adesso c'è un avviso, e sta
+**prima** dell'elenco.
+
+### Il pannello Conti mostrava il saldo iniziale, e basta
+
+`CNT_MOVIMENTI` era dichiarata e **non veniva mai riempita**. Non era solo un
+saldo sbagliato: `eliminabile` e `causaleEliminabile` giravano su un elenco
+vuoto, quindi la schermata diceva che un conto o una causale si potevano
+cancellare anche quando ci erano passati dei movimenti. Adesso li legge —
+**dopo** aver disegnato, a parte, così se quella lettura non riesce il pannello
+resta usabile e i saldi dicono il loro motivo (§35).
+
+### Il cruscotto
+
+| pezzo | dove |
+|---|---|
+| le regole | `Contabilita.cruscotto` in `tariffe/motore/contabilita.js` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **89** (erano 78) |
+| la schermata | `#contab-panel-cruscotto` e il blocco `cru*` in `iam/index.html` |
+| prove sulla schermata | `iam/verifica/cruscotto-contabile.test.mjs` — 10 |
+
+Cinque riquadri: premi dei clienti in cassa, soldi dell'agenzia, premi da
+rimettere alle compagnie, premi da recuperare, incassi in arrivo. Più le
+anomalie, lette **dallo stesso motore e con gli stessi dati** della linguetta
+Anomalie — due letture della stessa cosa sarebbero due elenchi che un giorno
+direbbero cose diverse.
+
+Tre decisioni:
+
+1. **Il debito non è denaro in cassa.** Un conto di debito è di natura «premi»,
+   e sommandolo un incasso da 500 (cassa +500, debito −500) direbbe «premi dei
+   clienti: 0 €» il giorno stesso in cui sono entrati cinquecento euro. I due
+   riquadri di liquidità contano solo le tipologie in cui il denaro c'è
+   davvero (`LIQUIDE`), e l'elenco è **dichiarato**, non ricavato per
+   sottrazione: una lista «tutto tranne» conterebbe come liquidità una
+   tipologia aggiunta domani senza che nessuno l'abbia deciso.
+2. **Il debito si mostra senza segno.** Sta in Avere, quindi il saldo esce
+   negativo: «−500» accanto a dei saldi positivi si legge come un ammanco.
+3. **Ogni riquadro dice che cosa fare, e porta dove si fa.** È §33 («le
+   anomalie hanno il verbo») applicato a un cruscotto, più la lezione di §15:
+   un cruscotto che dice che cosa fare e non porta dove si fa costringe a
+   cercare la linguetta giusta fra dieci.
+
+E la regola che vale su tutto: **un riquadro che non si è potuto leggere non
+mostra zero.** Le sette letture stanno in piedi una per una (§35) e quello che
+manca finisce in `letto`, che il motore trasforma in un riquadro che dichiara
+di non sapere. Uno zero falso, qui, fa smettere di cercare proprio dove c'è il
+buco (§12, §18, §43).
+
+### L'esportazione, e le quattro cose che rendono un CSV leggibile
+
+Non c'era nessuna convenzione: gli export di casa sono tabelle HTML che Excel
+apre. `cntCsv` è una funzione sola perché i posti che esportano sono tre — tre
+costruzioni dello stesso file diventano tre file diversi, e quello sbagliato è
+quello che qualcuno ha già mandato fuori.
+
+1. **Il BOM in testa**, altrimenti Excel non legge l'UTF-8 e gli accenti escono
+   a pezzi.
+2. **Il punto e virgola come separatore**, perché in italiano la virgola è il
+   separatore *decimale*: con la virgola «1.234,56» diventa due colonne.
+3. **I numeri con la virgola decimale**, altrimenti Excel li legge come testo e
+   non li somma — e un totale che non si può fare su un'esportazione di
+   contabilità è un'esportazione che non serve.
+4. **Le virgolette dove servono**, raddoppiate dentro. Un nome come
+   «ROSSI; MARIO» senza questa regola sposta tutte le colonne di quella riga, e
+   la riga sbagliata resta credibile.
+
+Tutte e tre le esportazioni seguono i **filtri applicati**: un file che contiene
+altro rispetto a quello che si sta guardando inganna chi lo apre. E l'estratto
+conto porta il **progressivo**, con il saldo di apertura del periodo in una riga
+sua: è il progressivo che lo rende confrontabile con l'estratto della banca.
+
+### La visibilità dei pannelli passa da una classe
+
+Nove `display:none` scritti in linea sui pannelli di Contabilità erano nove
+stili che il guardiano del kit conta — e giustamente, perché uno stile in linea
+non risponde al kit né al tema. Sono diventati una classe (`.ct-off`) e
+`selContabTab` la toglie e la rimette. Le soglie del kit sono **calate**:
+quadconti da 17 a 12, anomalie da 4 a 3, storico da 5 a 4.
+
+Trappola da ricordare: con una classe, `style.display = ''` **non** riapre il
+pannello — la classe torna a nasconderlo. Si toglie la classe, non si scrive lo
+stile. E due banchi che modellavano un DOM finto con `style` sono stati
+aggiornati: misuravano il mondo di ieri.
+
+### La trappola dei commenti, sedicesima volta, e due volte nello stesso giro
+
+Scritta da me, tutte e due le volte:
+
+1. il commento che spiega la paginazione **nominava la chiamata che stava
+   vietando**, e la prova che la cerca è diventata rossa su un codice giusto;
+2. il commento che spiega perché le letture non si lanciano insieme **nominava
+   la costruzione che stava vietando** — e stavolta il filtro dei commenti a
+   inizio riga non l'ha presa, perché era una riga *interna* di un commento su
+   più righe che comincia con un apice inverso.
+
+Due correzioni, come sempre: il commento non scrive più quelle parole, **e** la
+prova guarda solo le righe di codice. Il rimedio definitivo resta quello di
+§31: **non scrivere la parola vietata dentro il file che la vieta.**
+
+### Una controprova restata verde, e la prova era debole
+
+Tolte le righe dalla chiamata al cruscotto, la prova è restata **verde**:
+cercava `righe: CRU_RIGHE` nel blocco intero, e la stessa chiave compare nella
+chiamata alle anomalie cinquanta righe più sotto. Adesso guarda **dentro la
+chiamata**. *Una controprova che non fa diventare rossa nessuna prova non
+assolve il codice: accusa la prova* (§15, §17, §18, §19, §41, §46, §56).
+
+### Due prove aggiornate nella REGOLA, non nel numero
+
+- «la sotto-scheda è nell'elenco che accende i pannelli» fissava la
+  **posizione** (`['quadratura','primanota','incassa'`) e non la presenza: è
+  diventata rossa il giorno in cui una linguetta nuova si è messa davanti, su
+  un codice giusto. Adesso cerca la chiave dentro l'elenco.
+- «le rate degli incassi vivi si leggono» pretendeva una catena scritta tutta
+  su una riga. Corretta **e rafforzata**: adesso pretende anche che le letture
+  di `incCarica` siano tutte paginate.
+
+### Cosa resta aperto
+
+- **I numeri sono ancora tutti a zero**, ed è giusto: la prima nota nasce vuota,
+  i saldi iniziali dei conti sono a zero, non esiste un conto di debito verso
+  una compagnia né un conto dei sospesi. Il cruscotto lo dice e manda a
+  crearli — è il sistema che ha finito il suo lavoro quando ha chiesto.
+- **`contoEconomico`, `riepilogo` e `perCausale` leggono la testata**, ed è la
+  lettura giusta: a partita doppia le due gambe di un movimento si annullano,
+  quindi le righe non saprebbero dire se la giornata ha incassato o pagato. Il
+  verso di un movimento lo dice la causale, e il suo importo è il totale.
+- **Il motore chiede l'ora al computer in tre punti** (`giorniDa`,
+  `sospesiAperti`, `anomalie`), nati con la M4 e la M5: annotati e non toccati.
+- **`iam_incassi_rate` e le altre letture di `incCarica` non hanno un flag di
+  parzialità per sezione**: c'è uno solo, `INC_INCERTO`, che dice «una di
+  queste si è fermata» senza dire quale.

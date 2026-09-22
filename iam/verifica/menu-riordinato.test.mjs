@@ -144,7 +144,10 @@ prova('aprendo una voce di Contabilità si vede quella e basta', () => {
         const k = id.replace(/^ctab-|^contab-panel-/, '');
         if (!chiavi.includes(k)) return null;
         if (id.startsWith('ctab-')) return { classList: { toggle() {} } };
-        return { style: { set display(v) { visibili[k] = v; }, get display() { return visibili[k]; } } };
+        /* Dal 22/09/2026 la visibilita' di un pannello passa da una classe e
+           non da uno stile in linea: il banco modella il codice di adesso. */
+        return { classList: { toggle: (c, on) => { if (c === 'ct-off') visibili[k] = on ? 'none' : ''; } },
+                 style: {} };
       }
     },
     setUltimoTab() {}, buildStorico() {}, loadContoDB() {},

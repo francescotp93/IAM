@@ -568,3 +568,54 @@ il movimento che nasce dallo storno.
 - **La prima nota nasce vuota e i saldi iniziali dei conti sono a zero**:
   finché non si scrivono quelli veri, il saldo ricostruito parte da un numero
   che non è quello.
+
+---
+
+## 0.28.0 — Contabilità · Fase 4 (22/09/2026)
+
+### 🟡 Scelte prese, e come tornare indietro
+
+- **I saldi leggono le RIGHE, non la testata.** Sei chiamate interne al motore
+  scartavano `opz.righe`; adesso lo propagano. Sulla contabilità di oggi (un
+  movimento, nessuna riga) il risultato è identico — il motore ricade sulla
+  testata quando le righe non ci sono. *Indietro:* togliere `righe:` dalle sei
+  chiamate in `tariffe/motore/contabilita.js`; sei prove diventano rosse.
+- **Il pannello Conti legge i movimenti.** Fino a ieri mostrava il solo saldo
+  iniziale e lo dichiarava. *Indietro:* togliere la chiamata a `cntSaldi()` in
+  `cntCarica`.
+- **`eliminabile` guarda le righe.** Un conto toccato solo da una gamba Avere
+  adesso non si può cancellare. *Indietro:* togliere `{righe: CNT_RIGHE}` alla
+  chiamata; una prova diventa rossa.
+- **La visibilità dei pannelli di Contabilità passa da una classe** (`.ct-off`)
+  invece che da nove `display:none` in linea. Le soglie del guardiano del kit
+  sono calate di conseguenza. *Indietro:* rimettere gli stili in linea e
+  rialzare le soglie — ma il cricchetto dice che le soglie scendono e basta.
+- **Il cruscotto è la PRIMA linguetta di Contabilità.** Prima era «Quadratura».
+  Chi aveva un'altra linguetta in memoria la ritrova: `iam_last_tab` funziona
+  come prima. *Indietro:* rimettere `act` su `ctab-quadratura` e togliere il
+  `ct-off` dal suo pannello.
+- **Sette letture paginate.** Nessuna perde più righe in silenzio; quando il
+  tetto si raggiunge, la schermata lo scrive. *Indietro:* rimettere i `.limit()`
+  — ma allora il difetto torna, e torna invisibile.
+
+### 🔴 Serve il tuo ok (aperti da prima, ancora tutti)
+
+1. **Non esiste un conto di debito verso una compagnia, né un conto dei
+   sospesi, né una cassa contanti di tipologia «cassa».** Finché non ci sono, il
+   cruscotto dice «premi da rimettere: non c'è nessun conto» e le due schermate
+   della Fase 2 e 3 si rifiutano di registrare. Si creano in
+   Strumenti › Conti e causali.
+2. **La provvigione: matura all'incasso o alla rimessa?** Decisione non presa.
+3. **I conti «Abbuoni» sono di natura `premi`**: dovrebbero essere aziendali.
+
+### 📝 Fuori perimetro, annotato
+
+- **`contoEconomico`, `riepilogo` e `perCausale` leggono la testata**, ed è
+  giusto: a partita doppia le due gambe si annullano e le righe non saprebbero
+  dire se la giornata ha incassato o pagato.
+- **`INC_INCERTO` è una bandiera sola** per tre letture: dice «una si è
+  fermata» senza dire quale.
+- **Il motore chiede l'ora al computer in tre punti** (`giorniDa`,
+  `sospesiAperti`, `anomalie`): annotato in §61, non toccato.
+- **`otp-dalla-posta.test.mjs` è rosso su `main` da prima** (5/17): cerca un
+  modulo che nel repository non c'è.

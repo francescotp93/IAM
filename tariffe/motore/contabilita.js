@@ -777,8 +777,17 @@
   /* Regola 4: un conto con movimenti non si cancella. La risposta dice cosa
      fare invece, perché «non si può» senza un'alternativa è una schermata che
      non si usa. */
-  function eliminabile(conto, movimenti) {
-    var n = (movimenti || []).filter(function (m) { return m && m.conto_id === (conto && conto.id); }).length;
+  /* `opz.righe` non è un raffinamento: senza, un conto che vive SOLO nelle
+     righe — il debito verso una compagnia, il conto dei sospesi, che in
+     testata non compaiono mai — risulta senza movimenti, e la schermata offre
+     di cancellarlo. Cancellarlo renderebbe orfani proprio i movimenti che lo
+     hanno mosso, ed è la regola 4 aggirata senza che nessuno l'abbia decisa. */
+  function eliminabile(conto, movimenti, opz) {
+    opz = opz || {};
+    var perMov = opz.righe ? perMovimento(opz.righe) : null;
+    var n = (movimenti || []).filter(function (m) {
+      return m && effettoSuConto(m, conto, perMov, null).tocca;
+    }).length;
     if (n) return { ok: false, motivo: 'Su questo conto ci sono ' + n + ' movimenti: sono storia e non si buttano. Spegnilo — esce dalle tendine e resta nei riepiloghi del passato.' };
     return { ok: true, motivo: null };
   }
@@ -1350,14 +1359,30 @@
   /* Quanto è passato da ogni causale nel periodo. È il riepilogo che risponde
      alla domanda «dove sono finiti i soldi questo mese», ed è ordinato per
      importo perché la prima riga è quella che interessa. */
+  /* `opz.conto` restringe il conto al PEZZO che ha toccato quel conto, e serve
+     al dettaglio conto: un incasso da 500 che su questo conto ne ha portati
+     300 deve contare 300, non 500. Sommando il movimento intero, la domanda
+     «in questo periodo che cosa ha mosso questo conto» risponderebbe con un
+     numero che non torna col saldo scritto due riquadri più su — e due numeri
+     diversi sullo stesso conto nella stessa finestra sono il modo di non
+     fidarsi più di nessuno dei due. Senza `opz.conto` si conta il movimento
+     intero, che è la risposta giusta per la prima nota. */
   function perCausale(movimenti, causali, opz) {
     opz = opz || {};
     var idx = indice(causali);
     var acc = {};
+    var perMov = opz.righe ? perMovimento(opz.righe) : null;
     vivi(movimenti).forEach(function (m) {
       if (opz.dal && (!m.data || m.data < opz.dal)) return;
       if (opz.al  && (!m.data || m.data > opz.al))  return;
-      var imp = numero(m.importo);
+      var imp;
+      if (opz.conto) {
+        var e = effettoSuConto(m, opz.conto, perMov, idx);
+        if (!e.tocca || e.incerto) return;
+        imp = e.delta;
+      } else {
+        imp = numero(m.importo);
+      }
       if (imp == null) return;
       var c = idx[m.causale_id];
       var k = m.causale_id || '—';
@@ -1400,6 +1425,7 @@
     opz = opz || {};
     var g = testo(data);
     var causali = opz.causali ? indice(opz.causali) : null;
+    var perMov = opz.righe ? perMovimento(opz.righe) : null;
     var r = { data: g, entrate: 0, uscite: 0, saldo: 0, righe: 0, per_conto: [] };
     var acc = {};
     vivi(movimenti).forEach(function (m) {
@@ -1408,9 +1434,28 @@
       if (imp == null) return;
       var v = versoDi(m, causali);
       if (!v) return;
+      /* Entrate e uscite della GIORNATA restano quelle del movimento intero:
+         a partita doppia le due gambe si annullano, quindi le righe non
+         saprebbero dire se la giornata ha incassato o pagato. Il verso di un
+         movimento lo dice la causale, ed è l'unica risposta che c'è. */
       r.righe++;
       if (v > 0) r.entrate = cent(r.entrate + Math.abs(imp));
       else       r.uscite  = cent(r.uscite  + Math.abs(imp));
+      /* La ripartizione PER CONTO invece viene dalle righe quando ci sono: un
+         incasso metà in contanti e metà in banca, letto dalla testata,
+         finirebbe tutto sul primo conto — e la cassa contata la sera non
+         tornerebbe con quello che il sistema dice di avere. */
+      var mie = perMov ? (perMov[m.id] || []) : null;
+      if (mie && mie.length) {
+        mie.forEach(function (x) {
+          var k = x.conto_id || '—';
+          if (!acc[k]) acc[k] = { conto_id: x.conto_id || null, entrate: 0, uscite: 0, righe: 0 };
+          acc[k].entrate = cent(acc[k].entrate + (numero(x.dare) || 0));
+          acc[k].uscite  = cent(acc[k].uscite  + (numero(x.avere) || 0));
+          acc[k].righe++;
+        });
+        return;
+      }
       var k = m.conto_id || '—';
       if (!acc[k]) acc[k] = { conto_id: m.conto_id || null, entrate: 0, uscite: 0, righe: 0 };
       if (v > 0) acc[k].entrate = cent(acc[k].entrate + Math.abs(imp));
@@ -1428,7 +1473,7 @@
         saldo: cent(acc[k].entrate - acc[k].uscite),
         /* Il saldo del conto A FINE GIORNATA, non solo il movimento del
            giorno: e' quello che si confronta con la cassa contata. */
-        saldo_fine: c ? saldo(c, movimenti, { causali: opz.causali, al: g }).saldo : null
+        saldo_fine: c ? saldo(c, movimenti, { causali: opz.causali, al: g, righe: opz.righe }).saldo : null
       });
     }).sort(function (a, b) { return (b.entrate + b.uscite) - (a.entrate + a.uscite); });
     return r;
@@ -1442,7 +1487,7 @@
     var casse = (conti || []).filter(function (c) { return c && c.tipologia === 'cassa' && c.attivo !== false; });
     var tot = 0;
     var righe = casse.map(function (c) {
-      var s = saldo(c, movimenti, { causali: opz.causali, al: opz.al });
+      var s = saldo(c, movimenti, { causali: opz.causali, al: opz.al, righe: opz.righe });
       tot = cent(tot + s.saldo);
       return { conto_id: c.id, nome: c.nome, saldo: s.saldo, movimenti: s.movimenti };
     });
@@ -1576,12 +1621,12 @@
           confrontato con la banca. */
     if (dati.quadrature) {
       var mai = quadrature((conti || []).filter(function (c) { return c.attivo !== false; }),
-                           movimenti, dati.quadrature, { causali: causali, al: oggi })
+                           movimenti, dati.quadrature, { causali: causali, al: oggi, righe: dati.righe })
         .filter(function (q) { return q.quadra === null; });
       if (mai.length) agg('giallo', 'Conti mai verificati', mai.length, null,
         'Dichiara il saldo che dice la banca in Contabilita\u2019 \u203a Quadratura conti.');
       var storti = quadrature((conti || []).filter(function (c) { return c.attivo !== false; }),
-                              movimenti, dati.quadrature, { causali: causali, al: oggi })
+                              movimenti, dati.quadrature, { causali: causali, al: oggi, righe: dati.righe })
         .filter(function (q) { return q.quadra === false; });
       if (storti.length) agg('rosso', 'Conti che non quadrano', storti.length,
         storti.reduce(function (a, q) { return a + Math.abs(q.differenza || 0); }, 0),
@@ -1624,7 +1669,12 @@
        estratto conto del 31/08 non sa niente dei movimenti di settembre, e
        confrontarlo col saldo di oggi produrrebbe una differenza inventata. */
     var alConfronto = d ? d.data : al;
-    var s = saldo(conto, movimenti, { causali: opz.causali, al: alConfronto });
+    /* `righe` va passato, e non è un dettaglio: senza, il ricostruito di un
+       conto toccato da un incasso a più gambe si legge dalla testata e
+       sbaglia. La quadratura direbbe ogni giorno una differenza vera contro
+       un numero falso — e chi la guarda andrebbe a cercare in banca un
+       movimento che non manca. */
+    var s = saldo(conto, movimenti, { causali: opz.causali, al: alConfronto, righe: opz.righe });
 
     var out = {
       conto_id: conto ? conto.id : null,
@@ -1640,7 +1690,7 @@
       nota: null,
       /* Il saldo di OGGI resta comunque leggibile: è quello che serve a sapere
          quanti soldi ci sono, indipendentemente dall'ultima verifica. */
-      saldo_oggi: saldo(conto, movimenti, { causali: opz.causali, al: al }).saldo
+      saldo_oggi: saldo(conto, movimenti, { causali: opz.causali, al: al, righe: opz.righe }).saldo
     };
     if (!d) {
       out.motivo = 'Nessun saldo dichiarato per questo conto: non è mai stata fatta una quadratura. Non vuol dire che quadri.';
@@ -1694,7 +1744,7 @@
     }).sort(function (a, b) { return a.data < b.data ? 1 : a.data > b.data ? -1 : 0; });
 
     return mie.map(function (d) {
-      var s = saldo(conto, movimenti, { causali: opz.causali, al: d.data });
+      var s = saldo(conto, movimenti, { causali: opz.causali, al: d.data, righe: opz.righe });
       var dich = numero(d.saldo_dichiarato);
       var out = {
         data: d.data, nota: d.nota || null,
@@ -1783,8 +1833,9 @@
       fuori_dal_saldo: { righe: incerte.length, importo: fuori },
       /* Il riepilogo per causale segue la FINESTRA che si sta guardando: è la
          risposta a «in questo periodo, che cosa ha mosso questo conto». */
-      per_causale: perCausale(miei, opz.causali || [], { dal: dal || null, al: al || null }),
-      quadrature: storicoQuadrature(conto, miei, dichiarazioni, { causali: causali })
+      per_causale: perCausale(miei, opz.causali || [],
+        { dal: dal || null, al: al || null, conto: conto, righe: opz.righe }),
+      quadrature: storicoQuadrature(conto, miei, dichiarazioni, { causali: causali, righe: opz.righe })
     };
   }
 
@@ -2252,11 +2303,151 @@
     };
   }
 
+  /* ═══ FASE 4 — IL CRUSCOTTO ══════════════════════════════════════════════
+
+     Cinque numeri in una schermata sola. Fino a oggi stavano in cinque
+     linguette diverse, e per sapere come sta la contabilità dell'agenzia
+     bisognava aprirle tutte e tenere i numeri a mente.
+
+     Tre regole, e sono le stesse che valgono in tutto questo file.
+
+     1. **Ogni riquadro dice che cosa fare.** Un numero senza il verbo è un
+        numero che si guarda una volta e poi si smette: è la regola delle
+        anomalie (§33) applicata a un cruscotto. «Premi da rimettere: 4.200 €»
+        non è un'informazione finché non dice a chi vanno versati.
+     2. **«Non si è potuto leggere» non è «zero».** Un riquadro cieco lo
+        dichiara e NON mostra uno zero rassicurante: su un cruscotto di
+        contabilità uno zero falso fa smettere di cercare proprio dove c'è il
+        buco (§12, §18, §43).
+     3. **Le due nature non si sommano.** I premi dei clienti in transito non
+        sono patrimonio dell'agenzia (art. 117 CAP): un «totale liquidità»
+        farebbe credere ricca un'agenzia che ha solo incassato dei premi da
+        rimettere.
+
+     `dati.letto` dice quali letture sono riuscite: quello che manca non
+     diventa uno zero, diventa un riquadro che dice di non saperlo. */
+  /* Le tipologie in cui il denaro c'è davvero. Non si ricava da TIPOLOGIE per
+     sottrazione: aggiungendo domani una tipologia nuova, una lista «tutto
+     tranne» la conterebbe come liquidità senza che nessuno l'abbia deciso. */
+  var LIQUIDE = ['cassa', 'banca', 'conto_assicurativo', 'transitorio'];
+
+  function cruscotto(dati) {
+    dati = dati || {};
+    var conti = dati.conti, movimenti = dati.movimenti, righe = dati.righe;
+    var letto = dati.letto || {};
+    var opz = { causali: dati.causali, righe: righe };
+    var out = [];
+    var agg = function (o) { out.push(o); };
+
+    /* 1-2. I saldi per natura. */
+    if (letto.conti === false || letto.movimenti === false) {
+      agg({ k: 'premi', titolo: 'Premi dei clienti', valore: null,
+            motivo: 'Non si sono potuti leggere i conti o i movimenti. Non vuol dire che sia zero: vuol dire che non si è potuto contarlo.',
+            dafare: 'Riprova ad aggiornare la schermata.' });
+      /* Ogni riquadro cieco si spiega DA SOLO. «Stessa lettura mancata di qui
+         sopra» vale per chi legge dall'alto in basso; chi guarda un riquadro
+         solo — ed è come si guarda un cruscotto — leggerebbe una riga che non
+         dice niente. */
+      agg({ k: 'aziendale', titolo: 'Soldi dell’agenzia', valore: null,
+            motivo: 'Non si sono potuti leggere i conti o i movimenti. Non vuol dire che sia zero: vuol dire che non si è potuto contarlo.',
+            dafare: 'Riprova ad aggiornare la schermata.' });
+    } else {
+      /* I due riquadri di liquidità contano solo i conti dove il denaro c'è
+         DAVVERO: cassa, banca, conto assicurativo, transitorio. Un conto di
+         debito è di natura «premi» ma non è denaro in cassa — sommandolo, un
+         incasso da 500 (in cassa +500, debito −500) darebbe «premi dei
+         clienti: 0 €» il giorno stesso in cui sono entrati cinquecento euro.
+         Il debito ha il suo riquadro, ed è il terzo. */
+      var liquidi = (conti || []).filter(function (c) {
+        return c && LIQUIDE.indexOf(testo(c.tipologia)) >= 0;
+      });
+      var n = perNatura(liquidi, movimenti, opz);
+      agg({ k: 'premi', titolo: 'Premi dei clienti', valore: n.premi, conti: n.conti_premi,
+            motivo: 'In transito verso le compagnie. Non sono patrimonio dell’agenzia (art. 117 CAP), e non si sommano con la riga qui sotto.',
+            dafare: n.conti_premi ? null : 'Nessun conto di natura «premi»: finché non c’è, un incasso non sa dove andare.' });
+      agg({ k: 'aziendale', titolo: 'Soldi dell’agenzia', valore: n.aziendale, conti: n.conti_aziendale,
+            motivo: 'Quello che è davvero dell’agenzia.',
+            dafare: n.conti_aziendale ? null : 'Nessun conto aziendale: si crea in Strumenti › Conti e causali.' });
+    }
+
+    /* 3. Premi da rimettere alle compagnie: il saldo dei conti di debito.
+          Nasce SOLO dalla gamba Avere di un incasso, quindi senza le righe
+          risulterebbe sempre zero — ed è il numero che dice quanto denaro dei
+          clienti l'agenzia deve ancora versare. */
+    if (letto.conti === false || letto.movimenti === false) {
+      agg({ k: 'debito', titolo: 'Premi da rimettere', valore: null,
+            motivo: 'Non si sono potuti leggere i conti o i movimenti.',
+            dafare: 'Riprova ad aggiornare la schermata.' });
+    } else {
+      var deb = (conti || []).filter(function (c) {
+        return c && c.attivo !== false && testo(c.tipologia) === 'debito';
+      });
+      var tot = 0, quali = [];
+      deb.forEach(function (c) {
+        /* Un debito sta in AVERE, quindi il saldo esce negativo: quello che si
+           deve è il suo valore assoluto. Mostrarlo col segno meno accanto a
+           dei saldi positivi fa leggere «meno 4.200» come un ammanco. */
+        var sa = saldo(c, movimenti, opz).saldo;
+        tot = cent(tot + Math.abs(sa));
+        if (Math.abs(sa) > TOLLERANZA) quali.push({ conto: c.nome, importo: cent(Math.abs(sa)) });
+      });
+      agg({ k: 'debito', titolo: 'Premi da rimettere', valore: cent(tot), conti: deb.length,
+            dettaglio: quali,
+            motivo: deb.length
+              ? 'Denaro dei clienti già incassato e non ancora versato alle compagnie.'
+              : 'Nessun conto di debito verso una compagnia: finché non c’è, un incasso non si può nemmeno registrare.',
+            dafare: deb.length
+              ? (tot > TOLLERANZA ? 'Rimetti in compagnia e registra la rimessa in Prima nota.' : null)
+              : 'Crealo in Strumenti › Conti e causali, uno per compagnia.' });
+    }
+
+    /* 4. Premi da recuperare (Fase 3): l'agenzia ha coperto, il cliente no. */
+    if (letto.crediti === false) {
+      agg({ k: 'crediti', titolo: 'Premi da recuperare', valore: null,
+            motivo: 'I sospesi non si sono potuti leggere.', dafare: 'Riprova ad aggiornare la schermata.' });
+    } else {
+      var sc = scadenzarioCrediti(dati.crediti || [], dati.recuperi || [], { oggi: dati.oggi });
+      agg({ k: 'crediti', titolo: 'Premi da recuperare', valore: sc.da_recuperare,
+            quanti: sc.aperti, in_ritardo: sc.in_ritardo, ritardo_importo: sc.totale_ritardo,
+            motivo: sc.aperti
+              ? 'L’agenzia ha coperto e il cliente non ha ancora pagato.'
+              : 'Nessun premio a copertura in questo momento.',
+            dafare: sc.in_ritardo
+              ? 'Ce ne sono ' + sc.in_ritardo + ' oltre la data attesa: chiama i clienti.'
+              : null });
+    }
+
+    /* 5. Incassi da accreditare (Fase 2 / M4): il cliente ha pagato, il conto
+          non lo sa ancora. */
+    if (letto.sospesi === false) {
+      agg({ k: 'sospesi', titolo: 'Incassi da accreditare', valore: null,
+            motivo: 'Gli incassi in arrivo non si sono potuti leggere.', dafare: 'Riprova ad aggiornare la schermata.' });
+    } else {
+      var rs = riepilogoSospesi(dati.sospesi || [], { oggi: dati.oggi });
+      agg({ k: 'sospesi', titolo: 'Incassi da accreditare', valore: rs.totale,
+            quanti: rs.righe, in_ritardo: rs.in_ritardo,
+            motivo: rs.righe
+              ? 'Il cliente ha pagato e sul conto non sono ancora arrivati.'
+              : 'Niente in viaggio: tutto quello che è stato incassato è già sul conto.',
+            dafare: rs.in_ritardo
+              ? 'Ce ne sono ' + rs.in_ritardo + ' fermi da più giorni di quelli che quel mezzo ci mette: controlla in banca.'
+              : null });
+    }
+
+    /* Il cruscotto sa DI NON SAPERE, e lo dice una volta sola in cima: un
+       elenco con dentro un buco cieco, letto senza quella riga, si prende per
+       completo. */
+    var ciechi = out.filter(function (r) { return r.valore == null; }).length;
+    return { righe: out, ciechi: ciechi, completo: ciechi === 0 };
+  }
+
   var API = {
     VERSIONE: VERSIONE,
     TIPOLOGIE: TIPOLOGIE, NATURE: NATURE, SEGNI: SEGNI, GENERI: GENERI,
     CAUSALI_INIZIALI: CAUSALI_INIZIALI, CONTI_MINIMI: CONTI_MINIMI,
     CAUSALE_INCASSO: CAUSALE_INCASSO, CAUSALE_RIMESSA: CAUSALE_RIMESSA,
+    /* Fase 4 — il cruscotto */
+    cruscotto: cruscotto,
     /* Fase 1 — la partita doppia */
     bilanciato: bilanciato, validaRighe: validaRighe, righeDi: righeDi,
     righeSemplici: righeSemplici, contropartitaDi: contropartitaDi,

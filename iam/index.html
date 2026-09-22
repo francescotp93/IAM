@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.27.0">
-<meta name="app-versione-nome" content="Contabilità · i premi da recuperare">
+<meta name="app-versione" content="0.28.0">
+<meta name="app-versione-nome" content="Contabilità · il cruscotto, e i saldi che leggono le righe">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -717,6 +717,10 @@ input[type=file]{display:none;}
 .ptabs{display:flex;border-bottom:.5px solid var(--bord);background:var(--surf);}
 .ptab{flex:1;padding:11px 8px;font-size:12px;border:none;background:none;color:var(--txt3);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;transition:all .15s;}
 .ptab.act{color:var(--acc);border-bottom-color:var(--acc);font-weight:700;}
+/* Un pannello di Contabilita' spento. Sta qui e non in linea sui nove div:
+   uno stile scritto a mano non risponde al kit e non risponde al tema, e il
+   guardiano del kit li conta uno per uno. */
+.ct-off{display:none;}
 .tcard{padding:13px 16px;border-top:.5px solid var(--bord);transition:background .12s;}
 .tcard:hover{background:var(--surf2);}
 .tcard:first-child{border-top:none;}
@@ -1758,7 +1762,8 @@ input[type=file]{display:none;}
 <div class="panel act" id="panel-carica">
   <!-- Sotto-tab Contabilità -->
   <div class="ptabs" id="contab-tabs">
-    <button class="ptab act" id="ctab-quadratura" onclick="selContabTab('quadratura')">Quadratura</button>
+    <button class="ptab act" id="ctab-cruscotto" onclick="selContabTab('cruscotto')">Cruscotto</button>
+    <button class="ptab"     id="ctab-quadratura" onclick="selContabTab('quadratura')">Quadratura</button>
     <button class="ptab"     id="ctab-primanota" onclick="selContabTab('primanota')">Prima nota</button>
     <button class="ptab"     id="ctab-incassa"   onclick="selContabTab('incassa')">Incassa una rata</button>
     <button class="ptab"     id="ctab-recuperi"  onclick="selContabTab('recuperi')">Premi da recuperare</button>
@@ -1773,8 +1778,31 @@ input[type=file]{display:none;}
        Prima stava insieme ai dati della giornata: chi apriva «Carica
        documenti» si trovava davanti anche la cassa, il POS e lo scostamento.
        (01/08/2026) -->
+  <!-- ══ SUB: CRUSCOTTO (Fase 4) ═══════════════════════════════════════════
+       Cinque numeri che stavano in cinque linguette diverse: per sapere come
+       sta la contabilità dell'agenzia bisognava aprirle tutte e tenere i
+       numeri a mente. Le regole stanno nel motore («Contabilita.cruscotto»):
+       ogni riquadro dice che cosa fare, le due nature non si sommano, e un
+       riquadro che non si è potuto leggere lo dichiara invece di mostrare
+       uno zero rassicurante. -->
+  <div id="contab-panel-cruscotto">
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>Cruscotto</h1>
+        <div class="subtitle">Come sta la contabilità dell'agenzia, adesso. Ogni riquadro dice che cosa fare, e porta dove si fa.</div>
+      </div>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="cruCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      </div>
+    </section>
+    <div id="cru-avviso"></div>
+    <section class="cnt-somma" id="cru-somma"><div class="cl-sub">Leggo la contabilità…</div></section>
+    <div id="cru-anomalie"></div>
+  </div>
+
   <!-- SUB: Quadratura di giornata — solo i numeri della giornata -->
-  <div id="contab-panel-quadratura">
+  <div id="contab-panel-quadratura" class="ct-off">
     <section class="page-head">
       <div>
         <div class="eyebrow">Contabilità</div>
@@ -1846,7 +1874,7 @@ input[type=file]{display:none;}
   </div>
 
   <!-- SUB: Anomalie -->
-  <div id="contab-panel-anomalie" style="display:none;">
+  <div id="contab-panel-anomalie" class="ct-off">
     <section class="page-head">
       <div>
         <div class="eyebrow">Contabilità</div>
@@ -1872,7 +1900,7 @@ input[type=file]{display:none;}
   </div>
 
   <!-- SUB: Sospesi -->
-  <div id="contab-panel-sospesi" style="display:none;">
+  <div id="contab-panel-sospesi" class="ct-off">
     <!-- I due caricamenti stavano in una linguetta loro, «Carica documenti».
          Il brief chiede di toglierla, e va tolta — ma cancellarli avrebbe
          spento QUATTRO schermate: questi due file sono l'unica strada da cui
@@ -1922,7 +1950,7 @@ input[type=file]{display:none;}
   </div>
 
   <!-- SUB: Storico -->
-  <div id="contab-panel-storico" style="display:none;">
+  <div id="contab-panel-storico" class="ct-off">
     <section class="page-head">
       <div>
         <div class="eyebrow">Contabilità</div>
@@ -1954,7 +1982,7 @@ input[type=file]{display:none;}
        Non e' il foglio di cassa della giornata (linguetta «Quadratura»), che
        resta dov'e': quello e' una riga al giorno e non sa su quale conto sia
        finito il denaro. La riorganizzazione dei due e' la M5. -->
-  <div id="contab-panel-primanota" style="display:none;">
+  <div id="contab-panel-primanota" class="ct-off">
     <section class="page-head">
       <div>
         <div class="eyebrow">Contabilità</div>
@@ -1963,6 +1991,10 @@ input[type=file]{display:none;}
       </div>
       <div class="head-actions">
         <button class="d-btn" type="button" onclick="pntCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+        <!-- L'esportazione segue i FILTRI applicati: scaricare sempre tutto
+             vorrebbe dire che il file non c'entra con quello che si sta
+             guardando, e chi lo apre crede di avere l'altro. -->
+        <button class="d-btn" type="button" onclick="pntEsporta()"><i class="ti ti-download"></i> Esporta</button>
         <button class="d-btn primario" type="button" id="pnt-nuovo" onclick="pntApriMovimento(null)"><i class="ti ti-plus"></i> Nuovo movimento</button>
       </div>
     </section>
@@ -2005,7 +2037,7 @@ input[type=file]{display:none;}
        «Non e' mai stata fatta» NON e' «quadra»: un conto mai verificato che
        si mostra in verde e' la bugia piu' comoda che un sistema di
        contabilita' possa raccontare. -->
-  <div id="contab-panel-quadconti" style="display:none;">
+  <div id="contab-panel-quadconti" class="ct-off">
     <section class="page-head">
       <div>
         <div class="eyebrow">Contabilità</div>
@@ -2071,7 +2103,7 @@ input[type=file]{display:none;}
        non si incrociano (§18). Quella resta finche' i suoi numeri non saranno
        stati confrontati con questi (§17, §33): una schermata in uso non si
        spegne perche' ne e' nata una migliore. -->
-  <div id="contab-panel-recuperi" style="display:none;">
+  <div id="contab-panel-recuperi" class="ct-off">
     <section class="page-head">
       <div>
         <div class="eyebrow">Contabilità</div>
@@ -2098,6 +2130,7 @@ input[type=file]{display:none;}
           <input id="rec-q" type="search" placeholder="cliente, polizza o compagnia…"
                  onkeydown="if(event.key==='Enter'){event.preventDefault();recRender()}">
           <button class="d-btn primario" type="button" onclick="recRender()"><i class="ti ti-search"></i> Cerca</button>
+          <button class="d-btn" type="button" onclick="recEsporta()"><i class="ti ti-download"></i> Esporta</button>
         </div>
         <div id="rec-lista"><div class="cl-sub">…</div></div>
       </div>
@@ -2114,7 +2147,7 @@ input[type=file]{display:none;}
        sul conto». Questa risponde a «il cliente sta pagando adesso». Sono due
        momenti diversi dello stesso euro, e due schermate con lo stesso nome
        sarebbero due elenchi che non si incrociano (§18). -->
-  <div id="contab-panel-incassa" style="display:none;">
+  <div id="contab-panel-incassa" class="ct-off">
     <section class="page-head">
       <div>
         <div class="eyebrow">Contabilità</div>
@@ -2175,7 +2208,7 @@ input[type=file]{display:none;}
        l'opposto: il cliente ha pagato, e il denaro non e' ancora sul conto.
        Due cose diverse con lo stesso nome sono due elenchi che non si
        incrociano (§18): due nomi diversi. -->
-  <div id="contab-panel-incassi" style="display:none;">
+  <div id="contab-panel-incassi" class="ct-off">
     <section class="page-head">
       <div>
         <div class="eyebrow">Contabilità</div>
@@ -5478,6 +5511,12 @@ let CNT_VISTA = 'conti';
 /* I movimenti: lista vuota finché la M3 non li porta. È una variabile e non
    un letterale sparso: quando la tabella arriva si riempie in un posto solo. */
 let CNT_MOVIMENTI = [];
+/* Le righe Dare/Avere. Fino alla Fase 3 questo pannello mostrava il solo
+   saldo iniziale, e lo dichiarava; adesso che i movimenti esistono li legge,
+   e li legge dalle righe — dalla testata un incasso a più gambe finirebbe
+   tutto sul primo conto e il saldo di quel conto sarebbe più alto del vero. */
+let CNT_RIGHE = [];
+var CNT_PARZIALE = false;
 /* Fase 1: a chi si intesta un conto. Sono due letture che possono cadere da
    sole senza portarsi giù la schermata (§35): se non arrivano, le due tendine
    si spengono e lo dicono — non si perde tutto il resto. */
@@ -5512,6 +5551,11 @@ async function cntCarica(forza) {
     CNT_CONTI = c.data || [];
     CNT_CAUSALI = k.data || [];
     cntRender();
+    /* I movimenti a parte, e DOPO aver disegnato: conti e causali si vedono
+       subito, e i saldi arrivano appena sono stati contati. Se questa lettura
+       non riesce, il pannello resta usabile e i saldi dicono il loro motivo
+       invece di mostrare un numero più basso del vero (§35). */
+    cntSaldi();
     /* Dopo, e a parte: un conto si intesta a una compagnia o a un
        collaboratore, ma se quelle due letture non riescono la schermata resta
        usabile. Metterle nella Promise.all di sopra vorrebbe dire spegnere
@@ -5623,18 +5667,46 @@ async function cntCreaMinimi() {
   }
 }
 
+/* I movimenti che servono ai saldi di questo pannello. Paginati, perché
+   PostgREST ne manda mille per richiesta qualunque limit ci sia scritto
+   (§50, §53): un saldo calcolato su mille movimenti quando ce ne sono
+   milleduecento non dà nessun errore, dà un numero più basso del vero. */
+var CNT_SALDI_KO = null;
+async function cntSaldi() {
+  if (!db) return;
+  try {
+    const mo = await cntTutte((a, b) => db.from('iam_movimenti').select('*')
+      .order('data', { ascending: false }).order('id').range(a, b));
+    const ri = await cntTutte((a, b) => db.from('iam_movimenti_righe').select('*')
+      .order('movimento_id').order('ordine').range(a, b));
+    CNT_MOVIMENTI = mo.righe;
+    CNT_RIGHE = ri.righe;
+    CNT_PARZIALE = mo.parziale || ri.parziale;
+    CNT_SALDI_KO = null;
+  } catch (e) {
+    /* «Non si è potuto leggere» non è «non ce ne sono» (§12, §18): senza i
+       movimenti il saldo che si vedrebbe è il solo saldo iniziale, e mostrarlo
+       come se fosse quello di oggi sarebbe un numero credibile e falso. */
+    CNT_MOVIMENTI = []; CNT_RIGHE = [];
+    CNT_SALDI_KO = e.message || String(e);
+  }
+  cntRender();
+}
+
 function cntRenderSomma() {
   const box = document.getElementById('cnt-somma');
   if (!box || !window.Contabilita) return;
-  const n = Contabilita.perNatura(CNT_CONTI, CNT_MOVIMENTI);
+  const n = Contabilita.perNatura(CNT_CONTI, CNT_MOVIMENTI, { causali: CNT_CAUSALI, righe: CNT_RIGHE });
   const mov = CNT_MOVIMENTI.length;
   /* Le due nature NON si sommano in un totale unico, ed è la decisione che
      conta: un «totale liquidità» che mette insieme i premi dei clienti e i
      soldi dell'agenzia fa credere ricca un'agenzia che ha solo incassato dei
      premi da rimettere. */
-  const nota = mov
-    ? ('calcolato su ' + mov + ' movimenti')
-    : 'nessun movimento ancora: è il saldo iniziale dichiarato';
+  const nota = CNT_SALDI_KO
+    ? 'i movimenti non si sono potuti leggere: questo è il solo saldo iniziale, non quello di oggi'
+    : mov
+      ? ('calcolato su ' + mov + ' movimenti' + (CNT_PARZIALE ? ' — e non sono tutti: la lettura si è fermata' : ''))
+      : 'nessun movimento ancora: è il saldo iniziale dichiarato';
   box.innerHTML = `
     <div class="cnt-card"><div class="cnt-k">Premi · soldi dei clienti</div>
       <div class="cnt-v" style="color:#a855f7">${esc(Contabilita.euro(n.premi))}</div>
@@ -5654,7 +5726,7 @@ function cntRenderConti(puo) {
     box.innerHTML = `<div class="cl-sub" style="padding:18px 0">Nessun conto. ${puo ? 'Aggiungi il conto premi e il conto dell\'agenzia: sono i due che servono a registrare qualunque movimento.' : 'Li aggiunge un amministratore.'}</div>`;
     return;
   }
-  const saldi = Contabilita.saldi(CNT_CONTI, CNT_MOVIMENTI);
+  const saldi = Contabilita.saldi(CNT_CONTI, CNT_MOVIMENTI, { causali: CNT_CAUSALI, righe: CNT_RIGHE });
   box.innerHTML = saldi.map(s => {
     const c = s.conto;
     const tip = Contabilita.etichetta(Contabilita.TIPOLOGIE, c.tipologia) || c.tipologia;
@@ -5726,7 +5798,7 @@ function cntTrova(elenco, id) { return (elenco || []).find(x => x.id === id) || 
 function cntFormConto(id) {
   const c = cntTrova(CNT_CONTI, id) || { tipologia: 'banca', saldo_iniziale: 0, attivo: true };
   const opz = (elenco, sel) => elenco.map(o => `<option value="${esc(o.k)}" ${o.k === sel ? 'selected' : ''}>${esc(o.l)}</option>`).join('');
-  const el = id ? Contabilita.eliminabile(c, CNT_MOVIMENTI) : { ok: false };
+  const el = id ? Contabilita.eliminabile(c, CNT_MOVIMENTI, { righe: CNT_RIGHE }) : { ok: false };
   return `
     <div style="padding:18px 18px 0"><div style="font-size:17px;font-weight:800">${id ? 'Modifica conto' : 'Nuovo conto'}</div>
       <div class="cl-sub" style="margin-top:3px">Il saldo non si scrive: si calcola dai movimenti. Qui si dichiara solo quello di partenza.</div></div>
@@ -5927,7 +5999,7 @@ async function cntSalvaCausale(id) {
 
 async function cntEliminaConto(id) {
   const c = cntTrova(CNT_CONTI, id);
-  const el = Contabilita.eliminabile(c, CNT_MOVIMENTI);
+  const el = Contabilita.eliminabile(c, CNT_MOVIMENTI, { righe: CNT_RIGHE });
   if (!el.ok) { cntMsg({ errori: [el.motivo] }); return; }
   if (!confirm('Eliminare il conto «' + (c?.nome || '') + '»?')) return;
   try {
@@ -5985,7 +6057,106 @@ let PNT_QUADRATURE = [];
    un movimento può averne due o dieci, e una lista sola si incrocia una volta
    invece di fare una lettura per riga aperta. */
 let PNT_RIGHE = [];
+/* `var` e non `let`: le prove iniettano un portafoglio finto su window.
+   Con `let` la variabile del modulo e window.X sono due cose diverse (§17). */
+var PNT_PARZIALE = false;
 let PNT_CARICATO = false;
+
+/* ─── LEGGERE TUTTO, E DIRLO QUANDO NON SI PUÒ (Fase 4) ──────────────────────
+
+   PostgREST restituisce al massimo MILLE righe per richiesta, qualunque
+   `limit` ci sia scritto (§50, §53). Una contabilità che legge mille
+   movimenti e ne ha milleduecento non dà nessun errore: dà un saldo più
+   basso del vero, e il saldo ha l'aria di quello giusto.
+
+   Un `limit` più grande non è una correzione: è la stessa cosa scritta con
+   un numero diverso. Si pagina, e il tetto — che esiste — si DICHIARA:
+   `parziale` torna vero quando si è arrivati in fondo ai giri, e la
+   schermata lo scrive invece di far credere che quei totali siano completi. */
+var CNT_PASSO = 1000;
+var CNT_GIRI = 60;
+async function cntTutte(fai) {
+  var out = [], da = 0;
+  for (var giro = 0; giro < CNT_GIRI; giro++) {
+    var p = await fai(da, da + CNT_PASSO - 1);
+    if (p.error) throw p.error;
+    var d = p.data || [];
+    out = out.concat(d);
+    if (d.length < CNT_PASSO) return { righe: out, parziale: false };
+    da += CNT_PASSO;
+  }
+  return { righe: out, parziale: true };
+}
+
+/* ─── L'ESPORTAZIONE (Fase 4) ────────────────────────────────────────────────
+
+   Un CSV che il commercialista non riesce ad aprire non è un'esportazione.
+   Le quattro cose che lo rendono leggibile da Excel in italiano, e nessuna è
+   un dettaglio di stile:
+
+   1. il BOM in testa, altrimenti Excel legge il file come se non fosse UTF-8
+      e i nomi con gli accenti escono a pezzi;
+   2. il punto e virgola come separatore, perché in italiano la virgola è il
+      separatore DECIMALE — con la virgola, «1.234,56» diventa due colonne;
+   3. i numeri con la virgola decimale, altrimenti Excel li legge come testo e
+      non li somma (e un totale che non si può fare su un'esportazione di
+      contabilità è un'esportazione che non serve);
+   4. un campo che contiene un punto e virgola, delle virgolette o un a capo
+      sta fra virgolette, e le virgolette dentro si raddoppiano. Un nome come
+      «ROSSI; MARIO» senza questa regola sposta tutte le colonne di quella
+      riga — e la riga sbagliata resta credibile.
+
+   Sta in una funzione sola perché i posti che esportano sono tre: tre
+   costruzioni dello stesso file diventano prima o poi tre file diversi, e
+   quello sbagliato è quello che qualcuno ha già mandato fuori. */
+function cntCsvCampo(v) {
+  if (v == null) return '';
+  if (typeof v === 'number') return String(v.toFixed(2)).replace('.', ',');
+  var t = String(v);
+  if (/[;"\n\r]/.test(t)) return '"' + t.replace(/"/g, '""') + '"';
+  return t;
+}
+function cntCsv(nomeFile, intestazioni, righe) {
+  var testo = [intestazioni.map(cntCsvCampo).join(';')]
+    .concat((righe || []).map(function (r) { return r.map(cntCsvCampo).join(';'); }))
+    .join('\r\n');
+  var blob = new Blob(['﻿' + testo], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = nomeFile;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+/* La data nel nome del file si costruisce contando sui numeri, mai con
+   `toISOString()` su una data locale: fra mezzanotte e le due darebbe ieri
+   (§44). */
+function cntOggiIso() {
+  var d = new Date();
+  var mm = String(d.getMonth() + 1), gg = String(d.getDate());
+  return d.getFullYear() + '-' + (mm.length < 2 ? '0' + mm : mm) + '-' + (gg.length < 2 ? '0' + gg : gg);
+}
+
+/* La stessa cosa per una lettura che NON deve far cadere la schermata: torna
+   il motivo invece di sollevarlo. Serve dove una tabella accessoria puo'
+   mancare senza rendere inutile il resto (§35) — ma `ko` va guardato da chi
+   chiama: una lista vuota e una lettura che non e' riuscita si vedono uguali,
+   ed e' la differenza fra «non ce n'e'» e «non si e' potuto leggere». */
+async function cntMorbida(fai) {
+  try {
+    const r = await cntTutte(fai);
+    return { righe: r.righe, parziale: r.parziale, ko: null };
+  } catch (e) { return { righe: [], parziale: false, ko: e.message || String(e) }; }
+}
+
+/* Quali conti tocca un movimento: le righe se ci sono, la testata se no.
+   Serve al filtro «solo questo conto» della prima nota — filtrando per
+   testata, la metà di un incasso arrivata in banca non comparirebbe mai
+   nell'elenco della banca. */
+function cntContiDi(m, perMov) {
+  var mie = perMov ? (perMov[m.id] || []) : null;
+  if (mie && mie.length) return mie.map(function (r) { return r.conto_id; });
+  return m.conto_id ? [m.conto_id] : [];
+}
 
 function pntPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
 function pntOggi() { return new Date().toISOString().slice(0, 10); }
@@ -6001,18 +6172,22 @@ async function pntCarica(forza) {
   }
   try {
     const [mo, co, ca, qu, ri] = await Promise.all([
-      db.from('iam_movimenti').select('*').order('data', { ascending: false }).limit(1000),
+      cntTutte((a, b) => db.from('iam_movimenti').select('*')
+        .order('data', { ascending: false }).order('id').range(a, b)),
       db.from('iam_conti').select('*').order('ordine').order('nome'),
       db.from('iam_causali').select('*').order('ordine'),
-      db.from('iam_quadrature').select('*').order('data', { ascending: false }),
-      db.from('iam_movimenti_righe').select('*').order('ordine')
+      cntTutte((a, b) => db.from('iam_quadrature').select('*')
+        .order('data', { ascending: false }).order('id').range(a, b)),
+      cntTutte((a, b) => db.from('iam_movimenti_righe').select('*')
+        .order('movimento_id').order('ordine').range(a, b))
     ]);
-    for (const r of [mo, co, ca, qu, ri]) if (r.error) throw r.error;
-    PNT_MOVIMENTI = mo.data || [];
+    for (const r of [co, ca]) if (r.error) throw r.error;
+    PNT_MOVIMENTI = mo.righe;
     PNT_CONTI = co.data || [];
     PNT_CAUSALI = ca.data || [];
-    PNT_QUADRATURE = qu.data || [];
-    PNT_RIGHE = ri.data || [];
+    PNT_QUADRATURE = qu.righe;
+    PNT_RIGHE = ri.righe;
+    PNT_PARZIALE = mo.parziale || ri.parziale || qu.parziale;
     PNT_CARICATO = true;
     pntRiempiFiltri();
     pntRender();
@@ -6053,11 +6228,15 @@ function pntFiltrati() {
   const kConto = pntVal('pnt-f-conto'), kCau = pntVal('pnt-f-causale');
   const testo = pntVal('pnt-f-testo').trim().toLowerCase();
   const annullati = pntVal('pnt-f-annullati') === 'si';
+  /* Il filtro «solo questo conto» passa dalle RIGHE: dalla Fase 2 un incasso
+     metà in contanti e metà in banca ha in testata il primo conto, e
+     filtrando di lì la metà arrivata in banca non comparirebbe mai. */
+  const perMov = window.Contabilita ? Contabilita.perMovimento(PNT_RIGHE) : null;
   return PNT_MOVIMENTI.filter(m => {
     if (!annullati && m.annullato_il) return false;
     if (dal && (!m.data || m.data < dal)) return false;
     if (al && (!m.data || m.data > al)) return false;
-    if (kConto && m.conto_id !== kConto) return false;
+    if (kConto && cntContiDi(m, perMov).indexOf(kConto) < 0) return false;
     if (kCau && m.causale_id !== kCau) return false;
     if (testo) {
       const s = [m.descrizione, m.controparte, m.riferimento, m.nota].filter(Boolean).join(' ').toLowerCase();
@@ -6065,6 +6244,40 @@ function pntFiltrati() {
     }
     return true;
   });
+}
+
+/* L'esportazione della prima nota. Una riga per GAMBA quando il movimento ha
+   le righe, perché è quello che un commercialista si aspetta da una prima
+   nota: conto, Dare, Avere. Un movimento vecchio, che le righe non le ha,
+   esce con la sua riga sola e la colonna «contropartita» vuota — e lo
+   dichiara, invece di far credere che sia stato scritto a partita doppia. */
+function pntEsporta() {
+  if (!window.Contabilita) { alert('Il motore della contabilit\u00e0 non si \u00e8 caricato: non posso esportare.'); return; }
+  const righe = pntFiltrati();
+  const perMov = Contabilita.perMovimento(PNT_RIGHE);
+  const out = [];
+  righe.forEach(m => {
+    const cau = pntCausale(m.causale_id);
+    const base = [m.data || '', cau ? cau.nome : '', m.descrizione || '', m.controparte || '',
+                  m.riferimento || '', m.origine || 'manuale', m.annullato_il ? 'annullato' : 'valido'];
+    const mie = (perMov && perMov[m.id]) || [];
+    if (mie.length) {
+      mie.forEach(r => {
+        const c = pntConto(r.conto_id);
+        out.push(base.concat([c ? c.nome : '', Contabilita.numero(r.dare) || 0,
+                              Contabilita.numero(r.avere) || 0, 'partita doppia']));
+      });
+    } else {
+      const c = pntConto(m.conto_id);
+      const imp = Math.abs(Contabilita.numero(m.importo) || 0);
+      const seg = cau ? Contabilita.segnoDi(cau.segno) : 0;
+      out.push(base.concat([c ? c.nome : '', seg > 0 ? imp : 0, seg < 0 ? imp : 0,
+                            'riga sola \u2014 scritto prima della partita doppia']));
+    }
+  });
+  cntCsv('prima-nota-' + cntOggiIso() + '.csv',
+    ['Data', 'Causale', 'Descrizione', 'Controparte', 'Riferimento', 'Origine', 'Stato',
+     'Conto', 'Dare', 'Avere', 'Nota'], out);
 }
 
 function pntRender() {
@@ -6424,8 +6637,8 @@ function pntRenderQuadrature() {
   if (!box || !window.Contabilita) return;
   const puo = pntPuoScrivere();
   const q = Contabilita.quadrature(PNT_CONTI.filter(c => c.attivo !== false), PNT_MOVIMENTI, PNT_QUADRATURE,
-                                   { causali: PNT_CAUSALI, al: pntOggi() });
-  const nat = Contabilita.perNatura(PNT_CONTI, PNT_MOVIMENTI, { causali: PNT_CAUSALI });
+                                   { causali: PNT_CAUSALI, al: pntOggi(), righe: PNT_RIGHE });
+  const nat = Contabilita.perNatura(PNT_CONTI, PNT_MOVIMENTI, { causali: PNT_CAUSALI, righe: PNT_RIGHE });
   const daVerificare = q.filter(r => r.quadra === null).length;
   const storti = q.filter(r => r.quadra === false).length;
 
@@ -6705,6 +6918,36 @@ function dcoChiudi() {
   DCO_CONTO = null;
 }
 
+/* L'estratto conto che esce: le stesse righe della finestra, nella stessa
+   finestra di date, con il PROGRESSIVO. È il progressivo che rende un
+   estratto conto confrontabile con quello della banca, e ricalcolarlo in un
+   foglio a mano è il lavoro che questa esportazione esiste per togliere.
+
+   Il saldo di apertura del periodo va in una riga sua, in testa: senza, un
+   progressivo che comincia a metà si legge come un saldo che riparte da zero
+   (§42, punto 7). */
+function dcoEsporta() {
+  if (!window.Contabilita) { alert('Il motore della contabilità non si è caricato: non posso esportare.'); return; }
+  const c = pntConto(DCO_CONTO);
+  if (!c) { alert('Questo conto non risulta fra quelli letti.'); return; }
+  const d = Contabilita.dettaglioConto(c, PNT_MOVIMENTI, PNT_QUADRATURE,
+    { causali: PNT_CAUSALI, dal: DCO_DAL || null, al: DCO_AL || null, righe: PNT_RIGHE });
+  const out = [['', 'Saldo di apertura del periodo', '', '', '', '', '', d.apertura]];
+  d.righe.forEach(r => {
+    const m = r.movimento, cau = pntCausale(m.causale_id);
+    out.push([m.data || '', cau ? cau.nome : '', m.descrizione || '', m.controparte || '',
+              m.riferimento || '',
+              r.verso > 0 ? Math.abs(r.delta) : '',
+              r.verso < 0 ? Math.abs(r.delta) : '',
+              r.saldo,
+              r.incerto ? 'fuori dal saldo: manca il verso' : '']);
+  });
+  cntCsv('estratto-' + String(c.nome || 'conto').toLowerCase().replace(/[^a-z0-9]+/g, '-') +
+         '-' + cntOggiIso() + '.csv',
+    ['Data', 'Causale', 'Descrizione', 'Controparte', 'Riferimento', 'Entrata', 'Uscita', 'Saldo progressivo', 'Nota'],
+    out);
+}
+
 async function dcoApri(contoId) {
   DCO_CONTO = contoId;
   DCO_DAL = ''; DCO_AL = '';
@@ -6745,7 +6988,8 @@ function dcoRender() {
     return;
   }
   const d = Contabilita.dettaglioConto(c, PNT_MOVIMENTI, PNT_QUADRATURE,
-                                       { causali: PNT_CAUSALI, dal: DCO_DAL || null, al: DCO_AL || null });
+                                       { causali: PNT_CAUSALI, dal: DCO_DAL || null, al: DCO_AL || null,
+                                         righe: PNT_RIGHE });
   const periodo = !!(DCO_DAL || DCO_AL);
   const cau = id => pntCausale(id);
 
@@ -6764,6 +7008,7 @@ function dcoRender() {
             ${esc(Contabilita.etichetta(Contabilita.TIPOLOGIE, c.tipologia) || c.tipologia || '')}
             ${c.attivo === false ? ' · <b>spento</b>' : ''}</div>
         </div>
+        <button class="d-btn" type="button" onclick="dcoEsporta()"><i class="ti ti-download"></i> Esporta</button>
         <button class="d-btn" type="button" onclick="dcoChiudi()">Chiudi</button>
       </div>
     </div>
@@ -6916,6 +7161,11 @@ async function pntSalvaQuadratura(contoId) {
    non è un verde prudente: mostrare verde quando non c'è niente da
    confrontare è la stessa bugia del conto mai verificato (§29). */
 var GIO_MOVIMENTI = [];
+/* Le righe Dare/Avere: senza, la giornata ripartisce dalla testata e un
+   incasso metà in contanti e metà in banca finisce tutto sul primo conto —
+   la cassa contata la sera non torna con quello che il sistema dice (Fase 4). */
+var GIO_RIGHE = [];
+var GIO_PARZIALE = false;
 var GIO_CONTI = [];
 var GIO_CAUSALI = [];
 var GIO_SOSPESI = [];
@@ -6941,21 +7191,27 @@ async function gioCarica(forza) {
   if (GIO_CARICATO) { gioRender(); return; }
   try {
     const [mo, co, ca, so, qu, se] = await Promise.all([
-      db.from('iam_movimenti').select('*').order('data', { ascending: false }).limit(2000),
+      cntTutte((a, b) => db.from('iam_movimenti').select('*')
+        .order('data', { ascending: false }).order('id').range(a, b)),
       db.from('iam_conti').select('*').order('ordine').order('nome'),
       db.from('iam_causali').select('*').order('ordine'),
-      db.from('iam_sospesi').select('*'),
-      db.from('iam_quadrature').select('*').order('data', { ascending: false }),
+      cntTutte((a, b) => db.from('iam_sospesi').select('*').order('id').range(a, b)),
+      cntTutte((a, b) => db.from('iam_quadrature').select('*')
+        .order('data', { ascending: false }).order('id').range(a, b)),
       db.from('sessioni_giornaliere').select('data_riferimento,contanti,versamenti,spese,fondo_cassa,pos_bianco,pos_nero')
         .order('data_riferimento', { ascending: false }).limit(120)
     ]);
-    for (const r of [mo, co, ca, so, qu]) if (r.error) throw r.error;
-    GIO_MOVIMENTI = mo.data || []; GIO_CONTI = co.data || [];
-    GIO_CAUSALI = ca.data || []; GIO_SOSPESI = so.data || [];
-    GIO_QUADRATURE = qu.data || []; GIO_SESSIONI = se.error ? [] : (se.data || []);
-    const ti = await db.from('quote_titoli').select('id,importo_lordo,incassato_il')
-      .eq('stato', 'incassato').not('incassato_il', 'is', null).limit(500);
-    GIO_TITOLI = ti.error ? [] : (ti.data || []);
+    for (const r of [co, ca]) if (r.error) throw r.error;
+    GIO_MOVIMENTI = mo.righe; GIO_CONTI = co.data || [];
+    const gr = await cntTutte((a, b) => db.from('iam_movimenti_righe').select('*')
+      .order('movimento_id').order('ordine').range(a, b));
+    GIO_RIGHE = gr.righe; GIO_PARZIALE = mo.parziale || gr.parziale;
+    GIO_CAUSALI = ca.data || []; GIO_SOSPESI = so.righe;
+    GIO_QUADRATURE = qu.righe; GIO_SESSIONI = se.error ? [] : (se.data || []);
+    const ti = await cntMorbida((a, b) => db.from('quote_titoli').select('id,importo_lordo,incassato_il')
+      .eq('stato', 'incassato').not('incassato_il', 'is', null).order('id').range(a, b));
+    GIO_TITOLI = ti.righe;
+    if (ti.parziale || ti.ko || so.parziale || qu.parziale) GIO_PARZIALE = true;
     /* Le polizze senza nemmeno una rata: il conto lo fa il database e torna
        UNA riga — 1.720 polizze non si scaricano qui per contarle (§45). Se la
        lettura non riesce resta `null`, e l'anomalia non compare: meglio non
@@ -6990,7 +7246,7 @@ function gioRenderGiornata() {
   const box = document.getElementById('gio-oggi');
   if (!box || !window.Contabilita) return;
   const g = gioData();
-  const ric = Contabilita.giornata(g, GIO_MOVIMENTI, GIO_CONTI, { causali: GIO_CAUSALI });
+  const ric = Contabilita.giornata(g, GIO_MOVIMENTI, GIO_CONTI, { causali: GIO_CAUSALI, righe: GIO_RIGHE });
   const sess = GIO_SESSIONI.find(x => x.data_riferimento === g);
   /* Il dichiarato della vecchia quadratura: contanti + POS meno le spese. È
      la stessa somma che quel modulo faceva a mano, letta dalle sue colonne. */
@@ -6999,7 +7255,7 @@ function gioRenderGiornata() {
       + (Contabilita.numero(sess.pos_nero) || 0) - (Contabilita.numero(sess.spese) || 0)
     : null;
   const sem = Contabilita.semaforoGiornata(ric, dich);
-  const fondo = Contabilita.fondoCassa(GIO_CONTI, GIO_MOVIMENTI, { causali: GIO_CAUSALI, al: g });
+  const fondo = Contabilita.fondoCassa(GIO_CONTI, GIO_MOVIMENTI, { causali: GIO_CAUSALI, al: g, righe: GIO_RIGHE });
   const luce = sem.stato === 'verde' ? '<span class="cnt-tag utile">quadra</span>'
              : sem.stato === 'rosso' ? '<span class="cnt-tag uscita">non quadra</span>'
              : '<span class="cnt-tag">non si può dire</span>';
@@ -7031,6 +7287,164 @@ function gioRenderGiornata() {
     </div>`;
 }
 
+/* ─── IL CRUSCOTTO (Fase 4) ───────────────────────────────────────────────
+
+   Cinque numeri che stavano in cinque linguette. Le regole sono tutte nel
+   motore; qui c'è la lettura e il disegno.
+
+   Le letture stanno in piedi UNA PER UNA (§35): sette letture lanciate
+   insieme, con la prima che cade e porta giù le altre, sono una schermata che
+   si spegne sette volte più spesso di quanto dovrebbe. Il nome di quella
+   costruzione NON si scrive qui: la prova che la vieta cerca quella stringa,
+   e la troverebbe in questo commento dichiarando rotto un codice giusto
+   (§10, §12, §18, §26, §29, §31, §33, §34, §37, §41, §42, §45, §55).
+   Quello che non si è potuto leggere finisce in
+   `letto`, e il motore trasforma quel buco in un riquadro che dice di non
+   sapere — non in uno zero.
+
+   `var` e non `let`: le prove iniettano uno stato finto su `window` (§17). */
+var CRU_CONTI = [], CRU_MOV = [], CRU_RIGHE = [], CRU_CAUSALI = [];
+var CRU_CREDITI = [], CRU_RECUPERI = [], CRU_SOSPESI = [];
+var CRU_LETTO = {};
+var CRU_CARICATO = false;
+var CRU_PARZIALE = false;
+
+function cruOggi() {
+  /* Mai `toISOString()` su una data locale: fra mezzanotte e le due darebbe
+     ieri, e il cruscotto direbbe che i ritardi sono uno in meno (§44). */
+  return cntOggiIso();
+}
+
+async function cruCarica(forza) {
+  if (!db) return;
+  if (CRU_CARICATO && !forza) { cruRender(); return; }
+  CRU_LETTO = {}; CRU_PARZIALE = false;
+  const box = document.getElementById('cru-somma');
+  if (box && forza !== false) box.innerHTML = '<div class="cl-sub">Leggo la contabilità…</div>';
+
+  const co = await cntMorbida((a, b) => db.from('iam_conti').select('*').order('ordine').order('id').range(a, b));
+  CRU_CONTI = co.righe; CRU_LETTO.conti = !co.ko;
+
+  const ca = await cntMorbida((a, b) => db.from('iam_causali').select('*').order('ordine').order('id').range(a, b));
+  CRU_CAUSALI = ca.righe;
+
+  const mo = await cntMorbida((a, b) => db.from('iam_movimenti').select('*')
+    .order('data', { ascending: false }).order('id').range(a, b));
+  const ri = await cntMorbida((a, b) => db.from('iam_movimenti_righe').select('*')
+    .order('movimento_id').order('ordine').range(a, b));
+  CRU_MOV = mo.righe; CRU_RIGHE = ri.righe;
+  /* I movimenti senza le loro righe non sono «meno dati»: sono dati SBAGLIATI
+     — un incasso a più gambe letto dalla testata finisce tutto sul primo
+     conto. Se le righe non si sono lette, il riquadro dei saldi si dichiara
+     cieco invece di mostrare un numero costruito male. */
+  CRU_LETTO.movimenti = !mo.ko && !ri.ko;
+
+  const cr = await cntMorbida((a, b) => db.from('iam_crediti_premio').select('*').order('id').range(a, b));
+  const re = await cntMorbida((a, b) => db.from('iam_crediti_recuperi').select('*').order('id').range(a, b));
+  CRU_CREDITI = cr.righe; CRU_RECUPERI = re.righe;
+  CRU_LETTO.crediti = !cr.ko && !re.ko;
+
+  const so = await cntMorbida((a, b) => db.from('iam_sospesi').select('*').order('id').range(a, b));
+  CRU_SOSPESI = so.righe; CRU_LETTO.sospesi = !so.ko;
+
+  CRU_PARZIALE = [co, ca, mo, ri, cr, re, so].some(r => r.parziale);
+  CRU_CARICATO = true;
+  cruRender();
+}
+
+function cruRender() {
+  const box = document.getElementById('cru-somma');
+  if (!box) return;
+  if (!window.Contabilita) {
+    box.innerHTML = '<div class="cnt-err">Il motore della contabilità non si è caricato: '
+      + 'non vuol dire che i conti siano a zero, vuol dire che non si è potuto calcolarli.</div>';
+    return;
+  }
+  const c = Contabilita.cruscotto({
+    conti: CRU_CONTI, movimenti: CRU_MOV, righe: CRU_RIGHE, causali: CRU_CAUSALI,
+    crediti: CRU_CREDITI, recuperi: CRU_RECUPERI, sospesi: CRU_SOSPESI,
+    oggi: cruOggi(), letto: CRU_LETTO
+  });
+
+  const av = document.getElementById('cru-avviso');
+  if (av) {
+    const pezzi = [];
+    if (!c.completo) pezzi.push('<b>' + c.ciechi + '</b> riquadr' + (c.ciechi === 1 ? 'o' : 'i') +
+      ' non si sono potuti leggere: quello che vedi qui sotto non è tutto.');
+    if (CRU_PARZIALE) pezzi.push('Una delle letture si è fermata prima della fine: i numeri possono essere più bassi del vero.');
+    av.innerHTML = pezzi.length ? '<div class="cnt-avv" style="margin-bottom:12px">' + pezzi.join('<br>') + '</div>' : '';
+  }
+
+  /* Dove porta ogni riquadro. Un cruscotto che dice che cosa fare e non porta
+     dove si fa costringe a cercare la linguetta giusta fra dieci: è la stessa
+     distanza che aveva fatto perdere la voce «Importa» (§15). */
+  const dove = {
+    premi: ['quadconti', 'Guarda i conti'],
+    aziendale: ['quadconti', 'Guarda i conti'],
+    debito: ['primanota', 'Registra la rimessa'],
+    crediti: ['recuperi', 'Apri lo scadenzario'],
+    sospesi: ['incassi', 'Apri gli incassi in arrivo']
+  };
+  box.innerHTML = c.righe.map(r => {
+    const d = dove[r.k] || null;
+    const val = r.valore == null
+      ? '<span class="cnt-tag">non si sa</span>'
+      : esc(Contabilita.euro(r.valore));
+    const extra = [];
+    if (r.quanti != null) extra.push(r.quanti + (r.k === 'crediti' ? ' aperti' : ' in viaggio'));
+    if (r.in_ritardo) extra.push('<b>' + r.in_ritardo + ' in ritardo</b>');
+    if (r.conti != null) extra.push(r.conti + ' cont' + (r.conti === 1 ? 'o' : 'i'));
+    return `<div class="cnt-card">
+      <div class="cnt-k">${esc(r.titolo)}</div>
+      <div class="cnt-v">${val}</div>
+      ${extra.length ? `<div class="cnt-s">${extra.join(' · ')}</div>` : ''}
+      <div class="cnt-s">${esc(r.motivo || '')}</div>
+      ${r.dafare ? `<div class="cnt-s" style="margin-top:6px"><b>${esc(r.dafare)}</b></div>` : ''}
+      ${d ? `<div style="margin-top:8px"><button class="d-btn" type="button"
+             onclick="selContabTab('${d[0]}')">${esc(d[1])}</button></div>` : ''}
+    </div>`;
+  }).join('');
+
+  cruRenderAnomalie();
+}
+
+/* Le anomalie della contabilità, le stesse della linguetta Anomalie: si
+   leggono dallo stesso motore e con gli stessi dati. Due letture della stessa
+   cosa sarebbero due elenchi che un giorno direbbero cose diverse. */
+function cruRenderAnomalie() {
+  const box = document.getElementById('cru-anomalie');
+  if (!box || !window.Contabilita) return;
+  if (CRU_LETTO.conti === false || CRU_LETTO.movimenti === false) {
+    box.innerHTML = `<div class="d-card"><div class="card-body"><div class="cnt-avv">
+      Non si sono potute controllare le anomalie: manca una delle letture.
+      Non vuol dire che sia tutto a posto.</div></div></div>`;
+    return;
+  }
+  const a = Contabilita.anomalie({
+    conti: CRU_CONTI, movimenti: CRU_MOV, righe: CRU_RIGHE, causali: CRU_CAUSALI,
+    sospesi: CRU_SOSPESI, oggi: cruOggi()
+  });
+  if (!a.length) {
+    box.innerHTML = `<div class="d-card"><div class="card-body">
+      <div class="cnt-nome">Niente da sistemare nella contabilità.</div>
+      <div class="cl-sub">Su quello che si è potuto leggere.</div></div></div>`;
+    return;
+  }
+  box.innerHTML = `<div class="d-card">
+    <div class="card-head"><div class="card-title">
+      <span class="pictogram"><i class="ti ti-alert-triangle"></i></span> Da sistemare</div>
+      <span class="cl-sub">${a.length}</span></div>
+    <div class="card-body" style="padding:0">` +
+    a.map(x => `<div class="cnt-r">
+      <div style="flex:1">
+        <div class="cnt-nome"><span class="cnt-tag ${x.gravita === 'rosso' ? 'uscita' : ''}">${x.gravita === 'rosso' ? 'grave' : 'da guardare'}</span>
+          ${esc(x.titolo)}${x.quanti ? ' · ' + x.quanti : ''}</div>
+        <div class="cnt-sotto">${esc(x.dafare || '')}</div>
+      </div>
+      ${x.importo != null ? `<div class="cnt-saldo">${esc(Contabilita.euro(x.importo))}</div>` : ''}
+    </div>`).join('') + '</div></div>';
+}
+
 /* ─── Le anomalie ────────────────────────────────────────────────────────── */
 function gioRenderAnomalie() {
   const box = document.getElementById('gio-anomalie');
@@ -7038,6 +7452,7 @@ function gioRenderAnomalie() {
   const a = Contabilita.anomalie({
     conti: GIO_CONTI, movimenti: GIO_MOVIMENTI, causali: GIO_CAUSALI,
     sospesi: GIO_SOSPESI, titoli: GIO_TITOLI, quadrature: GIO_QUADRATURE, oggi: gioData(),
+    righe: GIO_RIGHE,
     /* Resta `null` finché il conteggio non è tornato, e il motore in quel caso
        non dice niente: «non si è potuto contare» non è «non ce ne sono»
        (§12, §18) — e su una schermata di anomalie è la bugia peggiore. */
@@ -7085,7 +7500,7 @@ function gioRenderStorico() {
       <span class="cl-sub">${elenco.length}</span></div>
     <div class="card-body" style="padding:0">` +
     elenco.map(g => {
-      const ric = Contabilita.giornata(g, GIO_MOVIMENTI, GIO_CONTI, { causali: GIO_CAUSALI });
+      const ric = Contabilita.giornata(g, GIO_MOVIMENTI, GIO_CONTI, { causali: GIO_CAUSALI, righe: GIO_RIGHE });
       const s = GIO_SESSIONI.find(x => x.data_riferimento === g);
       const dich = s ? (Contabilita.numero(s.contanti) || 0) + (Contabilita.numero(s.pos_bianco) || 0)
         + (Contabilita.numero(s.pos_nero) || 0) - (Contabilita.numero(s.spese) || 0) : null;
@@ -7121,15 +7536,15 @@ function gioRenderConto() {
       <div class="cnt-avv">Nessun conto. Si creano in Strumenti › Conti e causali.</div></div></div>`;
     return;
   }
-  const nat = Contabilita.perNatura(GIO_CONTI, GIO_MOVIMENTI, { causali: GIO_CAUSALI });
+  const nat = Contabilita.perNatura(GIO_CONTI, GIO_MOVIMENTI, { causali: GIO_CAUSALI, righe: GIO_RIGHE });
   box.innerHTML = `<div class="d-card" style="margin-bottom:12px">
     <div class="card-head"><div class="card-title">
       <span class="pictogram"><i class="ti ti-building-bank"></i></span> Il conto, ricostruito dai movimenti</div>
       <span class="cl-sub">premi ${Contabilita.euro(nat.premi)} · agenzia ${Contabilita.euro(nat.aziendale)}</span></div>
     <div class="card-body" style="padding:0">` +
     attivi.map(c => {
-      const s = Contabilita.saldo(c, GIO_MOVIMENTI, { causali: GIO_CAUSALI });
-      const ult = Contabilita.progressivo(c, GIO_MOVIMENTI, { causali: GIO_CAUSALI }).slice(-3).reverse();
+      const s = Contabilita.saldo(c, GIO_MOVIMENTI, { causali: GIO_CAUSALI, righe: GIO_RIGHE });
+      const ult = Contabilita.progressivo(c, GIO_MOVIMENTI, { causali: GIO_CAUSALI, righe: GIO_RIGHE }).slice(-3).reverse();
       return `<div class="cnt-r">
         <div style="flex:1;min-width:0">
           <div class="cnt-nome">${esc(c.nome)}
@@ -7273,11 +7688,44 @@ function recPronti() {
       'un sospeso non si apre — e non se ne inventa uno.</div></div></div></div>' : '';
 }
 
-function recRender() {
-  var box = document.getElementById('rec-lista'); if (!box || !window.Contabilita) return;
+/* Lo scadenzario che esce di casa segue i FILTRI della schermata: un file
+   che contiene altro rispetto a quello che si sta guardando è un file che
+   inganna chi lo apre. `recFiltrate` è una funzione sola perché la
+   schermata e l'esportazione devono dire la stessa cosa. */
+function recFiltrate() {
   var sc = Contabilita.scadenzarioCrediti(REC_CREDITI, REC_RECUPERI, { oggi: recOggi() });
   var quale = (document.getElementById('rec-stato') || {}).value || 'vivi';
   var q = String((document.getElementById('rec-q') || {}).value || '').trim().toLowerCase();
+  var righe = sc.righe.filter(function (x) {
+    if (quale === 'vivi') { if (x.stato !== 'aperto' && x.stato !== 'parziale') return false; }
+    else if (quale !== 'tutti' && x.stato !== quale) return false;
+    if (!q) return true;
+    var c = x.credito;
+    return [(c.cliente || ''), (c.compagnia || ''), (c.nota || '')].join(' ').toLowerCase().indexOf(q) >= 0;
+  });
+  return { sc: sc, righe: righe };
+}
+
+function recEsporta() {
+  if (!window.Contabilita) { alert('Il motore della contabilit\u00e0 non si \u00e8 caricato: non posso esportare.'); return; }
+  var f = recFiltrate();
+  cntCsv('premi-da-recuperare-' + cntOggiIso() + '.csv',
+    ['Cliente', 'Compagnia', 'Aperto il', 'Atteso il', 'In ritardo', 'Originale', 'Recuperato', 'Residuo', 'Stato', 'Nota'],
+    f.righe.map(function (x) {
+      var c = x.credito;
+      return [c.cliente || '', c.compagnia || '', c.aperto_il || '', x.scadenza || '',
+              x.in_ritardo ? 'si' : 'no',
+              Contabilita.numero(x.originale) || 0,
+              Contabilita.numero(x.recuperato) || 0,
+              Contabilita.numero(x.residuo) || 0,
+              x.stato || '', c.nota || ''];
+    }));
+}
+
+function recRender() {
+  var box = document.getElementById('rec-lista'); if (!box || !window.Contabilita) return;
+  var f = recFiltrate();
+  var sc = f.sc;
   var somma = document.getElementById('rec-somma');
   if (somma) somma.innerHTML =
     '<div class="cnt-card"><div class="cnt-k">Da recuperare</div><div class="cnt-v">' + recEuro(sc.da_recuperare) +
@@ -7287,13 +7735,7 @@ function recRender() {
     '<div class="cnt-card"><div class="cnt-k">Chiusi</div><div class="cnt-v">' + sc.chiusi +
       '</div><div class="cnt-s">recuperati per intero' + (sc.stornati ? ' · ' + sc.stornati + ' stornati' : '') + '</div></div>';
 
-  var righe = sc.righe.filter(function (x) {
-    if (quale === 'vivi') { if (x.stato !== 'aperto' && x.stato !== 'parziale') return false; }
-    else if (quale !== 'tutti' && x.stato !== quale) return false;
-    if (!q) return true;
-    var c = x.credito;
-    return [(c.cliente || ''), (c.compagnia || ''), (c.nota || '')].join(' ').toLowerCase().indexOf(q) >= 0;
-  });
+  var righe = f.righe;
   if (!righe.length) {
     box.innerHTML = '<div class="cl-sub">Nessun sospeso con questi filtri.' +
       (REC_CREDITI.length ? '' : ' Non ce n\'è ancora nessuno: si apre da «Metti una rata a copertura».') + '</div>';
@@ -7801,6 +8243,12 @@ var INC_MOV_RIGHE = [];   /* le righe dei movimenti: dalla Fase 2 una rata
                              contabilizzata si riconosce da qui, non dalla
                              testata */
 var INC_FASE2 = [];       /* le rate degli incassi della Fase 2, vive */
+/* Vero quando una delle letture di controllo non è riuscita o si è fermata.
+   Va detto, e non è un dettaglio: le tre letture servono a sapere quali rate
+   sono GIÀ in contabilità — se ne mancano, l'elenco «da portare» ne mostra di
+   più del vero, e chi lavora rischia di registrarne una due volte. */
+var INC_INCERTO = false;
+var INC_TITOLI_KO = null;
 var INC_CARICATO = false;
 
 function incPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
@@ -7815,30 +8263,45 @@ async function incCarica(forza) {
   }
   try {
     const [so, co, ca, mo, mr, f2] = await Promise.all([
-      db.from('iam_sospesi').select('*').order('data_incasso', { ascending: false }),
+      cntTutte((a, b) => db.from('iam_sospesi').select('*')
+        .order('data_incasso', { ascending: false }).order('id').range(a, b)),
       db.from('iam_conti').select('*').order('ordine').order('nome'),
       db.from('iam_causali').select('*').order('ordine'),
-      db.from('iam_movimenti').select('id,titolo_id,sospeso_id,annullato_il'),
-      db.from('iam_movimenti_righe').select('movimento_id,titolo_id').not('titolo_id', 'is', null),
-      db.from('iam_incassi_rate').select('titolo_id').eq('attiva', true)
+      cntTutte((a, b) => db.from('iam_movimenti').select('id,titolo_id,sospeso_id,annullato_il')
+        .order('id').range(a, b)),
+      cntMorbida((a, b) => db.from('iam_movimenti_righe').select('movimento_id,titolo_id')
+        .not('titolo_id', 'is', null).order('movimento_id').order('id').range(a, b)),
+      cntMorbida((a, b) => db.from('iam_incassi_rate').select('titolo_id')
+        .eq('attiva', true).order('titolo_id').range(a, b))
     ]);
-    for (const r of [so, co, ca, mo]) if (r.error) throw r.error;
-    INC_SOSPESI = so.data || []; INC_CONTI = co.data || [];
-    INC_CAUSALI = ca.data || []; INC_MOVIMENTI = mo.data || [];
+    for (const r of [co, ca]) if (r.error) throw r.error;
+    INC_SOSPESI = so.righe; INC_CONTI = co.data || [];
+    INC_CAUSALI = ca.data || []; INC_MOVIMENTI = mo.righe;
     /* Queste due letture non fanno cadere la schermata: se non rispondono si
        vedono più rate «da portare» del vero, che è il verso meno pericoloso
        dell'errore — si guarda e non si scrive. Farle cadere insieme alle altre
        vorrebbe dire spegnere la schermata per una tabella nuova (§35). */
-    INC_MOV_RIGHE = (mr && !mr.error && mr.data) || [];
-    INC_FASE2 = (f2 && !f2.error && f2.data) || [];
+    INC_MOV_RIGHE = mr.righe;
+    INC_FASE2 = f2.righe;
+    INC_INCERTO = mr.ko || f2.ko || mr.parziale || f2.parziale || so.parziale || mo.parziale;
     /* Le rate incassate le legge il portafoglio, che e' di QUOTO: qui servono
        solo quelle con una data di incasso — senza, non c'e' niente da portare
        in contabilita'. */
-    const ti = await db.from('quote_titoli')
+    /* Paginata: un tetto secco di cinquecento righe su 2.787 rate incassate
+       mostrava meno di un quinto dell'arretrato, e chi lo guardava credeva
+       fosse tutto. Un tetto piu' alto non e' una correzione, e' la stessa cosa
+       scritta con un numero diverso (§50, §53).
+       Il nome della chiamata che qui non si usa piu' NON si scrive: la prova
+       che la vieta cerca quella stringa, e la troverebbe in questo commento
+       dichiarando rotto un codice giusto (§10, §12, §18, §26, §29, §31,
+       §33, §34, §37, §41, §42, §45, §55). */
+    const ti = await cntMorbida((a, b) => db.from('quote_titoli')
       .select('id,importo_lordo,mezzo_pagamento,incassato_il,stato,polizza_id,collaboratore_id')
       .eq('stato', 'incassato').not('incassato_il', 'is', null)
-      .order('incassato_il', { ascending: false }).limit(500);
-    INC_TITOLI = ti.error ? [] : (ti.data || []);
+      .order('incassato_il', { ascending: false }).order('id').range(a, b));
+    INC_TITOLI = ti.righe;
+    INC_TITOLI_KO = ti.ko || null;
+    if (ti.parziale) INC_INCERTO = true;
     INC_CARICATO = true;
     incRender();
   } catch (e) {
@@ -7904,11 +8367,21 @@ function incRenderDaPortare(puo) {
   const box = document.getElementById('inc-daportare');
   if (!box) return;
   const da = incDaPortare();
-  if (!da.length) { box.innerHTML = ''; return; }
-  box.innerHTML = `<div class="d-card" style="margin-bottom:12px">
+  /* Un avviso che si vede PRIMA dell'elenco, e non dopo: questo elenco si usa
+     per registrare dei soldi, e una lettura che si è fermata può farlo
+     sembrare più lungo del vero. «Non si è potuto leggere tutto» non è
+     «ecco tutto» (§12, §18, §50). */
+  const dubbio = (INC_INCERTO || INC_TITOLI_KO)
+    ? `<div class="cnt-avv" style="margin-bottom:12px">Questo elenco può non essere completo:
+       ${INC_TITOLI_KO ? 'le rate incassate non si sono potute leggere (' + esc(INC_TITOLI_KO) + ')'
+                       : 'una delle letture si è fermata prima della fine'}.
+       Può comparire qui una rata che in contabilità è già entrata: prima di registrarla, aggiorna.</div>`
+    : '';
+  if (!da.length) { box.innerHTML = dubbio; return; }
+  box.innerHTML = dubbio + `<div class="d-card" style="margin-bottom:12px">
       <div class="card-head"><div class="card-title">
         <span class="pictogram"><i class="ti ti-arrow-bar-to-down"></i></span> Da portare in contabilità</div>
-        <span class="cl-sub">${da.length} rate incassate</span></div>
+        <span class="cl-sub">${da.length} rate incassate${da.length > 50 ? ' — ne vedi 50' : ''}</span></div>
       <div class="card-body" style="padding:0">` +
     da.slice(0, 50).map(t => {
       const d = Contabilita.destinoIncasso(t, INC_CONTI);
@@ -10067,11 +10540,17 @@ function selContabTab(sub) {
      quadratura, e stanno dentro di lei. Chi ha il vecchio nome in memoria
      finisce là, non su un riquadro vuoto (§6b). */
   if (sub === 'conto') sub = 'quadconti';
-  ['quadratura','primanota','incassa','recuperi','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
+  ['cruscotto','quadratura','primanota','incassa','recuperi','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
     const btn = document.getElementById('ctab-'+s);
     const pnl = document.getElementById('contab-panel-'+s);
     if (btn) btn.classList.toggle('act', s===sub);
-    if (pnl) pnl.style.display = s===sub ? '' : 'none';
+    /* La visibilita' passa da una CLASSE, non da uno stile scritto a mano:
+       nove `display:none` in linea erano nove stili che il guardiano del kit
+       conta — e giustamente, perche' uno stile in linea non risponde al kit
+       ne' al tema. Con `style.display = ''` la classe tornerebbe a nascondere
+       il pannello appena riaperto: si toglie la classe, non si scrive lo
+       stile. */
+    if (pnl) pnl.classList.toggle('ct-off', s!==sub);
   });
   setUltimoTab(sub);
   if (sub==='storico') buildStorico();
@@ -10080,6 +10559,7 @@ function selContabTab(sub) {
      inizializzatore, altrimenti la linguetta apre un riquadro vuoto. */
   if (sub==='primanota' || sub==='quadconti') pntCarica();
   if (sub==='incassi') incCarica();
+  if (sub==='cruscotto') cruCarica();
   if (sub==='incassa') incaApri();
   if (sub==='recuperi') recApri();
   /* La contabilità ricostruita (M5) sta SOPRA quattro schermate che esistevano
@@ -10241,7 +10721,7 @@ function ripristinaScheda() {
   RIPRISTINO_IN_CORSO = true;
   try {
     if (!lastTab) { goTab('dashboard'); return; }
-    const contabSub = ['quadratura','primanota','incassa','recuperi','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
+    const contabSub = ['cruscotto','quadratura','primanota','incassa','recuperi','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
     if (contabSub.includes(lastTab)) { goTab('carica'); selContabTab(lastTab); }
     else if (lastTab === 'quoto') goTab('dashboard');
     /* «lab» era la vecchia pagina-hub, ora rimossa (Marketing vive nel riquadro,

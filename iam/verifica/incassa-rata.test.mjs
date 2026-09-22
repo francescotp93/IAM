@@ -61,7 +61,12 @@ const soloJs = s => s.split('\n').filter(r => !/^\s*(\/\/|\*|\/\*)/.test(r)).joi
 prova('la schermata esiste, è raggiungibile e ha il suo inizializzatore', () => {
   deve(/id="ctab-incassa"/.test(H), 'manca la linguetta');
   deve(/id="contab-panel-incassa"/.test(H), 'manca il pannello');
-  deve(/\['quadratura','primanota','incassa'/.test(H),
+  /* Quello che conta è che «incassa» sia NELL'elenco che accende i pannelli,
+     non che sia il terzo: la prima stesura fissava la posizione, ed è
+     diventata rossa il giorno in cui una linguetta nuova si è messa davanti —
+     su un codice giusto. Si cerca la chiave dentro l'elenco. */
+  const elenco = (H.match(/\[('[a-z]+',\s*)+'storico'\]\.forEach/) || [])[0] || '';
+  deve(/'incassa'/.test(elenco),
     'la sotto-scheda non è nell\'elenco che accende i pannelli: la linguetta non spegnerebbe le altre');
   deve(/if \(sub==='incassa'\) incaApri\(\)/.test(H),
     'nessuno riempie il pannello: la linguetta aprirebbe un riquadro vuoto (§6b)');
@@ -187,10 +192,32 @@ prova('«da portare in contabilità» non conta due volte le rate della Fase 2',
   const b = H.slice(i, i + 1200);
   deve(/INC_MOV_RIGHE/.test(b), 'non guarda le righe del movimento, solo la testata');
   deve(/INC_FASE2/.test(b), 'non guarda le rate degli incassi della Fase 2');
-  deve(/iam_movimenti_righe'\)\.select\('movimento_id,titolo_id'/.test(H),
+  /* Le due letture ci devono essere. Si cerca la CHIAMATA con la sua
+     condizione, tollerando gli a capo: una prova che pretende una catena
+     scritta tutta su una riga dichiara rotto un codice giusto il giorno in
+     cui qualcuno la manda a capo \u2014 e allora si aggiorna il numero invece
+     della regola. */
+  deve(/iam_movimenti_righe'\)\s*\.select\('movimento_id,titolo_id'/.test(H),
     'le righe dei movimenti non si leggono');
-  deve(/iam_incassi_rate'\)\.select\('titolo_id'\)\.eq\('attiva', true\)/.test(H),
+  deve(/iam_incassi_rate'\)\s*\.select\('titolo_id'\)\s*\.eq\('attiva',\s*true\)/.test(H),
     'le rate degli incassi vivi non si leggono');
+  /* E devono essere PAGINATE. PostgREST ne manda mille per richiesta: una
+     lettura di controllo troncata fa comparire fra le \u00abda portare\u00bb una rata
+     che in contabilit\u00e0 c'\u00e8 gi\u00e0, e un clic la registrerebbe due volte. */
+  /* La fetta si taglia alla funzione DOPO, non a un numero di caratteri: una
+     fetta \u00abtremila caratteri\u00bb si mangia il codice del vicino, e la prova
+     accusa incCarica di un limit che non \u00e8 suo (\u00a712, \u00a734). */
+  const daQui = H.indexOf('async function incCarica');
+  const fin = H.indexOf('\nfunction ', daQui);
+  const car = H.slice(daQui, fin > daQui ? fin : daQui + 3000)
+    /* E si guardano solo le righe di CODICE: un commento che nomina il tetto
+       che si e' appena tolto farebbe diventare rossa questa prova su un
+       codice corretto. Mai una regex globale sui commenti, che su un file da
+       un megabyte si mangia meta' del documento (\u00a712). */
+    .split('\n').filter(r => !/^\s*(\/\/|\*|\/\*)/.test(r)).join('\n');
+  deve(!/\.limit\(/.test(car), 'incCarica ha ancora un limit: un tetto secco perde righe in silenzio');
+  deve((car.match(/cntTutte\(|cntMorbida\(/g) || []).length >= 5,
+    'le letture di incCarica non passano tutte dal lettore paginato');
   return 'testata, righe e incassi: tutti e tre';
 });
 

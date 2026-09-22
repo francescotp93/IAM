@@ -6697,7 +6697,7 @@ che nessuno alza è una dichiarazione che non arriva mai.*
 | pezzo | dove |
 |---|---|
 | tutte le regole | `tariffe/motore/scadenzario.js` |
-| prove in Node | `server/verifica/scadenzario.test.mjs` — **21**, con quattro controprove |
+| prove in Node | `server/verifica/scadenzario.test.mjs` — **22**, con cinque controprove |
 | la vista che porta targa, sospensioni e `sostituisce_id` | `supabase/migrations/20260922h_scadenzario_targa_sospensioni.sql` (applicata) |
 | la schermata | blocco `rin*` in `index.html`, `#page-scadenzario` |
 | prove nella pagina | blocco «scadenzario» in `ui-test.mjs` — **506** |

@@ -991,3 +991,41 @@ sono nati su richiesta esplicita dalla console.
   doppia, quindi non si storna — non si rovescia quello che non c'è. Si
   **annulla col motivo** e si riscrive, oppure si lascia com'è: resta a
   registro e non sbilancia nessun conto di liquidità.
+
+---
+
+## 22/09/2026 — La scheda cliente come un gestionale (0.36.0)
+
+### ✅ Fatto
+
+- **Barra laterale sempre visibile** con foto, nome, età, nascita, codice
+  fiscale, indirizzo, email, telefono e il menu «Operazioni» a gruppi.
+- **Tre linguette**: Sintesi cliente · Dettaglio anagrafica · Portafoglio.
+- **Sintesi**: ciambella della composizione del portafoglio, ultimi cinque
+  eventi, situazione cliente (insoluti, valore, polizze, valore portafoglio),
+  consensi e documenti d'identità.
+- **Portafoglio**: premi e provvigioni per mese/anno in corso/anno
+  precedente, premi per linea prodotto, e le polizze come **schede**.
+- **Motore nuovo** `tariffe/motore/scheda-cliente.js` con 12 prove in Node.
+
+### 🟡 Scelte da sapere
+
+- **Le sette linguette di prima** (polizze, preventivi, documenti, sinistri,
+  note, trattative, cronologia) sono tutte dentro **Portafoglio**: non è
+  sparito niente, hanno solo una casa.
+- **L'identità compare in due posti** ed è voluto: la barra è il riepilogo,
+  la linguetta Anagrafica è la scheda completa. Sono due letture dello stesso
+  dato nello stesso istante, non possono divergere.
+- **I periodi si chiamano «anno in corso» e «anno precedente»**, non «ultimo
+  anno» come nel tuo gestionale: quella parola vuol dire due cose (gli ultimi
+  dodici mesi, oppure l'anno scorso) e chi legge non sa quale.
+
+### 🔴 Serve il tuo ok
+
+Le stesse di prima, più: lo storno del movimento «Pagamento Stanza ROMA» con
+la contropartita su «Costi di agenzia», adesso che quel conto esiste.
+
+### 📝 Fuori perimetro, annotato
+
+- **«Pagamenti» e «Sospesi» come linguette della scheda**: quelle due liste
+  oggi vivono in Contabilità e nel dettaglio della polizza.

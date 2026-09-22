@@ -387,6 +387,32 @@ prova('polizze e rate in una lista sola, e la rata prende i dati dalla sua poliz
   return 'stessa polizza, due scadenze, due fasce diverse';
 });
 
+prova('UNA MODALITÀ DICHIARATA È GIÀ LA COPERTURA: quella rata è un sospeso, non un buco', () => {
+  /* «La polizza che ha data incasso pos 17.09 non può risultare nei 15 perché
+     si deve solo scaricare il sospeso pos» — Francesco. La modalità che arriva
+     dal flusso è quello dichiarato in compagnia per METTERE IN COPERTURA: se
+     c'è, il cliente non è scoperto. Senza questa regola la stessa rata sta in
+     due elenchi che dicono cose opposte. */
+  const polizze = [{ id: 'p1', cliente: 'Galfano Vito', data_effetto: '2026-09-17',
+    data_scadenza: '2027-09-17', premio_annuo: 148 }];
+  const rate = [
+    { id: 'pos', polizza_id: 'p1', tipo: 'prima_rata', data_decorrenza: '2026-09-17',
+      importo_lordo: 148, mezzo_pagamento: 'pos' },
+    { id: 'muta', polizza_id: 'p1', tipo: 'quietanza', data_decorrenza: '2026-09-17',
+      importo_lordo: 100, mezzo_pagamento: null }
+  ];
+  const e = S.righe({ polizze, rate, oggi: OGGI });
+  const ids = e.righe.filter(r => r.tipo === 'rata').map(r => r.id);
+  deve(ids.indexOf('pos') < 0, 'la rata col POS dichiarato è ancora fra le scadenze: il cliente NON è scoperto');
+  deve(ids.indexOf('muta') >= 0, 'la rata di cui non si sa niente è sparita: quello è un buco vero');
+  deve(e.rate_con_modalita === 1, 'non conta quelle andate nei sospesi: ' + e.rate_con_modalita);
+  deve(e.importo_con_modalita === 148, 'importo: ' + e.importo_con_modalita);
+  /* E si può chiedere di tenerle, per chi volesse guardare tutto insieme. */
+  const tutto = S.righe({ polizze, rate, oggi: OGGI, tieniConModalita: true });
+  deve(tutto.righe.filter(r => r.tipo === 'rata').length === 2, 'non si possono più tenere tutte');
+  return 'il POS va nei sospesi, la rata muta resta nello scadenzario';
+});
+
 prova('una rata la cui polizza non si vede NON sparisce: si conta', () => {
   /* §55: quello che resta fuori si dichiara. Una giunzione che non trova
      niente non è un errore, è zero righe — e in silenzio nessuno lo sa. */

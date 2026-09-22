@@ -164,15 +164,16 @@ prova('lo stato è in `var`: con `let` una prova che inietta dati misura un\'alt
 });
 
 prova('«Carica documenti» non è più una linguetta, e non ha spento niente', () => {
-  /* Il brief chiede di toglierla. Cancellare i due caricamenti avrebbe spento
-     QUATTRO schermate: sono l'unica strada da cui arrivano i sospesi della
-     compagnia, gli incassi, le anomalie dei file e il contatore della
-     Scrivania. Quindi si spostano dove servono. */
+  /* Il brief chiede di toglierla. Il 20/09 i due caricamenti si erano
+     SPOSTATI dentro Sospesi invece di sparire; il 22/09 Francesco ha chiesto
+     di toglierli del tutto, e la regola che contava resta quella: niente di
+     spento. Quello che era già stato caricato si rilegge dalla giornata
+     salvata, e le quattro schermate hanno ancora i loro dati. */
   deve(!/id="ctab-caricafile"/.test(H), '«Carica documenti» è di nuovo una linguetta');
-  const i = H.indexOf('id="contab-panel-sospesi"');
-  const p = H.slice(i, H.indexOf('id="contab-panel-storico"', i));
-  deve(/id="f-sosp"/.test(p) && /id="f-inc"/.test(p),
-    'i due caricamenti non sono dentro Sospesi: quattro schermate restano senza dati');
+  deve(!/id="f-sosp"/.test(H) && !/id="f-inc"/.test(H),
+    'il caricamento da file è tornato dentro Sospesi');
+  deve(/sospesi_json/.test(H) && /incassi_json/.test(H),
+    'senza la giornata salvata i dati già caricati non si rileggono più');
   /* E chi ha il vecchio nome in memoria finisce su Sospesi, non su un riquadro
      vuoto (§6b). */
   const s = H.indexOf('function selContabTab');

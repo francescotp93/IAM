@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.31.0">
-<meta name="app-versione-nome" content="Sospesi · la modalità di pagamento può essere una persona">
+<meta name="app-versione" content="0.32.0">
+<meta name="app-versione-nome" content="Il pagamento lo dicono le rate, e una spesa non si somma al conto">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -2838,11 +2838,18 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <button class="rin-az" onclick="showPage('foglio-cassa')"><i class="ti ti-cash-register"></i> Foglio cassa</button>
         <span class="cl-sub" style="margin-left:8px">la produzione giorno per giorno: incassi, provvigioni, quadrature, Excel e PDF</span>
       </div>
-      <div id="pf-importa" style="display:none;margin:-4px 0 14px">
-        <button class="rin-az" onclick="showPage('importa-flusso')"><i class="ti ti-file-import"></i>
-          Importa il portafoglio dalla compagnia</button>
-        <span class="cl-sub" style="margin-left:8px">l'archivio che manda la compagnia, con l'anteprima prima di scrivere</span>
-      </div>
+      <!-- IL TASTO «Importa il portafoglio dalla compagnia» NON È PIÙ QUI
+           (22/09/2026, richiesta di Francesco: «lo abbiamo già negli
+           strumenti»). Il 18/09 era stato messo in cima al Portafoglio
+           perché la barra da ventuno voci lo nascondeva (§15); da allora
+           l'importazione ha la sua voce nel menu di IAM, Strumenti ›
+           Preventivatore › «Importa portafoglio», che è dove Francesco la
+           cerca. Due porte per una schermata che si usa una volta al mese
+           sono una porta di troppo.
+           La PAGINA non è stata toccata: `#page-importa-flusso`, la sua
+           porta in `PAGINE_DA_AVVIARE` e la voce `nav-import` restano dove
+           sono, altrimenti la voce di menu aprirebbe un riquadro vuoto
+           (§6b). -->
 
       <div class="pf-top">
         <div class="pf-filters">
@@ -2852,6 +2859,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
               <option value="non_pagato">Non pagato</option>
               <option value="sospeso">Sospeso</option>
               <option value="pagato">Pagato</option>
+              <option value="non_si_sa">Non si sa (senza rate)</option>
               <option value="annullata">Annullata</option>
             </select></div>
           <div class="pf-f"><label>Cliente</label>
@@ -4492,8 +4500,6 @@ function initMain() {
      protezione del database (iam_is_staff su quote_importazioni). Mostrarla a
      tutti vorrebbe dire una porta che si apre su un errore di permessi. */
   const navImp=document.getElementById('nav-import'); if(navImp) navImp.style.display = isStaff() ? 'flex' : 'none';
-  /* La stessa porta dentro il Portafoglio, dove la gente la cerca davvero. */
-  const pfImp=document.getElementById('pf-importa'); if(pfImp) pfImp.style.display = isStaff() ? 'block' : 'none';
   /* Stessa soglia dell'importazione: qui si creano righe che finiscono in
      contabilita' e nelle provvigioni (Blocco 2 · punto 2). */
   const pfNuo=document.getElementById('pf-nuova'); if(pfNuo) pfNuo.style.display = isStaff() ? 'block' : 'none';
@@ -15583,8 +15589,15 @@ async function agganciaPolizze(righe) {
    ieri: sono fronti diversi e vanno letti insieme, in un colpo d'occhio.
    Regola: mai il colore da solo — ogni pallino porta la sua spiegazione.
    ═══════════════════════════════════════════════════════════════════════════ */
-let PF_ROWS = [];      // tutto il portafoglio visibile
-let PF_VISTA = [];     // ciò che resta dopo i filtri (è anche ciò che si esporta)
+/* `var` e non `let`, ed è la regola di casa (§17, §32): con `let` la variabile
+   del blocco e `window.PF_ROWS` sono due cose diverse, e una prova che legge o
+   inietta il portafoglio scriverebbe in una mentre il codice legge l'altra —
+   restando verde senza aver misurato niente. */
+var PF_ROWS = [];      // tutto il portafoglio visibile
+var PF_VISTA = [];     // ciò che resta dopo i filtri (è anche ciò che si esporta)
+var PF_MAX = 1000;     // quante righe si caricano — dichiarato, non nascosto
+var PF_TOTALE = null;  // quante ce ne sono davvero, per poterlo dire
+var PF_STATI_KO = '';  // perché lo stato del pagamento non si è potuto dedurre
 
 const PF_PAG = {
   non_pagato: ['Non pagato',  'sem-no'],
@@ -15663,7 +15676,12 @@ function pfFiltra() {
   const comp = v('pf-compagnia'), da = v('pf-da'), a = v('pf-a'), num = v('pf-numero').toLowerCase();
   const campo = pfCampoData();
   return PF_ROWS.filter(p => {
-    if (stato && p.stato_pagamento !== stato) return false;
+    /* Il filtro guarda lo stato DEDOTTO, lo stesso che il pannello mostra:
+       filtrare sulla colonna scritta vorrebbe dire che l'elenco e la scheda
+       dicono due cose diverse sulla stessa polizza (§65). Quando non si è
+       potuto dedurre, un filtro sullo stato non fa passare niente invece di
+       indovinare. */
+    if (stato && (p.__pag || {}).stato !== stato) return false;
     if (prod && p.prodotto !== prod) return false;
     if (comp && p.compagnia !== comp) return false;
     if (cli && !String(p.cliente || '').toLowerCase().includes(cli)) return false;
@@ -16107,7 +16125,15 @@ async function polPagamento(id) {
   document.getElementById('pol-ov').querySelector('.pdoc-sub').textContent =
     (p.cliente || '') + (p.numero_polizza ? ' · ' + p.numero_polizza : '');
 
-  const statoOpz = Object.keys(PF_PAG).map(k => `<option value="${k}"${p.stato_pagamento === k ? ' selected' : ''}>${PF_PAG[k][0]}</option>`).join('');
+  /* LO STATO DEL PAGAMENTO NON SI SCEGLIE PIÙ (22/09/2026, richiesta di
+     Francesco: «è inutile mettere se un pagamento è sospeso oppure annullato,
+     perché se mettiamo pos vanno in automatico come sospeso»).
+     Misurato sul portafoglio vero: 364 polizze su 4.079 dicevano una cosa e
+     le loro rate ne dicevano un'altra, e 1.444 dicevano «pagato» senza avere
+     nemmeno una rata. La regola sta nel motore e si prova in Node (§5); qui
+     si legge, col motivo accanto, perché un'etichetta senza motivo non si può
+     controllare. */
+  const stp = Contabilita.statoPagamento(p, rate, mezVoc());
   /* Dal vocabolario, non da una lista chiusa: qui devono comparire anche i
      collaboratori, perché «chi tiene il premio» è una modalità di pagamento. */
   const mezzoOpz = '<option value="">— da indicare —</option>' +
@@ -16120,9 +16146,11 @@ async function polPagamento(id) {
       <div class="pf-f"><label>Come paga</label>
         <select id="pol-mezzo" onchange="polSalvaPagamento('${esc(p.id)}')">${mezzoOpz}</select></div>
       <div class="pf-f"><label>Stato del pagamento</label>
-        <select id="pol-stato" onchange="polSalvaPagamento('${esc(p.id)}')">${statoOpz}</select></div>
+        <div id="pol-stato" data-stato="${esc(stp.stato)}" style="padding:7px 0;font-weight:700">${esc(stp.etichetta)}</div>
+        <div class="cl-sub">${esc(stp.motivo)}</div></div>
     </div>
-    <div class="cl-sub" style="margin-top:6px">Si salva da solo, e resta scritto chi l'ha cambiato.</div>
+    <div class="cl-sub" style="margin-top:6px">Come paga si salva da solo, e resta scritto chi l'ha cambiato.
+      Lo stato non si sceglie: lo dicono le rate${stp.dedotto ? '' : ' — e l\'annullamento lo decide chi annulla la polizza'}.</div>
 
     <div class="flu-sez">Rate — ${rate.length || 'nessuna'}${provv ? ' · ' + pfEuro(provv) + ' di provvigioni' : ''}</div>
     ${rate.length ? `<table class="storico-table"><thead><tr><th>Decorrenza</th><th>Tipo</th><th class="soldi">Importo</th><th class="soldi">Provvigione</th><th>Stato</th></tr></thead><tbody>
@@ -16151,12 +16179,15 @@ async function polPagamento(id) {
    «chi ha cambiato QUESTO pagamento» la traccia deve stare sulla polizza. */
 async function polSalvaPagamento(id) {
   const mezzo = document.getElementById('pol-mezzo')?.value || null;
-  const stato = document.getElementById('pol-stato')?.value || null;
+  /* Lo stato del pagamento NON si scrive più da qui (22/09/2026): lo dicono
+     le rate, e `Contabilita.statoPagamento` lo deduce. Scriverlo a mano
+     voleva dire tenere allineato un flag che nessuno allinea — misurato: 364
+     polizze su 4.079 dicevano una cosa e le loro rate ne dicevano un'altra.
+     In colonna resta solo l'annullamento, che lo decide chi annulla. */
   let p;
   try { p = await polLeggi(id); } catch (e) { alert('Non riesco a rileggere la polizza: ' + (e.message || e)); return; }
   const cambi = [];
   if ((p.mezzo_pagamento || null) !== (mezzo || null)) cambi.push('mezzo di pagamento: ' + (pfMezzoNome(mezzo) || 'tolto'));
-  if (p.stato_pagamento !== stato) cambi.push('stato: ' + ((PF_PAG[stato] || [stato])[0]));
   if (!cambi.length) return;
   /* La traccia va nel REGISTRO, non dentro la polizza: `dati.modifiche` era
      un rimedio per una schermata sola, nato il giorno prima che il registro
@@ -16164,10 +16195,10 @@ async function polSalvaPagamento(id) {
      scritto, ma non si scrive piu'. */
   try {
     fcTocca(await db.from('quote_polizze')
-      .update({ mezzo_pagamento: mezzo || null, stato_pagamento: stato }).eq('id', id).select('id'),
+      .update({ mezzo_pagamento: mezzo || null }).eq('id', id).select('id'),
       'Il pagamento della polizza non e\u2019 stato modificato.');
     const r = (PF_ROWS || []).find(x => x.id === id);
-    if (r) { r.mezzo_pagamento = mezzo || null; r.stato_pagamento = stato; }
+    if (r) r.mezzo_pagamento = mezzo || null;
     if (typeof pfRender === 'function') pfRender();
     try { logMovimento('Pagamento modificato · ' + cambi.join(' · '), 'polizza', p.cliente || '', id); } catch (e) {}
     await polPagamento(id);
@@ -16345,7 +16376,9 @@ function pfRender() {
              title="Il pagamento: rate, mezzo, stato — e si corregge"
              style="color:var(--blue);font-weight:700;text-decoration:underline">${pfPremio(p)}</a>
         ${pfPremioSotto(p)}</td>
-      <td>${pfMezzo(p)}</td>
+      <td>${pfMezzo(p)}
+        <div class="pf-stato" style="font-size:10.5px;color:var(--muted);margin-top:2px"
+             title="${esc((p.__pag || {}).motivo || PF_STATI_KO || '')}">${esc((p.__pag || {}).etichetta || '—')}</div></td>
       <td style="font-size:13px">${esc(p.creato_nome || '—')}
         <div style="margin-top:5px"><button class="rin-az" onclick="event.stopPropagation();pdocApri('${p.id}')" title="Documenti della pratica e cosa manca per perfezionarla">
           <i class="ti ti-folder"></i> Documenti${p.__mancanti ? ` <span class="tk-badge st-scad">${p.__mancanti}</span>` : ''}</button></div></td>
@@ -16359,7 +16392,14 @@ function pfRender() {
     tot.innerHTML = `<span><b>${PF_VISTA.length}</b> polizze${PF_VISTA.length !== PF_ROWS.length ? ` su ${PF_ROWS.length}` : ''}</span>`
       + `<span>premi per <b>${pfEuro(somma)}</b></span>`
       + (daPerf ? `<span><b>${daPerf}</b> da perfezionare</span>` : '')
-      + (daConf ? `<span><b>${daConf}</b> senza data di scadenza</span>` : '');
+      + (daConf ? `<span><b>${daConf}</b> senza data di scadenza</span>` : '')
+      /* Il tetto si DICHIARA: un elenco che si ferma e tace si legge come
+         tutto il portafoglio (§50). Compare solo quando i due numeri non
+         coincidono — dirlo sempre sarebbe rumore che si impara a saltare. */
+      + (PF_TOTALE != null && PF_TOTALE > PF_ROWS.length
+          ? `<span class="pf-tetto">ne vedi <b>${PF_ROWS.length}</b> su <b>${PF_TOTALE}</b>: restringi i filtri per trovare le altre</span>` : '')
+      + (PF_STATI_KO
+          ? `<span class="pf-tetto">lo stato del pagamento non si è potuto dedurre (${esc(PF_STATI_KO)}): non vuol dire che siano pagate</span>` : '');
   }
 }
 
@@ -16377,7 +16417,8 @@ function pfExportExcel() {
       <td class="soldi">${p.premio_rata != null ? Number(p.premio_rata).toFixed(2) : ''}</td>
       <td>${p.premio_annuo == null ? esc(((p.dati && p.dati.ssf) || {}).premio_annuo_manca || 'annuo non dichiarato dalla compagnia')
             : (((p.dati && p.dati.ssf) || {}).premio_annuo_da === 'titoli' ? 'ricavato dalle rate emesse' : 'dichiarato dalla compagnia')}</td>
-      <td>${(PF_PAG[p.stato_pagamento] || [''])[0]}</td>
+      <td>${esc((p.__pag || {}).etichetta || 'non si è potuto dedurre')}</td>
+      <td>${esc((p.__pag || {}).motivo || PF_STATI_KO || '')}</td>
       <td>${esc(pfMezzoNome(p.mezzo_pagamento) || '')}</td>
       <td>${p.perfezionata ? 'sì' : 'no'}</td><td>${p.rendicontata ? 'sì' : 'no'}</td>
       <td>${esc(cop[1].replace('Copertura: ', ''))}</td>
@@ -16386,7 +16427,7 @@ function pfExportExcel() {
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
     + '<head><meta charset="utf-8"><style>table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;font:12px sans-serif}th{background:#f6f8fa;font-weight:700}</style></head><body>'
     + '<table><thead><tr><th>Polizza</th><th>Cliente</th><th>Prodotto</th><th>Compagnia</th><th>Emissione</th><th>Effetto</th>'
-    + '<th>Scadenza</th><th>Frazionamento</th><th>Premio annuo</th><th>Premio di rata</th><th>Da dove viene l&rsquo;annuo</th><th>Stato pagamento</th><th>Mezzo di pagamento</th><th>Perfezionata</th>'
+    + '<th>Scadenza</th><th>Frazionamento</th><th>Premio annuo</th><th>Premio di rata</th><th>Da dove viene l&rsquo;annuo</th><th>Stato pagamento</th><th>Perch&eacute;</th><th>Mezzo di pagamento</th><th>Perfezionata</th>'
     + '<th>Rendicontata</th><th>Copertura</th><th>Operatore</th></tr></thead><tbody>' + righe + '</tbody></table></body></html>';
   const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
   const url = URL.createObjectURL(blob);
@@ -16430,22 +16471,63 @@ async function pfContaMancanti() {
   }
 }
 
+/* ═══ LO STATO DEL PAGAMENTO LO DICONO LE RATE (22/09/2026) ════════════════
+   Richiesta di Francesco: «se mettiamo pos, oppure altre modalità che abbiamo
+   detto vanno in automatico come sospeso». La regola sta nel motore
+   (`Contabilita.statoPagamento`) e si prova in Node; qui si leggono le rate e
+   si appende il risultato alla riga, perché il FILTRO e il pannello devono
+   dire la stessa cosa: due letture dello stesso stato sono due stati.
+
+   Si leggono TUTTE le rate, non quelle delle mille polizze caricate: un
+   `in()` con mille identificativi è un indirizzo da trentasette chilobyte, e
+   le rate pesano poco (tre colonne). Paginata, perché PostgREST ne manda
+   mille per richiesta qualunque numero ci sia scritto (§50, §53, §57, §61).
+   Se la lettura non riesce lo stato NON si inventa: resta `null`, e la
+   colonna lo dice — «non si è potuto leggere» non è «pagato» (§12, §18). */
+async function pfStati() {
+  PF_STATI_KO = '';
+  let rate;
+  try {
+    const r = await rinTutte((da, a) => db.from('quote_titoli')
+      .select('polizza_id,stato,mezzo_pagamento').order('id').range(da, a));
+    rate = r.righe || [];
+    if (r.parziale) PF_STATI_KO = 'la lettura delle rate si è fermata prima della fine';
+  } catch (e) {
+    PF_STATI_KO = e.message || String(e);
+    PF_ROWS.forEach(p => { p.__pag = null; });
+    return;
+  }
+  const per = {};
+  rate.forEach(t => { if (t && t.polizza_id) (per[t.polizza_id] = per[t.polizza_id] || []).push(t); });
+  const voc = mezVoc();
+  PF_ROWS.forEach(p => { p.__pag = Contabilita.statoPagamento(p, per[p.id] || [], voc); });
+}
+
 async function loadPortafoglio() {
   /* Una lettura sola, in cache: le etichette della colonna «come paga»
-     vengono dal vocabolario. */
-  mezCarica();
+     vengono dal vocabolario, e il motore ne ha bisogno per dire «POS» invece
+     di «pos». Si ASPETTA: senza, lo stato del pagamento nascerebbe col
+     codice nudo. */
+  await mezCarica();
   const body = document.getElementById('pf-body');
   if (!db || !body) return;
   body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr>';
   try {
     let q = db.from('quote_polizze')
-      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_emissione,data_effetto,data_scadenza,frazionamento,tacito_rinnovo,premio_annuo,premio_rata,stato_pagamento,perfezionata,rendicontata,copertura_dal,copertura_al,creato_nome,creato_da,creato_il,preventivo_id,dati')
-      .order('data_effetto', { ascending: false }).limit(1000);
+      .select('id,numero,numero_polizza,cliente,cliente_id,modulo,prodotto,compagnia,data_emissione,data_effetto,data_scadenza,frazionamento,tacito_rinnovo,premio_annuo,premio_rata,stato_pagamento,mezzo_pagamento,perfezionata,rendicontata,copertura_dal,copertura_al,creato_nome,creato_da,creato_il,preventivo_id,dati', { count: 'exact' })
+      .order('data_effetto', { ascending: false }).limit(PF_MAX);
     const ids = await visibleUserIds();
     if (ids) q = q.in('creato_da', ids);
-    const { data, error } = await q;
+    const { data, error, count } = await q;
     if (error) throw error;
     PF_ROWS = data || [];
+    /* IL TETTO SI DICHIARA (22/09/2026). Erano 1.000 righe su 4.079, e non lo
+       diceva nessuno: un elenco che si ferma e tace si legge come tutto il
+       portafoglio. Non si toglie — le 4.079 righe con il loro `dati` pesano
+       5,8 MB, e su un telefono è un'altra cosa — si DICE, che è il rimedio
+       già scritto per le anagrafiche (§50). */
+    PF_TOTALE = (typeof count === 'number') ? count : null;
+    await pfStati();           // lo stato del pagamento lo dicono le rate
     await pfContaMancanti();   // CRM Punto 3
     pfRiempiFiltri();
     pfRender();
@@ -16591,9 +16673,13 @@ function pnuForm(guasti) {
                rompere un salvataggio. -->
           <div><label>Come paga</label><select id="pnu-mezzo">
             <option value="">non dichiarato</option>${pnuOpzioniMezzo()}</select></div>
-          <div><label>Stato del pagamento</label><select id="pnu-stato">
-            <option value="non_pagato">Non pagato</option><option value="pagato">Pagato</option>
-            <option value="sospeso">Sospeso</option></select></div>
+          <!-- Lo stato del pagamento non si sceglie (22/09/2026): una polizza
+               appena scritta ha le sue rate aperte, quindi non è pagata, e da
+               domani lo dicono le rate. Chiederlo qui voleva dire far
+               dichiarare «pagato» una polizza le cui rate nascono aperte. -->
+          <div><label>Stato del pagamento</label>
+            <div class="cl-sub" style="padding:7px 0">Lo dicono le rate: nasce non pagata, e diventa
+              «sospesa» appena dichiari come paga il cliente.</div></div>
           <div class="pnu-largo"><label>Note</label><input id="pnu-note" type="text" placeholder="facoltative"></div>
         </div>
       </div>
@@ -16812,7 +16898,9 @@ async function pnuSalva() {
     premio_annuo: pnuNum('pnu-annuo'),
     premio_rata: pnuNum('pnu-rata'),
     mezzo_pagamento: pnuVal('pnu-mezzo') || null,
-    stato_pagamento: pnuVal('pnu-stato') || 'non_pagato',
+    /* Nasce non pagata: le rate nascono aperte, e da lì in avanti lo stato lo
+       dicono loro. In colonna resta perché `annullata` ci vive ancora. */
+    stato_pagamento: 'non_pagato',
     motivo_emissione: 'nuova emissione',
     note: pnuVal('pnu-note') || null,
     /* Da dove viene questa riga. Il flusso scrive 'ssf'; qui 'manuale', e il
@@ -17378,6 +17466,14 @@ async function mezCarica(forza) {
     MEZ_ERR = e.message || String(e);
   }
   return MEZ_VOC;
+}
+
+/* Il vocabolario com'è, che il motore usa per dire «POS» invece di «pos».
+   Una porta sola, così lo stato del pagamento e le tendine leggono la stessa
+   cosa: due letture dello stesso vocabolario sono due vocabolari. */
+function mezVoc() {
+  return (typeof Contabilita !== 'undefined' && Contabilita.vocabolario)
+    ? Contabilita.vocabolario(MEZ_VOC) : [];
 }
 
 /* Le voci da mostrare: quelle spente escono dalle tendine e restano su tutto
@@ -20267,6 +20363,9 @@ var RIN_RATE_FUORI = 0;        // rate la cui polizza non e' in elenco: contate,
 var RIN_RATE_ANNULLATE = 0;    // ...perche' la polizza e' annullata: e' normale
 var RIN_RATE_INVISIBILI = 0;   // ...perche' non la si puo' vedere: e' il caso §55
 var RIN_PERCHE_KO = false;     // non si e' potuto sapere quale delle due
+var RIN_LETTURA_KO = '';       // l'ultima lettura non e' riuscita
+var RIN_RATE_SOSPESE = 0;      // rate con una modalita' dichiarata: sono sospesi
+var RIN_IMPORTO_SOSPESO = 0;
 /* DUE CARICAMENTI POSSONO GIRARE INSIEME, e non e' un caso di laboratorio:
    `showPage('scadenzario')` ne fa partire uno senza aspettarlo, e chi torna
    sulla pagina mentre il primo sta ancora leggendo ne fa partire un secondo.
@@ -20346,6 +20445,46 @@ function rinFiltraSenzaFascia(conRinnovo) {
   });
 }
 
+/* ═══ GLI AVVISI STANNO IN UN POSTO SOLO ═══════════════════════════════════
+   Erano scritti dentro la riga dei totali, cioè in un ramo che si salta
+   quando i filtri non trovano niente — e il ramo vuoto è il caso NORMALE del
+   guasto: se le rate non si leggono, il filtro «Rate da incassare» produce
+   sempre un elenco vuoto, e l'avviso spariva esattamente quando era l'unica
+   cosa vera da dire. Peggio: il messaggio dava la colpa ai filtri.
+
+   Ed erano scritti una seconda volta, diversi, dentro l'esportazione: quella
+   diceva sempre «non si vedono» anche quando le rate fuori elenco erano su
+   polizze ANNULLATE — sul portafoglio vero sono 28 su 28, cioè quella frase
+   oggi è sempre falsa. Due costruzioni della stessa cosa sono due cose che un
+   giorno dicono numeri diversi (§5, §59).
+
+   Adesso è una funzione sola, e la usano tutti e tre i posti: i due rami della
+   schermata e il file che si scarica. */
+function rinAvvisi() {
+  var a = [];
+  if (RIN_LETTURA_KO) {
+    a.push({ grave: true, t: 'L\'ultima lettura non è riuscita (' + RIN_LETTURA_KO
+      + '): qui non c\'è niente di aggiornato, e un elenco vuoto non vuol dire che non ci sia niente.' });
+  }
+  if (RIN_PARZIALE) a.push({ grave: true, t: 'La lettura si è fermata prima della fine: questi numeri sono in DIFETTO.' });
+  if (RIN_RATE_KO) a.push({ grave: true, t: 'Le rate non si sono potute leggere, quindi qui ci sono solo le scadenze di polizza.' });
+  if (RIN_RATE_INVISIBILI) a.push({ grave: true, t: RIN_RATE_INVISIBILI + ' rate non si vedono: la loro polizza non è fra quelle che puoi vedere.' });
+  if (RIN_RATE_ANNULLATE) a.push({ grave: false, t: RIN_RATE_ANNULLATE + ' rate restano fuori perché la loro polizza è annullata.' });
+  if (RIN_PERCHE_KO && RIN_RATE_FUORI) a.push({ grave: true, t: RIN_RATE_FUORI
+    + ' rate restano fuori, e non si è potuto sapere se per un annullamento o perché la polizza non si vede.' });
+  /* Non è un guasto: è dove sono andate, e va detto — altrimenti una rata
+     che non si trova qui sembra sparita. */
+  if (RIN_RATE_SOSPESE) a.push({ grave: false, t: RIN_RATE_SOSPESE
+    + ' rate non sono in questo elenco (' + pfEuro(RIN_IMPORTO_SOSPESO) + '): hanno una modalità di pagamento dichiarata, '
+    + 'quindi il cliente è coperto e quel premio è un sospeso da scaricare in Contabilità.' });
+  return a;
+}
+function rinAvvisiHTML() {
+  return rinAvvisi().map(function (x) {
+    return '<span' + (x.grave ? ' class="rin-avv"' : '') + '>' + esc(x.t) + '</span>';
+  }).join('');
+}
+
 /* L'ordine: PIÙ VICINO A OGGI PRIMA, in tutte e due i versi. Una scadenza
    fra due giorni e una scaduta due giorni fa sono le due cose da fare
    adesso; una scaduta nel 2023 e una che scade fra un anno non sono lavoro
@@ -20393,10 +20532,17 @@ function rinRenderFasce() {
      per cui quelle non si sovrappongono. */
   var extra = document.getElementById('rin-extra');
   if (!extra) return;
-  /* La nota si conta SENZA il filtro del rinnovo: e' la sola cosa che
-     impedisce di leggere il numero del filtro rapido come «tutti clienti da
-     richiamare». */
-  var soloPol = rinFiltraSenzaFascia(false).filter(function (r) { return r.tipo === 'polizza'; });
+  /* La nota si conta SENZA il filtro del rinnovo — è la sola cosa che impedisce
+     di leggere quel numero come «tutti clienti da richiamare» — ma DENTRO la
+     fascia scelta: il numero stampato su un tasto è la promessa di quello che
+     quel tasto farà, e contarlo su tutte le fasce lo rendeva falso appena si
+     sceglieva una fascia (4 sul tasto, 1 riga dopo il clic). */
+  var f2 = (M.FASCE || []).filter(function (x) { return x.k === RIN_FASCIA; })[0];
+  var soloPol = rinFiltraSenzaFascia(false).filter(function (r) {
+    if (r.tipo !== 'polizza') return false;
+    if (f2 && f2.k !== 'tutte' && r.fascia !== f2.k) return false;
+    return true;
+  });
   var q = { nessuno: 0, indizio: 0, lavorato: 0, tacito: 0, non_si_sa: 0, non_ancora: 0 };
   soloPol.forEach(function (r) { var k = rinStato(r)[0]; if (q[k] != null) q[k]++; });
   /* Le righe senza data di scadenza sono tolte PRIMA di arrivare qui (non
@@ -20430,11 +20576,16 @@ function rinRender() {
   var tot = document.getElementById('rin-totali');
 
   if (!RIN_VISTA.length) {
+    var av = rinAvvisi();
     body.innerHTML = '<tr><td colspan="7"><div class="empty-state">'
       + (RIN_ROWS.length ? 'Nessuna scadenza con questi filtri.'
         : 'Nessuna polizza con una data di scadenza. Le scadenze compaiono qui appena le polizze hanno una durata.')
+      + (av.length ? '<br><small>Ma una lettura non è riuscita: questo vuoto potrebbe non essere vero.</small>' : '')
       + '</div></td></tr>';
-    if (tot) tot.innerHTML = '';
+    /* Gli avvisi si scrivono ANCHE qui: è il ramo in cui, se una lettura è
+       caduta, l'elenco è vuoto per forza — e senza questa riga l'unica cosa
+       vera da dire sparirebbe proprio quando serve. */
+    if (tot) tot.innerHTML = rinAvvisiHTML();
     return;
   }
 
@@ -20484,11 +20635,7 @@ function rinRender() {
       + (daFare ? '<span><b>' + daFare + '</b> da richiamare</span>' : '')
       + (mostrate.length < RIN_VISTA.length
         ? '<span class="rin-avv">ne vedi <b>' + mostrate.length + '</b> su ' + RIN_VISTA.length + ': restringi i filtri per vedere le altre</span>' : '')
-      + (RIN_PARZIALE ? '<span class="rin-avv">la lettura si è fermata prima della fine: questi numeri sono in DIFETTO</span>' : '')
-      + (RIN_RATE_KO ? '<span class="rin-avv">le rate non si sono potute leggere, quindi qui ci sono solo le scadenze di polizza</span>' : '')
-      + (RIN_RATE_INVISIBILI ? '<span class="rin-avv"><b>' + RIN_RATE_INVISIBILI + '</b> rate non si vedono: la loro polizza non è fra quelle che puoi vedere</span>' : '')
-      + (RIN_RATE_ANNULLATE ? '<span><b>' + RIN_RATE_ANNULLATE + '</b> rate restano fuori perché la loro polizza è annullata</span>' : '')
-      + (RIN_PERCHE_KO && RIN_RATE_FUORI ? '<span class="rin-avv"><b>' + RIN_RATE_FUORI + '</b> rate restano fuori, e non si è potuto sapere se per un annullamento o perché la polizza non si vede</span>' : '');
+      + rinAvvisiHTML();
   }
 }
 
@@ -20508,13 +20655,15 @@ function rinRiquota(modulo) {
 }
 
 function rinExportExcel() {
-  if (!RIN_VISTA.length) { alert('Nessuna scadenza da esportare con questi filtri.'); return; }
+  if (!RIN_VISTA.length) {
+    var av = rinAvvisi();
+    alert('Nessuna scadenza da esportare con questi filtri.'
+      + (av.length ? '\n\n' + av.map(function (x) { return x.t; }).join('\n') : ''));
+    return;
+  }
   /* Un file scaricato vive da solo, lontano dalla schermata che spiegava i
      suoi limiti: l'avviso sta nella PRIMA riga del foglio (§62). */
-  var avvisi = [];
-  if (RIN_PARZIALE) avvisi.push('ATTENZIONE: la lettura si è fermata prima della fine, questo elenco è INCOMPLETO.');
-  if (RIN_RATE_KO) avvisi.push('ATTENZIONE: le rate non si sono potute leggere: qui ci sono solo le scadenze di polizza.');
-  if (RIN_RATE_FUORI) avvisi.push(RIN_RATE_FUORI + ' rate non compaiono: la loro polizza non è fra quelle visibili.');
+  var avvisi = rinAvvisi().map(function (x) { return (x.grave ? 'ATTENZIONE: ' : '') + x.t; });
   avvisi.push('«Sembra rinnovata» è un indizio, non una dichiarazione: c\'è una polizza nuova a cavallo della scadenza, ma nessuno ha dichiarato che la sostituisce.');
   var righe = RIN_VISTA.map(function (r) {
     return '<tr><td>' + pfData(r.scadenza) + '</td><td>' + rinGiorni(r) + '</td>'
@@ -20592,6 +20741,7 @@ async function loadScadenzario() {
   var mio = ++RIN_GIRO;
   body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Carico lo scadenzario…</div></td></tr>';
   var parziale = false, rateKo = '';
+  RIN_LETTURA_KO = '';
   try {
     var M = rinM();
     if (!M) throw new Error('motore dello scadenzario non caricato');
@@ -20642,6 +20792,8 @@ async function loadScadenzario() {
     RIN_PARZIALE = parziale; RIN_RATE_KO = rateKo;
     RIN_POLIZZE = pol.righe;
     RIN_RATE_FUORI = e2.rate_senza_polizza;
+    RIN_RATE_SOSPESE = e2.rate_con_modalita || 0;
+    RIN_IMPORTO_SOSPESO = e2.importo_con_modalita || 0;
     RIN_OGGI = e2.oggi;
     RIN_RATE_ANNULLATE = perche.annullate;
     RIN_RATE_INVISIBILI = perche.invisibili;
@@ -20666,7 +20818,23 @@ async function loadScadenzario() {
     rinBadge();
   } catch (e) {
     if (mio !== RIN_GIRO) return;
-    body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Scadenzario non disponibile.<br><small>' + esc(e.message || e) + '</small></div></td></tr>';
+    /* Non si lasciano in schermata i numeri del caricamento di prima: la
+       tabella direbbe «non disponibile» e sopra e sotto continuerebbero a
+       esserci totali, card e un pallino sul menu che affermano delle cose —
+       e «Esporta Excel» produrrebbe un file con l'elenco vecchio e nessun
+       avviso. Si svuota tutto e si dice che cosa è successo. */
+    RIN_LETTURA_KO = e.message || String(e);
+    RIN_ROWS = []; RIN_VISTA = []; RIN_POLIZZE = [];
+    RIN_RATE_FUORI = 0; RIN_RATE_ANNULLATE = 0; RIN_RATE_INVISIBILI = 0; RIN_PERCHE_KO = false;
+    RIN_RATE_SOSPESE = 0; RIN_IMPORTO_SOSPESO = 0;
+    body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Scadenzario non disponibile.<br><small>'
+      + esc(RIN_LETTURA_KO) + '</small></div></td></tr>';
+    ['rin-fasce', 'rin-extra'].forEach(function (id) {
+      var b = document.getElementById(id); if (b) b.innerHTML = '';
+    });
+    var t2 = document.getElementById('rin-totali');
+    if (t2) t2.innerHTML = rinAvvisiHTML();
+    rinBadge();
   }
 }
 

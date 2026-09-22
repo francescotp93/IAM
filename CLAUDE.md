@@ -7101,3 +7101,217 @@ controllo del file, non la rilettura.
 - **`Flusso.MEZZI` resta una lista sua**: traduce i codici della compagnia nei
   nostri, ed è un'altra domanda. Ma adesso che il vocabolario può crescere, un
   codice tradotto verso una voce spenta non se ne accorgerebbe nessuno.
+
+---
+
+## 65. Una rata sta in un elenco solo (22/09/2026)
+
+Quattro difetti trovati da una rilettura ostile della 0.31.0, una regola
+dettata da Francesco guardando una sua polizza, e tre richieste di forma che
+di forma non erano.
+
+| pezzo | dove |
+|---|---|
+| la regola nuova | `righe()` in `tariffe/motore/scadenzario.js` — `rate_con_modalita` |
+| gli avvisi, in una funzione sola | `rinAvvisi` / `rinAvvisiHTML` in `index.html` |
+| la grafica dei Sospesi | blocco `.spr-*` e `sprRender`/`sprCard`/`sprRighe` in `iam/index.html` |
+| prove | `scadenzario.test.mjs` (30), `sospesi-premi.test.mjs` (15), `ui-test.mjs` (**515**) |
+
+### La regola di Francesco, e perché vale più di come è arrivata
+
+> «la polizza che ha data incasso pos 17.09 non può risultare nei 15 perché si
+> deve solo scaricare il sospeso pos»
+
+La ragione l'aveva già scritta lui stesso il giorno prima: la modalità che
+arriva dal flusso è **«quello dichiarato in compagnia per METTERE IN COPERTURA
+la polizza»**. Quindi:
+
+> **Se una rata dichiara una modalità di pagamento, il cliente NON è scoperto.**
+> Quel premio non è un buco di copertura: è denaro che deve ancora arrivare in
+> agenzia, cioè un sospeso, e da lì si scarica.
+
+Senza quella riga la stessa rata comparirebbe in **due elenchi che dicono cose
+opposte** — «il cliente è scoperto» nello scadenzario, «denaro in arrivo» nei
+sospesi — e chi li guarda non ha modo di sapere quale dei due ha ragione.
+Adesso ogni rata aperta sta in **uno** dei due, e i due si sommano: è la stessa
+disciplina dei tre conti dell'estratto conto (§24), dove una rata sta in uno
+solo per costruzione.
+
+Quello che resta nello scadenzario è la rata di cui **non si sa niente**:
+nessuna modalità dichiarata vuol dire che nessuno ha detto come è stata pagata,
+e quello è un buco vero. E quelle che si spostano **si contano e si dicono**
+(`rate_con_modalita`, `importo_con_modalita`): una riga che sparisce da un
+elenco senza lasciare un numero è §55 di nuovo.
+
+### Quattro difetti della rilettura ostile
+
+1. **Gli avvisi sparivano quando l'elenco era vuoto** — cioè proprio quando
+   l'elenco è vuoto *perché* la lettura è andata male. Adesso `rinAvvisi()` è
+   **una funzione sola**, chiamata dai due rami di `rinRender` e dall'export:
+   tre costruzioni degli stessi avvisi diventano tre avvisi che un giorno
+   diranno cose diverse.
+2. **L'Excel accusava un problema di permessi su polizze annullate** — la
+   correzione del 22/09 era arrivata alla schermata e non al file scaricato,
+   che vive da solo per mesi (§62).
+3. **Una lettura fallita lasciava in schermata i numeri di prima**, che si
+   fanno credere aggiornati. Adesso il `catch` svuota lo stato e scrive perché.
+4. **Il numero sul filtro rapido non era quello delle righe che il filtro
+   produce**: si contava su un insieme e si disegnava sull'altro.
+
+### La grafica: una classe che non esiste non dà un errore
+
+> «non riusciamo a sistemare la visualizzazione di questa parte? si vede tutto
+> un pò confusionario» — Francesco, sulle Modalità di pagamento.
+
+Non era una scelta estetica sbagliata. Misurato: il blocco scriveva `cl-r`,
+`cl-main`, `cl-nome`, `cnt-pill`, `cnt-card-t/-v/-s`, e **nessuna di quelle
+esiste** nel foglio di stile di IAM. Le classi vere sono `cnt-r`, `cnt-nome`,
+`cnt-sotto`, `cnt-tag`, `cnt-k/-v/-s`.
+
+> **Una classe che non esiste viene ignorata in silenzio.** Nessun errore,
+> nessuna pagina rotta: la riga esce nuda e chi la guarda pensa a un disegno
+> fatto male. È la stessa firma del gettone che non risolve (§44) e della
+> regola chiusa dentro un pannello (§58): l'unico modo di accorgersene è
+> **misurarlo**.
+
+Adesso c'è una prova che lo misura: prende ogni classe prefissata che il blocco
+dei Sospesi scrive e pretende di ritrovarla nel foglio di stile. La controprova
+(rimessa `cl-r`) la fa diventare rossa. E `#contab-panel-sospesi` è entrato
+nell'elenco delle schermate che prendono i gettoni del kit — l'elenco cresce,
+non cala (§31).
+
+### Due cose tolte, e nessuna era un doppione da tenere
+
+**Il caricamento dei file dai Sospesi.** Il 20/09 i due caricamenti si erano
+*spostati* dentro Sospesi invece di sparire, e §33 diceva che una schermata in
+uso non si spegne perché ne è nata una migliore. Francesco ha chiesto di
+toglierli, ed è una decisione, non un difetto. La regola che contava —
+**niente di spento** — resta e si misura: quello che era già stato caricato sta
+in `sessioni_giornaliere.sospesi_json`, si rilegge da lì, e continua ad
+alimentare Scrivania, Anomalie e Storico. `loadSospesi` e `loadIncassi` sono
+state **cancellate**, non lasciate dentro spente: due lettori di file senza un
+bottone che li chiami sono il guasto §1.
+
+**Il tasto «Importa il portafoglio» dal Portafoglio.** Era stato messo lì il
+18/09 perché la barra da ventuno voci lo nascondeva (§15). Adesso
+l'importazione ha la sua voce nel menu di IAM (Strumenti › Preventivatore),
+che è dove Francesco la cerca: due porte per una schermata che si usa una
+volta al mese sono una porta di troppo. La **pagina** non è stata toccata —
+`#page-importa-flusso`, la sua porta in `PAGINE_DA_AVVIARE` e `nav-import`
+restano, altrimenti la voce di menu aprirebbe un riquadro vuoto (§6b).
+
+Tutte e tre le prove che sorvegliavano il mondo di ieri si sono aggiornate
+**nella regola, non nel numero** (§15, §16, §33, §35).
+
+### Cosa resta aperto
+
+- **Le rate senza modalità restano nello scadenzario**, ed è giusto: 380 su
+  418 non dicono come sono state pagate, e quello è il lavoro da fare.
+- **Il caricamento da file non torna**: se un giorno servisse di nuovo, il
+  codice sta nella storia di questo commit, non nel file.
+
+### Il pagamento lo dicono le rate, e una spesa non si somma al conto (22/09/2026)
+
+Due segnalazioni di Francesco nello stesso pomeriggio, e sotto avevano la
+stessa forma: **un dato che si digita a mano e nessuno riallinea**, e **una
+domanda la cui unica risposta onesta non esisteva nell'elenco**.
+
+| pezzo | dove |
+|---|---|
+| lo stato del pagamento, dedotto | `Contabilita.statoPagamento` in `tariffe/motore/contabilita.js` |
+| i conti di costo e di ricavo | `TIPOLOGIE` e `CONTI_MINIMI` nello stesso file |
+| il rifiuto di una spesa su un conto corrente | `righeSemplici` + `causaleIncide` |
+| il vincolo allargato | `supabase/migrations/20260922k_conti_costo_e_ricavo.sql` (applicata) |
+| le rate lette dal portafoglio | `pfStati` in `index.html` |
+| prove | `contabilita.test.mjs` (**107**), `ui-test.mjs` (**516**) |
+
+#### 1. «È inutile mettere se un pagamento è sospeso oppure annullato»
+
+Aveva ragione, e la misura lo dice meglio di qualunque ragionamento:
+
+| | |
+|---|---|
+| polizze che dicono «pagato» | **3.946 su 4.079** |
+| di quelle, **senza nemmeno una rata** | **1.444** |
+| di quelle, con rate ancora **aperte** | **317** |
+| polizze che dicono «sospeso» e hanno tutte le rate incassate | **43 su 51** |
+| **in disaccordo con le proprie rate** | **364** |
+
+> **Un flag si dimentica, una data no.** Il pagamento lo raccontano le rate,
+> che si incassano una alla volta e lasciano la data; una tendina da tenere
+> allineata a mano non lo racconterà mai — e il numero sbagliato ha
+> esattamente l'aria di quello giusto.
+
+Cinque risposte, e nessuna si può accorpare. `pagato` = tutte le rate
+incassate. `sospeso` = restano rate aperte **e** la modalità è dichiarata (la
+modalità è quello con cui la compagnia ha messo il contratto in copertura:
+§65). `non_pagato` = rate aperte e nessuno ha detto come si paga. `annullata`
+**non si deduce** — non è uno stato del pagamento, è la vita della polizza, e
+la decide una persona: è l'unico valore per cui quella colonna serve ancora.
+E `non_si_sa` per le **1.444 senza rate**: dirle pagate è la bugia più comoda
+che questo sistema possa raccontare (§12, §18, §43).
+
+**Il filtro del portafoglio guarda lo stesso valore del pannello.** Filtrare
+sulla colonna scritta vorrebbe dire che l'elenco e la scheda dicono due cose
+diverse sulla stessa polizza, ed è il difetto che si stava togliendo.
+
+**E il tetto nascosto del Portafoglio si è visto proprio leggendo le rate**:
+`.limit(1000)` su 4.079 polizze, e non lo diceva nessuno. Non si è tolto — le
+4.079 righe col loro `dati` pesano **5,8 MB**, misurati, e su un telefono è
+un'altra cosa — si **dice**, che è il rimedio già scritto per le anagrafiche
+(§50).
+
+#### 2. «Essendo spese si dovrebbe defalcare dal saldo, invece il programma le somma»
+
+Misurato sul movimento vero — «Pagamento Stanza ROMA», 170 €, causale «Spese
+in genere»:
+
+```
+CARTA DI CREDITO UNICREDIT   Avere 170   → −170   giusto
+CONTO AZIENDALE              Dare  170   → +170   SBAGLIATO
+```
+
+**La partita doppia era corretta.** La contropartita di un costo va in Dare, e
+il motore l'aveva scritta bene. Il difetto è che quel Dare è finito su un
+conto di **liquidità**, dove Dare vuol dire «denaro arrivato» — e ci è finito
+perché fra i dodici conti minimi **non ce n'era nemmeno uno di costo**.
+
+> **È §1 in una forma nuova: la schermata fa una domanda la cui unica risposta
+> onesta non esiste nell'elenco.** Non c'è modo di rispondere bene, e
+> qualunque cosa si scelga produce un saldo più alto del vero.
+
+Tre correzioni, e la terza è quella che conta:
+1. `costo` e `ricavo` fra le tipologie, e il vincolo del database allargato —
+   l'ha preso il guardiano che confronta il vocabolario del motore con il
+   `CHECK`, non la rilettura;
+2. «Costi di agenzia» e «Ricavi di agenzia» fra i conti **proposti**. Non
+   seminati: un conto ha un saldo, e un saldo che nessuno ha deciso dopo due
+   settimane è un dato (§54);
+3. **`righeSemplici` rifiuta** una causale che incide sul risultato con la
+   contropartita su un conto di liquidità, e dice che cosa serve. Guarda
+   `incide_su_utile`, **non il segno**: senza quella distinzione avrebbe
+   vietato anche i giroconti, cioè avrebbe rotto una cosa che funzionava per
+   aggiustarne un'altra. E senza l'elenco dei conti **non indovina**: un
+   controllo che non può misurare non deve bloccare (§4).
+
+Il movimento del 22/09 **non è stato corretto da una migrazione**: un
+movimento registrato non si riscrive, si storna (regola 13), e lo storno lo
+firma una persona.
+
+#### Le trappole prese in questo giro
+
+- **`git checkout` su un file sporco annulla anche il lavoro.** È §21, e ci
+  sono ricascato: la controprova si era fatta su `contabilita.js` modificato e
+  non committato, e il ripristino ha portato via `statoPagamento`. Per una
+  controprova su un file sporco si fa la **copia prima** (`cp`), mai
+  `git checkout`.
+- **Una prova che legge la PRIMA migrazione sorveglia il mondo di ieri.** Il
+  vincolo delle tipologie si è allargato in un file nuovo, e il guardiano
+  leggeva ancora quello che l'aveva creato. Adesso legge l'**ultima**
+  migrazione che definisce quel pezzo, e segue da sé il prossimo spostamento
+  (§55, §60).
+- **«Dodici conti minimi» era un numero, non una regola.** La regola era
+  «nessuno seminato, e l'elenco cresce quando manca una risposta onesta». La
+  soglia adesso sale e non scende (§18, §31).
+- **`let` invece di `var` su `PF_ROWS`**, e la prova che leggeva il portafoglio
+  trovava `undefined` (§17, §32).

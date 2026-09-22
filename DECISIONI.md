@@ -787,3 +787,58 @@ data che fa testo (scadenza polizza o scadenza rata, mai l'incasso).
   cambio. Oggi non morde, perché le rate in gioco sono aperte.
 - `Flusso.MEZZI` resta una lista sua: traduce i codici della compagnia nei
   nostri. Un codice tradotto verso una voce spenta non lo direbbe nessuno.
+
+---
+
+## 22/09/2026 · 0.32.0 — il pagamento lo dicono le rate, e una spesa non si somma
+
+### 🟡 Scelte prese e dichiarate
+
+- **Lo stato del pagamento non si digita più: si deduce dalle rate.** Misurato:
+  364 polizze su 4.079 erano in disaccordo con le proprie rate, e 1.444
+  dicevano «pagato» senza averne nessuna. *Indietro:* rimettere la tendina in
+  `polPagamento` e far filtrare `pfFiltra` su `p.stato_pagamento`. La colonna
+  nel database **non è stata riscritta**: c'è tutto com'era.
+- **`annullata` resta l'unico valore scritto a mano** di quella colonna, e non
+  si deduce: è la vita della polizza, non il suo pagamento.
+- **«Non si sa»** è uno stato nuovo per le polizze senza rate. Non è «pagato».
+- **Due conti nuovi fra quelli proposti** (costo e ricavo) e il vincolo del
+  database allargato. *Indietro:* il blocco ROLLBACK della migrazione
+  `20260922k`, ma solo se nessun conto usa le due tipologie.
+- **Una spesa con la contropartita su un conto corrente viene rifiutata.** Il
+  giroconto resta possibile: il controllo guarda `incide_su_utile`, non il
+  segno.
+- **Il tetto del Portafoglio (1.000 righe su 4.079) si dichiara invece di
+  sparire.** Toglierlo vorrebbe dire scaricare 5,8 MB, misurati.
+- **Via il caricamento dei file dai Sospesi** e **via il tasto «Importa» dal
+  Portafoglio**, come richiesto. Niente di spento: i dati già caricati si
+  rileggono dalla giornata salvata, e l'importazione ha la sua voce di menu.
+- **Una rata con la modalità dichiarata esce dallo scadenzario** ed entra nei
+  Sospesi: la modalità è la copertura.
+
+### 🔴 Serve il tuo ok
+
+1. **Il movimento «Pagamento Stanza ROMA» va stornato e rifatto** con la
+   contropartita su un conto di costo: oggi il CONTO AZIENDALE risulta aver
+   incassato 170 € che non ha mai ricevuto. Non l'ho corretto io — un
+   movimento registrato non si riscrive, si storna, e lo storno lo firma chi
+   lo fa.
+2. **Crea «Costi di agenzia» e «Ricavi di agenzia»** da Conti e causali: sono
+   nell'elenco dei conti proposti, basta spuntarli. Finché non ci sono,
+   qualunque spesa verrà rifiutata (e il motivo lo dice).
+3. **Il saldo iniziale è ZERO su tutti e sei i conti.** Quello che hai
+   inserito è il saldo DICHIARATO (il tasto «Dichiara il saldo»), che è la
+   fotografia della banca per la quadratura — un'altra cosa. Il saldo iniziale
+   si scrive aprendo il conto.
+4. Le precedenti che restano: i collaboratori da dichiarare come modalità di
+   pagamento, le 380 rate su 418 senza modalità, i 15 giorni di proroga sulle
+   polizze senza tacito rinnovo, la provvigione all'incasso o alla rimessa.
+
+### 📝 Fuori perimetro, annotato
+
+- Le 1.444 polizze senza rate restano tali finché non si ricarica il file
+  della compagnia (§55): adesso però si vedono, filtrando su «Non si sa».
+- `PF_MAX` è 1.000 e si dichiara. Alzarlo vuol dire misurare il peso sul
+  telefono, non deciderlo a tavolino.
+- Cambiare la modalità di una rata già incassata e già contabilizzata dovrebbe
+  stornare il movimento: lo storno esiste (§59) ma non è agganciato.

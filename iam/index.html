@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.31.0">
-<meta name="app-versione-nome" content="Sospesi · la modalità di pagamento può essere una persona">
+<meta name="app-versione" content="0.32.0">
+<meta name="app-versione-nome" content="Il pagamento lo dicono le rate, e una spesa non si somma al conto">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -116,6 +116,23 @@
 .inca-righe-t{font-size:12px;font-weight:700;margin-bottom:6px}
 .inca-riga{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;font-size:12.5px;padding:3px 0}
 @media(max-width:700px){.inca-pag{grid-template-columns:1fr 1fr}}
+/* I Sospesi (22/09/2026). Ogni nome prefissato: nel foglio di stile una
+   classe e' globale anche dentro un discendente, e il guardiano delle
+   collisioni fra i due documenti sta a scarto zero (§26, §40). Qui c'e' solo
+   quello che il kit non ha gia': il gruppo che si apre e le sue righe. */
+.spr-g{border:1px solid var(--bord);border-radius:var(--rs);background:var(--surf);margin-bottom:8px;overflow:hidden}
+.spr-g.spr-urg{border-left:3px solid #ef4444}
+.spr-t{display:flex;align-items:center;gap:12px;padding:11px 13px;cursor:pointer}
+.spr-t:hover{background:var(--surf2)}
+.spr-t .spr-i{font-size:17px;color:var(--txt3);flex:none}
+.spr-t .spr-n{flex:1;min-width:0}
+.spr-t .spr-euro{font-weight:800;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.spr-corpo{border-top:1px solid var(--bord);padding:4px 13px 10px}
+.spr-riga{display:flex;align-items:center;gap:10px;padding:7px 0;flex-wrap:wrap;border-top:1px solid var(--bord2)}
+.spr-riga:first-child{border-top:0}
+.spr-riga .spr-chi{flex:1;min-width:190px}
+.spr-riga .spr-imp{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.spr-riga .spr-imp.spr-tardi{color:#c0392b}
 /* I numeri della Scrivania (Blocco 3 · punto 10). Prefissati: nel foglio di
    stile un nome di classe e' globale, anche dentro un discendente (§26). */
 .kpi-riga{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
@@ -962,6 +979,7 @@ input[type=file]{display:none;}
 #contab-panel-quadratura,
 #contab-panel-anomalie,
 #contab-panel-storico,
+#contab-panel-sospesi,
 #panel-catalogo,
 #panel-produzione,
 #contab-panel-conto {
@@ -1921,34 +1939,19 @@ input[type=file]{display:none;}
     <section class="cnt-somma" id="spr-somma"></section>
     <section id="spr-lista" style="padding:0 16px"><div class="cl-sub">Carico i sospesi…</div></section>
     <div style="height:18px"></div>
-    <div class="slbl">Sospesi caricati da file</div>
-    <div class="cl-sub" style="padding:0 16px 10px">Il file della compagnia, come prima. Resta finché i suoi numeri non saranno stati confrontati con quelli qui sopra.</div>
-    <!-- I due caricamenti stavano in una linguetta loro, «Carica documenti».
-         Il brief chiede di toglierla, e va tolta — ma cancellarli avrebbe
-         spento QUATTRO schermate: questi due file sono l'unica strada da cui
-         arrivano i sospesi della compagnia, gli incassi, le anomalie e il
-         contatore della Scrivania. Quindi non si cancellano: si spostano DOVE
-         SERVONO, cioè dentro la schermata che li usa. Una linguetta in meno,
-         niente di spento. -->
-<div>
-    <div class="slbl">File da caricare</div>
-    <div class="uarea">
-      <button class="ubtn" onclick="document.getElementById('f-sosp').click()">
-        <i class="ti ti-file-spreadsheet"></i>
-        <div><div class="ublbl">Sospesi (Excel)</div><div class="ubsub" id="sub-sosp">Nominativo, Polizza, Importo Sospeso, Compagnia…</div><div class="ubok" id="ok-sosp" style="display:none"></div></div>
-      </button>
-      <button class="ubtn" onclick="document.getElementById('f-inc').click()">
-        <i class="ti ti-file-euro"></i>
-        <div><div class="ublbl">Incassi sospesi (Excel o Word)</div><div class="ubsub" id="sub-inc">Report incassi del giorno precedente</div><div class="ubok" id="ok-inc" style="display:none"></div></div>
-      </button>
-      <input type="file" id="f-sosp" accept=".xlsx,.xls,.csv" onchange="loadSospesi(this)">
-      <input type="file" id="f-inc" accept=".xlsx,.xls,.csv,.docx" onchange="loadIncassi(this)">
-    </div>
-    <div style="height:16px;"></div>
-  </div>
-
-  
-    <div id="s-empty" class="empty" style="margin-top:50px;"><i class="ti ti-list"></i><p>Carica il file sospesi</p></div>
+    <!-- IL CARICAMENTO DA FILE NON C'È PIÙ (22/09/2026, richiesta di Francesco:
+         «in questa parte dei sospesi leviamo la possibilità di caricare i
+         file»). I sospesi adesso arrivano dal NOSTRO portafoglio — le rate
+         aperte, con la voce di pagamento che dice chi le tiene — e un secondo
+         elenco che si riempie a mano è il secondo archivio della stessa cosa.
+         Quello che è già stato caricato NON si cancella: resta in
+         `sessioni_giornaliere.sospesi_json` e si legge qui sotto, nella
+         Quadratura di giornata e nello Storico. Non si aggiorna più, e lo
+         dice: un elenco fermo che non dichiara di essere fermo è peggio di un
+         elenco che non c'è. -->
+    <div class="slbl">Sospesi caricati da file (storico)</div>
+    <div class="cl-sub" style="padding:0 16px 10px">Quello che era già stato caricato dal file della compagnia. <b>Non si aggiorna più</b>: il caricamento da file è stato tolto, e i sospesi veri sono quelli qui sopra. Resta finché i due numeri non saranno stati confrontati.</div>
+    <div id="s-empty" class="cl-sub" style="padding:0 16px 24px">Nessun sospeso da file: non ne è mai stato caricato, oppure la giornata di oggi non ne porta.</div>
     <div id="s-content" style="display:none;">
       <div style="padding:10px 12px 4px;display:flex;gap:8px;">
         <input type="search" id="s-search" placeholder="Cerca nominativo, polizza, compagnia..." style="flex:1;padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:22px;font-size:13px;color:var(--txt);font-family:inherit;" oninput="renderSospesi()">
@@ -5912,60 +5915,64 @@ function sprRender() {
 
   if (somma) {
     somma.innerHTML = ''
-      + sprCard('Sospesi', e.righe + (e.righe === 1 ? ' rata' : ' rate'), pfEuro(e.totale), '')
-      + sprCard('Fermi da troppo', e.in_ritardo + (e.in_ritardo === 1 ? ' rata' : ' rate'), pfEuro(e.totale_ritardo), e.in_ritardo ? 'urg' : '')
-      + sprCard('Da dichiarare', e.da_dichiarare + (e.da_dichiarare === 1 ? ' rata' : ' rate'), pfEuro(e.totale_da_dichiarare), e.da_dichiarare ? 'avv' : '')
-      + sprCard('Incassate in contanti', e.escluse_contanti + (e.escluse_contanti === 1 ? ' rata' : ' rate'), pfEuro(e.totale_contanti), '');
+      + sprCard('Sospesi', e.righe + (e.righe === 1 ? ' rata' : ' rate'), pfEuro(e.totale))
+      + sprCard('Fermi da troppo', e.in_ritardo + (e.in_ritardo === 1 ? ' rata' : ' rate'), pfEuro(e.totale_ritardo))
+      + sprCard('Da dichiarare', e.da_dichiarare + (e.da_dichiarare === 1 ? ' rata' : ' rate'), pfEuro(e.totale_da_dichiarare))
+      + sprCard('Incassate in contanti', e.escluse_contanti + (e.escluse_contanti === 1 ? ' rata' : ' rate'), pfEuro(e.totale_contanti));
   }
 
   if (!e.gruppi.length) {
-    box.innerHTML = '<div class="cl-sub">Nessuna rata da incassare.</div>';
+    box.innerHTML = '<div class="cl-sub" style="padding:18px 0">Nessuna rata da incassare.</div>';
     return;
   }
   box.innerHTML =
     (SPR_PARZIALE ? '<div class="cnt-err">La lettura si è fermata prima della fine: questi numeri sono in DIFETTO.</div>' : '')
     + (e.escluse_contanti
-      ? '<div class="cl-sub" style="padding:0 0 10px"><b>' + e.escluse_contanti + '</b> rate in contanti non stanno qui: '
+      ? '<div class="cnt-avv"><b>' + e.escluse_contanti + '</b> rate in contanti non stanno qui: '
         + 'i contanti si incassano allo sportello e vanno in cassa. Se una la tiene qualcuno, cambiale la voce.</div>'
       : '')
     + e.gruppi.map(function (g) {
-      var aperto = !!SPR_APERTI[g.voce || '(vuoto)'];
+      var chiave = g.voce || '(vuoto)';
+      var aperto = !!SPR_APERTI[chiave];
       var icona = g.tipo === 'collaboratore' ? 'ti-user'
         : g.tipo === 'da-dichiarare' ? 'ti-help-circle' : 'ti-credit-card';
-      return '<div class="cl-r" style="flex-direction:column;align-items:stretch">'
-        + '<div style="display:flex;gap:10px;align-items:center;cursor:pointer" onclick="sprGruppo(\'' + esc(g.voce || '(vuoto)') + '\')">'
-        + '<i class="ti ' + icona + '"></i>'
-        + '<div class="cl-main"><div class="cl-nome">' + esc(g.etichetta) + ' <b>' + g.n + '</b>'
-        + (g.in_ritardo ? ' <span class="cnt-pill">' + g.in_ritardo + ' fermi da troppo</span>' : '')
-        + (g.tipo === 'da-dichiarare' ? ' <span class="cnt-pill">nessuno le tiene: non si sa</span>' : '')
+      return '<div class="spr-g ' + (g.in_ritardo ? 'spr-urg' : '') + '">'
+        + '<div class="spr-t" onclick="sprGruppo(\'' + esc(chiave) + '\')">'
+        + '<i class="ti ' + icona + ' spr-i"></i>'
+        + '<div class="spr-n"><div class="cnt-nome">' + esc(g.etichetta)
+        + ' <span class="cnt-tag">' + g.n + (g.n === 1 ? ' rata' : ' rate') + '</span>'
+        + (g.in_ritardo ? ' <span class="cnt-tag uscita">' + g.in_ritardo + ' fermi da troppo</span>' : '')
+        + (g.tipo === 'da-dichiarare' ? ' <span class="cnt-tag transito">nessuno le tiene: non si sa</span>' : '')
         + '</div>'
-        + (g.senza_importo ? '<div class="cl-sub">' + g.senza_importo + ' senza importo dichiarato</div>' : '')
-        + '</div>'
-        + '<div style="font-weight:800">' + pfEuro(g.totale) + '</div>'
-        + '<i class="ti ' + (aperto ? 'ti-chevron-up' : 'ti-chevron-down') + '"></i></div>'
+        + '<div class="cnt-sotto">'
+        + (g.senza_importo ? g.senza_importo + ' senza importo dichiarato · ' : '')
+        + (aperto ? 'clicca per richiudere' : 'clicca per vedere le rate')
+        + '</div></div>'
+        + '<div class="spr-euro">' + pfEuro(g.totale) + '</div>'
+        + '<i class="ti ' + (aperto ? 'ti-chevron-up' : 'ti-chevron-down') + ' spr-i"></i></div>'
         + (aperto ? sprRighe(g) : '')
         + '</div>';
     }).join('');
 }
 
-function sprCard(t, n, euro, cls) {
-  return '<div class="cnt-card ' + cls + '"><div class="cnt-card-t">' + esc(t) + '</div>'
-    + '<div class="cnt-card-v">' + esc(euro) + '</div>'
-    + '<div class="cnt-card-s">' + esc(n) + '</div></div>';
+function sprCard(t, n, euro) {
+  return '<div class="cnt-card"><div class="cnt-k">' + esc(t) + '</div>'
+    + '<div class="cnt-v">' + esc(euro) + '</div>'
+    + '<div class="cnt-s">' + esc(n) + '</div></div>';
 }
 
 function sprRighe(g) {
-  return '<div style="margin-top:8px;border-top:1px solid var(--bord2);padding-top:8px">'
+  return '<div class="spr-corpo">'
     + g.righe.map(function (r) {
-      return '<div style="display:flex;gap:10px;align-items:center;padding:5px 0;flex-wrap:wrap">'
-        + '<div style="flex:1;min-width:180px">'
-        + '<div style="font-weight:600">' + esc(r.cliente || '—') + '</div>'
-        + '<div class="cl-sub">' + (r.numero_polizza ? esc(r.numero_polizza) + ' · ' : '')
+      return '<div class="spr-riga">'
+        + '<div class="spr-chi">'
+        + '<div class="cnt-nome">' + esc(r.cliente || '—') + '</div>'
+        + '<div class="cnt-sotto">' + (r.numero_polizza ? esc(r.numero_polizza) + ' · ' : '')
         + (r.compagnia ? esc(r.compagnia) + ' · ' : '')
         + (r.data ? 'dal ' + pfData(r.data) : 'senza data')
         + (r.giorni_fermo != null ? ' · fermo da ' + r.giorni_fermo + ' gg' : '')
         + '</div></div>'
-        + '<div style="font-weight:700' + (r.in_ritardo ? ';color:#c0392b' : '') + '">'
+        + '<div class="spr-imp ' + (r.in_ritardo ? 'spr-tardi' : '') + '">'
         + (r.importo == null ? '<span title="Un importo che non c\'è non vale zero">—</span>' : pfEuro(r.importo))
         + '</div>'
         + '<button class="d-btn" type="button" onclick="sprIncassa(\'' + esc(r.numero_polizza || '') + '\')">Incassa</button>'
@@ -6021,27 +6028,32 @@ function cntRenderModalita(puo) {
     box.innerHTML = '<div class="cl-sub">Nessuna modalità di pagamento.</div>';
     return;
   }
+  /* Le righe sono quelle delle altre due schede (`cnt-r`): una lista che si
+     disegna a modo suo, in una schermata che ne ha già due, si vede subito —
+     ed è quello che è successo alla prima stesura. */
   const collab = CNT_MODALITA.filter(m => m.collaboratore_id).length;
   box.innerHTML = `
-    <div class="cl-sub" style="padding:0 0 10px">
+    <div class="cl-sub" style="padding:14px 0 6px">
       Una voce può essere un <b>collaboratore</b>: allora il premio ce l'ha lui, e resta fra i
       sospesi finché non lo porta. «In casa subito» sono i contanti — il denaro è già dentro.
-      ${collab ? `<b>${collab}</b> voc${collab === 1 ? 'e è una persona' : 'i sono persone'}.` : 'Nessuna voce è ancora una persona.'}
+      ${collab ? `<b>${collab}</b> voc${collab === 1 ? 'e è una persona' : 'i sono persone'}.` : '<b>Nessuna voce è ancora una persona.</b>'}
     </div>` + CNT_MODALITA.map(m => {
       const nome = m.collaboratore_id ? (cntNomeCollab(m.collaboratore_id) || m.nome) : m.nome;
-      const sub = [
-        m.contabilizza === 'subito' ? 'in casa subito' : 'va nei sospesi',
-        m.giorni_attesi != null ? `attesa ${m.giorni_attesi} gg` : 'attesa non dichiarata',
-        m.di_sistema ? 'di sistema' : null
-      ].filter(Boolean).join(' · ');
-      return `<div class="cl-r${m.attiva === false ? ' cl-off' : ''}">
-        <div class="cl-main">
-          <div class="cl-nome">${m.collaboratore_id ? '<i class="ti ti-user"></i> ' : ''}${esc(nome)}
-            ${m.attiva === false ? '<span class="cnt-pill">spenta</span>' : ''}</div>
-          <div class="cl-sub">${esc(sub)}</div>
-        </div>
-        ${puo ? `<button class="d-btn" type="button" onclick="cntModApri('${esc(m.codice)}')">Modifica</button>` : ''}
-      </div>`;
+      const subito = m.contabilizza === 'subito';
+      return `
+    <div class="cnt-r ${m.attiva === false ? 'cnt-spento' : ''}" ${puo ? `onclick="cntModApri('${esc(m.codice)}')" style="cursor:pointer"` : ''}>
+      <div>
+        <div class="cnt-nome">${m.collaboratore_id ? '<i class="ti ti-user"></i> ' : ''}${esc(nome)}
+          <span class="cnt-tag ${subito ? 'entrata' : 'uscita'}">${subito ? 'in casa subito' : 'va nei sospesi'}</span>
+          ${m.collaboratore_id ? '<span class="cnt-tag">collaboratore</span>' : ''}
+          ${m.attiva === false ? '<span class="cnt-tag">spenta</span>' : ''}</div>
+        <div class="cnt-sotto">
+          ${m.giorni_attesi != null
+            ? `<span class="cnt-tag">dopo ${m.giorni_attesi} gg è troppo</span>`
+            : '<span class="cnt-tag">nessun limite dichiarato</span>'}
+          &nbsp;${esc(m.codice)}${m.di_sistema ? ' · di partenza' : ''}</div>
+      </div>
+    </div>`;
     }).join('');
 }
 
@@ -6931,7 +6943,10 @@ async function pntSalva(id) {
   if (!id) {
     const r = Contabilita.righeSemplici(
       Object.assign({}, riga, { contropartita_id: pntVal('pnt-m-contro') || null }),
-      { causali: PNT_CAUSALI });
+      /* I CONTI si passano, non solo le causali: senza, il motore non può
+         accorgersi che la contropartita di una spesa è un conto corrente —
+         ed è il difetto segnalato da Francesco il 22/09/2026. */
+      { causali: PNT_CAUSALI, conti: PNT_CONTI });
     if (!r.ok) e.push(r.motivo);
     else {
       righe = r.righe;
@@ -11402,119 +11417,18 @@ function closeSettings() { document.getElementById('settings-overlay').classList
 function toggleW(k, v) { const w = getW(); w[k]=v; saveW(w); if (APP.loaded) buildDashboard(); }
 
 // ─── FILE LOADING ─────────────────────────────────────────────────────────────
-function loadSospesi(inp) {
-  const file = inp.files[0]; if (!file) return;
-  const r = new FileReader();
-  r.onload = e => {
-    const wb = XLSX.read(e.target.result, {type:'array', raw:true});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json(ws, {defval:'', raw:true});
-    APP.sospesi = data
-      .filter(row => row['Nominativo'] && parseNum(row['Importo Sospeso'] ?? 0) > 0)
-      .map(row => ({
-        nominativo: String(row['Nominativo'] || '').trim(),
-        importo:    parseNum(row['Importo Sospeso'] ?? 0),
-        data:       row['Data'] || '',
-        compagnia:  String(row['Compagnia'] || '').trim(),
-        // "Tipo Sospeso" nel file contiene il nome del produttore
-        produttore: String(row['Tipo Sospeso'] || row['Autore Pagamento'] || '').trim(),
-        // Campi extra mantenuti per compatibilità
-        polizza:    String(row['Polizza']        || '').trim(),
-        targa:      String(row['Targa']          || '').trim(),
-        prog:       String(row['Prog_movimento'] || '').trim(),
-        gg:         daysSince(row['Data']),
-      }));
-    const filtrati = APP.sospesi.filter(s => s.importo > 0).length;
-    document.getElementById('ok-sosp').textContent = '✓ ' + file.name + ' (' + filtrati + ' sospesi)';
-    document.getElementById('ok-sosp').style.display = 'block';
-    document.getElementById('sub-sosp').style.display = 'none';
-  };
-  r.readAsArrayBuffer(file);
-}
-
-function loadIncassi(inp) {
-  const file = inp.files[0]; if (!file) return;
-  const ext = file.name.split('.').pop().toLowerCase();
-
-  const parseDocHtml = (htmlText) => {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = htmlText;
-    const lines = [];
-    tmp.querySelectorAll('td,th,p').forEach(el => {
-      const t = el.textContent.trim();
-      if (t) lines.push(t);
-    });
-    let start = -1;
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].toLowerCase().includes('totale sospesi incassati')) { start = i + 4; break; }
-    }
-    if (start < 0) return [];
-    while (start < lines.length && !lines[start].match(/^\d{2}\/\d{2}\/\d{4}$/)) start++;
-    const rows = [];
-    let i = start;
-    while (i < lines.length - 4) {
-      const data = lines[i];
-      if (!data.match(/^\d{2}\/\d{2}\/\d{4}$/)) { i++; continue; }
-      const nominativo = lines[i+1]||'';
-      const produttore = lines[i+2]||'';
-      const pagamento  = lines[i+3]||'';
-      const importoStr = lines[i+4]||'0';
-      const importo    = parseFloat(importoStr.replace(/\./g,'').replace(',','.')) || 0;
-      if (nominativo && importo > 0) rows.push({ nominativo, produttore, pagamento, importo, data });
-      i += 5;
-    }
-    return rows;
-  };
-
-  const aggiornaUI = (nomeFile) => {
-    const n = APP.incassi.length;
-    const tot = APP.incassi.reduce((a,x)=>a+x.importo,0);
-    document.getElementById('ok-inc').textContent = `✓ ${nomeFile} (${n} incassi sospesi · €${fmt(tot)})`;
-    document.getElementById('ok-inc').style.display = 'block';
-    document.getElementById('sub-inc').style.display = 'none';
-    if (APP.sospesi.length) { buildAnomalie(); buildDashboard(); }
-  };
-
-  if (ext === 'doc' || ext === 'htm' || ext === 'html') {
-    const r = new FileReader();
-    r.onload = e => { APP.incassi = parseDocHtml(e.target.result); aggiornaUI(file.name); };
-    r.readAsText(file);
-  } else if (ext === 'docx') {
-    const r = new FileReader();
-    r.onload = e => {
-      mammoth.extractRawText({arrayBuffer: e.target.result}).then(res => {
-        const lines = res.value.split('\n').filter(l=>l.trim());
-        let start = lines.findIndex(l=>l.toLowerCase().includes('totale sospesi incassati'));
-        if (start < 0) start = Math.floor(lines.length * 0.7);
-        APP.incassi = []; let i = start;
-        while (i < lines.length - 4) {
-          if (lines[i].match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-            const imp = parseFloat((lines[i+4]||'0').replace(/\./g,'').replace(',','.')) || 0;
-            if (imp > 0) APP.incassi.push({ nominativo: lines[i+1]||'', produttore: lines[i+2]||'', pagamento: lines[i+3]||'', importo: imp, data: lines[i] });
-            i += 5;
-          } else i++;
-        }
-        aggiornaUI(file.name);
-      });
-    };
-    r.readAsArrayBuffer(file);
-  } else {
-    const r = new FileReader();
-    r.onload = e => {
-      const wb = XLSX.read(e.target.result, {type:'array', raw:true});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(ws, {defval:'', raw:true});
-      APP.incassi = data.map(row => ({
-        nominativo: row['Nominativo']||row['Descrizione']||'',
-        produttore: row['Tipo Sospeso']||row['Produttore']||'',
-        importo:    parseNum(row['Importo']??row['Importo Sospeso']??0),
-        data: row['Data']||'', pagamento: row['Pagamento']||'',
-      })).filter(r=>r.importo>0);
-      aggiornaUI(file.name);
-    };
-    r.readAsArrayBuffer(file);
-  }
-}
+/* I due lettori dei file dei sospesi non ci sono piu' (22/09/2026). Leggevano
+   l'Excel dei sospesi e il report degli incassi dalla schermata Sospesi, e
+   quella possibilita' e' stata tolta su richiesta di Francesco: i sospesi
+   arrivano dal nostro portafoglio, e un secondo elenco riempito a mano e' il
+   secondo archivio della stessa cosa.
+   Non sono rimasti dentro spenti: in questo repository il codice che nessuno
+   chiama e' il guasto numero uno (CLAUDE.md §1), e due lettori di file senza
+   un bottone che li chiami sarebbero esattamente quello.
+   Quello che era gia' stato caricato NON si perde: sta in
+   `sessioni_giornaliere.sospesi_json` / `incassi_json`, si rilegge da li' a ogni
+   apertura e continua ad alimentare Scrivania, Anomalie e Storico. Quello che
+   si perde e' la possibilita' di aggiungerne di nuovi da un file. */
 
 
 function contoMovId(row, i) {
@@ -16741,8 +16655,6 @@ function loadDemo() {
   document.getElementById('i-cassa').value = '271';
   document.getElementById('i-vers').value  = '0';
   document.getElementById('i-spese').value = '0';
-  document.getElementById('ok-sosp').textContent = '✓ Dati demo (7 sospesi)';
-  document.getElementById('ok-sosp').style.display = 'block';
   buildDashboard(); buildAnomalie(); buildSospesi(); updatePill(); APP.loaded = true;
   goTab('dashboard');
 }

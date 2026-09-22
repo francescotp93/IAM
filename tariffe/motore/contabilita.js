@@ -144,6 +144,22 @@
     { k: 'credito',            l: 'Crediti (sospesi)',       i: 'ti-clock-dollar' },
     { k: 'debito',             l: 'Debiti e crediti verso terzi', i: 'ti-scale' },
     { k: 'rettifica',          l: 'Rettifiche (abbuoni)',    i: 'ti-adjustments' },
+    /* COSTO e RICAVO, aggiunte il 22/09/2026 — e la segnalazione che le ha
+       fatte nascere è: «ho inserito un saldo iniziale ed ho aggiunto delle
+       spese, ma essendo spese si dovrebbe defalcare dal saldo, invece il
+       programma le somma».
+       Misurato sul movimento vero: «Pagamento Stanza ROMA» 170 €, causale
+       «Spese in genere», scritto Avere sulla carta di credito (giusto, −170)
+       e Dare sul CONTO AZIENDALE (sbagliato: +170). Il conto aziendale non ha
+       incassato niente.
+       La causa NON era il segno: la partita doppia era corretta. Era che fra
+       i dodici conti minimi **non ce n'era nemmeno uno di costo**, quindi la
+       contropartita di una spesa non aveva dove andare, e qualunque conto si
+       scegliesse era un conto di liquidità che «riceveva» quei soldi. È §1 in
+       una forma nuova: la schermata fa una domanda la cui unica risposta
+       onesta non esiste nell'elenco. */
+    { k: 'costo',              l: 'Costi (quello che l’agenzia spende)', i: 'ti-receipt-2' },
+    { k: 'ricavo',             l: 'Ricavi (quello che l’agenzia guadagna)', i: 'ti-trending-up' },
     { k: 'altro',              l: 'Altro',                   i: 'ti-dots' }
   ];
 
@@ -334,7 +350,19 @@
       note: 'Il cliente ha pagato la compagnia, non noi. La rata si chiude lo stesso e in agenzia non entra un euro.' },
     { nome: 'Partite da identificare',     tipologia: 'transitorio',        natura: 'premi', ordine: 120,
       e_mezzo_pagamento: true,  e_conto_sospeso: false, e_quadrabile: true,
-      note: 'Il bonifico arrivato senza sapere di chi è. Un posto dichiarato dove metterlo è meglio di un posto scelto a caso.' }
+      note: 'Il bonifico arrivato senza sapere di chi è. Un posto dichiarato dove metterlo è meglio di un posto scelto a caso.' },
+    /* I DUE CONTI CHE MANCAVANO (22/09/2026). Senza di loro una spesa non ha
+       una contropartita onesta, e finisce per forza su un conto di liquidita'
+       che «riceve» dei soldi mai arrivati. Non si quadrano: un costo non si
+       conta aprendo un cassetto ne' leggendolo su un estratto conto — si legge
+       nel conto economico. Natura AZIENDALE, non «premi»: un affitto non e'
+       denaro di un cliente in transito verso la compagnia (art. 117 CAP). */
+    { nome: 'Costi di agenzia',            tipologia: 'costo',              natura: 'aziendale', ordine: 130,
+      e_mezzo_pagamento: false, e_conto_sospeso: false, e_quadrabile: false,
+      note: 'Affitto, utenze, cancelleria, quello che l\u2019agenzia spende. \u00c8 la contropartita di una spesa: senza, la spesa finisce addosso a un conto corrente, che risulta averla incassata.' },
+    { nome: 'Ricavi di agenzia',           tipologia: 'ricavo',             natura: 'aziendale', ordine: 140,
+      e_mezzo_pagamento: false, e_conto_sospeso: false, e_quadrabile: false,
+      note: 'Le provvigioni che restano all\u2019agenzia e ogni altro incasso che \u00e8 suo. \u00c8 la contropartita di un\u2019entrata vera, diversa dal premio di un cliente.' }
   ];
 
   /* ═══ ATTREZZI ════════════════════════════════════════════════════════════ */
@@ -596,6 +624,17 @@
     var c = causali && m.causale_id ? causali[m.causale_id] : null;
     if (c) return segnoDi(c.segno);
     return 0;
+  }
+
+  /* «Questo movimento è un costo o un ricavo VERO, o è denaro che si sposta?»
+     Lo dice `incide_su_utile` della causale, che esiste dalla M1 apposta: un
+     incasso premi e una rimessa in compagnia muovono i conti e NON il
+     risultato, perché sono le due facce dello stesso denaro in transito. */
+  function causaleIncide(m, causali) {
+    if (!m) return false;
+    if (typeof m.incide_su_utile === 'boolean') return m.incide_su_utile;
+    var c = causali && m.causale_id ? causali[m.causale_id] : null;
+    return !!(c && c.incide_su_utile);
   }
 
   function indice(righe, chiave) {
@@ -1069,6 +1108,87 @@
     return out;
   }
 
+  /* ═══ LO STATO DEL PAGAMENTO NON SI DIGITA: SI DEDUCE (22/09/2026) ═══════
+     Richiesta di Francesco: «quando è inutile mettere se un pagamento è
+     sospeso oppure annullato o ecc. Perché se mettiamo pos, oppure altre
+     modalità che abbiamo detto vanno in automatico come sospeso».
+
+     MISURATO sul portafoglio vero PRIMA di scrivere, ed è la ragione per cui
+     questa funzione esiste:
+
+       · 3.946 polizze su 4.079 dicono «pagato». Di quelle, 1.444 non hanno
+         NEMMENO UNA RATA e 317 hanno rate ancora aperte.
+       · 51 dicono «sospeso», e 43 di quelle hanno TUTTE le rate incassate.
+       · in tutto 364 polizze dicono una cosa e le loro rate ne dicono
+         un'altra.
+
+     È il difetto che questa casa ha già scritto altrove: **un flag si
+     dimentica, una data no**. Il pagamento lo raccontano le rate, che si
+     incassano una alla volta e lasciano la data; una tendina da tenere
+     allineata a mano non lo racconterà mai, e il numero sbagliato ha
+     esattamente l'aria di quello giusto.
+
+     Le cinque risposte, e perché nessuna si può accorpare:
+       · `annullata` NON si deduce. Non è uno stato del pagamento: è la vita
+         della polizza, e la decide una persona. Resta scritta in colonna, ed
+         è l'unico valore per cui quella colonna serve ancora (76 righe, e
+         coincidono tutte).
+       · `pagato` = tutte le rate incassate. Una sola risposta possibile.
+       · `sospeso` = restano rate aperte E la modalità è dichiarata. La
+         modalità dichiarata è quello che la compagnia ha usato per METTERE
+         IN COPERTURA la polizza: il cliente non è scoperto, il premio deve
+         ancora arrivare in agenzia (CLAUDE.md §65).
+       · `non_pagato` = restano rate aperte e nessuno ha detto come si paga.
+       · `non_si_sa` = NESSUNA RATA. Non è «pagato», ed è il caso delle 1.444
+         polizze rimaste senza rate dopo l'importazione interrotta (§47,
+         §55). Dirle pagate è la bugia più comoda che questo sistema possa
+         raccontare: §12, §18, §43. */
+  var STATI_PAGAMENTO = {
+    annullata:  'Annullata',
+    pagato:     'Pagato',
+    sospeso:    'Sospeso',
+    non_pagato: 'Non pagato',
+    non_si_sa:  'Non si sa'
+  };
+
+  function statoPagamento(polizza, rate, voc) {
+    var p = polizza || {};
+    if (testo(p.stato_pagamento).toLowerCase() === 'annullata') {
+      return { stato: 'annullata', etichetta: STATI_PAGAMENTO.annullata,
+        motivo: 'la polizza è stata annullata', dedotto: false };
+    }
+    var r = (rate || []).filter(function (x) { return x && testo(x.stato).toLowerCase() !== 'annullato'; });
+    if (!r.length) {
+      return { stato: 'non_si_sa', etichetta: STATI_PAGAMENTO.non_si_sa,
+        motivo: 'questa polizza non ha nessuna rata: non c\'è niente da cui dedurre se è stata pagata',
+        dedotto: true };
+    }
+    var aperte = r.filter(function (x) { return testo(x.stato).toLowerCase() === 'aperto'; });
+    if (!aperte.length) {
+      return { stato: 'pagato', etichetta: STATI_PAGAMENTO.pagato,
+        motivo: r.length === 1 ? 'la sua unica rata è stata incassata'
+                               : 'tutte e ' + r.length + ' le rate sono state incassate',
+        dedotto: true };
+    }
+    /* La modalità si guarda PRIMA sulla rata e poi sulla polizza: una rata
+       può essere pagata in un modo diverso dal solito di quel cliente, e chi
+       decide se il premio è in copertura è quella rata. */
+    var conMezzo = aperte.filter(function (x) { return !!testo(x.mezzo_pagamento); });
+    var mezzoPol = testo(p.mezzo_pagamento);
+    var quante = aperte.length, parola = quante === 1 ? 'rata aperta' : 'rate aperte';
+    if (conMezzo.length || mezzoPol) {
+      var k = testo((conMezzo[0] || {}).mezzo_pagamento) || mezzoPol;
+      var m = mezzo(k, voc);
+      return { stato: 'sospeso', etichetta: STATI_PAGAMENTO.sospeso,
+        motivo: quante + ' ' + parola + ' con «' + ((m && (m.l || m.nome)) || k) + '» dichiarato: '
+          + 'la copertura c\'è, il premio deve ancora arrivare in agenzia',
+        dedotto: true, mezzo: k };
+    }
+    return { stato: 'non_pagato', etichetta: STATI_PAGAMENTO.non_pagato,
+      motivo: quante + ' ' + parola + ', e nessuno ha detto come si paga',
+      dedotto: true };
+  }
+
   /* Gli stessi conti guardati DALL'ALTRA PARTE: non «dove va questo mezzo» ma
      «quali mezzi non hanno una destinazione sola». `contoPerMezzo` risponde a
      una rata alla volta, e se ne accorge solo quando quella rata arriva;
@@ -1361,6 +1481,34 @@
     if (imp == null || imp <= 0) return { ok: false, righe: [], motivo: 'Metti l’importo, positivo.' };
     if (!v) {
       return { ok: false, righe: [], motivo: 'Non si sa se è un’entrata o un’uscita: lo dice la causale, e questa non lo dichiara. Senza il verso non si indovina da che parte scrivere.' };
+    }
+
+    /* ── LA CONTROPARTITA DI UNA SPESA NON È UN CONTO CORRENTE ────────────
+       Segnalato da Francesco il 22/09/2026: «essendo spese si dovrebbe
+       defalcare dal saldo, invece il programma le somma». Misurato sul
+       movimento vero — «Pagamento Stanza ROMA» 170 €, causale «Spese in
+       genere»: Avere sulla carta di credito (giusto, −170) e Dare sul CONTO
+       AZIENDALE (sbagliato, +170). La partita doppia era corretta; il conto
+       scelto no.
+
+       Quando la causale INCIDE SUL RISULTATO (è un costo o un ricavo vero,
+       non denaro che si sposta), la contropartita deve essere un conto di
+       costo o di ricavo. Su un conto di liquidità quel Dare si legge come
+       denaro arrivato: un saldo più alto del vero, credibile, e che la
+       quadratura troverà sbagliato senza saper dire da dove viene.
+
+       Si guarda solo quando i conti si conoscono: senza l'elenco non si
+       indovina, e un controllo che non può misurare non deve bloccare. */
+    if (opz.conti && causaleIncide(m, causali)) {
+      var idx = indice(opz.conti);
+      var cc = idx[m.contropartita_id];
+      if (cc && LIQUIDE.indexOf(testo(cc.tipologia)) >= 0) {
+        return { ok: false, righe: [], motivo: 'La contropartita di un costo o di un ricavo non può essere «'
+          + (cc.nome || 'un conto di liquidità') + '»: è un conto su cui il denaro c’è davvero, '
+          + 'e scrivendoci questa spesa risulterebbe che quei soldi sono ARRIVATI lì. '
+          + 'Serve un conto di costo (o di ricavo): se non ce l’hai, crealo da Conti e causali. '
+          + 'Se invece stai spostando denaro fra due conti tuoi, la causale giusta è un giroconto, non una spesa.' };
+      }
     }
 
     return {
@@ -2682,6 +2830,7 @@
     MEZZI: MEZZI, mezzo: mezzo, vocabolario: vocabolario,
     contoPerMezzo: contoPerMezzo, mezziInConflitto: mezziInConflitto,
     daIncassare: daIncassare,
+    STATI_PAGAMENTO: STATI_PAGAMENTO, statoPagamento: statoPagamento,
     destinoIncasso: destinoIncasso,
     giorniDa: giorniDa, inRitardo: inRitardo, sospesiAperti: sospesiAperti,
     riepilogoSospesi: riepilogoSospesi, validaAccredito: validaAccredito,
@@ -2689,6 +2838,11 @@
     incassabile: incassabile, contoCompagnia: contoCompagnia, contoIncasso: contoIncasso,
     righeIncasso: righeIncasso, mezzoIncasso: mezzoIncasso, giornoBello: giornoBello,
     effettoSuConto: effettoSuConto, perMovimento: perMovimento,
+    /* `denaroDi` si esporta perche' e' una REGOLA, non un attrezzo: dice quali
+       gambe di un movimento sono denaro vero (Fase 4-bis). Averla provabile da
+       fuori e' l'unico modo di misurare che un conto di costo non risulti aver
+       incassato. */
+    denaroDi: denaroDi, LIQUIDE: LIQUIDE,
     /* Fase 3 — i sospesi: i premi a copertura e non ricevuti */
     STATI_CREDITO: STATI_CREDITO, recuperiVivi: recuperiVivi,
     residuoCredito: residuoCredito, statoCredito: statoCredito,

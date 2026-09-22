@@ -57,25 +57,37 @@ function riquadro(sorgente, id) {
 // ── 1. Le due schermate esistono e non si sovrappongono ─────────────────────
 e.prova('la quadratura e i caricamenti restano due lavori distinti', () => {
   deve(riquadro(src, 'contab-panel-quadratura'), 'manca la schermata «contab-panel-quadratura»');
-  /* Dal 20/09/2026 i caricamenti non hanno più una linguetta loro: stanno
-     dentro Sospesi, che è la schermata che li usa. Sparire non potevano —
-     sono l'unica strada da cui arrivano quei dati. */
+  /* Dal 20/09/2026 i caricamenti non hanno più una linguetta loro. Dal
+     22/09/2026 non ci sono proprio più (richiesta di Francesco): i sospesi
+     arrivano dal portafoglio. */
   deve(riquadro(src, 'contab-panel-sospesi'), 'manca la schermata «contab-panel-sospesi»');
   deve(!/id="ctab-caricafile"/.test(src), '«Carica documenti» è tornata a essere una linguetta');
   return 'i numeri di qua, i file dove servono';
 });
 
-e.prova('i caricamenti stanno dentro la schermata che li usa, e niente cassa', () => {
-  const q = riquadro(src, 'contab-panel-sospesi');
-  deve(/id="f-sosp"/.test(q) && /id="f-inc"/.test(q),
-    'i caricamenti non sono dentro Sospesi: quattro schermate restano senza dati');
+e.prova('il caricamento da file non c\'è più, e i dati già caricati si leggono ancora', () => {
+  /* Questa prova misurava il mondo del 20/09: pretendeva i due caricamenti
+     DENTRO Sospesi, perché allora erano l'unica strada da cui arrivavano
+     quei dati. Il 22/09 Francesco li ha fatti togliere, e la regola che
+     contava non era «i file stanno lì»: era «niente di spento». Vale
+     identica adesso — quello che era stato caricato si rilegge dalla
+     giornata salvata, e nessuna schermata resta senza dati. */
+  deve(!/id="f-sosp"/.test(src) && !/id="f-inc"/.test(src),
+    'il caricamento da file è tornato: i sospesi si riempirebbero da due strade');
+  deve(!/function loadSospesi/.test(src) && !/function loadIncassi/.test(src),
+    'i due lettori sono rimasti dentro spenti: è il guasto §1');
+  /* La strada che resta: la giornata salvata. Se sparisse, Scrivania,
+     Anomalie e Storico si svuoterebbero davvero. */
+  deve(/sospesi_json/.test(src) && /incassi_json/.test(src),
+    'senza la giornata salvata i dati già caricati non si rileggono più');
   /* La controprova del difetto segnalato il 01/08/2026: se i campi della
-     giornata finissero qui dentro, chi cerca i file rivedrebbe cassa e POS. */
+     giornata finissero qui dentro, chi cerca i sospesi rivedrebbe cassa e POS. */
+  const q = riquadro(src, 'contab-panel-sospesi');
   for (const campo of ['i-cassa', 'i-vers', 'i-fondo', 'i-pos-bianco', 'i-pos-nero']) {
     deve(!q.includes('id="' + campo + '"'),
-      'dentro i caricamenti si vede ancora «' + campo + '»: è tornato tutto insieme');
+      'dentro i Sospesi si vede ancora «' + campo + '»: è tornato tutto insieme');
   }
-  return 'solo i file, accanto a chi li legge';
+  return 'niente file da caricare, niente di spento';
 });
 
 e.prova('«Quadratura» contiene i numeri della giornata e nessun caricamento', () => {

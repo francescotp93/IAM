@@ -1,8 +1,24 @@
 {
-  "versione": "0.30.0",
-  "nome": "Scadenzario · la proroga di 15 giorni",
+  "versione": "0.30.1",
+  "nome": "Scadenzario · le correzioni di una rilettura ostile",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.30.1",
+      "data": "2026-09-22",
+      "nome": "Scadenzario · le correzioni di una rilettura ostile",
+      "voci": [
+        "Il filtro «Solo non rinnovate» azzerava la frase che gli sta accanto: appena lo accendevi diceva «0 sembrano rinnovate», e quel numero, da solo, si legge come «sono tutti clienti da richiamare». Adesso la frase resta la stessa con il filtro acceso e spento.",
+        "I totali e le card sommavano il premio annuo di una polizza e l'importo di una sua rata, che sono lo stesso denaro contato due volte (sul portafoglio vero 79.794,89 €). Adesso sono due numeri distinti: «premio annuo» e «da incassare».",
+        "«N rate non si vedono: la loro polizza non è fra quelle che puoi vedere» mandava a cercare un problema di permessi che non c'era: sono rate di polizze ANNULLATE, e adesso lo dice.",
+        "LA PRIMA RATA non ha proroga. Se non è pagata la copertura non è mai partita (art. 1901 c.c.): trattarla come una quietanza diceva che un cliente era coperto mentre non lo era mai stato. Adesso esce scoperta il giorno dopo la scadenza, con il motivo scritto.",
+        "Due polizze dello stesso cliente con TARGHE DIVERSE non sono un rinnovo: sono due macchine. Sul portafoglio vero erano 34 clienti che sparivano dall'elenco di quelli da richiamare.",
+        "L'ultimo giorno di proroga scriveva «ancora 0 gg», che si legge come «è finita» — ed è invece la telefonata più urgente dell'elenco. Adesso dice «oggi è l'ultimo giorno di proroga».",
+        "Aprendo lo Scadenzario partivano due letture insieme e i contatori si sommavano fra loro: un numero raddoppiato che aveva l'aria di un dato.",
+        "Le letture non avevano un ordine: con quattromila polizze una riga aggiornata mentre si legge poteva comparire due volte o sparire, senza che niente lo dicesse.",
+        "Il rinnovo di una polizza SOSPESA si cercava alla data scritta sul contratto invece che a quella vera, e la polizza risultava non rinnovata."
+      ]
+    },
     {
       "v": "0.30.0",
       "data": "2026-09-22",

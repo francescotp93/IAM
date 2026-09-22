@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.30.0">
-<meta name="app-versione-nome" content="Scadenzario · la proroga di 15 giorni">
+<meta name="app-versione" content="0.30.1">
+<meta name="app-versione-nome" content="Scadenzario · le correzioni di una rilettura ostile">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -20132,7 +20132,17 @@ var RIN_FASCIA = 'tutte';
 var RIN_SOLO_APERTE = false;   // il filtro rapido «solo non rinnovate»
 var RIN_PARZIALE = false;      // una lettura si è fermata: i numeri sono in difetto
 var RIN_RATE_KO = '';          // le rate non si sono potute leggere
-var RIN_RATE_FUORI = 0;        // rate la cui polizza non si vede: contate, non sparite
+var RIN_RATE_FUORI = 0;        // rate la cui polizza non e' in elenco: contate, non sparite
+var RIN_RATE_ANNULLATE = 0;    // ...perche' la polizza e' annullata: e' normale
+var RIN_RATE_INVISIBILI = 0;   // ...perche' non la si puo' vedere: e' il caso §55
+var RIN_PERCHE_KO = false;     // non si e' potuto sapere quale delle due
+/* DUE CARICAMENTI POSSONO GIRARE INSIEME, e non e' un caso di laboratorio:
+   `showPage('scadenzario')` ne fa partire uno senza aspettarlo, e chi torna
+   sulla pagina mentre il primo sta ancora leggendo ne fa partire un secondo.
+   Due letture che scrivono negli stessi contatori li sommano fra loro — il
+   numero raddoppia e sembra un dato. Ogni giro prende un numero: chi torna e
+   non e' l'ultimo partito non scrive niente. */
+var RIN_GIRO = 0;
 var RIN_OGGI = null;
 
 /* Quante righe si DISEGNANO. I contatori contano tutto; la tabella no,
@@ -20172,7 +20182,7 @@ function rinAzzera() {
 /* I filtri di testo e di data si applicano a tutto; la FASCIA no, perché i
    contatori delle fasce si costruiscono su questo elenco: restringendolo
    anche per fascia, la fascia scelta direbbe il suo numero e le altre zero. */
-function rinFiltraSenzaFascia() {
+function rinFiltraSenzaFascia(conRinnovo) {
   var v = function (id) { return (document.getElementById(id) || {}).value || ''; };
   var da = v('rin-da').trim(), a = v('rin-a').trim(), tacito = v('rin-tacito').trim();
   var prod = v('rin-prodotto').trim(), comp = v('rin-compagnia').trim();
@@ -20190,8 +20200,17 @@ function rinFiltraSenzaFascia() {
     if (prod && r.prodotto !== prod) return false;
     if (comp && r.compagnia !== comp) return false;
     if (cli && String(r.cliente || '').toLowerCase().indexOf(cli) < 0) return false;
-    if (stato && rinStato(r)[0] !== stato) return false;
-    if (RIN_SOLO_APERTE && rinStato(r)[0] !== 'nessuno') return false;
+    /* Il filtro sul rinnovo si applica SOLO a chi lo chiede. La nota accanto
+       al filtro rapido dice che cosa quel filtro lascia fuori: contarla su un
+       insieme gia' ristretto dal filtro stesso la farebbe dire «0 sembrano
+       rinnovate» proprio quando il filtro e' acceso — e quel numero, senza la
+       nota, si legge come «sono tutti clienti da richiamare». E' il difetto
+       che il commento qui sopra dichiara di aver evitato per le fasce,
+       applicato alla riga del rinnovo. */
+    if (conRinnovo) {
+      if (stato && rinStato(r)[0] !== stato) return false;
+      if (RIN_SOLO_APERTE && rinStato(r)[0] !== 'nessuno') return false;
+    }
     return true;
   });
 }
@@ -20210,7 +20229,7 @@ function rinOrdina(righe) {
 }
 
 function rinFiltra() {
-  var base = rinFiltraSenzaFascia();
+  var base = rinFiltraSenzaFascia(true);
   var M = rinM();
   var f = (M ? M.FASCE : []).filter(function (x) { return x.k === RIN_FASCIA; })[0];
   if (f && f.k !== 'tutte') base = base.filter(function (r) { return r.fascia === f.k; });
@@ -20221,11 +20240,16 @@ function rinRenderFasce() {
   var box = document.getElementById('rin-fasce');
   var M = rinM();
   if (!box || !M) return;
-  var base = rinFiltraSenzaFascia();
+  var base = rinFiltraSenzaFascia(true);
   var c = M.conteggi(base);
   box.innerHTML = M.FASCE.map(function (f) {
     var n = c[f.k] || { n: 0, importo: 0, senza_importo: 0 };
-    var sub = f.sub + ' · ' + pfEuro(n.importo)
+    /* I due importi restano due: il premio annuo di una polizza e l'importo
+       di una sua rata sono lo stesso denaro contato due volte. */
+    var sub = f.sub
+      + (n.polizze ? ' · premio ' + pfEuro(n.premio_polizze) : '')
+      + (n.rate ? ' · da incassare ' + pfEuro(n.da_incassare) : '')
+      + (!n.polizze && !n.rate ? ' · ' + pfEuro(0) : '')
       + (n.senza_importo ? ' <span title="Un importo che non c\'è non vale zero">+' + n.senza_importo + ' senza importo</span>' : '');
     return '<button class="rin-fascia ' + f.cls + (RIN_FASCIA === f.k ? ' att' : '') + '"'
       + ' onclick="rinFasciaScegli(\'' + f.k + '\')" title="Mostra solo queste">'
@@ -20238,9 +20262,17 @@ function rinRenderFasce() {
      per cui quelle non si sovrappongono. */
   var extra = document.getElementById('rin-extra');
   if (!extra) return;
-  var soloPol = base.filter(function (r) { return r.tipo === 'polizza'; });
+  /* La nota si conta SENZA il filtro del rinnovo: e' la sola cosa che
+     impedisce di leggere il numero del filtro rapido come «tutti clienti da
+     richiamare». */
+  var soloPol = rinFiltraSenzaFascia(false).filter(function (r) { return r.tipo === 'polizza'; });
   var q = { nessuno: 0, indizio: 0, lavorato: 0, tacito: 0, non_si_sa: 0, non_ancora: 0 };
   soloPol.forEach(function (r) { var k = rinStato(r)[0]; if (q[k] != null) q[k]++; });
+  /* Le righe senza data di scadenza sono tolte PRIMA di arrivare qui (non
+     appartengono a uno scadenzario), quindi contarle su `soloPol` voleva dire
+     scrivere una frase che non poteva mai comparire — codice morto travestito
+     da rete di sicurezza. Si contano dove stanno, su tutto l'elenco. */
+  var senzaData = RIN_ROWS.filter(function (r) { return r && r.giorni == null; }).length;
   extra.innerHTML =
     '<button class="rin-chip' + (RIN_SOLO_APERTE ? ' att' : '') + '" onclick="rinSoloAperte()"'
     + ' title="Le polizze per cui non si è trovata nessuna polizza nuova che parta a cavallo della scadenza">'
@@ -20249,7 +20281,10 @@ function rinRenderFasce() {
     + '(c\'è una polizza nuova, ma nessuno l\'ha dichiarato), ' + q.lavorato + ' dichiarate rinnovate'
     + (q.tacito ? ', ' + q.tacito + ' a tacito rinnovo' : '')
     + (q.non_ancora ? ', ' + q.non_ancora + ' non ancora scadute' : '')
-    + (q.non_si_sa ? ', ' + q.non_si_sa + ' senza data di scadenza' : '') + '.</span>';
+    + (q.non_si_sa ? ', ' + q.non_si_sa + ' senza successore cercabile' : '') + '.</span>'
+    + (senzaData ? '<span class="rin-chip-nota rin-avv"><b>' + senzaData
+        + '</b> polizze non entrano in questo elenco perché non hanno una data di scadenza: '
+        + 'si vedono nel portafoglio con la spia «da confermare».</span>' : '');
 }
 
 function rinRender() {
@@ -20281,14 +20316,18 @@ function rinRender() {
     var st = rinStato(r);
     var urgenza = g < 0 ? (r.coperta ? 'st-aperto' : 'st-scad') : (g <= (rinM().PROROGA) ? 'st-aperto' : '');
     var apri = r.polizza_id ? ' style="cursor:pointer" onclick="rinApri(\'' + esc(r.polizza_id) + '\')" title="Apri la polizza"' : '';
-    var proroga = (r.giorniDiProrogaRimasti != null)
-      ? '<div class="rin-gg">ancora ' + r.giorniDiProrogaRimasti + ' gg di proroga, fino al ' + pfData(r.fineProroga) + '</div>' : '';
+    var proroga = r.ultimoGiornoDiProroga
+      ? '<div class="rin-gg"><b>oggi è l\'ultimo giorno di proroga</b>: domani la copertura non c\'è più</div>'
+      : (r.giorniDiProrogaRimasti != null
+        ? '<div class="rin-gg">ancora ' + r.giorniDiProrogaRimasti + ' gg di proroga, fino al ' + pfData(r.fineProroga) + '</div>' : '');
+    var nota = r.notaCopertura
+      ? '<div class="rin-gg rin-avv">' + esc(r.notaCopertura) + '</div>' : '';
     var spostata = (r.spostataDi > 0)
       ? '<div class="rin-gg" title="Scadenza di contratto ' + pfData(r.scadenzaContrattuale) + '">sospensioni: +' + r.spostataDi + ' gg</div>' : '';
     return '<tr' + apri + '>'
       + '<td><strong>' + pfData(r.scadenza) + '</strong>'
       + '<div class="rin-gg">' + (urgenza ? '<span class="tk-badge ' + urgenza + '">' + esc(r.etichetta) + '</span>' : esc(r.etichetta)) + '</div>'
-      + proroga + spostata + '</td>'
+      + proroga + nota + spostata + '</td>'
       + '<td><strong>' + esc(r.cliente || '—') + '</strong>'
       + (r.numero_polizza ? '<div style="font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:2px">' + esc(r.numero_polizza) + (r.targa ? ' · ' + esc(r.targa) : '') + '</div>' : '')
       + '</td>'
@@ -20308,14 +20347,17 @@ function rinRender() {
     var c = rinM().conteggi(RIN_VISTA);
     var daFare = RIN_VISTA.filter(function (r) { return rinStato(r)[0] === 'nessuno'; }).length;
     tot.innerHTML = '<span><b>' + RIN_VISTA.length + '</b> scadenze</span>'
-      + '<span>per <b>' + pfEuro(c.tutte.importo) + '</b>'
-      + (c.tutte.senza_importo ? ' (<b>' + c.tutte.senza_importo + '</b> senza importo dichiarato)' : '') + '</span>'
+      + (c.tutte.polizze ? '<span><b>' + c.tutte.polizze + '</b> polizze, premio annuo <b>' + pfEuro(c.tutte.premio_polizze) + '</b></span>' : '')
+      + (c.tutte.rate ? '<span><b>' + c.tutte.rate + '</b> rate da incassare per <b>' + pfEuro(c.tutte.da_incassare) + '</b></span>' : '')
+      + (c.tutte.senza_importo ? '<span><b>' + c.tutte.senza_importo + '</b> senza importo dichiarato</span>' : '')
       + (daFare ? '<span><b>' + daFare + '</b> da richiamare</span>' : '')
       + (mostrate.length < RIN_VISTA.length
         ? '<span class="rin-avv">ne vedi <b>' + mostrate.length + '</b> su ' + RIN_VISTA.length + ': restringi i filtri per vedere le altre</span>' : '')
       + (RIN_PARZIALE ? '<span class="rin-avv">la lettura si è fermata prima della fine: questi numeri sono in DIFETTO</span>' : '')
       + (RIN_RATE_KO ? '<span class="rin-avv">le rate non si sono potute leggere, quindi qui ci sono solo le scadenze di polizza</span>' : '')
-      + (RIN_RATE_FUORI ? '<span class="rin-avv"><b>' + RIN_RATE_FUORI + '</b> rate non si vedono: la loro polizza non è fra quelle che puoi vedere</span>' : '');
+      + (RIN_RATE_INVISIBILI ? '<span class="rin-avv"><b>' + RIN_RATE_INVISIBILI + '</b> rate non si vedono: la loro polizza non è fra quelle che puoi vedere</span>' : '')
+      + (RIN_RATE_ANNULLATE ? '<span><b>' + RIN_RATE_ANNULLATE + '</b> rate restano fuori perché la loro polizza è annullata</span>' : '')
+      + (RIN_PERCHE_KO && RIN_RATE_FUORI ? '<span class="rin-avv"><b>' + RIN_RATE_FUORI + '</b> rate restano fuori, e non si è potuto sapere se per un annullamento o perché la polizza non si vede</span>' : '');
   }
 }
 
@@ -20368,6 +20410,37 @@ function rinExportExcel() {
   setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
 }
 
+/* «La polizza non si vede» e «la polizza e' annullata» non sono la stessa
+   cosa, e mandano a fare lavori opposti: la prima e' un problema di permessi
+   da segnalare (§55), la seconda e' il funzionamento normale — l'elenco delle
+   scadenze esclude le annullate per costruzione. Misurato il 22/09/2026: su
+   418 rate aperte, 28 stanno su polizze annullate e NESSUNA su una polizza
+   invisibile. Dirle tutte «non si vedono» manda a cercare un guasto di
+   permessi che non c'e'.
+   Una polizza che la lettura NON restituisce e' invisibile: le politiche la
+   nascondono e basta. Se la lettura stessa non riesce, non si indovina: si
+   dice che non si e' potuto sapere. */
+async function rinPercheFuori(ids, quante) {
+  /* I conteggi si ASSEGNANO alla fine, non si sommano man mano: con due giri
+     in volo, sommare vuol dire raddoppiare. */
+  if (!ids.length) return { annullate: 0, invisibili: 0, ko: false };
+  quante = quante || {};
+  var ann = 0, inv = 0;
+  try {
+    var viste = {};
+    for (var i = 0; i < ids.length; i += 200) {
+      var r = await db.from('quote_polizze').select('id,stato_pagamento').in('id', ids.slice(i, i + 200));
+      if (r.error) throw r.error;
+      (r.data || []).forEach(function (p) { viste[p.id] = p.stato_pagamento; });
+    }
+    ids.forEach(function (id) {
+      var n = quante[id] || 1;
+      if (viste[id] === undefined) inv += n; else ann += n;
+    });
+  } catch (e) { return { annullate: 0, invisibili: 0, ko: true }; }
+  return { annullate: ann, invisibili: inv, ko: false };
+}
+
 /* Le letture stanno in piedi una per una (§35): le rate che non rispondono
    tolgono le rate, non la schermata — e lo dicono col loro nome. */
 async function rinTutte(fai) {
@@ -20385,20 +20458,27 @@ async function rinTutte(fai) {
 async function loadScadenzario() {
   var body = document.getElementById('rin-body');
   if (!db || !body) return;
+  var mio = ++RIN_GIRO;
   body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Carico lo scadenzario…</div></td></tr>';
-  RIN_PARZIALE = false; RIN_RATE_KO = ''; RIN_RATE_FUORI = 0;
+  var parziale = false, rateKo = '';
   try {
     var M = rinM();
     if (!M) throw new Error('motore dello scadenzario non caricato');
     var ids = await visibleUserIds();
 
     var pol = await rinTutte(function (da, a) {
-      var q = db.from('quote_scadenzario').select('*').range(da, a);
+      /* L'ORDINAMENTO NON E' ESTETICA. Senza un ORDER BY, Postgres non
+         garantisce lo stesso ordine fra due richieste: una riga aggiornata
+         mentre si legge la terza pagina si sposta nell'heap e viene letta due
+         volte, o mai — e `parziale` resta falso, quindi nessuno lo dice. Con
+         4.003 polizze sono cinque richieste, e l'importazione notturna ne
+         aggiorna a migliaia. Le altre letture paginate di casa (`cntTutte`)
+         l'ordine ce l'hanno; queste due no. */
+      var q = db.from('quote_scadenzario').select('*').order('id').range(da, a);
       if (ids) q = q.in('creato_da', ids);
       return q;
     });
-    if (pol.parziale) RIN_PARZIALE = true;
-    RIN_POLIZZE = pol.righe;
+    if (pol.parziale) parziale = true;
 
     /* Le rate APERTE. Una rata incassata non è una scadenza: è un fatto
        avvenuto. La visibilità non si riscrive qui — una rata si vede se si
@@ -20408,21 +20488,34 @@ async function loadScadenzario() {
       var rr = await rinTutte(function (da, a) {
         return db.from('quote_titoli')
           .select('id,polizza_id,tipo,data_decorrenza,importo_lordo,stato')
-          .eq('stato', 'aperto').range(da, a);
+          .eq('stato', 'aperto').order('id').range(da, a);
       });
-      if (rr.parziale) RIN_PARZIALE = true;
+      if (rr.parziale) parziale = true;
       rate = rr.righe;
     } catch (e) {
-      RIN_RATE_KO = e.message || String(e);
+      rateKo = e.message || String(e);
     }
 
     var e2 = M.righe({
-      polizze: RIN_POLIZZE, rate: rate, oggi: M.oggiLocale(),
+      polizze: pol.righe, rate: rate, oggi: M.oggiLocale(),
       sospensione: (typeof window !== 'undefined' ? window.Sospensione : null)
     });
+    var perche = await rinPercheFuori(e2.polizze_orfane || [], e2.rate_per_polizza_orfana || {});
+
+    /* Se nel frattempo ne e' partito un altro, questo giro ha finito di
+       leggere ma non ha piu' niente da dire: scrivere adesso vorrebbe dire
+       mettere in schermata dei dati piu' vecchi di quelli che stanno
+       arrivando. */
+    if (mio !== RIN_GIRO) return;
+
+    RIN_PARZIALE = parziale; RIN_RATE_KO = rateKo;
+    RIN_POLIZZE = pol.righe;
     RIN_RATE_FUORI = e2.rate_senza_polizza;
     RIN_OGGI = e2.oggi;
-    RIN_ROWS = M.conRinnovo(e2.righe, RIN_POLIZZE);
+    RIN_RATE_ANNULLATE = perche.annullate;
+    RIN_RATE_INVISIBILI = perche.invisibili;
+    RIN_PERCHE_KO = perche.ko;
+    RIN_ROWS = M.conRinnovo(e2.righe, pol.righe);
 
     /* Le sospese stanno in un riquadro suo, in cima, e si leggono da
        `quote_polizze` (§1: qui si CHIAMA, non basta che la funzione esista). */
@@ -20441,6 +20534,7 @@ async function loadScadenzario() {
     rinRender();
     rinBadge();
   } catch (e) {
+    if (mio !== RIN_GIRO) return;
     body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Scadenzario non disponibile.<br><small>' + esc(e.message || e) + '</small></div></td></tr>';
   }
 }

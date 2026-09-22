@@ -98,6 +98,17 @@
   var FINESTRA_PRIMA = 5;
   var FINESTRA_DOPO = 30;
 
+  /* LA PRIMA RATA NON HA PROROGA, e l'art. 1901 c.c. dice l'esatto
+     contrario di quello che vale per le altre: sul PRIMO premio la copertura
+     non parte finche' non e' pagato (comma 1), mentre i 15 giorni di mora
+     valgono sui premi SUCCESSIVI (comma 2).
+
+     Trattarle uguale e' il piu' caro degli errori possibili in questo
+     elenco: dice a chi telefona che un cliente e' coperto mentre la
+     copertura non e' mai partita. Misurato il 22/09/2026: 6 prime rate
+     aperte, tutte gia' oltre la decorrenza. */
+  var PROROGA_PRIMA_RATA = 0;
+
   var GIORNO = 24 * 60 * 60 * 1000;
 
   function testo(v) {
@@ -177,12 +188,12 @@
     {
       k: 'vicine', l: 'Vicine ai 15 giorni', sub: 'scadono entro 15 giorni',
       cls: 'ok', coperta: true,
-      test: function (g, p) { return g !== null && g >= 0 && g <= p; }
+      test: function (g, p, a) { return g !== null && g >= 0 && g <= a; }
     },
     {
       k: 'avanti', l: 'Più avanti', sub: 'oltre i 15 giorni',
       cls: '', coperta: true,
-      test: function (g, p) { return g !== null && g > p; }
+      test: function (g, p, a) { return g !== null && g > a; }
     },
     {
       k: 'tutte', l: 'Tutte', sub: 'ogni scadenza', cls: '', coperta: null,
@@ -190,11 +201,18 @@
     }
   ];
 
-  function fasciaDi(giorni, giorniProroga) {
+  /* DUE NUMERI, NON UNO. La PROROGA è una proprietà del contratto: quanti
+     giorni la copertura resta in piedi DOPO la scadenza. L'ANTICIPO è un
+     orizzonte di lavoro: quanti giorni PRIMA si comincia a telefonare. Sono
+     la stessa cifra per caso, non per natura — e su una prima rata, che
+     proroga non ne ha (art. 1901 c.c.), tenerli insieme spingeva fra le
+     «più avanti» una rata che scade fra otto giorni e che va chiamata. */
+  function fasciaDi(giorni, giorniProroga, giorniAnticipo) {
     var p = isFinite(giorniProroga) && giorniProroga >= 0 ? giorniProroga : PROROGA;
+    var a = isFinite(giorniAnticipo) && giorniAnticipo >= 0 ? giorniAnticipo : PROROGA;
     for (var i = 0; i < FASCE.length; i++) {
       if (FASCE[i].k === 'tutte') continue;
-      if (FASCE[i].test(giorni, p)) return FASCE[i];
+      if (FASCE[i].test(giorni, p, a)) return FASCE[i];
     }
     return null;
   }
@@ -207,6 +225,7 @@
   function stato(scadenza, oggi, opz) {
     opz = opz || {};
     var p = isFinite(opz.giorni) && opz.giorni >= 0 ? Number(opz.giorni) : PROROGA;
+    var a = isFinite(opz.anticipo) && opz.anticipo >= 0 ? Number(opz.anticipo) : PROROGA;
     var g = iso(oggi) || oggiLocale();
     var s = iso(scadenza);
 
@@ -220,7 +239,7 @@
     }
 
     var giorni = giorniFra(g, s);          // > 0 = deve ancora arrivare
-    var f = fasciaDi(giorni, p);
+    var f = fasciaDi(giorni, p, a);
     var fine = piuGiorni(s, p);
 
     var etichetta;
@@ -240,6 +259,12 @@
          numero che dice se vale ancora la pena. Solo quando la proroga è in
          corso — altrove sarebbe un numero senza significato. */
       giorniDiProrogaRimasti: (giorni < 0 && giorni >= -p) ? (p + giorni) : null,
+      /* L'ULTIMO GIORNO. A `giorni = -p` i giorni pieni che restano sono zero,
+         e «ancora 0 gg di proroga» si legge come «e' finita» — mentre e' la
+         telefonata piu' urgente di tutto l'elenco: oggi il cliente si salva
+         ancora, domani no. E' lo stesso caso di «scade oggi», che il motore
+         tratta gia' a parte sull'altro confine. */
+      ultimoGiornoDiProroga: (giorni === -p),
       etichetta: etichetta,
       motivo: null
     };
@@ -285,6 +310,7 @@
       fascia: s.fascia,
       coperta: s.coperta,
       giorniDiProrogaRimasti: s.giorniDiProrogaRimasti,
+      ultimoGiornoDiProroga: !!s.ultimoGiornoDiProroga,
       fineProroga: s.fineProroga,
       etichetta: s.etichetta,
       motivo: s.motivo,
@@ -301,9 +327,14 @@
      i soldi, e mai la `data_scadenza` della rata, che è la fine del periodo
      coperto. */
   function daRata(t, polizza, oggi, opz) {
-    var s = stato(t && t.data_decorrenza, oggi, opz);
     var p = polizza || {};
     var quale = testo(t && t.tipo).toLowerCase();
+    var prima = quale === 'prima_rata';
+    var o = prima
+      ? { giorni: PROROGA_PRIMA_RATA, anticipo: (opz || {}).anticipo,
+          sospensione: (opz || {}).sospensione }
+      : opz;
+    var s = stato(t && t.data_decorrenza, oggi, o);
     var nome = quale === 'quietanza' ? 'Quietanza di frazionamento'
       : quale === 'prima_rata' ? 'Prima rata'
         : quale === 'appendice' ? 'Appendice' : 'Rata';
@@ -328,9 +359,16 @@
       fascia: s.fascia,
       coperta: s.coperta,
       giorniDiProrogaRimasti: s.giorniDiProrogaRimasti,
+      ultimoGiornoDiProroga: !!s.ultimoGiornoDiProroga,
       fineProroga: s.fineProroga,
       etichetta: s.etichetta,
       motivo: s.motivo,
+      /* Quello che la riga deve dire a chi telefona, quando non vale la
+         regola generale. Senza, «scaduta da 7 gg» su una prima rata si legge
+         come su una quietanza, e le due cose sono opposte. */
+      notaCopertura: prima
+        ? 'Prima rata: finché non è pagata la copertura non è mai partita (art. 1901 c.c.). Nessuna proroga.'
+        : null,
       tacito_rinnovo: false,
       creato_nome: p.creato_nome,
       preventivo_id: null,
@@ -382,7 +420,12 @@
       };
     }
 
-    var scad = iso(p.data_scadenza);
+    /* La scadenza che conta e' quella VERA: una polizza sospesa scade piu' in
+       la' (§41), e il suo rinnovo parte da li'. Cercandolo sulla contrattuale
+       si guarda nel posto sbagliato e la polizza risulta «non rinnovata» —
+       proprio il caso per cui la colonna delle sospensioni e' stata aggiunta
+       alla vista. Chi chiama passa la data vera in `opz.scadenza`. */
+    var scad = iso((opz || {}).scadenza) || iso(p.data_scadenza);
     if (!scad) {
       return {
         stato: 'non_si_sa', come: null, polizza: null,
@@ -415,12 +458,25 @@
       for (var b = 0; b < lista.length; b++) {
         var c2 = lista[b];
         if (c2.id === p.id) continue;
+        /* SE LE DUE TARGHE SI CONOSCONO E SONO DIVERSE, NON E' UN RINNOVO:
+           e' una seconda macchina dello stesso cliente. La targa e' il segnale
+           forte, e quando dice di NO comanda lei — lasciarla parlare solo
+           quando dice di sì vorrebbe dire usarla a senso unico.
+           Misurato il 22/09/2026: delle 57 polizze agganciate per cliente e
+           ramo, 34 avevano il candidato con una targa nota e DIVERSA. Quelle
+           34 uscivano dall'elenco delle non rinnovate, cioe' sparivano dal
+           lavoro da fare. */
+        var ta = targaNorm(p.targa), tb = targaNorm(c2.targa);
+        if (ta && tb && ta !== tb) continue;
         if (dentroFinestra(c2, scad, opz)) {
           return {
             stato: 'indizio', come: 'cliente', polizza: c2,
             testo: 'Sembra rinnovata',
             spiega: 'Stesso cliente e stesso ramo: la polizza ' + (c2.numero_polizza || '—')
-              + ' parte il ' + iso(c2.data_effetto) + '. È un indizio più debole della targa.'
+              + ' parte il ' + iso(c2.data_effetto) + '. '
+              + (ta || tb ? 'Una delle due targhe non si conosce, quindi non si è potuto confrontarle. '
+                          : 'Nessuna delle due porta una targa. ')
+              + 'È un indizio più debole della targa.'
           };
         }
       }
@@ -451,6 +507,13 @@
 
     var out = [];
     var fuori = 0;
+    /* Non basta CONTARE quello che resta fuori: bisogna poter dire PERCHE'.
+       Una rata la cui polizza non e' in elenco puo' essere di una polizza
+       annullata (normale, l'elenco le esclude per costruzione) oppure di una
+       polizza che chi guarda non puo' vedere (§55). Le due cose mandano a
+       fare lavori opposti, e senza gli identificativi chi chiama non ha modo
+       di distinguerle. */
+    var orfane = {};   // polizza_id -> quante RATE ci sono appese
 
     polizze.forEach(function (p) {
       if (!p) return;
@@ -460,11 +523,23 @@
     rate.forEach(function (t) {
       if (!t) return;
       var p = perId[t.polizza_id];
-      if (!p) { fuori++; return; }
+      if (!p) {
+        fuori++;
+        if (t.polizza_id) orfane[t.polizza_id] = (orfane[t.polizza_id] || 0) + 1;
+        return;
+      }
       out.push(daRata(t, p, oggi, opz));
     });
 
-    return { righe: out, rate_senza_polizza: fuori, oggi: oggi };
+    return {
+      righe: out, rate_senza_polizza: fuori,
+      polizze_orfane: Object.keys(orfane),
+      /* Quante RATE per ogni polizza mancante: chi chiama deve poter dire «3
+         rate», non «1 polizza» — è il numero degli incassi che restano fuori,
+         non quello dei contratti. */
+      rate_per_polizza_orfana: orfane,
+      oggi: oggi
+    };
   }
 
   /* Il rinnovo si attacca alle sole righe di POLIZZA: una rata non si
@@ -474,7 +549,13 @@
     var i = indiceSuccessori(polizze || []);
     (elenco || []).forEach(function (r) {
       if (!r) return;
-      r.rinnovo = r.tipo === 'polizza' ? rinnovo(r._p, i, opz) : null;
+      if (r.tipo !== 'polizza') { r.rinnovo = null; return; }
+      /* La riga conosce gia' la scadenza vera (sospensioni comprese): gliela
+         si passa, invece di farla ricalcolare al motore del rinnovo. */
+      var o = {};
+      for (var k in (opz || {})) o[k] = opz[k];
+      o.scadenza = r.scadenza;
+      r.rinnovo = rinnovo(r._p, i, o);
     });
     return elenco;
   }
@@ -514,7 +595,23 @@
   function conteggi(elenco, giorniProroga) {
     var p = isFinite(giorniProroga) && giorniProroga >= 0 ? giorniProroga : PROROGA;
     var out = {};
-    FASCE.forEach(function (f) { out[f.k] = { n: 0, importo: 0, noti: 0, senza_importo: 0 }; });
+    FASCE.forEach(function (f) {
+      out[f.k] = {
+        n: 0, noti: 0, senza_importo: 0,
+        /* I DUE IMPORTI NON SI SOMMANO MAI, ed e' la regola che rende
+           leggibile questo riquadro. Il premio annuo di una polizza e
+           l'importo di una sua rata non sono due quantita' diverse: la
+           seconda e' una FETTA della prima. Sommarli conta due volte lo
+           stesso denaro — misurato sul portafoglio vero: 350 rate aperte per
+           79.794,89 euro stanno dentro polizze che sono in elenco con il loro
+           annuo intero — e il totale non corrisponde a niente: non e' il
+           premio in scadenza e non e' il denaro da incassare.
+           E' la stessa regola di §59, dove «premi emessi» e «di cui
+           incassati» restano due tessere. */
+        polizze: 0, premio_polizze: 0,
+        rate: 0, da_incassare: 0
+      };
+    });
     /* Una riga senza fascia (scadenza mancante) entra in «tutte» e in nessuna
        delle quattro: la somma delle fasce smetterebbe di tornare col totale, e
        chi guarda non avrebbe modo di accorgersene. Si conta a parte, e chi
@@ -525,13 +622,18 @@
       var k = r.fascia;
       if (!k) out.senza_fascia++;
       var imp = numero(r.importo);
+      var rata = r.tipo === 'rata';
       ['tutte', k].forEach(function (kk) {
         if (!kk || !out[kk]) return;
-        out[kk].n++;
+        var o = out[kk];
+        o.n++;
+        if (rata) o.rate++; else o.polizze++;
         /* Un importo che non c'è non vale zero (§36, §42, §45): resta fuori
            dalla somma e si conta a parte. */
-        if (imp === null) out[kk].senza_importo++;
-        else { out[kk].importo = Math.round((out[kk].importo + imp) * 100) / 100; out[kk].noti++; }
+        if (imp === null) { o.senza_importo++; return; }
+        o.noti++;
+        if (rata) o.da_incassare = Math.round((o.da_incassare + imp) * 100) / 100;
+        else o.premio_polizze = Math.round((o.premio_polizze + imp) * 100) / 100;
       });
     });
     out.__proroga = p;

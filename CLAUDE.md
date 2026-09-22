@@ -6902,3 +6902,70 @@ vieta.**
   quella scritta: la regola c'è (§41) e si accenderà alla prima sospensione.
 - **La tabella mostra 500 righe.** Con i filtri non si sente; se un giorno si
   sentisse, la strada è la paginazione della vista, non un numero più grande.
+
+### 63-bis. Nove difetti trovati da una rilettura ostile, lo stesso giorno
+
+La 0.30.0 era verde: 22 prove Node, 506 nel browser, cinque controprove. Tre
+lenti indipendenti l'hanno riletta cercando **numeri credibili e falsi**, e ne
+hanno trovati nove — ognuno riprodotto eseguendo il codice, non leggendolo.
+È la seconda volta in due giorni (§62), e la lezione è la stessa: *una suite
+verde dice che il codice fa quello che chi l'ha scritto aveva in mente.*
+
+| difetto | che cosa diceva di falso |
+|---|---|
+| il filtro «Solo non rinnovate» azzerava la sua stessa nota | acceso, dichiarava «0 sembrano rinnovate» — al posto di 1.018 |
+| i totali sommavano premio annuo di polizza e importo di rata | **79.794,89 €** contati due volte; un numero che non è né il premio in scadenza né quello da incassare |
+| «N rate non si vedono» su rate di polizze **annullate** | mandava a cercare un guasto di permessi che non c'era (28 righe) |
+| la **prima rata** trattata come una quietanza | «ancora in copertura» su una copertura **mai partita** (art. 1901 c.c.) |
+| il ripiego cliente+ramo agganciava anche con targhe **diverse** | **34 clienti** sparivano dall'elenco di quelli da richiamare |
+| «ancora 0 gg di proroga» l'ultimo giorno | la telefonata più urgente dell'elenco si legge come «è finita» |
+| due caricamenti insieme sommavano i contatori | «1 rata fuori» diventava «2» — e 2 ha l'aria di un dato |
+| le letture paginate senza `order` | una riga aggiornata mentre si legge compare due volte o sparisce |
+| il rinnovo cercato sulla scadenza **contrattuale** | una polizza sospesa e rinnovata risultava «non rinnovata» |
+
+Cinque cose da portarsi via.
+
+**1. Un filtro che si conta addosso si spegne da solo.** Il commento sopra
+`rinFiltraSenzaFascia` diceva perché la FASCIA sta fuori da quell'insieme —
+«restringendolo anche per fascia, la fascia scelta direbbe il suo numero e le
+altre zero» — e il filtro del rinnovo era dentro. *La regola era scritta e
+applicata a metà*, ed è la stessa forma di §53-bis: un controllo che non prova
+la cosa che deve garantire è una dichiarazione di intenti.
+
+**2. Due quantità dello stesso contratto non si sommano mai.** Una rata è una
+FETTA del premio annuo della sua polizza. È §36 («scrivere la rata nella
+colonna dell'annuo farebbe sommare mele e pere») e §59 («premi emessi» e «di
+cui incassati» restano due tessere), presi in flagrante nello stesso giorno in
+cui li ho citati.
+
+**3. La proroga e l'anticipo sono due numeri, non uno.** La proroga è una
+proprietà del contratto — quanti giorni la copertura regge DOPO. L'anticipo è
+un orizzonte di lavoro — quanti giorni PRIMA si telefona. Sono la stessa cifra
+per caso. Tenendoli insieme, una prima rata (proroga zero) che scade fra otto
+giorni finiva fra le «più avanti», cioè fuori dal lavoro di oggi.
+
+**4. Due caricamenti in volo sono la normalità, non un caso di laboratorio.**
+`showPage('scadenzario')` ne fa partire uno senza aspettarlo. Da qui la regola:
+**i contatori si ASSEGNANO alla fine, mai si sommano man mano**, e ogni giro
+prende un numero — chi torna e non è l'ultimo partito non scrive niente.
+
+**5. Una prova con un campione sbagliato assolve il codice.** La prova «un
+rinnovo emesso tre giorni prima si riconosce» dava al successore una targa
+DIVERSA: passava per la strada del cliente, cioè misurava proprio il caso che
+adesso (giustamente) non aggancia più. Il campione è stato corretto, non la
+regola.
+
+### La domanda che NON ho deciso io
+
+> **I 15 giorni di proroga valgono anche sulle polizze senza tacito rinnovo?**
+
+Misurato: `tacito_rinnovo` è falso su **3.913 polizze su 4.003**, e delle 83
+oggi «Nei 15 giorni» ben **77** sono senza tacito. Per l'RC Auto il comporto di
+quindici giorni è di legge; per un contratto di un altro ramo senza tacito
+rinnovo, alla scadenza il contratto semplicemente finisce.
+
+Francesco ha dichiarato «tutte le polizze hanno una proroga di 15 giorni», e la
+sua dichiarazione vale più di una mia deduzione: **non si è cambiato niente.**
+Ma le due letture portano a due elenchi diversi, e cambiarla direbbe a 77
+clienti che sono scoperti. Il motore accetta già `opz.giorni` e `opz.anticipo`:
+il giorno in cui la risposta arriva, è un parametro — non una riscrittura.

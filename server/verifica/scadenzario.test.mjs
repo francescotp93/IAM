@@ -111,9 +111,15 @@ prova('LA REGOLA: la data d\'incasso non entra da nessuna parte', () => {
 prova('le quattro fasce non si sovrappongono, e coprono tutto', () => {
   /* §22: le fasce cumulative sono sparite di proposito — la stessa polizza
      in tre contatori è un numero che si somma con se stesso. */
+  /* Si percorre la PORTA (`fasciaDi`), non la serratura: chiamare i `test`
+     a mano vuol dire scavalcare i valori di partenza, e una prova che
+     scavalca i valori di partenza non misura quello che gira. */
   for (let g = -40; g <= 40; g++) {
-    const dentro = S.FASCE.filter(f => f.k !== 'tutte' && f.test(g, 15));
+    const f = S.fasciaDi(g);
+    deve(f, 'il giorno ' + g + ' non cade in nessuna fascia');
+    const dentro = S.FASCE.filter(x => x.k !== 'tutte' && x.test(g, 15, 15));
     deve(dentro.length === 1, 'il giorno ' + g + ' cade in ' + dentro.length + ' fasce');
+    deve(dentro[0].k === f.k, 'la porta e la serratura non dicono la stessa cosa su ' + g);
   }
   return '81 giorni percorsi, ognuno in una fascia sola';
 });
@@ -139,12 +145,42 @@ prova('la proroga si può stringere, e allora i confini si spostano con lei', ()
   return '5 → scoperta, 30 → 23 giorni davanti';
 });
 
+prova('la proroga e l\'anticipo sono DUE numeri, non uno', () => {
+  /* La proroga è una proprietà del contratto — quanti giorni la copertura
+     regge DOPO la scadenza. L'anticipo è un orizzonte di lavoro — quanti
+     giorni PRIMA si comincia a telefonare. Sono la stessa cifra per caso.
+     Tenendoli insieme, una prima rata (proroga zero) che scade fra otto
+     giorni finiva fra le «più avanti», cioè fuori dal lavoro di oggi. */
+  const a = S.stato('2026-09-30', OGGI, { giorni: 0 });          // +8, proroga 0
+  deve(a.fascia === 'vicine', 'con proroga 0 una scadenza fra 8 gg: ' + a.fascia);
+  const b = S.stato('2026-09-21', OGGI, { giorni: 0 });          // −1, proroga 0
+  deve(b.fascia === 'scoperte' && b.coperta === false, 'con proroga 0, ieri è già scoperta: ' + b.fascia);
+  const c = S.stato('2026-09-30', OGGI, { giorni: 15, anticipo: 3 });
+  deve(c.fascia === 'avanti', 'con anticipo 3 una scadenza fra 8 gg non è ancora lavoro: ' + c.fascia);
+  return 'proroga 0 non accorcia l\'orizzonte di lavoro';
+});
+
 prova('senza data di scadenza non si inventa una fascia, e si dice perché', () => {
   const s = S.stato(null, OGGI);
   deve(s.fascia === null, 'ha messo in una fascia una riga senza data');
   deve(s.coperta === null, 'ha detto sì o no sulla copertura di una data che non c\'è');
   deve(/non si può dire/.test(s.motivo), 'motivo: ' + s.motivo);
   return 'niente fascia, motivo scritto';
+});
+
+prova('L\'ULTIMO GIORNO DI PROROGA non si legge come «è finita»', () => {
+  /* A −15 i giorni pieni che restano sono zero, e «ancora 0 gg di proroga»
+     si legge come «la copertura è persa» — mentre è la telefonata più urgente
+     dell'elenco: oggi il cliente si salva ancora, domani no. È lo stesso caso
+     di «scade oggi», che il motore tratta già a parte sull'altro confine. */
+  const ultimo = S.stato('2026-09-07', OGGI);            // −15
+  deve(ultimo.coperta === true, 'l\'ultimo giorno risulta scoperto');
+  deve(ultimo.giorniDiProrogaRimasti === 0, 'rimasti: ' + ultimo.giorniDiProrogaRimasti);
+  deve(ultimo.ultimoGiornoDiProroga === true, 'non dice che è l\'ultimo giorno');
+  deve(S.stato('2026-09-08', OGGI).ultimoGiornoDiProroga === false, '−14 non è l\'ultimo giorno');
+  deve(S.stato('2026-09-06', OGGI).ultimoGiornoDiProroga === false, '−16 è già scoperta, non l\'ultimo giorno');
+  deve(S.stato('2026-09-22', OGGI).ultimoGiornoDiProroga === false, 'una che scade oggi non è in proroga');
+  return '−15 è l\'ultimo giorno, −14 e −16 no';
 });
 
 /* ═══ IL RINNOVO ═══════════════════════════════════════════════════════════ */
@@ -208,12 +244,80 @@ prova('una polizza nuova troppo lontana dalla scadenza non è un rinnovo', () =>
   const r = S.rinnovo(SCADUTA, S.indiceSuccessori([SCADUTA, tardi]));
   deve(r.stato === 'nessuno', 'stato: ' + r.stato);
   deve(r.testo === 'Non rinnovata', 'testo: ' + r.testo);
-  /* Dentro la finestra invece sì: il rinnovo si emette anche in anticipo. */
+  /* Dentro la finestra invece sì: il rinnovo si emette anche in anticipo.
+     Il candidato non porta targa — se ne portasse una DIVERSA sarebbe una
+     seconda macchina, non il rinnovo, ed è la prova qui sotto. */
   const prima = { id: 'p-prima', cliente_id: 'c1', modulo: 'rca',
-    targa: 'ZZ999ZZ', data_effetto: '2025-09-17' };
+    data_effetto: '2025-09-17' };
   deve(S.rinnovo(SCADUTA, S.indiceSuccessori([SCADUTA, prima])).stato === 'indizio',
     'un rinnovo emesso tre giorni prima non si riconosce');
   return 'sei mesi dopo no, tre giorni prima sì';
+});
+
+prova('due TARGHE DIVERSE non sono un rinnovo: è la seconda macchina', () => {
+  /* Il ripiego su cliente e ramo scattava anche quando le due polizze
+     portavano due targhe note e diverse — misurato: 34 casi su 57 agganci per
+     cliente. Quelle 34 uscivano dall'elenco delle non rinnovate, cioè
+     sparivano dal lavoro da fare. La targa è il segnale forte, e quando dice
+     di NO comanda lei: lasciarla parlare solo quando dice di sì vorrebbe dire
+     usarla a senso unico. */
+  const altra = { id: 'p-altra-auto', cliente_id: 'c1', modulo: 'rca',
+    targa: 'HD457WL', numero_polizza: 'BLP7', data_effetto: '2025-09-25' };
+  const r = S.rinnovo(SCADUTA, S.indiceSuccessori([SCADUTA, altra]));
+  deve(r.stato === 'nessuno', 'ha chiamato rinnovo la seconda macchina: ' + r.stato);
+  /* E se una delle due targhe non si conosce, l'indizio resta — ma lo dice. */
+  const senza = { id: 'p-senza', cliente_id: 'c1', modulo: 'rca',
+    numero_polizza: 'BLP6', data_effetto: '2025-09-25' };
+  const r2 = S.rinnovo(SCADUTA, S.indiceSuccessori([SCADUTA, senza]));
+  deve(r2.stato === 'indizio' && r2.come === 'cliente', 'stato: ' + r2.stato + '/' + r2.come);
+  deve(/non si conosce/.test(r2.spiega), 'non dice che le targhe non si sono potute confrontare: ' + r2.spiega);
+  return 'targhe diverse → no; una targa sconosciuta → indizio dichiarato';
+});
+
+prova('LA PRIMA RATA NON HA PROROGA: senza pagamento la copertura non è mai partita', () => {
+  /* Art. 1901 c.c.: sul PRIMO premio la copertura parte solo dal pagamento
+     (comma 1); i 15 giorni di mora valgono sui premi SUCCESSIVI (comma 2).
+     Trattarle uguale dice a chi telefona che un cliente è coperto mentre non
+     lo è mai stato — l'errore più caro possibile in questo elenco.
+     Misurato: 6 prime rate aperte, tutte già oltre la decorrenza. */
+  const q = S.daRata({ id: 'q', polizza_id: 'p', tipo: 'quietanza',
+    data_decorrenza: '2026-09-15', importo_lordo: 200 }, { id: 'p' }, OGGI);
+  const pr = S.daRata({ id: 'r', polizza_id: 'p', tipo: 'prima_rata',
+    data_decorrenza: '2026-09-15', importo_lordo: 200 }, { id: 'p' }, OGGI);
+  deve(q.fascia === 'proroga' && q.coperta === true, 'la quietanza: ' + q.fascia);
+  deve(pr.fascia === 'scoperte', 'la prima rata scaduta da 7 gg: ' + pr.fascia);
+  deve(pr.coperta === false, 'dichiara coperta una prima rata mai pagata');
+  deve(/art. 1901/.test(pr.notaCopertura || ''), 'non dice perché: ' + pr.notaCopertura);
+  deve(q.notaCopertura === null, 'ha messo la nota anche su una quietanza');
+  /* Prima della scadenza invece si comporta come le altre: si chiama. */
+  const futura = S.daRata({ id: 'f', polizza_id: 'p', tipo: 'prima_rata',
+    data_decorrenza: '2026-09-30', importo_lordo: 200 }, { id: 'p' }, OGGI);
+  deve(futura.fascia === 'vicine', 'una prima rata non ancora dovuta: ' + futura.fascia);
+  return 'quietanza in proroga, prima rata scoperta il giorno dopo';
+});
+
+prova('il rinnovo si cerca sulla scadenza VERA, non su quella scritta', () => {
+  /* Una polizza sospesa scade più in là (§41) e il suo rinnovo parte da lì.
+     Cercandolo sulla contrattuale si guarda nel posto sbagliato, e la polizza
+     risulta «non rinnovata»: è il caso per cui la colonna delle sospensioni è
+     stata aggiunta alla vista. */
+  const sosp = require('../../tariffe/motore/sospensione.js');
+  const vecchia = { id: 'v', cliente_id: 'c9', modulo: 'rca', targa: 'QQ111QQ',
+    numero_polizza: 'BLP-V', data_effetto: '2025-07-16', data_scadenza: '2026-07-16',
+    sospensioni: [{ dal: '2026-01-01', al: '2026-03-02' }], sostituzioni: 0 };
+  const nuova = { id: 'n', cliente_id: 'c9', modulo: 'rca', targa: 'QQ111QQ',
+    numero_polizza: 'BLP-N', data_effetto: '2026-09-14', data_scadenza: '2027-09-14' };
+  const righe = S.conRinnovo(
+    S.righe({ polizze: [vecchia, nuova], rate: [], oggi: OGGI, sospensione: sosp }).righe,
+    [vecchia, nuova]);
+  const r = righe.find(x => x.id === 'v');
+  deve(r.scadenza === '2026-09-14', 'la scadenza vera: ' + r.scadenza);
+  deve(r.rinnovo.stato === 'indizio', 'sulla scadenza vera non trova il rinnovo: ' + r.rinnovo.stato);
+  /* La controprova sta nei dati: sulla contrattuale (16/07) il rinnovo del
+     14/09 è fuori dalla finestra di 30 giorni. */
+  deve(S.rinnovo(vecchia, S.indiceSuccessori([vecchia, nuova])).stato === 'nessuno',
+    'il caso opposto non è quello che credevo');
+  return '60 giorni di sospensione: sulla contrattuale non lo trovava';
 });
 
 prova('senza data di scadenza il rinnovo NON è «non rinnovata»: è «non si sa»', () => {
@@ -312,16 +416,54 @@ prova('i contatori: un importo che non c\'è non vale zero', () => {
   /* §36, §42, §45: sommare zero fa un portafoglio più povero del vero, e un
      numero più basso non lo mette in dubbio nessuno. */
   const righe = [
-    { fascia: 'proroga', importo: 100 },
-    { fascia: 'proroga', importo: null },
-    { fascia: 'avanti', importo: 50 }
+    { tipo: 'polizza', fascia: 'proroga', importo: 100 },
+    { tipo: 'polizza', fascia: 'proroga', importo: null },
+    { tipo: 'polizza', fascia: 'avanti', importo: 50 }
   ];
   const c = S.conteggi(righe);
   deve(c.proroga.n === 2, 'n: ' + c.proroga.n);
-  deve(c.proroga.importo === 100, 'importo: ' + c.proroga.importo);
+  deve(c.proroga.premio_polizze === 100, 'premio: ' + c.proroga.premio_polizze);
   deve(c.proroga.senza_importo === 1, 'senza importo: ' + c.proroga.senza_importo);
-  deve(c.tutte.n === 3 && c.tutte.importo === 150, 'tutte: ' + c.tutte.n + '/' + c.tutte.importo);
+  deve(c.tutte.n === 3 && c.tutte.premio_polizze === 150, 'tutte: ' + c.tutte.n + '/' + c.tutte.premio_polizze);
   return '2 righe, 100 € sommati, 1 dichiarata senza importo';
+});
+
+prova('I DUE IMPORTI NON SI SOMMANO: il premio annuo e la rata sono lo stesso denaro', () => {
+  /* Una rata non è una scadenza diversa dal premio annuo della SUA polizza:
+     è una fetta di quel premio. Sommarli conta due volte lo stesso denaro, e
+     il totale non è né il premio in scadenza né quello da incassare.
+     Misurato sul portafoglio vero: 350 rate aperte per 79.794,89 € stanno
+     dentro polizze che sono in elenco con il loro annuo intero. */
+  const righe = [
+    { tipo: 'polizza', fascia: 'proroga', importo: 400 },
+    { tipo: 'rata', fascia: 'proroga', importo: 200 }
+  ];
+  const c = S.conteggi(righe);
+  deve(c.proroga.premio_polizze === 400, 'premio polizze: ' + c.proroga.premio_polizze);
+  deve(c.proroga.da_incassare === 200, 'da incassare: ' + c.proroga.da_incassare);
+  deve(c.proroga.polizze === 1 && c.proroga.rate === 1, 'non distingue i due tipi');
+  deve(c.proroga.importo === undefined, 'esiste ancora un importo unico, e sommerebbe due volte lo stesso denaro');
+  return '400 di premio e 200 da incassare, mai 600';
+});
+
+prova('una rata la cui polizza non è in elenco lascia il suo identificativo', () => {
+  /* Contare quello che resta fuori non basta: bisogna poter dire PERCHÉ.
+     «La polizza è annullata» e «la polizza non si vede» mandano a fare lavori
+     opposti, e senza gli id chi chiama non ha modo di distinguerle. */
+  const e = S.righe({
+    polizze: [{ id: 'p1', data_scadenza: '2027-01-01' }],
+    rate: [
+      { id: 't1', polizza_id: 'ALTRA', data_decorrenza: '2026-09-15' },
+      { id: 't2', polizza_id: 'ALTRA', data_decorrenza: '2026-09-16' },
+      { id: 't3', polizza_id: 'TERZA', data_decorrenza: '2026-09-17' }
+    ],
+    oggi: OGGI
+  });
+  deve(e.rate_senza_polizza === 3, 'rate fuori: ' + e.rate_senza_polizza);
+  deve(e.polizze_orfane.length === 2, 'polizze orfane distinte: ' + JSON.stringify(e.polizze_orfane));
+  deve(e.polizze_orfane.indexOf('ALTRA') >= 0 && e.polizze_orfane.indexOf('TERZA') >= 0,
+    'non sono le due giuste: ' + JSON.stringify(e.polizze_orfane));
+  return '3 rate fuori, 2 polizze da interrogare';
 });
 
 prova('la somma delle quattro fasce torna col totale, e quello che non torna si conta', () => {
@@ -329,9 +471,9 @@ prova('la somma delle quattro fasce torna col totale, e quello che non torna si 
      e in nessuna fascia, la somma smette di tornare e nessuno se ne accorge.
      Una riga senza scadenza è esattamente quel caso, e si conta a parte. */
   const righe = [
-    { fascia: 'proroga', importo: 100 },
-    { fascia: 'avanti', importo: 50 },
-    { fascia: null, importo: 70 }
+    { tipo: 'polizza', fascia: 'proroga', importo: 100 },
+    { tipo: 'polizza', fascia: 'avanti', importo: 50 },
+    { tipo: 'polizza', fascia: null, importo: 70 }
   ];
   const c = S.conteggi(righe);
   const somma = ['scoperte', 'proroga', 'vicine', 'avanti'].reduce((a, k) => a + c[k].n, 0);

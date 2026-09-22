@@ -5622,7 +5622,10 @@ const avvio = async () => {
         data_decorrenza: gg(-5), data_scadenza: gg(178), importo_lordo: 200 },
       // una rata la cui polizza non si vede: non sparisce, si conta
       { id: 'r2', polizza_id: 'NON-VISIBILE', tipo: 'rata', stato: 'aperto',
-        data_decorrenza: gg(-3), importo_lordo: 50 }
+        data_decorrenza: gg(-3), importo_lordo: 50 },
+      // la prima rata non ha proroga: scaduta da 3 giorni è già scoperta
+      { id: 'r3', polizza_id: 's5', tipo: 'prima_rata', stato: 'aperto',
+        data_decorrenza: gg(-3), importo_lordo: 300 }
     ];
 
     await page.evaluate(async (d) => {
@@ -5686,11 +5689,11 @@ const avvio = async () => {
                      sub: (b.querySelector('.rin-card-sub') || {}).textContent, cls: b.className })));
       const per = l => f.find(x => x.l === l)?.n;
       deve(f.length === 5, 'card presenti: ' + f.length + ' — ' + f.map(x => x.l).join(', '));
-      deve(per('Fuori i 15 giorni') === 2, 'fuori i 15 (s6 a −30, s7 a −40): ' + per('Fuori i 15 giorni'));
+      deve(per('Fuori i 15 giorni') === 3, 'fuori i 15 (s6 a −30, s7 a −40, la prima rata a −3): ' + per('Fuori i 15 giorni'));
       deve(per('Nei 15 giorni') === 2, 'nei 15 (s1 a −15 e la quietanza a −5): ' + per('Nei 15 giorni'));
       deve(per('Vicine ai 15 giorni') === 1, 'vicine (s2 a +12): ' + per('Vicine ai 15 giorni'));
       deve(per('Più avanti') === 4, 'più avanti (s3, s4, s5, s8): ' + per('Più avanti'));
-      deve(per('Tutte') === 9, 'tutte: ' + per('Tutte'));
+      deve(per('Tutte') === 10, 'tutte: ' + per('Tutte'));
       const somma = ['Fuori i 15 giorni', 'Nei 15 giorni', 'Vicine ai 15 giorni', 'Più avanti']
         .reduce((a, l) => a + per(l), 0);
       deve(somma === per('Tutte'), 'le fasce si sovrappongono o perdono righe: ' + somma + ' contro ' + per('Tutte'));
@@ -5702,7 +5705,7 @@ const avvio = async () => {
         return [...document.querySelectorAll('#rin-body tr')].filter(t => t.querySelector('td')).length;
       });
       deve(n === 2, 'il clic sulla card «Nei 15 giorni» non filtra la lista: ' + n + ' righe');
-      return '2 fuori, 2 in proroga, 1 vicina, 4 avanti, 9 in tutto; il clic filtra';
+      return '3 fuori, 2 in proroga, 1 vicina, 4 avanti, 10 in tutto; il clic filtra';
     });
 
     await prova('scadenzario: L\'ESEMPIO DI FRANCESCO — la quietanza scaduta è ANCORA IN COPERTURA', async () => {
@@ -5761,6 +5764,7 @@ const avvio = async () => {
         out.nota = document.getElementById('rin-extra').textContent.replace(/\s+/g, ' ').trim();
         document.querySelector('#rin-extra .rin-chip').click();
         out.righe = [...document.querySelectorAll('#rin-body tr')].map(t => t.textContent.replace(/\s+/g, ' ').trim());
+        out.notaDopo = document.getElementById('rin-extra').textContent.replace(/\s+/g, ' ').trim();
         out.acceso = document.querySelector('#rin-extra .rin-chip').className;
         document.querySelector('#rin-extra .rin-chip').click();
         out.dopo = [...document.querySelectorAll('#rin-body tr')].filter(t => t.querySelector('td')).length;
@@ -5777,8 +5781,14 @@ const avvio = async () => {
       deve(!r.righe.some(t => /Blu Marco|Bianchi|Costruzioni Alfa/.test(t)),
         'fra le «non rinnovate» è finita una che non lo è: ' + r.righe.join(' || '));
       deve(!r.righe.some(t => /\bRata\b/.test(t)), 'una rata è finita fra le non rinnovate: una rata non si rinnova');
+      /* LA NOTA NON SI AZZERA ACCENDENDO IL FILTRO. È la sola cosa che
+         impedisce di leggere quel numero come «sono tutti clienti da
+         richiamare», e contarla sull'insieme già ristretto dal filtro stesso
+         la faceva dire «0 sembrano rinnovate» proprio quando serve. */
+      deve(r.notaDopo === r.nota,
+        'la nota cambia accendendo il filtro:\n  prima: ' + r.nota + '\n  dopo:  ' + r.notaDopo);
       deve(/att/.test(r.acceso), 'il filtro non si accende');
-      deve(r.dopo === 9, 'il secondo clic non lo spegne: ' + r.dopo);
+      deve(r.dopo === 10, 'il secondo clic non lo spegne: ' + r.dopo);
       return '3 da richiamare, 1 «sembra», 1 dichiarata, 1 tacito, 2 non ancora scadute';
     });
 
@@ -5791,8 +5801,8 @@ const avvio = async () => {
           .map(r => r.textContent.replace(/\s+/g, ' ').trim());
         return rosso;
       });
-      deve(c.length === 2, 'il rosso non è riservato a chi la copertura l\'ha persa: ' + c.length);
-      deve(c.every(x => /Gialli Paolo|Blu Marco/.test(x)), 'in rosso è finita una polizza ancora coperta: ' + c.join(' || '));
+      deve(c.length === 3, 'il rosso non è riservato a chi la copertura l\'ha persa: ' + c.length);
+      deve(c.every(x => /Gialli Paolo|Blu Marco|Neri Spa/.test(x)), 'in rosso è finita una riga ancora coperta: ' + c.join(' || '));
       return 'il rosso solo a chi è fuori dai 15 giorni';
     });
 
@@ -5820,23 +5830,60 @@ const avvio = async () => {
         out.dopoAzzera = conta();
         return out;
       });
-      deve(r.ordine[0] === 'Rossi Mario', 'in cima non c\'è la scadenza più vicina a oggi: ' + r.ordine.join(', '));
+      deve(r.ordine[0] === 'Neri Spa', 'in cima non c\'è la scadenza più vicina a oggi: ' + r.ordine.join(', '));
       deve(r.ordine[r.ordine.length - 1] === 'Blu Marco', 'in fondo non c\'è la più lontana: ' + r.ordine.join(', '));
       deve(r.dichiarate === 1, 'filtro rinnovo dichiarato: ' + r.dichiarate);
       deve(r.daFare === 3, 'filtro non rinnovate: ' + r.daFare);
       deve(r.tacite === 1, 'filtro tacito rinnovo: ' + r.tacite);
-      deve(r.soloRate === 1, 'filtro «solo rate»: ' + r.soloRate);
-      deve(r.cliente === 1, 'filtro cliente: ' + r.cliente);
-      deve(r.dopoAzzera === 9, 'Azzera non ripristina tutto: ' + r.dopoAzzera);
+      deve(r.soloRate === 2, 'filtro «solo rate»: ' + r.soloRate);
+      deve(r.cliente === 2, 'filtro cliente: la polizza di Neri Spa e la sua prima rata: ' + r.cliente);
+      deve(r.dopoAzzera === 10, 'Azzera non ripristina tutto: ' + r.dopoAzzera);
       return 'più vicino a oggi prima, e cinque filtri';
     });
 
     await prova('scadenzario: una rata che non si può mostrare NON sparisce, si conta', async () => {
       /* §55: una giunzione che non trova niente non è un errore, è zero
          righe — e in silenzio nessuno lo sa. */
-      const t = await page.evaluate(() => { window.rinFasciaScegli('tutte'); return document.getElementById('rin-totali').textContent.replace(/\s+/g, ' '); });
-      deve(/1 rate non si vedono/.test(t), 'non dichiara la rata rimasta fuori: ' + t);
-      return 'la rata orfana è contata e dichiarata';
+      /* E «la polizza è annullata» non è «la polizza non si vede»: mandano a
+         fare lavori opposti. Sul portafoglio vero le 28 rate fuori sono TUTTE
+         su polizze annullate, e dirle «non si vedono» manda a cercare un
+         guasto di permessi che non c'è. */
+      const inv = await page.evaluate(() => { window.rinFasciaScegli('tutte'); return document.getElementById('rin-totali').textContent.replace(/\s+/g, ' '); });
+      deve(/1 rate non si vedono/.test(inv), 'non dichiara la rata la cui polizza è invisibile: ' + inv);
+      const ann = await page.evaluate(async (d) => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: d.p, error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: d.r, error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [{ id: 'NON-VISIBILE', stato_pagamento: 'annullata' }], error: null };
+        await window.loadScadenzario();
+        const t = document.getElementById('rin-totali').textContent.replace(/\s+/g, ' ');
+        delete window.__COLLAUDO.risposte['quote_polizze:lista'];
+        await window.loadScadenzario();
+        return t;
+      }, { p: SCADENZE_FINTE, r: RATE_FINTE });
+      deve(/1 rate restano fuori perché la loro polizza è annullata/.test(ann),
+        'una rata su polizza annullata viene spacciata per un problema di permessi: ' + ann);
+      deve(!/1 rate non si vedono/.test(ann), 'accusa ancora la visibilità: ' + ann);
+      return 'invisibile e annullata dette con due nomi diversi';
+    });
+
+    await prova('scadenzario: due caricamenti insieme non raddoppiano i contatori', async () => {
+      /* `showPage('scadenzario')` fa partire un caricamento senza aspettarlo:
+         chi torna sulla pagina mentre il primo legge ancora ne fa partire un
+         secondo. Due letture che scrivono negli stessi contatori li sommavano
+         fra loro — «1 rata fuori» diventava «2 rate non si vedono», e quel
+         numero ha l'aria di un dato. */
+      const r = await page.evaluate(async (d) => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: d.p, error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: d.r, error: null };
+        await Promise.all([window.loadScadenzario(), window.loadScadenzario(), window.loadScadenzario()]);
+        window.rinFasciaScegli('tutte');
+        return { fuori: RIN_RATE_FUORI, inv: RIN_RATE_INVISIBILI, ann: RIN_RATE_ANNULLATE,
+          righe: RIN_ROWS.length, tot: document.getElementById('rin-totali').textContent.replace(/\s+/g, ' ') };
+      }, { p: SCADENZE_FINTE, r: RATE_FINTE });
+      deve(r.righe === 10, 'tre caricamenti insieme hanno moltiplicato le righe: ' + r.righe);
+      deve(r.fuori === 1, 'le rate fuori sono raddoppiate: ' + r.fuori);
+      deve(r.inv + r.ann === 1, 'i contatori del perché si sono sommati fra loro: ' + r.inv + '+' + r.ann);
+      return '3 caricamenti insieme, i numeri restano quelli di uno';
     });
 
     await prova('scadenzario: le polizze senza scadenza non ci entrano', async () => {
@@ -5870,11 +5917,61 @@ const avvio = async () => {
       return b.testo + ' fra vicine e in proroga';
     });
 
-    await prova('scadenzario: i totali, e l\'importo che manca non vale zero', async () => {
-      const t = await page.evaluate(() => { window.rinFasciaScegli('tutte'); return document.getElementById('rin-totali').textContent.replace(/\s+/g, ' '); });
-      deve(/9\s*scadenze/.test(t), 'conteggio assente: ' + t);
-      deve(/3\.904,00/.test(t), 'somma degli importi sbagliata: ' + t);
-      deve(/3 da richiamare/.test(t), 'non dice quante da richiamare: ' + t);
+    await prova('scadenzario: il premio di polizza e la rata NON si sommano', async () => {
+      /* Una rata è una fetta del premio annuo della sua polizza: sommarli
+         conta due volte lo stesso denaro, e il totale non è né il premio in
+         scadenza né quello da incassare. Sul portafoglio vero sono 79.794,89 €
+         contati due volte. */
+      const r = await page.evaluate(() => {
+        window.rinFasciaScegli('tutte');
+        return {
+          tot: document.getElementById('rin-totali').textContent.replace(/\s+/g, ' '),
+          card: [...document.querySelectorAll('#rin-fasce .rin-fascia')]
+            .find(b => /Nei 15 giorni/.test(b.textContent)).textContent.replace(/\s+/g, ' ')
+        };
+      });
+      deve(/10\s*scadenze/.test(r.tot), 'conteggio assente: ' + r.tot);
+      deve(/8 polizze, premio annuo € 3\.704,00/.test(r.tot), 'il premio delle polizze è sbagliato: ' + r.tot);
+      deve(/2 rate da incassare per € 500,00/.test(r.tot), 'le rate non sono contate a parte: ' + r.tot);
+      deve(!/4\.204/.test(r.tot), 'i due importi sono ancora sommati in un numero solo: ' + r.tot);
+      deve(/3 da richiamare/.test(r.tot), 'non dice quante da richiamare: ' + r.tot);
+      /* E anche sulla card della fascia: la polizza a −15 (500 €) e la
+         quietanza a −5 (200 €) stanno tutte e due «Nei 15 giorni». */
+      deve(/premio € 500,00/.test(r.card) && /da incassare € 200,00/.test(r.card),
+        'la card somma le due cose: ' + r.card);
+      return 'premio 3.704,00 e da incassare 500,00, mai 4.204,00';
+    });
+
+    await prova('scadenzario: l\'ultimo giorno di proroga lo dice, invece di scrivere «ancora 0 gg»', async () => {
+      const t = await page.evaluate(() => {
+        window.rinFasciaScegli('proroga');
+        return [...document.querySelectorAll('#rin-body tr')]
+          .map(x => x.textContent.replace(/\s+/g, ' ').trim()).join(' || ');
+      });
+      deve(/oggi è l'ultimo giorno di proroga/.test(t), 'non dice che è l\'ultimo giorno: ' + t);
+      deve(!/ancora 0 gg di proroga/.test(t), 'scrive ancora «ancora 0 gg», che si legge come «è finita»');
+      await page.evaluate(() => window.rinFasciaScegli('tutte'));   // si spegne dove si accende
+      return 'l\'ultimo giorno si chiama col suo nome';
+    });
+
+    await prova('scadenzario: LA PRIMA RATA non ha proroga, e la riga lo dice', async () => {
+      /* Art. 1901 c.c.: sul PRIMO premio la copertura parte solo dal
+         pagamento; i 15 giorni di mora valgono sui premi SUCCESSIVI. Dire a
+         chi telefona che un cliente è coperto mentre la copertura non è mai
+         partita è l'errore più caro possibile in questo elenco. */
+      const r = await page.evaluate(() => {
+        window.rinFasciaScegli('tutte');
+        const riga = [...document.querySelectorAll('#rin-body tr')]
+          .find(x => /Prima rata/.test(x.textContent));
+        return riga ? { t: riga.textContent.replace(/\s+/g, ' ').trim(),
+          rosso: !!riga.querySelector('.st-scad') } : null;
+      });
+      deve(r, 'la prima rata non compare nell\'elenco');
+      deve(/art\. 1901/.test(r.t), 'non dice perché non c\'è proroga: ' + r.t);
+      deve(!/ancora in copertura/.test(r.t), 'dichiara coperta una prima rata mai pagata: ' + r.t);
+      deve(!/di proroga/.test(r.t), 'le dà dei giorni di proroga che non ha: ' + r.t);
+      deve(r.rosso, 'una prima rata scaduta non è in rosso, e invece la copertura non è mai partita');
+      return 'scaduta da 3 gg, scoperta, e con il motivo scritto';
     });
 
     await prova('scadenzario: le letture sono PAGINATE, perché il server ne manda mille per volta', async () => {
@@ -5892,7 +5989,12 @@ const avvio = async () => {
       const quante = (corpo.match(/rinTutte\(/g) || []).length;
       deve(quante === 2, 'le letture paginate dovrebbero essere due (polizze e rate): ' + quante);
       deve(/parziale/.test(corpo), 'non si accorge di essersi fermata: un totale parziale che non lo dice è il difetto rimesso dentro');
-      return 'nessun limite a mano, due letture paginate, parzialità dichiarata';
+      /* Senza un ordine, Postgres non garantisce la stessa sequenza fra due
+         richieste: una riga aggiornata mentre si legge si sposta e viene
+         letta due volte, o mai — e niente lo dice. */
+      const ordini = (corpo.match(/\.order\(/g) || []).length;
+      deve(ordini === 2, 'le due letture paginate devono avere un ordine stabile: ' + ordini);
+      return 'nessun limite a mano, due letture paginate e ordinate, parzialità dichiarata';
     });
 
     await prova('scadenzario: se le rate non si leggono, la schermata resta in piedi e LO DICE', async () => {
@@ -5902,6 +6004,7 @@ const avvio = async () => {
       const r = await page.evaluate(async (d) => {
         window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: d.p, error: null };
         window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: null, error: { message: 'giù' } };
+        window.rinFasciaScegli('tutte');
         await window.loadScadenzario();
         const out = { righe: [...document.querySelectorAll('#rin-body tr')].filter(x => x.querySelector('td')).length,
           tot: document.getElementById('rin-totali').textContent.replace(/\s+/g, ' ') };

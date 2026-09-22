@@ -709,3 +709,42 @@ data che fa testo (scadenza polizza o scadenza rata, mai l'incasso).
 - **`sostituisce_id` non lo scrive nessuno.** Finché «Riquota» non collega la
   polizza nuova alla vecchia all'emissione, ogni rinnovo resta un indizio.
 - Le sei voci di ieri (CLAUDE.md §62) restano tutte aperte.
+
+---
+
+## 22/09/2026 — Scadenzario, le correzioni della rilettura ostile (0.30.1)
+
+### 🟡 Scelte prese, e come tornare indietro
+
+- **La prima rata non ha proroga** (art. 1901 c.c.: sul primo premio la
+  copertura parte dal pagamento). Trattarla come una quietanza dichiarava
+  coperto un cliente che non lo è mai stato. *Indietro:* `PROROGA_PRIMA_RATA`
+  in `tariffe/motore/scadenzario.js`, un numero.
+- **Due targhe note e diverse non sono un rinnovo.** 34 clienti tornano
+  nell'elenco di quelli da richiamare. *Indietro:* la riga
+  `if (ta && tb && ta !== tb) continue;` nello stesso motore.
+- **Proroga e anticipo sono due parametri distinti.** *Indietro:* far leggere
+  a `fasciaDi` un solo numero.
+- **I due importi non si sommano**: «premio annuo» e «da incassare» restano
+  due colonne. *Indietro:* `conteggi` nel motore.
+- **Ogni caricamento prende un numero** e chi non è l'ultimo non scrive.
+  *Indietro:* `RIN_GIRO` in `index.html`.
+
+### 🔴 Serve il tuo ok
+
+1. **I 15 giorni di proroga valgono anche sulle polizze SENZA tacito
+   rinnovo?** Sul portafoglio sono 3.913 su 4.003, e 77 delle 83 oggi «Nei 15
+   giorni». Per l'RC Auto il comporto è di legge; per un altro ramo senza
+   tacito, alla scadenza il contratto finisce. Ho lasciato la tua regola («15
+   giorni per tutte»): cambiarla direbbe a 77 clienti che sono scoperti.
+   Il motore ha già il parametro, è una riga.
+2. **Mancano tre conti**: debito verso una compagnia, conto dei sospesi, cassa
+   contanti classificata «cassa».
+3. **La provvigione matura all'incasso o alla rimessa?**
+
+### 📝 Fuori perimetro, annotato
+
+- Nessuna prova del repository sorveglia che una vista conservi
+  `security_invoker` dopo un `create or replace`.
+- `sostituisce_id` non lo scrive nessuno: finché «Riquota» non collega la
+  polizza nuova alla vecchia, ogni rinnovo resta un indizio.

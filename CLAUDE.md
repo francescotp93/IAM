@@ -7525,3 +7525,97 @@ nel kit (§58). I gettoni che la fonte unica non porta si dichiarano lì, mai su
   della stessa cosa dicono numeri diversi (§62).
 - **Le altre schermate di QUOTO non sono sul kit**: si portano una alla volta,
   come si è fatto in IAM (§31).
+
+### La scheda cliente come un gestionale (22/09/2026)
+
+> «Questa è come vorrei l'interfaccia dell'anagrafica cliente» — Francesco,
+> con sei schermate del portale Tutela Legale.
+> «Mi sembra molto più pratico anche da vedere.»
+
+| pezzo | dove |
+|---|---|
+| tutti i numeri | `tariffe/motore/scheda-cliente.js` |
+| prove in Node | `server/verifica/scheda-cliente.test.mjs` — 12 |
+| la barra laterale, le tre linguette, la sintesi | blocco `clk*` in `index.html` |
+| lo stile | blocco `.clk-*` dentro il kit |
+| prove nella pagina | tre blocchi in `ui-test.mjs` → **523** |
+
+**Che cosa fa quella scheda e la nostra non faceva.** Due cose, e nessuna è
+estetica:
+
+1. **L'identità sta in una barra laterale che non scorre via.** La nostra
+   l'aveva in cima, larga quanto la finestra (§«La scheda cliente e il foglio
+   cassa») — meglio di prima, ma appena si guardava il portafoglio spariva.
+   Adesso la barra sta **fuori dai pannelli**, e c'è una prova che lo misura:
+   dentro, cambiando linguetta sparirebbe, ed è proprio la cosa che deve
+   restare sotto gli occhi mentre si guarda il resto.
+2. **Tre domande, tre linguette**, invece di sette linguette tutte allo stesso
+   livello: *chi è* (Sintesi), *i suoi dati* (Anagrafica), *il suo
+   portafoglio*. Le sette di prima sono tutte dentro il Portafoglio, che è
+   dove vivono.
+
+**Le azioni stanno in un posto solo.** «Operazioni» apre un menu a gruppi —
+contratti, sinistri, commerciale, variazioni. Sparse fra le schede, chi le
+cerca non sa in quale linguetta guardare; ed è la stessa distanza che aveva
+fatto perdere la voce «Importa» nella barra da ventuno voci (§15).
+
+### I numeri stanno nel motore, e non inventano
+
+Sono numeri che una persona legge e su cui poi **telefona a un cliente**:
+quindi stanno in un motore provato in Node e non dentro la schermata (§5).
+Le quattro regole che vi sono scritte sono già regole di casa:
+
+- **Una polizza senza premio annuo non vale zero** (§36, §42). Sommare zero
+  farebbe un portafoglio *più povero* del vero, e un numero più basso, su una
+  scheda cliente, nessuno lo mette in dubbio. Resta fuori dal totale e si
+  dichiara. Vale anche per la ciambella: **la fetta è il NUMERO di polizze,
+  non il premio** — disegnarla sul premio farebbe sparire dal grafico proprio
+  i prodotti di cui il premio non si sa.
+- **Un insoluto è una rata aperta GIÀ SCADUTA**, non una rata aperta. Una rata
+  che scade fra un mese è un impegno futuro, e metterla fra gli insoluti fa
+  telefonare a un cliente in regola.
+- **I premi per periodo contano solo l'INCASSATO** (§17): una rata emessa e
+  non pagata non ha prodotto niente per nessuno. E i periodi si chiamano
+  «anno in corso» e «anno precedente», non «ultimo anno», che vuol dire due
+  cose diverse e chi legge non sa quale.
+- **«Non si è potuto leggere» non è «non c'è niente»** (§12, §18): ogni
+  risposta porta `letto`, e la schermata scrive il motivo invece di uno zero.
+  Su una scheda cliente uno zero falso è peggio che altrove — chi lo legge
+  conclude che quel cliente non ha insoluti, e non chiama.
+
+**L'ordine delle due letture non è estetica.** `clkCarica` legge le rate
+**delle sue polizze**, quindi parte dopo `caricaCollegati`: lanciate insieme,
+la sintesi direbbe «0 polizze» su un cliente che ne ha dieci. L'ha trovato la
+prova, non la rilettura.
+
+**Le polizze sono schede, non righe.** Su una riga sola non ci stanno effetto,
+scadenza, frazionamento, premio e come paga: sono le cinque cose che si
+guardano aprendo il portafoglio di un cliente.
+
+**Il vocabolario dei documenti non si riscrive**: l'etichetta la dà
+`Fascicolo.tipoCliente`, che è il motore che lo possiede. Una seconda tabella
+qui vorrebbe dire due nomi per lo stesso documento (§18).
+
+### Il doppione che NON è un doppione
+
+La prova del 22/09 pretendeva che i campi dell'identità comparissero **una
+volta sola** nella finestra. Con la barra laterale quella regola diventa
+falsa: la barra è un **riepilogo** visibile da tutte e tre le linguette, la
+linguetta Anagrafica è la **scheda completa**. Sono due letture dello stesso
+oggetto, rese nello stesso istante: non possono divergere.
+
+Si è aggiornata la **regola, non il numero** (§15, §16, §33, §35): il
+doppione resta vietato **dentro lo stesso pannello**, che è dove farebbe
+male, e in più si pretende che la barra stia fuori dai pannelli e che le tre
+linguette ne accendano **una sola**.
+
+### Cosa resta aperto
+
+- **La scheda cliente non ha ancora le linguette «Pagamenti» e «Sospesi»**
+  del gestionale di Francesco: i sospesi vivono in Contabilità (§64) e i
+  pagamenti nel dettaglio della polizza. Portarli qui vuol dire decidere se
+  sono la stessa lista vista da un'altra parte o un secondo elenco (§62).
+- **Gli ultimi eventi si leggono da `quote_log`**, che aggancia le righe dal
+  19/09/2026 (§18): su un cliente vecchio il riquadro è vuoto e lo dice.
+- **Le rate si leggono per le prime 200 polizze del cliente**: nessuno ne ha
+  così tante, ma il tetto esiste e non è ancora dichiarato in schermata.

@@ -11394,20 +11394,17 @@ const avvio = async () => {
       return r.classi.length + ' classi tutte definite, cornice ' + r.bordo;
     });
 
-    await prova('scheda cliente: l\'identita\' sta in CIMA, e i campi sono SPOSTATI non copiati', async () => {
-      /* Stessa richiesta della scheda polizza, stesso giorno: «la scheda
-         cliente… non riusciamo a fare qualcosa di simile? Magari risulta un
-         po' piu' pratico da vedere?».
-         Qui non c'era una classe mancante: c'era l'identita' del cliente
-         chiusa in una colonna da 300 pixel divisa in due, da scorrere. E la
-         cosa che questa prova sorveglia piu' di tutte e' che i campi siano
-         stati SPOSTATI e non COPIATI: un codice fiscale scritto due volte
-         nella stessa finestra e' il doppione che, il giorno in cui uno dei
-         due si aggiorna e l'altro no, fa non fidarsi di nessuno dei due. */
+    await prova('scheda cliente: la barra laterale non scorre via, e le tre linguette ne accendono UNA', async () => {
+      /* «Questa è come vorrei l'interfaccia dell'anagrafica cliente» —
+         Francesco, con sei schermate del portale Tutela Legale: l'identità in
+         una barra laterale sempre visibile, e tre linguette per le tre
+         domande (chi è, i suoi dati, il suo portafoglio).
+         La regola che questa prova sorveglia è che la barra stia FUORI dai
+         pannelli: dentro, cambiando linguetta sparirebbe — e l'identità è
+         proprio la cosa che deve restare sotto gli occhi mentre si guarda
+         il portafoglio. */
       const r = await page.evaluate(async () => {
         document.getElementById('anag-overlay')?.remove();
-        /* `ANAG_CACHE` e' una `let`: `window.ANAG_CACHE` sarebbe un'altra
-           cosa, e il codice leggerebbe quella del modulo (§17). */
         ANAG_CACHE = [{ id: 'cli-k', nominativo: 'ROSSI MARIO', tipo: 'fisica',
           codice_fiscale: 'RSSMRA80A01H501U', data_nascita: '1980-01-01', professione: 'Impiegato',
           indirizzo: 'Via Roma', civico: '1', cap: '90100', comune: 'Palermo', provincia: 'PA',
@@ -11422,36 +11419,137 @@ const avvio = async () => {
         ov.querySelectorAll('*').forEach(el => el.classList.forEach(c => {
           if (/^[a-z][a-z0-9]*-[a-z0-9-]+$/.test(c) && !c.startsWith('ti-')) usate.add(c);
         }));
-        const testa = ov.querySelector('.clk-testa');
-        const linguette = ov.querySelector('.cl-tabs');
-        const st = testa ? getComputedStyle(testa) : null;
-        const testo = ov.textContent;
+        const lato = ov.querySelector('.clk-lato');
         const out = {
           classi: [...usate],
           mancanti: [...usate].filter(c => css.indexOf('.' + c) < 0),
-          campi: testa ? testa.querySelectorAll('.clk-r').length : 0,
-          /* Le colonne ci sono DAVVERO: cercare la regola nel foglio non
-             basta, potrebbe non arrivare all'elemento. */
-          colonne: st ? st.gridTemplateColumns.split(/\s+/).filter(Boolean).length : 0,
-          cf: (testo.match(/RSSMRA80A01H501U/g) || []).length,
-          email: (testo.match(/mario@rossi\.test/g) || []).length,
-          /* E sta PRIMA delle linguette: in fondo alla finestra si legge
-             dopo aver scorso tutto il resto, che e' il punto di partenza. */
-          prima: !!(testa && linguette &&
-            (testa.compareDocumentPosition(linguette) & Node.DOCUMENT_POSITION_FOLLOWING))
+          lato: !!lato,
+          /* Fuori dai pannelli: nessun `.clk-pane` la contiene. */
+          fuori: !!(lato && !lato.closest('.clk-pane')),
+          righe: lato ? lato.querySelectorAll('.clk-d').length : 0,
+          cf: lato ? /RSSMRA80A01H501U/.test(lato.textContent) : false,
+          /* Le tre linguette, e una sola accesa per volta. */
+          tabs: ov.querySelectorAll('.clk-tab').length,
+          accesi: []
         };
+        for (const k of ['anagrafica', 'portafoglio', 'sintesi']) {
+          clkTab(k);
+          out.accesi.push([...ov.querySelectorAll('.clk-pane.clk-on')].map(p => p.id).join(','));
+        }
+        /* E il codice fiscale non compare due volte NELLO STESSO pannello:
+           la barra è un riepilogo, la linguetta Anagrafica è la scheda
+           completa — ma dentro una sola vista il doppione resta un doppione. */
+        out.cfPane = [...ov.querySelectorAll('.clk-pane')]
+          .map(p => (p.textContent.match(/RSSMRA80A01H501U/g) || []).length);
         ov.remove();
         return out;
       });
       deve(!r.manca, 'la scheda cliente non si e\' aperta');
       deve(!r.mancanti.length,
         'classi che nessun foglio di stile conosce, quindi ignorate in silenzio: ' + r.mancanti.join(', '));
-      deve(r.campi >= 8, 'la testata ha ' + r.campi + ' campi: non e\' una scheda');
-      deve(r.colonne >= 2, 'la testata non si dispone in colonne: ' + r.colonne);
-      deve(r.cf === 1, 'il codice fiscale compare ' + r.cf + ' volte: i campi sono stati copiati, non spostati');
-      deve(r.email === 1, 'l\'email compare ' + r.email + ' volte: i campi sono stati copiati, non spostati');
-      deve(r.prima, 'l\'identita\' non sta sopra le linguette');
-      return r.campi + ' campi in ' + r.colonne + ' colonne, nessun doppione, ' + r.classi.length + ' classi definite';
+      deve(r.lato && r.righe >= 4, 'la barra laterale non c\'e\' o ha ' + r.righe + ' righe');
+      deve(r.fuori, 'la barra laterale sta DENTRO un pannello: cambiando linguetta sparisce');
+      deve(r.cf, 'la barra laterale non porta il codice fiscale');
+      deve(r.tabs === 3, 'le linguette sono ' + r.tabs + ' (attese 3)');
+      deve(r.accesi.join('|') === 'clk-p-anagrafica|clk-p-portafoglio|clk-p-sintesi',
+        'le linguette non accendono un pannello solo: ' + r.accesi.join(' | '));
+      deve(!r.cfPane.some(n => n > 1), 'il codice fiscale compare due volte nello stesso pannello: ' + r.cfPane.join(','));
+      return r.righe + ' righe di identita\' fuori dai pannelli, 3 linguette, ' + r.classi.length + ' classi definite';
+    });
+
+    await prova('scheda cliente: la SINTESI dice quanto vale, e non conta quello che non sa', async () => {
+      /* I numeri li fa il motore `scheda-cliente.js`, provato in Node. Qui si
+         misura che arrivino in schermata e che le regole di casa reggano:
+         una polizza senza premio NON vale zero (§36, §42), un insoluto e' una
+         rata gia' scaduta e non una rata aperta, e «non si e' potuto leggere»
+         non e' «non c'e' niente» (§12, §18). */
+      const r = await page.evaluate(async () => {
+        document.getElementById('anag-overlay')?.remove();
+        ANAG_CACHE = [{ id: 'cli-s', nominativo: 'VERDI ANNA', tipo: 'fisica',
+          codice_fiscale: 'VRDNNA80A41H501U', consenso_marketing: true, email: 'a@v.it',
+          documenti: [{ tipo: 'carta_identita', numero: 'AB1', scadenza: '2030-04-13', data: '2026-01-01' }] }];
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { error: null, data: [
+          { id: 'ps1', numero_polizza: 'NP-1', prodotto: 'RC Auto', compagnia: 'PRIMA',
+            data_effetto: '2026-01-10', data_scadenza: '2027-01-10', premio_annuo: 390, frazionamento: 'Annuale' },
+          { id: 'ps2', numero_polizza: 'NP-2', prodotto: 'Casa', compagnia: 'HDI',
+            data_effetto: '2026-02-01', data_scadenza: '2027-02-01', premio_annuo: null } ] };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { error: null, data: [
+          { id: 'r1', polizza_id: 'ps1', stato: 'aperto', importo_lordo: 50, data_decorrenza: '2020-01-01' },
+          { id: 'r2', polizza_id: 'ps1', stato: 'incassato', importo_lordo: 195, provvigione: 20, incassato_il: '2026-09-10' } ] };
+        window.__COLLAUDO.risposte['quote_log:lista'] = { error: null, data: [
+          { id: 1, azione: 'Polizza creata', entita: 'polizza', entita_id: 'ps1',
+            utente_nome: 'Anna', creato_il: '2026-09-20T10:00:00Z' } ] };
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { error: null, data: [] };
+        await apriAnagrafica('cli-s');
+        await new Promise(r => setTimeout(r, 300));
+        const ov = document.getElementById('anag-overlay');
+        const css = [...document.styleSheets].flatMap(f => {
+          try { return [...f.cssRules].map(x => x.cssText); } catch (e) { return []; }
+        }).join(' ');
+        const usate = new Set();
+        ov.querySelectorAll('*').forEach(el => el.classList.forEach(c => {
+          if (/^[a-z][a-z0-9]*-[a-z0-9-]+$/.test(c) && !c.startsWith('ti-')) usate.add(c);
+        }));
+        clkTab('portafoglio');
+        const out = {
+          mancanti: [...usate].filter(c => css.indexOf('.' + c) < 0),
+          sit: document.getElementById('clk-situazione').textContent,
+          ciamb: document.getElementById('clk-ciambella').innerHTML,
+          fette: document.querySelectorAll('#clk-ciambella svg circle').length,
+          eventi: document.getElementById('clk-eventi').textContent,
+          per: document.getElementById('clk-periodi').textContent,
+          schede: document.querySelectorAll('#cl-pol .clk-p').length,
+          doc: document.getElementById('clk-documenti').textContent,
+          consensi: document.getElementById('clk-consensi').textContent
+        };
+        ['quote_polizze:lista', 'quote_titoli:lista', 'quote_log:lista', 'quote_sinistri:lista']
+          .forEach(k => delete window.__COLLAUDO.risposte[k]);
+        ov.remove();
+        return out;
+      });
+      deve(!r.mancanti.length,
+        'classi che nessun foglio di stile conosce, quindi ignorate in silenzio: ' + r.mancanti.join(', '));
+      /* 390 e non 390+0: la Casa senza premio resta fuori e si dichiara. */
+      deve(/390,00/.test(r.sit), 'il valore del portafoglio non e\' 390: ' + r.sit.slice(0, 200));
+      deve(/senza premio annuo/.test(r.sit), 'la polizza senza premio non si dichiara');
+      deve(/Insoluti/.test(r.sit) && /50,00/.test(r.sit), 'l\'insoluto scaduto non si legge: ' + r.sit.slice(0, 200));
+      /* La ciambella ha una fetta per prodotto, e quella senza premio c'e'. */
+      deve(r.fette === 2, 'fette nella ciambella: ' + r.fette + ' (attese 2)');
+      deve(/Casa/.test(r.ciamb), 'il prodotto senza premio e\' sparito dalla ciambella');
+      deve(/Polizza creata/.test(r.eventi) && /Anna/.test(r.eventi), 'gli ultimi eventi non si leggono: ' + r.eventi.slice(0, 160));
+      deve(/195,00/.test(r.per) && /20,00/.test(r.per), 'i premi e le provvigioni del periodo non si leggono: ' + r.per.slice(0, 200));
+      deve(r.schede === 2, 'le polizze non sono schede: ' + r.schede);
+      deve(/Carta d/.test(r.doc), 'il documento d\'identita\' non si legge: ' + r.doc);
+      deve(/marketing/i.test(r.consensi), 'i consensi non si leggono');
+      return '390 € · 1 insoluto · 2 fette · 2 schede polizza · eventi e periodi';
+    });
+
+    await prova('scheda cliente: «non si e\' potuto leggere» non diventa uno zero', async () => {
+      /* Su una scheda cliente uno zero falso e\' peggio che altrove: chi lo
+         legge conclude che quel cliente non ha insoluti, e non telefona. */
+      const t = await page.evaluate(async () => {
+        document.getElementById('anag-overlay')?.remove();
+        ANAG_CACHE = [{ id: 'cli-x', nominativo: 'NERI UGO', tipo: 'fisica' }];
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { error: null, data: [
+          { id: 'px', numero_polizza: 'NP-X', prodotto: 'RC Auto', data_effetto: '2026-01-01',
+            data_scadenza: '2027-01-01', premio_annuo: 100 } ] };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: null, error: { message: 'giu\'' } };
+        window.__COLLAUDO.risposte['quote_log:lista'] = { data: null, error: { message: 'giu\'' } };
+        window.__COLLAUDO.risposte['quote_sinistri:lista'] = { error: null, data: [] };
+        await apriAnagrafica('cli-x');
+        await new Promise(r => setTimeout(r, 300));
+        const ov = document.getElementById('anag-overlay');
+        const out = { sit: document.getElementById('clk-situazione').textContent,
+                      ev: document.getElementById('clk-eventi').textContent };
+        ['quote_polizze:lista', 'quote_titoli:lista', 'quote_log:lista', 'quote_sinistri:lista']
+          .forEach(k => delete window.__COLLAUDO.risposte[k]);
+        ov.remove();
+        return out;
+      });
+      deve(/non si sono potute leggere/.test(t.sit), 'la caduta delle rate non si dichiara: ' + t.sit.slice(0, 200));
+      deve(!/Insoluti\s*0/.test(t.sit.replace(/\s+/g, ' ')), 'gli insoluti dicono zero su una lettura caduta');
+      deve(/non risponde/.test(t.ev), 'il registro caduto diventa «non e\' successo niente»: ' + t.ev.slice(0, 160));
+      return 'rate e registro caduti si dichiarano, e non diventano zeri';
     });
 
     await prova('foglio cassa: la barra dei totali, e i due avvisi che uscivano NUDI', async () => {

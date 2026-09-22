@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.35.0">
-<meta name="app-versione-nome" content="La scheda cliente e il foglio cassa">
+<meta name="app-versione" content="0.36.0">
+<meta name="app-versione-nome" content="La scheda cliente come un gestionale">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -93,6 +93,7 @@
      il tetto al denaro che un collaboratore puo' tenere. -->
 <script src="tariffe/motore/sospensione.js?v=20260920"></script>
 <script src="tariffe/motore/scadenzario.js?v=20260922"></script>
+<script src="tariffe/motore/scheda-cliente.js?v=20260922"></script>
 <script src="tariffe/motore/foglio-cassa.js?v=20260919"></script>
 <script src="tariffe/motore/piano-rate.js?v=20260921"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
@@ -1090,13 +1091,106 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
   color:var(--w1-testo2);font-weight:700;margin-bottom:1px}
 .clk-r b{display:block;font-size:13px;font-weight:700;color:var(--w1-testo);word-break:break-word}
 .clk-r.clk-vuoto b{color:var(--w1-testo3);font-weight:400}
+/* ── LA SCHEDA CLIENTE COME UN GESTIONALE (22/09/2026) ─────────────────────
+   «Questa è come vorrei l'interfaccia dell'anagrafica cliente» — Francesco,
+   con sotto gli occhi sei schermate del portale Tutela Legale.
+   Quello che quella scheda fa e la nostra non faceva: tiene l'identità in una
+   BARRA LATERALE sempre visibile (così non scompare quando si scorre) e
+   divide il resto in TRE domande — chi è in sintesi, i suoi dati, il suo
+   portafoglio — invece di sette linguette tutte allo stesso livello. */
+.clk-corpo{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:start}
+.clk-lato{position:sticky;top:0;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);
+  background:var(--w1-card);padding:14px;text-align:center}
+.clk-foto{width:88px;height:88px;border-radius:50%;background:var(--w1-sfondo);margin:0 auto 10px;
+  display:grid;place-items:center;color:var(--w1-testo3)}
+.clk-foto i{font-size:44px}
+.clk-nome{font-size:15px;font-weight:800;color:var(--w1-testo);line-height:1.3}
+.clk-eta{font-size:12px;font-weight:700;color:var(--w1-testo2);margin-bottom:12px}
+.clk-dati{text-align:left;display:flex;flex-direction:column;gap:7px;
+  border-top:1px solid var(--w1-bordo2);padding-top:11px}
+.clk-d{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--w1-testo);
+  line-height:1.4;word-break:break-word}
+.clk-d i{color:var(--w1-testo3);font-size:14px;flex:none;margin-top:1px}
+/* «Operazioni», col menu a gruppi: le azioni non stanno sparse fra le
+   schede, stanno in un posto solo e si aprono quando servono. */
+.clk-op{margin-top:12px;border-top:1px solid var(--w1-bordo2);padding-top:11px}
+.clk-op-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:9px 11px;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);
+  background:var(--w1-sfondo);font:inherit;font-size:13px;font-weight:700;color:var(--w1-testo);cursor:pointer}
+.clk-op-btn:hover{border-color:var(--w1-verde);color:var(--w1-verde-scuro)}
+.clk-op-menu{display:none;margin-top:8px;text-align:left;border:1px solid var(--w1-bordo);
+  border-radius:var(--w1-raggio);background:var(--w1-card);overflow:hidden}
+.clk-op-menu.clk-aperto{display:block}
+.clk-op-g{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--w1-testo3);padding:8px 11px 3px}
+.clk-op-v{display:block;width:100%;text-align:left;padding:7px 11px;border:0;background:none;
+  font:inherit;font-size:12.5px;color:var(--w1-testo);cursor:pointer}
+.clk-op-v:hover{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
+/* Le tre linguette grandi. */
+.clk-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:14px}
+.clk-tab{padding:11px 10px;border:0;background:var(--w1-bordo);color:var(--w1-testo2);
+  font:inherit;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.clk-tab.clk-on{background:var(--w1-verde);color:#fff}
+.clk-pane{display:none}
+.clk-pane.clk-on{display:block}
+/* La sintesi: ciambella a sinistra, ultimi eventi a destra. */
+.clk-due{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:16px}
+.clk-tit{font-size:12px;font-weight:800;color:var(--w1-testo2);text-transform:uppercase;
+  letter-spacing:.04em;margin-bottom:9px}
+.clk-ciambella{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.clk-leg{display:flex;flex-direction:column;gap:5px;font-size:12px;min-width:0}
+.clk-leg span{display:flex;align-items:center;gap:7px;color:var(--w1-testo)}
+.clk-bollo{width:11px;height:11px;border-radius:2px;flex:none}
+/* Gli ultimi eventi: una riga per fatto, col filetto a sinistra come in un
+   diario. Chi guarda vuole sapere «che cosa è successo mentre non c'ero». */
+.clk-ev{display:flex;flex-direction:column;gap:7px}
+.clk-e{border-left:3px solid var(--w1-verde);background:var(--w1-sfondo);
+  border-radius:0 var(--w1-raggio) var(--w1-raggio) 0;padding:8px 11px;font-size:12px;line-height:1.5}
+.clk-e b{display:block;font-size:11px;color:var(--w1-testo2);font-weight:700;margin-bottom:2px}
+/* Le schede del riepilogo: situazione, consensi, gruppi, documenti. */
+.clk-schede{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.clk-s{border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);background:var(--w1-card);overflow:hidden}
+.clk-s > h4{margin:0;padding:8px 12px;font-size:11px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--w1-testo2);background:var(--w1-sfondo);border-bottom:1px solid var(--w1-bordo)}
+.clk-s-c{padding:10px 12px;font-size:12.5px;line-height:1.6}
+.clk-kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+.clk-kv b{font-variant-numeric:tabular-nums}
+.clk-si{color:var(--w1-verde-scuro)}
+.clk-no{color:var(--w1-testo3)}
+.clk-att{color:var(--w1-ambra);font-weight:700}
+.clk-nota{font-size:11.5px;color:var(--w1-testo2);line-height:1.5;margin-top:6px}
+/* La tabella dei premi per periodo. */
+.clk-per{width:100%;border-collapse:collapse;font-size:12.5px}
+.clk-per th{text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--w1-testo2);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--w1-bordo)}
+.clk-per th:first-child{text-align:left}
+.clk-per td{padding:6px 8px;border-top:1px solid var(--w1-bordo2);text-align:right;
+  font-variant-numeric:tabular-nums}
+.clk-per td:first-child{text-align:left;font-weight:700}
+/* Le schede polizza del portafoglio. */
+.clk-pol{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:12px}
+.clk-p{border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);background:var(--w1-card);
+  padding:12px;cursor:pointer}
+.clk-p:hover{border-color:var(--w1-verde)}
+.clk-p-num{font-family:ui-monospace,monospace;font-size:14px;font-weight:800;color:var(--w1-testo)}
+.clk-p-pro{font-size:12px;color:var(--w1-testo2);margin-bottom:7px}
+.clk-p-g{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:11.5px;margin-top:8px}
+.clk-p-g span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--w1-testo2)}
+.clk-p-g .clk-largo{grid-column:span 2}
+.clk-p-prem{margin-top:9px;padding-top:8px;border-top:1px solid var(--w1-bordo2);
+  text-align:right;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+.clk-badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.03em;background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
+.clk-badge.clk-spenta{background:var(--w1-bordo);color:var(--w1-testo2)}
 /* Due modificatori che erano solo appigli: una riga di polizza e una di
    sinistro adesso si distinguono a colpo d'occhio dal filetto di sinistra. */
 .cl-polizza{border-left:3px solid var(--w1-verde)}
 .cl-sinistro{border-left:3px solid var(--w1-ambra)}
 .gruppi-add-btn{white-space:nowrap}
+@media(max-width:860px){.clk-corpo{grid-template-columns:1fr}.clk-lato{position:static}}
 @media(max-width:640px){.clk-testa{grid-template-columns:1fr 1fr}.clk-r.clk-largo{grid-column:span 2}
-  .fc-bar{grid-template-columns:1fr 1fr}}
+  .fc-bar{grid-template-columns:1fr 1fr}.clk-tabs{grid-template-columns:1fr}
+  .clk-pol{grid-template-columns:1fr}}
 @media(max-width:640px){.pol-due{grid-template-columns:1fr}.pol-testa{gap:6px 12px}}
 @media(max-width:640px){.pnu-griglia{grid-template-columns:1fr}.pnu-kit{padding:12px}
   .clpk-ov{padding:0}.clpk-f{max-width:none;border-radius:0;min-height:100%}}
@@ -28464,8 +28558,66 @@ async function apriAnagrafica(id) {
         <span>${esc(a.nominativo)}${(!isG && window.Anagrafica && Anagrafica.compleannoOggi(a.data_nascita)) ? ' <span class="sc-torta" title="Oggi compie gli anni"><i class="ti ti-cake"></i></span>' : ''} <span class="${isG ? 'badge-admin' : 'badge-collab'}" style="margin-left:8px;font-size:11px">${isG ? 'Giuridica' : 'Fisica'}</span>${awIsLead(a) ? ` <span style="margin-left:6px;font-size:11px;font-weight:800;background:#f86200;color:#fff;border-radius:6px;padding:2px 8px;letter-spacing:.3px"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> LEAD</span>` : ''}</span>
         <button class="ghost" style="padding:6px 10px" onclick="document.getElementById('anag-overlay').remove()"><i class="ti ti-x"></i></button>
       </div>
+      <div class="clk-corpo">
+      ${clkLato(a, isG)}
+      <div>
+      <div class="clk-tabs">
+        <button class="clk-tab clk-on" id="clk-t-sintesi" onclick="clkTab('sintesi')">Sintesi cliente</button>
+        <button class="clk-tab" id="clk-t-anagrafica" onclick="clkTab('anagrafica')">Dettaglio anagrafica</button>
+        <button class="clk-tab" id="clk-t-portafoglio" onclick="clkTab('portafoglio')">Portafoglio</button>
+      </div>
+      <div class="clk-pane clk-on" id="clk-p-sintesi">
+        <div class="clk-due">
+          <div><div class="clk-tit">Composizione portafoglio</div>
+            <div id="clk-ciambella"><div class="cl-empty">Caricamento…</div></div></div>
+          <div><div class="clk-tit">Ultimi eventi su ${esc(a.nominativo)}</div>
+            <div id="clk-eventi"><div class="cl-empty">Caricamento…</div></div></div>
+        </div>
+        <div class="clk-schede">
+          <div class="clk-s"><h4>Situazione cliente</h4>
+            <div class="clk-s-c" id="clk-situazione"><div class="cl-empty">Caricamento…</div></div></div>
+          <div class="clk-s"><h4>Consensi</h4><div class="clk-s-c" id="clk-consensi"></div></div>
+          <div class="clk-s"><h4>Documenti d'identità</h4><div class="clk-s-c" id="clk-documenti"></div></div>
+        </div>
+      </div>
+      <div class="clk-pane" id="clk-p-portafoglio">
+        <div class="clk-due">
+          <div><div class="clk-tit">Situazione portafoglio</div>
+            <div id="clk-periodi"><div class="cl-empty">Caricamento…</div></div></div>
+          <div><div class="clk-tit">Premi per linea prodotto</div>
+            <div id="clk-barre"><div class="cl-empty">Caricamento…</div></div></div>
+        </div>
+        <div class="sc-card">
+          <div class="cl-linked-head"><span><i class="ti ti-link"></i> Posizioni del cliente</span><span id="cl-count" class="cl-count">…</span></div>
+          <div class="cl-tabs">
+            <button class="cl-tab active" data-t="pol" onclick="clTab('pol')"><i class="ti ti-file-invoice"></i> Polizze</button>
+            <!-- UN ELENCO SOLO. Per il cliente un preventivo e' un
+                 preventivo, che l'abbia calcolato un motore o scritto una
+                 persona: due linguette accanto volevano dire due posti dove
+                 cercare la stessa cosa, e chi cercava guardava quella
+                 sbagliata. Restano distinti dove conta — tabelle diverse, e
+                 un distintivo sulla riga — non nella navigazione. -->
+            <button class="cl-tab" data-t="prev" onclick="clTab('prev')"><i class="ti ti-file-text"></i> Preventivi</button>
+            <button class="cl-tab" data-t="doc" onclick="clTab('doc')"><i class="ti ti-files"></i> Documenti</button>
+            <button class="cl-tab" data-t="sin" onclick="clTab('sin')"><i class="ti ti-alert-triangle"></i> Sinistri</button>
+            <!-- Blocco C: la cronologia. In un gestionale è il cuore della
+                 scheda cliente, e non c'era: si vedevano quattro elenchi
+                 separati e nessuna storia. -->
+            <button class="cl-tab" data-t="note" onclick="clTab('note')"><i class="ti ti-notes"></i> Note</button>
+            <button class="cl-tab" data-t="tratt" onclick="clTab('tratt')"><i class="ti ti-chart-arrows-vertical"></i> Trattative</button>
+            <button class="cl-tab" data-t="cro" onclick="clTab('cro')"><i class="ti ti-history"></i> Cronologia</button>
+          </div>
+          <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
+          <div id="cl-prev" class="cl-pane" style="display:none"></div>
+          <div id="cl-doc" class="cl-pane" style="display:none"></div>
+          <div id="cl-sin" class="cl-pane" style="display:none"></div>
+          <div id="cl-note" class="cl-pane" style="display:none"></div>
+          <div id="cl-tratt" class="cl-pane" style="display:none"></div>
+          <div id="cl-cro" class="cl-pane" style="display:none"></div>
+        </div>
+      </div>
+      <div class="clk-pane" id="clk-p-anagrafica">
       ${testaCliente}
-      <div class="sc-grid">
         <div class="sc-card">
           <div class="sc-card-head">
             <span class="sc-name">Consensi e note</span>
@@ -28510,35 +28662,6 @@ async function apriAnagrafica(id) {
               <button class="sc-edit" id="sc-note-save" style="display:none;margin-top:6px" onclick="salvaNotePermanenti('${a.id}')"><i class="ti ti-device-floppy"></i> Salva note</button></div>
           </div>
         </div>
-        <div class="sc-card">
-          <div class="cl-linked-head"><span><i class="ti ti-link"></i> Posizioni del cliente</span><span id="cl-count" class="cl-count">…</span></div>
-          <div class="cl-tabs">
-            <button class="cl-tab active" data-t="pol" onclick="clTab('pol')"><i class="ti ti-file-invoice"></i> Polizze</button>
-            <!-- UN ELENCO SOLO. Per il cliente un preventivo e' un
-                 preventivo, che l'abbia calcolato un motore o scritto una
-                 persona: due linguette accanto volevano dire due posti dove
-                 cercare la stessa cosa, e chi cercava guardava quella
-                 sbagliata. Restano distinti dove conta — tabelle diverse, e
-                 un distintivo sulla riga — non nella navigazione. -->
-            <button class="cl-tab" data-t="prev" onclick="clTab('prev')"><i class="ti ti-file-text"></i> Preventivi</button>
-            <button class="cl-tab" data-t="doc" onclick="clTab('doc')"><i class="ti ti-files"></i> Documenti</button>
-            <button class="cl-tab" data-t="sin" onclick="clTab('sin')"><i class="ti ti-alert-triangle"></i> Sinistri</button>
-            <!-- Blocco C: la cronologia. In un gestionale è il cuore della
-                 scheda cliente, e non c'era: si vedevano quattro elenchi
-                 separati e nessuna storia. -->
-            <button class="cl-tab" data-t="note" onclick="clTab('note')"><i class="ti ti-notes"></i> Note</button>
-            <button class="cl-tab" data-t="tratt" onclick="clTab('tratt')"><i class="ti ti-chart-arrows-vertical"></i> Trattative</button>
-            <button class="cl-tab" data-t="cro" onclick="clTab('cro')"><i class="ti ti-history"></i> Cronologia</button>
-          </div>
-          <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
-          <div id="cl-prev" class="cl-pane" style="display:none"></div>
-          <div id="cl-doc" class="cl-pane" style="display:none"></div>
-          <div id="cl-sin" class="cl-pane" style="display:none"></div>
-          <div id="cl-note" class="cl-pane" style="display:none"></div>
-          <div id="cl-tratt" class="cl-pane" style="display:none"></div>
-          <div id="cl-cro" class="cl-pane" style="display:none"></div>
-        </div>
-      </div>
       <div class="sc-card gruppi-card">
         <div class="cl-linked-head">
           <span><i class="ti ti-users-group"></i> Gruppi</span>
@@ -28551,14 +28674,249 @@ async function apriAnagrafica(id) {
         <div id="cl-gruppi-add" class="gruppi-add" style="display:none"></div>
         <div id="cl-gruppi"><div class="cl-empty">Caricamento gruppi…</div></div>
       </div>
+      </div>
+      </div>
+      </div>
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
-  caricaCollegati(a.id, a.nominativo);
+  /* `clkCarica` legge le rate DELLE SUE POLIZZE, quindi deve partire dopo
+     che `caricaCollegati` ha riempito `CLK_POLIZZE`: lanciandole insieme la
+     sintesi direbbe «0 polizze» su un cliente che ne ha dieci — uno zero
+     credibile e falso. Anche se quella cade, la sintesi si disegna: dirà
+     quello che sa, e dichiarerà quello che non ha potuto leggere. */
+  caricaCollegati(a.id, a.nominativo).then(() => clkCarica(a), () => clkCarica(a));
   caricaGruppiCliente(a.id);
   // L'intermediario può non essere ancora in cache (scheda aperta senza passare da
   // Clienti): lo carico e riempio la riga quando c'è.
   if (a.intermediario_id) caricaIntermediari().then(() => { const el = document.getElementById('sc-interm'); if (el) { const n = intermediarioNome(a.intermediario_id); if (n) { el.textContent = n; el.parentElement?.classList.remove('clk-vuoto'); } } });
+}
+
+/* ══════════ LA SCHEDA CLIENTE COME UN GESTIONALE (22/09/2026) ══════════════
+   «Questa è come vorrei l'interfaccia dell'anagrafica cliente» — Francesco,
+   con sei schermate del portale Tutela Legale.
+
+   Tre domande, tre linguette: CHI È (sintesi), I SUOI DATI (anagrafica),
+   IL SUO PORTAFOGLIO. E l'identità in una barra laterale che non scorre via.
+
+   Tutti i numeri li fa `tariffe/motore/scheda-cliente.js`, provato in Node:
+   qui si disegna soltanto (CLAUDE.md §5).                                   */
+
+var CLK_POLIZZE = [];      // le polizze vere del cliente, le riempie caricaCollegati
+var CLK_POL_KO = false;    // la loro lettura e' caduta?
+var CLK_PROPOSTE = null;   // quanti preventivi non emessi
+var CLK_ANAG = null;       // l'anagrafica aperta
+
+/* La barra laterale: chi è il cliente, sempre sotto gli occhi. */
+function clkLato(a, isG) {
+  const eta = (!isG && a.data_nascita && window.Anagrafica) ? Anagrafica.eta(a.data_nascita) : null;
+  const nato = a.data_nascita ? new Date(a.data_nascita).toLocaleDateString('it-IT') : '';
+  const indir = [[a.indirizzo, a.civico].filter(Boolean).join(' '),
+    [a.cap, a.comune, a.provincia ? '(' + a.provincia + ')' : ''].filter(Boolean).join(' ')]
+    .filter(Boolean).join(', ');
+  const riga = (icona, v) => v ? `<div class="clk-d"><i class="ti ${icona}"></i><span>${esc(v)}</span></div>` : '';
+  /* Le azioni stanno in un posto solo e si aprono quando servono: sparse
+     fra le schede, chi le cerca non sa in quale linguetta guardare. */
+  const voce = (t, fn) => `<button class="clk-op-v" onclick="${fn}">${t}</button>`;
+  return `<div class="clk-lato">
+    <div class="clk-foto"><i class="ti ${isG ? 'ti-building' : 'ti-user'}"></i></div>
+    <div class="clk-nome">${esc(a.nominativo || '—')}</div>
+    <div class="clk-eta">${eta != null ? eta + ' anni' : (isG ? 'Persona giuridica' : 'Persona fisica')}</div>
+    <div class="clk-dati">
+      ${riga('ti-calendar', nato)}
+      ${riga('ti-id', a.codice_fiscale || a.partita_iva)}
+      ${riga('ti-map-pin', indir)}
+      ${riga('ti-at', a.email)}
+      ${riga('ti-phone', a.cellulare || a.telefono)}
+    </div>
+    <div class="clk-op">
+      <button class="clk-op-btn" onclick="clkOperazioni()">Operazioni <i class="ti ti-chevron-right"></i></button>
+      <div class="clk-op-menu" id="clk-op-menu">
+        <div class="clk-op-g">Contratti</div>
+        ${voce('Elenco polizze', "clkTab('portafoglio');clTab('pol')")}
+        ${voce('Nuova polizza', "clkNuovaPolizza()")}
+        ${voce('Preventivi', "clkTab('portafoglio');clTab('prev')")}
+        <div class="clk-op-g">Sinistri</div>
+        ${voce('Sinistri del contraente', "clkTab('portafoglio');clTab('sin')")}
+        ${voce('Apri un sinistro', `apriNuovoSinistro('${a.id}')`)}
+        <div class="clk-op-g">Commerciale</div>
+        ${voce('Nuova trattativa', `nuovaTrattativa('${a.id}')`)}
+        ${!isG ? voce('Calcola la pensione', `pensDaCliente('${a.id}')`) : ''}
+        <div class="clk-op-g">Variazioni</div>
+        ${voce('Modifica anagrafica', `aprModificaAnag('${a.id}')`)}
+        ${voce('Metti in convenzione', `clkTab('anagrafica');convenzioneApri('${a.id}')`)}
+        ${voce('Aggiungi a un gruppo', `clkTab('anagrafica');gruppiApriAggiunta('${a.id}')`)}
+        ${currentUser.role === 'admin' ? voce('Elimina anagrafica', `eliminaAnagrafica('${a.id}')`) : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function clkOperazioni() {
+  const m = document.getElementById('clk-op-menu');
+  if (m) m.classList.toggle('clk-aperto');
+}
+
+/* «Nuova polizza» apre il modulo nel Portafoglio: il cliente si sceglie lì,
+   dalla schermata di §58. Non si precompila da qui perché sarebbe una
+   seconda strada per la stessa cosa. */
+function clkNuovaPolizza() {
+  document.getElementById('anag-overlay')?.remove();
+  showPage('portafoglio:nuova');
+}
+
+function clkTab(quale) {
+  ['sintesi', 'anagrafica', 'portafoglio'].forEach(k => {
+    document.getElementById('clk-t-' + k)?.classList.toggle('clk-on', k === quale);
+    document.getElementById('clk-p-' + k)?.classList.toggle('clk-on', k === quale);
+  });
+  document.getElementById('clk-op-menu')?.classList.remove('clk-aperto');
+}
+
+/* La ciambella: una fetta per prodotto, disegnata a mano in SVG — nessuna
+   libreria da un CDN, che dal contenitore di collaudo non si raggiunge
+   (§14). Le tinte sono i gettoni del marchio, in scala. */
+function clkCiambellaHTML(c) {
+  if (!c.polizze) return '<div class="cl-empty">Nessuna polizza attiva.</div>';
+  const TINTE = ['var(--w1-verde)', 'var(--w1-verde-medio)', 'var(--w1-verde-vivo)',
+    'var(--w1-verde-scuro)', 'var(--w1-testo2)', 'var(--w1-testo3)'];
+  const R = 60, C = 2 * Math.PI * R;
+  let off = 0;
+  const archi = c.gruppi.map((g, i) => {
+    const len = g.quota * C;
+    const s = `<circle cx="80" cy="80" r="${R}" fill="none" stroke="${TINTE[i % TINTE.length]}"
+      stroke-width="28" stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}"
+      stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 80 80)"></circle>`;
+    off += len;
+    return s;
+  }).join('');
+  const legenda = c.gruppi.map((g, i) => `<span><i class="clk-bollo" style="background:${TINTE[i % TINTE.length]}"></i>
+    ${esc(g.etichetta)} · <b>${g.polizze}</b>${g.premio ? ' · ' + soldi(g.premio) : ''}${
+      g.senza_premio ? ' <span class="cl-sub">(' + g.senza_premio + ' senza premio)</span>' : ''}</span>`).join('');
+  return `<div class="clk-ciambella">
+    <svg viewBox="0 0 160 160" width="160" height="160" aria-hidden="true">${archi}</svg>
+    <div class="clk-leg">${legenda}
+      <span class="cl-sub" style="margin-top:4px">Polizze attive: <b>${c.polizze}</b></span></div>
+  </div>`;
+}
+
+/* Legge le rate e i movimenti del cliente, poi riempie le tre linguette.
+   Le due letture stanno in piedi da sole (§35): quella che cade toglie il
+   suo riquadro e lo dichiara, le altre restano. */
+async function clkCarica(a) {
+  CLK_ANAG = a;
+  let titoli = [], titoliKo = false;
+  try {
+    const { data, error } = await db.from('quote_titoli')
+      .select('id,polizza_id,stato,importo_lordo,provvigione,data_decorrenza,data_scadenza,incassato_il')
+      .in('polizza_id', (CLK_POLIZZE || []).map(p => p.id).filter(Boolean).slice(0, 200));
+    if (error) throw error;
+    titoli = data || [];
+  } catch (e) { titoliKo = true; console.warn('rate del cliente non leggibili:', e.message || e); }
+
+  /* Gli ultimi eventi: i movimenti del registro agganciati al cliente E alle
+     sue polizze. «Non risponde» non e' «non e' successo niente» (§18). */
+  let eventi = null;
+  try {
+    const ids = [a.id].concat((CLK_POLIZZE || []).map(p => p.id)).filter(Boolean).slice(0, 100);
+    const { data, error } = await db.from('quote_log')
+      .select('id,azione,entita,entita_id,utente_nome,dettaglio,creato_il')
+      .in('entita_id', ids).order('creato_il', { ascending: false }).limit(40);
+    if (error) throw error;
+    eventi = data || [];
+  } catch (e) { console.warn('registro non leggibile:', e.message || e); }
+
+  clkRiempi(a, titoli, titoliKo, eventi);
+}
+
+function clkRiempi(a, titoli, titoliKo, eventiRighe) {
+  if (!window.SchedaCliente || !document.getElementById('clk-situazione')) return;
+  const S = SchedaCliente, oggi = pnuOggi();
+  const s = S.situazione(CLK_POLIZZE, titoli, oggi, {
+    proposte: CLK_PROPOSTE,
+    letto: { polizze: !CLK_POL_KO, titoli: !titoliKo }
+  });
+  const kv = (k, v, cls) => `<div class="clk-kv"><span>${k}</span><b${cls ? ' class="' + cls + '"' : ''}>${v}</b></div>`;
+
+  /* ── Situazione cliente ── */
+  const box = document.getElementById('clk-situazione');
+  if (box) box.innerHTML =
+    (!s.letto.titoli ? `<div class="fc-err">Le rate non si sono potute leggere: gli insoluti qui sotto non si possono dire.</div>` : '')
+    + kv('Insoluti', s.letto.titoli ? s.insoluti : '·')
+    + kv('Valore insoluti', s.letto.titoli ? soldi(s.valore_insoluti) : '·', s.valore_insoluti ? 'clk-att' : '')
+    + kv('Polizze attive', s.polizze_attive)
+    + kv('Totale polizze', s.totale_polizze)
+    + (s.proposte != null ? kv('Preventivi aperti', s.proposte) : '')
+    + kv('Valore portafoglio', soldi(s.valore_portafoglio))
+    /* Una polizza senza premio non vale zero: sta fuori dal totale e si
+       dichiara, altrimenti il portafoglio si legge più povero del vero. */
+    + (s.senza_premio ? `<div class="clk-nota">${s.senza_premio} polizz${s.senza_premio === 1 ? 'a' : 'e'} attiv${s.senza_premio === 1 ? 'a' : 'e'} senza premio annuo: non ${s.senza_premio === 1 ? 'entra' : 'entrano'} nel valore.</div>` : '');
+
+  /* ── Consensi ── */
+  const bc = document.getElementById('clk-consensi');
+  if (bc) bc.innerHTML = S.consensi(a).map(v =>
+    `<div class="clk-kv"><span>${v.ok ? '<i class="ti ti-check clk-si"></i>' : '<i class="ti ti-x clk-no"></i>'} ${esc(v.voce)}</span></div>
+     <div class="clk-nota" style="margin:0 0 6px 20px">${esc(v.dettaglio)}</div>`).join('');
+
+  /* ── Documenti d'identità ── */
+  const bd = document.getElementById('clk-documenti');
+  const docs = S.documenti(a, oggi);
+  if (bd) bd.innerHTML = docs.length ? docs.map(d => {
+    const et = { valido: '', scaduto: '<span class="clk-att">scaduto</span>',
+      senza_scadenza: '<span class="clk-att">senza scadenza</span>' }[d.stato] || '';
+    /* L'etichetta la dà il motore del fascicolo, che è quello che possiede il
+       vocabolario dei tipi: una seconda tabella qui vorrebbe dire due nomi
+       per lo stesso documento (§18). */
+    const et2 = (window.Fascicolo && Fascicolo.tipoCliente) ? Fascicolo.tipoCliente(d.tipo).l : d.tipo;
+    return `<div class="clk-kv"><span>${esc(et2)}</span>
+      <b>${d.scadenza ? esc(new Date(d.scadenza).toLocaleDateString('it-IT')) : '—'}</b></div>
+      ${et ? '<div class="clk-nota" style="margin-top:0">' + et + '</div>' : ''}`;
+  }).join('') : '<div class="cl-empty">Nessun documento d\'identità in anagrafica.</div>';
+
+  /* ── Composizione portafoglio ── */
+  const bg = document.getElementById('clk-ciambella');
+  if (bg) bg.innerHTML = CLK_POL_KO
+    ? '<div class="fc-err">Le polizze non si sono potute leggere: non vuol dire che non ce ne siano.</div>'
+    : clkCiambellaHTML(S.composizione(CLK_POLIZZE, oggi));
+
+  /* ── Ultimi eventi ── */
+  const be = document.getElementById('clk-eventi');
+  const ev = S.eventi(eventiRighe, 5);
+  if (be) be.innerHTML = !ev.letto
+    ? '<div class="fc-err">Il registro non risponde. Non vuol dire che non sia successo niente: vuol dire che non si è potuto leggerlo.</div>'
+    : (ev.righe.length
+      ? `<div class="clk-ev">${ev.righe.map(r => `<div class="clk-e">
+          <b>${esc(new Date(r.creato_il).toLocaleString('it-IT'))}${r.utente_nome ? ' · ' + esc(r.utente_nome) : ''}</b>
+          ${esc(r.azione || '')}${r.dettaglio ? ' <span class="cl-sub">· ' + esc(r.dettaglio) + '</span>' : ''}
+        </div>`).join('')}</div>`
+      : '<div class="cl-empty">Nessun movimento registrato su questo cliente.<br><small>La storia di una riga comincia dal 19/09/2026.</small></div>');
+
+  /* ── Portafoglio: i premi per periodo ── */
+  const bp = document.getElementById('clk-periodi');
+  const per = S.periodi(titoli, oggi);
+  if (bp) bp.innerHTML = titoliKo
+    ? '<div class="fc-err">Le rate non si sono potute leggere.</div>'
+    : `<table class="clk-per"><thead><tr><th></th>
+        <th>Mese in corso</th><th>Anno ${esc(per.etichette.anno_corrente)}</th><th>Anno ${esc(per.etichette.anno_precedente)}</th></tr></thead>
+      <tbody>
+        <tr><td>Premi incassati</td><td>${soldi(per.mese_corrente.premi)}</td><td>${soldi(per.anno_corrente.premi)}</td><td>${soldi(per.anno_precedente.premi)}</td></tr>
+        <tr><td>Provvigioni</td><td>${soldi(per.mese_corrente.provvigioni)}</td><td>${soldi(per.anno_corrente.provvigioni)}</td><td>${soldi(per.anno_precedente.provvigioni)}</td></tr>
+      </tbody></table>
+      ${per.anno_corrente.senza_provvigione ? `<div class="clk-nota">${per.anno_corrente.senza_provvigione} rate dell'anno non dichiarano la provvigione: non entrano nel totale.</div>` : ''}
+      <div class="clk-nota">Si contano le rate <b>incassate</b>: una rata emessa e non pagata non ha prodotto niente per nessuno.</div>`;
+
+  /* ── Portafoglio: i premi per linea prodotto ── */
+  const bb = document.getElementById('clk-barre');
+  const comp = S.composizione(CLK_POLIZZE, oggi);
+  const max = Math.max(1, ...comp.gruppi.map(g => g.premio || 0));
+  if (bb) bb.innerHTML = comp.gruppi.length
+    ? comp.gruppi.map(g => `<div style="margin-bottom:8px">
+        <div class="clk-kv"><span>${esc(g.etichetta)}</span><b>${g.premio ? soldi(g.premio) : '—'}</b></div>
+        <div style="height:10px;background:var(--w1-bordo2);border-radius:5px;overflow:hidden">
+          <div style="height:100%;width:${((g.premio || 0) / max * 100).toFixed(1)}%;background:var(--w1-verde)"></div></div>
+        ${g.senza_premio ? `<div class="clk-nota">${g.senza_premio} senza premio annuo: non ${g.senza_premio === 1 ? 'entra' : 'entrano'} nella barra.</div>` : ''}
+      </div>`).join('')
+    : '<div class="cl-empty">Nessuna polizza attiva.</div>';
 }
 
 /* ══════════ PRIVACY DI AGENZIA ══════════
@@ -29841,7 +30199,12 @@ async function caricaCollegati(id, nominativo) {
       .select('id,numero,numero_polizza,prodotto,compagnia,data_emissione,data_effetto,data_scadenza,premio_annuo,frazionamento,stato_pagamento,mezzo_pagamento,perfezionata,rendicontata,preventivo_id,copertura_dal,copertura_al,modulo,targa:dati->ssf->veicolo->>targa')
       .eq('cliente_id', id).order('data_effetto', { ascending: false });
     polReali = data || [];
-  } catch (e) { console.warn('polizze del cliente non disponibili:', e.message || e); }
+    CLK_POL_KO = false;
+  } catch (e) { CLK_POL_KO = true; console.warn('polizze del cliente non disponibili:', e.message || e); }
+  /* La sintesi e il portafoglio della scheda leggono da qui: le polizze si
+     caricano una volta sola, e chi le ha caricate le lascia a disposizione. */
+  CLK_POLIZZE = polReali;
+  CLK_PROPOSTE = preventivi.length;
 
   if (polReali.length) {
     /* M1.3 (19/09/2026): il clic apre IL DETTAGLIO DI QUELLA POLIZZA, non
@@ -29850,19 +30213,29 @@ async function caricaCollegati(id, nominativo) {
        preventivo se c'era e altrimenti «showPage('portafoglio')», cioè tutte le
        polizze di tutti. M1.4: i quattro pallini non ci sono più nemmeno qui;
        al loro posto come paga, che si legge. */
-    polPane.innerHTML = polReali.map(p => {
-      const scad = p.data_scadenza
-        ? new Date(p.data_scadenza).toLocaleDateString('it-IT')
-        : '<span class="tk-badge st-aperto">scadenza da confermare</span>';
+    /* Schede invece di righe (22/09/2026): su una riga sola non ci stanno
+       effetto, scadenza, frazionamento e premio, e sono le quattro cose che
+       si guardano aprendo il portafoglio di un cliente. */
+    const oggiP = pnuOggi();
+    polPane.innerHTML = `<div class="clk-pol">` + polReali.map(p => {
+      const scad = p.data_scadenza ? new Date(p.data_scadenza).toLocaleDateString('it-IT') : '—';
       const mezzo = pfMezzoNome(p.mezzo_pagamento);
-      return `<div class="cl-row cl-polizza" style="align-items:center;cursor:pointer" onclick="polDettaglio('${esc(p.id)}')" title="Apri il dettaglio di questa polizza">
-        <div style="flex:1"><b>${esc(p.prodotto || p.modulo || '—')}</b>
-          <div class="cl-sub">${esc(pfNumero(p))}${p.compagnia ? ' · ' + esc(p.compagnia) : ''}
-            · ${new Date(p.data_effetto).toLocaleDateString('it-IT')} → ${scad}${p.data_emissione ? ' · emessa il ' + new Date(p.data_emissione).toLocaleDateString('it-IT') : ''}</div></div>
-        <div style="text-align:right"><span class="cl-sub">${mezzo ? esc(mezzo) : 'pagamento da indicare'}</span>
-          <div class="cl-prem">${(p.premio_annuo == null ? '' : soldi(p.premio_annuo))}</div></div>
+      const viva = window.SchedaCliente
+        ? (!SchedaCliente.annullata(p) && SchedaCliente.attiva(p, oggiP)) : true;
+      return `<div class="clk-p cl-polizza" onclick="polDettaglio('${esc(p.id)}')" title="Apri il dettaglio di questa polizza">
+        <div class="clk-p-num">${esc(pfNumero(p))}</div>
+        <div class="clk-p-pro">${esc(p.prodotto || p.modulo || '—')}${p.compagnia ? ' · ' + esc(p.compagnia) : ''}</div>
+        <span class="clk-badge${viva ? '' : ' clk-spenta'}">${viva ? 'Attiva' : 'Non attiva'}</span>
+        <div class="clk-p-g">
+          <div><span>Data effetto</span>${p.data_effetto ? esc(new Date(p.data_effetto).toLocaleDateString('it-IT')) : '—'}</div>
+          <div><span>Data scadenza</span>${esc(scad)}</div>
+          <div><span>Frazionamento</span>${esc(p.frazionamento || '—')}</div>
+          <div><span>Come paga</span>${mezzo ? esc(mezzo) : 'da indicare'}</div>
+          ${p.data_emissione ? `<div class="clk-largo"><span>Emissione</span>emessa il ${esc(new Date(p.data_emissione).toLocaleDateString('it-IT'))}</div>` : ''}
+        </div>
+        <div class="clk-p-prem">${p.premio_annuo == null ? '<span class="cl-sub">premio annuo non noto</span>' : soldi(p.premio_annuo)}</div>
       </div>`;
-    }).join('');
+    }).join('') + `</div>`;
     if (cnt) cnt.textContent = preventivi.length + ' preventivi · ' + polReali.length + ' polizze';
   } else
   // ── POLIZZE (ripiego: ricavate dai preventivi emessi) ──

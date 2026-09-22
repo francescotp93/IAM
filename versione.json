@@ -1,8 +1,20 @@
 {
-  "versione": "0.35.0",
-  "nome": "La scheda cliente e il foglio cassa",
+  "versione": "0.36.0",
+  "nome": "La scheda cliente come un gestionale",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.36.0",
+      "data": "2026-09-22",
+      "nome": "La scheda cliente come un gestionale",
+      "voci": [
+        "LA SCHEDA CLIENTE SI APRE COME QUELLA DI UN GESTIONALE. A sinistra una barra che non scorre via: foto, nome, età, data di nascita, codice fiscale, indirizzo, email e telefono, più il menù «Operazioni» con tutto quello che si può fare su quel cliente.",
+        "E tre linguette per le tre domande: SINTESI (quanto vale il portafoglio, quanti insoluti, che cosa è successo di recente, i consensi e i documenti d'identità), DETTAGLIO ANAGRAFICA (la scheda completa, i consensi e le note), PORTAFOGLIO (premi e provvigioni del mese e dei due anni, i premi per linea prodotto, e le polizze come schede invece che come righe).",
+        "La composizione del portafoglio è una ciambella, disegnata a mano: una fetta per prodotto, col numero di polizze e il premio.",
+        "I NUMERI NON INVENTANO NIENTE. Una polizza senza premio annuo non vale zero: resta fuori dal totale e si dice quante sono. Un insoluto è una rata già scaduta, non una rata aperta che scade fra un mese. E se le rate o il registro non si leggono, lo scrive — invece di mostrare uno zero rassicurante.",
+        "Tutti i conti stanno in un motore provato a parte, con dodici prove: quello che si legge sulla scheda di un cliente è quello su cui poi gli si telefona."
+      ]
+    },
     {
       "v": "0.35.0",
       "data": "2026-09-22",

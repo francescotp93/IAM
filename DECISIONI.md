@@ -619,3 +619,44 @@ il movimento che nasce dallo storno.
   `sospesiAperti`, `anomalie`): annotato in §61, non toccato.
 - **`otp-dalla-posta.test.mjs` è rosso su `main` da prima** (5/17): cerca un
   modulo che nel repository non c'è.
+
+---
+
+## 0.29.0 — Contabilità · Fase 4-bis (22/09/2026)
+
+Nata da una critica indipendente sul rilascio 0.28.0: cinque difetti reali,
+due dei quali scritti nella 0.28.0 stessa.
+
+### 🟡 Scelte prese, e come tornare indietro
+
+- **Entrate e uscite si contano sulle gambe di DENARO** (`denaroDi`), non
+  sull'importo di testata: una polizza a copertura non fa entrare un euro, e
+  contarla faceva entrare lo stesso premio due volte. Senza le righe il motore
+  si comporta come prima. *Indietro:* far chiamare `denaroDi` con `perMov` e
+  `contiIdx` nulli in `giornata`/`riepilogo`; due prove diventano rosse.
+- **Le anomalie guardano quattro strade** invece di una per sapere se una rata
+  è già in contabilità. *Indietro:* togliere `dati.incassi_rate` e
+  `dati.crediti` dal controllo 2; una prova diventa rossa.
+- **Il cruscotto riceve gli stessi dati della linguetta Anomalie** e dichiara i
+  controlli che non si sono potuti fare. *Indietro:* togliere le quattro
+  letture accessorie da `cruCarica`.
+- **Un orologio solo** (`cntOggiIso`) per `pntOggi`, `gioData`, `recOggi`,
+  `incOggi`, `cruOggi`. *Indietro:* rimettere `toISOString().slice(0,10)`; una
+  prova diventa rossa.
+- **Le tre esportazioni CSV dichiarano in testa al file** una lettura fermata a
+  metà. *Indietro:* passare `null` come quarto argomento a `cntCsv`.
+
+### 🔴 Serve il tuo ok — le stesse tre, nessuna è cambiata
+
+1. **Mancano tre conti**: il debito verso una compagnia, il conto dei sospesi,
+   e una cassa contanti classificata «cassa». Si creano in Strumenti › Conti e
+   causali.
+2. **La provvigione matura all'incasso o alla rimessa?**
+3. **I conti «Abbuoni» sono di natura `premi`**: dovrebbero essere aziendali.
+
+### 📝 Fuori perimetro, annotato (sei voci, tutte in CLAUDE.md §62)
+
+`contoEconomico` e i suoi numeri di transito; `e_quadrabile` che non guarda
+nessuno; `fondoCassa` che somma nature diverse; `eliminabile` che non guarda le
+quadrature; `PNT_*`/`CNT_*` ancora `let`; la regola del CSV in pagina invece
+che nel motore.

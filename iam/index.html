@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.28.0">
-<meta name="app-versione-nome" content="Contabilità · il cruscotto, e i saldi che leggono le righe">
+<meta name="app-versione" content="0.29.0">
+<meta name="app-versione-nome" content="Contabilità · le entrate sono il denaro che si muove">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -6116,8 +6116,15 @@ function cntCsvCampo(v) {
   if (/[;"\n\r]/.test(t)) return '"' + t.replace(/"/g, '""') + '"';
   return t;
 }
-function cntCsv(nomeFile, intestazioni, righe) {
-  var testo = [intestazioni.map(cntCsvCampo).join(';')]
+/* `avviso` è la riga che dichiara una lettura fermata a metà, e non è una
+   gentilezza: un file scaricato esce dallo schermo che lo dichiarava e vive
+   da solo per mesi. Uno scadenzario dei premi da recuperare troncato fa
+   chiedere dei soldi a chi li ha già dati; un estratto conto troncato non
+   torna con la banca e nessuno sa perché. Sta in TESTA, prima delle
+   intestazioni, perché è la prima riga che si legge aprendo il file. */
+function cntCsv(nomeFile, intestazioni, righe, avviso) {
+  var testo = (avviso ? [cntCsvCampo(avviso)] : [])
+    .concat([intestazioni.map(cntCsvCampo).join(';')])
     .concat((righe || []).map(function (r) { return r.map(cntCsvCampo).join(';'); }))
     .join('\r\n');
   var blob = new Blob(['﻿' + testo], { type: 'text/csv;charset=utf-8' });
@@ -6159,7 +6166,13 @@ function cntContiDi(m, perMov) {
 }
 
 function pntPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
-function pntOggi() { return new Date().toISOString().slice(0, 10); }
+/* Un orologio solo per tutta la contabilità. `toISOString()` su una data
+   locale dà IERI fra mezzanotte e le due (§44): con due strade diverse, il
+   cruscotto e le linguette direbbero due giorni diversi sugli stessi
+   movimenti — e la quadratura di giornata confronterebbe un giorno con un
+   altro. `cntOggiIso` conta sui numeri, che è l'unico modo che non dipende
+   da dove si trova chi guarda. */
+function pntOggi() { return cntOggiIso(); }
 function pntVal(id) { const e = document.getElementById(id); return e ? e.value : ''; }
 function pntConto(id) { return PNT_CONTI.find(c => c.id === id) || null; }
 function pntCausale(id) { return PNT_CAUSALI.find(c => c.id === id) || null; }
@@ -6277,7 +6290,8 @@ function pntEsporta() {
   });
   cntCsv('prima-nota-' + cntOggiIso() + '.csv',
     ['Data', 'Causale', 'Descrizione', 'Controparte', 'Riferimento', 'Origine', 'Stato',
-     'Conto', 'Dare', 'Avere', 'Nota'], out);
+     'Conto', 'Dare', 'Avere', 'Nota'], out,
+    PNT_PARZIALE ? 'ATTENZIONE: questo file NON e\u2019 completo. La lettura dei movimenti si e\u2019 fermata prima della fine: mancano delle righe.' : null);
 }
 
 function pntRender() {
@@ -6292,7 +6306,7 @@ function pntRender() {
 function pntRenderSomma(righe) {
   const box = document.getElementById('pnt-somma');
   if (!box || !window.Contabilita) return;
-  const r = Contabilita.riepilogo(righe, { causali: PNT_CAUSALI });
+  const r = Contabilita.riepilogo(righe, { causali: PNT_CAUSALI, conti: PNT_CONTI, righe: PNT_RIGHE });
   const ce = Contabilita.contoEconomico(righe, PNT_CAUSALI);
   box.innerHTML = `
     <div class="cnt-card"><div class="cnt-k">Entrate</div>
@@ -6945,7 +6959,8 @@ function dcoEsporta() {
   cntCsv('estratto-' + String(c.nome || 'conto').toLowerCase().replace(/[^a-z0-9]+/g, '-') +
          '-' + cntOggiIso() + '.csv',
     ['Data', 'Causale', 'Descrizione', 'Controparte', 'Riferimento', 'Entrata', 'Uscita', 'Saldo progressivo', 'Nota'],
-    out);
+    out,
+    PNT_PARZIALE ? 'ATTENZIONE: questo file NON e\u2019 completo. La lettura dei movimenti si e\u2019 fermata prima della fine: il saldo progressivo non torna con quello della banca.' : null);
 }
 
 async function dcoApri(contoId) {
@@ -7165,6 +7180,10 @@ var GIO_MOVIMENTI = [];
    incasso metà in contanti e metà in banca finisce tutto sul primo conto —
    la cassa contata la sera non torna con quello che il sistema dice (Fase 4). */
 var GIO_RIGHE = [];
+/* Le rate degli incassi della Fase 2 e i sospesi della Fase 3: servono alle
+   anomalie per sapere quali rate sono GIÀ in contabilità. */
+var GIO_INCASSI_RATE = [];
+var GIO_CREDITI = [];
 var GIO_PARZIALE = false;
 var GIO_CONTI = [];
 var GIO_CAUSALI = [];
@@ -7182,7 +7201,7 @@ var GIO_CARICATO = false;
 
 function gioData() {
   const e = document.getElementById('i-data');
-  return (e && e.value) || new Date().toISOString().slice(0, 10);
+  return (e && e.value) || cntOggiIso();   /* un orologio solo, vedi pntOggi */
 }
 
 async function gioCarica(forza) {
@@ -7206,6 +7225,15 @@ async function gioCarica(forza) {
     const gr = await cntTutte((a, b) => db.from('iam_movimenti_righe').select('*')
       .order('movimento_id').order('ordine').range(a, b));
     GIO_RIGHE = gr.righe; GIO_PARZIALE = mo.parziale || gr.parziale;
+    /* Le due letture nuove non fanno cadere la schermata: se non rispondono si
+       vedono PIÙ rate «mai entrate in contabilità» del vero, che è il verso
+       meno pericoloso dell'errore — si guarda e non si scrive (§59). */
+    const gir = await cntMorbida((a, b) => db.from('iam_incassi_rate')
+      .select('titolo_id,attiva').eq('attiva', true).order('titolo_id').range(a, b));
+    const gcr = await cntMorbida((a, b) => db.from('iam_crediti_premio')
+      .select('titolo_id,attivo').eq('attivo', true).order('id').range(a, b));
+    GIO_INCASSI_RATE = gir.righe; GIO_CREDITI = gcr.righe;
+    if (gir.parziale || gcr.parziale) GIO_PARZIALE = true;
     GIO_CAUSALI = ca.data || []; GIO_SOSPESI = so.righe;
     GIO_QUADRATURE = qu.righe; GIO_SESSIONI = se.error ? [] : (se.data || []);
     const ti = await cntMorbida((a, b) => db.from('quote_titoli').select('id,importo_lordo,incassato_il')
@@ -7305,13 +7333,17 @@ function gioRenderGiornata() {
    `var` e non `let`: le prove iniettano uno stato finto su `window` (§17). */
 var CRU_CONTI = [], CRU_MOV = [], CRU_RIGHE = [], CRU_CAUSALI = [];
 var CRU_CREDITI = [], CRU_RECUPERI = [], CRU_SOSPESI = [];
+/* Quello che serve alle anomalie e che non serve ai cinque riquadri: rate
+   incassate, quadrature, rate della Fase 2, polizze senza rate. */
+var CRU_TITOLI = [], CRU_QUADRATURE = [], CRU_INCASSI_RATE = [];
+var CRU_PORTAFOGLIO = null;
+var CRU_ANOM_CIECHE = [];
 var CRU_LETTO = {};
 var CRU_CARICATO = false;
 var CRU_PARZIALE = false;
 
 function cruOggi() {
-  /* Mai `toISOString()` su una data locale: fra mezzanotte e le due darebbe
-     ieri, e il cruscotto direbbe che i ritardi sono uno in meno (§44). */
+  /* Lo stesso orologio di tutta la contabilità, vedi `pntOggi`. */
   return cntOggiIso();
 }
 
@@ -7347,7 +7379,34 @@ async function cruCarica(forza) {
   const so = await cntMorbida((a, b) => db.from('iam_sospesi').select('*').order('id').range(a, b));
   CRU_SOSPESI = so.righe; CRU_LETTO.sospesi = !so.ko;
 
-  CRU_PARZIALE = [co, ca, mo, ri, cr, re, so].some(r => r.parziale);
+  /* Le quattro letture che servono SOLO alle anomalie. Se una non riesce il
+     cruscotto resta usabile — ma il controllo che dipendeva da lei NON si
+     dichiara superato: finisce fra i ciechi, e il riquadro lo scrive. */
+  CRU_ANOM_CIECHE = [];
+  const ti = await cntMorbida((a, b) => db.from('quote_titoli')
+    .select('id,importo_lordo,incassato_il').eq('stato', 'incassato')
+    .not('incassato_il', 'is', null).order('id').range(a, b));
+  CRU_TITOLI = ti.righe;
+  if (ti.ko || ti.parziale) CRU_ANOM_CIECHE.push('le rate incassate da portare in contabilità');
+
+  const qu = await cntMorbida((a, b) => db.from('iam_quadrature').select('*')
+    .order('data', { ascending: false }).order('id').range(a, b));
+  CRU_QUADRATURE = qu.righe;
+  if (qu.ko || qu.parziale) CRU_ANOM_CIECHE.push('i conti verificati e quelli che non quadrano');
+
+  const ir = await cntMorbida((a, b) => db.from('iam_incassi_rate')
+    .select('titolo_id,attiva').eq('attiva', true).order('titolo_id').range(a, b));
+  CRU_INCASSI_RATE = ir.righe;
+  if (ir.ko || ir.parziale) CRU_ANOM_CIECHE.push('le rate già incassate con un incasso a più rate');
+
+  try {
+    const pf = await db.rpc('iam_polizze_senza_rate');
+    const r0 = Array.isArray(pf.data) ? pf.data[0] : pf.data;
+    CRU_PORTAFOGLIO = (pf.error || !r0) ? null : r0;
+    if (pf.error) CRU_ANOM_CIECHE.push('le polizze senza nemmeno una rata');
+  } catch (e) { CRU_PORTAFOGLIO = null; CRU_ANOM_CIECHE.push('le polizze senza nemmeno una rata'); }
+
+  CRU_PARZIALE = [co, ca, mo, ri, cr, re, so, ti, qu, ir].some(r => r.parziale);
   CRU_CARICATO = true;
   cruRender();
 }
@@ -7408,9 +7467,13 @@ function cruRender() {
   cruRenderAnomalie();
 }
 
-/* Le anomalie della contabilità, le stesse della linguetta Anomalie: si
-   leggono dallo stesso motore e con gli stessi dati. Due letture della stessa
-   cosa sarebbero due elenchi che un giorno direbbero cose diverse. */
+/* Le anomalie della contabilità, le stesse della linguetta Anomalie: stesso
+   motore e STESSI DATI. La prima stesura ne passava di meno — niente rate
+   incassate, niente quadrature, niente portafoglio — e allora il cruscotto
+   scriveva «Niente da sistemare» mentre la linguetta accanto ne elencava
+   sei. Due elenchi della stessa cosa che dicono numeri diversi non sono due
+   viste: sono uno dei due che mente, e qui a mentire era quello che dice
+   «tutto a posto». */
 function cruRenderAnomalie() {
   const box = document.getElementById('cru-anomalie');
   if (!box || !window.Contabilita) return;
@@ -7422,12 +7485,23 @@ function cruRenderAnomalie() {
   }
   const a = Contabilita.anomalie({
     conti: CRU_CONTI, movimenti: CRU_MOV, righe: CRU_RIGHE, causali: CRU_CAUSALI,
-    sospesi: CRU_SOSPESI, oggi: cruOggi()
+    sospesi: CRU_SOSPESI, titoli: CRU_TITOLI, quadrature: CRU_QUADRATURE,
+    incassi_rate: CRU_INCASSI_RATE, crediti: CRU_CREDITI,
+    portafoglio: CRU_PORTAFOGLIO, oggi: cruOggi()
   });
+  /* «Non ho trovato niente» si può dire solo se si è potuto guardare
+     dappertutto. Le letture accessorie che non sono riuscite si dichiarano:
+     un «tutto a posto» su un controllo mai fatto è la bugia peggiore che una
+     schermata di anomalie possa raccontare (§12, §18, §33). */
+  const cieche = CRU_ANOM_CIECHE.slice();
+  const nota = cieche.length
+    ? `<div class="cnt-avv" style="margin-top:10px">Alcuni controlli non si sono potuti fare:
+       ${esc(cieche.join(', '))}. Non vuol dire che lì sia tutto a posto.</div>` : '';
   if (!a.length) {
     box.innerHTML = `<div class="d-card"><div class="card-body">
-      <div class="cnt-nome">Niente da sistemare nella contabilità.</div>
-      <div class="cl-sub">Su quello che si è potuto leggere.</div></div></div>`;
+      <div class="cnt-nome">${cieche.length ? 'Niente da sistemare fra i controlli che si sono potuti fare.'
+                                             : 'Niente da sistemare nella contabilità.'}</div>
+      <div class="cl-sub">Su quello che si è potuto leggere.</div>${nota}</div></div>`;
     return;
   }
   box.innerHTML = `<div class="d-card">
@@ -7442,7 +7516,7 @@ function cruRenderAnomalie() {
         <div class="cnt-sotto">${esc(x.dafare || '')}</div>
       </div>
       ${x.importo != null ? `<div class="cnt-saldo">${esc(Contabilita.euro(x.importo))}</div>` : ''}
-    </div>`).join('') + '</div></div>';
+    </div>`).join('') + '</div>' + (nota ? `<div class="card-body">${nota}</div>` : '') + '</div>';
 }
 
 /* ─── Le anomalie ────────────────────────────────────────────────────────── */
@@ -7452,7 +7526,11 @@ function gioRenderAnomalie() {
   const a = Contabilita.anomalie({
     conti: GIO_CONTI, movimenti: GIO_MOVIMENTI, causali: GIO_CAUSALI,
     sospesi: GIO_SOSPESI, titoli: GIO_TITOLI, quadrature: GIO_QUADRATURE, oggi: gioData(),
-    righe: GIO_RIGHE,
+    /* Le tre strade in cui una rata risulta già in contabilità: la testata, le
+       righe del movimento e le rate dell'incasso della Fase 2. Guardarne una
+       sola dichiara «mai entrate» le altre due, e un clic ne farebbe nascere
+       il debito una seconda volta. */
+    righe: GIO_RIGHE, incassi_rate: GIO_INCASSI_RATE, crediti: GIO_CREDITI,
     /* Resta `null` finché il conteggio non è tornato, e il motore in quel caso
        non dice niente: «non si è potuto contare» non è «non ce ne sono»
        (§12, §18) — e su una schermata di anomalie è la bugia peggiore. */
@@ -7604,6 +7682,8 @@ function gioRenderConto() {
    `var` e non `let` (§17). */
 var REC_CREDITI = [];
 var REC_RECUPERI = [];
+/* `var` e non `let`: le prove iniettano lo stato su window (§17). */
+var REC_PARZIALE = false;
 var REC_CONTI = [];
 var REC_COMPAGNIE = [];
 var REC_CAUSALE_AP = null;
@@ -7612,7 +7692,7 @@ var REC_GUASTI = [];
 var REC_CHIAVE = null;
 
 function recEuro(n) { return window.Contabilita ? Contabilita.euro(n) : String(n); }
-function recOggi() { return new Date().toISOString().slice(0, 10); }
+function recOggi() { return cntOggiIso(); }   /* un orologio solo, vedi pntOggi */
 function recNuovaChiave() {
   var r = ''; for (var i = 0; i < 4; i++) r += Math.random().toString(36).slice(2, 10);
   return 'crd-' + r.slice(0, 28);
@@ -7634,11 +7714,15 @@ async function recPagina(nome, fai) {
   var out = [], da = 0, PASSO = 1000;
   for (var giro = 0; giro < 50; giro++) {
     var p = await recLeggi(nome, fai(da, da + PASSO - 1), null);
-    if (p === null) return out;
+    /* Una lettura che non riesce a metà è una lettura PARZIALE, non un elenco
+       finito: senza dirlo, l'esportazione uscirebbe con dei residui più alti
+       del vero e farebbe sollecitare chi ha già pagato. */
+    if (p === null) { REC_PARZIALE = true; return out; }
     out = out.concat(p);
-    if (p.length < PASSO) break;
+    if (p.length < PASSO) return out;
     da += PASSO;
   }
+  REC_PARZIALE = true;   /* cinquanta giri e non è finita: il tetto si dichiara */
   return out;
 }
 
@@ -7654,6 +7738,7 @@ async function recApri(forza) {
     .in('codice', ['apertura_sospeso', 'recupero_sospeso']).eq('attiva', true), []);
   REC_CAUSALE_AP = cs.filter(function (c) { return c.codice === 'apertura_sospeso'; })[0] || null;
   REC_CAUSALE_RE = cs.filter(function (c) { return c.codice === 'recupero_sospeso'; })[0] || null;
+  REC_PARZIALE = false;
   REC_CREDITI = await recPagina('i sospesi', function (a, b) {
     return db.from('iam_crediti_premio').select('*').order('previsto_il', { ascending: true }).range(a, b);
   });
@@ -7719,7 +7804,11 @@ function recEsporta() {
               Contabilita.numero(x.recuperato) || 0,
               Contabilita.numero(x.residuo) || 0,
               x.stato || '', c.nota || ''];
-    }));
+    }),
+    /* Qui l'avviso vale doppio: se i RECUPERI si sono letti a metà, il residuo
+       esce piu\u2019 alto del vero, e questo foglio fa chiedere dei soldi a chi li
+       ha gia\u2019 dati. */
+    REC_PARZIALE ? 'ATTENZIONE: questo file NON e\u2019 completo. La lettura si e\u2019 fermata prima della fine: alcuni recuperi possono mancare, quindi un residuo puo\u2019 risultare piu\u2019 alto del vero. Non usarlo per sollecitare senza aver ricaricato la schermata.' : null);
 }
 
 function recRender() {
@@ -7736,12 +7825,17 @@ function recRender() {
       '</div><div class="cnt-s">recuperati per intero' + (sc.stornati ? ' · ' + sc.stornati + ' stornati' : '') + '</div></div>';
 
   var righe = f.righe;
+  var avvParz = REC_PARZIALE
+    ? '<div class="cnt-avv" style="margin-bottom:10px">La lettura si \u00e8 fermata prima della fine: ' +
+      'alcuni recuperi possono mancare, quindi un residuo pu\u00f2 risultare pi\u00f9 alto del vero. ' +
+      'Aggiorna prima di sollecitare qualcuno.</div>'
+    : '';
   if (!righe.length) {
-    box.innerHTML = '<div class="cl-sub">Nessun sospeso con questi filtri.' +
+    box.innerHTML = avvParz + '<div class="cl-sub">Nessun sospeso con questi filtri.' +
       (REC_CREDITI.length ? '' : ' Non ce n\'è ancora nessuno: si apre da «Metti una rata a copertura».') + '</div>';
     return;
   }
-  box.innerHTML = righe.map(function (x) {
+  box.innerHTML = avvParz + righe.map(function (x) {
     var c = x.credito;
     return '<div class="cl-r"><div style="flex:1"><b>' + esc(c.cliente || '—') + '</b> · ' + esc(c.compagnia || '—') +
       '<div class="cl-sub">aperto il ' + esc((c.aperto_il || '').split('-').reverse().join('/')) +
@@ -8252,7 +8346,7 @@ var INC_TITOLI_KO = null;
 var INC_CARICATO = false;
 
 function incPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
-function incOggi() { return new Date().toISOString().slice(0, 10); }
+function incOggi() { return cntOggiIso(); }   /* un orologio solo, vedi pntOggi */
 function incConto(id) { return INC_CONTI.find(c => c.id === id) || null; }
 
 async function incCarica(forza) {

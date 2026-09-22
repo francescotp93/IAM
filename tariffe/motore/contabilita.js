@@ -660,6 +660,56 @@
     return { tocca: true, delta: cent(v * Math.abs(imp)), incerto: false, verso: v };
   }
 
+  /* Le tipologie in cui il DENARO c'è davvero. Non si ricava da TIPOLOGIE per
+     sottrazione: aggiungendo domani una tipologia nuova, una lista «tutto
+     tranne» la conterebbe come liquidità senza che nessuno l'abbia deciso.
+     Un conto di credito, di debito o di rettifica non è denaro: nessuno può
+     contarlo aprendo un cassetto o leggendo un estratto conto. */
+  var LIQUIDE = ['cassa', 'banca', 'conto_assicurativo', 'transitorio'];
+
+  /* ── QUANTO DENARO HA MOSSO DAVVERO UN MOVIMENTO ────────────────────────
+
+     La domanda «quanto è entrato oggi» non si risponde con l'importo di
+     testata e il verso della causale, e il caso che lo dimostra è arrivato
+     con la Fase 3: mettere una polizza A COPERTURA scrive
+     Dare «Sospesi clienti» / Avere «Conto compagnia» — due conti che denaro
+     non ne sono, e in cassa non entra un euro. Ma la causale ha segno
+     «entrata» e la testata porta il premio intero: letto dalla testata, quel
+     premio entra in cassa il giorno della copertura. Poi il cliente paga, il
+     recupero è un'altra causale «entrata», e **lo stesso premio entra una
+     seconda volta**.
+
+     Quindi: entrate e uscite si contano sulle righe che toccano un conto di
+     DENARO. Dare su un conto di denaro è entrato, Avere è uscito. Un
+     movimento le cui gambe stanno tutte su crediti e debiti non ha né
+     entrate né uscite: è una scrittura di competenza, e dirlo è la
+     differenza fra una contabilità e un elenco di numeri.
+
+     Senza le righe — e sono tutti i movimenti scritti prima del 20/09/2026 —
+     si legge la testata, come prima: quelli avevano un conto solo, e lo
+     avevano scritto in testata. `ha` dice quale delle due strade si è presa,
+     perché chi somma deve poterlo dichiarare. */
+  function denaroDi(m, perMov, contiIdx, causali) {
+    var mie = perMov ? (perMov[m.id] || []) : null;
+    if (mie && mie.length) {
+      var e = 0, u = 0;
+      for (var i = 0; i < mie.length; i++) {
+        var c = contiIdx ? contiIdx[mie[i].conto_id] : null;
+        /* Un conto che non si è potuto leggere NON si presume denaro: contarlo
+           rimetterebbe il difetto che questa funzione esiste per togliere. */
+        if (!c || LIQUIDE.indexOf(testo(c.tipologia)) < 0) continue;
+        e = cent(e + (numero(mie[i].dare) || 0));
+        u = cent(u + (numero(mie[i].avere) || 0));
+      }
+      return { entrata: e, uscita: u, righe: true, ha: true };
+    }
+    var imp = numero(m.importo);
+    var v = versoDi(m, causali);
+    if (imp == null || !v) return { entrata: 0, uscita: 0, righe: false, ha: false };
+    return { entrata: v > 0 ? Math.abs(imp) : 0, uscita: v < 0 ? Math.abs(imp) : 0,
+             righe: false, ha: true };
+  }
+
   /* Le righe raggruppate per movimento, una volta sola: chi somma cinquemila
      movimenti non deve filtrare cinquemila volte lo stesso elenco. */
   function perMovimento(righe) {
@@ -1340,17 +1390,28 @@
   function riepilogo(movimenti, opz) {
     opz = opz || {};
     var causali = opz.causali ? indice(opz.causali) : null;
-    var r = { entrate: 0, uscite: 0, saldo: 0, righe: 0, annullati: 0, senza_verso: 0 };
+    var perMov = opz.righe ? perMovimento(opz.righe) : null;
+    var contiIdx = opz.conti ? indice(opz.conti) : null;
+    var r = { entrate: 0, uscite: 0, saldo: 0, righe: 0, annullati: 0, senza_verso: 0,
+              /* Quante righe si sono contate sulle gambe di denaro e quante
+                 dalla testata: sono due letture diverse, e chi guarda la barra
+                 ha il diritto di sapere quale ha davanti. */
+              da_righe: 0, da_testata: 0, competenza: 0 };
     (movimenti || []).forEach(function (m) {
       if (!m) return;
       if (m.annullato_il) { r.annullati++; return; }
-      var imp = numero(m.importo);
-      if (imp == null) return;
-      var v = versoDi(m, causali);
-      if (!v) { r.senza_verso++; return; }   /* non si indovina */
+      var d = denaroDi(m, perMov, contiIdx, causali);
+      if (!d.ha) { r.senza_verso++; return; }   /* non si indovina */
+      /* Un movimento le cui gambe non toccano nessun conto di denaro non è
+         né un'entrata né un'uscita: è una scrittura di competenza (una
+         polizza messa a copertura, una rettifica). Si conta a parte, perché
+         sommarla alle entrate direbbe che sono arrivati dei soldi che in
+         cassa non ci sono — e li conterebbe di nuovo quando arrivano. */
+      if (d.righe && !d.entrata && !d.uscita) { r.competenza++; return; }
       r.righe++;
-      if (v > 0) r.entrate = cent(r.entrate + Math.abs(imp));
-      else       r.uscite  = cent(r.uscite  + Math.abs(imp));
+      if (d.righe) r.da_righe++; else r.da_testata++;
+      r.entrate = cent(r.entrate + d.entrata);
+      r.uscite  = cent(r.uscite  + d.uscita);
     });
     r.saldo = cent(r.entrate - r.uscite);
     return r;
@@ -1426,25 +1487,30 @@
     var g = testo(data);
     var causali = opz.causali ? indice(opz.causali) : null;
     var perMov = opz.righe ? perMovimento(opz.righe) : null;
-    var r = { data: g, entrate: 0, uscite: 0, saldo: 0, righe: 0, per_conto: [] };
+    var contiIdx = indice(conti);
+    var r = { data: g, entrate: 0, uscite: 0, saldo: 0, righe: 0, per_conto: [],
+              da_righe: 0, da_testata: 0, competenza: 0 };
     var acc = {};
     vivi(movimenti).forEach(function (m) {
       if (testo(m.data) !== g) return;
-      var imp = numero(m.importo);
-      if (imp == null) return;
-      var v = versoDi(m, causali);
-      if (!v) return;
-      /* Entrate e uscite della GIORNATA restano quelle del movimento intero:
-         a partita doppia le due gambe si annullano, quindi le righe non
-         saprebbero dire se la giornata ha incassato o pagato. Il verso di un
-         movimento lo dice la causale, ed è l'unica risposta che c'è. */
-      r.righe++;
-      if (v > 0) r.entrate = cent(r.entrate + Math.abs(imp));
-      else       r.uscite  = cent(r.uscite  + Math.abs(imp));
-      /* La ripartizione PER CONTO invece viene dalle righe quando ci sono: un
-         incasso metà in contanti e metà in banca, letto dalla testata,
-         finirebbe tutto sul primo conto — e la cassa contata la sera non
-         tornerebbe con quello che il sistema dice di avere. */
+      /* Entrate e uscite della giornata sono il DENARO che si è mosso, non
+         l'importo di testata: una polizza messa a copertura non fa entrare un
+         euro, e contarla farebbe entrare quel premio DUE volte — il giorno
+         della copertura e il giorno in cui il cliente paga. Così
+         l'intestazione e l'elenco per conto qui sotto dicono lo stesso
+         numero: prima non tornavano, ed era un difetto scritto ieri. */
+      var d = denaroDi(m, perMov, contiIdx, causali);
+      if (!d.ha) return;
+      if (d.righe && !d.entrata && !d.uscita) { r.competenza++; }
+      else {
+        r.righe++;
+        if (d.righe) r.da_righe++; else r.da_testata++;
+        r.entrate = cent(r.entrate + d.entrata);
+        r.uscite  = cent(r.uscite  + d.uscita);
+      }
+      /* La ripartizione PER CONTO comprende TUTTI i conti toccati, anche
+         quelli che denaro non sono: sapere che quel giorno è nato un debito
+         verso una compagnia serve, e sta in una riga sua. */
       var mie = perMov ? (perMov[m.id] || []) : null;
       if (mie && mie.length) {
         mie.forEach(function (x) {
@@ -1458,14 +1524,13 @@
       }
       var k = m.conto_id || '—';
       if (!acc[k]) acc[k] = { conto_id: m.conto_id || null, entrate: 0, uscite: 0, righe: 0 };
-      if (v > 0) acc[k].entrate = cent(acc[k].entrate + Math.abs(imp));
-      else       acc[k].uscite  = cent(acc[k].uscite  + Math.abs(imp));
+      acc[k].entrate = cent(acc[k].entrate + d.entrata);
+      acc[k].uscite  = cent(acc[k].uscite  + d.uscita);
       acc[k].righe++;
     });
     r.saldo = cent(r.entrate - r.uscite);
-    var idx = indice(conti);
     r.per_conto = Object.keys(acc).map(function (k) {
-      var c = idx[k];
+      var c = contiIdx[k];
       return Object.assign(acc[k], {
         nome: c ? c.nome : 'conto sconosciuto',
         tipologia: c ? c.tipologia : null,
@@ -1548,8 +1613,22 @@
 
     /* 2. Rate incassate che in contabilita' non sono mai entrate: il conto non
           sa di quei soldi, e il saldo e' piu' basso del vero. */
+    /* Dove sta scritto che una rata è entrata in contabilità: in TRE posti, e
+       guardarne uno solo li dichiara tutti mancanti. La testata ne porta UNA
+       quando l'incasso ne ha chiuse tre (Fase 2), quindi le altre due
+       risulterebbero «mai entrate» — e un clic su «Portale in contabilità»
+       farebbe nascere un secondo debito verso la compagnia per un premio
+       entrato una volta sola. È la stessa correzione già fatta a
+       `incDaPortare` il 22/09, che qui era rimasta indietro. */
     var dentro = {};
     vivi(movimenti).forEach(function (m) { if (m.titolo_id) dentro[m.titolo_id] = true; });
+    (dati.righe || []).forEach(function (r) { if (r && r.titolo_id) dentro[r.titolo_id] = true; });
+    (dati.incassi_rate || []).forEach(function (r) {
+      if (r && r.titolo_id && r.attiva !== false) dentro[r.titolo_id] = true;
+    });
+    (dati.crediti || []).forEach(function (c) {
+      if (c && c.titolo_id && c.attivo !== false) dentro[c.titolo_id] = true;
+    });
     (sospesi || []).forEach(function (s) { if (s.titolo_id && s.stato !== 'annullato') dentro[s.titolo_id] = true; });
     var fuori = (titoli || []).filter(function (t) { return t && t.id && !dentro[t.id]; });
     if (fuori.length) agg('giallo', 'Rate incassate che il conto non sa', fuori.length,
@@ -2326,11 +2405,6 @@
 
      `dati.letto` dice quali letture sono riuscite: quello che manca non
      diventa uno zero, diventa un riquadro che dice di non saperlo. */
-  /* Le tipologie in cui il denaro c'è davvero. Non si ricava da TIPOLOGIE per
-     sottrazione: aggiungendo domani una tipologia nuova, una lista «tutto
-     tranne» la conterebbe come liquidità senza che nessuno l'abbia deciso. */
-  var LIQUIDE = ['cassa', 'banca', 'conto_assicurativo', 'transitorio'];
-
   function cruscotto(dati) {
     dati = dati || {};
     var conti = dati.conti, movimenti = dati.movimenti, righe = dati.righe;

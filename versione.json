@@ -1,8 +1,21 @@
 {
-  "versione": "0.28.0",
-  "nome": "Contabilità · il cruscotto, e i saldi che leggono le righe",
+  "versione": "0.29.0",
+  "nome": "Contabilità · le entrate sono il denaro che si muove",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.29.0",
+      "data": "2026-09-22",
+      "nome": "Contabilità · le entrate sono il denaro che si muove",
+      "voci": [
+        "Correzione grossa, e non si vedeva: una polizza messa a copertura contava come soldi entrati in cassa, e quando il cliente pagava lo stesso premio entrava una seconda volta. Su un premio da 300 € la giornata ne dichiarava 600. Adesso entrate e uscite si contano sul denaro che si è davvero mosso — una copertura è una scrittura di competenza, e si conta a parte.",
+        "Nella Quadratura di giornata il totale in alto e l'elenco per conto adesso dicono lo stesso numero: prima il primo leggeva la testata del movimento e il secondo le sue righe, e non tornavano.",
+        "Le Anomalie dicevano «rate incassate che il conto non sa» anche su rate già entrate in contabilità con un incasso a più rate. Un clic ci avrebbe fatto nascere il debito verso la compagnia una seconda volta.",
+        "Il Cruscotto scriveva «Niente da sistemare» mentre la linguetta Anomalie accanto ne elencava sei: leggeva meno dati. Adesso legge gli stessi, e i controlli che non si sono potuti fare li dichiara invece di darli per superati.",
+        "Un orologio solo per tutta la contabilità: fra mezzanotte e le due il Cruscotto e le linguette dicevano due giorni diversi sugli stessi movimenti.",
+        "Le tre esportazioni CSV dichiarano in testa al file se la lettura si è fermata a metà. Quella dei premi da recuperare è la più delicata: con dei recuperi mancanti un residuo esce più alto del vero, e si andrebbe a chiedere dei soldi a chi li ha già dati."
+      ]
+    },
     {
       "v": "0.28.0",
       "data": "2026-09-22",

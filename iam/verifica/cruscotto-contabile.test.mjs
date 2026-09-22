@@ -229,6 +229,76 @@ prova('la data di oggi non passa da `toISOString()` su una data locale', () => {
   return 'nessun toISOString, e la data si costruisce contando sui numeri';
 });
 
+
+prova('FASE 4-bis · le anomalie del cruscotto leggono gli STESSI dati della linguetta', () => {
+  /* La prima stesura ne passava di meno — niente rate incassate, niente
+     quadrature, niente portafoglio — e allora il cruscotto scriveva «Niente
+     da sistemare» mentre la linguetta accanto ne elencava sei. Due elenchi
+     della stessa cosa che dicono numeri diversi non sono due viste: uno dei
+     due mente, e a mentire era quello che diceva «tutto a posto». */
+  const b = soloJs(blocco());
+  const i = b.indexOf('Contabilita.anomalie(');
+  const chiamata = b.slice(i, b.indexOf('});', i));
+  for (const k of ['conti:', 'movimenti:', 'righe:', 'causali:', 'sospesi:',
+                   'titoli:', 'quadrature:', 'incassi_rate:', 'crediti:', 'portafoglio:']) {
+    deve(chiamata.includes(k), 'le anomalie del cruscotto non ricevono «' + k + '»');
+  }
+  /* E le letture che non sono riuscite NON si dichiarano superate. */
+  deve(/CRU_ANOM_CIECHE/.test(b), 'i controlli che non si sono potuti fare non si contano');
+  deve(/Non vuol dire che lì sia tutto a posto/.test(blocco()),
+    'un controllo mai fatto passa per «tutto a posto»');
+  return 'dieci chiavi, e i controlli ciechi si dichiarano';
+});
+
+prova('FASE 4-bis · un orologio solo per tutta la contabilità', () => {
+  /* `toISOString()` su una data locale dà IERI fra mezzanotte e le due (§44):
+     con due strade diverse il cruscotto e le linguette direbbero due giorni
+     diversi sugli stessi movimenti, e la quadratura di giornata
+     confronterebbe un giorno con un altro. */
+  for (const f of ['pntOggi', 'recOggi', 'incOggi', 'cruOggi']) {
+    const i = H.indexOf('function ' + f + '(');
+    deve(i > 0, 'non trovo ' + f);
+    const corpo = H.slice(i, i + 260);
+    deve(/cntOggiIso\(\)/.test(corpo), f + ' non usa l\'orologio di casa');
+  }
+  const gi = H.indexOf('function gioData(');
+  deve(/cntOggiIso\(\)/.test(H.slice(gi, gi + 260)), 'gioData non usa l\'orologio di casa');
+  /* E nessuno dei cinque costruisce più la data con toISOString. */
+  for (const f of ['pntOggi', 'recOggi', 'incOggi', 'cruOggi', 'gioData']) {
+    const i = H.indexOf('function ' + f + '(');
+    deve(!/toISOString\(\)\.slice\(0, 10\)/.test(H.slice(i, i + 260)),
+      f + ' costruisce ancora la data con toISOString');
+  }
+  return 'cinque funzioni, un orologio';
+});
+
+prova('FASE 4-bis · le tre esportazioni dichiarano una lettura fermata a metà', () => {
+  /* Un file scaricato esce dallo schermo che lo dichiarava e vive da solo per
+     mesi. Quello dei premi da recuperare è il più pericoloso: con dei
+     recuperi mancanti il residuo esce più alto del vero, e si va a chiedere
+     dei soldi a chi li ha già dati. */
+  const i = H.indexOf('function cntCsv(');
+  const fn = H.slice(i, H.indexOf('\n}', i));
+  deve(/avviso/.test(fn), 'il costruttore del CSV non sa dichiarare una lettura parziale');
+  /* E l'avviso sta in TESTA, prima delle intestazioni: è la prima riga che si
+     legge aprendo il file. */
+  deve(/\(avviso \? \[cntCsvCampo\(avviso\)\] : \[\]\)\s*\n?\s*\.concat\(\[intestazioni/.test(fn),
+    'l\'avviso non è la prima riga del file');
+  for (const [f, bandiera] of [['pntEsporta', 'PNT_PARZIALE'], ['dcoEsporta', 'PNT_PARZIALE'],
+                               ['recEsporta', 'REC_PARZIALE']]) {
+    const j = H.indexOf('function ' + f + '(');
+    deve(j > 0, 'non trovo ' + f);
+    const corpo = H.slice(j, H.indexOf('\n}', j));
+    deve(corpo.includes(bandiera), f + ' non dichiara la parzialità (' + bandiera + ')');
+  }
+  /* E `REC_PARZIALE` deve diventare vera davvero: una bandiera che nessuno
+     alza è una dichiarazione che non arriva mai. */
+  const rp = H.slice(H.indexOf('async function recPagina('), H.indexOf('async function recApri('));
+  deve((rp.match(/REC_PARZIALE = true/g) || []).length >= 2,
+    'la paginazione dei sospesi non alza la bandiera né quando cade né quando sfonda il tetto');
+  return 'tre esportazioni, e la bandiera si alza davvero';
+});
+
 console.log('\n══ CRUSCOTTO CONTABILE ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

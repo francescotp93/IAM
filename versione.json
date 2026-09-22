@@ -1,8 +1,22 @@
 {
-  "versione": "0.30.1",
-  "nome": "Scadenzario · le correzioni di una rilettura ostile",
+  "versione": "0.31.0",
+  "nome": "Sospesi · la modalità di pagamento può essere una persona",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.31.0",
+      "data": "2026-09-22",
+      "nome": "Sospesi · la modalità di pagamento può essere una persona",
+      "voci": [
+        "Le modalità di pagamento adesso si dichiarano tu, in Strumenti › Conti e causali › Modalità di pagamento. Prima erano nove valori chiusi dentro il database e in cinque punti del codice: aggiungerne una voleva dire toccare sei posti.",
+        "Una voce può essere un COLLABORATORE. Metti «Oddo Francesco» sulla modalità di pagamento di una polizza e quel premio entra fra i suoi sospesi, in attesa di essere incassato.",
+        "Per ogni voce decidi tu se il denaro è in casa SUBITO (i contanti) oppure se va nei SOSPESI finché qualcuno non lo scarica. Un collaboratore non può essere «subito»: se il premio ce l'ha lui, in cassa non c'è — e lo impedisce il database, non un avviso.",
+        "Contabilità › Sospesi adesso legge il NOSTRO portafoglio, diviso per chi tiene i premi, con il totale di ognuno e quante rate sono ferme da più giorni di quelli che quella voce ci mette. Prima leggeva solo un file Excel caricato a mano, che resta sotto finché i due numeri non saranno stati confrontati.",
+        "Le rate di cui non si sa la modalità non si mettono sotto nessuno: stanno in un gruppo loro, «Da dichiarare». Oggi sono 380 rate su 418, per 88.600,71 € — ed è il lavoro da fare.",
+        "La modalità si cerca SCRIVENDO, oltre che a tendina. E un nome che non corrisponde a nessuna voce non diventa una voce inventata: il campo diventa rosso e non si salva.",
+        "«Incassa» dal sospeso porta dove si registra l'incasso, dove scegli il conto e anche un mezzo diverso da quello dichiarato dalla compagnia."
+      ]
+    },
     {
       "v": "0.30.1",
       "data": "2026-09-22",

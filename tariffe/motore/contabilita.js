@@ -901,9 +901,41 @@
 
   /* ═══ GLI INCASSI DA ACCREDITARE (M4) ═════════════════════════════════════ */
 
-  function mezzo(k) {
+  /* ═══ IL VOCABOLARIO DELLE MODALITÀ, CHE ADESSO SI DICHIARA (22/09/2026) ══
+     `MEZZI` qui sopra resta il SEME — le nove voci che il database aveva in un
+     vincolo chiuso — ma il vocabolario vero sta in `iam_modalita_pagamento`,
+     perché una voce può essere un COLLABORATORE: «Oddo Francesco» è una
+     modalità di pagamento come il POS, e vuol dire che quel premio ce l'ha
+     lui.
+
+     Il motore non legge il database: riceve le righe e le traduce. Chi non
+     gliele passa continua a vedere il seme, cioè il comportamento di prima —
+     nessun punto di chiamata si rompe. */
+  function vocabolario(righe) {
+    if (!righe || !righe.length) return MEZZI.slice();
+    return righe.filter(function (r) { return r && r.codice; }).map(function (r) {
+      var sem = null;
+      for (var i = 0; i < MEZZI.length; i++) if (MEZZI[i].k === testo(r.codice).toLowerCase()) sem = MEZZI[i];
+      return {
+        k: testo(r.codice).toLowerCase(),
+        l: testo(r.nome) || (sem ? sem.l : testo(r.codice)),
+        /* `immediato` è il nome che questo motore usa da sempre; nella tabella
+           si chiama `contabilizza`, che è la stessa domanda detta a parole. */
+        immediato: testo(r.contabilizza) === 'subito',
+        giorni: (r.giorni_attesi === null || r.giorni_attesi === undefined)
+          ? (sem ? sem.giorni : null) : Number(r.giorni_attesi),
+        i: sem ? sem.i : (r.collaboratore_id ? 'ti-user' : 'ti-dots'),
+        collaboratore_id: r.collaboratore_id || null,
+        attiva: r.attiva !== false,
+        ordine: isFinite(r.ordine) ? Number(r.ordine) : 100
+      };
+    }).sort(function (a, b) { return a.ordine - b.ordine || a.l.localeCompare(b.l); });
+  }
+
+  function mezzo(k, voc) {
     var t = testo(k).toLowerCase();
-    for (var i = 0; i < MEZZI.length; i++) if (MEZZI[i].k === t) return MEZZI[i];
+    var V = (voc && voc.length) ? voc : MEZZI;
+    for (var i = 0; i < V.length; i++) if (V[i].k === t) return V[i];
     return null;
   }
 
@@ -916,15 +948,125 @@
      un'ambiguita' vera: due conti che ricevono lo stesso mezzo vogliono dire
      che l'accredito potrebbe finire su tutti e due, e a indovinare si sbaglia
      meta' delle volte. */
-  function contoPerMezzo(conti, k) {
+  function contoPerMezzo(conti, k, voc) {
     var t = testo(k).toLowerCase();
     var ok = (conti || []).filter(function (c) {
       if (!c || c.attivo === false) return false;
       return (c.mezzi || []).some(function (m) { return testo(m).toLowerCase() === t; });
     });
     if (ok.length === 1) return { conto: ok[0], ok: true };
-    if (!ok.length) return { conto: null, ok: false, motivo: 'Nessun conto dichiara di ricevere «' + (mezzo(t) ? mezzo(t).l : t) + '». Scegli il conto in Strumenti › Conti e causali.' };
-    return { conto: null, ok: false, ambiguo: ok, motivo: ok.length + ' conti dicono di ricevere «' + (mezzo(t) ? mezzo(t).l : t) + '»: non si puo' + '\u2019 sapere dove arriva. Lascialo su uno solo.' };
+    if (!ok.length) return { conto: null, ok: false, motivo: 'Nessun conto dichiara di ricevere «' + (mezzo(t, voc) ? mezzo(t, voc).l : t) + '». Scegli il conto in Strumenti › Conti e causali.' };
+    return { conto: null, ok: false, ambiguo: ok, motivo: ok.length + ' conti dicono di ricevere «' + (mezzo(t, voc) ? mezzo(t, voc).l : t) + '»: non si puo' + '\u2019 sapere dove arriva. Lascialo su uno solo.' };
+  }
+
+  /* ═══ I SOSPESI: I PREMI CHE QUALCUNO TIENE ═════════════════════════════
+     (22/09/2026, richiesta di Francesco)
+
+     «In una sezione apposita, che chiamiamo appunto sospesi, dovrei trovare
+      lì, divise in maniera chiara, Oddo Francesco con tutte le eventuali
+      polizze da andare ad incassare.»
+
+     ── CHE COS'È UN SOSPESO, E CHE COSA NON LO È ─────────────────────────
+     Un sospeso e' una rata EMESSA il cui denaro non e' ancora in casa, e la
+     voce dice CHI LO TIENE: il circuito del POS, la banca, o una persona.
+
+     Tre cose che non sono un sospeso, e ognuna, messa qui dentro, produce un
+     elenco di cose da fare che non si puo' lavorare:
+
+      · una rata GIA' INCASSATA. E' un fatto avvenuto, non un lavoro. Dove il
+        denaro sia poi finito lo dicono gli incassi da accreditare (§32), che
+        e' un'altra domanda e ha la sua schermata.
+      · una rata in CONTANTI. I contanti sono denaro in mano: si incassano allo
+        sportello e vanno in cassa. E' la richiesta, testuale: «diverso e' ad
+        esempio per le polizze pagate Contanti che devono essere contabilizzate
+        contanti». Una voce lo dichiara con `contabilizza = 'subito'`.
+      · una rata di cui NON SI SA la modalita'. Quella non si mette sotto
+        nessuno: si mette in un gruppo suo, che si chiama «Da dichiarare»,
+        perche' attribuirla a qualcuno vorrebbe dire inventare a chi chiedere
+        dei soldi. Misurato il 22/09/2026: sono 380 rate su 418, per
+        88.600,71 euro — cioe' quasi tutto, ed e' il lavoro da fare.
+
+     ── E QUELLO CHE NON SI SOMMA ────────────────────────────────────────
+     I gruppi si contano separati e il totale e' la loro somma: una rata sta
+     in UN gruppo solo. L'importo che non c'e' non vale zero (§36, §42), e si
+     conta a parte. */
+  function daIncassare(titoli, voc, opz) {
+    opz = opz || {};
+    var oggi = testo(opz.oggi) || null;
+    var V = vocabolario(voc);
+    var per = {}, ordine = [];
+    var out = {
+      gruppi: [], righe: 0, totale: 0, senza_importo: 0,
+      da_dichiarare: 0, totale_da_dichiarare: 0,
+      escluse_contanti: 0, totale_contanti: 0,
+      in_ritardo: 0, totale_ritardo: 0
+    };
+
+    function gruppo(k, etichetta, tipo, collab) {
+      if (!per[k]) {
+        per[k] = { voce: k, etichetta: etichetta, tipo: tipo, collaboratore_id: collab || null,
+          righe: [], n: 0, totale: 0, senza_importo: 0, in_ritardo: 0 };
+        ordine.push(per[k]);
+      }
+      return per[k];
+    }
+
+    (titoli || []).forEach(function (t) {
+      if (!t) return;
+      /* Una rata incassata non e' un lavoro: e' un fatto avvenuto. */
+      if (testo(t.stato) !== 'aperto') return;
+      var imp = numero(t.importo_lordo);
+      var k = testo(t.mezzo_pagamento).toLowerCase();
+      var m = k ? mezzo(k, V) : null;
+
+      if (m && m.immediato) {
+        /* I contanti si incassano allo sportello: non li tiene nessuno. Si
+           contano lo stesso, perche' un elenco che li fa sparire non dice
+           quante rate restano fuori e perche'. */
+        out.escluse_contanti++;
+        if (imp !== null) out.totale_contanti = cent(out.totale_contanti + Math.abs(imp));
+        return;
+      }
+
+      var g = k
+        ? gruppo(k, m ? m.l : k, m && m.collaboratore_id ? 'collaboratore' : 'mezzo',
+            m && m.collaboratore_id)
+        : gruppo('', 'Da dichiarare', 'da-dichiarare', null);
+      if (!k) {
+        out.da_dichiarare++;
+        if (imp !== null) out.totale_da_dichiarare = cent(out.totale_da_dichiarare + Math.abs(imp));
+      }
+
+      var gg = oggi ? giorniDa(t.data_decorrenza, oggi) : null;
+      var attesi = m && isFinite(m.giorni) ? m.giorni : null;
+      var tardi = (gg !== null && attesi !== null && gg > attesi);
+
+      g.righe.push({
+        id: t.id, polizza_id: t.polizza_id, tipo: t.tipo,
+        data: t.data_decorrenza || null, importo: imp,
+        giorni_fermo: gg, in_ritardo: tardi,
+        cliente: t.cliente || null, numero_polizza: t.numero_polizza || null,
+        compagnia: t.compagnia || null
+      });
+      g.n++;
+      out.righe++;
+      if (imp === null) { g.senza_importo++; out.senza_importo++; }
+      else { g.totale = cent(g.totale + Math.abs(imp)); out.totale = cent(out.totale + Math.abs(imp)); }
+      if (tardi) {
+        g.in_ritardo++; out.in_ritardo++;
+        if (imp !== null) out.totale_ritardo = cent(out.totale_ritardo + Math.abs(imp));
+      }
+    });
+
+    /* In cima chi pesa di piu': una schermata che mette per primi i gruppi da
+       due righe fa scorrere per niente. «Da dichiarare» resta dov'e' il suo
+       importo — non lo si mette in fondo per farlo sembrare meno. */
+    ordine.sort(function (a, b) { return b.totale - a.totale || b.n - a.n; });
+    ordine.forEach(function (g) {
+      g.righe.sort(function (x, y) { return String(x.data || '').localeCompare(String(y.data || '')); });
+    });
+    out.gruppi = ordine;
+    return out;
   }
 
   /* Gli stessi conti guardati DALL'ALTRA PARTE: non «dove va questo mezzo» ma
@@ -2537,7 +2679,9 @@
     dettaglioConto: dettaglioConto, storicoQuadrature: storicoQuadrature,
     vivo: vivo, vivi: vivi, versoDi: versoDi, TOLLERANZA: TOLLERANZA,
     /* M4 — gli incassi da accreditare */
-    MEZZI: MEZZI, mezzo: mezzo, contoPerMezzo: contoPerMezzo, mezziInConflitto: mezziInConflitto,
+    MEZZI: MEZZI, mezzo: mezzo, vocabolario: vocabolario,
+    contoPerMezzo: contoPerMezzo, mezziInConflitto: mezziInConflitto,
+    daIncassare: daIncassare,
     destinoIncasso: destinoIncasso,
     giorniDa: giorniDa, inRitardo: inRitardo, sospesiAperti: sospesiAperti,
     riepilogoSospesi: riepilogoSospesi, validaAccredito: validaAccredito,

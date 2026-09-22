@@ -748,3 +748,42 @@ data che fa testo (scadenza polizza o scadenza rata, mai l'incasso).
   `security_invoker` dopo un `create or replace`.
 - `sostituisce_id` non lo scrive nessuno: finché «Riquota» non collega la
   polizza nuova alla vecchia, ogni rinnovo resta un indizio.
+
+---
+
+## 22/09/2026 — I sospesi e le modalità di pagamento (0.31.0)
+
+### 🟡 Scelte prese, e come tornare indietro
+
+- **Il vocabolario è una tabella, non sei liste.** Il `CHECK` a nove valori è
+  diventato una chiave esterna verso `iam_modalita_pagamento`. *Indietro:* il
+  blocco ROLLBACK della migrazione — ma **solo se nessuna riga usa una voce
+  nuova**, altrimenti il CHECK la rifiuterebbe e l'ALTER fallirebbe lasciando
+  la tabella senza vincolo. La migrazione dice come controllarlo.
+- **«Sospeso» qui vuol dire premio non ancora in casa**, ed è la parola di
+  Francesco. La linguetta di §32 si chiama «Incassi da accreditare» dal
+  20/09, quindi il nome era libero.
+- **Un sospeso è una rata APERTA**: nessun archivio nuovo, nessuna terza
+  tabella degli incassi. *Indietro:* `Contabilita.daIncassare`.
+- **I contanti non sono un sospeso**, e le rate senza modalità stanno in un
+  gruppo loro invece di finire sotto «Altro».
+- **La schermata dei sospesi non scrive**: «Incassa» porta alla Fase 2.
+- **Il caricamento da file resta**, sotto, dichiarato (§17, §33).
+
+### 🔴 Serve il tuo ok
+
+1. **Dichiara le voci che ti servono**: i collaboratori che tengono i premi, e
+   le voci che hai nel gestionale vecchio (Finanziamento…). Si fa in
+   Strumenti › Conti e causali › Modalità di pagamento.
+2. **380 rate su 418 non dicono la modalità**: finché è così i sospesi sono
+   quasi tutti «Da dichiarare».
+3. Le tre di prima: i 15 giorni sulle polizze senza tacito rinnovo, i tre
+   conti mancanti, la provvigione all'incasso o alla rimessa.
+
+### 📝 Fuori perimetro, annotato
+
+- Cambiare la voce di una rata **già incassata e già contabilizzata** dovrebbe
+  stornare il movimento: lo storno esiste (§59) ma non è agganciato a questo
+  cambio. Oggi non morde, perché le rate in gioco sono aperte.
+- `Flusso.MEZZI` resta una lista sua: traduce i codici della compagnia nei
+  nostri. Un codice tradotto verso una voce spenta non lo direbbe nessuno.

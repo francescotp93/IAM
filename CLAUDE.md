@@ -6969,3 +6969,135 @@ sua dichiarazione vale più di una mia deduzione: **non si è cambiato niente.**
 Ma le due letture portano a due elenchi diversi, e cambiarla direbbe a 77
 clienti che sono scoperti. Il motore accetta già `opz.giorni` e `opz.anticipo`:
 il giorno in cui la risposta arriva, è un parametro — non una riscrittura.
+
+---
+
+## 64. I sospesi: la modalità di pagamento può essere una persona (22/09/2026)
+
+> «Polizza emessa da ODDO FRANCESCO da 300 € mi dovrei trovare tra le modalità
+> di pagamento un nome di un Collaboratore. […] In una sezione apposita, che
+> chiamiamo appunto sospesi, dovrei trovare lì, divise in maniera chiara, Oddo
+> Francesco con tutte le eventuali polizze da andare ad incassare. […] Nella
+> parte gestionale devo avere la possibilità di inserire le voci di modalità di
+> pagamento, e decidere quali devono essere contabilizzate e quali devono
+> invece finire in un'apposita voce dei Sospesi.» — Francesco.
+
+| pezzo | dove |
+|---|---|
+| il vocabolario | `supabase/migrations/20260922j_modalita_pagamento.sql` (applicata) |
+| le regole | `Contabilita.vocabolario`, `Contabilita.daIncassare` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **100** (erano 93) |
+| dove si dichiarano le voci | Strumenti › Conti e causali › **Modalità di pagamento** (`cntMod*` in `iam/index.html`) |
+| la schermata dei sospesi | `#contab-panel-sospesi`, blocco `spr*` in `iam/index.html` |
+| le tendine del preventivatore | blocco `mez*` in `index.html` |
+| prove | `iam/verifica/sospesi-premi.test.mjs` — 13, `ui-test.mjs` — **510** |
+
+### La misura che ha deciso il lavoro
+
+| | |
+|---|---|
+| posti in cui era scritto il vocabolario | **sei** — due CHECK del database, `Contabilita.MEZZI`, `Flusso.MEZZI`, `TIT_MEZZI`, `PF_MEZZI` |
+| rate da incassare | **418**, per 98.488,84 € |
+| di cui **non dicono con che mezzo** | **380**, per 88.600,71 € |
+| collaboratori | 17, di cui 16 attivi |
+
+Una voce che si aggiunge toccando sei posti è una voce che nessuno aggiunge.
+
+### Il vincolo chiuso è diventato una chiave esterna
+
+Il `CHECK` a nove valori non ammetteva «Oddo Francesco»: non si trattava di
+allargarlo, perché l'elenco deve poter crescere da una schermata. Al suo posto
+una **chiave esterna** verso `iam_modalita_pagamento`, che fa di più — il
+codice deve esistere davvero — e con `on delete restrict` impedisce di
+cancellare una voce che ha delle righe appese. **«Non si cancella, si spegne»
+(§26) smette di essere una raccomandazione.**
+
+Due indici, perché senza, cancellare una voce leggerebbe per intero 3.205 rate
+e 4.019 polizze.
+
+### Le due regole del vocabolario
+
+1. **`contabilizza` dice se il denaro è in casa subito.** Non è una novità: è
+   il campo `immediato` che il motore ha da sempre — i contanti sono denaro in
+   mano, tutto il resto arriva dopo (§32). Qui diventa una cosa che si cambia
+   senza toccare il codice.
+2. **Una voce può essere una PERSONA, e allora non può essere «subito».** Se il
+   premio ce l'ha in mano lui, in cassa dell'agenzia non c'è. È un `CHECK`, non
+   un avviso della schermata: la schermata è una delle strade, non l'unica.
+
+E i collaboratori **non si seminano**: una persona diventa una modalità di
+pagamento quando qualcuno decide che tiene i premi, e quella è una decisione
+(§8.1, §19).
+
+### Che cos'è un sospeso, e le tre cose che non lo sono
+
+Un sospeso è una rata **emessa** il cui denaro non è ancora in casa, e la voce
+dice **chi lo tiene**. Non lo sono:
+
+- **una rata già incassata** — è un fatto avvenuto, non un lavoro; dove il
+  denaro sia poi finito lo dicono gli incassi da accreditare (§32);
+- **una rata in contanti** — si incassa allo sportello e va in cassa. È la
+  richiesta, testuale: *«le polizze pagate Contanti devono essere
+  contabilizzate contanti»*;
+- **una rata di cui non si sa la modalità** — quella non si mette sotto
+  nessuno. Sta in un gruppo suo, «Da dichiarare», perché attribuirla vorrebbe
+  dire **inventare a chi chiedere dei soldi**. Sono 380 su 418, ed è il lavoro
+  da fare.
+
+Tutte e tre **si contano e si dichiarano**: un elenco che le fa sparire non
+dice quante rate restano fuori e perché.
+
+### «Fermo da troppo» si misura su quella voce
+
+Il POS ci mette due giorni, un collaboratore trenta: lo stesso numero di giorni
+non vuol dire la stessa cosa. E al giorno che quella voce ci mette non è ancora
+in ritardo — dirlo il giorno stesso vorrebbe dire sollecitare un bonifico
+partito stamattina. Senza una data di riferimento **nessun giudizio si dà**:
+si contano i giorni e basta.
+
+### La schermata non scrive l'incasso
+
+«Scaricare» un sospeso è registrare l'incasso, e quella schermata esiste già
+(Fase 2, §59): si sceglie il conto e anche **un mezzo diverso** da quello
+dichiarato dalla compagnia — che è la richiesta. Rifare qui la scrittura
+sarebbe la seconda regola su come nasce un movimento. C'è una prova che vieta
+a quel blocco di scrivere su `quote_titoli`, `iam_movimenti` e `iam_incassi`.
+
+### Il campo si cerca scrivendo, e non inventa
+
+Con nove voci un `prompt` numerato bastava; con i collaboratori dentro
+diventano ventisei, e nessuno conta fino a ventisei. Adesso è un `input` con un
+`datalist` — nativo, funziona sul telefono, nessun componente nuovo da
+mantenere — e **il codice sta in un campo nascosto**: quello che si scrive è il
+nome, e un nome che non corrisponde a nessuna voce **non diventa un codice
+inventato** (§8.1). Il campo diventa rosso e il salvataggio lo dice.
+
+E c'è un **ripiego**: finché la tabella non è stata letta, o se la lettura non
+riesce, si vedono le nove voci di sempre. *Una tendina vuota è peggio di una
+tendina corta.*
+
+### Una sostituzione globale che ha toccato anche il ripiego
+
+Portando le etichette sul vocabolario ho sostituito le nove occorrenze di
+`TIT_MEZZI[…]` con una regex. Due di quelle stavano **dentro il ripiego**, che
+per definizione non deve passare dal vocabolario: `mezNome` ha cominciato a
+chiamare se stessa all'infinito. È §12 in un'altra forma — *una sostituzione
+globale non sa distinguere la regola dal suo ripiego* — e l'ha presa il
+controllo del file, non la rilettura.
+
+### Cosa resta aperto
+
+- **Nessuna voce è ancora una persona**: la tabella nasce con le nove di
+  sempre. Il primo collaboratore lo dichiari tu, ed è il punto — il sistema ha
+  finito il suo lavoro quando ha chiesto.
+- **380 rate su 418 non dicono la modalità.** Finché è così, il gruppo «Da
+  dichiarare» è quasi tutto l'elenco. Si sistemano dal portafoglio o dai
+  titoli, una alla volta o cambiando la voce sulla polizza.
+- **Cambiare la voce non toglie ancora un movimento dalla cassa**: oggi le rate
+  di cui parliamo sono APERTE (non incassate), quindi in cassa non sono mai
+  entrate. Il giorno in cui si cambierà la voce di una rata **già incassata e
+  già contabilizzata**, il movimento va stornato — e lo storno esiste (§59),
+  ma non è ancora agganciato a questo cambio.
+- **`Flusso.MEZZI` resta una lista sua**: traduce i codici della compagnia nei
+  nostri, ed è un'altra domanda. Ma adesso che il vocabolario può crescere, un
+  codice tradotto verso una voce spenta non se ne accorgerebbe nessuno.

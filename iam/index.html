@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.30.1">
-<meta name="app-versione-nome" content="Scadenzario · le correzioni di una rilettura ostile">
+<meta name="app-versione" content="0.31.0">
+<meta name="app-versione-nome" content="Sospesi · la modalità di pagamento può essere una persona">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1901,6 +1901,28 @@ input[type=file]{display:none;}
 
   <!-- SUB: Sospesi -->
   <div id="contab-panel-sospesi" class="ct-off">
+    <!-- ══ I SOSPESI DAL NOSTRO PORTAFOGLIO (22/09/2026) ══════════════════
+         Fino a oggi questa schermata leggeva SOLO un file Excel caricato a
+         mano — cioè l'export di un altro gestionale. I premi che qualcuno
+         tiene ce li abbiamo: sono le rate aperte, e la voce di pagamento dice
+         chi li tiene. Il caricamento da file resta sotto, dichiarato, finché
+         i due numeri non saranno stati confrontati (§17, §33). -->
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>Sospesi</h1>
+        <div class="subtitle">I premi emessi che non sono ancora in casa, divisi per chi li tiene.</div>
+      </div>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="sprCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+        <button class="d-btn" type="button" onclick="goTab('conti');cntTab('modalita')"><i class="ti ti-settings"></i> Le voci</button>
+      </div>
+    </section>
+    <section class="cnt-somma" id="spr-somma"></section>
+    <section id="spr-lista" style="padding:0 16px"><div class="cl-sub">Carico i sospesi…</div></section>
+    <div style="height:18px"></div>
+    <div class="slbl">Sospesi caricati da file</div>
+    <div class="cl-sub" style="padding:0 16px 10px">Il file della compagnia, come prima. Resta finché i suoi numeri non saranno stati confrontati con quelli qui sopra.</div>
     <!-- I due caricamenti stavano in una linguetta loro, «Carica documenti».
          Il brief chiede di toglierla, e va tolta — ma cancellarli avrebbe
          spento QUATTRO schermate: questi due file sono l'unica strada da cui
@@ -4132,6 +4154,7 @@ input[type=file]{display:none;}
   <div class="ptabs">
     <button class="ptab act" id="cntt-conti" onclick="cntTab('conti')">Conti e casse</button>
     <button class="ptab" id="cntt-causali" onclick="cntTab('causali')">Causali</button>
+    <button class="ptab" id="cntt-modalita" onclick="cntTab('modalita')">Modalità di pagamento</button>
   </div>
 
   <div id="cntp-conti">
@@ -4145,6 +4168,13 @@ input[type=file]{display:none;}
   </div>
   <div id="cntp-causali" style="display:none">
     <section class="cnt-lista" id="cnt-causali"><div class="cl-sub">Carico le causali…</div></section>
+  </div>
+  <!-- LE VOCI DELLA MODALITÀ DI PAGAMENTO. Una voce può essere un
+       COLLABORATORE: allora il premio ce l'ha lui e resta un sospeso finché
+       non lo porta. `contabilizza` dice se il denaro è in casa subito
+       (contanti) o arriva dopo. -->
+  <div id="cntp-modalita" style="display:none">
+    <section class="cnt-lista" id="cnt-modalita"><div class="cl-sub">Carico le modalità…</div></section>
   </div>
 
   <!-- Una sola finestra per tutte e due le schede: il contenuto lo scrive il
@@ -5507,6 +5537,9 @@ async function ccpTogli(compagnia, codice) {
    di una riga. */
 let CNT_CONTI = [];
 let CNT_CAUSALI = [];
+/* `var` e non `let`: le prove iniettano uno stato finto su `window` (§17). */
+var CNT_MODALITA = [];
+var CNT_MOD_ERR = null;
 let CNT_VISTA = 'conti';
 /* I movimenti: lista vuota finché la M3 non li porta. È una variabile e non
    un letterale sparso: quando la tabella arriva si riempie in un posto solo. */
@@ -5526,15 +5559,21 @@ let CNT_INTEST_ERR = null;   /* il motivo, quando non si e' potuto leggere */
 
 function cntPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
 
+const CNT_SCHEDE = [
+  { k: 'conti',    nuovo: 'Nuovo conto' },
+  { k: 'causali',  nuovo: 'Nuova causale' },
+  { k: 'modalita', nuovo: 'Nuova modalità' }
+];
 function cntTab(v) {
   CNT_VISTA = v;
-  document.getElementById('cntt-conti')?.classList.toggle('act', v === 'conti');
-  document.getElementById('cntt-causali')?.classList.toggle('act', v === 'causali');
-  const a = document.getElementById('cntp-conti'), b = document.getElementById('cntp-causali');
-  if (a) a.style.display = v === 'conti' ? '' : 'none';
-  if (b) b.style.display = v === 'causali' ? '' : 'none';
+  CNT_SCHEDE.forEach(function (x) {
+    document.getElementById('cntt-' + x.k)?.classList.toggle('act', v === x.k);
+    const p = document.getElementById('cntp-' + x.k);
+    if (p) p.style.display = v === x.k ? '' : 'none';
+  });
   const n = document.getElementById('cnt-nuovo');
-  if (n) n.innerHTML = '<i class="ti ti-plus"></i> ' + (v === 'conti' ? 'Nuovo conto' : 'Nuova causale');
+  const s = CNT_SCHEDE.find(x => x.k === v) || CNT_SCHEDE[0];
+  if (n) n.innerHTML = '<i class="ti ti-plus"></i> ' + s.nuovo;
 }
 
 async function cntCarica(forza) {
@@ -5561,6 +5600,10 @@ async function cntCarica(forza) {
        usabile. Metterle nella Promise.all di sopra vorrebbe dire spegnere
        conti e causali per una tendina (§35). */
     cntIntestazioni();
+    /* Le modalità a parte, come le intestazioni: se questa lettura non riesce
+       conti e causali restano usabili, e la scheda lo dice col suo nome
+       (§35). */
+    cntModCarica();
   } catch (e) {
     /* «Non si è potuto leggere» non è «non ce ne sono» (§12, §18): un elenco
        vuoto su un errore farebbe credere che l'agenzia non abbia conti.
@@ -5597,6 +5640,7 @@ async function cntIntestazioni() {
 
 function cntRender() {
   const puo = cntPuoScrivere();
+  cntRenderModalita(puo);
   const nuovo = document.getElementById('cnt-nuovo');
   if (nuovo) nuovo.style.display = puo ? '' : 'none';
   cntRenderSomma();
@@ -5781,6 +5825,7 @@ function cntApri(id) {
   if (!cntPuoScrivere()) return;
   const ov = document.getElementById('cnt-ov'), box = document.getElementById('cnt-box');
   if (!ov || !box) return;
+  if (CNT_VISTA === 'modalita') { cntModApri(id || null); return; }
   box.innerHTML = CNT_VISTA === 'conti' ? cntFormConto(id) : cntFormCausale(id);
   ov.style.display = 'flex';
   /* «Chi ha cambiato la natura di questo conto» e «chi ha spento questa
@@ -5790,6 +5835,336 @@ function cntApri(id) {
     const riga = CNT_VISTA === 'conti' ? cntTrova(CNT_CONTI, id) : cntTrova(CNT_CAUSALI, id);
     regInstalla('cnt-storia', CNT_VISTA === 'conti' ? 'conto' : 'causale', id,
       riga ? { creato_il: riga.creato_il } : null);
+  }
+}
+
+/* ═══ I SOSPESI: I PREMI CHE QUALCUNO TIENE (22/09/2026) ═══════════════════
+   Le REGOLE stanno nel motore (`Contabilita.daIncassare`) e si provano in
+   Node (§5): qui c'è la lettura e la resa. */
+var SPR_RATE = [];
+var SPR_MODALITA = [];
+var SPR_ESITO = null;
+var SPR_ERR = null;
+var SPR_PARZIALE = false;
+var SPR_APERTI = {};      /* quale gruppo è aperto */
+var SPR_GIRO = 0;         /* due caricamenti insieme non si sommano (§63-bis) */
+
+function sprOggi() { return typeof cntOggiIso === 'function' ? cntOggiIso() : null; }
+
+async function sprCarica(forza) {
+  if (!db) return;
+  var mio = ++SPR_GIRO;
+  var box = document.getElementById('spr-lista');
+  if (forza && box) box.innerHTML = '<div class="cl-sub">Carico i sospesi…</div>';
+  var err = null, parziale = false, rate = [], mod = [];
+  try {
+    /* Le rate con la loro polizza in una lettura sola: senza il numero e il
+       cliente, un elenco di importi non si può lavorare. Le politiche valgono
+       su tutte e due le tabelle. */
+    var r = await cntTutte(function (da, a) {
+      return db.from('quote_titoli')
+        .select('id,polizza_id,tipo,stato,mezzo_pagamento,importo_lordo,data_decorrenza,' +
+                'quote_polizze(numero_polizza,cliente,cliente_id,compagnia)')
+        .eq('stato', 'aperto').order('id').range(da, a);
+    });
+    rate = (r.righe || []).map(function (t) {
+      var p = t.quote_polizze || {};
+      return {
+        id: t.id, polizza_id: t.polizza_id, tipo: t.tipo, stato: t.stato,
+        mezzo_pagamento: t.mezzo_pagamento, importo_lordo: t.importo_lordo,
+        data_decorrenza: t.data_decorrenza,
+        numero_polizza: p.numero_polizza || null, cliente: p.cliente || null,
+        cliente_id: p.cliente_id || null, compagnia: p.compagnia || null
+      };
+    });
+    if (r.parziale) parziale = true;
+    var m = await db.from('iam_modalita_pagamento').select('*').order('ordine');
+    if (m.error) throw m.error;
+    mod = m.data || [];
+  } catch (e) {
+    err = e.message || String(e);
+  }
+  /* Se nel frattempo ne è partito un altro, questo non ha più niente da dire
+     (§63-bis): scrivere adesso vorrebbe dire mettere in schermata dei dati
+     più vecchi di quelli che stanno arrivando. */
+  if (mio !== SPR_GIRO) return;
+  SPR_ERR = err; SPR_PARZIALE = parziale; SPR_RATE = rate; SPR_MODALITA = mod;
+  SPR_ESITO = err ? null : Contabilita.daIncassare(rate, mod, { oggi: sprOggi() });
+  sprRender();
+}
+
+function sprGruppo(k) { SPR_APERTI[k] = !SPR_APERTI[k]; sprRender(); }
+
+function sprRender() {
+  var box = document.getElementById('spr-lista');
+  var somma = document.getElementById('spr-somma');
+  if (!box) return;
+  if (SPR_ERR) {
+    /* «Non si è potuto leggere» non è «non ce n'è» (§12, §18): un elenco
+       vuoto qui direbbe che non c'è niente da incassare. */
+    box.innerHTML = '<div class="cnt-err">Non riesco a leggere i sospesi.<br><small>'
+      + esc(SPR_ERR) + ' — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerli.</small></div>';
+    if (somma) somma.innerHTML = '';
+    return;
+  }
+  var e = SPR_ESITO;
+  if (!e) { box.innerHTML = '<div class="cl-sub">Carico i sospesi…</div>'; return; }
+
+  if (somma) {
+    somma.innerHTML = ''
+      + sprCard('Sospesi', e.righe + (e.righe === 1 ? ' rata' : ' rate'), pfEuro(e.totale), '')
+      + sprCard('Fermi da troppo', e.in_ritardo + (e.in_ritardo === 1 ? ' rata' : ' rate'), pfEuro(e.totale_ritardo), e.in_ritardo ? 'urg' : '')
+      + sprCard('Da dichiarare', e.da_dichiarare + (e.da_dichiarare === 1 ? ' rata' : ' rate'), pfEuro(e.totale_da_dichiarare), e.da_dichiarare ? 'avv' : '')
+      + sprCard('Incassate in contanti', e.escluse_contanti + (e.escluse_contanti === 1 ? ' rata' : ' rate'), pfEuro(e.totale_contanti), '');
+  }
+
+  if (!e.gruppi.length) {
+    box.innerHTML = '<div class="cl-sub">Nessuna rata da incassare.</div>';
+    return;
+  }
+  box.innerHTML =
+    (SPR_PARZIALE ? '<div class="cnt-err">La lettura si è fermata prima della fine: questi numeri sono in DIFETTO.</div>' : '')
+    + (e.escluse_contanti
+      ? '<div class="cl-sub" style="padding:0 0 10px"><b>' + e.escluse_contanti + '</b> rate in contanti non stanno qui: '
+        + 'i contanti si incassano allo sportello e vanno in cassa. Se una la tiene qualcuno, cambiale la voce.</div>'
+      : '')
+    + e.gruppi.map(function (g) {
+      var aperto = !!SPR_APERTI[g.voce || '(vuoto)'];
+      var icona = g.tipo === 'collaboratore' ? 'ti-user'
+        : g.tipo === 'da-dichiarare' ? 'ti-help-circle' : 'ti-credit-card';
+      return '<div class="cl-r" style="flex-direction:column;align-items:stretch">'
+        + '<div style="display:flex;gap:10px;align-items:center;cursor:pointer" onclick="sprGruppo(\'' + esc(g.voce || '(vuoto)') + '\')">'
+        + '<i class="ti ' + icona + '"></i>'
+        + '<div class="cl-main"><div class="cl-nome">' + esc(g.etichetta) + ' <b>' + g.n + '</b>'
+        + (g.in_ritardo ? ' <span class="cnt-pill">' + g.in_ritardo + ' fermi da troppo</span>' : '')
+        + (g.tipo === 'da-dichiarare' ? ' <span class="cnt-pill">nessuno le tiene: non si sa</span>' : '')
+        + '</div>'
+        + (g.senza_importo ? '<div class="cl-sub">' + g.senza_importo + ' senza importo dichiarato</div>' : '')
+        + '</div>'
+        + '<div style="font-weight:800">' + pfEuro(g.totale) + '</div>'
+        + '<i class="ti ' + (aperto ? 'ti-chevron-up' : 'ti-chevron-down') + '"></i></div>'
+        + (aperto ? sprRighe(g) : '')
+        + '</div>';
+    }).join('');
+}
+
+function sprCard(t, n, euro, cls) {
+  return '<div class="cnt-card ' + cls + '"><div class="cnt-card-t">' + esc(t) + '</div>'
+    + '<div class="cnt-card-v">' + esc(euro) + '</div>'
+    + '<div class="cnt-card-s">' + esc(n) + '</div></div>';
+}
+
+function sprRighe(g) {
+  return '<div style="margin-top:8px;border-top:1px solid var(--bord2);padding-top:8px">'
+    + g.righe.map(function (r) {
+      return '<div style="display:flex;gap:10px;align-items:center;padding:5px 0;flex-wrap:wrap">'
+        + '<div style="flex:1;min-width:180px">'
+        + '<div style="font-weight:600">' + esc(r.cliente || '—') + '</div>'
+        + '<div class="cl-sub">' + (r.numero_polizza ? esc(r.numero_polizza) + ' · ' : '')
+        + (r.compagnia ? esc(r.compagnia) + ' · ' : '')
+        + (r.data ? 'dal ' + pfData(r.data) : 'senza data')
+        + (r.giorni_fermo != null ? ' · fermo da ' + r.giorni_fermo + ' gg' : '')
+        + '</div></div>'
+        + '<div style="font-weight:700' + (r.in_ritardo ? ';color:#c0392b' : '') + '">'
+        + (r.importo == null ? '<span title="Un importo che non c\'è non vale zero">—</span>' : pfEuro(r.importo))
+        + '</div>'
+        + '<button class="d-btn" type="button" onclick="sprIncassa(\'' + esc(r.numero_polizza || '') + '\')">Incassa</button>'
+        + '</div>';
+    }).join('') + '</div>';
+}
+
+/* «Scaricare» un sospeso è registrare l'incasso, e quella schermata esiste
+   già (Fase 2): si sceglie il conto e anche un mezzo DIVERSO da quello
+   dichiarato — è la richiesta testuale. Rifare qui la stessa scrittura
+   vorrebbe dire due regole su come nasce un movimento. */
+function sprIncassa(numero) {
+  selContabTab('incassa');
+  var q = document.getElementById('inca-q');
+  if (q && numero) { q.value = numero; if (typeof incaCerca === 'function') incaCerca(); }
+}
+
+/* ═══ LE MODALITÀ DI PAGAMENTO (22/09/2026) ════════════════════════════════
+   Il vocabolario sta in `iam_modalita_pagamento` e non più in sei posti nel
+   codice. Le regole sono nel motore (`Contabilita.vocabolario`), qui c'è la
+   lettura e il modulo. */
+async function cntModCarica() {
+  const box = document.getElementById('cnt-modalita');
+  if (!db) return;
+  try {
+    const { data, error } = await db.from('iam_modalita_pagamento').select('*').order('ordine').order('nome');
+    if (error) throw error;
+    CNT_MODALITA = data || [];
+    CNT_MOD_ERR = null;
+  } catch (e) {
+    /* Non si svuota quello che c'era: «non si è potuto leggere» non è «non ce
+       ne sono» (§12, §18). */
+    CNT_MOD_ERR = e.message || String(e);
+  }
+  cntRenderModalita(cntPuoScrivere());
+  if (box) box.scrollTop = 0;
+}
+
+function cntNomeCollab(id) {
+  const p = (CNT_PERSONE || []).find(x => x.id === id);
+  return p ? (typeof colNome === 'function' ? colNome(p) : ((p.cognome || '') + ' ' + (p.nome || '')).trim()) : null;
+}
+
+function cntRenderModalita(puo) {
+  const box = document.getElementById('cnt-modalita');
+  if (!box) return;
+  if (CNT_MOD_ERR) {
+    box.innerHTML = `<div class="cnt-err">Non riesco a leggere le modalità di pagamento.<br>
+      <small>${esc(CNT_MOD_ERR)} — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerle.</small></div>`;
+    return;
+  }
+  if (!CNT_MODALITA.length) {
+    box.innerHTML = '<div class="cl-sub">Nessuna modalità di pagamento.</div>';
+    return;
+  }
+  const collab = CNT_MODALITA.filter(m => m.collaboratore_id).length;
+  box.innerHTML = `
+    <div class="cl-sub" style="padding:0 0 10px">
+      Una voce può essere un <b>collaboratore</b>: allora il premio ce l'ha lui, e resta fra i
+      sospesi finché non lo porta. «In casa subito» sono i contanti — il denaro è già dentro.
+      ${collab ? `<b>${collab}</b> voc${collab === 1 ? 'e è una persona' : 'i sono persone'}.` : 'Nessuna voce è ancora una persona.'}
+    </div>` + CNT_MODALITA.map(m => {
+      const nome = m.collaboratore_id ? (cntNomeCollab(m.collaboratore_id) || m.nome) : m.nome;
+      const sub = [
+        m.contabilizza === 'subito' ? 'in casa subito' : 'va nei sospesi',
+        m.giorni_attesi != null ? `attesa ${m.giorni_attesi} gg` : 'attesa non dichiarata',
+        m.di_sistema ? 'di sistema' : null
+      ].filter(Boolean).join(' · ');
+      return `<div class="cl-r${m.attiva === false ? ' cl-off' : ''}">
+        <div class="cl-main">
+          <div class="cl-nome">${m.collaboratore_id ? '<i class="ti ti-user"></i> ' : ''}${esc(nome)}
+            ${m.attiva === false ? '<span class="cnt-pill">spenta</span>' : ''}</div>
+          <div class="cl-sub">${esc(sub)}</div>
+        </div>
+        ${puo ? `<button class="d-btn" type="button" onclick="cntModApri('${esc(m.codice)}')">Modifica</button>` : ''}
+      </div>`;
+    }).join('');
+}
+
+function cntModApri(codice) {
+  if (!cntPuoScrivere()) return;
+  const ov = document.getElementById('cnt-ov'), box = document.getElementById('cnt-box');
+  if (!ov || !box) return;
+  box.innerHTML = cntFormModalita(codice);
+  ov.style.display = 'flex';
+}
+
+function cntFormModalita(codice) {
+  const m = (CNT_MODALITA || []).find(x => x.codice === codice)
+    || { contabilizza: 'sospeso', attiva: true, ordine: 100 };
+  const nuovo = !codice;
+  /* I collaboratori arrivano da `colCarica`, la fonte unica di tutta la casa
+     (§48): un secondo elenco qui sarebbero due liste delle stesse persone. */
+  const gia = new Set(CNT_MODALITA.filter(x => x.collaboratore_id && x.codice !== codice).map(x => x.collaboratore_id));
+  const persone = (CNT_PERSONE || []).filter(p => !gia.has(p.id));
+  return `
+    <div style="padding:18px 18px 0">
+      <div style="font-size:17px;font-weight:800">${nuovo ? 'Nuova modalità di pagamento' : 'Modifica modalità'}</div>
+      <div class="cl-sub" style="margin-top:3px">Una voce dice CHI tiene il premio finché non arriva in agenzia.</div>
+    </div>
+    <div class="modal-body" style="padding:14px 18px">
+      ${nuovo ? `
+      <label class="cl-lbl">Che voce è</label>
+      <select id="cnt-m-tipo" onchange="cntModTipo()">
+        <option value="mezzo">Un modo di pagare (POS, finanziamento…)</option>
+        <option value="collab">Un collaboratore che tiene il premio</option>
+      </select>
+      <div id="cnt-m-collab-riga" style="display:none;margin-top:10px">
+        <label class="cl-lbl">Chi</label>
+        <select id="cnt-m-collab" onchange="cntModTipo()">
+          <option value="">— scegli —</option>
+          ${persone.map(p => `<option value="${esc(p.id)}">${esc(typeof colNome === 'function' ? colNome(p) : p.id)}</option>`).join('')}
+        </select>
+        ${persone.length ? '' : '<div class="cl-sub">Tutti i collaboratori hanno già una voce.</div>'}
+      </div>` : ''}
+      <label class="cl-lbl" style="margin-top:10px">Nome</label>
+      <input id="cnt-m-nome" type="text" value="${esc(m.nome || '')}" placeholder="come lo chiami tu">
+      <label class="cl-lbl" style="margin-top:10px">Quando entra in contabilità</label>
+      <select id="cnt-m-contab">
+        <option value="sospeso" ${m.contabilizza !== 'subito' ? 'selected' : ''}>Va nei sospesi, finché non lo scarichi</option>
+        <option value="subito" ${m.contabilizza === 'subito' ? 'selected' : ''}>Subito, il denaro è già in casa (contanti)</option>
+      </select>
+      <div class="cl-sub" style="margin-top:4px">Un collaboratore non può essere «subito»: se il premio ce l'ha lui, in cassa non c'è.</div>
+      <label class="cl-lbl" style="margin-top:10px">Dopo quanti giorni è troppo</label>
+      <input id="cnt-m-giorni" type="number" min="0" value="${m.giorni_attesi != null ? m.giorni_attesi : ''}" placeholder="lascia vuoto se non si sa">
+      <div class="cl-sub" style="margin-top:4px">Vuoto vuol dire che nessun giudizio si dà: si contano i giorni e basta.</div>
+      <label class="cl-lbl" style="margin-top:10px"><input type="checkbox" id="cnt-m-attiva" ${m.attiva !== false ? 'checked' : ''}> Attiva</label>
+      <div class="cl-sub">Una voce spenta esce dalle tendine e resta su tutto quello che ci è già passato. ${m.di_sistema ? 'Questa è di sistema: si rinomina e si spegne, non si cancella.' : ''}</div>
+      <div id="cnt-m-msg"></div>
+    </div>
+    <div class="modal-foot" style="padding:12px 18px 18px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="d-btn" type="button" onclick="cntChiudi()">Annulla</button>
+      <button class="d-btn primario" type="button" onclick="cntModSalva('${esc(codice || '')}')">Salva</button>
+    </div>`;
+}
+
+function cntModTipo() {
+  const t = (document.getElementById('cnt-m-tipo') || {}).value;
+  const riga = document.getElementById('cnt-m-collab-riga');
+  if (riga) riga.style.display = t === 'collab' ? '' : 'none';
+  const sel = document.getElementById('cnt-m-contab');
+  if (sel && t === 'collab') { sel.value = 'sospeso'; sel.disabled = true; }
+  else if (sel) sel.disabled = false;
+  /* Scelta la persona, il nome si propone da sé: lo si può correggere, ma
+     nessuno deve riscrivere a mano un nome che il registro già conosce. */
+  const chi = (document.getElementById('cnt-m-collab') || {}).value;
+  const nome = document.getElementById('cnt-m-nome');
+  if (t === 'collab' && chi && nome && !nome.value.trim()) nome.value = cntNomeCollab(chi) || '';
+}
+
+/* Il codice è la chiave STABILE a cui puntano 6.854 righe fra polizze e rate:
+   si genera una volta e non si tocca mai più (§26, sulle causali). Il nome si
+   corregge. */
+function cntModCodice(nome, collab) {
+  const base = (collab ? 'col_' : '') + String(nome || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+  let k = base || 'voce';
+  const presi = new Set((CNT_MODALITA || []).map(x => x.codice));
+  let i = 2;
+  while (presi.has(k)) { k = base + '_' + i; i++; }
+  return k;
+}
+
+async function cntModSalva(codice) {
+  const msg = document.getElementById('cnt-m-msg');
+  const v = id => (document.getElementById(id) || {}).value;
+  const nuovo = !codice;
+  const tipo = nuovo ? v('cnt-m-tipo') : null;
+  const collab = (nuovo && tipo === 'collab') ? (v('cnt-m-collab') || null) : undefined;
+  const nome = (v('cnt-m-nome') || '').trim();
+  if (!nome) { if (msg) msg.innerHTML = '<div class="cnt-err">Il nome serve: è quello che si legge nelle tendine.</div>'; return; }
+  if (nuovo && tipo === 'collab' && !collab) {
+    if (msg) msg.innerHTML = '<div class="cnt-err">Scegli chi tiene il premio.</div>'; return;
+  }
+  const gg = (v('cnt-m-giorni') || '').trim();
+  const riga = {
+    nome: nome,
+    contabilizza: (nuovo && tipo === 'collab') ? 'sospeso' : (v('cnt-m-contab') || 'sospeso'),
+    giorni_attesi: gg === '' ? null : Number(gg),
+    attiva: !!(document.getElementById('cnt-m-attiva') || {}).checked
+  };
+  if (nuovo) { riga.codice = cntModCodice(nome, !!collab); if (collab) riga.collaboratore_id = collab; }
+  try {
+    /* Si chiede al database quali righe ha toccato: zero righe non è un
+       successo silenzioso (BUG 1, §47). */
+    const q = nuovo
+      ? db.from('iam_modalita_pagamento').insert(riga).select('codice')
+      : db.from('iam_modalita_pagamento').update(riga).eq('codice', codice).select('codice');
+    const { data, error } = await q;
+    if (error) throw error;
+    if (!data || !data.length) throw new Error('Nessuna riga toccata: forse non hai i permessi per scrivere qui.');
+    if (typeof logMovimento === 'function') {
+      logMovimento(nuovo ? 'modalita_creata' : 'modalita_modificata', 'modalita_pagamento', nome);
+    }
+    cntChiudi();
+    await cntModCarica();
+  } catch (e) {
+    if (msg) msg.innerHTML = `<div class="cnt-err">${esc(e.message || e)}</div>`;
   }
 }
 
@@ -10656,6 +11031,7 @@ function selContabTab(sub) {
   if (sub==='cruscotto') cruCarica();
   if (sub==='incassa') incaApri();
   if (sub==='recuperi') recApri();
+  if (sub==='sospesi') sprCarica();
   /* La contabilità ricostruita (M5) sta SOPRA quattro schermate che esistevano
      già: la giornata, le anomalie, lo storico e il conto. Una lettura sola le
      serve tutte e quattro, e non si ripete se è già stata fatta. */

@@ -151,7 +151,7 @@ prova('aprendo una voce di Contabilità si vede quella e basta', () => {
       }
     },
     setUltimoTab() {}, buildStorico() {}, loadContoDB() {},
-    pntCarica() {}, incCarica() {}, gioCarica() {}
+    pntCarica() {}, incCarica() {}, gioCarica() {}, sprCarica() {}
   };
   vm.createContext(ctx);
   const i = H.indexOf('function selContabTab');

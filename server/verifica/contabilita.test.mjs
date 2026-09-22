@@ -1855,6 +1855,130 @@ prova('Fase 4-bis · una rata incassata dalla Fase 2 non risulta «mai entrata i
   return 'tre strade, e lo storno riapre';
 });
 
+/* ═══ I SOSPESI: I PREMI CHE QUALCUNO TIENE (22/09/2026) ═══════════════════ */
+
+const VOC = [
+  { codice: 'contante', nome: 'Contanti', contabilizza: 'subito', giorni_attesi: 0, ordine: 10, di_sistema: true },
+  { codice: 'pos', nome: 'POS', contabilizza: 'sospeso', giorni_attesi: 2, ordine: 20, di_sistema: true },
+  { codice: 'bonifico', nome: 'Bonifico', contabilizza: 'sospeso', giorni_attesi: 3, ordine: 30, di_sistema: true },
+  { codice: 'col_oddo', nome: 'ODDO FRANCESCO', contabilizza: 'sospeso', giorni_attesi: 30,
+    ordine: 100, collaboratore_id: 'col-1' }
+];
+const RATE = [
+  { id: 't1', stato: 'aperto', mezzo_pagamento: 'col_oddo', importo_lordo: 300, data_decorrenza: '2026-06-26' },
+  { id: 't2', stato: 'aperto', mezzo_pagamento: 'col_oddo', importo_lordo: 366.27, data_decorrenza: '2026-09-20' },
+  { id: 't3', stato: 'aperto', mezzo_pagamento: 'pos', importo_lordo: 110, data_decorrenza: '2026-09-20' },
+  { id: 't4', stato: 'aperto', mezzo_pagamento: 'contante', importo_lordo: 50, data_decorrenza: '2026-09-20' },
+  { id: 't5', stato: 'aperto', mezzo_pagamento: null, importo_lordo: 70, data_decorrenza: '2026-09-01' },
+  { id: 't6', stato: 'incassato', mezzo_pagamento: 'pos', importo_lordo: 999, data_decorrenza: '2026-01-01' },
+  { id: 't7', stato: 'aperto', mezzo_pagamento: 'bonifico', importo_lordo: null, data_decorrenza: '2026-09-01' }
+];
+
+prova('LA VOCE PUÒ ESSERE UNA PERSONA, e allora i suoi premi stanno insieme', () => {
+  /* La richiesta, testuale: «dovrei trovare lì, divise in maniera chiara,
+     Oddo Francesco con tutte le eventuali polizze da andare ad incassare». */
+  const r = C.daIncassare(RATE, VOC, { oggi: '2026-09-22' });
+  const g = r.gruppi.find(x => x.etichetta === 'ODDO FRANCESCO');
+  deve(g, 'il collaboratore non ha un gruppo suo: ' + r.gruppi.map(x => x.etichetta).join(', '));
+  deve(g.tipo === 'collaboratore' && g.collaboratore_id === 'col-1', 'non si sa che è una persona');
+  deve(g.n === 2 && g.totale === 666.27, 'gruppo: ' + g.n + ' / ' + g.totale);
+  /* In cima chi pesa di più: una lista che mette per primi i gruppi da due
+     righe fa scorrere per niente. */
+  deve(r.gruppi[0].etichetta === 'ODDO FRANCESCO', 'in cima: ' + r.gruppi[0].etichetta);
+  return '2 rate per 666,27 €, e in cima';
+});
+
+prova('UNA RATA INCASSATA NON È UN SOSPESO, e i CONTANTI nemmeno', () => {
+  /* Una rata incassata è un fatto avvenuto, non un lavoro. I contanti sono
+     denaro in mano: si incassano allo sportello e vanno in cassa — è la
+     richiesta testuale «le polizze pagate Contanti devono essere
+     contabilizzate contanti». */
+  const r = C.daIncassare(RATE, VOC, { oggi: '2026-09-22' });
+  const dentro = r.gruppi.reduce((a, g) => a.concat(g.righe.map(x => x.id)), []);
+  deve(dentro.indexOf('t6') < 0, 'una rata già incassata è finita fra i sospesi');
+  deve(dentro.indexOf('t4') < 0, 'i contanti sono finiti fra i sospesi');
+  /* Ma non spariscono: si contano, altrimenti nessuno sa che cosa resta fuori. */
+  deve(r.escluse_contanti === 1 && r.totale_contanti === 50, 'contanti non dichiarati: ' + r.escluse_contanti);
+  return '1 incassata e 1 in contanti fuori, e dichiarate';
+});
+
+prova('UNA RATA SENZA MODALITÀ non si attribuisce a nessuno', () => {
+  /* Attribuirla vorrebbe dire inventare a chi chiedere dei soldi (§8.1).
+     Misurato sul portafoglio vero: sono 380 rate su 418, per 88.600,71 € —
+     cioè quasi tutto, ed è il lavoro da fare. */
+  const r = C.daIncassare(RATE, VOC, { oggi: '2026-09-22' });
+  const g = r.gruppi.find(x => x.tipo === 'da-dichiarare');
+  deve(g && g.n === 1, 'le rate senza modalità non hanno un gruppo loro');
+  deve(r.da_dichiarare === 1 && r.totale_da_dichiarare === 70, 'da dichiarare: ' + r.da_dichiarare);
+  deve(!r.gruppi.some(x => x.tipo !== 'da-dichiarare' && x.righe.some(y => y.id === 't5')),
+    'una rata senza modalità è finita sotto una voce');
+  return '1 rata in un gruppo suo, con il suo nome';
+});
+
+prova('una rata sta in UN gruppo solo, e i totali tornano', () => {
+  const r = C.daIncassare(RATE, VOC, { oggi: '2026-09-22' });
+  const ids = r.gruppi.reduce((a, g) => a.concat(g.righe.map(x => x.id)), []);
+  deve(new Set(ids).size === ids.length, 'una rata compare in due gruppi: ' + ids.join(','));
+  deve(ids.length === r.righe, 'il conteggio non torna con le righe: ' + ids.length + ' vs ' + r.righe);
+  const somma = r.gruppi.reduce((a, g) => a + g.totale, 0);
+  deve(Math.round(somma * 100) === Math.round(r.totale * 100),
+    'la somma dei gruppi non torna col totale: ' + somma + ' vs ' + r.totale);
+  /* Un importo che non c'è non vale zero (§36, §42). */
+  deve(r.senza_importo === 1, 'la rata senza importo non è contata a parte: ' + r.senza_importo);
+  return '4 righe, 846,27 €, 1 senza importo';
+});
+
+prova('«fermo da troppo» si misura sui giorni che quella voce ci mette', () => {
+  /* Il POS ci mette due giorni, un collaboratore trenta: lo stesso numero di
+     giorni non vuol dire la stessa cosa. */
+  const r = C.daIncassare(RATE, VOC, { oggi: '2026-09-22' });
+  const oddo = r.gruppi.find(x => x.etichetta === 'ODDO FRANCESCO');
+  const pos = r.gruppi.find(x => x.etichetta === 'POS');
+  deve(oddo.in_ritardo === 1, 'a 88 giorni una rata del collaboratore non è in ritardo');
+  /* Il confine: al giorno che quella voce ci mette non è ancora in ritardo,
+     il giorno dopo sì. Dire «in ritardo» il giorno stesso vorrebbe dire
+     sollecitare un bonifico partito stamattina. */
+  deve(pos.in_ritardo === 0, 'ferma da esattamente i giorni attesi non è in ritardo: ' + pos.in_ritardo);
+  const dopo = C.daIncassare(RATE, VOC, { oggi: '2026-09-23' });
+  deve(dopo.gruppi.find(x => x.etichetta === 'POS').in_ritardo === 1,
+    'il giorno dopo il POS dovrebbe essere in ritardo');
+  /* Due: la rata del collaboratore ferma da 88 giorni e il bonifico fermo da
+     21. Il bonifico non ha un importo, ed è in ritardo lo stesso — una rata
+     di cui non si sa quanto vale è comunque una rata che nessuno ha portato. */
+  deve(r.in_ritardo === 2, 'totale in ritardo: ' + r.in_ritardo);
+  deve(r.totale_ritardo === 300, 'nel totale in ritardo è finito un importo che non c\'è: ' + r.totale_ritardo);
+  /* Senza «oggi» non si giudica: si contano e basta. */
+  const senza = C.daIncassare(RATE, VOC, {});
+  deve(senza.in_ritardo === 0, 'senza una data di riferimento dà giudizi: ' + senza.in_ritardo);
+  return 'al giorno atteso no, il giorno dopo sì; senza «oggi» nessun giudizio';
+});
+
+prova('il vocabolario si dichiara, e senza si comporta come prima', () => {
+  /* Il motore non legge il database: riceve le righe. Chi non gliele passa
+     continua a vedere le nove voci di sempre — nessun punto di chiamata si
+     rompe. */
+  const nudo = C.vocabolario(null);
+  deve(nudo.length === C.MEZZI.length, 'senza righe non torna il seme: ' + nudo.length);
+  deve(C.mezzo('contante').immediato === true, 'i contanti non sono immediati');
+  deve(C.mezzo('col_oddo') === null, 'senza vocabolario conosce una voce che non è nel seme');
+  const V = C.vocabolario(VOC);
+  deve(C.mezzo('col_oddo', V).l === 'ODDO FRANCESCO', 'col vocabolario non trova la voce nuova');
+  deve(C.mezzo('col_oddo', V).immediato === false, 'un collaboratore non può essere denaro in casa');
+  /* E una voce che il vocabolario non conosce non si indovina. */
+  deve(C.mezzo('mai_visto', V) === null, 'inventa una voce che non esiste');
+  return 'senza righe il seme, con le righe la voce nuova';
+});
+
+prova('un conto che riceve una voce nuova la nomina per esteso', () => {
+  /* Il motivo che si legge in schermata deve dire «ODDO FRANCESCO», non
+     «col_oddo»: un codice in un messaggio è un messaggio che non si legge. */
+  const V = C.vocabolario(VOC);
+  const r = C.contoPerMezzo([], 'col_oddo', V);
+  deve(r.ok === false, 'ha trovato un conto che non esiste');
+  deve(/ODDO FRANCESCO/.test(r.motivo), 'il motivo mostra il codice invece del nome: ' + r.motivo);
+  return 'il nome, non il codice';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

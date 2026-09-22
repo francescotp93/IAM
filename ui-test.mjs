@@ -4737,7 +4737,11 @@ const avvio = async () => {
       });
       deve(r.visibile, 'la barra dell\'incasso non compare con i titoli scelti');
       deve(/2 titoli scelti/.test(r.testoBarra) && /240,00/.test(r.testoBarra), 'la barra non dice cosa si sta incassando: ' + r.testoBarra);
-      deve(/2 titoli/.test(r.riepilogo) && /240,00/.test(r.riepilogo) && /Contante/.test(r.riepilogo)
+      /* «Contanti» e non più «Contante»: il nome lo dice adesso il vocabolario
+         (`iam_modalita_pagamento`), che è uno solo per tutta la casa. Prima
+         ce n'erano sei, e due dicevano due parole diverse per la stessa voce.
+         Si è aggiornata la regola, non il numero (§15, §16). */
+      deve(/2 titoli/.test(r.riepilogo) && /240,00/.test(r.riepilogo) && /Contanti/.test(r.riepilogo)
         && /Rossi Mario/.test(r.riepilogo), 'il riepilogo non è completo: ' + r.riepilogo);
       deve(r.aggiornati === 2, 'titoli aggiornati: ' + r.aggiornati);
       deve(r.payload.stato === 'incassato' && r.payload.mezzo_pagamento === 'contante'
@@ -5670,6 +5674,52 @@ const avvio = async () => {
       deve(r.dopoCerca === 1 && r.dopoAzzera === 2, 'sinistri: Cerca/Azzera non filtrano per data: ' + JSON.stringify(r));
       deve(r.stTutti === 2 && r.stFino === 1 && r.stDopo === 2, 'storico: il filtro per data non funziona: ' + JSON.stringify(r));
       return 'sinistri 2 → 1 → 2; storico 2 → 1 → 2';
+    });
+
+    await prova('modalità di pagamento: si cerca scrivendo, e un nome inventato non diventa un codice', async () => {
+      /* Richiesta di Francesco: «consultabile sia a tendina per com'è per ora
+         sia scrivendo come ricerca». Il vocabolario sta in una tabella e può
+         contenere un COLLABORATORE. Quello che si scrive e non corrisponde a
+         nessuna voce NON diventa un codice inventato (§8.1). */
+      const r = await page.evaluate(async () => {
+        window.__COLLAUDO.risposte['iam_modalita_pagamento:lista'] = { error: null, data: [
+          { codice: 'contante', nome: 'Contanti', contabilizza: 'subito', giorni_attesi: 0, ordine: 10, attiva: true },
+          { codice: 'pos', nome: 'POS', contabilizza: 'sospeso', giorni_attesi: 2, ordine: 20, attiva: true },
+          { codice: 'col_oddo', nome: 'ODDO FRANCESCO', contabilizza: 'sospeso', giorni_attesi: 30,
+            ordine: 100, attiva: true, collaboratore_id: 'c-1' },
+          { codice: 'vecchia', nome: 'Voce spenta', contabilizza: 'sospeso', ordine: 200, attiva: false }
+        ] };
+        await window.mezCarica(true);
+        const out = {};
+        out.voci = mezElenco().map(m => m.l);
+        out.nome = mezNome('col_oddo');
+        /* Il campo: si scrive il nome, il codice finisce nel campo nascosto. */
+        const d = document.createElement('div');
+        d.innerHTML = mezCombo('provaMez', 'pos');
+        document.body.appendChild(d);
+        out.partenza = document.getElementById('provaMez').value;
+        out.scritto = document.getElementById('provaMez-q').value;
+        out.opzioni = [...document.querySelectorAll('#provaMez-dl option')].map(o => o.value);
+        document.getElementById('provaMez-q').value = 'ODDO FRANCESCO';
+        window.mezScegli('provaMez');
+        out.scelto = document.getElementById('provaMez').value;
+        document.getElementById('provaMez-q').value = 'Zio Paperone';
+        window.mezScegli('provaMez');
+        out.inventato = document.getElementById('provaMez').value;
+        out.rosso = document.getElementById('provaMez-q').classList.contains('mez-ko');
+        d.remove();
+        delete window.__COLLAUDO.risposte['iam_modalita_pagamento:lista'];
+        return out;
+      });
+      deve(r.voci.indexOf('ODDO FRANCESCO') >= 0, 'un collaboratore non compare fra le voci: ' + r.voci.join(', '));
+      deve(r.voci.indexOf('Voce spenta') < 0, 'una voce spenta compare ancora nelle tendine');
+      deve(r.nome === 'ODDO FRANCESCO', 'il nome della voce: ' + r.nome);
+      deve(r.partenza === 'pos' && r.scritto === 'POS', 'il campo non parte dal valore che ha: ' + r.partenza + '/' + r.scritto);
+      deve(r.opzioni.length === 3, 'la tendina non ha le voci attive: ' + r.opzioni.join(', '));
+      deve(r.scelto === 'col_oddo', 'scrivendo il nome non si sceglie la voce: ' + r.scelto);
+      deve(r.inventato === '', 'un nome inventato è diventato un codice: ' + r.inventato);
+      deve(r.rosso, 'un nome che non esiste non si vede');
+      return '3 voci attive, il collaboratore c\'è, «Zio Paperone» resta vuoto';
     });
 
     await prova('scadenzario: la pagina esiste e la scocca ora la trova', async () => {

@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.30.1">
-<meta name="app-versione-nome" content="Scadenzario · le correzioni di una rilettura ostile">
+<meta name="app-versione" content="0.31.0">
+<meta name="app-versione-nome" content="Sospesi · la modalità di pagamento può essere una persona">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -799,6 +799,11 @@ button{font-family:inherit}
 .rin-chip.att b{color:#8e2a1f}
 .rin-chip-nota{font-size:11.5px;color:var(--muted);max-width:640px}
 .rin-avv{color:#c25a00;font-weight:600}
+/* Il campo della modalita' di pagamento: si scrive per cercare e si apre a
+   tendina. Rosso quando quello che si e' scritto non e' nessuna voce: un
+   nome che non corrisponde a niente non diventa un codice inventato. */
+.tit-combo input[type=text],.tit-combo input:not([type]){min-width:150px}
+input.mez-ko{border-color:#c0392b;background:#fdecea}
 .rin-az{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--line);
   border-radius:4px;background:#fff;color:var(--blue);font-family:inherit;font-size:11.5px;font-weight:600;
   cursor:pointer;white-space:nowrap}
@@ -3112,17 +3117,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
            nessuno, e i titoli restano aperti per sempre. -->
       <div class="tit-barra" id="tit-barra" style="display:none">
         <span id="tit-sel-testo"></span>
-        <select id="tit-mezzo" title="Come è stata pagata: parte dal mezzo che dice la compagnia, si corregge">
-          <option value="bonifico">Bonifico</option>
-          <option value="contante">Contante</option>
-          <option value="assegno">Assegno</option>
-          <option value="pos">POS</option>
-          <option value="carta_credito">Carta di credito</option>
-          <option value="paypal">PayPal</option>
-          <option value="prepagata">Carta prepagata</option>
-          <option value="domiciliazione">Domiciliazione (SDD)</option>
-          <option value="altro">Altro</option>
-        </select>
+        <span id="tit-mezzo-combo" class="tit-combo" title="Come è stata pagata: parte dal mezzo che dice la compagnia, si corregge"><input id="tit-mezzo-q" list="tit-mezzo-dl" placeholder="scrivi o scegli" autocomplete="off" oninput="mezScegli('tit-mezzo')" onchange="mezScegli('tit-mezzo')"><datalist id="tit-mezzo-dl"></datalist><input type="hidden" id="tit-mezzo"></span>
         <!-- M4.2 (19/09/2026): CHI ha pagato. Se incassa il collaboratore, quei
              soldi all'agenzia non sono ancora arrivati: nasce un credito verso
              di lui, che si vede nell'estratto conto e si chiude con la rimessa. -->
@@ -13219,7 +13214,7 @@ function ecpTabellaCredito(c) {
         <td style="font-size:12px">${polData(x.incassato_il)}</td>
         <td><strong>${esc(x.cliente || '—')}</strong></td>
         <td style="font-size:12px">${esc(x.numero_polizza || '—')}${x.compagnia ? `<div class="cl-sub">${esc(x.compagnia)}</div>` : ''}</td>
-        <td style="font-size:12px">${esc(TIT_MEZZI[x.mezzo_pagamento] || x.mezzo_pagamento || '—')}</td>
+        <td style="font-size:12px">${esc(mezNome(x.mezzo_pagamento) || x.mezzo_pagamento || '—')}</td>
         <td class="soldi"><b>${ecpEuro(x.importo)}</b></td>
         <td><button class="rin-az" onclick="ecpRimesso('${esc(x.titolo_id)}')" title="Il collaboratore ha girato questi soldi all'agenzia"><i class="ti ti-check"></i> Segna rimesso</button></td>
       </tr>`).join('')}
@@ -15742,6 +15737,9 @@ async function polLeggi(id) {
 
 async function polDettaglio(id) {
   polPannello('Polizza', 'Carico…', '<div class="empty-state">Carico…</div>');
+  /* Il vocabolario delle modalità serve alla scheda del pagamento: senza, la
+     tendina non conosce i collaboratori. */
+  await mezCarica();
   let p;
   try { p = await polLeggi(id); } catch (e) {
     document.getElementById('pol-bd').innerHTML = `<div class="empty-state">Non riesco a leggere la polizza.<br><small>${esc(e.message || e)}</small></div>`;
@@ -16110,8 +16108,10 @@ async function polPagamento(id) {
     (p.cliente || '') + (p.numero_polizza ? ' · ' + p.numero_polizza : '');
 
   const statoOpz = Object.keys(PF_PAG).map(k => `<option value="${k}"${p.stato_pagamento === k ? ' selected' : ''}>${PF_PAG[k][0]}</option>`).join('');
+  /* Dal vocabolario, non da una lista chiusa: qui devono comparire anche i
+     collaboratori, perché «chi tiene il premio» è una modalità di pagamento. */
   const mezzoOpz = '<option value="">— da indicare —</option>' +
-    PF_MEZZI.map(m => `<option value="${m.id}"${p.mezzo_pagamento === m.id ? ' selected' : ''}>${esc(m.l)}</option>`).join('');
+    mezElenco(p.mezzo_pagamento).map(m => `<option value="${esc(m.k)}"${p.mezzo_pagamento === m.k ? ' selected' : ''}>${esc(m.l)}</option>`).join('');
   const incassate = rate.filter(r => r.stato === 'incassato');
   const provv = rate.reduce((t, r) => t + (Number(r.provvigione) || 0), 0);
 
@@ -16184,7 +16184,10 @@ const PF_MEZZI = (typeof window !== 'undefined' && window.FlussoSSF && window.Fl
   { id: 'contante', l: 'Contante' }, { id: 'assegno', l: 'Assegno' }, { id: 'pos', l: 'POS' },
   { id: 'paypal', l: 'PayPal' }, { id: 'prepagata', l: 'Carta prepagata' },
   { id: 'domiciliazione', l: 'Domiciliazione (SDD)' }, { id: 'altro', l: 'Altro' }];
-const pfMezzoNome = (id) => (PF_MEZZI.find(m => m.id === id) || {}).l || null;
+/* Il nome di una voce lo dice il vocabolario: `PF_MEZZI` resta il ripiego per
+   quando la tabella non è ancora stata letta. */
+const pfMezzoNome = (id) => (typeof mezNome === 'function' ? mezNome(id) : null)
+  || (PF_MEZZI.find(m => m.id === id) || {}).l || null;
 
 function pfMezzo(p) {
   const nome = pfMezzoNome(p.mezzo_pagamento);
@@ -16198,25 +16201,55 @@ function pfMezzo(p) {
 /* La modifica. Scrive la colonna e lascia una riga nel registro: chi cambia
    come paga un cliente sta toccando la contabilità, e fra sei mesi «chi è
    stato» deve avere una risposta. */
+/* Era un `prompt` con le voci numerate: con nove andava, con i collaboratori
+   dentro diventano ventisei e nessuno conta fino a ventisei. Adesso è un
+   campo che si cerca scrivendo e si apre a tendina. */
 async function pfCambiaMezzo(id) {
   const p = (PF_ROWS || []).find(x => x.id === id);
   if (!p) return;
-  const scelte = PF_MEZZI.map((m, i) => (i + 1) + ') ' + m.l).join('\n');
-  const attuale = pfMezzoNome(p.mezzo_pagamento);
-  const r = prompt('Come paga ' + (p.cliente || 'il cliente') + '?\n\n' + scelte
-    + '\n\nScrivi il numero, oppure 0 per lasciare vuoto.'
-    + (attuale ? '\n\nAdesso: ' + attuale : ''), '');
-  if (r === null) return;
-  const n = parseInt(String(r).trim(), 10);
-  if (isNaN(n) || n < 0 || n > PF_MEZZI.length) { alert('Non ho capito: serve un numero da 0 a ' + PF_MEZZI.length + '.'); return; }
-  const mezzo = n === 0 ? null : PF_MEZZI[n - 1].id;
+  await mezCarica();
+  const ov = document.createElement('div');
+  ov.className = 'pnu-ov';
+  ov.innerHTML = `<div class="pnu-kit pnu-box" style="max-width:420px">
+    <div class="pnu-testa"><b>Come paga ${esc(p.cliente || 'il cliente')}?</b></div>
+    <div class="pnu-corpo">
+      <label class="pnu-lbl">Modalità di pagamento</label>
+      ${mezCombo('pfm-scelta', p.mezzo_pagamento, 'scrivi o scegli — vuoto per toglierla')}
+      <div class="pnu-nota">Una voce può essere un collaboratore: allora il premio ce l'ha lui,
+        e la polizza resta fra i suoi sospesi finché non lo porta.
+        ${MEZ_ERR ? 'Non si è potuto leggere l\'elenco aggiornato: qui ci sono le voci di sempre.' : ''}</div>
+      <div id="pfm-msg"></div>
+    </div>
+    <div class="pnu-piede">
+      <button class="pnu-btn" type="button" onclick="this.closest('.pnu-ov').remove()">Annulla</button>
+      <button class="pnu-btn pnu-primario" type="button" onclick="pfSalvaMezzo('${esc(id)}')">Salva</button>
+    </div></div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+async function pfSalvaMezzo(id) {
+  const p = (PF_ROWS || []).find(x => x.id === id);
+  const msg = document.getElementById('pfm-msg');
+  if (!p) return;
+  const q = document.getElementById('pfm-scelta-q');
+  const mezzo = mezLeggi('pfm-scelta');
+  /* Quello che si scrive e non corrisponde a nessuna voce non diventa un
+     codice inventato: si dice, e non si salva (§8.1). */
+  if (!mezzo && q && (q.value || '').trim()) {
+    if (msg) msg.innerHTML = '<div class="pnu-ko">«' + esc(q.value) + '» non è una voce dichiarata. Scegline una, oppure svuota il campo per togliere la modalità.</div>';
+    return;
+  }
   try {
-    const { error } = await db.from('quote_polizze').update({ mezzo_pagamento: mezzo }).eq('id', id);
+    const { data, error } = await db.from('quote_polizze').update({ mezzo_pagamento: mezzo }).eq('id', id).select('id');
     if (error) throw error;
+    /* Zero righe toccate non è un successo silenzioso (BUG 1, §47). */
+    if (!data || !data.length) throw new Error('Nessuna riga toccata: forse non hai i permessi su questa polizza.');
+    document.querySelectorAll('.pnu-ov').forEach(x => x.remove());
     p.mezzo_pagamento = mezzo;
-    try { logMovimento('Mezzo di pagamento: ' + (pfMezzoNome(mezzo) || 'tolto') + ' · polizza ' + pfNumero(p), 'polizza', p.cliente || '', p.id); } catch (e) {}
+    try { logMovimento('Mezzo di pagamento: ' + (mezNome(mezzo) || 'tolto') + ' · polizza ' + pfNumero(p), 'polizza', p.cliente || '', p.id); } catch (e) {}
     pfRender();
-  } catch (e) { alert('Non riesco a salvare: ' + (e.message || e)); }
+  } catch (e) { if (msg) msg.innerHTML = '<div class="pnu-ko">' + esc(e.message || e) + '</div>'; }
 }
 
 /* ══ LA COLONNA PREMIO (brief IAM punto 1, 20/09/2026) ═══════════════════════
@@ -16398,6 +16431,9 @@ async function pfContaMancanti() {
 }
 
 async function loadPortafoglio() {
+  /* Una lettura sola, in cache: le etichette della colonna «come paga»
+     vengono dal vocabolario. */
+  mezCarica();
   const body = document.getElementById('pf-body');
   if (!db || !body) return;
   body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Carico il portafoglio…</div></td></tr>';
@@ -16612,10 +16648,11 @@ function pnuPiuUnAnno(iso) {
    lingua del database, quindi nessuna delle due strade puo' produrre un
    valore che l'insert rifiuta. */
 function pnuOpzioniMezzo() {
-  const voci = (window.Contabilita && Contabilita.MEZZI)
-    ? Contabilita.MEZZI.map(m => [m.k, m.l])
-    : Object.keys(TIT_MEZZI).map(k => [k, TIT_MEZZI[k]]);
-  return voci.map(([k, l]) => `<option value="${esc(k)}">${esc(l)}</option>`).join('');
+  /* Il vocabolario vero sta in `iam_modalita_pagamento` e lo porta
+     `mezElenco`, che quando la tabella non è ancora stata letta torna il seme
+     del motore — la stessa lingua del database, quindi nessuna delle due
+     strade può produrre un valore che l'insert rifiuta. */
+  return mezElenco().map(m => `<option value="${esc(m.k)}">${esc(m.l)}</option>`).join('');
 }
 /* La data di OGGI si legge dal calendario locale, non da `toISOString()`, che
    e' UTC: fra mezzanotte e le due in Italia quello propone ieri. E' la stessa
@@ -17308,6 +17345,87 @@ const TIT_STATI = {
   insoluto:   ['Insoluto',     'st-scad'],
   stornato:   ['Stornato',     'st-lav']
 };
+/* ═══ LE MODALITÀ DI PAGAMENTO, CHE ADESSO SI DICHIARANO (22/09/2026) ══════
+   Richiesta di Francesco: «tra le modalità di pagamento dovrei trovare un
+   nome di un Collaboratore, consultabile sia a tendina per com'è per ora sia
+   scrivendo come ricerca».
+
+   Il vocabolario sta in `iam_modalita_pagamento` (una tabella, non sei liste
+   sparse nel codice) e le regole nel motore (`Contabilita.vocabolario`). Qui
+   c'è la lettura, il nome da mostrare e il campo che si cerca scrivendo.
+
+   `TIT_MEZZI` qui sotto resta il SEME: finché la tabella non è stata letta —
+   o se la lettura non riesce — le nove voci di sempre si vedono lo stesso.
+   Una tendina vuota è peggio di una tendina corta. */
+var MEZ_VOC = [];       /* `var`: le prove iniettano uno stato finto (§17) */
+var MEZ_ERR = null;
+var MEZ_LETTO = false;
+
+async function mezCarica(forza) {
+  if (MEZ_LETTO && !forza) return MEZ_VOC;
+  if (!db) return MEZ_VOC;
+  try {
+    const { data, error } = await db.from('iam_modalita_pagamento')
+      .select('codice,nome,contabilizza,giorni_attesi,collaboratore_id,attiva,ordine')
+      .order('ordine').order('nome');
+    if (error) throw error;
+    MEZ_VOC = data || [];
+    MEZ_ERR = null;
+    MEZ_LETTO = true;
+  } catch (e) {
+    /* Non si svuota quello che c'era: «non si è potuto leggere» non è «non ce
+       ne sono» (§12, §18), e qui vorrebbe dire una tendina vuota. */
+    MEZ_ERR = e.message || String(e);
+  }
+  return MEZ_VOC;
+}
+
+/* Le voci da mostrare: quelle spente escono dalle tendine e restano su tutto
+   quello che ci è già passato. */
+function mezElenco(anche) {
+  const V = (typeof Contabilita !== 'undefined' && Contabilita.vocabolario)
+    ? Contabilita.vocabolario(MEZ_VOC) : [];
+  const out = V.filter(m => m.attiva !== false || m.k === anche);
+  if (out.length) return out;
+  /* Il SEME, e qui NON si passa da `mezNome`: sarebbe una funzione che
+     chiama se stessa all'infinito. (Trovato da una sostituzione globale che
+     ha toccato anche il ripiego — §12, in un'altra forma.) */
+  return Object.keys(TIT_MEZZI).map(k => ({ k, l: TIT_MEZZI[k] }));
+}
+
+function mezNome(codice) {
+  if (!codice) return null;
+  const m = mezElenco(codice).find(x => x.k === codice);
+  return m ? m.l : (TIT_MEZZI[codice] || codice);
+}
+
+/* Il campo: si scrive per cercare, e si apre a tendina. È un `input` con un
+   `datalist` — nativo, funziona sul telefono, e non è un componente nuovo da
+   mantenere. Il CODICE sta in un campo nascosto: quello che si scrive è il
+   nome, e un nome che non corrisponde a nessuna voce NON diventa un codice
+   inventato (§8.1) — resta vuoto, e chi salva lo dice. */
+function mezCombo(id, valore, vuoto) {
+  const el = mezElenco(valore);
+  const nome = valore ? (mezNome(valore) || '') : '';
+  return `<input id="${esc(id)}-q" list="${esc(id)}-dl" value="${esc(nome)}"
+      placeholder="${esc(vuoto || 'scrivi o scegli')}" autocomplete="off"
+      oninput="mezScegli('${esc(id)}')" onchange="mezScegli('${esc(id)}')">
+    <datalist id="${esc(id)}-dl">${el.map(m => `<option value="${esc(m.l)}">`).join('')}</datalist>
+    <input type="hidden" id="${esc(id)}" value="${esc(valore || '')}">`;
+}
+
+function mezScegli(id) {
+  const q = document.getElementById(id + '-q');
+  const h = document.getElementById(id);
+  if (!q || !h) return;
+  const scritto = (q.value || '').trim().toLowerCase();
+  const m = mezElenco().find(x => String(x.l).toLowerCase() === scritto);
+  h.value = m ? m.k : '';
+  q.classList.toggle('mez-ko', !!scritto && !m);
+}
+
+function mezLeggi(id) { return ((document.getElementById(id) || {}).value || '') || null; }
+
 const TIT_MEZZI = {
   contante: 'Contante', assegno: 'Assegno', bonifico: 'Bonifico',
   pos: 'POS', carta_credito: 'Carta di credito',
@@ -17461,9 +17579,19 @@ function titBarra() {
   /* M4.2: il mezzo parte da quello che dice la compagnia (è sulla rata dal
      flusso). Se le rate scelte ne hanno uno solo, è quello; se ne hanno di
      diversi non si sceglie per loro. Resta modificabile: è un default. */
-  const mezzi = [...new Set(scelti.map(t => t.mezzo_pagamento).filter(m => m && TIT_MEZZI[m]))];
+  const mezzi = [...new Set(scelti.map(t => t.mezzo_pagamento).filter(Boolean))];
+  /* Le voci si riempiono da qui, perché il vocabolario si legge dal database
+     e non è più scritto nel markup: una tendina scritta a mano non conosce i
+     collaboratori. */
+  const dl = document.getElementById('tit-mezzo-dl');
+  if (dl) dl.innerHTML = mezElenco().map(m => `<option value="${esc(m.l)}">`).join('');
   const selM = document.getElementById('tit-mezzo');
-  if (selM && mezzi.length === 1) selM.value = mezzi[0];
+  const qM = document.getElementById('tit-mezzo-q');
+  /* Il default si RIAPPLICA a ogni cambio di selezione, come prima: è quello
+     che dice la compagnia, e cambiare le rate scelte cambia la proposta. */
+  if (selM && qM && mezzi.length === 1) {
+    selM.value = mezzi[0]; qM.value = mezNome(mezzi[0]) || '';
+  }
   const selC = document.getElementById('tit-pagatore-collab');
   if (selC && selC.options.length <= 1 && typeof TIT_COLLAB !== 'undefined' && TIT_COLLAB.length) selC.innerHTML = collabOpzioni('', '— quale collaboratore —');
 }
@@ -17506,7 +17634,7 @@ function titRender() {
           : '<span class="cl-sub">non assegnata</span>'}</td>
       <td><span class="tk-badge ${st[1]}">${st[0]}</span></td>
       <td style="font-size:12px">${t.stato === 'incassato'
-        ? `${TIT_MEZZI[t.mezzo_pagamento] || '—'}${t.incassato_il ? `<div class="rin-gg">${pfData(t.incassato_il)}</div>` : ''}`
+        ? `${mezNome(t.mezzo_pagamento) || '—'}${t.incassato_il ? `<div class="rin-gg">${pfData(t.incassato_il)}</div>` : ''}`
         : (t.stato === 'aperto' ? `<button class="rin-az" onclick="titIncassaUno('${t.id}')"><i class="ti ti-cash"></i> Incassa</button>` : '—')}</td>
     </tr>`;
   }).join('');
@@ -17946,7 +18074,7 @@ async function titIncassaSelezionati() {
   /* Riepilogo prima di eseguire: si sta registrando denaro incassato, e un
      click distratto su venti titoli non deve poter passare inosservato. */
   if (!confirm('Segnare incassati ' + scelti.length + (scelti.length === 1 ? ' titolo' : ' titoli')
-      + ' per ' + pfEuro(somma) + '?\nMezzo: ' + (TIT_MEZZI[mezzo] || mezzo)
+      + ' per ' + pfEuro(somma) + '?\nMezzo: ' + (mezNome(mezzo) || mezzo)
       + '\nChi paga: ' + (chi === 'collaboratore' ? 'il collaboratore ' + (collabNomeScelto || '') + ' — nasce un credito dell\'agenzia verso di lui' : chi === 'agenzia' ? 'l\'agenzia' : 'il cliente')
       + (pagatore ? '\nPagatore: ' + pagatore : ''))) return;
 
@@ -18056,7 +18184,7 @@ function titExportExcel() {
     <td>${esc(t.__polizza || '')}</td><td>${esc(t.__compagnia || '')}</td>
     <td>${TIT_TIPI[t.tipo] || t.tipo}</td>
     <td>${t.importo_lordo != null ? Number(t.importo_lordo).toFixed(2) : ''}</td>
-    <td>${titStato(t)[0]}</td><td>${TIT_MEZZI[t.mezzo_pagamento] || ''}</td>
+    <td>${titStato(t)[0]}</td><td>${mezNome(t.mezzo_pagamento) || ''}</td>
     <td>${t.incassato_il ? pfData(t.incassato_il) : ''}</td><td>${esc(t.pagatore || '')}</td></tr>`).join('');
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
     + '<head><meta charset="utf-8"><style>table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;font:12px sans-serif}th{background:#f6f8fa;font-weight:700}</style></head><body>'
@@ -18075,6 +18203,9 @@ async function loadTitoli() {
   const body = document.getElementById('tit-body');
   if (!db || !body) return;
   body.innerHTML = '<tr><td colspan="9"><div class="empty-state">Carico i titoli…</div></td></tr>';
+  /* Il vocabolario delle modalità PRIMA della lista: le etichette delle righe
+     e la tendina della barra vengono da lì, e senza si vedrebbero i codici. */
+  await mezCarica();
   try {
     // le polizze visibili danno anche il perimetro dei titoli: la riservatezza
     // dei titoli eredita da quella della polizza (politiche di quote_titoli)
@@ -28906,7 +29037,7 @@ async function clCronologia(id, nominativo, preventivi, polizze, anagrafica) {
         .in('polizza_id', polizze.map(p => p.id));
       (data || []).filter(t => t.stato === 'incassato' && t.incassato_il).forEach(t =>
         agg(t.incassato_il, 'incasso', 'Incasso ' + (TIT_TIPI[t.tipo] || t.tipo).toLowerCase(),
-          '€ ' + Number(t.importo_lordo).toFixed(2) + (t.mezzo_pagamento ? ' · ' + (TIT_MEZZI[t.mezzo_pagamento] || '') : '')));
+          '€ ' + Number(t.importo_lordo).toFixed(2) + (t.mezzo_pagamento ? ' · ' + (mezNome(t.mezzo_pagamento) || '') : '')));
     } catch (e) { /* senza rate la storia resta comunque leggibile */ }
   }
 

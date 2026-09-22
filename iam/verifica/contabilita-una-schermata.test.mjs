@@ -116,7 +116,7 @@ function apparecchia() {
     buildStorico() {}, loadContoDB() {},
     /* Gli inizializzatori delle schermate nate dopo (§6b): qui interessa solo
        QUALE riquadro resta acceso, non che cosa ci scrivono dentro. */
-    pntCarica() {}, incCarica() {}, gioCarica() {}, loadContoDB() {},
+    pntCarica() {}, incCarica() {}, gioCarica() {}, loadContoDB() {}, sprCarica() {},
   };
   vm.createContext(ctx);
   vm.runInContext(ritaglia(src, 'selContabTab'), ctx);

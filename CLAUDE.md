@@ -6853,6 +6853,27 @@ Misurato subito dopo l'applicazione e rimesso con `alter view … set
 suo rollback**. Vale per qualunque `create or replace view` in questo
 repository: *dopo averla sostituita, si rileggono le sue opzioni.*
 
+### Togliere un tetto nascosto fa emergere il costo che quel tetto nascondeva
+
+Misurato **dopo** aver tolto il `.limit`, e non l'avrebbe detto nessuna prova.
+La vista porta una colonna `sostituzioni` che conta le polizze con
+`sostituisce_id = questa`, e su quella colonna **non c'era un indice**: il
+conto era una scansione completa della tabella per ogni riga.
+
+| | |
+|---|---|
+| mille righe, prima | **896 ms** — `Seq Scan`, `loops=1000` |
+| mille righe, dopo l'indice | **3,2 ms** — `Index Only Scan`, `Heap Fetches: 0` |
+
+Il difetto c'era da sempre e non si vedeva perché la schermata leggeva solo la
+prima pagina. Leggendole tutte e quattro sarebbe passata da 0,9 a **3,5
+secondi**, cioè si sarebbe consegnata una schermata corretta e lenta — e la
+lentezza la scopre chi lavora, non chi scrive.
+
+> **Quando si toglie un tetto, si rimisura il costo nello stesso lavoro.**
+> L'indice sta in `supabase/migrations/20260922i_scadenzario_indice_sostituisce.sql`
+> ed è parziale, perché quella colonna oggi è vuota su tutte e 4.003 le righe.
+
 ### La trappola dei commenti, diciassettesima volta — e il rimedio vero
 
 Le due prove che vietano al motore di leggere la data d'incasso e di

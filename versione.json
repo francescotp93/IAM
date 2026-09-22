@@ -14,7 +14,8 @@
         "«Non rinnovata» adesso dice la verità. Prima lo leggeva da un collegamento che sul portafoglio è vuoto su tutte e 4.003 le polizze, quindi dichiarava non rinnovate tutte e 1.665 le scadute: 1.018 di quelle hanno già la loro polizza nuova. Adesso il rinnovo si riconosce dalla targa e si dice se è dichiarato o solo un indizio — un indizio non è una dichiarazione, e accanto al numero c'è scritto quante restano fuori e perché.",
         "Una polizza che scade fra dieci mesi non è «non rinnovata»: non è ancora scaduta, e non finisce più nell'elenco di chi richiamare.",
         "Il numero sulla voce di menu conta il lavoro di adesso — quello che scade entro la proroga e quello che è ancora dentro la proroga — e non più le polizze scadute tre anni fa.",
-        "L'elenco mette per primo quello che è più vicino a oggi, nei due versi: una scadenza fra due giorni e una scaduta due giorni fa sono le due cose da fare adesso."
+        "L'elenco mette per primo quello che è più vicino a oggi, nei due versi: una scadenza fra due giorni e una scaduta due giorni fa sono le due cose da fare adesso.",
+        "Lo Scadenzario si apre in una decina di millisecondi invece di tre secondi e mezzo: mancava un indice nel database, e si è visto solo quando la lista ha cominciato a leggere tutte le polizze invece delle prime mille."
       ]
     },
     {

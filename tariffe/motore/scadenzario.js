@@ -515,9 +515,15 @@
     var p = isFinite(giorniProroga) && giorniProroga >= 0 ? giorniProroga : PROROGA;
     var out = {};
     FASCE.forEach(function (f) { out[f.k] = { n: 0, importo: 0, noti: 0, senza_importo: 0 }; });
+    /* Una riga senza fascia (scadenza mancante) entra in «tutte» e in nessuna
+       delle quattro: la somma delle fasce smetterebbe di tornare col totale, e
+       chi guarda non avrebbe modo di accorgersene. Si conta a parte, e chi
+       chiama decide che farne. La schermata quelle righe le toglie prima. */
+    out.senza_fascia = 0;
     (elenco || []).forEach(function (r) {
       if (!r) return;
       var k = r.fascia;
+      if (!k) out.senza_fascia++;
       var imp = numero(r.importo);
       ['tutte', k].forEach(function (kk) {
         if (!kk || !out[kk]) return;

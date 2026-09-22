@@ -324,6 +324,24 @@ prova('i contatori: un importo che non c\'è non vale zero', () => {
   return '2 righe, 100 € sommati, 1 dichiarata senza importo';
 });
 
+prova('la somma delle quattro fasce torna col totale, e quello che non torna si conta', () => {
+  /* L'invariante che rende leggibili i contatori: se una riga sta in «tutte»
+     e in nessuna fascia, la somma smette di tornare e nessuno se ne accorge.
+     Una riga senza scadenza è esattamente quel caso, e si conta a parte. */
+  const righe = [
+    { fascia: 'proroga', importo: 100 },
+    { fascia: 'avanti', importo: 50 },
+    { fascia: null, importo: 70 }
+  ];
+  const c = S.conteggi(righe);
+  const somma = ['scoperte', 'proroga', 'vicine', 'avanti'].reduce((a, k) => a + c[k].n, 0);
+  deve(c.tutte.n === 3, 'tutte: ' + c.tutte.n);
+  deve(c.senza_fascia === 1, 'non conta la riga senza fascia: ' + c.senza_fascia);
+  deve(somma + c.senza_fascia === c.tutte.n,
+    'la somma delle fasce più le righe senza fascia non torna col totale: ' + somma + '+' + c.senza_fascia + ' ≠ ' + c.tutte.n);
+  return '2 in fascia, 1 fuori, e il conto torna';
+});
+
 prova('una polizza sospesa scade quando scade DAVVERO', () => {
   /* §41: i giorni fermi si recuperano in fondo. Nello scadenzario una
      polizza sospesa compariva con la data del contratto, che non è più vera.

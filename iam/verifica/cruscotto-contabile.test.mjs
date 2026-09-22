@@ -56,7 +56,13 @@ function blocco() {
 const soloJs = s => s.split('\n').filter(r => !/^\s*(\/\/|\*|\/\*)/.test(r)).join('\n');
 
 prova('la schermata esiste, è raggiungibile e ha il suo inizializzatore', () => {
-  deve(/id="ctab-cruscotto"/.test(H), 'manca la linguetta');
+  /* La striscia delle linguette non c'è più (22/09/2026): ogni schermata di
+     Contabilità è una pagina sua, e si apre dal menu. Quello che questa prova
+     voleva garantire non era «il bottone esiste»: era che la schermata fosse
+     RAGGIUNGIBILE. Si misura sulla ROTTA, che è la cosa che la apre davvero —
+     e la rotta serve anche a chi ci arriva da un collegamento vecchio (§6b). */
+  deve(!/id="contab-tabs"/.test(H), 'la striscia delle linguette è tornata');
+  deve(/'cruscotto'/.test(H.slice(H.indexOf('function selContabTab'))), 'la rotta «cruscotto» non c\'è più');
   deve(/id="contab-panel-cruscotto"/.test(H), 'manca il pannello');
   /* Nell'elenco che accende i pannelli, altrimenti la linguetta non spegne le
      altre. Si cerca la chiave DENTRO l'elenco e non la sua posizione: una

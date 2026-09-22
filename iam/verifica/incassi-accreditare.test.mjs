@@ -134,7 +134,12 @@ prova('si annulla col motivo, e non si cancella', () => {
 });
 
 prova('la linguetta esiste, si avvia, e ha la grafica di IAM', () => {
-  deve(/id="ctab-incassi"/.test(H), 'manca la linguetta');
+  /* La striscia delle linguette non c'è più (22/09/2026): ogni schermata di
+     Contabilità è una pagina sua, e si apre dal menu. Quello che questa prova
+     voleva garantire non era «il bottone esiste»: era che la schermata fosse
+     RAGGIUNGIBILE. Si misura sulla ROTTA, che è la cosa che la apre davvero —
+     e la rotta serve anche a chi ci arriva da un collegamento vecchio (§6b). */
+  deve(/'incassi'/.test(H.slice(H.indexOf('function selContabTab'))), 'la rotta «incassi» non c\'è più');
   deve(/id="contab-panel-incassi"/.test(H), 'manca il pannello');
   deve(/'quadratura','primanota','quadconti','incassi'/.test(H), 'selContabTab non conosce la linguetta');
   deve(/if \(sub==='incassi'\) incCarica\(\);/.test(H), 'la linguetta non carica niente (§6b)');
@@ -159,7 +164,7 @@ prova('il nome NON e\' «sospesi», ed e\' una decisione', () => {
      l’opposto — il cliente ha pagato e il denaro non e’ ancora sul conto.
      Due cose diverse con lo stesso nome sono due elenchi che non si
      incrociano (§18). */
-  deve(/id="ctab-sospesi"/.test(H), 'la linguetta «Sospesi» di prima e’ sparita');
+  deve(/id="contab-panel-sospesi"/.test(H), 'la schermata «Sospesi» di prima e’ sparita');
   deve(/>Incassi da accreditare</.test(H), 'la linguetta nuova non si chiama «Incassi da accreditare»');
   const i = H.indexOf('id="contab-panel-incassi"');
   deve(/PERCHE' NON SI CHIAMA/.test(H.slice(Math.max(0, i - 1400), i)), 'la scelta del nome non e’ scritta accanto al pannello');

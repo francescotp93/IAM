@@ -842,3 +842,36 @@ data che fa testo (scadenza polizza o scadenza rata, mai l'incasso).
   telefono, non deciderlo a tavolino.
 - Cambiare la modalità di una rata già incassata e già contabilizzata dovrebbe
   stornare il movimento: lo storno esiste (§59) ma non è agganciato.
+
+---
+
+## 22/09/2026 · 0.33.0 — Contabilità in pagine separate
+
+### 🟡 Scelte prese e dichiarate
+
+- **Via la striscia di linguette.** Le rotte restano tutte: `goTab('primanota')`
+  e i collegamenti vecchi funzionano. *Indietro:* rimettere il blocco
+  `<div class="ptabs" id="contab-tabs">` in `iam/index.html`.
+- **Il Cruscotto ha una voce di menu**, perché era raggiungibile solo dalla
+  striscia.
+- **Le tre voci tolte tengono una porta**: «Incassa una rata» dal tasto dentro
+  Sospesi, le altre due dai riquadri del Cruscotto. Non sono spente, e non
+  potevano esserlo: sono le schermate che aprono un sospeso e che portano un
+  incasso in contabilità.
+- **I permessi passano dalla porta e non da un bottone nascosto.** Se il
+  profilo non si legge non si chiude niente: le politiche del database restano
+  il cancello vero.
+
+### 🔴 Serve il tuo ok
+
+Le stesse di prima, più niente di nuovo:
+1. Stornare e rifare il movimento «Pagamento Stanza ROMA» con la contropartita
+   su un conto di costo.
+2. Creare «Costi di agenzia» e «Ricavi di agenzia» da Conti e causali.
+3. Il saldo iniziale dei conti è zero: quello che hai inserito è il saldo
+   *dichiarato*, che è la fotografia della banca per la quadratura.
+
+### 📝 Fuori perimetro, annotato
+
+- Se un giorno «Premi da recuperare» o «Incassi da accreditare» dovessero
+  tornare nel menu, è una riga in `iam/withus-one.js` (più `?v=` e impronta).

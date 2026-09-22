@@ -7315,3 +7315,66 @@ firma una persona.
   soglia adesso sale e non scende (§18, §31).
 - **`let` invece di `var` su `PF_ROWS`**, e la prova che leggeva il portafoglio
   trovava `undefined` (§17, §32).
+
+### Contabilità in pagine separate, e il cancello che si sposta sulla porta (22/09/2026)
+
+> «queste voci in Contabilità non si devono vedere in un'unica pagina ma in
+> pagine separate. Inoltre leva la parte Incassa la rata, Premi da recuperare,
+> Incassi da accreditare» — Francesco.
+
+**La striscia di dieci linguette non c'è più.** Faceva sembrare Contabilità
+*una* schermata con dentro dieci cose, e per arrivare alla Prima nota
+bisognava passare da quella aperta. Le **rotte non sono cambiate**:
+`goTab('primanota')` e gli indirizzi salvati continuano a funzionare,
+altrimenti un collegamento vecchio aprirebbe un riquadro vuoto (§6b).
+
+**Il Cruscotto ha preso una voce di menu**, perché era l'unica schermata
+raggiungibile *solo* dalla striscia: toglierla senza dargliene una l'avrebbe
+resa il guasto §1.
+
+**Le tre tolte non sono sparite, e non potevano.** Due di loro sono le
+schermate che aprono un sospeso e che portano un incasso in contabilità: senza
+porta sarebbero codice che nessuno chiama, e senza di loro quel lavoro non si
+può fare. La porta c'è, e sta dove serve:
+
+| schermata | da dove si apre |
+|---|---|
+| Incassa una rata | il tasto «Incassa» dentro Sospesi |
+| Premi da recuperare | il riquadro dei crediti nel Cruscotto |
+| Incassi da accreditare | il riquadro dei sospesi nel Cruscotto |
+
+È la stessa idea di §61 — *un cruscotto che dice che cosa fare e non porta
+dove si fa costringe a cercare la linguetta giusta fra dieci* — e adesso è
+l'unica strada, il che la rende vera invece che comoda.
+
+#### Il cancello stava sul bottone, e un bottone nascosto non è un permesso
+
+I permessi su Anomalie, Sospesi, Storico e Conto si applicavano **nascondendo
+le linguette**. Tolta la striscia quel cancello non avrebbe più tenuto niente
+— e non teneva granché nemmeno prima: le stesse schermate hanno una voce nel
+menu, e `goTab` si chiama dalla console.
+
+> **Un bottone nascosto non è un permesso: è una porta che non si vede.**
+
+Adesso è la porta a rifiutare (`contabPuo`, chiamata da `selContabTab`), e chi
+non può entrare finisce sul Cruscotto invece che su un riquadro che non
+dovrebbe vedere. Se il profilo **non si è potuto leggere** non si chiude tutto:
+chiudere sarebbe un guasto travestito da permesso, e le politiche del database
+restano il cancello vero.
+
+La prova **fornisce un profilo ristretto e misura il rifiuto**, non solo che la
+funzione esista (§1). E la controprova — tolta la riga che chiama `contabPuo` —
+la fa diventare rossa.
+
+#### Sei guardiani aggiornati nella REGOLA, non nel numero
+
+Sei prove pretendevano `id="ctab-…"`. Quello che volevano garantire non era
+«il bottone esiste»: era che la schermata fosse **raggiungibile**. Adesso
+misurano la **rotta**, che è la cosa che la apre davvero — e la rotta serve
+anche a chi arriva da un collegamento vecchio. Stessa cosa per «le cinque voci
+del brief»: era «ogni schermata ha la sua voce», e vale identica con il
+Cruscotto al posto di «Incassi da accreditare».
+
+*(E una nota sul banco: `contabilita-una-schermata` stampa `X` e non `❌`. Una
+controprova cercata col simbolo sbagliato sembra restata verde — mezz'ora
+persa a dare la colpa alla prova.)*

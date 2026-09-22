@@ -561,10 +561,20 @@
          conti — sono i DUE numeri della quadratura, e stavano in due voci
          diverse. Niente di spento: i vecchi nomi portano dove il contenuto è
          andato. */
+      /* 22/09/2026 — la striscia di dieci linguette in cima alla pagina non
+         c'è più: «queste voci in Contabilità non si devono vedere in un'unica
+         pagina ma in pagine separate». Ognuna è una pagina sua e si apre da
+         qui, e il Cruscotto — che era l'unica raggiungibile solo dalla
+         striscia — adesso ha la sua voce.
+         Tolte, come chiesto: «Incassi da accreditare», «Incassa una rata» e
+         «Premi da recuperare». Le rotte restano, quindi un collegamento
+         vecchio non apre un riquadro vuoto (§6b), e «Incassa una rata» si
+         raggiunge ancora dal tasto «Incassa» dentro Sospesi, che è dove serve
+         per scaricare un sospeso. */
       sub: [
-        { l: 'Prima nota', i: 'i-list', act: 'carica', go: function () { vai('primanota'); } },
+        { l: 'Cruscotto', i: 'i-chart', act: 'carica', go: function () { vai('cruscotto'); } },
+        { l: 'Prima nota', i: 'i-list', go: function () { vai('primanota'); } },
         { l: 'Quadratura conti', i: 'i-bank', go: function () { vai('quadconti'); } },
-        { l: 'Incassi da accreditare', i: 'i-hour', go: function () { vai('incassi'); } },
         { l: 'Anomalie', i: 'i-warn', go: function () { vai('anomalie'); } },
         { l: 'Sospesi', i: 'i-fold', go: function () { vai('sospesi'); } },
         { hr: true },
@@ -781,7 +791,13 @@
     /* Mancavano: senza la loro riga il titolo restava quello della schermata
        precedente, e la briciola diceva un posto in cui non eri più.
        (bug del 30/07/2026) */
+    cruscotto:   ['Cruscotto', 'Contabilità'],
     quadratura:  ['Quadratura di giornata', 'Contabilità'],
+    /* Non hanno piu' una voce di menu (22/09/2026) ma la rotta resta: senza
+       il titolo, chi ci arriva da un collegamento vecchio vedrebbe la
+       briciola della schermata precedente. */
+    incassa:     ['Incassa una rata', 'Contabilità'],
+    recuperi:    ['Premi da recuperare', 'Contabilità'],
     primanota:   ['Prima nota', 'Contabilità'],
     quadconti:   ['Quadratura conti', 'Contabilità'],
     incassi:     ['Incassi da accreditare', 'Contabilità'],
@@ -859,7 +875,7 @@
   var TAB2MENU = {
     dashboard: 'dashboard', carica: 'carica', anomalie: 'carica', sospesi: 'carica',
     quadratura: 'carica', caricafile: 'carica', primanota: 'carica', quadconti: 'carica',
-    incassi: 'carica',
+    incassi: 'carica', cruscotto: 'carica', incassa: 'carica', recuperi: 'carica',
     storico: 'carica', conto: 'carica', team: 'strumenti', operativa: 'strumenti',
     workdiary: 'agenzia',
     performance: 'agenzia', produzione: 'agenzia', pipeline: 'clienti',

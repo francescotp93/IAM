@@ -7378,3 +7378,81 @@ Cruscotto al posto di «Incassi da accreditare».
 *(E una nota sul banco: `contabilita-una-schermata` stampa `X` e non `❌`. Una
 controprova cercata col simbolo sbagliato sembra restata verde — mezz'ora
 persa a dare la colpa alla prova.)*
+
+### La polizza a colpo d'occhio, e le classi che non esistevano (22/09/2026)
+
+> «questo è come si vede una polizza su un gestionale, e la scheda cliente,
+> Foglio cassa, non riusciamo a fare qualcosa di simile? Magari risulta un po'
+> più pratico da vedere? ovviamente sempre con interfaccia IAM» — Francesco,
+> con tre schermate del suo gestionale.
+
+**La causa non era una scelta estetica, ed è la stessa di §65.** Misurato
+prima di disegnare: `.pol-griglia`, `.pol-r` e `.pnu-ov` **non esistevano** nel
+foglio di stile di QUOTO. Il dettaglio polizza e la finestra «Come paga»
+scrivevano quei nomi e nessuna regola li raggiungeva — uscivano nudi, una riga
+sotto l'altra, senza colonne e senza cornice.
+
+> **Una classe che non esiste viene ignorata in silenzio.** Nessun errore,
+> nessuna pagina rotta: chi la guarda pensa a un disegno fatto male. È la
+> stessa firma del gettone che non risolve (§44) e della regola chiusa dentro
+> un pannello (§58). L'unico modo di accorgersene è **misurarlo**.
+
+Misurato su tutto `index.html`: **59 classi prefissate scritte e mai
+definite**, e le più gravi stavano proprio nelle schermate che Francesco ha
+nominato. Le altre sono modificatori su una classe già disegnata
+(`cl-row cl-polizza`, `tk-f ecp-t`) o appigli per le prove, e non producono
+niente di nudo — ma tre di loro (`pol-produttore`, `pol-rata-aperta`,
+`pol-firma`) erano **solo** appigli, e adesso ognuna fa qualcosa di piccolo e
+vero: un appiglio senza regola il guardiano non lo distingue da un refuso.
+
+### Che cosa ha adesso la scheda polizza
+
+| pezzo | dove |
+|---|---|
+| il blocco di stile, coi gettoni condivisi | `.pol-*` in `index.html`, contenitore `.pol-kit` |
+| testata, griglia e i due cassetti | `polDettaglio` |
+| i sinistri della polizza | `polSinistri`, letti da `quote_sinistri.polizza_id` |
+| la finestra «Come paga» | `.pnu-ov`, `.pnu-box`, `.pnu-testa`, `.pnu-corpo`, `.pnu-piede` |
+| prove | tre nuove in `ui-test.mjs` (**519**) |
+
+- **La testata** porta su una riga sola quello che si legge per primo: numero,
+  compagnia (col portatore del rischio), prodotto, targa, stato del pagamento.
+- **La griglia** mette i campi in colonne che si adattano alla larghezza, con
+  l'etichetta piccola sopra e il valore sotto: in verticale si legge tutto
+  insieme invece di scorrere.
+- **Rate e sinistri affiancati**, perché sono le due cose che si guardano
+  aprendo una polizza. Su telefono una sotto l'altra.
+- **I gettoni sono quelli condivisi** (`withus-one-tokens.css`): zero colori
+  scritti a mano. I due che quel file non porta si dichiarano sul contenitore
+  e mai su `:root` (§31, §44), e il guardiano del kit ammette `.pol-kit{` come
+  **categoria** — l'elenco cresce quando una schermata entra nel kit (§58).
+
+### Il guardiano che serviva da sempre
+
+> **Prendi ogni classe prefissata che la schermata scrive DAVVERO (dal DOM,
+> non dal sorgente) e pretendi di ritrovarla nei fogli di stile della pagina.**
+
+Girando, quel guardiano ha trovato in un colpo solo i tre appigli senza regola,
+e nella finestra «Come paga» misura anche che la cornice **arrivi**
+all'elemento — cercare la regola nel foglio non basta, potrebbe non
+raggiungerlo — e che i margini negativi di `.pnu-kit`, fatti per incastrarsi
+dentro una scheda, non sbordino dentro una finestra.
+
+### Una prova aggiornata nella regola
+
+«il pagamento (mezzo e stato) non si legge nel dettaglio» pretendeva
+«Pagato». Quella polizza di collaudo ha una rata **ancora aperta** con il
+bonifico dichiarato: dal 22/09 lo stato lo dicono le rate, e la risposta vera
+è «Sospeso» — premio in copertura, non ancora in casa (§65). Si è aggiornata
+la regola (il mezzo e lo stato si leggono, **col motivo**), non il numero.
+
+### Cosa resta aperto
+
+- **La scheda cliente e il foglio cassa** non sono ancora stati ridisegnati:
+  della richiesta di Francesco è fatta la parte della polizza, che era anche
+  quella col difetto vero. La scheda cliente vuole le linguette
+  (polizze / titoli / sinistri / pagamenti / sospesi) e il foglio cassa una
+  tabella più densa: sono due lavori a sé, e nessuno dei due ha classi
+  mancanti.
+- **`ec-*` e `ir-*` restano senza regole in questo foglio**, ed è giusto:
+  vivono dentro documenti generati che portano il loro `<style>`.

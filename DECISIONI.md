@@ -903,3 +903,47 @@ Le stesse di prima. Niente di nuovo.
   linguette della scheda cliente (polizze/titoli/sinistri/pagamenti/sospesi) e
   la tabella più densa del foglio cassa — due lavori a sé, e nessuno dei due
   ha classi mancanti da riparare.
+
+---
+
+## 22/09/2026 — La scheda cliente e il foglio cassa (0.35.0)
+
+### ✅ Fatto
+
+- **La scheda cliente apre con l'identità in cima**, larga quanto la finestra,
+  in colonne: codice fiscale, nascita ed età, professione, indirizzo, contatti,
+  intermediario. *Indietro:* è tutto dentro `apriAnagrafica` (`testaCliente`) e
+  il blocco `.clk-*`.
+- **Il foglio cassa ha una barra dei totali** al posto delle tessere alte il
+  doppio, e una tabella più fitta (righe basse, intestazione che resta in cima,
+  righe alternate, riga del totale distinta). *Indietro:* `fcRender` e il
+  blocco `.fc-*`.
+- **I tre avvisi del foglio cassa uscivano nudi**: scrivevano due nomi di stile
+  che esistono in IAM e non nel preventivatore. Adesso hanno la loro cornice.
+- **La riga d'errore della finestra «Come paga» non era rossa**: il rosso era
+  usato e non dichiarato da nessuna parte.
+
+### 🟡 Scelte da sapere
+
+- **I campi dell'identità sono stati SPOSTATI, non copiati.** Nella colonna di
+  sinistra della scheda cliente non ci sono più codice fiscale, nascita,
+  professione, indirizzo, contatti e intermediario: sono in cima. Lì resta
+  quello che si modifica (residenza dichiarata, consensi, note), e la
+  colonna si chiama «Consensi e note». *Indietro:* una riga in
+  `apriAnagrafica`.
+- **La finestra della scheda cliente è più larga** (980 px invece di 920), per
+  far stare la testata in colonne su schermo normale.
+
+### 🔴 Serve il tuo ok
+
+Le stesse di prima. Niente di nuovo.
+
+### 📝 Fuori perimetro, annotato
+
+- **La barra dei totali non ha partite varie, rimessa e premi di direzione**
+  come quella del tuo gestionale: quei conti in IAM non esistono, e inventarli
+  sarebbe scrivere numeri che nessuno ha deciso.
+- **La scheda cliente non ha le linguette «Pagamenti» e «Sospesi»**: quelle due
+  liste oggi vivono in Contabilità e nel dettaglio della polizza. Portarle qui
+  vuol dire decidere se sono la stessa lista vista da un'altra parte o un
+  secondo elenco.

@@ -1,8 +1,20 @@
 {
-  "versione": "0.34.0",
-  "nome": "La polizza a colpo d’occhio",
+  "versione": "0.35.0",
+  "nome": "La scheda cliente e il foglio cassa",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.35.0",
+      "data": "2026-09-22",
+      "nome": "La scheda cliente e il foglio cassa",
+      "voci": [
+        "LA SCHEDA CLIENTE APRE CON L'IDENTITÀ IN CIMA. Codice fiscale, nascita ed età, professione, indirizzo, contatti e intermediario stanno in una striscia larga quanto la finestra, sopra le linguette: prima erano chiusi in una colonna da 300 pixel divisa in due, da scorrere. Non sono un doppione — sono stati spostati, e nella colonna di sinistra resta quello che si modifica (consensi, residenza dichiarata, note).",
+        "IL FOGLIO CASSA HA UNA BARRA DEI TOTALI al posto delle tessere alte il doppio, e la tabella è più fitta: righe basse, intestazione che resta in cima mentre si scorre, righe alternate e la riga del totale che si distingue.",
+        "I TRE AVVISI DEL FOGLIO CASSA USCIVANO NUDI. Scrivevano due nomi di stile che esistono in IAM e non nel preventivatore: «questi totali sono parziali» e «le provvigioni contano solo le rate incassate» comparivano come testo semplice, senza cornice e senza colore, cioè senza dire di essere avvisi. Adesso hanno la loro cornice.",
+        "E la riga d'errore della finestra «Come paga» non era rossa: il rosso era usato e non dichiarato da nessuna parte. Un errore che non si vede come un errore.",
+        "Due prove nuove misurano che ogni nome di stile che le due schermate scrivono esista davvero, e che i campi dell'identità non compaiano due volte nella stessa finestra."
+      ]
+    },
     {
       "v": "0.34.0",
       "data": "2026-09-22",

@@ -7448,11 +7448,80 @@ la regola (il mezzo e lo stato si leggono, **col motivo**), non il numero.
 
 ### Cosa resta aperto
 
-- **La scheda cliente e il foglio cassa** non sono ancora stati ridisegnati:
-  della richiesta di Francesco è fatta la parte della polizza, che era anche
-  quella col difetto vero. La scheda cliente vuole le linguette
-  (polizze / titoli / sinistri / pagamenti / sospesi) e il foglio cassa una
-  tabella più densa: sono due lavori a sé, e nessuno dei due ha classi
-  mancanti.
 - **`ec-*` e `ir-*` restano senza regole in questo foglio**, ed è giusto:
   vivono dentro documenti generati che portano il loro `<style>`.
+
+### La scheda cliente e il foglio cassa, l'altra metà (22/09/2026)
+
+> «Vai con la scheda cliente e il foglio cassa» — Francesco.
+
+Stessa richiesta, stesso metodo: **prima si misura, poi si disegna.** E il
+risultato della misura è che le due schermate avevano problemi diversi.
+
+| pezzo | dove |
+|---|---|
+| il blocco di stile | `.fc-*` e `.clk-*` in `index.html`, dentro il kit |
+| la testata della scheda cliente | `kr` / `krHtml` / `testaCliente` in `apriAnagrafica` |
+| la barra dei totali e gli avvisi | `fcRender` |
+| prove | due blocchi in `ui-test.mjs` → **521** |
+
+**Il foglio cassa aveva un difetto vero, e l'ha trovato la misura.** Scriveva
+`cnt-avv` e `cnt-err`: sono classi di IAM, e in **questo** documento non
+esistono. I tre avvisi — «questi totali sono parziali», «le provvigioni
+contano solo le rate incassate», «le quadrature contano le rate incassate» —
+uscivano come **testo semplice**, senza cornice e senza colore.
+
+> Un avviso che non si vede come un avviso non è un avviso: è una riga in
+> più da scorrere. Ed erano proprio le tre righe che devono fermare chi
+> legge, perché dicono che i numeri sopra non sono quello che sembrano.
+
+È la firma già scritta due volte (§65, §«La polizza a colpo d'occhio»): **una
+classe che non esiste viene ignorata in silenzio.** Nella stessa rilettura è
+saltato fuori il fratello minore: `--w1-rosso` era **usato** in `.pnu-ko` e
+**dichiarato da nessuna parte**, quindi la riga d'errore della finestra «Come
+paga» prendeva il colore del testo intorno. Un errore che non si vede come un
+errore. I valori sono quelli di IAM, perché i due kit devono restare identici.
+
+**La scheda cliente non aveva classi mancanti: aveva la forma sbagliata.**
+L'identità del cliente stava nella colonna di sinistra, larga 300 pixel e
+divisa in due — sei o sette righe da scorrere per leggere un codice fiscale,
+mentre nel gestionale di Francesco è la prima cosa che si vede. Adesso sta in
+cima, larga quanto la finestra, in colonne.
+
+> **E i campi sono stati SPOSTATI, non copiati.** Nella colonna di sinistra
+> resta quello che si *modifica* — residenza dichiarata, consensi, note
+> permanenti — che è un'altra cosa dal *leggere* chi è il cliente. Un codice
+> fiscale scritto due volte nella stessa finestra è il doppione che, il
+> giorno in cui uno dei due si aggiorna e l'altro no, fa non fidarsi di
+> nessuno dei due. C'è una prova che conta le occorrenze e pretende **una**,
+> e la controprova la fa diventare rossa.
+
+Conseguenza da sapere: `f()` e `val()` dentro `apriAnagrafica` non le
+chiamava più nessuno e sono state tolte. Codice che arriva e non lo chiama
+nessuno è il guasto numero uno di questo repository (§1), e vale anche per
+il codice che *smette* di essere chiamato.
+
+**Il guardiano delle classi è lo stesso**, applicato alle due schermate: legge
+le classi **dal DOM** (non dal sorgente) e pretende di ritrovarle nei fogli di
+stile della pagina. Le due prove nuove misurano anche che la cornice **arrivi**
+davvero all'elemento (`getComputedStyle`): cercare la regola nel foglio non
+basta, potrebbe non raggiungerlo.
+
+**Due contenitori nuovi nell'elenco del kit** (`.fc-kit`, `.clk-kit`): l'elenco
+è una **categoria**, non un nome proprio, e cresce quando una schermata entra
+nel kit (§58). I gettoni che la fonte unica non porta si dichiarano lì, mai su
+`:root` (§31, §44).
+
+### Cosa resta aperto, dopo questa metà
+
+- **Il foglio cassa non ha una barra di totali «alla AssiEasy»** con partite
+  varie, rimessa e premi di direzione: quei conti in IAM non esistono, e
+  inventarli sarebbe la regola §8.1 sul denaro. Ci sono i numeri che il
+  sistema sa davvero.
+- **La scheda cliente non ha le linguette «Pagamenti» e «Sospesi»** del
+  gestionale di Francesco: i sospesi vivono in Contabilità (§64) e i pagamenti
+  nel dettaglio della polizza. Portarli qui vuol dire decidere se sono la
+  stessa lista vista da un'altra parte o un secondo elenco — e due elenchi
+  della stessa cosa dicono numeri diversi (§62).
+- **Le altre schermate di QUOTO non sono sul kit**: si portano una alla volta,
+  come si è fatto in IAM (§31).

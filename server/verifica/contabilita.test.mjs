@@ -2339,6 +2339,32 @@ prova('una PERSONA non è un conto: l\'incasso si può registrare lo stesso', ()
   return 'sospeso senza conto, e il conto si sceglie all\'accredito';
 });
 
+prova('LE PERSONE STANNO IN CIMA, anche quando pesano molto meno di un mezzo', () => {
+  /* Misurato sul portafoglio vero il 22/09/2026: i mezzi raccolgono 135, 86,
+     80 e 75 rate aperte, una persona ne ha due. Ordinando tutto insieme per
+     importo, «Oddo Francesco» finiva ULTIMO DI SETTE, sotto 418 righe — e per
+     chi guardava la schermata non c'era. Un mezzo accredita da solo; una
+     persona è qualcuno a cui telefonare. */
+  const tante = [];
+  for (let i = 0; i < 40; i++) {
+    tante.push({ id: 'k' + i, stato: 'aperto', data_decorrenza: '2026-08-01',
+      mezzo_pagamento: 'carta_credito', importo_lordo: 500, cliente: 'CLIENTE ' + i });
+  }
+  tante.push({ id: 'p1', stato: 'incassato', incassato_il: '2026-09-18', mezzo_pagamento: 'carta_credito',
+    mezzo_polizza: 'col_oddo', importo_lordo: 400, cliente: 'CARPITELLA GUIDO' });
+  const e = C.daIncassare(tante, VOC_P, { oggi: '2026-09-22' });
+  deve(e.gruppi[0].etichetta === 'Oddo Francesco',
+    'in cima c\'è «' + e.gruppi[0].etichetta + '» (' + e.gruppi[0].totale + ' €) invece della persona');
+  deve(e.gruppi[0].sezione === 'persone' && e.gruppi[1].sezione === 'mezzi',
+    'le due sezioni non si distinguono');
+  /* E il riepilogo dice quante persone tengono dei premi, e quanto. */
+  deve(e.persone === 1 && e.totale_persone === 400, 'il conto delle persone non torna: '
+    + e.persone + ' / ' + e.totale_persone);
+  /* Il gruppo del mezzo pesa 50 volte di più, e resta sotto. */
+  deve(e.gruppi[1].totale === 20000, 'il mezzo non è quello atteso: ' + e.gruppi[1].totale);
+  return 'la persona da 400 € prima del mezzo da 20.000 €';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

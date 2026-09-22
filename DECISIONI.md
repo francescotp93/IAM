@@ -1086,3 +1086,35 @@ giorni. Le altre non spariscono — si contano e si dichiarano con la porta.
   «Costi di agenzia» come contropartita.
 - Nessun conto dichiara ancora quali mezzi riceve: scaricare un sospeso chiede
   il conto a mano.
+
+## 22/09/2026 — I sospesi delle persone si vedono per primi (0.38.0)
+
+**Perimetro:** «Carpitella Guido 400 € come pagamento Oddo Francesco dovrebbe
+andare tra i sospesi, ma non c'è».
+
+### 🟡 Scelte prese, e come tornare indietro
+
+**1. Due sezioni nei Sospesi: le persone sempre prima dei mezzi.**
+*Perché:* misurato, Oddo Francesco era il settimo gruppo su sette (662,98 €)
+sotto quattro mezzi da 19.000-34.000 € e 418 righe. Un mezzo raccoglie
+centinaia di rate, una persona ne ha due: ordinandoli insieme per importo la
+persona finisce sempre in fondo.
+*Come tornare indietro:* in `daIncassare`, togliere dal `sort` la riga che
+confronta `a.sezione`.
+
+**2. I gruppi delle persone nascono aperti; i mezzi no.**
+*Come tornare indietro:* togliere il blocco `if (SPR_ESITO && !SPR_TOCCATO)`
+in `sprCarica`.
+
+**3. Un contatore nuovo in testa: «Li tiene una persona».**
+*Come tornare indietro:* togliere la prima `sprCard` in `sprRender`.
+
+### 🔴 Una richiesta NON applicata alla lettera, e il motivo
+
+«Nei sospesi ci devono andare tutti quei pagamenti impostati come sospesi»:
+letta alla lettera porterebbe dentro **2.778 rate già incassate** per
+**896.627,80 €** (misurato). Quelle le ha incassate la compagnia: nessuno le
+deve all'agenzia, e nei «premi da incassare» sarebbero un numero grande,
+credibile e falso. Restano contate e dichiarate con la porta dove si lavorano.
+Se la lettura giusta è l'altra, si cambia una riga in `daIncassare` — ma è una
+decisione, non una conseguenza.

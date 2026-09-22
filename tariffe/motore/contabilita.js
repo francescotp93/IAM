@@ -1086,12 +1086,22 @@
       escluse_contanti: 0, totale_contanti: 0,
       in_ritardo: 0, totale_ritardo: 0,
       da_versare: 0, totale_da_versare: 0,
-      incassate_fuori: 0, totale_incassate_fuori: 0
+      incassate_fuori: 0, totale_incassate_fuori: 0,
+      persone: 0, totale_persone: 0
     };
 
     function gruppo(k, etichetta, tipo, collab) {
       if (!per[k]) {
         per[k] = { voce: k, etichetta: etichetta, tipo: tipo, collaboratore_id: collab || null,
+          /* CHI tiene i premi e COME sono stati pagati sono due elenchi, non
+             uno ordinato per importo. Misurato il 22/09/2026 sul portafoglio
+             vero: i mezzi raccolgono 135, 86, 80, 75 rate e una persona ne
+             ha due, quindi ordinando tutto insieme per importo la persona
+             finisce SEMPRE in fondo — Oddo Francesco era settimo su sette,
+             sotto 418 righe, e per chi guardava non c'era.
+             Un mezzo e' un circuito che accredita da solo; una persona e'
+             qualcuno a cui telefonare. La seconda non si cerca: si vede. */
+          sezione: collab ? 'persone' : 'mezzi',
           righe: [], n: 0, totale: 0, senza_importo: 0, in_ritardo: 0,
           n_incassare: 0, totale_incassare: 0, n_versare: 0, totale_versare: 0 };
         ordine.push(per[k]);
@@ -1179,7 +1189,10 @@
     /* In cima chi pesa di piu': una schermata che mette per primi i gruppi da
        due righe fa scorrere per niente. «Da dichiarare» resta dov'e' il suo
        importo — non lo si mette in fondo per farlo sembrare meno. */
-    ordine.sort(function (a, b) { return b.totale - a.totale || b.n - a.n; });
+    ordine.sort(function (a, b) {
+      if (a.sezione !== b.sezione) return a.sezione === 'persone' ? -1 : 1;
+      return b.totale - a.totale || b.n - a.n;
+    });
     /* Dentro un gruppo prima quello che qualcuno ha GIA' in mano: e' denaro
        che esiste e che si puo' farsi dare oggi, mentre una rata non pagata
        dipende dal cliente. Poi per data. */
@@ -1188,6 +1201,11 @@
         if (x.famiglia !== y.famiglia) return x.famiglia === 'versare' ? -1 : 1;
         return String(x.data || '').localeCompare(String(y.data || ''));
       });
+    });
+    ordine.forEach(function (g) {
+      if (g.sezione !== 'persone') return;
+      out.persone++;
+      out.totale_persone = cent(out.totale_persone + g.totale);
     });
     out.gruppi = ordine;
     return out;

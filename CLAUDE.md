@@ -7761,3 +7761,53 @@ che non salgono sono il sintomo.*
 - **Le 339 rate che ereditano la voce dalla polizza** adesso si vedono nei
   sospesi divise per mezzo: sono premi in transito veri, ma nessuno li aveva
   mai guardati tutti insieme.
+
+### 66-bis. «Dovrebbe andare tra i sospesi, ma non c'è» — c'era, ed era ultimo (22/09/2026)
+
+> «ho messo una polizza Carpitella Guido 400 € come pagamento Oddo Francesco,
+> quindi dovrebbe andare tra i sospesi... ma non c'è.» — Francesco.
+
+**Misurato prima di toccare, e il motore era già a posto.** Girato sulle due
+righe vere del database, `daIncassare` rispondeva
+`Oddo Francesco · 2 rate · 662,98 €`. Il difetto era **a valle del motore**.
+
+Misurato poi su tutto il portafoglio, come la schermata lo ordinava davvero:
+
+| # | gruppo | rate | euro |
+|---|---|---|---|
+| 1 | Carta di credito | 135 | 34.172,13 |
+| 2 | Carta prepagata | 75 | 22.024,85 |
+| 3 | PayPal | 86 | 21.933,77 |
+| 4 | Altro | 80 | 19.100,75 |
+| 5 | Da dichiarare | 41 | 1.109,34 |
+| 6 | POS | 1 | 148,00 |
+| **7** | **Oddo Francesco** | **2** | **662,98** |
+
+> **Un mezzo raccoglie centinaia di rate, una persona ne ha due.** Ordinandoli
+> nello stesso elenco per importo, la persona finisce **sempre** in fondo — non
+> per caso, per costruzione. Oddo Francesco era l'ultimo di sette, sotto 418
+> righe: c'era, e per chi guardava non c'era.
+
+La regola, non l'ordine: **due sezioni.** «Chi tiene i premi — a loro si
+chiede» sta sempre prima di «Per mezzo di pagamento — arrivano da soli». Un
+mezzo è un circuito che accredita da solo; una persona è qualcuno a cui
+telefonare, e non si cerca: si vede.
+
+E i gruppi delle persone **si aprono da soli**, finché nessuno ha toccato
+niente (`SPR_TOCCATO`): sono pochi e sono il lavoro. I mezzi no — sono
+centinaia di righe, e aprirli tutti seppellirebbe di nuovo quello che conta.
+In testa un contatore nuovo: **quante persone tengono dei premi e per quanto.**
+
+**La lezione, e non è la prima volta.** Il motore era giusto, le prove erano
+verdi, e la schermata era inservibile. *Una prova che gira il motore su due
+righe non dice niente su come quelle due righe si vedranno in mezzo a
+quattrocento.* La prova nuova mette **quaranta rate su un mezzo e una su una
+persona**, e pretende la persona in cima: è l'unico modo di misurare un ordine.
+
+**Quello che NON si è fatto.** La richiesta diceva anche «nei sospesi ci devono
+andare tutti quei pagamenti che sono stati impostati che devono essere
+sospesi». Letta alla lettera vorrebbe dire portarci anche le **2.778 rate già
+incassate** con un mezzo «sospeso», per **896.627,80 €** (misurato). Quelle le
+ha incassate la compagnia, non l'agenzia: nessuno le deve a nessuno, e
+metterle fra i premi da incassare sarebbe un numero grande, credibile e falso
+(§8.1, §62). Restano contate e dichiarate, con la porta dove si lavorano.

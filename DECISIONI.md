@@ -6,6 +6,44 @@ soltanto quello che Francesco potrebbe voler ribaltare.
 
 ---
 
+## 22/09/2026 — Contabilità · Fase 2, si incassa una rata (0.26.0)
+
+**Perimetro:** registrare l'incasso di una o più rate con una o più modalità di
+pagamento, e la scrittura contabile che ne nasce.
+
+🔴 **Applicato al database, con la tua autorizzazione permanente.** Tre tabelle
+nuove (`iam_incassi`, `iam_incassi_rate`, `iam_incassi_pagamenti`), due funzioni
+(`iam_incasso_registra`, `iam_incasso_storna`), tre trigger di immutabilità e un
+vincolo allargato su `iam_movimenti.origine`. Nessuna colonna esistente è stata
+toccata, nessun dato riscritto.
+*Come tornare indietro:* il blocco ROLLBACK in testa alle due migrazioni. Non
+rimette indietro le rate incassate né i movimenti: sono fatti accaduti.
+
+🟡 **Una rata si incassa INTERA.** Il pezzo che manca è un sospeso, e i sospesi
+sono la Fase 3. Una rata chiusa per un importo, con un residuo che non sta da
+nessuna parte, è peggio di una rata aperta.
+*Come tornare indietro:* è una scelta di perimetro, si allarga con la Fase 3.
+
+🟡 **L'Avere è il premio LORDO verso la compagnia**, come dice la specifica. La
+provvigione dell'agenzia non viene separata all'incasso: il conto della
+compagnia porta il lordo, e il conto economico su quell'incasso dice zero.
+*Serve la tua decisione* (vedi sotto). La schermata lo scrive in faccia invece
+di scegliere da sola.
+
+🟡 **Un conto di sospesi non è un modo di pagare, per adesso.** Mettere una rata
+a copertura senza aver visto il denaro è un'altra operazione e arriva con la
+Fase 3: farla passare di qui scriverebbe la contabilità giusta e nessuna
+posizione nell'elenco di chi deve pagare.
+
+🟡 **Una rata negativa (rimborso, appendice di riduzione) si rifiuta col
+motivo**, invece di sparire dalla ricerca in silenzio.
+
+📝 **Fuori perimetro, annotato:** «Incassi diretti in compagnia» è fra i conti
+minimi come modo di pagare e non lo è; gli abbuoni sono classificati fra i
+premi e sono una perdita dell'agenzia.
+
+---
+
 ## 22/09/2026 — Il cliente si sceglie da una schermata vera (0.25.0)
 
 **Perimetro:** la barra di ricerca del cliente nel modulo «Nuova polizza».

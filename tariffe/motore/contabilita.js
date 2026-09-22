@@ -619,21 +619,72 @@
      al saldo progressivo della prima nota. Un movimento SENZA data non entra
      in un saldo «a una certa data» — non si sa dove collocarlo — ma entra nel
      saldo di oggi, perché il denaro si è mosso davvero. */
+  /* ── QUANTO UN MOVIMENTO MUOVE UN CONTO ──────────────────────────────────
+
+     Fino alla Fase 1 la risposta era una sola: un movimento aveva un conto e
+     un importo in testata, e il verso lo dava la causale. Dalla Fase 2 un
+     incasso può arrivare su DUE conti (metà in contanti, metà in banca) e
+     creare il debito su un terzo: leggere la testata attribuirebbe tutto al
+     primo conto — **un numero credibile e falso**, e la quadratura troverebbe
+     ogni giorno una differenza senza saper dire da dove viene.
+
+     Quindi: se il movimento ha delle RIGHE, il suo effetto su un conto è
+     `Dare − Avere` di quelle righe. Se non le ha — e sono tutti i movimenti
+     scritti prima del 20/09/2026 — si legge la testata, come prima. Non si
+     inventa una contropartita che nessuno ha scritto (§8.1): si legge quello
+     che c'è, e si dichiara quando è poco.
+
+     `mieRighe` è nullo quando chi chiama non ha passato le righe: allora il
+     motore NON sa se ce ne siano, e si comporta come prima. Un motore che
+     desse per scontato «nessuna riga» direbbe che un movimento a due gambe
+     non muove niente, che è peggio di leggerne una sola. */
+  function effettoSuConto(m, conto, righePerMov, causali) {
+    var mie = righePerMov ? (righePerMov[m.id] || []) : null;
+    if (mie && mie.length) {
+      var d = 0, a = 0, tocca = false;
+      for (var i = 0; i < mie.length; i++) {
+        if (!conto || mie[i].conto_id === (conto && conto.id)) {
+          d = cent(d + (numero(mie[i].dare) || 0));
+          a = cent(a + (numero(mie[i].avere) || 0));
+          tocca = true;
+        }
+      }
+      if (!tocca) return { tocca: false, delta: 0, incerto: false, verso: 0 };
+      var dl = cent(d - a);
+      return { tocca: true, delta: dl, incerto: false, verso: dl === 0 ? 0 : (dl > 0 ? 1 : -1), dare: d, avere: a };
+    }
+    if (conto && m.conto_id !== conto.id) return { tocca: false, delta: 0, incerto: false, verso: 0 };
+    var imp = numero(m.importo);
+    var v = versoDi(m, causali);
+    if (imp == null || !v) return { tocca: true, delta: 0, incerto: true, verso: v || 0 };
+    return { tocca: true, delta: cent(v * Math.abs(imp)), incerto: false, verso: v };
+  }
+
+  /* Le righe raggruppate per movimento, una volta sola: chi somma cinquemila
+     movimenti non deve filtrare cinquemila volte lo stesso elenco. */
+  function perMovimento(righe) {
+    if (!righe) return null;
+    var m = {};
+    (righe || []).forEach(function (r) {
+      if (!r || !r.movimento_id) return;
+      (m[r.movimento_id] = m[r.movimento_id] || []).push(r);
+    });
+    return m;
+  }
+
   function saldo(conto, movimenti, opz) {
     opz = opz || {};
     var causali = opz.causali ? indice(opz.causali) : null;
+    var perMov = opz.righe ? perMovimento(opz.righe) : null;
     var tot = numero(conto && conto.saldo_iniziale) || 0;
     var n = 0;
     (movimenti || []).forEach(function (m) {
       if (!vivo(m)) return;                 /* regola 5 */
-      if (conto && m.conto_id !== conto.id) return;
       if (opz.al) { if (!m.data || m.data > opz.al) return; }
       if (opz.dal && m.data && m.data < opz.dal) return;
-      var imp = numero(m.importo);
-      if (imp == null) return;
-      var v = versoDi(m, causali);
-      if (!v) return;             /* verso sconosciuto: non si indovina */
-      tot += v * Math.abs(imp);
+      var e = effettoSuConto(m, conto, perMov, causali);
+      if (!e.tocca || e.incerto) return;    /* verso sconosciuto: non si indovina */
+      tot += e.delta;
       n++;
     });
     return { saldo: cent(tot), iniziale: cent(numero(conto && conto.saldo_iniziale) || 0), movimenti: n };
@@ -646,7 +697,10 @@
   function progressivo(conto, movimenti, opz) {
     opz = opz || {};
     var causali = opz.causali ? indice(opz.causali) : null;
-    var righe = vivi(movimenti).filter(function (m) { return !conto || m.conto_id === conto.id; });
+    var perMov = opz.righe ? perMovimento(opz.righe) : null;
+    var righe = vivi(movimenti).filter(function (m) {
+      return effettoSuConto(m, conto, perMov, causali).tocca;
+    });
     righe.sort(function (a, b) {
       var da = testo(a.data), db = testo(b.data);
       if (da !== db) return da < db ? -1 : 1;
@@ -656,11 +710,10 @@
     });
     var tot = numero(conto && conto.saldo_iniziale) || 0;
     return righe.map(function (m) {
-      var v = versoDi(m, causali);
-      var imp = numero(m.importo);
-      var delta = (v && imp != null) ? v * Math.abs(imp) : 0;
-      tot += delta;
-      return { movimento: m, verso: v, delta: cent(delta), saldo: cent(tot), incerto: !v || imp == null };
+      var e = effettoSuConto(m, conto, perMov, causali);
+      tot += e.incerto ? 0 : e.delta;
+      return { movimento: m, verso: e.verso, delta: cent(e.incerto ? 0 : e.delta),
+               saldo: cent(tot), incerto: e.incerto };
     });
   }
 
@@ -1682,10 +1735,16 @@
   function dettaglioConto(conto, movimenti, dichiarazioni, opz) {
     opz = opz || {};
     var causali = opz.causali || null;
+    var perMov = opz.righe ? perMovimento(opz.righe) : null;
+    var cau = causali ? indice(causali) : null;
+    /* Un movimento appartiene a questo conto se lo TOCCA, non se ce l'ha in
+       testata: dalla Fase 2 un incasso su due conti tocca tutti e due, e
+       filtrando per testata la metà arrivata in banca non comparirebbe mai
+       nell'estratto della banca. */
     var miei = (movimenti || []).filter(function (m) {
-      return m && conto && m.conto_id === conto.id;
+      return m && conto && effettoSuConto(m, conto, perMov, cau).tocca;
     });
-    var tutte = progressivo(conto, miei, { causali: causali });   /* solo i vivi */
+    var tutte = progressivo(conto, miei, { causali: causali, righe: opz.righe });   /* solo i vivi */
     var dal = testo(opz.dal) || null, al = testo(opz.al) || null;
 
     var dentro = tutte, apertura = numero(conto && conto.saldo_iniziale) || 0;
@@ -1713,7 +1772,7 @@
     return {
       conto: conto || null,
       iniziale: cent(numero(conto && conto.saldo_iniziale) || 0),
-      saldo: saldo(conto, miei, { causali: causali }).saldo,
+      saldo: saldo(conto, miei, { causali: causali, righe: opz.righe }).saldo,
       apertura: cent(apertura),
       righe: dentro,                 /* in ordine di data, dalla più vecchia */
       totali: tutte.length,
@@ -1727,6 +1786,245 @@
       per_causale: perCausale(miei, opz.causali || [], { dal: dal || null, al: al || null }),
       quadrature: storicoQuadrature(conto, miei, dichiarazioni, { causali: causali })
     };
+  }
+
+  /* ═══ FASE 2 — L'INCASSO DI UNA O PIÙ RATE ════════════════════════════════
+
+     Il principio dell'interfaccia (specifica §16): «l'operatore non deve
+     conoscere la partita doppia per registrare un incasso». Sceglie le rate e
+     i modi in cui il cliente ha pagato; la scrittura contabile la costruisce
+     il motore, e si vede nel dettaglio del movimento.
+
+     Le righe sono quelle della specifica §7.1:
+       DARE  — una riga per ogni MODALITÀ di pagamento (il conto che riceve);
+       AVERE — una riga per ogni COMPAGNIA delle rate scelte (il debito che
+               l'incasso crea verso di lei).
+
+     Tre cose che questo motore NON fa, e ognuna è una regola di casa:
+
+     1. **Non inventa il conto della compagnia.** Se una compagnia non ha un
+        conto di debito, le righe non si scrivono: si dice quale manca e si
+        manda a crearlo (§8.1). Un incasso appoggiato «al primo conto che
+        passa» è un debito attribuito alla compagnia sbagliata, e non se ne
+        accorge nessuno finché non si va a rimettere il denaro.
+     2. **Non incassa mezza rata.** Una rata entra intera. Il pezzo che manca
+        non è un incasso più piccolo: è un SOSPESO, e i sospesi sono la Fase 3.
+        Scrivere qui un incasso parziale lascerebbe una rata chiusa per un
+        importo e un residuo che non sta da nessuna parte.
+     3. **Non chiude la differenza da solo.** Se i pagamenti non fanno il
+        totale delle rate, non si registra. La differenza si copre mettendo il
+        conto «Abbuoni» fra le modalità: così l'abbuono si vede nel movimento
+        e nella quadratura, invece di sparire dentro un arrotondamento. */
+
+  /* Questa rata si può incassare? */
+  function incassabile(t) {
+    var r = t || {};
+    var imp = numero(r.importo_lordo);
+    if (!r.id) return { si: false, motivo: 'La rata non ha un identificativo.' };
+    if (testo(r.stato) === 'incassato') {
+      return { si: false, motivo: 'Già incassata' + (r.incassato_il ? ' il ' + giornoBello(r.incassato_il) : '') + '.' };
+    }
+    if (testo(r.stato) === 'stornato' || testo(r.stato) === 'annullato') {
+      return { si: false, motivo: 'La rata è ' + testo(r.stato) + ': non c’è niente da incassare.' };
+    }
+    if (imp == null) {
+      return { si: false, motivo: 'La rata non ha un importo: non si incassa un numero che non c’è.' };
+    }
+    /* Un importo negativo è un'appendice di riduzione o un rimborso: è un
+       fatto vero, e non si incassa da questa schermata. Si RIFIUTA col motivo
+       invece di lasciarlo fuori dalla ricerca: una riga che sparisce senza
+       spiegazione fa cercare per mezz'ora una rata che c'è. */
+    if (imp < 0) {
+      return { si: false, motivo: 'La rata è negativa (' + euro(imp) + '): è un rimborso o un’appendice di riduzione, e da qui non si registra.' };
+    }
+    if (imp === 0) return { si: false, motivo: 'La rata è a zero: non c’è niente da incassare.' };
+    return { si: true, motivo: null };
+  }
+
+  function giornoBello(v) {
+    var s = testo(v).slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.split('-').reverse().join('/') : s;
+  }
+
+  /* Il conto su cui scrivere l'AVERE di una compagnia.
+     Prima quello intestato a LEI, poi quello generico. Il nome della compagnia
+     passa dagli alias (§11, §28): sulla polizza è scritto «HDI Assicurazioni»
+     e in anagrafica «HDI», e senza gli alias quel conto non si trova mai —
+     senza errore, e con un «da confermare» che sembra una configurazione
+     mancante. */
+  function chiaveNome(v) {
+    var s = testo(v).toLowerCase();
+    if (s.normalize) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return s.replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  function contoCompagnia(conti, compagnia, opz) {
+    opz = opz || {};
+    var lista = (conti || []).filter(function (c) {
+      return c && c.attivo !== false && testo(c.tipologia) === 'debito';
+    });
+    var catalogo = opz.compagnie || [];
+    var id = testo(compagnia && compagnia.id) || testo(opz.compagnia_id);
+    var nome = testo(compagnia && compagnia.nome) || testo(compagnia);
+
+    /* L'id è la strada sicura e non passa dagli alias: due nomi diversi della
+       stessa compagnia hanno lo stesso id. */
+    if (id) {
+      for (var i = 0; i < lista.length; i++) if (testo(lista[i].compagnia_id) === id) {
+        return { conto: lista[i], come: 'suo', compagnia_id: id, motivo: null };
+      }
+    }
+    /* Senza id si passa dal nome, risolto con gli alias del catalogo. */
+    if (nome && !id) {
+      var k = chiaveNome(nome), risolto = null;
+      for (var j = 0; j < catalogo.length; j++) {
+        var cc = catalogo[j]; if (!cc) continue;
+        if (chiaveNome(cc.nome) === k) { risolto = cc; break; }
+        var al = cc.alias || [];
+        for (var z = 0; z < al.length; z++) if (chiaveNome(al[z]) === k) { risolto = cc; break; }
+        if (risolto) break;
+      }
+      if (risolto) {
+        for (var q = 0; q < lista.length; q++) if (testo(lista[q].compagnia_id) === testo(risolto.id)) {
+          /* Il nome risolto porta con se' l'IDENTIFICATIVO della compagnia: la
+             riga di prima nota deve puntare alla compagnia vera, non al nome
+             scritto sulla polizza. Senza, «HDI Assicurazioni» e «HDI»
+             sarebbero due debiti diversi nello stesso conto. */
+          return { conto: lista[q], come: 'suo', compagnia_id: testo(risolto.id), motivo: null };
+        }
+      }
+      if (risolto) id = testo(risolto.id);
+    }
+    /* Il conto GENERICO e' ammesso, la compagnia sconosciuta no. La differenza
+       e' quella che rende ricostruibile il partitario: la riga di prima nota
+       porta sempre `compagnia_id`, quindi anche su un conto condiviso si sa
+       quanto si deve a ognuna. Senza l'identificativo invece il debito verso
+       nove compagnie finirebbe su una riga sola, e il giorno del rendiconto
+       non ci sarebbe modo di dire quanto e' di chi. */
+    if (!id) {
+      return { conto: null, come: null, compagnia_id: null,
+        motivo: 'La compagnia «' + (nome || '—') + '» non è in anagrafica: senza, il debito di questo incasso non si sa verso chi nasce. Si aggiunge in Strumenti › Gestione compagnie (o come alias, se è scritta in un altro modo).' };
+    }
+    var generici = lista.filter(function (c) { return !testo(c.compagnia_id); });
+    if (generici.length === 1) return { conto: generici[0], come: 'generico', compagnia_id: id, motivo: null };
+    /* Due conti generici non si scelgono per somiglianza: è la regola dei
+       mezzi in conflitto (§32) applicata al debito verso le compagnie. */
+    if (generici.length > 1) {
+      return { conto: null, come: null,
+        motivo: 'Ci sono ' + generici.length + ' conti di debito senza compagnia: non si sceglie a caso. Intestane uno a «' + (nome || '—') + '».' };
+    }
+    return { conto: null, come: null,
+      motivo: 'Manca il conto di debito verso «' + (nome || '—') + '». Si crea in Strumenti › Conti e causali: senza, non si sa dove nasce il debito di questo incasso.' };
+  }
+
+  /* I due totali e la differenza, in tempo reale mentre si compila. */
+  function contoIncasso(rate, pagamenti) {
+    var r = (rate || []).filter(Boolean), p = (pagamenti || []).filter(Boolean);
+    var tr = 0, tp = 0;
+    r.forEach(function (x) { tr = cent(tr + (numero(x.importo) || 0)); });
+    p.forEach(function (x) { tp = cent(tp + (numero(x.importo) || 0)); });
+    var diff = cent(tp - tr);
+    return {
+      rate: r.length, pagamenti: p.length,
+      totale_rate: tr, totale_pagamenti: tp, differenza: diff,
+      quadra: r.length > 0 && p.length > 0 && diff === 0,
+      motivo: !r.length ? 'Scegli almeno una rata da incassare.'
+            : !p.length ? 'Di’ come ha pagato: manca la modalità di pagamento.'
+            : diff === 0 ? null
+            : diff > 0 ? 'I pagamenti superano le rate di ' + euro(diff) + '. Se è un di più del cliente, mettilo su «Eccedenze e abbuoni attivi».'
+                       : 'Mancano ' + euro(-diff) + '. Se è un abbuono dell’agenzia, mettilo su «Abbuoni passivi»: così si vede, invece di sparire in un arrotondamento.'
+    };
+  }
+
+  /* Le righe di prima nota di un incasso. Torna `ok:false` e il MOTIVO ogni
+     volta che non si può scrivere: mai righe a metà. */
+  function righeIncasso(piano, opz) {
+    opz = opz || {};
+    piano = piano || {};
+    var conti = (opz.conti || []);
+    var perId = indice(conti);
+    var rate = (piano.rate || []).filter(Boolean);
+    var pagamenti = (piano.pagamenti || []).filter(Boolean);
+    var errori = [];
+
+    var somma = contoIncasso(rate, pagamenti);
+    if (!somma.quadra) return { ok: false, righe: [], motivo: somma.motivo, errori: [somma.motivo], somma: somma, per_compagnia: [] };
+
+    /* Le modalità di pagamento: DARE. */
+    pagamenti.forEach(function (p, i) {
+      var c = perId[p.conto_id];
+      var n = 'Pagamento ' + (i + 1) + ': ';
+      if (!p.conto_id) errori.push(n + 'scegli su quale conto è arrivato il denaro.');
+      else if (!c) errori.push(n + 'quel conto non esiste più.');
+      else if (c.attivo === false) errori.push(n + 'il conto «' + testo(c.nome) + '» è spento.');
+      else if (c.e_mezzo_pagamento === false) {
+        errori.push(n + '«' + testo(c.nome) + '» non è un modo di pagare: è dove il denaro va a finire, non da dove arriva.');
+      } else if (opz.causale && !compatibile(c, opz.causale).ok) {
+        /* La natura del denaro non si mescola (§26, art. 117 CAP): un premio
+           del cliente su un conto aziendale passa senza un errore, e da quel
+           momento i due mucchi sono uno solo. `compatibile` esiste dalla M1 ed
+           era chiamata solo dalla prima nota a mano: qui è dove serve di più. */
+        errori.push(n + compatibile(c, opz.causale).motivo);
+      } else if (c.e_conto_sospeso === true) {
+        /* Mettere una rata a copertura senza aver visto il denaro È un
+           sospeso, e i sospesi arrivano con la Fase 3. Farlo passare di qui
+           scriverebbe la scrittura contabile giusta e NESSUNA posizione nello
+           scadenzario: il credito esisterebbe in prima nota e non nell'elenco
+           di chi deve pagare. Una cosa che sembra fatta e non lo è. */
+        errori.push(n + '«' + testo(c.nome) + '» è un conto di sospesi. Mettere una rata a copertura senza il denaro è un’altra operazione, e non c’è ancora: qui si registra il denaro arrivato.');
+      }
+      if ((numero(p.importo) || 0) <= 0) errori.push(n + 'metti un importo positivo.');
+    });
+
+    /* Le rate, raggruppate per compagnia: AVERE. */
+    var gruppi = [], per = {};
+    rate.forEach(function (r, i) {
+      var n = 'Rata ' + (i + 1) + ': ';
+      if (!r.titolo_id) { errori.push(n + 'manca il riferimento alla rata.'); return; }
+      var k = testo(r.compagnia_id) || chiaveNome(r.compagnia) || '—';
+      if (!per[k]) {
+        var trovato = contoCompagnia(conti, { id: r.compagnia_id, nome: r.compagnia }, opz);
+        per[k] = { chiave: k, compagnia: testo(r.compagnia),
+                   compagnia_id: testo(r.compagnia_id) || trovato.compagnia_id || null,
+                   conto: trovato.conto, come: trovato.come, motivo: trovato.motivo, importo: 0, rate: 0 };
+        gruppi.push(per[k]);
+      }
+      per[k].importo = cent(per[k].importo + (numero(r.importo) || 0));
+      per[k].rate += 1;
+    });
+    gruppi.forEach(function (g) { if (!g.conto) errori.push(g.motivo); });
+
+    if (errori.length) return { ok: false, righe: [], motivo: errori[0], errori: errori, somma: somma, per_compagnia: gruppi };
+
+    var righe = [], ord = 0;
+    pagamenti.forEach(function (p) {
+      var c = perId[p.conto_id];
+      righe.push({ conto_id: p.conto_id, dare: cent(numero(p.importo)), avere: 0, ordine: ord++,
+        descrizione: 'Incassato su ' + testo(c && c.nome), cliente_id: testo(piano.cliente_id) || null });
+    });
+    gruppi.forEach(function (g) {
+      righe.push({ conto_id: g.conto.id, dare: 0, avere: g.importo, ordine: ord++,
+        descrizione: 'Premi da rimettere a ' + (g.compagnia || testo(g.conto.nome)),
+        compagnia_id: g.compagnia_id, cliente_id: testo(piano.cliente_id) || null });
+    });
+
+    var b = bilanciato(righe);
+    if (!b.ok) return { ok: false, righe: [], motivo: b.motivo, errori: [b.motivo], somma: somma, per_compagnia: gruppi };
+    return { ok: true, righe: righe, motivo: null, errori: [], somma: somma, per_compagnia: gruppi };
+  }
+
+  /* Il mezzo da scrivere sulla rata. Si scrive SOLO se tutte le modalità di
+     pagamento dicono lo stesso mezzo: con due mezzi diversi sulla stessa rata
+     non esiste una risposta, e scriverne uno vorrebbe dire scegliere quale
+     metà della verità raccontare. Il vocabolario è quello del vincolo del
+     database (§53), non un secondo elenco. */
+  function mezzoIncasso(pagamenti) {
+    var p = (pagamenti || []).filter(Boolean);
+    var visti = {};
+    p.forEach(function (x) { var k = testo(x.mezzo).toLowerCase(); if (k) visti[k] = 1; });
+    var k = Object.keys(visti);
+    if (k.length !== 1) return null;
+    return mezzo(k[0]) ? k[0] : null;
   }
 
   var API = {
@@ -1753,6 +2051,10 @@
     destinoIncasso: destinoIncasso,
     giorniDa: giorniDa, inRitardo: inRitardo, sospesiAperti: sospesiAperti,
     riepilogoSospesi: riepilogoSospesi, validaAccredito: validaAccredito,
+    /* Fase 2 — l'incasso di una o più rate */
+    incassabile: incassabile, contoCompagnia: contoCompagnia, contoIncasso: contoIncasso,
+    righeIncasso: righeIncasso, mezzoIncasso: mezzoIncasso, giornoBello: giornoBello,
+    effettoSuConto: effettoSuConto, perMovimento: perMovimento,
     /* M5 — la giornata ricostruita, il fondo cassa, le anomalie */
     giornata: giornata, fondoCassa: fondoCassa, semaforoGiornata: semaforoGiornata,
     anomalie: anomalie,

@@ -1755,6 +1755,106 @@ prova('Fase 4 · un riquadro cieco non mostra zero', () => {
   return '3 riquadri ciechi, nessuno zero, e il cruscotto sa di non sapere';
 });
 
+
+/* ═══ FASE 4-bis — LE ENTRATE SONO IL DENARO CHE SI MUOVE ════════════════ */
+const F4B_CONTI = [
+  { id: 'cassa', nome: 'Cassa', natura: 'premi', tipologia: 'cassa', saldo_iniziale: 0, attivo: true },
+  { id: 'sosp', nome: 'Sospesi clienti', natura: 'premi', tipologia: 'credito', saldo_iniziale: 0, attivo: true },
+  { id: 'deb', nome: 'Debito PRIMA', natura: 'premi', tipologia: 'debito', saldo_iniziale: 0, attivo: true }
+];
+const F4B_CAU = [
+  { id: 'ap', codice: 'apertura_sospeso', nome: 'Apertura sospeso', segno: 'entrata', incide_su_utile: false },
+  { id: 'rec', codice: 'recupero_sospeso', nome: 'Recupero sospeso', segno: 'entrata', incide_su_utile: false }
+];
+/* Il caso vero: una polizza messa a copertura (nessun denaro) e poi il
+   cliente che paga (300 in cassa). Sono DUE movimenti con causale «entrata»
+   e importo 300 in testata. */
+const F4B_MOV = [
+  { id: 'm1', data: '2026-09-22', conto_id: 'sosp', causale_id: 'ap', importo: 300, annullato_il: null },
+  { id: 'm2', data: '2026-09-22', conto_id: 'cassa', causale_id: 'rec', importo: 300, annullato_il: null }
+];
+const F4B_RIGHE = [
+  { movimento_id: 'm1', conto_id: 'sosp', dare: 300, avere: 0 },
+  { movimento_id: 'm1', conto_id: 'deb', dare: 0, avere: 300 },
+  { movimento_id: 'm2', conto_id: 'cassa', dare: 300, avere: 0 },
+  { movimento_id: 'm2', conto_id: 'sosp', dare: 0, avere: 300 }
+];
+
+prova('Fase 4-bis · un premio a copertura NON entra in cassa, e non si conta due volte', () => {
+  /* Letto dalla testata: due movimenti «entrata» da 300 fanno 600 — lo stesso
+     premio entrato due volte, il giorno della copertura e il giorno in cui il
+     cliente paga. Un numero credibile, doppio del vero, su una schermata di
+     cassa. */
+  const senza = C.giornata('2026-09-22', F4B_MOV, F4B_CONTI, { causali: F4B_CAU });
+  deve(senza.entrate === 600, 'il banco non riproduce il difetto: dalla testata dovrebbe fare 600');
+
+  const con = C.giornata('2026-09-22', F4B_MOV, F4B_CONTI, { causali: F4B_CAU, righe: F4B_RIGHE });
+  deve(con.entrate === 300, 'le entrate della giornata sono ' + con.entrate + ' invece di 300');
+  deve(con.competenza === 1, 'la copertura non è contata come scrittura di competenza');
+  /* E lo stesso vale per la barra della prima nota. */
+  const r = C.riepilogo(F4B_MOV, { causali: F4B_CAU, righe: F4B_RIGHE, conti: F4B_CONTI });
+  deve(r.entrate === 300, 'la barra della prima nota conta ' + r.entrate + ' invece di 300');
+  deve(r.competenza === 1, 'la barra non conta a parte la scrittura di competenza');
+  return 'dalla testata 600, dalle gambe di denaro 300';
+});
+
+prova('Fase 4-bis · l\'intestazione della giornata torna con l\'elenco per conto', () => {
+  /* Fino a ieri l'intestazione leggeva la testata e l'elenco per conto le
+     righe: due numeri diversi sulla stessa giornata, uno accanto all'altro. */
+  const g = C.giornata('2026-09-22', F4B_MOV, F4B_CONTI, { causali: F4B_CAU, righe: F4B_RIGHE });
+  const liquidi = g.per_conto.filter(x => ['cassa'].includes(x.conto_id));
+  const somma = liquidi.reduce((a, x) => a + x.entrate - x.uscite, 0);
+  deve(somma === g.saldo, 'l\'intestazione dice ' + g.saldo + ' e i conti di denaro ' + somma);
+  /* E i conti che denaro non sono restano nell'elenco: sapere che quel giorno
+     è nato un debito verso una compagnia serve. */
+  deve(g.per_conto.some(x => x.conto_id === 'deb'), 'il debito verso la compagnia sparisce dall\'elenco');
+  return 'saldo ' + g.saldo + ', e il debito resta visibile';
+});
+
+prova('Fase 4-bis · un conto che non si è potuto leggere non si presume denaro', () => {
+  /* Senza l'elenco dei conti non si può sapere quali sono di denaro: contarli
+     tutti rimetterebbe dentro il difetto. Si conta zero e si dichiara. */
+  const r = C.riepilogo(F4B_MOV, { causali: F4B_CAU, righe: F4B_RIGHE });
+  deve(r.entrate === 0, 'senza i conti il riepilogo presume denaro: ' + r.entrate);
+  deve(r.competenza === 2, 'senza i conti le righe non finiscono fra quelle di competenza');
+  /* E senza righe si torna alla testata, come i movimenti di prima del 20/09. */
+  const t = C.riepilogo(F4B_MOV, { causali: F4B_CAU });
+  deve(t.entrate === 600 && t.da_testata === 2, 'senza righe non si legge più la testata');
+  return 'zero e dichiarato, e senza righe la testata come prima';
+});
+
+
+prova('Fase 4-bis · una rata incassata dalla Fase 2 non risulta «mai entrata in contabilità»', () => {
+  /* Un incasso di tre rate scrive UN movimento, e la testata ne porta una:
+     le altre due risultavano «mai entrate», e un clic su «Portale in
+     contabilità» avrebbe fatto nascere un secondo debito verso la compagnia
+     per un premio entrato una volta sola. Dove sta scritto che una rata è
+     entrata sono TRE posti — la testata, le righe, e le rate dell'incasso. */
+  const base = { oggi: '2026-09-22', conti: [], movimenti: [], causali: [], sospesi: [],
+                 titoli: [{ id: 't1', importo_lordo: 100 }, { id: 't2', importo_lordo: 200 },
+                          { id: 't3', importo_lordo: 300 }] };
+  const quante = d => (C.anomalie(d).filter(a => /il conto non sa/.test(a.titolo))[0] || {}).quanti || 0;
+
+  deve(quante(base) === 3, 'il banco non riproduce il caso: senza niente dovrebbero essere 3');
+  /* la prima chiusa dalla testata, la seconda da una riga, la terza dalle
+     rate dell'incasso: nessuna delle tre deve risultare fuori. */
+  deve(quante(Object.assign({}, base, {
+    movimenti: [{ id: 'm', titolo_id: 't1', annullato_il: null }],
+    righe: [{ movimento_id: 'm', titolo_id: 't2' }],
+    incassi_rate: [{ titolo_id: 't3', attiva: true }]
+  })) === 0, 'una rata incassata dalla Fase 2 risulta ancora «mai entrata in contabilità»');
+  /* Una rata dell'incasso STORNATO invece è tornata aperta, e deve tornare a
+     comparire: `attiva: false` non chiude niente. */
+  deve(quante(Object.assign({}, base, {
+    incassi_rate: [{ titolo_id: 't1', attiva: false }]
+  })) === 3, 'una rata di un incasso stornato risulta ancora in contabilità');
+  /* E un premio messo a copertura (Fase 3) è in contabilità anche lui. */
+  deve(quante(Object.assign({}, base, {
+    crediti: [{ titolo_id: 't1', attivo: true }]
+  })) === 2, 'un premio a copertura non risulta in contabilità');
+  return 'tre strade, e lo storno riapre';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

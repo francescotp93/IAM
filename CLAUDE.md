@@ -6529,3 +6529,157 @@ assolve il codice: accusa la prova* (§15, §17, §18, §19, §41, §46, §56).
 - **`iam_incassi_rate` e le altre letture di `incCarica` non hanno un flag di
   parzialità per sezione**: c'è uno solo, `INC_INCERTO`, che dice «una di
   queste si è fermata» senza dire quale.
+
+---
+
+## 62. Fase 4-bis — le entrate sono il denaro che si muove (22/09/2026)
+
+Rilasciata la 0.28.0, tre lenti di critica indipendenti hanno riletto il
+lavoro. Hanno confermato le correzioni e trovato **cinque difetti che
+restavano**, due dei quali scritti da me nella 0.28.0 stessa. Uno l'avevo
+dichiarato «la lettura giusta» nel §61, e non lo era.
+
+| pezzo | dove |
+|---|---|
+| la regola nuova | `denaroDi` in `tariffe/motore/contabilita.js`, usata da `giornata` e `riepilogo` |
+| le tre strade in cui una rata è già in contabilità | `anomalie`, controllo 2 |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **93** (erano 89) |
+| l'orologio unico, i dati delle anomalie, la parzialità nel CSV | `iam/index.html` |
+| prove sulle schermate | `iam/verifica/cruscotto-contabile.test.mjs` — **13** (erano 10) |
+
+### Il difetto grosso: lo stesso premio contato due volte
+
+Nel §61 avevo scritto, come cosa che resta aperta e va bene così:
+
+> *«`contoEconomico`, `riepilogo` e `perCausale` leggono la testata, ed è la
+> lettura giusta: a partita doppia le due gambe di un movimento si annullano,
+> quindi le righe non saprebbero dire se la giornata ha incassato o pagato.»*
+
+Il ragionamento è corretto e la conclusione è sbagliata, e il caso che lo
+dimostra è arrivato con la Fase 3. Mettere una polizza **a copertura** scrive:
+
+```
+Dare  Sospesi clienti      Avere  Conto compagnia
+```
+
+Due conti che denaro non sono: in cassa non entra un euro. Ma la causale
+`apertura_sospeso` ha segno **entrata** e la testata porta il premio intero.
+Poi il cliente paga, `recupero_sospeso` è un'altra causale **entrata**, e:
+
+| | dice | è |
+|---|---|---|
+| entrate della giornata su un premio da 300 | **600,00** | 300,00 |
+
+**Lo stesso premio entrato due volte**, su una schermata di cassa, senza
+nessun rosso.
+
+> **Le due gambe si annullano solo se si guardano tutte. Guardando solo quelle
+> che toccano un conto di DENARO, la risposta c'è ed è l'unica vera:** Dare su
+> un conto di denaro è entrato, Avere è uscito. Un movimento le cui gambe
+> stanno tutte su crediti e debiti non ha né entrate né uscite: è una
+> **scrittura di competenza**, e dirlo è la differenza fra una contabilità e un
+> elenco di numeri.
+
+`denaroDi` è quella funzione. `LIQUIDE` (cassa, banca, conto assicurativo,
+transitorio) è **dichiarato**, non ricavato per sottrazione: una lista «tutto
+tranne» conterebbe come liquidità una tipologia aggiunta domani senza che
+nessuno l'abbia deciso.
+
+E un conto che **non si è potuto leggere non si presume denaro**: si conta zero
+e si dichiara. Presumerlo rimetterebbe dentro il difetto che questa funzione
+esiste per togliere.
+
+### Il secondo difetto mio: due numeri sulla stessa giornata
+
+Nella 0.28.0 avevo fatto leggere la ripartizione per conto dalle righe e
+lasciato l'intestazione sulla testata. Risultato: **nella stessa scheda, il
+totale in cima e la somma dell'elenco sotto non tornavano** — e un conto di
+debito compariva come denaro uscito. Adesso passano tutti e due da `denaroDi`,
+e c'è una prova che pretende che i due numeri coincidano.
+
+I conti che denaro non sono **restano nell'elenco**: sapere che quel giorno è
+nato un debito verso una compagnia serve, e sta in una riga sua.
+
+### Le anomalie non vedevano la Fase 2
+
+Il controllo «rate incassate che il conto non sa» guardava
+`iam_movimenti.titolo_id` — la **testata**. Un incasso di tre rate scrive un
+movimento solo: le altre due risultavano «mai entrate», e un clic su «Portale
+in contabilità» avrebbe fatto nascere un secondo debito verso la compagnia per
+un premio entrato una volta sola.
+
+È **la stessa correzione già fatta a `incDaPortare` il 22/09** (§59) e qui
+rimasta indietro: dove sta scritto che una rata è entrata in contabilità sono
+**quattro** posti — la testata, le righe del movimento, le rate dell'incasso
+della Fase 2, i sospesi della Fase 3. Guardarne uno solo li dichiara tutti
+mancanti.
+
+E `attiva: false` non chiude niente: una rata di un incasso **stornato** è
+tornata aperta e deve ricomparire. C'è una prova per tutti e quattro i casi.
+
+### Il cruscotto scriveva «Niente da sistemare» e non era vero
+
+Chiamava `anomalie()` con meno dati della linguetta accanto — niente rate
+incassate, niente quadrature, niente portafoglio — quindi ne trovava meno e a
+volte nessuna.
+
+> **Due elenchi della stessa cosa che dicono numeri diversi non sono due viste:
+> uno dei due mente.** E a mentire era quello che diceva «tutto a posto».
+
+Adesso riceve gli stessi dati. E le quattro letture accessorie che non
+riescono **non si dichiarano superate**: finiscono in `CRU_ANOM_CIECHE`, e il
+riquadro scrive *«Alcuni controlli non si sono potuti fare: … Non vuol dire che
+lì sia tutto a posto»*. È §12/§18/§33 applicati a un «niente da segnalare».
+
+### Un orologio solo
+
+`pntOggi`, `gioData`, `recOggi` e `incOggi` costruivano la data con
+`toISOString()` su una data locale — che fra mezzanotte e le due dà **ieri**
+(§44) — mentre `cruOggi` usava `cntOggiIso()`, che conta sui numeri. Due strade
+diverse sulla stessa contabilità vogliono dire che il cruscotto e le linguette
+dicono **due giorni diversi sugli stessi movimenti**, e la quadratura di
+giornata confronta un giorno con un altro. Adesso è uno.
+
+### Un file scaricato vive da solo
+
+Le tre esportazioni non dichiaravano la parzialità che la schermata dichiarava.
+Un CSV esce dallo schermo che lo spiegava e resta su un computer per mesi:
+l'avviso sta **in testa al file**, prima delle intestazioni, perché è la prima
+riga che si legge aprendolo.
+
+Quella dei premi da recuperare è la più delicata, e lo scrive: **con dei
+recuperi mancanti il residuo esce più alto del vero**, e quel foglio farebbe
+sollecitare chi ha già pagato. Per farlo funzionare `REC_PARZIALE` doveva
+esistere: `recPagina` alzava la bandiera in nessuno dei due casi in cui si
+ferma — quando la lettura cade e quando sfonda i cinquanta giri. *Una bandiera
+che nessuno alza è una dichiarazione che non arriva mai.*
+
+### La lezione, e vale oltre questo lavoro
+
+> **Una conclusione tecnicamente corretta su un caso può essere sbagliata su
+> un altro che non si era in mente.** «Le due gambe si annullano» è vero, e da
+> lì avevo concluso «quindi si legge la testata». La domanda che non mi ero
+> fatto era: *quali* gambe. La critica indipendente l'ha fatta.
+>
+> E il difetto era **latente**: si accende alla prima polizza messa a
+> copertura, cioè il giorno in cui qualcuno userà davvero la Fase 3.
+
+### Cosa resta aperto
+
+- **`contoEconomico` legge ancora la testata** per ricavi e costi, ed è
+  corretto: la competenza economica la decide `incide_su_utile` della causale,
+  che è una proprietà della testata. I suoi `transito_entrate`/`transito_uscite`
+  però hanno lo stesso difetto appena tolto: vanno portati sulle gambe di
+  denaro, ed è un lavoro a sé perché cambia il numero «quanto denaro dei
+  clienti è ancora in casa».
+- **`e_quadrabile` esiste dalla Fase 1 e non lo guarda nessuno**: si chiede la
+  quadratura anche di conti che per costruzione non si possono contare.
+- **`fondoCassa` somma casse di natura diversa in un numero solo**: i contanti
+  dei clienti e quelli dell'agenzia non sono lo stesso denaro (art. 117 CAP).
+- **`eliminabile` non guarda le quadrature**, che sparirebbero in cascata con
+  il conto.
+- **`PNT_*` e `CNT_*` sono `let`**: le prove che iniettassero uno stato finto
+  scriverebbero in una variabile e il codice leggerebbe l'altra (§17). Le
+  nuove (`CRU_*`, `PNT_PARZIALE`, `CNT_PARZIALE`, `REC_PARZIALE`) sono `var`.
+- **La regola del CSV sta in pagina, non nel motore**: è l'unica cosa che esce
+  di casa, e §5 dice che va nel motore.

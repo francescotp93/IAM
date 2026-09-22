@@ -103,7 +103,12 @@ function apparecchia() {
         if (id.startsWith('ctab-')) {
           return { classList: { toggle: (_c, on) => { attivi[k] = on; } } };
         }
-        return { style: { set display(v) { visibili[k] = v; }, get display() { return visibili[k]; } } };
+        /* La visibilita' di un pannello passa da una CLASSE, non da uno stile
+           in linea (22/09/2026): nove `display:none` scritti a mano erano
+           nove stili che il guardiano del kit conta. Il banco modella quello
+           che il codice fa adesso, non quello che faceva. */
+        return { classList: { toggle: (c, on) => { if (c === 'ct-off') visibili[k] = on ? 'none' : ''; } },
+                 style: {} };
       },
     },
     sessionStorage: { setItem() {}, getItem: () => null },

@@ -1,8 +1,21 @@
 {
-  "versione": "0.27.0",
-  "nome": "Contabilità · i premi da recuperare",
+  "versione": "0.28.0",
+  "nome": "Contabilità · il cruscotto, e i saldi che leggono le righe",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.28.0",
+      "data": "2026-09-22",
+      "nome": "Contabilità · il cruscotto, e i saldi che leggono le righe",
+      "voci": [
+        "Contabilità › Cruscotto: cinque numeri in una schermata sola — i premi dei clienti in cassa, i soldi dell'agenzia, i premi da rimettere alle compagnie, i premi da recuperare e gli incassi in arrivo. Ogni riquadro dice che cosa fare e porta dove si fa.",
+        "La correzione che conta, e non si vedeva: dopo gli incassi a più modi di pagamento, i saldi si calcolavano ancora dalla riga di testata del movimento. Un incasso metà in contanti e metà in banca finiva tutto sul primo conto — e la quadratura avrebbe trovato ogni giorno una differenza vera contro un numero falso, mandando a cercare in banca un movimento che non manca.",
+        "Con la stessa correzione: il fondo cassa conta i contanti veri, la giornata ripartisce sui conti giusti, e un conto che vive solo nelle righe (il debito verso una compagnia, i sospesi) non risulta più cancellabile.",
+        "Il pannello Conti mostra finalmente i saldi veri: fino a ieri diceva solo il saldo iniziale dichiarato, perché i movimenti non li leggeva nessuno.",
+        "Esportazione in CSV di prima nota, estratto conto di un conto (col saldo progressivo) e scadenzario dei premi da recuperare. Segue i filtri che hai applicato, e si apre in Excel italiano senza ritocchi: punto e virgola, virgola decimale, accenti giusti.",
+        "Tolti sette tetti nascosti nelle letture: la contabilità leggeva al massimo mille righe per volta e non lo diceva. Su 2.787 rate incassate, «da portare in contabilità» ne mostrava meno di un quinto e sembrava tutto l'arretrato. Adesso legge tutto, e se una lettura si ferma lo scrive."
+      ]
+    },
     {
       "v": "0.27.0",
       "data": "2026-09-22",

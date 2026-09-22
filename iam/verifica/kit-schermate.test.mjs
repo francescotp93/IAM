@@ -157,20 +157,30 @@ prova('una schermata nuova non si scrive gli stili a mano', () => {
   const soglie = {
     'panel-conti': 6, 'panel-compagnie': 4, 'panel-provvigioni': 12,
     'contab-panel-primanota': 8, 'contab-panel-quadconti': 4,
-    /* Le quattro schermate della M5 sono VECCHIE: la testata e il riquadro
+    /* Le soglie sono calate il 22/09/2026 (Fase 4): i nove `display:none`
+       scritti in linea sui pannelli di Contabilita' sono diventati una classe
+       sola, e la visibilita' la toglie e la rimette `selContabTab`. Uno stile
+       in linea non risponde al kit ne' al tema, quindi contarlo era giusto.
+
+       Le quattro schermate della M5 sono VECCHIE: la testata e il riquadro
        ricostruito sono nuovi, il modulo a mano sotto e' quello di sempre e i
        suoi stili si tolgono quando quel modulo si spegne (§17: non prima che i
        due numeri tornino). La soglia e' quella misurata oggi. */
-    'contab-panel-quadratura': 13, 'contab-panel-anomalie': 4,
-    'contab-panel-storico': 5,
+    'contab-panel-quadratura': 13, 'contab-panel-anomalie': 3,
+    'contab-panel-storico': 4,
     /* «Quadratura conti» ha inglobato il contenuto della voce «Conto»
        (Blocco 1 · punto 5): con lui sono arrivati i suoi stili scritti a
        mano. La soglia sale UNA VOLTA perché il pannello è un altro, e da qui
        torna a calare soltanto. */
-    'contab-panel-quadconti': 17,
+    'contab-panel-quadconti': 12,
     /* Nata sul kit il 21/09/2026: l'unico stile scritto a mano è lo
        scorrimento del pannello, come sulle altre. */
-    'panel-produzione': 1
+    'panel-produzione': 1,
+    /* Il cruscotto della Fase 4 nasce sul kit e non scrive nemmeno uno stile
+       a mano: testata, schede e riquadri vengono tutti dal kit. Zero è una
+       soglia vera, non un segnaposto — se un giorno ne comparisse uno, la
+       prova lo direbbe subito. */
+    'contab-panel-cruscotto': 0
   };
   for (const [id, max] of Object.entries(soglie)) {
     const n = conta(id);

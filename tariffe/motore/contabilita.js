@@ -1012,9 +1012,10 @@
      Tre cose che non sono un sospeso, e ognuna, messa qui dentro, produce un
      elenco di cose da fare che non si puo' lavorare:
 
-      · una rata GIA' INCASSATA. E' un fatto avvenuto, non un lavoro. Dove il
-        denaro sia poi finito lo dicono gli incassi da accreditare (§32), che
-        e' un'altra domanda e ha la sua schermata.
+      · una rata GIA' INCASSATA **con un mezzo**. E' un fatto avvenuto, non un
+        lavoro: il POS accredita in due giorni. Dove il denaro sia poi finito
+        lo dicono gli incassi da accreditare (§32), che ha la sua schermata.
+        L'ECCEZIONE, ed e' quella che mancava, sta sotto: una PERSONA.
       · una rata in CONTANTI. I contanti sono denaro in mano: si incassano allo
         sportello e vanno in cassa. E' la richiesta, testuale: «diverso e' ad
         esempio per le polizze pagate Contanti che devono essere contabilizzate
@@ -1024,6 +1025,51 @@
         perche' attribuirla a qualcuno vorrebbe dire inventare a chi chiedere
         dei soldi. Misurato il 22/09/2026: sono 380 rate su 418, per
         88.600,71 euro — cioe' quasi tutto, ed e' il lavoro da fare.
+
+     ── LA PERSONA STA SULLA POLIZZA, IL MEZZO STA SULLA RATA (22/09/2026) ─
+     Seconda segnalazione di Francesco, e ha cambiato la regola:
+     «quando modifico un pagamento di una polizza e la metto come sospeso e
+      come ti dicevo Francesco, se vado in contabilita' e sospesi non c'ho
+      nessun tipo di sospeso. Realmente li' mi dovrebbe far vedere che Oddo
+      Francesco ha un sospeso, due sospesi, tre sospesi, per il valore in
+      euro del totale, e poi aprendo da li' dovrei poter scaricare se ho
+      incassato quei soldi e come li ho incassati.»
+
+     MISURATO sul database vero prima di toccare una riga, e la misura spiega
+     tutto: la voce «Oddo Francesco» esiste, ed e' scritta su DUE POLIZZE e
+     su ZERO RATE. Le loro due rate risultano gia' incassate — una dice
+     «carta di credito», l'altra non dice niente. Questa funzione leggeva solo
+     `quote_titoli.mezzo_pagamento` e solo le rate aperte: nessuna delle due
+     poteva comparire, e l'elenco era vuoto senza sbagliare niente.
+
+     Da qui la distinzione che regge tutto il resto, e che i due campi avevano
+     gia' addosso senza che nessuno l'avesse scritta:
+
+       · `quote_titoli.mezzo_pagamento` risponde a **COME il cliente ha
+         pagato** quella rata. E' un fatto della compagnia.
+       · `quote_polizze.mezzo_pagamento` risponde a **come paga questo
+         cliente** (§16), ed e' una risposta che si corregge a mano. Quando
+         quella risposta e' una PERSONA non e' una strada di pagamento: e'
+         qualcuno che TIENE quei soldi e ne deve rendere conto.
+
+     Le due cose non si escludono e non si contraddicono: il cliente ha pagato
+     Oddo con la carta, e Oddo ha i soldi. Quindi una persona sulla polizza
+     vince sul mezzo della rata per la domanda «chi lo tiene», e il mezzo
+     della rata resta scritto accanto come «pagata con…». Dove non c'e' nessuna
+     persona vale il mezzo della rata, e se la rata non lo dichiara si legge
+     quello della polizza, marcato `ereditato` — leggere quello che la polizza
+     dichiara non e' inventare, ma va detto, perche' «lo dice la rata» e «lo
+     dice la polizza» non sono la stessa cosa.
+
+     ── DUE FAMIGLIE DENTRO LO STESSO GRUPPO ─────────────────────────────
+     Chi tiene i soldi puo' tenerli in due modi diversi, e confonderli
+     vorrebbe dire non sapere a chi telefonare:
+
+       · `incassare` — il cliente non ha ancora pagato (rata aperta).
+       · `versare`   — il cliente ha pagato e chi ha incassato non ha ancora
+         versato. Vale SOLO per una persona: per un POS o un bonifico il
+         ritardo e' di giorni e lo sorveglia «Incassi da accreditare».
+         Una rata gia' entrata in contabilita' esce da qui: e' arrivata.
 
      ── E QUELLO CHE NON SI SOMMA ────────────────────────────────────────
      I gruppi si contano separati e il totale e' la loro somma: una rata sta
@@ -1038,13 +1084,16 @@
       gruppi: [], righe: 0, totale: 0, senza_importo: 0,
       da_dichiarare: 0, totale_da_dichiarare: 0,
       escluse_contanti: 0, totale_contanti: 0,
-      in_ritardo: 0, totale_ritardo: 0
+      in_ritardo: 0, totale_ritardo: 0,
+      da_versare: 0, totale_da_versare: 0,
+      incassate_fuori: 0, totale_incassate_fuori: 0
     };
 
     function gruppo(k, etichetta, tipo, collab) {
       if (!per[k]) {
         per[k] = { voce: k, etichetta: etichetta, tipo: tipo, collaboratore_id: collab || null,
-          righe: [], n: 0, totale: 0, senza_importo: 0, in_ritardo: 0 };
+          righe: [], n: 0, totale: 0, senza_importo: 0, in_ritardo: 0,
+          n_incassare: 0, totale_incassare: 0, n_versare: 0, totale_versare: 0 };
         ordine.push(per[k]);
       }
       return per[k];
@@ -1052,13 +1101,26 @@
 
     (titoli || []).forEach(function (t) {
       if (!t) return;
-      /* Una rata incassata non e' un lavoro: e' un fatto avvenuto. */
-      if (testo(t.stato) !== 'aperto') return;
       var imp = numero(t.importo_lordo);
-      var k = testo(t.mezzo_pagamento).toLowerCase();
-      var m = k ? mezzo(k, V) : null;
+      var aperta = testo(t.stato) === 'aperto';
 
-      if (m && m.immediato) {
+      /* Chi tiene i soldi: prima la persona dichiarata sulla POLIZZA, poi il
+         mezzo della rata, poi — dichiarandolo — quello della polizza. */
+      var kRata = testo(t.mezzo_pagamento).toLowerCase();
+      var mRata = kRata ? mezzo(kRata, V) : null;
+      var chi = chiTiene(t, V);
+      var k = chi.k, m = chi.m, ereditato = chi.ereditato, persona = chi.persona ? m : null;
+
+      /* Il cliente ha gia' pagato: resta un sospeso solo se qualcuno lo tiene
+         e in contabilita' non e' ancora entrato. Per un mezzo non e' un
+         sospeso — e' un accredito in arrivo, e ha la sua schermata (§32). */
+      if (!aperta) {
+        if (!persona || t.in_contabilita) {
+          out.incassate_fuori++;
+          if (imp !== null) out.totale_incassate_fuori = cent(out.totale_incassate_fuori + Math.abs(imp));
+          return;
+        }
+      } else if (m && m.immediato) {
         /* I contanti si incassano allo sportello: non li tiene nessuno. Si
            contano lo stesso, perche' un elenco che li fa sparire non dice
            quante rate restano fuori e perche'. */
@@ -1076,19 +1138,36 @@
         if (imp !== null) out.totale_da_dichiarare = cent(out.totale_da_dichiarare + Math.abs(imp));
       }
 
-      var gg = oggi ? giorniDa(t.data_decorrenza, oggi) : null;
+      var gg = oggi ? giorniDa(aperta ? t.data_decorrenza : (t.incassato_il || t.data_decorrenza), oggi) : null;
       var attesi = m && isFinite(m.giorni) ? m.giorni : null;
       var tardi = (gg !== null && attesi !== null && gg > attesi);
+      var fam = aperta ? 'incassare' : 'versare';
 
       g.righe.push({
         id: t.id, polizza_id: t.polizza_id, tipo: t.tipo,
-        data: t.data_decorrenza || null, importo: imp,
-        giorni_fermo: gg, in_ritardo: tardi,
+        famiglia: fam, stato: testo(t.stato) || null, ereditato: ereditato,
+        /* Il mezzo della rata resta scritto anche quando a tenere i soldi e'
+           una persona: «pagata con carta di credito» e «li tiene Oddo» sono
+           due fatti diversi, e servono tutti e due. */
+        mezzo_rata: kRata || null,
+        mezzo_rata_l: mRata ? mRata.l : (kRata || null),
+        data: (aperta ? t.data_decorrenza : t.incassato_il) || t.data_decorrenza || null,
+        importo: imp, giorni_fermo: gg, in_ritardo: tardi,
         cliente: t.cliente || null, numero_polizza: t.numero_polizza || null,
         compagnia: t.compagnia || null
       });
       g.n++;
       out.righe++;
+      if (fam === 'versare') {
+        g.n_versare++; out.da_versare++;
+        if (imp !== null) {
+          g.totale_versare = cent(g.totale_versare + Math.abs(imp));
+          out.totale_da_versare = cent(out.totale_da_versare + Math.abs(imp));
+        }
+      } else {
+        g.n_incassare++;
+        if (imp !== null) g.totale_incassare = cent(g.totale_incassare + Math.abs(imp));
+      }
       if (imp === null) { g.senza_importo++; out.senza_importo++; }
       else { g.totale = cent(g.totale + Math.abs(imp)); out.totale = cent(out.totale + Math.abs(imp)); }
       if (tardi) {
@@ -1101,8 +1180,14 @@
        due righe fa scorrere per niente. «Da dichiarare» resta dov'e' il suo
        importo — non lo si mette in fondo per farlo sembrare meno. */
     ordine.sort(function (a, b) { return b.totale - a.totale || b.n - a.n; });
+    /* Dentro un gruppo prima quello che qualcuno ha GIA' in mano: e' denaro
+       che esiste e che si puo' farsi dare oggi, mentre una rata non pagata
+       dipende dal cliente. Poi per data. */
     ordine.forEach(function (g) {
-      g.righe.sort(function (x, y) { return String(x.data || '').localeCompare(String(y.data || '')); });
+      g.righe.sort(function (x, y) {
+        if (x.famiglia !== y.famiglia) return x.famiglia === 'versare' ? -1 : 1;
+        return String(x.data || '').localeCompare(String(y.data || ''));
+      });
     });
     out.gruppi = ordine;
     return out;
@@ -1219,19 +1304,57 @@
 
      Le 9 rate su 15 che nel database non dicono con che mezzo sono state
      incassate finiscono tutte nella terza, ed e' giusto cosi'. */
-  function destinoIncasso(riga, conti) {
+  /* CHI TIENE I SOLDI DI QUESTA RATA. Una funzione sola, perche' la usano
+     due schermate — i Sospesi e gli Incassi da accreditare — e due regole su
+     chi ha in mano un premio sarebbero due elenchi che un giorno dicono cose
+     diverse sulla stessa persona.
+
+     L'ordine non e' arbitrario (vedi il blocco dei sospesi):
+       1. la PERSONA dichiarata sulla polizza, che non e' una strada di
+          pagamento ma qualcuno che deve rendere conto;
+       2. il mezzo scritto sulla RATA, cioe' come il cliente ha pagato;
+       3. il mezzo della polizza, dichiarato come ereditato. */
+  function chiTiene(riga, V) {
     riga = riga || {};
-    var k = testo(riga.mezzo_pagamento || riga.mezzo).toLowerCase();
+    var kRata = testo(riga.mezzo_pagamento || riga.mezzo).toLowerCase();
+    var kPol = testo(riga.mezzo_polizza).toLowerCase();
+    var mPol = kPol ? mezzo(kPol, V) : null;
+    if (mPol && mPol.collaboratore_id) return { k: mPol.k, m: mPol, ereditato: false, persona: true };
+    if (kRata) return { k: kRata, m: mezzo(kRata, V), ereditato: false, persona: false };
+    if (kPol) return { k: kPol, m: mPol, ereditato: true, persona: false };
+    return { k: '', m: null, ereditato: false, persona: false };
+  }
+
+  function destinoIncasso(riga, conti, voc) {
+    riga = riga || {};
+    var V = (voc && voc.length) ? vocabolario(voc) : null;
+    var k = chiTiene(riga, V).k;
     var imp = numero(riga.importo_lordo != null ? riga.importo_lordo : riga.importo);
     var out = { mezzo: k || null, importo: imp, data: riga.incassato_il || riga.data_incasso || null };
 
     if (!k) { out.tipo = 'non-si-sa'; out.motivo = 'Non e\u2019 detto con che mezzo e\u2019 stato incassato: senza quello non si sa se il denaro e\u2019 in cassa o in arrivo.'; return out; }
-    var m = mezzo(k);
+    /* Il vocabolario arriva da chi chiama (§64): leggendo solo la lista di
+       casa, una voce aggiunta in schermata — un collaboratore — risulterebbe
+       «non nel vocabolario» e l'incasso non si potrebbe registrare. */
+    var m = mezzo(k, V);
     if (!m) { out.tipo = 'non-si-sa'; out.motivo = 'Il mezzo «' + k + '» non e\u2019 nel vocabolario: non si indovina quanto ci mette ad arrivare.'; return out; }
     out.etichetta = m.l;
     if (imp == null || imp <= 0) { out.tipo = 'non-si-sa'; out.motivo = 'L\u2019importo non si legge.'; return out; }
 
-    var d = contoPerMezzo(conti, k);
+    /* Una PERSONA non e' un conto: il denaro ce l'ha lei, e dove finira' lo
+       si sapra' quando lo consegna. Non si indovina un conto (§8.1) e non si
+       risponde «non si sa», che toglierebbe il bottone e lascerebbe quel
+       premio fuori dalla contabilita' per sempre. */
+    if (m.collaboratore_id) {
+      out.tipo = 'sospeso';
+      out.conto = null;
+      out.persona = true;
+      out.giorni_attesi = isFinite(m.giorni) ? m.giorni : null;
+      out.motivo = 'Questi soldi li tiene ' + m.l + ': il conto si sceglie quando te li consegna.';
+      return out;
+    }
+
+    var d = contoPerMezzo(conti, k, V);
     if (!d.ok) { out.tipo = 'non-si-sa'; out.motivo = d.motivo; out.ambiguo = d.ambiguo || null; return out; }
     out.conto = d.conto;
     out.tipo = m.immediato ? 'cassa' : 'sospeso';
@@ -1502,6 +1625,21 @@
     if (opz.conti && causaleIncide(m, causali)) {
       var idx = indice(opz.conti);
       var cc = idx[m.contropartita_id];
+      /* La stessa funzione che RIEMPIE la tendina decide anche qui: due
+         elenchi diversi vorrebbero dire una schermata che propone quello che
+         il salvataggio poi respinge, e viceversa — ed e' la prova che ha
+         trovato il buco, non la rilettura. Un ricavo in contropartita di una
+         spesa direbbe che l'agenzia ha guadagnato quello che ha speso. */
+      var amm = contropartiteAmmesse(m, opz);
+      if (cc && !amm.conti.some(function (x) { return x.id === cc.id; })
+          && LIQUIDE.indexOf(testo(cc.tipologia)) < 0) {
+        return { ok: false, righe: [], motivo: '\u00ab' + (cc.nome || 'quel conto')
+          + '\u00bb non va bene come contropartita di \u00ab'
+          + ((causali && m.causale_id && causali[m.causale_id] ? testo(causali[m.causale_id].nome) : '') || 'questa causale')
+          + '\u00bb: ' + (v > 0 ? 'un\u2019entrata diventa un RICAVO dell\u2019agenzia'
+                                : 'una spesa diventa un COSTO dell\u2019agenzia')
+          + ', e questo conto non lo \u00e8.' };
+      }
       if (cc && LIQUIDE.indexOf(testo(cc.tipologia)) >= 0) {
         return { ok: false, righe: [], motivo: 'La contropartita di un costo o di un ricavo non può essere «'
           + (cc.nome || 'un conto di liquidità') + '»: è un conto su cui il denaro c’è davvero, '
@@ -1518,6 +1656,113 @@
         { conto_id: m.contropartita_id,  dare: v > 0 ? 0 : imp, avere: v > 0 ? imp : 0, ordine: 1 }
       ]
     };
+  }
+
+  /* ── LA CONTROPARTITA NON SI CHIEDE: SI PROPONE (22/09/2026) ─────────────
+
+     Segnalato da Francesco, ed è la seconda volta sulla stessa riga:
+     «se io metto che una spesa è stata messa in uscita e decido che è stata
+      pagata con la carta di credito ma metto sul conto aziendale, lo devo
+      andare a levare a saldo del conto: se c'è uscita deve sempre sottrarre
+      da quel conto là. Tuttora non funziona.»
+
+     MISURATO prima di cambiare una riga, e il risultato ha spostato il
+     lavoro: il cancello del 22/09 (una spesa non può avere per contropartita
+     un conto di liquidità) **funziona**. Girato sui conti veri rifiuta
+     «CARTA DI CREDITO → CONTO AZIENDALE» e accetta «CARTA DI CREDITO →
+     Costi di agenzia». E i due movimenti sbagliati sul database sono stati
+     annullati alle 18:50, senza che ne nascesse uno nuovo.
+
+     Quindi «non funziona» non voleva dire «scrive il numero sbagliato»:
+     voleva dire **non si riesce più a registrare la spesa**. La tendina
+     offriva tutti i conti, lui sceglieva l'unico che gli veniva in mente — il
+     conto su cui la carta è appoggiata — e si prendeva un muro di testo.
+
+     > Una domanda che ha una sola risposta onesta non si fa: si propone la
+     > risposta. E le risposte disoneste non si mettono in elenco, perché un
+     > elenco che contiene la risposta sbagliata è un invito a darla.
+
+     È la stessa regola della tendina delle causali (`causaliPerConto`): la
+     stessa funzione RIEMPIE e RIFIUTA, altrimenti un giorno la schermata
+     proporrebbe quello che il salvataggio poi respinge.
+
+     Che cosa ammette:
+       · causale che INCIDE SUL RISULTATO (un costo o un ricavo vero) →
+         un'uscita vuole un conto di COSTO, un'entrata un conto di RICAVO.
+         Non si mescolano: un ricavo in contropartita di una spesa direbbe
+         che l'agenzia ha guadagnato quello che ha speso.
+       · causale di TRANSITO (incassi, rimesse, giroconti) → tutto tranne
+         costo e ricavo: lì il denaro si sposta, non si consuma.
+
+     E la proposta si fa **solo se è una** (§19): con due conti di costo non
+     si indovina quale, con zero si dice che manca e dove si crea. */
+  function contropartiteAmmesse(m, opz) {
+    opz = opz || {};
+    m = m || {};
+    var causali = opz.causali ? indice(opz.causali) : null;
+    var c = causali && m.causale_id ? causali[m.causale_id] : null;
+    var noto = !!c || typeof m.incide_su_utile === 'boolean' || m.segno === 'entrata' || m.segno === 'uscita';
+    if (!noto) {
+      return { conti: [], proposto: null, incide: false, verso: 0,
+        motivo: 'Scegli prima la causale: è lei che dice se questo è un costo, un ricavo, o denaro che si sposta da un conto a un altro.' };
+    }
+    var v = versoDi(m, causali);
+    var incide = causaleIncide(m, causali);
+    var etichetta = incide ? (v < 0 ? 'Dove va la spesa' : v > 0 ? 'Da dove arriva l’incasso' : 'Contropartita')
+                           : 'L’altro conto';
+
+    var tutti = (opz.conti || []).filter(function (x) {
+      return x && x.attivo !== false && x.id !== m.conto_id;
+    });
+    var ammessi;
+    if (incide) {
+      var vuole = v < 0 ? 'costo' : v > 0 ? 'ricavo' : null;
+      ammessi = tutti.filter(function (x) {
+        var t = testo(x.tipologia);
+        return vuole ? t === vuole : (t === 'costo' || t === 'ricavo');
+      });
+    } else {
+      ammessi = tutti.filter(function (x) {
+        var t = testo(x.tipologia);
+        return t !== 'costo' && t !== 'ricavo';
+      });
+    }
+
+    var motivo = null;
+    if (!ammessi.length) {
+      motivo = incide
+        ? 'Non c’è nessun conto di ' + (v > 0 ? 'ricavo' : 'costo') + ' fra i tuoi: senza, questa '
+          + (v > 0 ? 'entrata' : 'spesa') + ' finirebbe addosso a un conto corrente, che risulterebbe averla incassata. '
+          + 'Si crea in Strumenti › Conti e causali.'
+        : 'Non c’è nessun altro conto su cui appoggiare questo movimento.';
+    }
+    return {
+      conti: ammessi,
+      /* «Aggancia solo se è una»: con due conti di costo la risposta non la sa
+         il programma, e sceglierne uno vorrebbe dire attribuire una spesa a
+         un capitolo che nessuno ha deciso. */
+      proposto: ammessi.length === 1 ? ammessi[0].id : null,
+      incide: incide, verso: v, etichetta: etichetta, motivo: motivo
+    };
+  }
+
+  /* ── QUELLO CHE SUCCEDERÀ AI SALDI, PRIMA DI SALVARE ─────────────────────
+     «Se c'è uscita deve sempre sottrarre da quel conto là» è una cosa che si
+     controlla guardandola, non leggendo una regola. Questa funzione dice, in
+     euro col segno, quanto ogni conto si muove — le stesse righe che verranno
+     scritte, non un secondo conto fatto a parte: due calcoli dello stesso
+     numero sono due numeri che un giorno divergono. */
+  function effettoAtteso(righe, conti) {
+    var idx = indice(conti || []);
+    var per = {}, ordine = [];
+    (righe || []).forEach(function (r) {
+      if (!r || !r.conto_id) return;
+      if (!per[r.conto_id]) { per[r.conto_id] = { conto_id: r.conto_id, nome: null, delta: 0 }; ordine.push(per[r.conto_id]); }
+      var c = idx[r.conto_id];
+      if (c) per[r.conto_id].nome = testo(c.nome);
+      per[r.conto_id].delta = cent(per[r.conto_id].delta + (numero(r.dare) || 0) - (numero(r.avere) || 0));
+    });
+    return ordine;
   }
 
   /* La contropartita di un movimento già scritto: è la riga che NON è quella
@@ -2815,6 +3060,8 @@
     /* Fase 1 — la partita doppia */
     bilanciato: bilanciato, validaRighe: validaRighe, righeDi: righeDi,
     righeSemplici: righeSemplici, contropartitaDi: contropartitaDi,
+    contropartiteAmmesse: contropartiteAmmesse, effettoAtteso: effettoAtteso,
+    chiTiene: chiTiene,
     stornabile: stornabile, storno: storno,
     validaConto: validaConto, validaCausale: validaCausale, codiceDa: codiceDa,
     compatibile: compatibile, causaliPerConto: causaliPerConto,

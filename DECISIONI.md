@@ -1029,3 +1029,60 @@ la contropartita su «Costi di agenzia», adesso che quel conto esiste.
 
 - **«Pagamenti» e «Sospesi» come linguette della scheda**: quelle due liste
   oggi vivono in Contabilità e nel dettaglio della polizza.
+
+## 22/09/2026 — La spesa che non sottraeva, e i sospesi senza nome (0.37.0)
+
+**Perimetro:** due segnalazioni di Francesco: (1) una spesa in uscita non
+sottrae dal conto, (2) in Contabilità › Sospesi non compare nessun sospeso di
+Oddo Francesco.
+
+### 🟡 Scelte prese, e come tornare indietro
+
+**1. La tendina della contropartita non offre più tutti i conti.**
+Su una causale che incide sul risultato offre solo conti di costo (uscita) o
+di ricavo (entrata); sulle altre, tutto tranne costo e ricavo. Se resta una
+sola voce, è preselezionata.
+*Perché:* il cancello del 21/09 rifiutava già la scelta sbagliata, ma la
+tendina continuava a offrirla — quindi la spesa non si poteva più registrare.
+*Come tornare indietro:* in `tariffe/motore/contabilita.js`, in
+`contropartiteAmmesse`, far tornare `tutti` invece di `ammessi`. La tendina
+torna completa e il salvataggio torna a rifiutare.
+
+**2. Il salvataggio usa la stessa funzione della tendina.**
+Prima rifiutava solo i conti di liquidità: una spesa con contropartita su
+«Ricavi di agenzia» passava, e diceva che l'agenzia aveva guadagnato quello
+che aveva speso. L'ha trovato una prova, non la rilettura.
+*Come tornare indietro:* togliere il primo `if` aggiunto in `righeSemplici`.
+
+**3. Sotto il modulo si vede l'effetto sui saldi prima di salvare.**
+*Come tornare indietro:* togliere il contenitore `#pnt-effetto` e le chiamate
+a `pntEffetto()`.
+
+**4. Una PERSONA dichiarata sulla polizza tiene i premi di quella polizza,
+anche quando la rata dice un altro mezzo e anche quando la rata è già
+incassata.**
+*Perché:* «come il cliente ha pagato» e «chi ha in mano i soldi» sono due
+domande diverse, e i due campi le portavano già. Misurato: la voce «Oddo
+Francesco» era su 2 polizze e su 0 rate, ed entrambe le rate erano incassate.
+*Effetto sui numeri:* in Sospesi compare «Oddo Francesco · 2 rate · 662,98 €».
+*Come tornare indietro:* in `chiTiene`, togliere il primo `if` (la persona
+sulla polizza). I sospesi tornano a leggere solo il mezzo della rata.
+
+**5. Una rata che non dichiara il mezzo lo eredita dalla polizza, marcato.**
+*Effetto sui numeri:* 339 rate su 380 escono da «Da dichiarare» e finiscono
+sotto il mezzo che la loro polizza dichiara.
+*Come tornare indietro:* in `chiTiene`, togliere il terzo `if`.
+
+**6. Una rata incassata è un sospeso solo se a tenerla è una persona.**
+Per POS, bonifico e carte resta «Incassi da accreditare»: il ritardo è di
+giorni. Le altre non spariscono — si contano e si dichiarano con la porta.
+*Come tornare indietro:* in `daIncassare`, rimettere `if (testo(t.stato) !==
+'aperto') return;` in cima al ciclo.
+
+### 📝 Fuori perimetro, annotato
+
+- I due movimenti sbagliati sul database restano **annullati**: un movimento
+  registrato non si riscrive (regola 13). La spesa di Roma va rifatta con
+  «Costi di agenzia» come contropartita.
+- Nessun conto dichiara ancora quali mezzi riceve: scaricare un sospeso chiede
+  il conto a mano.

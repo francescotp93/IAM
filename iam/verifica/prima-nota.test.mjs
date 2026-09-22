@@ -267,11 +267,115 @@ prova('uno storno non si cancella niente: nasce un movimento uguale e contrario'
   return 'motore per la regola, database per la scrittura, registro per la memoria';
 });
 
+/* ═══ LA CONTROPARTITA SI PROPONE, E L'EFFETTO SI VEDE (22/09/2026) ════════
+   «se io metto che una spesa è messa in uscita e decido che è stata pagata
+    con la carta di credito ma metto sul conto aziendale, lo devo andare a
+    levare a saldo del conto: se c'è uscita deve sempre sottrarre da quel
+    conto là. Tuttora non funziona.»
+   Misurato: il cancello del 22/09 FUNZIONAVA e lo rifiutava. La tendina però
+   continuava a offrire la risposta sbagliata, e il muro era quello. */
+
+/* Le due funzioni si fanno GIRARE, non solo leggere: una schermata con tutti
+   i pezzi al posto giusto può lo stesso disegnare la cosa sbagliata. */
+function banco() {
+  const b = blocco();
+  const pezzi = ['function pntContro()', 'function pntEffetto()'].map(f => {
+    const i = b.indexOf(f);
+    deve(i >= 0, 'non trovo ' + f);
+    const fine = b.indexOf('\n}', i);
+    return b.slice(i, fine + 2);
+  }).join('\n');
+  const elementi = {};
+  const nodo = (id) => (elementi[id] = elementi[id] || {
+    id, value: '', innerHTML: '', textContent: '', className: '', disabled: false
+  });
+  const doc = { getElementById: (id) => (Object.prototype.hasOwnProperty.call(elementi, id) ? elementi[id] : null) };
+  ['pnt-m-contro', 'pnt-contro-nota', 'pnt-contro-lab', 'pnt-effetto'].forEach(nodo);
+  const CONTI = [
+    { id: 'carta', nome: 'CARTA DI CREDITO UNICREDIT', tipologia: 'banca', natura: 'aziendale' },
+    { id: 'az', nome: 'CONTO AZIENDALE', tipologia: 'banca', natura: 'aziendale' },
+    { id: 'costi', nome: 'Costi di agenzia', tipologia: 'costo', natura: 'aziendale' }
+  ];
+  const CAUSALI = [{ id: 'sp', nome: 'Spese in genere', segno: 'uscita', incide_su_utile: true }];
+  const campi = { 'pnt-m-conto': '', 'pnt-m-causale': '', 'pnt-m-importo': '' };
+  const f = new Function('document', 'window', 'Contabilita', 'PNT_CAUSALI', 'PNT_CONTI', 'pntVal', 'esc',
+    pezzi + '\nreturn { pntContro, pntEffetto };');
+  const api = f(doc, { Contabilita: C }, C, CAUSALI, CONTI,
+    (id) => (id in campi ? campi[id] : (elementi[id] ? elementi[id].value : '')),
+    (x) => String(x == null ? '' : x));
+  return { api, campi, el: elementi };
+}
+
+prova('LA TENDINA NON OFFRE PIÙ LA RISPOSTA SBAGLIATA, e propone quella giusta', () => {
+  const { api, campi, el } = banco();
+  campi['pnt-m-conto'] = 'carta';
+  campi['pnt-m-causale'] = 'sp';
+  api.pntContro();
+  const html = el['pnt-m-contro'].innerHTML;
+  deve(!/CONTO AZIENDALE/.test(html),
+    'la tendina offre ancora il conto corrente come contropartita di una spesa');
+  deve(/Costi di agenzia/.test(html), 'non offre il conto di costo');
+  deve(el['pnt-m-contro'].value === 'costi', 'non propone la sola risposta onesta');
+  deve(/spesa/i.test(el['pnt-contro-lab'].textContent), 'l\'etichetta non parla di spesa: '
+    + el['pnt-contro-lab'].textContent);
+  return 'un\'opzione sola, già scelta';
+});
+
+prova('L\'EFFETTO SI VEDE PRIMA DI SALVARE: la carta SCENDE di 170', () => {
+  const { api, campi, el } = banco();
+  campi['pnt-m-conto'] = 'carta';
+  campi['pnt-m-causale'] = 'sp';
+  campi['pnt-m-importo'] = '170';
+  api.pntContro();
+  campi['pnt-m-contro'] = el['pnt-m-contro'].value;
+  api.pntEffetto();
+  const h = el['pnt-effetto'].innerHTML;
+  deve(/CARTA DI CREDITO UNICREDIT/.test(h), 'il conto pagante non compare nell\'effetto');
+  /* Il segno sta DENTRO la riga della carta, non da qualche parte nel
+     riquadro: un meno che cade sulla riga sbagliata dice il contrario. */
+  deve(/<b class="pnt-giu">−[^<]*170,00[^<]*<\/b>/.test(h),
+    'la carta non risulta scendere di 170: ' + h);
+  deve(/<b class="pnt-su">\+[^<]*170,00[^<]*<\/b>/.test(h),
+    'la contropartita non risulta salire di 170: ' + h);
+  /* E senza causale non si inventa un effetto: non si sa nemmeno il verso. */
+  campi['pnt-m-causale'] = '';
+  api.pntEffetto();
+  deve(el['pnt-effetto'].innerHTML === '', 'disegna un effetto senza sapere che movimento è');
+  return '−170,00 sulla carta, e niente quando non si sa';
+});
+
+prova('la tendina e il rifiuto passano dalla STESSA funzione del motore', () => {
+  /* Due elenchi diversi vorrebbero dire una schermata che propone quello che
+     il salvataggio poi respinge — ed è il muro contro cui Francesco ha
+     sbattuto. */
+  const b = blocco();
+  deve(/Contabilita\.contropartiteAmmesse\(/.test(b), 'la tendina non passa dal motore');
+  deve(/Contabilita\.effettoAtteso\(/.test(b), 'l\'effetto non lo calcola il motore');
+  /* E l'effetto si disegna dalle righe che verranno SCRITTE, non da un secondo
+     conto fatto a parte: due calcoli dello stesso numero un giorno divergono. */
+  deve(/righeSemplici\([\s\S]{0,400}?effettoAtteso\(r\.righe/.test(b),
+    'l\'effetto non nasce dalle righe che si salveranno');
+  return 'una regola sola, dalla tendina al salvataggio';
+});
+
+prova('la tendina si riempie ANCHE quando la finestra si apre', () => {
+  /* Una funzione che non chiama nessuno è il guasto numero uno di questo
+     repository (§1): senza questa riga la proposta arriverebbe solo dopo aver
+     toccato la causale. */
+  const b = blocco();
+  deve(/onchange="pntContro\(\)"/.test(b), 'la causale non ricalcola la contropartita');
+  deve(/oninput="pntEffetto\(\)"/.test(b), 'l\'importo non aggiorna l\'effetto');
+  deve(/regInstalla\('pnt-storia'[\s\S]{0,300}?\n  pntContro\(\);/.test(b),
+    'aprendo la finestra la tendina non si riempie');
+  return 'all\'apertura, al cambio di causale e a ogni cifra';
+});
+
 console.log('\n══ PRIMA NOTA E QUADRATURA (IAM) ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {
   try { const r = fn(); console.log('  ok  ' + nome + (r ? '  — ' + r : '')); }
   catch (e) { ko++; console.log('  ❌  ' + nome + '\n      ' + e.message); }
 }
+
 console.log('\nPRIMA NOTA (IAM): ' + (esiti.length - ko) + ' superate, ' + ko + ' fallite');
 process.exit(ko ? 1 : 0);

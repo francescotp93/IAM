@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.36.0">
-<meta name="app-versione-nome" content="La scheda cliente come un gestionale">
+<meta name="app-versione" content="0.37.0">
+<meta name="app-versione-nome" content="La spesa sottrae, e i sospesi hanno un nome">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -133,6 +133,18 @@
 .spr-riga .spr-chi{flex:1;min-width:190px}
 .spr-riga .spr-imp{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .spr-riga .spr-imp.spr-tardi{color:#c0392b}
+.spr-fam{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--txt3);
+  margin:9px 0 2px;padding-top:7px;border-top:1px dashed var(--bord)}
+.spr-fam:first-child{border-top:0;padding-top:2px}
+.spr-riga .spr-come{font-size:11px;color:var(--txt3)}
+/* L'effetto atteso di un movimento, prima di salvarlo (22/09/2026): «se c'e'
+   uscita deve sempre sottrarre da quel conto la'» si controlla guardandolo. */
+.pnt-eff{background:var(--surf2);border:1px solid var(--bord);border-radius:var(--rs);padding:10px 12px}
+.pnt-eff-t{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--txt3);margin-bottom:6px}
+.pnt-eff-r{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:3px 0;font-size:13.5px}
+.pnt-eff-r b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pnt-eff-r .pnt-giu{color:#c0392b}
+.pnt-eff-r .pnt-su{color:#1f8a5b}
 /* I numeri della Scrivania (Blocco 3 · punto 10). Prefissati: nel foglio di
    stile un nome di classe e' globale, anche dentro un discendente (§26). */
 .kpi-riga{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
@@ -5858,30 +5870,69 @@ async function sprCarica(forza) {
   var box = document.getElementById('spr-lista');
   if (forza && box) box.innerHTML = '<div class="cl-sub">Carico i sospesi…</div>';
   var err = null, parziale = false, rate = [], mod = [];
+  var CAMPI = 'id,polizza_id,tipo,stato,mezzo_pagamento,importo_lordo,data_decorrenza,incassato_il,'
+    + 'quote_polizze(numero_polizza,cliente,cliente_id,compagnia,mezzo_pagamento)';
+  function piatta(t) {
+    var p = t.quote_polizze || {};
+    return {
+      id: t.id, polizza_id: t.polizza_id, tipo: t.tipo, stato: t.stato,
+      mezzo_pagamento: t.mezzo_pagamento, importo_lordo: t.importo_lordo,
+      data_decorrenza: t.data_decorrenza, incassato_il: t.incassato_il || null,
+      /* La PERSONA che tiene i soldi sta sulla polizza, il MEZZO sulla rata:
+         sono due domande diverse e il motore le tiene separate. */
+      mezzo_polizza: p.mezzo_pagamento || null,
+      numero_polizza: p.numero_polizza || null, cliente: p.cliente || null,
+      cliente_id: p.cliente_id || null, compagnia: p.compagnia || null
+    };
+  }
   try {
+    var m = await db.from('iam_modalita_pagamento').select('*').order('ordine');
+    if (m.error) throw m.error;
+    mod = m.data || [];
     /* Le rate con la loro polizza in una lettura sola: senza il numero e il
        cliente, un elenco di importi non si può lavorare. Le politiche valgono
        su tutte e due le tabelle. */
     var r = await cntTutte(function (da, a) {
-      return db.from('quote_titoli')
-        .select('id,polizza_id,tipo,stato,mezzo_pagamento,importo_lordo,data_decorrenza,' +
-                'quote_polizze(numero_polizza,cliente,cliente_id,compagnia)')
-        .eq('stato', 'aperto').order('id').range(da, a);
+      return db.from('quote_titoli').select(CAMPI).eq('stato', 'aperto').order('id').range(da, a);
     });
-    rate = (r.righe || []).map(function (t) {
-      var p = t.quote_polizze || {};
-      return {
-        id: t.id, polizza_id: t.polizza_id, tipo: t.tipo, stato: t.stato,
-        mezzo_pagamento: t.mezzo_pagamento, importo_lordo: t.importo_lordo,
-        data_decorrenza: t.data_decorrenza,
-        numero_polizza: p.numero_polizza || null, cliente: p.cliente || null,
-        cliente_id: p.cliente_id || null, compagnia: p.compagnia || null
-      };
-    });
+    rate = (r.righe || []).map(piatta);
     if (r.parziale) parziale = true;
-    var m = await db.from('iam_modalita_pagamento').select('*').order('ordine');
-    if (m.error) throw m.error;
-    mod = m.data || [];
+
+    /* Le rate GIÀ INCASSATE di una polizza che una PERSONA tiene. Non si
+       leggono tutte e 2.787: si leggono solo quelle, perché per un mezzo una
+       rata incassata non è un sospeso ma un accredito in arrivo (§32). */
+    var persone = mod.filter(function (x) { return x && x.collaboratore_id; })
+                     .map(function (x) { return x.codice; });
+    if (persone.length) {
+      var ri = await cntTutte(function (da, a) {
+        return db.from('quote_titoli')
+          .select(CAMPI.replace('quote_polizze(', 'quote_polizze!inner('))
+          .eq('stato', 'incassato').in('quote_polizze.mezzo_pagamento', persone)
+          .order('id').range(da, a);
+      });
+      rate = rate.concat((ri.righe || []).map(piatta));
+      if (ri.parziale) parziale = true;
+    }
+
+    /* Una rata già entrata in contabilità non è più un sospeso: i posti in cui
+       quel fatto è scritto sono quattro, e guardarne uno solo li dichiara
+       tutti mancanti (§62). Se una di queste letture non riesce si va avanti:
+       si vedranno più sospesi del vero, che è il verso meno pericoloso. */
+    var dentro = {};
+    var fonti = [
+      ['iam_movimenti', 'titolo_id,annullato_il', function (x) { return !x.annullato_il; }],
+      ['iam_movimenti_righe', 'titolo_id', function () { return true; }],
+      ['iam_incassi_rate', 'titolo_id,attiva', function (x) { return x.attiva !== false; }],
+      ['iam_sospesi', 'titolo_id,stato', function (x) { return x.stato !== 'annullato'; }]
+    ];
+    for (var i = 0; i < fonti.length; i++) {
+      var f = fonti[i];
+      var q = await cntMorbida(function (da, a) {
+        return db.from(f[0]).select(f[1]).not('titolo_id', 'is', null).order('titolo_id').range(da, a);
+      });
+      (q.righe || []).forEach(function (x) { if (x && x.titolo_id && f[2](x)) dentro[x.titolo_id] = true; });
+    }
+    rate.forEach(function (t) { if (dentro[t.id]) t.in_contabilita = true; });
   } catch (e) {
     err = e.message || String(e);
   }
@@ -5913,22 +5964,31 @@ function sprRender() {
 
   if (somma) {
     somma.innerHTML = ''
-      + sprCard('Sospesi', e.righe + (e.righe === 1 ? ' rata' : ' rate'), pfEuro(e.totale))
+      + sprCard('Sospesi in tutto', e.righe + (e.righe === 1 ? ' rata' : ' rate'), pfEuro(e.totale))
+      + sprCard('Già incassati, da versare', e.da_versare + (e.da_versare === 1 ? ' rata' : ' rate'), pfEuro(e.totale_da_versare))
       + sprCard('Fermi da troppo', e.in_ritardo + (e.in_ritardo === 1 ? ' rata' : ' rate'), pfEuro(e.totale_ritardo))
-      + sprCard('Da dichiarare', e.da_dichiarare + (e.da_dichiarare === 1 ? ' rata' : ' rate'), pfEuro(e.totale_da_dichiarare))
-      + sprCard('Incassate in contanti', e.escluse_contanti + (e.escluse_contanti === 1 ? ' rata' : ' rate'), pfEuro(e.totale_contanti));
+      + sprCard('Da dichiarare', e.da_dichiarare + (e.da_dichiarare === 1 ? ' rata' : ' rate'), pfEuro(e.totale_da_dichiarare));
   }
 
-  if (!e.gruppi.length) {
-    box.innerHTML = '<div class="cl-sub" style="padding:18px 0">Nessuna rata da incassare.</div>';
-    return;
-  }
-  box.innerHTML =
+  var avvisi =
     (SPR_PARZIALE ? '<div class="cnt-err">La lettura si è fermata prima della fine: questi numeri sono in DIFETTO.</div>' : '')
     + (e.escluse_contanti
       ? '<div class="cnt-avv"><b>' + e.escluse_contanti + '</b> rate in contanti non stanno qui: '
         + 'i contanti si incassano allo sportello e vanno in cassa. Se una la tiene qualcuno, cambiale la voce.</div>'
       : '')
+    /* Quello che resta fuori si DICE, con il suo numero e con la porta dove
+       si lavora: un elenco che fa sparire delle righe senza contarle non dice
+       quante ne restano e perché (§55). */
+    + (e.incassate_fuori
+      ? '<div class="cnt-avv"><b>' + e.incassate_fuori + '</b> rate sono già state incassate con un mezzo (POS, bonifico, carta) '
+        + 'per <b>' + pfEuro(e.totale_incassate_fuori) + '</b>: quelle non le tiene una persona, arrivano da sole. '
+        + 'Si seguono in <a href="#" onclick="selContabTab(\'incassi\');return false">Incassi da accreditare</a>.</div>'
+      : '');
+  if (!e.gruppi.length) {
+    box.innerHTML = avvisi + '<div class="cl-sub" style="padding:18px 0">Nessuna rata da incassare e nessuno che tenga dei premi.</div>';
+    return;
+  }
+  box.innerHTML = avvisi
     + e.gruppi.map(function (g) {
       var chiave = g.voce || '(vuoto)';
       var aperto = !!SPR_APERTI[chiave];
@@ -5939,11 +5999,13 @@ function sprRender() {
         + '<i class="ti ' + icona + ' spr-i"></i>'
         + '<div class="spr-n"><div class="cnt-nome">' + esc(g.etichetta)
         + ' <span class="cnt-tag">' + g.n + (g.n === 1 ? ' rata' : ' rate') + '</span>'
+        + (g.n_versare ? ' <span class="cnt-tag uscita">' + g.n_versare + ' da versare · ' + pfEuro(g.totale_versare) + '</span>' : '')
         + (g.in_ritardo ? ' <span class="cnt-tag uscita">' + g.in_ritardo + ' fermi da troppo</span>' : '')
         + (g.tipo === 'da-dichiarare' ? ' <span class="cnt-tag transito">nessuno le tiene: non si sa</span>' : '')
         + '</div>'
         + '<div class="cnt-sotto">'
         + (g.senza_importo ? g.senza_importo + ' senza importo dichiarato · ' : '')
+        + (g.n_incassare ? g.n_incassare + ' che il cliente deve ancora pagare · ' : '')
         + (aperto ? 'clicca per richiudere' : 'clicca per vedere le rate')
         + '</div></div>'
         + '<div class="spr-euro">' + pfEuro(g.totale) + '</div>'
@@ -5959,23 +6021,41 @@ function sprCard(t, n, euro) {
     + '<div class="cnt-s">' + esc(n) + '</div></div>';
 }
 
+/* Le due famiglie si vedono separate, e ognuna porta il suo verbo: «da
+   versare» è denaro che esiste e che si può farsi dare oggi, «da incassare» è
+   un cliente da chiamare. Un elenco unico farebbe telefonare al cliente per
+   dei soldi che ha già pagato. */
 function sprRighe(g) {
-  return '<div class="spr-corpo">'
-    + g.righe.map(function (r) {
-      return '<div class="spr-riga">'
-        + '<div class="spr-chi">'
-        + '<div class="cnt-nome">' + esc(r.cliente || '—') + '</div>'
-        + '<div class="cnt-sotto">' + (r.numero_polizza ? esc(r.numero_polizza) + ' · ' : '')
-        + (r.compagnia ? esc(r.compagnia) + ' · ' : '')
-        + (r.data ? 'dal ' + pfData(r.data) : 'senza data')
-        + (r.giorni_fermo != null ? ' · fermo da ' + r.giorni_fermo + ' gg' : '')
-        + '</div></div>'
-        + '<div class="spr-imp ' + (r.in_ritardo ? 'spr-tardi' : '') + '">'
-        + (r.importo == null ? '<span title="Un importo che non c\'è non vale zero">—</span>' : pfEuro(r.importo))
-        + '</div>'
-        + '<button class="d-btn" type="button" onclick="sprIncassa(\'' + esc(r.numero_polizza || '') + '\')">Incassa</button>'
-        + '</div>';
-    }).join('') + '</div>';
+  var out = '<div class="spr-corpo">';
+  var fam = null;
+  g.righe.forEach(function (r) {
+    if (r.famiglia !== fam) {
+      fam = r.famiglia;
+      out += '<div class="spr-fam">' + (fam === 'versare'
+        ? 'Il cliente ha già pagato: questi soldi li tiene ' + esc(g.etichetta)
+        : 'Il cliente deve ancora pagare') + '</div>';
+    }
+    out += '<div class="spr-riga">'
+      + '<div class="spr-chi">'
+      + '<div class="cnt-nome">' + esc(r.cliente || '—') + '</div>'
+      + '<div class="cnt-sotto">' + (r.numero_polizza ? esc(r.numero_polizza) + ' · ' : '')
+      + (r.compagnia ? esc(r.compagnia) + ' · ' : '')
+      + (r.data ? (r.famiglia === 'versare' ? 'incassata il ' : 'dal ') + pfData(r.data) : 'senza data')
+      + (r.giorni_fermo != null ? ' · fermo da ' + r.giorni_fermo + ' gg' : '')
+      + '</div>'
+      + (r.famiglia === 'versare' && r.mezzo_rata_l
+        ? '<div class="spr-come">il cliente l’ha pagata con ' + esc(r.mezzo_rata_l) + '</div>' : '')
+      + (r.ereditato ? '<div class="spr-come">la voce non è sulla rata: la dichiara la polizza</div>' : '')
+      + '</div>'
+      + '<div class="spr-imp ' + (r.in_ritardo ? 'spr-tardi' : '') + '">'
+      + (r.importo == null ? '<span title="Un importo che non c\'è non vale zero">—</span>' : pfEuro(r.importo))
+      + '</div>'
+      + (r.famiglia === 'versare'
+        ? '<button class="d-btn" type="button" onclick="sprAccredita()">Scarica</button>'
+        : '<button class="d-btn" type="button" onclick="sprIncassa(\'' + esc(r.numero_polizza || '') + '\')">Incassa</button>')
+      + '</div>';
+  });
+  return out + '</div>';
 }
 
 /* «Scaricare» un sospeso è registrare l'incasso, e quella schermata esiste
@@ -5987,6 +6067,12 @@ function sprIncassa(numero) {
   var q = document.getElementById('inca-q');
   if (q && numero) { q.value = numero; if (typeof incaCerca === 'function') incaCerca(); }
 }
+
+/* Il cliente ha già pagato: quello che manca è dire su quale conto il denaro
+   è arrivato, e quella è un'altra schermata — la stessa che segue POS e
+   bonifici (§32). Due strade per registrare lo stesso accredito sarebbero due
+   modi di scriverlo, e quello sbagliato sarebbe quello che nessuno guarda. */
+function sprAccredita() { selContabTab('incassi'); }
 
 /* ═══ LE MODALITÀ DI PAGAMENTO (22/09/2026) ════════════════════════════════
    Il vocabolario sta in `iam_modalita_pagamento` e non più in sei posti nel
@@ -6800,6 +6886,65 @@ function pntOpzCausali(contoId, scelta) {
 function pntCambiaConto() {
   const sel = document.getElementById('pnt-m-causale');
   if (sel) sel.innerHTML = '<option value="">— scegli —</option>' + pntOpzCausali(pntVal('pnt-m-conto'), sel.value);
+  pntContro();
+}
+
+/* ═══ LA CONTROPARTITA SI PROPONE, E L'EFFETTO SI VEDE (22/09/2026) ═════════
+   Segnalato da Francesco: «se c'è uscita deve sempre sottrarre da quel conto
+   là, tuttora non funziona». Misurato: il cancello del 22/09 funzionava e lo
+   RIFIUTAVA — la tendina offriva tutti i conti, lui sceglieva il conto su cui
+   la carta è appoggiata, e non riusciva più a registrare la spesa.
+
+   Le regole stanno nel motore (`Contabilita.contropartiteAmmesse`), che
+   riempie la tendina con la STESSA funzione che poi rifiuta: due elenchi
+   diversi vorrebbero dire una schermata che propone quello che il
+   salvataggio respinge. Qui c'è solo la resa. */
+function pntContro() {
+  const sel = document.getElementById('pnt-m-contro');
+  const nota = document.getElementById('pnt-contro-nota');
+  const lab = document.getElementById('pnt-contro-lab');
+  if (!sel || sel.disabled || !window.Contabilita) { pntEffetto(); return; }
+  const a = Contabilita.contropartiteAmmesse(
+    { conto_id: pntVal('pnt-m-conto') || null, causale_id: pntVal('pnt-m-causale') || null },
+    { causali: PNT_CAUSALI, conti: PNT_CONTI });
+  const prima = sel.value;
+  /* Quello che era scelto resta scelto se è ancora ammesso: una tendina che
+     perde il proprio valore lo cancella al primo salvataggio (§48). */
+  const tiene = a.conti.some(c => c.id === prima) ? prima : (a.proposto || '');
+  sel.innerHTML = '<option value="">— scegli —</option>'
+    + a.conti.map(c => `<option value="${esc(c.id)}" ${c.id === tiene ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
+  sel.value = tiene;
+  if (lab) lab.textContent = a.etichetta || 'Contropartita';
+  if (nota) {
+    nota.className = a.motivo ? 'cnt-err' : 'cl-sub';
+    nota.innerHTML = a.motivo ? esc(a.motivo)
+      : (a.incide
+        ? (a.verso < 0
+          ? 'Una spesa esce da un conto e diventa un costo dell’agenzia: qui si dice <b>che spesa è</b>. Il conto qui sopra è quello da cui i soldi escono, e scende.'
+          : 'Un incasso entra su un conto e diventa un ricavo dell’agenzia: qui si dice <b>di che incasso si tratta</b>.')
+        : 'È l’altro conto: da dove il denaro arriva, o dove va a finire. Un incasso di premi entra in cassa <b>e</b> diventa un debito verso la compagnia: sono due fatti dello stesso evento.');
+  }
+  pntEffetto();
+}
+
+/* «Se c'è uscita deve sempre sottrarre» è una cosa che si controlla
+   guardandola. Le righe sono quelle che verranno scritte davvero — non un
+   secondo conto fatto a parte, che un giorno direbbe un numero diverso. */
+function pntEffetto() {
+  const box = document.getElementById('pnt-effetto');
+  if (!box || !window.Contabilita) return;
+  const r = Contabilita.righeSemplici({
+    conto_id: pntVal('pnt-m-conto') || null,
+    contropartita_id: pntVal('pnt-m-contro') || null,
+    causale_id: pntVal('pnt-m-causale') || null,
+    importo: Contabilita.numero(pntVal('pnt-m-importo'))
+  }, { causali: PNT_CAUSALI, conti: PNT_CONTI });
+  if (!r.ok) { box.innerHTML = ''; return; }
+  const eff = Contabilita.effettoAtteso(r.righe, PNT_CONTI);
+  box.innerHTML = '<div class="pnt-eff"><div class="pnt-eff-t">Quando salvi, i saldi si muovono così</div>'
+    + eff.map(x => `<div class="pnt-eff-r"><span>${esc(x.nome || '—')}</span>`
+      + `<b class="${x.delta < 0 ? 'pnt-giu' : 'pnt-su'}">${x.delta < 0 ? '−' : '+'}${esc(Contabilita.euro(Math.abs(x.delta)))}</b></div>`).join('')
+    + '</div>';
 }
 
 /* Le righe Dare/Avere di un movimento, così come si leggono. Un movimento
@@ -6855,7 +7000,7 @@ function pntApriMovimento(id) {
         <div class="fld"><label>Data del movimento</label>
           <input type="date" id="pnt-m-data" value="${esc(m.data || pntOggi())}" ${auto ? 'disabled' : ''}></div>
         <div class="fld"><label>Importo (€)</label>
-          <input type="text" id="pnt-m-importo" inputmode="decimal" value="${m.importo != null ? esc(String(m.importo).replace('.', ',')) : ''}" ${auto ? 'disabled' : ''}></div>
+          <input type="text" id="pnt-m-importo" inputmode="decimal" oninput="pntEffetto()" value="${m.importo != null ? esc(String(m.importo).replace('.', ',')) : ''}" ${auto ? 'disabled' : ''}></div>
         <div class="fld"><label>Conto</label>
           <select id="pnt-m-conto" onchange="pntCambiaConto()" ${auto ? 'disabled' : ''}>
             <option value="">— scegli —</option>
@@ -6863,16 +7008,17 @@ function pntApriMovimento(id) {
               `<option value="${esc(c.id)}" ${c.id === m.conto_id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}
           </select></div>
         <div class="fld"><label>Causale</label>
-          <select id="pnt-m-causale" ${auto ? 'disabled' : ''}>
+          <select id="pnt-m-causale" onchange="pntContro()" ${auto ? 'disabled' : ''}>
             <option value="">— scegli —</option>${pntOpzCausali(m.conto_id, m.causale_id)}
           </select></div>
-        <div class="fld ffull"><label>Contropartita</label>
-          <select id="pnt-m-contro" ${auto || id ? 'disabled' : ''}>
+        <div class="fld ffull"><label id="pnt-contro-lab">${id ? 'Contropartita' : 'L’altro conto'}</label>
+          <select id="pnt-m-contro" onchange="pntEffetto()" ${auto || id ? 'disabled' : ''}>
             <option value="">— scegli —</option>
             ${PNT_CONTI.filter(c => c.attivo !== false || c.id === contro).map(c =>
               `<option value="${esc(c.id)}" ${c.id === contro ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}
           </select>
-          <div class="cl-sub">È l'altro conto: da dove il denaro arriva, o dove va a finire. Un incasso di premi entra in cassa <b>e</b> diventa un debito verso la compagnia: sono due fatti dello stesso evento, e registrarne uno solo lascia l'altro alla memoria di chi c'era.${id ? ' Su un movimento già registrato non si cambia: si storna.' : ''}</div></div>
+          <div id="pnt-contro-nota" class="cl-sub">È l'altro conto: da dove il denaro arriva, o dove va a finire. Un incasso di premi entra in cassa <b>e</b> diventa un debito verso la compagnia: sono due fatti dello stesso evento, e registrarne uno solo lascia l'altro alla memoria di chi c'era.${id ? ' Su un movimento già registrato non si cambia: si storna.' : ''}</div></div>
+        <div class="fld ffull" id="pnt-effetto"></div>
         <div class="fld"><label>Controparte</label>
           <input type="text" id="pnt-m-controparte" value="${esc(m.controparte || '')}" placeholder="chi ha pagato, o chi è stato pagato"></div>
         <div class="fld"><label>Riferimento</label>
@@ -6895,6 +7041,9 @@ function pntApriMovimento(id) {
       ${auto || m.stato === 'stornato' ? '' : `<button class="d-btn primario" type="button" onclick="pntSalva(${id ? "'" + esc(id) + "'" : 'null'})">Salva</button>`}
     </div>`);
   if (id && typeof regInstalla === 'function') regInstalla('pnt-storia', 'movimento', id);
+  /* La tendina si riempie dal motore appena la finestra esiste: su un
+     movimento nuovo la causale nasce vuota, e la nota dice di sceglierla. */
+  pntContro();
 }
 
 /* ══ UN SALVATAGGIO CHE NON SALVA NIENTE DEVE DIRLO (21/09/2026) ════════════
@@ -8719,6 +8868,8 @@ async function incaStorna(id) {
 var INC_SOSPESI = [];
 var INC_CONTI = [];
 var INC_CAUSALI = [];
+var INC_MODALITA = [];  /* il vocabolario dei mezzi: sta in tabella dal
+                           22/09, e una voce puo' essere una PERSONA (§64) */
 var INC_TITOLI = [];
 var INC_MOVIMENTI = [];
 var INC_MOV_RIGHE = [];   /* le righe dei movimenti: dalla Fase 2 una rata
@@ -8744,11 +8895,12 @@ async function incCarica(forza) {
     if (l) l.innerHTML = '<div class="cl-sub">Carico gli incassi…</div>';
   }
   try {
-    const [so, co, ca, mo, mr, f2] = await Promise.all([
+    const [so, co, ca, md, mo, mr, f2] = await Promise.all([
       cntTutte((a, b) => db.from('iam_sospesi').select('*')
         .order('data_incasso', { ascending: false }).order('id').range(a, b)),
       db.from('iam_conti').select('*').order('ordine').order('nome'),
       db.from('iam_causali').select('*').order('ordine'),
+      db.from('iam_modalita_pagamento').select('*').order('ordine'),
       cntTutte((a, b) => db.from('iam_movimenti').select('id,titolo_id,sospeso_id,annullato_il')
         .order('id').range(a, b)),
       cntMorbida((a, b) => db.from('iam_movimenti_righe').select('movimento_id,titolo_id')
@@ -8757,6 +8909,9 @@ async function incCarica(forza) {
         .eq('attiva', true).order('titolo_id').range(a, b))
     ]);
     for (const r of [co, ca]) if (r.error) throw r.error;
+    /* Il vocabolario non fa cadere la schermata: senza, le etichette restano
+       i codici, ma gli incassi si vedono lo stesso. */
+    INC_MODALITA = md.error ? [] : (md.data || []);
     INC_SOSPESI = so.righe; INC_CONTI = co.data || [];
     INC_CAUSALI = ca.data || []; INC_MOVIMENTI = mo.righe;
     /* Queste due letture non fanno cadere la schermata: se non rispondono si
@@ -8778,10 +8933,16 @@ async function incCarica(forza) {
        dichiarando rotto un codice giusto (§10, §12, §18, §26, §29, §31,
        §33, §34, §37, §41, §42, §45, §55). */
     const ti = await cntMorbida((a, b) => db.from('quote_titoli')
-      .select('id,importo_lordo,mezzo_pagamento,incassato_il,stato,polizza_id,collaboratore_id')
+      .select('id,importo_lordo,mezzo_pagamento,incassato_il,stato,polizza_id,collaboratore_id,'
+              + 'quote_polizze(mezzo_pagamento)')
       .eq('stato', 'incassato').not('incassato_il', 'is', null)
       .order('incassato_il', { ascending: false }).order('id').range(a, b));
-    INC_TITOLI = ti.righe;
+    /* Il mezzo della POLIZZA viaggia accanto a quello della rata: la regola
+       «chi tiene i soldi» sta nel motore e vale per tutte e due le schermate
+       — una rata che non dichiara il mezzo, ma la cui polizza dice che li
+       tiene una persona, va registrata come le altre. */
+    INC_TITOLI = (ti.righe || []).map(t => Object.assign({}, t,
+      { mezzo_polizza: (t.quote_polizze || {}).mezzo_pagamento || null }));
     INC_TITOLI_KO = ti.ko || null;
     if (ti.parziale) INC_INCERTO = true;
     INC_CARICATO = true;
@@ -8866,7 +9027,7 @@ function incRenderDaPortare(puo) {
         <span class="cl-sub">${da.length} rate incassate${da.length > 50 ? ' — ne vedi 50' : ''}</span></div>
       <div class="card-body" style="padding:0">` +
     da.slice(0, 50).map(t => {
-      const d = Contabilita.destinoIncasso(t, INC_CONTI);
+      const d = Contabilita.destinoIncasso(t, INC_CONTI, INC_MODALITA);
       const eti = d.tipo === 'cassa' ? '<span class="cnt-tag utile">in cassa oggi</span>'
                 : d.tipo === 'sospeso' ? '<span class="cnt-tag transito">arriva dopo</span>'
                 : '<span class="cnt-tag">non si sa</span>';
@@ -8911,7 +9072,7 @@ function incRenderLista(puo) {
     aperti.map(s => {
       const rit = Contabilita.inRitardo(s, incOggi());
       const g = Contabilita.giorniDa(s.data_incasso, incOggi());
-      const m = Contabilita.mezzo(s.mezzo);
+      const m = Contabilita.mezzo(s.mezzo, Contabilita.vocabolario(INC_MODALITA));
       return `<div class="cnt-r">
         <div style="flex:1;min-width:0">
           <div class="cnt-nome">${Contabilita.euro(Contabilita.numero(s.importo))}
@@ -8933,7 +9094,7 @@ function incRenderLista(puo) {
 async function incPorta(titoloId) {
   const t = INC_TITOLI.find(x => x.id === titoloId);
   if (!t) return;
-  const d = Contabilita.destinoIncasso(t, INC_CONTI);
+  const d = Contabilita.destinoIncasso(t, INC_CONTI, INC_MODALITA);
   if (d.tipo === 'non-si-sa') { alert(d.motivo); return; }
   const inc = INC_CAUSALI.find(c => c.codice === Contabilita.CAUSALE_INCASSO);
   if (!inc) { alert('Manca la causale «Incasso premi»: si ricrea in Strumenti › Conti e causali.'); return; }
@@ -8954,7 +9115,7 @@ async function incPorta(titoloId) {
          che non ci sono ancora. */
       const { data, error } = await db.from('iam_sospesi').insert({
         titolo_id: t.id, importo: Contabilita.numero(t.importo_lordo),
-        mezzo: d.mezzo, data_incasso: t.incassato_il, conto_id: d.conto.id
+        mezzo: d.mezzo, data_incasso: t.incassato_il, conto_id: d.conto ? d.conto.id : null
       }).select('id').single();
       if (error) throw error;
       logMovimento('Incasso da accreditare', 'movimento',
@@ -8973,7 +9134,7 @@ function incApriAccredito(id) {
   if (!s) return;
   const ov = document.getElementById('pnt-ov'), box = document.getElementById('pnt-box');
   if (!ov || !box) return;
-  const m = Contabilita.mezzo(s.mezzo);
+  const m = Contabilita.mezzo(s.mezzo, Contabilita.vocabolario(INC_MODALITA));
   box.innerHTML = `
     <div style="padding:18px 18px 0">
       <div style="font-size:17px;font-weight:800">Accredita ${Contabilita.euro(Contabilita.numero(s.importo))}</div>
@@ -9025,7 +9186,7 @@ async function incAccredita(id) {
       data: dati.accreditato_il, conto_id: dati.conto_id, causale_id: inc.id,
       importo: Contabilita.numero(s.importo), titolo_id: s.titolo_id || null,
       sospeso_id: s.id, origine: 'sospeso',
-      descrizione: 'Accredito ' + (Contabilita.mezzo(s.mezzo)?.l || s.mezzo)
+      descrizione: 'Accredito ' + (Contabilita.mezzo(s.mezzo, Contabilita.vocabolario(INC_MODALITA))?.l || s.mezzo)
     }).select('id').single();
     if (error) throw error;
     const { error: e2 } = await db.from('iam_sospesi').update({

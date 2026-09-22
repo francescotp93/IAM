@@ -2027,6 +2027,231 @@
     return mezzo(k[0]) ? k[0] : null;
   }
 
+  /* ═══ FASE 3 — I SOSPESI: I PREMI MESSI A COPERTURA E NON RICEVUTI ═══════
+
+     Il caso, che in agenzia succede tutti i giorni: la polizza si emette e si
+     mette a copertura perché il cliente non può restare scoperto, ma il premio
+     non è ancora arrivato. Da quel momento l'agenzia DEVE il premio alla
+     compagnia e VANTA un credito verso il cliente. Sono due fatti, e finora in
+     IAM non ne esisteva nessuno dei due.
+
+     ┌─ APERTURA ────────────────────────────────────────────────────────────
+     │  Dare   Sospesi clienti        (il credito verso il cliente)
+     │  Avere  Conto compagnia        (il debito che la copertura crea)
+     └─ RECUPERO (anche parziale) ───────────────────────────────────────────
+        Dare   Cassa / Banca / POS…   (il denaro che arriva)
+        Avere  Sospesi clienti        (il credito che si riduce)
+
+     **Il recupero NON crea un nuovo debito verso la compagnia**: quel debito è
+     nato all'apertura. Ricrearlo lo conterebbe due volte, e il conto della
+     compagnia direbbe il doppio di quello che si deve — un numero grande,
+     credibile e falso.
+
+     TRE COSE CHE QUESTO MOTORE NON FA, e ognuna è una regola di casa:
+
+     1. **Non chiude la rata all'apertura.** «A copertura» vuol dire che la
+        compagnia è a posto, non che il cliente ha pagato: la rata resta
+        APERTA, e resta nello scadenzario, perché è vero che il cliente non ha
+        pagato. Chiuderla come incassata farebbe maturare la provvigione su un
+        premio mai ricevuto (§17, decisione 1) — cioè pagherebbe un
+        collaboratore con i soldi di nessuno.
+     2. **Non memorizza il residuo.** Si calcola: originale meno i recuperi
+        vivi. Un residuo scritto in colonna si aggiorna da un'altra parte, e il
+        giorno in cui si scosta dalla somma dei recuperi nessuno sa più quale
+        dei due sia quello vero (§26, la stessa ragione per cui i conti non
+        hanno un `saldo`).
+     3. **Non ricostruisce il credito verso i COLLABORATORI.** Quello esiste
+        già dal 19/09 — sono le rate che un collaboratore ha incassato e non ha
+        ancora rimesso (`EstrattoConto.creditoAgenzia`, §24) — e rifarlo qui
+        sarebbe il secondo archivio dello stesso fatto. La colonna `tipo` c'è
+        perché il modello possa crescere; oggi vale `cliente`, e la schermata
+        dice perché. */
+
+  var STATI_CREDITO = [
+    { k: 'aperto',   l: 'Aperto',   i: 'ti-clock-dollar' },
+    { k: 'parziale', l: 'Parziale', i: 'ti-progress' },
+    { k: 'chiuso',   l: 'Chiuso',   i: 'ti-circle-check' },
+    { k: 'stornato', l: 'Stornato', i: 'ti-rotate-2' }
+  ];
+
+  /* I recuperi che contano: quelli non spenti dallo storno. Sta in una
+     funzione sola perché i posti che sommano sono quattro, e quattro controlli
+     scritti a mano sono quattro occasioni di dimenticarne uno — che è il modo
+     in cui un residuo comincia a non tornare senza che si capisca perché. */
+  function recuperiVivi(recuperi, creditoId) {
+    return (recuperi || []).filter(function (r) {
+      return r && r.attivo !== false && (creditoId == null || r.credito_id === creditoId);
+    });
+  }
+
+  function residuoCredito(credito, recuperi) {
+    var c = credito || {};
+    var orig = numero(c.importo_originale);
+    if (orig == null) return { residuo: null, recuperato: null, motivo: 'Il sospeso non ha un importo: non si sa che cosa si sta aspettando.' };
+    var rec = 0;
+    recuperiVivi(recuperi, c.id).forEach(function (r) { rec = cent(rec + (numero(r.importo) || 0)); });
+    return { residuo: cent(orig - rec), recuperato: cent(rec), originale: cent(orig), motivo: null };
+  }
+
+  /* Lo stato si DERIVA dal residuo: una colonna `stato` aggiornata a mano è la
+     seconda verità che prima o poi contraddice la prima. `stornato` invece è
+     un fatto e sta scritto sulla riga. */
+  function statoCredito(credito, recuperi) {
+    var c = credito || {};
+    if (c.stornato_il) return 'stornato';
+    var r = residuoCredito(c, recuperi);
+    if (r.residuo == null) return 'aperto';
+    if (r.residuo <= 0) return 'chiuso';
+    if (r.recuperato > 0) return 'parziale';
+    return 'aperto';
+  }
+
+  /* Le righe dell'APERTURA. */
+  function righeApertura(piano, opz) {
+    opz = opz || {};
+    piano = piano || {};
+    var conti = opz.conti || [];
+    var perId = indice(conti);
+    var imp = numero(piano.importo);
+    var errori = [];
+
+    if (imp == null || imp <= 0) errori.push('Metti l’importo del premio messo a copertura, positivo.');
+    var cs = perId[piano.conto_sospeso_id];
+    if (!piano.conto_sospeso_id) errori.push('Scegli il conto dei sospesi: è dove vive il credito finché il cliente non paga.');
+    else if (!cs) errori.push('Quel conto dei sospesi non esiste più.');
+    else if (cs.attivo === false) errori.push('Il conto «' + testo(cs.nome) + '» è spento.');
+    else if (cs.e_conto_sospeso !== true) {
+      errori.push('«' + testo(cs.nome) + '» non è un conto di sospesi. Un credito messo su un conto di denaro direbbe che quei soldi ci sono, e non ci sono.');
+    }
+    if (!piano.titolo_id) errori.push('Manca il riferimento alla rata.');
+
+    var trovato = contoCompagnia(conti, { id: piano.compagnia_id, nome: piano.compagnia }, opz);
+    if (!trovato.conto) errori.push(trovato.motivo);
+
+    if (errori.length) return { ok: false, righe: [], motivo: errori[0], errori: errori, compagnia: trovato };
+
+    return {
+      ok: true, motivo: null, errori: [], compagnia: trovato,
+      righe: [
+        { conto_id: piano.conto_sospeso_id, dare: cent(imp), avere: 0, ordine: 0,
+          descrizione: 'Premio a copertura da recuperare',
+          cliente_id: testo(piano.cliente_id) || null, polizza_id: testo(piano.polizza_id) || null,
+          titolo_id: testo(piano.titolo_id) || null },
+        { conto_id: trovato.conto.id, dare: 0, avere: cent(imp), ordine: 1,
+          descrizione: 'Premi da rimettere a ' + (testo(piano.compagnia) || testo(trovato.conto.nome)),
+          compagnia_id: trovato.compagnia_id || null,
+          cliente_id: testo(piano.cliente_id) || null, polizza_id: testo(piano.polizza_id) || null,
+          titolo_id: testo(piano.titolo_id) || null }
+      ]
+    };
+  }
+
+  /* Si può recuperare? E quanto? */
+  function recuperabile(credito, recuperi, importo) {
+    var c = credito || {};
+    if (c.stornato_il) return { si: false, motivo: 'Questo sospeso è stornato: non c’è più niente da recuperare.' };
+    var r = residuoCredito(c, recuperi);
+    if (r.residuo == null) return { si: false, motivo: r.motivo };
+    if (r.residuo <= 0) return { si: false, motivo: 'Questo sospeso è già chiuso: il residuo è zero.' };
+    var imp = numero(importo);
+    if (importo === undefined || importo === null || importo === '') return { si: true, motivo: null, residuo: r.residuo };
+    if (imp == null || imp <= 0) return { si: false, motivo: 'Metti un importo positivo.', residuo: r.residuo };
+    /* Più del residuo non si accetta: sarebbe un'eccedenza, che è un altro
+       fatto e va da un'altra parte. Accettarla qui farebbe un residuo negativo
+       che nessuna schermata sa leggere. */
+    if (imp > r.residuo) {
+      return { si: false, residuo: r.residuo,
+        motivo: 'Il residuo è ' + euro(r.residuo) + ': di più non si registra qui. Se il cliente ha dato un di più, quello è un’eccedenza e va su «Eccedenze e abbuoni attivi».' };
+    }
+    return { si: true, motivo: null, residuo: r.residuo, chiude: cent(r.residuo - imp) <= 0 };
+  }
+
+  /* Le righe del RECUPERO. */
+  function righeRecupero(credito, piano, opz) {
+    opz = opz || {};
+    piano = piano || {};
+    var c = credito || {};
+    var conti = opz.conti || [];
+    var perId = indice(conti);
+    var imp = numero(piano.importo);
+    var errori = [];
+
+    var puo = recuperabile(c, opz.recuperi || [], piano.importo);
+    if (!puo.si) errori.push(puo.motivo);
+
+    var cd = perId[piano.conto_id];
+    if (!piano.conto_id) errori.push('Di’ su quale conto è arrivato il denaro.');
+    else if (!cd) errori.push('Quel conto non esiste più.');
+    else if (cd.attivo === false) errori.push('Il conto «' + testo(cd.nome) + '» è spento.');
+    else if (cd.e_mezzo_pagamento === false) {
+      errori.push('«' + testo(cd.nome) + '» non è un modo di ricevere denaro.');
+    } else if (cd.e_conto_sospeso === true) {
+      errori.push('«' + testo(cd.nome) + '» è un conto di sospesi: un credito non si recupera con un altro credito.');
+    } else if (opz.causale && !compatibile(cd, opz.causale).ok) {
+      errori.push(compatibile(cd, opz.causale).motivo);
+    }
+    if (!c.conto_sospeso_id) errori.push('Il sospeso non dice su quale conto vive: non si sa che cosa ridurre.');
+
+    if (errori.length) return { ok: false, righe: [], motivo: errori[0], errori: errori };
+
+    return {
+      ok: true, motivo: null, errori: [], chiude: !!puo.chiude, residuo_dopo: cent(puo.residuo - imp),
+      righe: [
+        { conto_id: piano.conto_id, dare: cent(imp), avere: 0, ordine: 0,
+          descrizione: 'Recupero su ' + testo(cd.nome),
+          cliente_id: testo(c.cliente_id) || null, polizza_id: testo(c.polizza_id) || null,
+          titolo_id: testo(c.titolo_id) || null },
+        /* L'Avere va sul conto dei SOSPESI, non su quello della compagnia: il
+           debito verso di lei è nato all'apertura, e rifarlo qui lo conterebbe
+           due volte. */
+        { conto_id: c.conto_sospeso_id, dare: 0, avere: cent(imp), ordine: 1,
+          descrizione: 'Credito recuperato',
+          cliente_id: testo(c.cliente_id) || null, polizza_id: testo(c.polizza_id) || null,
+          titolo_id: testo(c.titolo_id) || null }
+      ]
+    };
+  }
+
+  /* Lo scadenzario: che cosa c'è da recuperare, da quanto, e da chi.
+     `oggi` lo passa chi chiama — un motore che chiede l'ora al computer dà
+     risposte diverse a due persone sullo stesso dato (§44, §45). */
+  function scadenzarioCrediti(crediti, recuperi, opz) {
+    opz = opz || {};
+    var oggi = testo(opz.oggi);
+    var righe = (crediti || []).map(function (c) {
+      var r = residuoCredito(c, recuperi);
+      var st = statoCredito(c, recuperi);
+      var scadenza = testo(c.previsto_il) || null;
+      var giorni = oggi ? giorniDa(c.aperto_il, oggi) : null;
+      var ritardo = (oggi && scadenza && st !== 'chiuso' && st !== 'stornato') ? (scadenza < oggi) : false;
+      return { credito: c, stato: st, originale: r.originale, recuperato: r.recuperato,
+               residuo: r.residuo, giorni: giorni, scadenza: scadenza, in_ritardo: ritardo };
+    });
+    var vive = righe.filter(function (x) { return x.stato === 'aperto' || x.stato === 'parziale'; });
+    var tot = 0, ritardo = 0, nRit = 0;
+    vive.forEach(function (x) {
+      if (x.residuo != null) tot = cent(tot + x.residuo);
+      if (x.in_ritardo) { nRit++; if (x.residuo != null) ritardo = cent(ritardo + x.residuo); }
+    });
+    return {
+      /* Prima i vivi, poi per data attesa. Uno scadenzario è una lista di
+         lavoro: mettere in cima un sospeso chiuso o stornato fa scorrere righe
+         morte per arrivare a quelle da chiamare. Chi li vuole vedere li filtra
+         — restano, ma in fondo. */
+      righe: righe.sort(function (a, b) {
+        var va = (a.stato === 'aperto' || a.stato === 'parziale') ? 0 : 1;
+        var vb = (b.stato === 'aperto' || b.stato === 'parziale') ? 0 : 1;
+        if (va !== vb) return va - vb;
+        var sa = a.scadenza || '9999-99-99', sb = b.scadenza || '9999-99-99';
+        return sa < sb ? -1 : sa > sb ? 1 : 0;
+      }),
+      aperti: vive.length, da_recuperare: tot,
+      in_ritardo: nRit, totale_ritardo: ritardo,
+      chiusi: righe.filter(function (x) { return x.stato === 'chiuso'; }).length,
+      stornati: righe.filter(function (x) { return x.stato === 'stornato'; }).length
+    };
+  }
+
   var API = {
     VERSIONE: VERSIONE,
     TIPOLOGIE: TIPOLOGIE, NATURE: NATURE, SEGNI: SEGNI, GENERI: GENERI,
@@ -2055,6 +2280,11 @@
     incassabile: incassabile, contoCompagnia: contoCompagnia, contoIncasso: contoIncasso,
     righeIncasso: righeIncasso, mezzoIncasso: mezzoIncasso, giornoBello: giornoBello,
     effettoSuConto: effettoSuConto, perMovimento: perMovimento,
+    /* Fase 3 — i sospesi: i premi a copertura e non ricevuti */
+    STATI_CREDITO: STATI_CREDITO, recuperiVivi: recuperiVivi,
+    residuoCredito: residuoCredito, statoCredito: statoCredito,
+    righeApertura: righeApertura, recuperabile: recuperabile,
+    righeRecupero: righeRecupero, scadenzarioCrediti: scadenzarioCrediti,
     /* M5 — la giornata ricostruita, il fondo cassa, le anomalie */
     giornata: giornata, fondoCassa: fondoCassa, semaforoGiornata: semaforoGiornata,
     anomalie: anomalie,

@@ -96,7 +96,9 @@ prova('i punti di chiamata ci sono, e non scendono', () => {
      è la prima domanda che arriva, e arriva mesi dopo; 38 con la M4, dove
      ogni incasso portato in contabilità, accreditato o annullato lascia la
      sua riga — è denaro che entra, e si deve sapere chi l'ha detto. */
-  const SOGLIA = 57;   /* 21/09/2026: la Fase 1 della contabilità ne ha portati 3 — i conti minimi creati in blocco, lo storno e il movimento che nasce dallo storno. La soglia sale, non scende. */
+  const SOGLIA = 62;   /* 21/09: la Fase 1 ne ha portati 3 — i conti minimi creati in blocco, lo storno e il movimento che nasce dallo storno.
+                          22/09: +2 dalla Fase 2 (l'incasso registrato e il suo storno) e +3 dalla Fase 3 (la rata messa a copertura, il recupero e lo storno del sospeso): sono denaro che entra, e «chi l'ha detto» è la prima domanda che arriva mesi dopo.
+                          La soglia sale, non scende. */
   deve(chiamate >= SOGLIA, 'movimenti registrati da IAM: ' + chiamate + ' (erano ' + SOGLIA + ')');
   deve(chiamate - SOGLIA < 3, 'adesso sono ' + chiamate + ': alza la soglia, altrimenti smette di sorvegliare');
   /* E riguardano le cose che la gente chiede mesi dopo. */

@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.26.0">
-<meta name="app-versione-nome" content="Contabilità · si incassa una rata">
+<meta name="app-versione" content="0.27.0">
+<meta name="app-versione-nome" content="Contabilità · i premi da recuperare">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1761,6 +1761,7 @@ input[type=file]{display:none;}
     <button class="ptab act" id="ctab-quadratura" onclick="selContabTab('quadratura')">Quadratura</button>
     <button class="ptab"     id="ctab-primanota" onclick="selContabTab('primanota')">Prima nota</button>
     <button class="ptab"     id="ctab-incassa"   onclick="selContabTab('incassa')">Incassa una rata</button>
+    <button class="ptab"     id="ctab-recuperi"  onclick="selContabTab('recuperi')">Premi da recuperare</button>
     <button class="ptab"     id="ctab-quadconti" onclick="selContabTab('quadconti')">Quadratura conti</button>
     <button class="ptab"     id="ctab-incassi"   onclick="selContabTab('incassi')">Incassi da accreditare</button>
     <button class="ptab"     id="ctab-anomalie" onclick="selContabTab('anomalie')">Anomalie<span class="nbadge" id="n-anom-tab" style="display:none;position:static;margin-left:4px;"></span></button>
@@ -2056,6 +2057,51 @@ input[type=file]{display:none;}
     <div id="co-content" style="display:none;"></div>
     <div id="co-sospeso" style="display:none;"></div>
     <div style="height:16px;"></div>
+  </div>
+
+  <!-- ══ SUB: PREMI DA RECUPERARE (Fase 3) ════════════════════════════════
+       I sospesi: i premi messi a copertura e non ancora ricevuti. La polizza
+       si emette perche' il cliente non puo' restare scoperto, il premio non
+       e' arrivato: da quel momento l'agenzia DEVE alla compagnia e VANTA un
+       credito verso il cliente.
+
+       PERCHE' NON SI CHIAMA «SOSPESI», che sarebbe il nome giusto: la
+       linguetta «Sospesi» qui accanto esiste dal 01/08 e legge il file Excel
+       della compagnia. Due schermate con lo stesso nome sono due elenchi che
+       non si incrociano (§18). Quella resta finche' i suoi numeri non saranno
+       stati confrontati con questi (§17, §33): una schermata in uso non si
+       spegne perche' ne e' nata una migliore. -->
+  <div id="contab-panel-recuperi" style="display:none;">
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>Premi da recuperare</h1>
+        <div class="subtitle">I premi messi a copertura e non ancora ricevuti dal cliente. La rata resta aperta finché il denaro non arriva: «a copertura» vuol dire che la compagnia è a posto, non che il cliente ha pagato.</div>
+      </div>
+      <div class="head-actions">
+        <button class="d-btn" type="button" onclick="recApri(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+        <button class="d-btn primario" type="button" onclick="recNuovo()"><i class="ti ti-plus"></i> Metti una rata a copertura</button>
+      </div>
+    </section>
+
+    <section id="rec-pronti"></section>
+    <section class="cnt-somma" id="rec-somma"></section>
+
+    <div class="d-card">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-clock-dollar"></i></span> Lo scadenzario</div></div>
+      <div class="card-body">
+        <div class="inca-barra">
+          <select id="rec-stato" ><option value="vivi">Aperti e parziali</option>
+            <option value="tutti">Tutti</option><option value="chiuso">Chiusi</option>
+            <option value="stornato">Stornati</option></select>
+          <input id="rec-q" type="search" placeholder="cliente, polizza o compagnia…"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault();recRender()}">
+          <button class="d-btn primario" type="button" onclick="recRender()"><i class="ti ti-search"></i> Cerca</button>
+        </div>
+        <div id="rec-lista"><div class="cl-sub">…</div></div>
+      </div>
+    </div>
   </div>
 
   <!-- ══ SUB: INCASSA UNA RATA (Fase 2) ═══════════════════════════════════
@@ -7127,6 +7173,264 @@ function gioRenderConto() {
    modulo e `window.INC_SOSPESI` sono due cose diverse, e una prova che inietta
    dei dati finti scriverebbe in una mentre il codice legge l'altra — restando
    verde senza aver misurato niente. */
+/* ═══════════ PREMI DA RECUPERARE — Contabilità · Fase 3 (22/09/2026) ══════
+
+   I sospesi: i premi messi a copertura e non ancora ricevuti. Le regole stanno
+   nel motore (`Contabilita.righeApertura`, `righeRecupero`, `residuoCredito`,
+   `scadenzarioCrediti`); qui c'è la schermata e le tre chiamate alle
+   transazioni del database.
+
+   La decisione che regge tutto: **l'apertura NON chiude la rata.** «A
+   copertura» vuol dire che la compagnia è a posto, non che il cliente ha
+   pagato: la rata resta aperta e resta nello scadenzario. La si chiude il
+   giorno in cui il credito arriva a zero, e non un minuto prima — altrimenti
+   la provvigione maturerebbe su un premio mai ricevuto (§17, decisione 1).
+
+   `var` e non `let` (§17). */
+var REC_CREDITI = [];
+var REC_RECUPERI = [];
+var REC_CONTI = [];
+var REC_COMPAGNIE = [];
+var REC_CAUSALE_AP = null;
+var REC_CAUSALE_RE = null;
+var REC_GUASTI = [];
+var REC_CHIAVE = null;
+
+function recEuro(n) { return window.Contabilita ? Contabilita.euro(n) : String(n); }
+function recOggi() { return new Date().toISOString().slice(0, 10); }
+function recNuovaChiave() {
+  var r = ''; for (var i = 0; i < 4; i++) r += Math.random().toString(36).slice(2, 10);
+  return 'crd-' + r.slice(0, 28);
+}
+
+/* Ogni lettura sta in piedi da sola e dichiara il proprio guasto col suo nome
+   (§35): sei letture in una Promise.all che rilancia sono una schermata che si
+   spegne sei volte più spesso di quanto dovrebbe. */
+async function recLeggi(nome, query, vuoto) {
+  try { var r = await query; if (r && r.error) throw r.error; return (r && r.data) || vuoto; }
+  catch (e) { REC_GUASTI.push(nome); return vuoto; }
+}
+
+/* PostgREST manda MILLE righe per richiesta qualunque limit ci sia scritto
+   (§50, §53): i recuperi di un archivio vivo li superano, e un residuo
+   calcolato su metà dei recuperi è un credito che sembra più grande del vero
+   — cioè si va a chiedere dei soldi a chi li ha già dati. */
+async function recPagina(nome, fai) {
+  var out = [], da = 0, PASSO = 1000;
+  for (var giro = 0; giro < 50; giro++) {
+    var p = await recLeggi(nome, fai(da, da + PASSO - 1), null);
+    if (p === null) return out;
+    out = out.concat(p);
+    if (p.length < PASSO) break;
+    da += PASSO;
+  }
+  return out;
+}
+
+async function recApri(forza) {
+  if (!db) return;
+  REC_GUASTI = [];
+  REC_CHIAVE = recNuovaChiave();
+  var l = document.getElementById('rec-lista');
+  if (l && forza !== false) l.innerHTML = '<div class="cl-sub">Carico i sospesi…</div>';
+  REC_CONTI = await recLeggi('i conti', db.from('iam_conti').select('*').eq('attivo', true).order('ordine'), []);
+  REC_COMPAGNIE = await recLeggi('l\'anagrafica delle compagnie', db.from('quote_compagnie').select('id,nome,alias'), []);
+  var cs = await recLeggi('le causali', db.from('iam_causali').select('*')
+    .in('codice', ['apertura_sospeso', 'recupero_sospeso']).eq('attiva', true), []);
+  REC_CAUSALE_AP = cs.filter(function (c) { return c.codice === 'apertura_sospeso'; })[0] || null;
+  REC_CAUSALE_RE = cs.filter(function (c) { return c.codice === 'recupero_sospeso'; })[0] || null;
+  REC_CREDITI = await recPagina('i sospesi', function (a, b) {
+    return db.from('iam_crediti_premio').select('*').order('previsto_il', { ascending: true }).range(a, b);
+  });
+  REC_RECUPERI = await recPagina('i recuperi', function (a, b) {
+    return db.from('iam_crediti_recuperi').select('*').order('data', { ascending: true }).range(a, b);
+  });
+  recPronti();
+  recRender();
+}
+
+/* Che cosa manca PRIMA di far compilare (§43). */
+function recPronti() {
+  var box = document.getElementById('rec-pronti'); if (!box) return;
+  if (REC_GUASTI.length) {
+    box.innerHTML = '<div class="cnt-lista"><div class="cl-sub"><b>Non si è potuto leggere ' +
+      esc(REC_GUASTI.join(' e ')) + '.</b> Non vuol dire che non ci sia: vuol dire che non si è potuto leggerlo. ' +
+      'I numeri qui sotto sono parziali.</div></div>';
+    return;
+  }
+  var mancano = [];
+  if (!REC_CAUSALE_AP || !REC_CAUSALE_RE) mancano.push('le causali «Apertura di un sospeso» e «Recupero di un sospeso»');
+  if (!REC_CONTI.filter(function (c) { return c.e_conto_sospeso; }).length) {
+    mancano.push('un conto dei sospesi (il «Sospesi clienti» dei conti minimi)');
+  }
+  if (!REC_CONTI.filter(function (c) { return c.tipologia === 'debito'; }).length) {
+    mancano.push('un conto di debito verso la compagnia');
+  }
+  box.innerHTML = mancano.length
+    ? '<div class="cnt-lista"><div class="cl-r"><div><b>Prima di mettere una rata a copertura serve ' +
+      (mancano.length === 1 ? 'una cosa' : mancano.length + ' cose') + '.</b><div class="cl-sub">Manca ' +
+      mancano.map(esc).join('; manca ') + '. Si sistema in Strumenti › Conti e causali: finché manca, ' +
+      'un sospeso non si apre — e non se ne inventa uno.</div></div></div></div>' : '';
+}
+
+function recRender() {
+  var box = document.getElementById('rec-lista'); if (!box || !window.Contabilita) return;
+  var sc = Contabilita.scadenzarioCrediti(REC_CREDITI, REC_RECUPERI, { oggi: recOggi() });
+  var quale = (document.getElementById('rec-stato') || {}).value || 'vivi';
+  var q = String((document.getElementById('rec-q') || {}).value || '').trim().toLowerCase();
+  var somma = document.getElementById('rec-somma');
+  if (somma) somma.innerHTML =
+    '<div class="cnt-card"><div class="cnt-k">Da recuperare</div><div class="cnt-v">' + recEuro(sc.da_recuperare) +
+      '</div><div class="cnt-s">' + sc.aperti + ' sospesi aperti o parziali</div></div>' +
+    '<div class="cnt-card"><div class="cnt-k">Oltre la data prevista</div><div class="cnt-v">' + recEuro(sc.totale_ritardo) +
+      '</div><div class="cnt-s">' + sc.in_ritardo + ' da richiamare</div></div>' +
+    '<div class="cnt-card"><div class="cnt-k">Chiusi</div><div class="cnt-v">' + sc.chiusi +
+      '</div><div class="cnt-s">recuperati per intero' + (sc.stornati ? ' · ' + sc.stornati + ' stornati' : '') + '</div></div>';
+
+  var righe = sc.righe.filter(function (x) {
+    if (quale === 'vivi') { if (x.stato !== 'aperto' && x.stato !== 'parziale') return false; }
+    else if (quale !== 'tutti' && x.stato !== quale) return false;
+    if (!q) return true;
+    var c = x.credito;
+    return [(c.cliente || ''), (c.compagnia || ''), (c.nota || '')].join(' ').toLowerCase().indexOf(q) >= 0;
+  });
+  if (!righe.length) {
+    box.innerHTML = '<div class="cl-sub">Nessun sospeso con questi filtri.' +
+      (REC_CREDITI.length ? '' : ' Non ce n\'è ancora nessuno: si apre da «Metti una rata a copertura».') + '</div>';
+    return;
+  }
+  box.innerHTML = righe.map(function (x) {
+    var c = x.credito;
+    return '<div class="cl-r"><div style="flex:1"><b>' + esc(c.cliente || '—') + '</b> · ' + esc(c.compagnia || '—') +
+      '<div class="cl-sub">aperto il ' + esc((c.aperto_il || '').split('-').reverse().join('/')) +
+      (x.scadenza ? ' · atteso il ' + esc(x.scadenza.split('-').reverse().join('/')) : ' · nessuna data attesa') +
+      (x.in_ritardo ? ' · <b>in ritardo</b>' : '') +
+      ' · ' + esc(c.nota || '') + '</div></div>' +
+      '<div style="text-align:right"><b>' + recEuro(x.residuo) + '</b>' +
+      '<div class="cl-sub">di ' + recEuro(x.originale) +
+      (x.recuperato ? ' · recuperati ' + recEuro(x.recuperato) : '') + ' · ' + esc(x.stato) + '</div></div>' +
+      (x.stato === 'aperto' || x.stato === 'parziale'
+        ? '<button class="d-btn primario" type="button" onclick="recRecupera(\'' + esc(c.id) + '\')">Recupera</button>' +
+          '<button class="d-btn" type="button" onclick="recStorna(\'' + esc(c.id) + '\')">Storna</button>'
+        : '') + '</div>';
+  }).join('');
+}
+
+/* ── METTERE UNA RATA A COPERTURA ─────────────────────────────────────────
+   La rata si sceglie dalle aperte, come nell'incasso. Una rata che ha già un
+   sospeso, o che è già stata incassata, non compare: le due strade non si
+   incrociano, e se si incrociassero il debito verso la compagnia nascerebbe
+   due volte. */
+async function recNuovo() {
+  var q = prompt('Cerca la polizza da mettere a copertura (numero o cliente):');
+  if (!q || q.trim().length < 2) return;
+  var qs = q.trim().replace(/[,()*%\\]/g, ' ');
+  var pol = await recLeggi('il portafoglio', db.from('quote_polizze')
+    .select('id,numero_polizza,compagnia,cliente,cliente_id')
+    .or('numero_polizza.ilike.%' + qs + '%,cliente.ilike.%' + qs + '%').limit(20), null);
+  if (pol === null) { alert('Non si è potuto leggere il portafoglio. Non vuol dire che quella polizza non ci sia.'); return; }
+  if (!pol.length) { alert('Nessuna polizza con «' + q + '».'); return; }
+  var rate = await recLeggi('le rate', db.from('quote_titoli').select('*')
+    .in('polizza_id', pol.map(function (p) { return p.id; })).eq('stato', 'aperto')
+    .order('data_decorrenza').limit(50), []);
+  var gia = {}; REC_CREDITI.forEach(function (c) { if (c.attivo) gia[c.titolo_id] = 1; });
+  rate = rate.filter(function (t) { return !gia[t.id]; });
+  if (!rate.length) { alert('Quelle polizze non hanno rate aperte senza un sospeso già acceso.'); return; }
+  var perPol = {}; pol.forEach(function (p) { perPol[p.id] = p; });
+  var elenco = rate.map(function (t, i) {
+    var p = perPol[t.polizza_id] || {};
+    return (i + 1) + ') ' + (p.cliente || '—') + ' · pol. ' + (p.numero_polizza || '—') +
+      ' · ' + (t.data_decorrenza || '') + ' · ' + recEuro(t.importo_lordo);
+  }).join('\n');
+  var n = prompt('Quale rata?\n' + elenco, '1');
+  var i = parseInt(n, 10) - 1;
+  if (!(i >= 0 && i < rate.length)) return;
+  var t = rate[i], p = perPol[t.polizza_id] || {};
+
+  var sospesi = REC_CONTI.filter(function (c) { return c.e_conto_sospeso; });
+  if (!sospesi.length) { alert('Manca un conto dei sospesi: si crea in Strumenti › Conti e causali.'); return; }
+  var conto = sospesi[0];
+  if (sospesi.length > 1) {
+    var scelta = prompt('Su quale conto dei sospesi?\n' +
+      sospesi.map(function (c, k) { return (k + 1) + ') ' + c.nome; }).join('\n'), '1');
+    var k2 = parseInt(scelta, 10) - 1;
+    if (!(k2 >= 0 && k2 < sospesi.length)) return;
+    conto = sospesi[k2];
+  }
+  var atteso = prompt('Quando si prevede di incassarlo? (aaaa-mm-gg, si può lasciare vuoto)', '');
+
+  var piano = { titolo_id: t.id, polizza_id: t.polizza_id, cliente_id: p.cliente_id,
+                cliente: p.cliente, compagnia: p.compagnia, importo: Number(t.importo_lordo),
+                conto_sospeso_id: conto.id };
+  var r = Contabilita.righeApertura(piano, { conti: REC_CONTI, compagnie: REC_COMPAGNIE });
+  if (!r.ok) { alert('Non si può aprire: ' + r.errori.join('\n')); return; }
+  try {
+    var res = await db.rpc('iam_credito_apri', {
+      p_credito: { titolo_id: t.id, polizza_id: t.polizza_id, cliente_id: p.cliente_id,
+                   cliente: p.cliente, compagnia: p.compagnia,
+                   compagnia_id: r.compagnia.compagnia_id || null,
+                   conto_sospeso_id: conto.id, importo_originale: Number(t.importo_lordo),
+                   previsto_il: (atteso || '').trim() || null,
+                   chiave_idempotenza: REC_CHIAVE },
+      p_righe: r.righe });
+    if (res.error) throw res.error;
+    if (typeof logMovimento === 'function') {
+      logMovimento('Rata messa a copertura · ' + recEuro(t.importo_lordo), 'incasso', null, (res.data || {}).credito_id || null);
+    }
+    REC_CHIAVE = recNuovaChiave();
+    alert('Sospeso aperto. La rata resta APERTA: si chiude quando il cliente paga.');
+    recApri(false);
+  } catch (e) { alert('Non aperto: ' + ((e && e.message) || e)); }
+}
+
+async function recRecupera(id) {
+  var c = REC_CREDITI.filter(function (x) { return x.id === id; })[0];
+  if (!c || !window.Contabilita) return;
+  var r0 = Contabilita.residuoCredito(c, REC_RECUPERI);
+  var imp = prompt('Quanto è arrivato? Il residuo è ' + recEuro(r0.residuo) +
+    '.\nDi più non si registra qui: un di più del cliente è un\'eccedenza.', String(r0.residuo));
+  if (!imp) return;
+  var conti = REC_CONTI.filter(function (x) { return x.e_mezzo_pagamento && !x.e_conto_sospeso; });
+  if (!conti.length) { alert('Nessun conto dichiara di ricevere denaro: si sistema in Strumenti › Conti e causali.'); return; }
+  var conto = conti[0];
+  if (conti.length > 1) {
+    var s = prompt('Su quale conto?\n' + conti.map(function (x, k) { return (k + 1) + ') ' + x.nome; }).join('\n'), '1');
+    var k = parseInt(s, 10) - 1;
+    if (!(k >= 0 && k < conti.length)) return;
+    conto = conti[k];
+  }
+  var rr = Contabilita.righeRecupero(c, { conto_id: conto.id, importo: Number(String(imp).replace(',', '.')) },
+    { conti: REC_CONTI, recuperi: REC_RECUPERI, causale: REC_CAUSALE_RE });
+  if (!rr.ok) { alert('Non si può registrare: ' + rr.errori.join('\n')); return; }
+  try {
+    var res = await db.rpc('iam_credito_recupera', {
+      p_recupero: { credito_id: c.id, importo: Number(String(imp).replace(',', '.')),
+                    conto_id: conto.id, mezzo: (conto.mezzi && conto.mezzi.length === 1) ? conto.mezzi[0] : null,
+                    chiave_idempotenza: recNuovaChiave() },
+      p_righe: rr.righe });
+    if (res.error) throw res.error;
+    var d = res.data || {};
+    if (typeof logMovimento === 'function') logMovimento('Recupero su sospeso · ' + recEuro(imp), 'incasso', null, c.id);
+    alert(d.chiude ? 'Recuperato tutto: la rata adesso è incassata.'
+                   : 'Recuperato. Resta ' + recEuro(d.residuo) + '.');
+    recApri(false);
+  } catch (e) { alert('Non registrato: ' + ((e && e.message) || e)); }
+}
+
+async function recStorna(id) {
+  var perche = prompt('Perché si storna questo sospeso? Uno storno senza motivo è un buco.');
+  if (!perche || !perche.trim()) return;
+  try {
+    var r = await db.rpc('iam_credito_storna', { p_credito_id: id, p_perche: perche.trim() });
+    if (r.error) throw r.error;
+    var d = r.data || {};
+    if (typeof logMovimento === 'function') logMovimento('Sospeso stornato · ' + perche.trim(), 'incasso', null, id);
+    alert('Stornato. Recuperi rovesciati: ' + (d.recuperi_stornati || 0) +
+      (d.rata_riaperta ? '. La rata è tornata aperta.' : '.'));
+    recApri(false);
+  } catch (e) { alert('Non stornato: ' + ((e && e.message) || e)); }
+}
+
 /* ═══════════ INCASSA UNA RATA — Contabilità · Fase 2 (22/09/2026) ═════════
 
    Il flusso A della specifica: si cercano le rate aperte, se ne scelgono una o
@@ -9763,7 +10067,7 @@ function selContabTab(sub) {
      quadratura, e stanno dentro di lei. Chi ha il vecchio nome in memoria
      finisce là, non su un riquadro vuoto (§6b). */
   if (sub === 'conto') sub = 'quadconti';
-  ['quadratura','primanota','incassa','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
+  ['quadratura','primanota','incassa','recuperi','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
     const btn = document.getElementById('ctab-'+s);
     const pnl = document.getElementById('contab-panel-'+s);
     if (btn) btn.classList.toggle('act', s===sub);
@@ -9777,6 +10081,7 @@ function selContabTab(sub) {
   if (sub==='primanota' || sub==='quadconti') pntCarica();
   if (sub==='incassi') incCarica();
   if (sub==='incassa') incaApri();
+  if (sub==='recuperi') recApri();
   /* La contabilità ricostruita (M5) sta SOPRA quattro schermate che esistevano
      già: la giornata, le anomalie, lo storico e il conto. Una lettura sola le
      serve tutte e quattro, e non si ripete se è già stata fatta. */
@@ -9936,7 +10241,7 @@ function ripristinaScheda() {
   RIPRISTINO_IN_CORSO = true;
   try {
     if (!lastTab) { goTab('dashboard'); return; }
-    const contabSub = ['quadratura','primanota','incassa','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
+    const contabSub = ['quadratura','primanota','incassa','recuperi','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
     if (contabSub.includes(lastTab)) { goTab('carica'); selContabTab(lastTab); }
     else if (lastTab === 'quoto') goTab('dashboard');
     /* «lab» era la vecchia pagina-hub, ora rimossa (Marketing vive nel riquadro,

@@ -6,6 +6,40 @@ soltanto quello che Francesco potrebbe voler ribaltare.
 
 ---
 
+## 22/09/2026 — Contabilità · Fase 3, i premi da recuperare (0.27.0)
+
+**Perimetro:** i sospesi — i premi messi a copertura e non ancora ricevuti dal
+cliente — con apertura, scadenzario, recuperi anche parziali e storno.
+
+🔴 **Applicato al database, con la tua autorizzazione permanente.** Due tabelle
+nuove (`iam_crediti_premio`, `iam_crediti_recuperi`), tre funzioni, quattro
+trigger, due causali di sistema, il vocabolario di `origine` allargato e un
+indice ristretto. Nessuna colonna esistente toccata, nessun dato riscritto.
+*Come tornare indietro:* i blocchi ROLLBACK in testa alle due migrazioni.
+
+🟡 **Mettere una rata a copertura NON la chiude.** La rata resta fra quelle da
+incassare finché il denaro non arriva: «a copertura» vuol dire che la compagnia
+è a posto, non che il cliente ha pagato. Se la chiudessimo, la provvigione
+maturerebbe su un premio mai ricevuto.
+*Come tornare indietro:* è la decisione che regge la fase; ribaltarla vuol dire
+rifarla.
+
+🟡 **Una rata a copertura non si incassa dalla schermata degli incassi**: te lo
+dice e ti manda a registrare il recupero. Senza, il debito verso la compagnia
+nascerebbe due volte.
+
+🟡 **Il credito verso un collaboratore non si apre qui.** Esiste già dal 19/09
+(le rate che ha incassato e non ha rimesso, nel suo estratto conto): rifarlo
+sarebbe il secondo archivio dello stesso fatto.
+
+🟡 **Più del residuo non si registra**: un di più del cliente è un'eccedenza e
+oggi non ha una strada sua — si rifiuta dicendolo.
+
+📝 **Fuori perimetro, annotato:** l'abbuono per chiudere un residuo che non
+arriverà mai; l'eccedenza; i conti «Abbuoni» classificati fra i premi.
+
+---
+
 ## 22/09/2026 — Contabilità · Fase 2, si incassa una rata (0.26.0)
 
 **Perimetro:** registrare l'incasso di una o più rate con una o più modalità di

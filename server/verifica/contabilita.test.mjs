@@ -8,7 +8,7 @@
 //  Dati tutti inventati (regola di casa §8.3).
 // ═══════════════════════════════════════════════════════════════════════════════
 import { createRequire } from 'module';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 const require = createRequire(import.meta.url);
@@ -935,6 +935,18 @@ prova('le polizze senza nemmeno una rata sono un\'anomalia rossa, col verbo', ()
 
 const MIGR1 = join(RADICE, 'supabase/migrations/20260922_contab_partita_doppia.sql');
 
+/* L'ULTIMA migrazione che tocca un pezzo, non la prima: un vincolo si allarga,
+   e leggere sempre quella che l'ha creato vuol dire sorvegliare il mondo di
+   ieri (§55, §60). Se un giorno quel pezzo si sposta in un file nuovo, questa
+   prova lo segue da sé. */
+function ultimaMigrazioneChe(pezzo) {
+  const dir = join(RADICE, 'supabase/migrations');
+  const f = readdirSync(dir).filter(x => x.endsWith('.sql')).sort()
+    .filter(x => readFileSync(join(dir, x), 'utf8').includes(pezzo));
+  if (!f.length) throw new Error('nessuna migrazione contiene «' + pezzo + '»');
+  return readFileSync(join(dir, f[f.length - 1]), 'utf8');
+}
+
 /* Le righe di CODICE della migrazione, senza i commenti che cominciano a
    inizio riga. Il blocco del ROLLBACK è tutto commentato e nomina ogni cosa
    che la migrazione crea: cercare lì dentro vorrebbe dire trovare sempre
@@ -1068,8 +1080,12 @@ prova('nessun saldo memorizzato, e nessun conto seminato', () => {
      dove stanno dei soldi e ha un saldo, e dodici saldi a zero che nessuno ha
      deciso diventano un dato dopo due settimane (§8.1). */
   deve(!/insert\s+into\s+public\.iam_conti/i.test(sql), 'la migrazione crea dei conti');
-  deve(C.CONTI_MINIMI.length === 12, 'i conti minimi non sono dodici: ' + C.CONTI_MINIMI.length);
-  return 'zero conti creati, dodici proposti';
+  /* Erano dodici il 21/09 e sono quattordici dal 22/09 (costo e ricavo). La
+     regola non era «dodici»: era «nessuno seminato, e l'elenco cresce quando
+     manca una risposta onesta» — e il difetto di Francesco l'ha dimostrato.
+     La soglia sale, non scende (§18, §31). */
+  deve(C.CONTI_MINIMI.length >= 14, 'i conti minimi sono calati: ' + C.CONTI_MINIMI.length);
+  return 'zero conti creati, ' + C.CONTI_MINIMI.length + ' proposti';
 });
 
 prova('i dodici conti minimi si spiegano da soli, e i crediti non si quadrano', () => {
@@ -1087,14 +1103,18 @@ prova('i dodici conti minimi si spiegano da soli, e i crediti non si quadrano', 
     /* Regola 12. */
     if (c.e_conto_sospeso) deve(c.e_quadrabile === false, c.nome + ': è un conto di crediti e si propone quadrabile');
   }
-  /* Le otto tipologie del vocabolario sono le otto ammesse dal database. */
-  const sql = soloCodice(readFileSync(MIGR1, 'utf8'));
-  const m = sql.match(/check \(tipologia in \(([^)]*)\)\)/);
+  /* Le tipologie del vocabolario sono quelle ammesse dal database, e si
+     leggono dall'ULTIMA migrazione che definisce quel vincolo — non dalla
+     prima: leggere la prima vorrebbe dire sorvegliare il mondo di ieri, ed è
+     la lezione già scritta per l'import (§55). Il 22/09 il vincolo si è
+     allargato a `costo` e `ricavo`, e questa prova lo segue da sé. */
+  const sql = soloCodice(ultimaMigrazioneChe('check (tipologia in ('));
+  const m = sql.match(/check \(tipologia in \(([\s\S]*?)\)\)/);
   deve(m, 'il vincolo delle tipologie non si trova');
   const nelSql = m[1].split(',').map(s => s.trim().replace(/'/g, '')).filter(Boolean).sort();
   deve(nelSql.join('|') === chiavi.slice().sort().join('|'),
     'il vocabolario delle tipologie non coincide col vincolo: SQL ' + nelSql.join(',') + ' — motore ' + chiavi.join(','));
-  return '12 conti coerenti, 8 tipologie identiche in due posti';
+  return C.CONTI_MINIMI.length + ' conti coerenti, ' + chiavi.length + ' tipologie identiche in due posti';
 });
 
 prova('il genere di una causale dice da quale flusso nasce, e il vocabolario è uno', () => {
@@ -1977,6 +1997,149 @@ prova('un conto che riceve una voce nuova la nomina per esteso', () => {
   deve(r.ok === false, 'ha trovato un conto che non esiste');
   deve(/ODDO FRANCESCO/.test(r.motivo), 'il motivo mostra il codice invece del nome: ' + r.motivo);
   return 'il nome, non il codice';
+});
+
+/* ══ LO STATO DEL PAGAMENTO SI DEDUCE, NON SI DIGITA (22/09/2026) ══════════
+   Richiesta di Francesco: «se mettiamo pos, oppure altre modalità che abbiamo
+   detto vanno in automatico come sospeso».
+   Misurato sul portafoglio vero prima di scriverlo: 364 polizze su 4.079
+   dicevano una cosa e le loro rate ne dicevano un'altra, e 1.444 dicevano
+   «pagato» senza avere NEMMENO UNA RATA. */
+const VOCP = C.vocabolario(VOC);
+
+prova('una modalità dichiarata con rate aperte è SOSPESO, e lo dice col nome', () => {
+  const r = C.statoPagamento({ id: 'p1' },
+    [{ stato: 'aperto', mezzo_pagamento: 'pos', importo_lordo: 148 }], VOCP);
+  deve(r.stato === 'sospeso', 'stato: ' + r.stato);
+  deve(r.dedotto === true, 'non si è dichiarato dedotto');
+  deve(/POS/.test(r.motivo), 'il motivo mostra il codice invece del nome: ' + r.motivo);
+  /* La modalità sta anche sulla polizza e non sulla rata: stessa risposta. */
+  const s = C.statoPagamento({ id: 'p1', mezzo_pagamento: 'col_oddo' },
+    [{ stato: 'aperto', importo_lordo: 148 }], VOCP);
+  deve(s.stato === 'sospeso', 'la modalità sulla polizza non conta: ' + s.stato);
+  deve(/ODDO FRANCESCO/.test(s.motivo), 'motivo: ' + s.motivo);
+  return 'sospeso, col nome della voce';
+});
+
+prova('tutte le rate incassate è PAGATO; nessuna modalità è NON PAGATO', () => {
+  const p = C.statoPagamento({ id: 'p' },
+    [{ stato: 'incassato' }, { stato: 'incassato' }], VOCP);
+  deve(p.stato === 'pagato', 'due rate incassate non fanno «pagato»: ' + p.stato);
+  const n = C.statoPagamento({ id: 'p' },
+    [{ stato: 'aperto', mezzo_pagamento: null }], VOCP);
+  deve(n.stato === 'non_pagato', 'senza modalità non è «non pagato»: ' + n.stato);
+  /* Una rata ANNULLATA non tiene aperta la polizza: non si deve più. */
+  const a = C.statoPagamento({ id: 'p' },
+    [{ stato: 'incassato' }, { stato: 'annullato' }], VOCP);
+  deve(a.stato === 'pagato', 'una rata annullata tiene la polizza aperta: ' + a.stato);
+  return 'pagato, non pagato, e l\'annullata che non conta';
+});
+
+prova('NESSUNA RATA non è «pagato»: è «non si sa»', () => {
+  /* È il caso delle 1.444 polizze rimaste senza rate dopo l'importazione
+     interrotta (§47, §55). Dirle pagate è la bugia più comoda che questo
+     sistema possa raccontare (§12, §18, §43). */
+  const r = C.statoPagamento({ id: 'p', stato_pagamento: 'pagato' }, [], VOCP);
+  deve(r.stato === 'non_si_sa', 'una polizza senza rate risulta «' + r.stato + '»');
+  deve(/nessuna rata/i.test(r.motivo), 'il motivo non dice perché: ' + r.motivo);
+  /* E non si lascia ingannare dalla colonna scritta: è proprio quella che
+     sbaglia su 364 righe. */
+  const s = C.statoPagamento({ id: 'p', stato_pagamento: 'sospeso' },
+    [{ stato: 'incassato' }], VOCP);
+  deve(s.stato === 'pagato', 'ha creduto alla colonna invece che alle rate: ' + s.stato);
+  return 'senza rate non si deduce, e la colonna non comanda';
+});
+
+prova('«annullata» NON si deduce: è la vita della polizza, e la decide una persona', () => {
+  /* L'unico valore per cui quella colonna serve ancora — 76 righe, e
+     coincidono tutte con le rate. */
+  const r = C.statoPagamento({ id: 'p', stato_pagamento: 'annullata' },
+    [{ stato: 'aperto', mezzo_pagamento: 'pos' }], VOCP);
+  deve(r.stato === 'annullata', 'l\'annullamento è stato dedotto via: ' + r.stato);
+  deve(r.dedotto === false, 'si dichiara dedotto un fatto che ha deciso una persona');
+  return 'annullata resta, e non si deduce';
+});
+
+/* ══ UNA SPESA NON SI SOMMA A UN CONTO CORRENTE (22/09/2026) ═══════════════
+   Segnalazione di Francesco: «ho inserito un saldo iniziale ed ho aggiunto
+   delle spese, ma essendo spese si dovrebbe defalcare dal saldo, invece il
+   programma le somma».
+   Misurato sul movimento vero: «Pagamento Stanza ROMA» 170 €, causale «Spese
+   in genere» — Avere sulla carta di credito (−170, giusto) e Dare sul CONTO
+   AZIENDALE (+170, sbagliato). La partita doppia era corretta; mancava un
+   conto DI COSTO dove mettere la contropartita, quindi l'unica risposta
+   possibile era un conto di liquidità che «riceveva» quei soldi. */
+const CONTI_SP = [
+  { id: 'carta', nome: 'CARTA DI CREDITO', tipologia: 'banca', natura: 'aziendale' },
+  { id: 'az', nome: 'CONTO AZIENDALE', tipologia: 'banca', natura: 'aziendale' },
+  { id: 'costi', nome: 'Costi di agenzia', tipologia: 'costo', natura: 'aziendale' }
+];
+const CAUS_SP = [
+  { id: 'sp', codice: 'spese_generiche', nome: 'Spese in genere', segno: 'uscita', incide_su_utile: true },
+  { id: 'gir', codice: 'giroconto', nome: 'Giroconto', segno: 'uscita', incide_su_utile: false }
+];
+
+prova('fra i conti minimi c\'è dove mettere un COSTO e un RICAVO', () => {
+  /* Senza, la contropartita di una spesa non ha una risposta onesta, e
+     qualunque conto si scelga è un conto di liquidità che risulta averla
+     incassata. È §1: la schermata fa una domanda la cui unica risposta giusta
+     non esiste nell'elenco. */
+  const t = C.CONTI_MINIMI.map(c => c.tipologia);
+  deve(t.includes('costo'), 'nessun conto di costo fra i conti minimi');
+  deve(t.includes('ricavo'), 'nessun conto di ricavo fra i conti minimi');
+  /* E non sono liquidità: un costo non si conta aprendo un cassetto. */
+  C.CONTI_MINIMI.filter(c => c.tipologia === 'costo' || c.tipologia === 'ricavo')
+    .forEach(c => {
+      deve(c.e_quadrabile === false, c.nome + ' si dichiara quadrabile: non c\'è niente da contare');
+      deve(c.natura === 'aziendale', c.nome + ' è di natura «premi»: un affitto non è denaro di un cliente');
+    });
+  /* E il vocabolario delle tipologie li conosce, altrimenti la tendina non li
+     saprebbe nemmeno nominare. */
+  const k = C.TIPOLOGIE.map(x => x.k);
+  deve(k.includes('costo') && k.includes('ricavo'), 'le due tipologie non sono nel vocabolario');
+  return C.CONTI_MINIMI.length + ' conti minimi, costo e ricavo compresi';
+});
+
+prova('IL DIFETTO DI FRANCESCO: una spesa con la contropartita su un conto corrente si rifiuta', () => {
+  const m = { conto_id: 'carta', contropartita_id: 'az', importo: 170, causale_id: 'sp' };
+  const r = C.righeSemplici(m, { causali: CAUS_SP, conti: CONTI_SP });
+  deve(r.ok === false, 'la spesa passa, e il conto aziendale risulta aver incassato 170 €');
+  deve(/CONTO AZIENDALE/.test(r.motivo), 'il motivo non dice quale conto: ' + r.motivo);
+  deve(/costo/.test(r.motivo), 'il motivo non dice che cosa serve: ' + r.motivo);
+  /* Sul conto di costo passa, ed è la strada giusta. */
+  const ok = C.righeSemplici(Object.assign({}, m, { contropartita_id: 'costi' }),
+    { causali: CAUS_SP, conti: CONTI_SP });
+  deve(ok.ok === true, 'la spesa sul conto di costo non passa: ' + ok.motivo);
+  /* E l'effetto sui due conti è quello vero: la carta perde 170, il costo
+     non è denaro e non entra in nessun saldo di liquidità. */
+  const idx = {}; CONTI_SP.forEach(c => { idx[c.id] = c; });
+  const mov = { id: 'm1', stato: 'registrato' };
+  const perMov = { m1: ok.righe.map(x => Object.assign({ movimento_id: 'm1' }, x)) };
+  deve(C.effettoSuConto(mov, { id: 'carta' }, perMov).delta === -170,
+    'la carta non perde 170: ' + C.effettoSuConto(mov, { id: 'carta' }, perMov).delta);
+  /* E il conto di costo NON è denaro: quel Dare non entra in nessun saldo di
+     liquidità — che è tutta la differenza con il CONTO AZIENDALE di prima. */
+  const den = C.denaroDi(mov, perMov, idx);
+  deve(den.uscita === 170, 'il denaro uscito non è 170: ' + JSON.stringify(den));
+  deve(den.entrata === 0, 'il conto di costo risulta aver INCASSATO: ' + JSON.stringify(den));
+  return 'rifiutata sul conto corrente, accettata sul conto di costo';
+});
+
+prova('un GIROCONTO fra due conti resta possibile: non è un costo', () => {
+  /* Il controllo guarda `incide_su_utile`, non il segno: spostare denaro da
+     un conto all'altro muove i conti e NON il risultato, ed è legittimo che
+     la contropartita sia un conto corrente. Senza questa distinzione il
+     controllo avrebbe vietato i giroconti, cioè avrebbe rotto una cosa che
+     funzionava per aggiustarne un'altra. */
+  const r = C.righeSemplici({ conto_id: 'carta', contropartita_id: 'az', importo: 500, causale_id: 'gir' },
+    { causali: CAUS_SP, conti: CONTI_SP });
+  deve(r.ok === true, 'il giroconto è stato vietato: ' + r.motivo);
+  /* E senza l'elenco dei conti non si indovina: un controllo che non può
+     misurare non deve bloccare (§4). */
+  const cieco = C.righeSemplici({ conto_id: 'carta', contropartita_id: 'az', importo: 170, causale_id: 'sp' },
+    { causali: CAUS_SP });
+  deve(cieco.ok === true, 'senza i conti il motore indovina invece di tacere');
+  return 'giroconto sì, e senza i conti non si indovina';
 });
 
 console.log('\n══ CONTI E CAUSALI ══');

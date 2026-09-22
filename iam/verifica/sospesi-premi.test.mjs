@@ -164,11 +164,56 @@ prova('la linguetta ha il suo inizializzatore', () => {
   /* §6b: una schermata il cui contenuto lo scrive il codice, senza
      inizializzatore, apre un riquadro vuoto. */
   deve(/if \(sub==='sospesi'\) sprCarica\(\);/.test(H), 'la linguetta Sospesi non carica niente');
-  /* E il caricamento da file resta, dichiarato: una schermata in uso non si
-     spegne perché ne è nata una migliore (§17, §33). */
-  deve(/Sospesi caricati da file/.test(H), 'il caricamento da file è stato spento');
-  deve(/loadSospesi\(this\)/.test(H), 'il caricamento da file è stato cancellato');
-  return 'la linguetta carica, e il file resta';
+  /* Il 22/09 questa prova pretendeva che il caricamento da file restasse:
+     «una schermata in uso non si spegne perché ne è nata una migliore»
+     (§17, §33). Poche ore dopo Francesco ha chiesto di toglierlo, e la sua
+     è una decisione, non un difetto. Quello che la regola voleva davvero
+     garantire — che togliendolo non si spenga niente — resta, e si misura:
+     i dati già caricati si rileggono dalla giornata salvata. */
+  deve(!/loadSospesi\(this\)/.test(H), 'il caricamento da file è tornato');
+  deve(/Sospesi caricati da file \(storico\)/.test(H),
+    'lo storico dei file non si legge più: quei dati sono spariti dalla vista');
+  deve(/[Nn]on si aggiorna più/.test(H),
+    'un elenco fermo che non dichiara di essere fermo si legge come se fosse vivo');
+  return 'la linguetta carica, e lo storico resta leggibile';
+});
+
+prova('ogni classe che la schermata scrive ESISTE nel foglio di stile', () => {
+  /* Francesco: «si vede tutto un pò confusionario». Non era una scelta
+     estetica sbagliata: il blocco scriveva `cl-r`, `cl-main`, `cl-nome`,
+     `cnt-pill` e `cnt-card-t/-v/-s`, e NESSUNA di quelle esiste in questo
+     foglio di stile. Una classe che non esiste non dà un errore: la regola
+     viene ignorata in silenzio e la riga esce nuda, come un gettone che non
+     risolve (§44). L'unico modo di accorgersene è misurarlo. */
+  const css = (H.match(/<style[\s\S]*?<\/style>/g) || []).join('\n');
+  const blocco = H.slice(H.indexOf('function sprRender'), H.indexOf('function sprIncassa'));
+  const usate = new Set();
+  /* Si tengono solo i nomi prefissati (`qualcosa-qualcosa`), che è la regola
+     di casa (§26): sono quelli che il blocco scrive davvero, e sono
+     esattamente la famiglia dei nomi che erano sbagliati. Le sigle senza
+     trattino (`ti`, `entrata`) arrivano da altri fogli o sono modificatori
+     annidati, e cercarle qui darebbe un rosso per la strada (§4). */
+  for (const m of blocco.matchAll(/class="([^"]*)"/g)) {
+    for (const c of m[1].split(/[^A-Za-z0-9_-]+/)) {
+      /* `ti-*` sono i pittogrammi Tabler: vengono da un foglio esterno, e
+         cercarli qui darebbe un rosso per la strada (§4). */
+      if (/^[a-z][a-z0-9]*-[a-z0-9-]+$/.test(c) && !c.startsWith('ti-')) usate.add(c);
+    }
+  }
+  deve(usate.size >= 6, 'la schermata non scrive quasi nessuna classe: la prova non sta misurando');
+  const mancanti = [...usate].filter(c => !new RegExp('\\.' + c + '[\\s,.:{]').test(css));
+  deve(!mancanti.length,
+    'classi che il foglio di stile non conosce, quindi ignorate in silenzio: ' + mancanti.join(', '));
+  return usate.size + ' classi, tutte definite';
+});
+
+prova('i Sospesi prendono i gettoni del kit come le altre schermate', () => {
+  /* Senza, `var(--w1-raggio)` non risolve e la proprietà viene ignorata
+     senza un errore: le schede perdono gli angoli e nessuno lo dice (§31). */
+  const css = (H.match(/<style[\s\S]*?<\/style>/g) || []).join('\n').replace(/\n/g, ' ');
+  deve(/#contab-panel-sospesi\s*[,{][^}]{0,900}--w1-raggio/.test(css),
+    'i Sospesi non ricevono i gettoni del kit');
+  return 'sul kit come le altre';
 });
 
 prova('lo stato è `var`, perché le prove lo iniettano', () => {

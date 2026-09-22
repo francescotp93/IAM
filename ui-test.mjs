@@ -873,10 +873,24 @@ const avvio = async () => {
     // Si passa dal percorso vero: la finta risposta del database entra in
     // loadPortafoglio(), che filtra, riempie i menu e disegna. Così si collauda
     // la catena completa e non solo la funzione di disegno.
-    await page.evaluate(async (finte) => {
-      window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: finte, error: null };
+    /* Dal 22/09/2026 lo stato del pagamento NON è più la colonna scritta sulla
+       polizza: lo dicono le rate (§65). Quindi il banco deve portare anche
+       quelle, altrimenti misurerebbe il mondo di ieri — tre polizze senza
+       nemmeno una rata, cioè tre «non si sa».
+         p1 → la sua rata è incassata            → pagato
+         p2 → rata aperta, nessuna modalità      → non pagato
+         p3 → rata aperta con POS dichiarato     → sospeso */
+    const RATE_PF = [
+      { polizza_id: 'p1', stato: 'incassato', mezzo_pagamento: 'bonifico' },
+      { polizza_id: 'p2', stato: 'aperto', mezzo_pagamento: null },
+      { polizza_id: 'p3', stato: 'aperto', mezzo_pagamento: 'pos' }
+    ];
+    await page.evaluate(async (d) => {
+      window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: d.finte, error: null };
+      window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: d.rate, error: null };
       await window.loadPortafoglio();
-    }, POLIZZE_FINTE);
+      delete window.__COLLAUDO.risposte['quote_titoli:lista'];
+    }, { finte: POLIZZE_FINTE, rate: RATE_PF });
 
     await prova('portafoglio: i pallini di stato non ci sono piu\', e al loro posto c\'e\' come paga', async () => {
       /* 18/09/2026, richiesta di Francesco: «leviamo anche nelle polizze i
@@ -996,6 +1010,43 @@ const avvio = async () => {
       deve(r.dopoAzzera === 3, 'Azzera non ripristina tutto: ' + r.dopoAzzera);
       deve(r.suDopoAzzera === 'emissione', 'dopo Azzera il filtro non torna sull\'emissione: ' + r.suDopoAzzera);
       return 'sette filtri + azzera, le date su emissione/effetto/scadenza';
+    });
+
+    await prova('pagamento: lo stato lo dicono le RATE, e la colonna scritta non comanda', async () => {
+      /* Richiesta di Francesco: «è inutile mettere se un pagamento è sospeso
+         oppure annullato, perché se mettiamo pos vanno in automatico come
+         sospeso». Misurato sul portafoglio vero: 364 polizze su 4.079
+         dicevano una cosa e le loro rate ne dicevano un'altra.
+         Nel banco p3 ha `stato_pagamento: 'sospeso'` scritto in colonna E una
+         rata aperta con POS: le due cose combaciano. Il caso che conta è p1,
+         che in colonna dice «pagato» e ha la rata incassata, e p2, che dice
+         «non_pagato» con la rata aperta e nessuna modalità. Per misurare che
+         la colonna NON comanda si rovescia p1: colonna «sospeso», rata
+         incassata → deve restare «pagato». */
+      const r = await page.evaluate(() => {
+        const per = id => (window.PF_ROWS.find(x => x.id === id) || {}).__pag || {};
+        const out = { p1: per('p1').stato, p2: per('p2').stato, p3: per('p3').stato,
+          motivo3: per('p3').motivo };
+        /* La colonna scritta rovesciata: il risultato non deve cambiare. */
+        const p1 = window.PF_ROWS.find(x => x.id === 'p1');
+        p1.stato_pagamento = 'sospeso';
+        out.p1Rovesciata = Contabilita.statoPagamento(p1,
+          [{ stato: 'incassato' }], mezVoc()).stato;
+        /* E senza NESSUNA rata non è «pagato»: è «non si sa». */
+        out.senzaRate = Contabilita.statoPagamento({ stato_pagamento: 'pagato' }, [], mezVoc()).stato;
+        p1.stato_pagamento = 'pagato';
+        /* La tendina non c'è più: lo stato si legge, non si sceglie. */
+        out.tendina = !document.querySelector('#page-portafoglio select#pnu-stato');
+        return out;
+      });
+      deve(r.p1 === 'pagato', 'p1 (rata incassata) risulta ' + r.p1);
+      deve(r.p2 === 'non_pagato', 'p2 (rata aperta senza modalità) risulta ' + r.p2);
+      deve(r.p3 === 'sospeso', 'p3 (rata aperta con POS) risulta ' + r.p3);
+      deve(/POS/.test(r.motivo3), 'il motivo mostra il codice invece del nome: ' + r.motivo3);
+      deve(r.p1Rovesciata === 'pagato', 'la colonna scritta comanda ancora: ' + r.p1Rovesciata);
+      deve(r.senzaRate === 'non_si_sa', 'una polizza senza rate risulta ' + r.senzaRate);
+      deve(r.tendina, 'lo stato del pagamento si sceglie ancora a mano');
+      return 'pagato / non pagato / sospeso, dedotti — e senza rate «non si sa»';
     });
 
     await prova('M2.2 · digitare o scegliere non cambia la lista: cambia solo «Cerca» (e Invio), «Azzera filtri» la rimette', async () => {
@@ -5629,7 +5680,12 @@ const avvio = async () => {
         data_decorrenza: gg(-3), importo_lordo: 50 },
       // la prima rata non ha proroga: scaduta da 3 giorni è già scoperta
       { id: 'r3', polizza_id: 's5', tipo: 'prima_rata', stato: 'aperto',
-        data_decorrenza: gg(-3), importo_lordo: 300 }
+        data_decorrenza: gg(-3), importo_lordo: 300 },
+      /* La polizza di Galfano: prima rata scaduta, ma con il POS DICHIARATO.
+         Non è un buco di copertura — la compagnia ha messo il contratto in
+         copertura — è un sospeso da scaricare. */
+      { id: 'r4', polizza_id: 's5', tipo: 'prima_rata', stato: 'aperto',
+        data_decorrenza: gg(-5), importo_lordo: 148, mezzo_pagamento: 'pos' }
     ];
 
     await page.evaluate(async (d) => {
@@ -6022,6 +6078,145 @@ const avvio = async () => {
       deve(!/di proroga/.test(r.t), 'le dà dei giorni di proroga che non ha: ' + r.t);
       deve(r.rosso, 'una prima rata scaduta non è in rosso, e invece la copertura non è mai partita');
       return 'scaduta da 3 gg, scoperta, e con il motivo scritto';
+    });
+
+    await prova('scadenzario: una rata col MEZZO DICHIARATO non è un buco di copertura', async () => {
+      /* «La polizza che ha data incasso pos 17.09 non può risultare nei 15
+         perché si deve solo scaricare il sospeso pos» — Francesco. La modalità
+         che arriva dal flusso è quello dichiarato in compagnia per METTERE IN
+         COPERTURA: se c'è, il cliente non è scoperto, e quel premio è un
+         sospeso. Senza questa regola la stessa rata starebbe in due elenchi
+         che dicono cose opposte. */
+      const r = await page.evaluate(() => {
+        window.rinFasciaScegli('tutte');
+        document.getElementById('rin-che').value = '';
+        window.rinRender();
+        return {
+          righe: [...document.querySelectorAll('#rin-body tr')].map(t => t.textContent.replace(/\s+/g, ' ')),
+          tot: document.getElementById('rin-totali').textContent.replace(/\s+/g, ' '),
+          sospese: RIN_RATE_SOSPESE
+        };
+      });
+      deve(r.sospese === 1, 'le rate con una modalità dichiarata non sono contate: ' + r.sospese);
+      deve(!/148,00/.test(r.righe.join(' ')), 'la rata col POS dichiarato è ancora fra le scadenze');
+      deve(/1 rate non sono in questo elenco/.test(r.tot), 'non dice dove sono andate: ' + r.tot);
+      deve(/sospeso da scaricare/.test(r.tot), 'non dice che sono un sospeso: ' + r.tot);
+      /* E la rata SENZA modalità resta: quello è un buco vero. */
+      deve(/300,00/.test(r.righe.join(' ')), 'la rata di cui non si sa niente è sparita');
+      return 'il POS nei sospesi, la rata muta nello scadenzario';
+    });
+
+    await prova('scadenzario: gli avvisi NON spariscono quando i filtri non trovano niente', async () => {
+      /* È il caso normale del guasto, non uno di laboratorio: se le rate non
+         si leggono, il filtro «Rate da incassare» produce SEMPRE un elenco
+         vuoto — e l'avviso spariva esattamente quando era l'unica cosa vera
+         da dire, per giunta dando la colpa ai filtri. */
+      const r = await page.evaluate(async (d) => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: d.p, error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: null, error: { message: 'giù' } };
+        await window.loadScadenzario();
+        window.rinFasciaScegli('tutte');
+        document.getElementById('rin-che').value = 'rata';
+        window.rinRender();
+        const out = {
+          righe: [...document.querySelectorAll('#rin-body tr')].filter(x => x.querySelector('td') && !x.querySelector('.empty-state')).length,
+          corpo: document.getElementById('rin-body').textContent.replace(/\s+/g, ' '),
+          tot: document.getElementById('rin-totali').textContent.replace(/\s+/g, ' ')
+        };
+        document.getElementById('rin-che').value = '';
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: d.r, error: null };
+        await window.loadScadenzario();
+        return out;
+      }, { p: SCADENZE_FINTE, r: RATE_FINTE });
+      deve(r.righe === 0, 'il filtro dovrebbe non trovare niente: ' + r.righe);
+      deve(/rate non si sono potute leggere/.test(r.tot),
+        'a elenco vuoto l\'avviso è sparito: ' + r.tot);
+      deve(/potrebbe non essere vero/.test(r.corpo),
+        'il vuoto non dice che potrebbe non essere vero: ' + r.corpo);
+      return 'elenco vuoto, e l\'avviso resta';
+    });
+
+    await prova('scadenzario: una lettura fallita non lascia in schermata i numeri di prima', async () => {
+      /* La tabella diceva «non disponibile» e sopra e sotto restavano totali,
+         card e il pallino del menu che affermavano delle cose — e «Esporta
+         Excel» produceva un file con l'elenco vecchio e nessun avviso. */
+      const r = await page.evaluate(async (d) => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: d.p, error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: d.r, error: null };
+        await window.loadScadenzario();
+        const prima = document.getElementById('rin-totali').textContent.replace(/\s+/g, ' ');
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: null, error: { message: 'rete giù' } };
+        await window.loadScadenzario();
+        const out = {
+          prima,
+          corpo: document.getElementById('rin-body').textContent.replace(/\s+/g, ' '),
+          tot: document.getElementById('rin-totali').textContent.replace(/\s+/g, ' '),
+          fasce: document.getElementById('rin-fasce').textContent.replace(/\s+/g, ' '),
+          extra: document.getElementById('rin-extra').textContent.replace(/\s+/g, ' '),
+          badge: document.getElementById('scad-badge').style.display,
+          righe: RIN_ROWS.length, vista: RIN_VISTA.length
+        };
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: d.p, error: null };
+        await window.loadScadenzario();
+        return out;
+      }, { p: SCADENZE_FINTE, r: RATE_FINTE });
+      deve(/10\s*scadenze/.test(r.prima), 'il caricamento buono non ha prodotto i totali: ' + r.prima);
+      deve(/Scadenzario non disponibile/.test(r.corpo), 'non dice che la lettura è fallita');
+      deve(!/scadenze/.test(r.tot), 'restano i totali del caricamento di prima: ' + r.tot);
+      deve(/lettura non è riuscita/.test(r.tot), 'i totali non dicono che cosa è successo: ' + r.tot);
+      deve(r.fasce === '' && r.extra === '', 'card e filtro rapido restano quelli di prima');
+      deve(r.badge === 'none', 'il pallino sul menu afferma ancora un numero');
+      deve(r.righe === 0 && r.vista === 0, 'lo stato non è stato svuotato: ' + r.righe + '/' + r.vista);
+      return 'niente numeri vecchi, e il motivo scritto';
+    });
+
+    await prova('scadenzario: il numero sul tasto «non rinnovate» è quello delle righe che produce', async () => {
+      /* Il numero stampato su un tasto è la promessa di quello che quel tasto
+         farà. Contato su tutte le fasce, diceva 4 e il clic ne mostrava 1. */
+      const r = await page.evaluate(() => {
+        document.getElementById('rin-che').value = '';
+        window.rinFasciaScegli('proroga');
+        const n = /Solo non rinnovate (\d+)/.exec(document.getElementById('rin-extra').textContent);
+        document.querySelector('#rin-extra .rin-chip').click();
+        const righe = [...document.querySelectorAll('#rin-body tr')].filter(x => x.querySelector('td')).length;
+        const dopo = /Solo non rinnovate (\d+)/.exec(document.getElementById('rin-extra').textContent);
+        document.querySelector('#rin-extra .rin-chip').click();
+        window.rinFasciaScegli('tutte');
+        const tutte = /Solo non rinnovate (\d+)/.exec(document.getElementById('rin-extra').textContent);
+        return { dentro: Number(n && n[1]), righe, dopo: Number(dopo && dopo[1]), tutte: Number(tutte && tutte[1]) };
+      });
+      deve(r.dentro === r.righe, 'il tasto dice ' + r.dentro + ' e il clic mostra ' + r.righe + ' righe');
+      deve(r.dopo === r.dentro, 'il numero cambia accendendo il filtro: ' + r.dentro + ' → ' + r.dopo);
+      deve(r.tutte === 3, 'su «Tutte» le non rinnovate sono 3: ' + r.tutte);
+      deve(r.dentro < r.tutte, 'dentro una fascia dovrebbero essere meno: ' + r.dentro + ' vs ' + r.tutte);
+      return 'dentro la fascia ' + r.dentro + ', su tutte ' + r.tutte;
+    });
+
+    await prova('scadenzario: l\'Excel non accusa la visibilità quando la polizza è ANNULLATA', async () => {
+      /* Sul portafoglio vero le rate fuori elenco sono 28 su 28 su polizze
+         annullate: quella frase, nel file, oggi è sempre falsa. E un file
+         scaricato vive da solo, lontano dalla schermata (§62). */
+      const r = await page.evaluate(async (d) => {
+        window.__COLLAUDO.risposte['quote_scadenzario:lista'] = { data: d.p, error: null };
+        window.__COLLAUDO.risposte['quote_titoli:lista'] = { data: d.r, error: null };
+        window.__COLLAUDO.risposte['quote_polizze:lista'] = { data: [{ id: 'NON-VISIBILE', stato_pagamento: 'annullata' }], error: null };
+        await window.loadScadenzario();
+        window.rinFasciaScegli('tutte');
+        let html = '';
+        const B = window.Blob, U = URL.createObjectURL, C = HTMLAnchorElement.prototype.click;
+        window.Blob = function (parti) { html = String(parti.join('')); return new B(parti, { type: 'text/plain' }); };
+        URL.createObjectURL = () => 'blob:finto';
+        HTMLAnchorElement.prototype.click = function () {};
+        window.rinExportExcel();
+        window.Blob = B; URL.createObjectURL = U; HTMLAnchorElement.prototype.click = C;
+        delete window.__COLLAUDO.risposte['quote_polizze:lista'];
+        await window.loadScadenzario();
+        return html;
+      }, { p: SCADENZE_FINTE, r: RATE_FINTE });
+      deve(/polizza è annullata/.test(r), 'il file non dice il motivo vero: ' + r.slice(0, 300));
+      deve(!/non è fra quelle visibili|non si vedono/.test(r),
+        'il file accusa la visibilità su una polizza annullata: ' + r.slice(0, 300));
+      return 'nel file il motivo è quello vero';
     });
 
     await prova('scadenzario: le letture sono PAGINATE, perché il server ne manda mille per volta', async () => {
@@ -9540,13 +9735,13 @@ const avvio = async () => {
         pagina: !!document.getElementById('page-importa-flusso'),
         porta: typeof PAGINE_DA_AVVIARE['importa-flusso'] === 'function',
         voce: !!document.getElementById('nav-import'),
-        /* E la stessa porta DENTRO il Portafoglio: la barra in alto ha
-           ventuno voci e scorre, una voce nuova in mezzo alle altre non la
-           trova chi non sa gia' che c'e'. Chi vuole caricare il portafoglio
-           apre il Portafoglio. (Segnalato da Francesco il 18/09/2026: «non
-           vedo la possibilita' in portafoglio».) */
-        daPortafoglio: !!document.querySelector('#page-portafoglio #pf-importa [onclick*="importa-flusso"]'),
-        portaSoloStaff: /pfImp[\s\S]{0,120}isStaff\(\)/.test(document.documentElement.innerHTML),
+        /* Il 18/09/2026 la stessa porta era stata messa anche in cima al
+           Portafoglio, perche' la barra da ventuno voci la nascondeva. Il
+           22/09 Francesco l'ha fatta togliere: «lo abbiamo gia' negli
+           strumenti», e ha ragione — la voce di menu di IAM adesso c'e'.
+           Si e' aggiornata la REGOLA, non il numero (§15, §16, §33): quello
+           che contava era che la schermata fosse RAGGIUNGIBILE, e lo e'. */
+        daPortafoglio: !document.querySelector('#page-portafoglio [onclick*="importa-flusso"]'),
         /* La voce si accende dentro `onLogin`, e la regola dev'essere quella
            del database: `iam_is_staff` su quote_importazioni. Una voce che si
            vede a tutti è una porta che si apre su un errore di permessi. */
@@ -9556,9 +9751,8 @@ const avvio = async () => {
       deve(r.porta, 'senza porta, «?page=importa-flusso» dalla scocca apre un riquadro vuoto');
       deve(r.voce, 'manca la voce di menu');
       deve(r.soloStaff, 'la voce non è legata a isStaff(): la vedrebbe anche chi non può scrivere');
-      deve(r.daPortafoglio, 'dal Portafoglio non si arriva all\'importazione: è il primo posto dove si guarda');
-      deve(r.portaSoloStaff, 'il tasto nel Portafoglio non è legato a isStaff()');
-      return 'pagina, porta, voce riservata e tasto nel Portafoglio';
+      deve(r.daPortafoglio, 'il tasto «Importa» è tornato nel Portafoglio: la porta è una sola, nel menu');
+      return 'pagina, porta e voce riservata — una porta sola';
     });
 
     await prova('flusso: l\'anteprima mostra il piano e NON scrive niente', async () => {

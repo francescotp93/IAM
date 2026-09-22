@@ -507,6 +507,27 @@
 
     var out = [];
     var fuori = 0;
+    /* ── UNA MODALITÀ DICHIARATA È GIÀ LA COPERTURA (22/09/2026) ──────────
+       Richiesta di Francesco, con la sua schermata sotto gli occhi:
+       «la polizza che ha data incasso pos 17.09 non può risultare nei 15
+        perché si deve solo scaricare il sospeso pos».
+
+       E ha ragione, per una ragione che lui stesso aveva già scritto: la
+       modalità che arriva dal flusso è «quello dichiarato in compagnia per
+       METTERE IN COPERTURA la polizza». Se una modalità c'è, la compagnia ha
+       messo il contratto in copertura: il cliente NON è scoperto, e quel
+       premio non è un buco di copertura — è un premio che deve ancora
+       arrivare in agenzia, cioè un SOSPESO, e da lì si scarica.
+
+       Senza questa riga la stessa rata comparirebbe in due elenchi che
+       dicono cose opposte: «il cliente è scoperto» nello scadenzario e
+       «denaro in arrivo» nei sospesi. Con questa riga ogni rata aperta sta
+       in UNO dei due, e i due si sommano.
+
+       Quello che resta qui è la rata di cui NON si sa niente: nessuna
+       modalità dichiarata vuol dire che nessuno ha detto come è stata pagata,
+       e quello è un buco vero. */
+    var conModalita = 0, importoConModalita = 0;
     /* Non basta CONTARE quello che resta fuori: bisogna poter dire PERCHE'.
        Una rata la cui polizza non e' in elenco puo' essere di una polizza
        annullata (normale, l'elenco le esclude per costruzione) oppure di una
@@ -522,6 +543,12 @@
 
     rate.forEach(function (t) {
       if (!t) return;
+      if (dati.tieniConModalita !== true && testo(t.mezzo_pagamento)) {
+        conModalita++;
+        var im = numero(t.importo_lordo);
+        if (im !== null) importoConModalita = Math.round((importoConModalita + Math.abs(im)) * 100) / 100;
+        return;
+      }
       var p = perId[t.polizza_id];
       if (!p) {
         fuori++;
@@ -538,6 +565,9 @@
          rate», non «1 polizza» — è il numero degli incassi che restano fuori,
          non quello dei contratti. */
       rate_per_polizza_orfana: orfane,
+      /* Non spariscono: si contano e si dice dove sono andate (§55). */
+      rate_con_modalita: conModalita,
+      importo_con_modalita: importoConModalita,
       oggi: oggi
     };
   }

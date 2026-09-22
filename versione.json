@@ -1,8 +1,25 @@
 {
-  "versione": "0.31.0",
-  "nome": "Sospesi · la modalità di pagamento può essere una persona",
+  "versione": "0.32.0",
+  "nome": "Il pagamento lo dicono le rate, e una spesa non si somma al conto",
   "data": "2026-09-22",
   "storia": [
+    {
+      "v": "0.32.0",
+      "data": "2026-09-22",
+      "nome": "Il pagamento lo dicono le rate, e una spesa non si somma al conto",
+      "voci": [
+        "LO STATO DEL PAGAMENTO NON SI SCEGLIE PIÙ: lo dicono le rate. Se la rata è incassata la polizza è pagata; se è aperta e hai dichiarato come paga il cliente è «sospesa»; se è aperta e non l'ha detto nessuno è «non pagata». Accanto c'è sempre scritto perché.",
+        "Misurato sul portafoglio vero prima di toccarlo: 364 polizze su 4.079 dicevano una cosa e le loro rate ne dicevano un'altra, e 1.444 dicevano «pagato» senza avere nemmeno una rata. Quelle adesso dicono «non si sa», che è la verità: sono le polizze rimaste senza rate dopo l'importazione interrotta del 21/09.",
+        "UNA SPESA NON SI SOMMA PIÙ A UN CONTO CORRENTE. Registrando «Pagamento Stanza ROMA» di 170 € la carta perdeva 170 (giusto) e il CONTO AZIENDALE ne guadagnava 170 (sbagliato): quei soldi non sono mai arrivati. La causa era che fra i conti non ce n'era nemmeno uno di COSTO, quindi la contropartita di una spesa non aveva dove andare. Adesso «Costi di agenzia» e «Ricavi di agenzia» sono fra i conti da creare, e una spesa appoggiata a un conto corrente viene rifiutata col motivo scritto.",
+        "UNA MODALITÀ DICHIARATA È GIÀ LA COPERTURA. Una rata che dice «POS» non compare più fra le polizze «nei 15 giorni»: la compagnia ha messo il contratto in copertura, il cliente non è scoperto, e quel premio si scarica dai Sospesi. Ogni rata aperta sta in uno solo dei due elenchi, e i due si sommano.",
+        "Contabilità › Sospesi: la schermata era illeggibile perché usava nomi di stile che non esistono — le righe uscivano nude. Adesso ha la grafica delle altre schermate di IAM, i gruppi si aprono con un clic e ogni rata ha cliente, polizza e importo.",
+        "Contabilità › Sospesi: via il caricamento dei due file Excel. I sospesi arrivano dal portafoglio, e un secondo elenco riempito a mano è lo stesso dato scritto due volte. Quello che era già stato caricato resta leggibile sotto e continua ad alimentare Scrivania, Anomalie e Storico.",
+        "Portafoglio polizze: via il tasto «Importa il portafoglio dalla compagnia», che sta già in Strumenti › Preventivatore.",
+        "Portafoglio polizze: l'elenco si fermava a 1.000 polizze su 4.079 e non lo diceva. Adesso lo dice: «ne vedi 1.000 su 4.079, restringi i filtri per trovare le altre».",
+        "Scadenzario: gli avvisi (lettura parziale, rate senza polizza, tetto raggiunto) sparivano quando l'elenco era vuoto — cioè proprio quando è vuoto PERCHÉ la lettura è andata male. Adesso si vedono sempre, e finiscono anche nell'Excel esportato.",
+        "Scadenzario: quando la lettura non riesce, i numeri di prima non restano in schermata a farsi credere aggiornati. E il numero scritto su ogni filtro rapido è lo stesso delle righe che quel filtro produce."
+      ]
+    },
     {
       "v": "0.31.0",
       "data": "2026-09-22",

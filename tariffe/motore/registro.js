@@ -90,6 +90,11 @@
        causale» sono domande che tornano indietro mesi dopo, ed è esattamente
        il motivo per cui questo registro esiste (§18). */
     conto:         { l: 'Conto',         i: 'ti-building-bank',   tabella: 'iam_conti', id: 'uuid' },
+    punto_vendita: { l: 'Punto vendita', i: 'ti-building-store', tabella: 'iam_punti_vendita', id: 'uuid' },
+    /* Trovato il 23/09/2026 rinforzando il guardiano: si registrava dal
+       22/09 e non era nel vocabolario. La chiave di una modalita' e' il suo
+       CODICE, che e' testo — un uuid li' non aprirebbe niente. */
+    modalita_pagamento: { l: 'Modalità di pagamento', i: 'ti-credit-card', tabella: 'iam_modalita_pagamento', id: 'testo' },
     causale:       { l: 'Causale',       i: 'ti-tags',            tabella: 'iam_causali', id: 'uuid' },
     /* Brief #02 M2. Una tariffa e un gruppo decidono quanto prende una
        persona: «chi ha cambiato questa percentuale, e quando» è la domanda

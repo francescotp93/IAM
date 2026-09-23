@@ -7927,3 +7927,129 @@ rumore che si impara a saltare.
 - **Gli altri blocchi di IAM non hanno un banco che li fa girare**: quello dei
   Sospesi è il primo. Si aggiungono uno alla volta, come le schermate sul kit
   (§31).
+
+---
+
+## 68. I punti vendita (23/09/2026)
+
+> «Passiamo alla parte dei punti vendita, voglio che siano gestiti così, e con
+> un'interfaccia simile a questa ma personalizzata con design IAM» — Francesco,
+> con la schermata del portale di una compagnia.
+
+### La misura ha cambiato il nome del lavoro
+
+Non era una migrazione: era una cosa che non esisteva.
+
+| misurato il 23/09/2026 | |
+|---|---|
+| tabelle dei punti vendita | **nessuna** |
+| `iam_utenti.rete` | un campo di **testo libero**: 4 account su 5 vuoto, uno dice «Test» |
+| la pagina «Reti / Punti vendita» del preventivatore | un **segnaposto**: «questa sezione è stata spostata dentro Utenti» |
+| persone nel registro | 17, di cui **5** con un account |
+
+Quindi niente si sposta da QUOTO, e la tabella **nasce vuota**: inventare
+un'«Agenzia Generale» vorrebbe dire mettere in archivio una struttura che
+nessuno ha deciso, e dopo due settimane sarebbe un dato (§8.1).
+`iam_utenti.rete` **non si cancella**: è l'unica traccia di quello che c'era, e
+si toglie quando i punti vendita veri ci sono.
+
+### La regola che comanda su tutte
+
+> **Un punto vendita figlio non può potere più del padre.**
+
+Se l'agenzia generale non ha l'incasso abilitato, una sua filiale non ce l'ha,
+comunque sia spuntata la sua casella. È il verso in cui funziona una delega: si
+può dare meno di quello che si ha, mai di più. Senza, basterebbe togliere un
+permesso al padre e dimenticarsene, e le filiali continuerebbero a incassare —
+**la schermata direbbe «no» e il sistema «sì»**.
+
+Le abilitazioni **effettive** sono l'AND della catena fino alla radice, e la
+schermata mostra le due cose separate: la casella di quel punto vendita e
+quello che vale davvero, **col nome di chi la toglie**. «Non emette» senza dire
+perché fa riaprire quella casella dieci volte.
+
+| pezzo | dove |
+|---|---|
+| tutte le regole | `tariffe/motore/punti-vendita.js` |
+| prove in Node | `server/verifica/punti-vendita.test.mjs` — 14 |
+| la tabella, i due trigger, le politiche, il rollback | `supabase/migrations/20260923b_punti_vendita.sql` (applicata) |
+| la schermata | `#panel-punti-vendita` e il blocco `pvd*` in `iam/index.html` |
+| la voce di menu | `iam/withus-one.js`, Agenzia › Punti vendita |
+| prove sulla schermata | `iam/verifica/punti-vendita.test.mjs` — 8, e una la **fa girare** |
+
+### Le altre quattro decisioni
+
+- **Il punto vendita sta sulla PERSONA, non sull'account.**
+  `quote_collaboratori.punto_vendita_id`: dodici persone su diciassette non
+  hanno un accesso a IAM, e appendendolo all'account resterebbero fuori. È la
+  stessa scelta dell'elenco Utenti (§10) e delle tendine dei collaboratori
+  (§48).
+- **Le abilitazioni nascono SPENTE.** Un punto vendita che nasce potendo
+  emettere polizze è un permesso che nessuno ha dato.
+- **Un padre che non c'è non fa sparire il figlio**: diventa una radice e si
+  dichiara orfano. Nasconderlo vorrebbe dire che un padre cancellato per
+  sbaglio porta via dalla vista tutte le sue filiali e le persone che ci
+  lavorano — «non si è potuto leggere» ≠ «non c'è niente» (§12, §18) applicato
+  a una gerarchia. E un **anello** non manda in cerchio chi disegna: le sue
+  righe si mostrano marcate, e il divieto vero è un trigger.
+- **Non si cancella, si spegne** (§26) quando ha filiali sotto o persone
+  dentro. I due cancelli sono nel database: `on delete restrict` sul padre e un
+  trigger sulle persone. **Collaudato sul database vero e annullato**: anello
+  rifiutato, cancellazione rifiutata, zero righe rimaste.
+
+### Un filtro non stacca un ramo dalla sua radice
+
+Le caselle si sommano (AND) e guardano l'abilitazione **effettiva**, non la
+casella: filtrare su «incasso» e ritrovarsi una filiale a cui il padre l'ha
+tolto vorrebbe dire che il filtro dice una cosa e la riga un'altra. E un punto
+vendita che non passa il filtro ma ha un figlio che lo passa **resta in
+albero**, marcato di passaggio e **non contato**: toglierlo staccherebbe il
+figlio dalla sua radice.
+
+### Tre guardiani hanno preso tre difetti, e due non erano miei
+
+1. **`apriNuovoUtente` non esiste più** (tolta il 17/09 quando l'attivazione è
+   passata al server). Il mio «Nuovo utente» la chiamava: è **esattamente il
+   guasto di §67**, preso da una prova invece che da Francesco. Adesso quel
+   tasto porta in Utenti e permessi, dove l'attivazione vive.
+2. **Il guardiano della prima nota misurava una fetta lunga tremila righe.**
+   `blocco()` va dalla PRIMA NOTA fino alle TARIFFE, quindi comprende schermate
+   che con la prima nota non c'entrano: è bastato che i Punti vendita
+   cancellassero un punto vendita (che si può cancellare, se è vuoto) per
+   dichiarare rotta la prima nota. *La regola non era «nessun delete da qui a
+   lì»: era «un MOVIMENTO non si cancella»* — e quella si misura sulla
+   **tabella**, in tutto il documento. Adesso è più forte di prima, e la
+   controprova lo dimostra.
+3. **Il guardiano del vocabolario del registro cercava `[a-z]+`**, quindi non
+   vedeva i tipi con l'underscore. Rinforzato a `[a-z_]+`, ha trovato nello
+   stesso minuto che **`modalita_pagamento` si registrava dal 22/09 e non era
+   nel vocabolario**: un puntatore che non apre niente (§18). Aggiunta, con la
+   forma giusta della chiave — il codice, che è testo.
+
+### Due prove mal costruite, e la lezione è sempre la stessa
+
+- **Il campione contava più della regola.** La prova «un punto vendita che non
+  passa il filtro resta in albero» filtrava su un'abilitazione: non poteva
+  funzionare, perché sotto un padre che non passa non c'è mai un figlio che
+  passa. Misurava la regola della catena una seconda volta. Il caso vero è
+  «solo attivi», che **non si eredita**: una filiale aperta sotto un'agenzia
+  chiusa continua a lavorare.
+- **Una controprova che non fa diventare rossa nessuna prova va guardata bene**
+  (§15, §17, §19, §41, §46). Tolta la catena scrivendo `vale = propria`, tutto
+  restava verde — perché il ciclo che scorre gli antenati restava lì sotto e
+  rimetteva a posto il risultato. Tolto il ciclo davvero, diventano rosse
+  **quattro** prove.
+
+### Cosa resta aperto
+
+- **La tabella è vuota**, ed è il punto: il primo punto vendita lo crea una
+  persona, e finché non c'è la schermata lo dice invece di sembrare rotta.
+- **Le persone si smistano dalla loro scheda**, non da qui: la schermata mostra
+  chi è ancora senza punto vendita e quanti sono, ma non li sposta.
+- **«Assegna polizze» non c'è.** Nella schermata di Francesco è un terzo
+  bottone; qui le polizze si attribuiscono già a una **persona** (§45), e
+  aggiungere un secondo asse di attribuzione è una decisione, non una
+  conseguenza: due elenchi della stessa produzione direbbero numeri diversi.
+- **Nessuna abilitazione filtra ancora niente nel preventivatore**: oggi i
+  punti vendita si dichiarano e si leggono. Collegarli a chi può emettere
+  davvero è il passo dopo, e va fatto con la sua migrazione.

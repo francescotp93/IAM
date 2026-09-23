@@ -1,8 +1,20 @@
 {
-  "versione": "0.39.1",
-  "nome": "Una carta di credito non è un conto corrente",
+  "versione": "0.40.0",
+  "nome": "I punti vendita",
   "data": "2026-09-23",
   "storia": [
+    {
+      "v": "0.40.0",
+      "data": "2026-09-23",
+      "nome": "I punti vendita",
+      "voci": [
+        "AGENZIA › PUNTI VENDITA, nuova. A sinistra la struttura dell'agenzia ad albero, a destra chi lavora nel punto vendita che scegli. Prima non esisteva: c'era solo un campo di testo libero su un account, vuoto su quattro account su cinque.",
+        "Ogni punto vendita dichiara che cosa può fare: inserire proposte, emettere polizze, incassare, emettere quotazioni. E una filiale NON PUÒ POTERE PIÙ DELL'AGENZIA che le sta sopra: se togli l'incasso al padre, le filiali smettono di incassare anche se la loro casella è spuntata — e la schermata ti dice chi glielo toglie.",
+        "Le persone che vedi sono quelle del registro, non solo quelle che hanno un accesso a IAM: dodici collaboratori su diciassette non ce l'hanno, e partire dagli account li avrebbe lasciati fuori. Chi non ha ancora un punto vendita si vede in una lista a parte, con quanti sono.",
+        "L'elenco nasce VUOTO, ed è voluto: inventare un'agenzia generale vorrebbe dire mettere in archivio una struttura che nessuno ha deciso. Il primo punto vendita lo crei tu, e la schermata lo dice invece di sembrare rotta.",
+        "Un punto vendita con delle filiali sotto, o con delle persone dentro, non si cancella: si spegne. Uno spento esce dagli elenchi e resta nello storico."
+      ]
+    },
     {
       "v": "0.39.1",
       "data": "2026-09-23",

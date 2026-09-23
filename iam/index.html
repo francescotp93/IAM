@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.38.0">
-<meta name="app-versione-nome" content="I sospesi delle persone si vedono per primi">
+<meta name="app-versione" content="0.39.0">
+<meta name="app-versione-nome" content="I sospesi si vedono davvero, e una differenza dice le sue due cause">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -5839,12 +5839,15 @@ function cntRenderCausali(puo) {
 /* ─── La finestra: una sola per le due schede ─────────────────────────────── */
 function cntChiudi() { const o = document.getElementById('cnt-ov'); if (o) o.style.display = 'none'; }
 
-function cntApri(id) {
+function cntApri(id, propostoSaldo) {
   if (!cntPuoScrivere()) return;
   const ov = document.getElementById('cnt-ov'), box = document.getElementById('cnt-box');
   if (!ov || !box) return;
   if (CNT_VISTA === 'modalita') { cntModApri(id || null); return; }
-  box.innerHTML = CNT_VISTA === 'conti' ? cntFormConto(id) : cntFormCausale(id);
+  /* La quadratura puo' arrivare qui con un saldo di partenza PROPOSTO: e' una
+     misura, non una decisione, quindi si scrive nel campo — visibile e
+     correggibile — e non si salva da sola (§43, §44). */
+  box.innerHTML = CNT_VISTA === 'conti' ? cntFormConto(id, propostoSaldo) : cntFormCausale(id);
   ov.style.display = 'flex';
   /* «Chi ha cambiato la natura di questo conto» e «chi ha spento questa
      causale» sono domande che tornano indietro mesi dopo: la storia sta nel
@@ -5869,6 +5872,11 @@ var SPR_TOCCATO = false;  /* qualcuno ha aperto o chiuso a mano */
 var SPR_GIRO = 0;         /* due caricamenti insieme non si sommano (§63-bis) */
 
 function sprOggi() { return typeof cntOggiIso === 'function' ? cntOggiIso() : null; }
+/* Gli importi si scrivono con la stessa funzione del motore, come
+   recEuro e incaEuro: qui c'era il nome di una funzione che vive nel
+   preventivatore e in questo documento non esiste. Non dava un numero
+   sbagliato: faceva morire il disegno, e la schermata restava vuota. */
+function sprEuro(n) { return window.Contabilita ? Contabilita.euro(n) : String(n); }
 
 async function sprCarica(forza) {
   if (!db) return;
@@ -5978,11 +5986,11 @@ function sprRender() {
 
   if (somma) {
     somma.innerHTML = ''
-      + sprCard('Li tiene una persona', e.persone + (e.persone === 1 ? ' persona' : ' persone'), pfEuro(e.totale_persone))
-      + sprCard('Sospesi in tutto', e.righe + (e.righe === 1 ? ' rata' : ' rate'), pfEuro(e.totale))
-      + sprCard('Già incassati, da versare', e.da_versare + (e.da_versare === 1 ? ' rata' : ' rate'), pfEuro(e.totale_da_versare))
-      + sprCard('Fermi da troppo', e.in_ritardo + (e.in_ritardo === 1 ? ' rata' : ' rate'), pfEuro(e.totale_ritardo))
-      + sprCard('Da dichiarare', e.da_dichiarare + (e.da_dichiarare === 1 ? ' rata' : ' rate'), pfEuro(e.totale_da_dichiarare));
+      + sprCard('Li tiene una persona', e.persone + (e.persone === 1 ? ' persona' : ' persone'), sprEuro(e.totale_persone))
+      + sprCard('Sospesi in tutto', e.righe + (e.righe === 1 ? ' rata' : ' rate'), sprEuro(e.totale))
+      + sprCard('Già incassati, da versare', e.da_versare + (e.da_versare === 1 ? ' rata' : ' rate'), sprEuro(e.totale_da_versare))
+      + sprCard('Fermi da troppo', e.in_ritardo + (e.in_ritardo === 1 ? ' rata' : ' rate'), sprEuro(e.totale_ritardo))
+      + sprCard('Da dichiarare', e.da_dichiarare + (e.da_dichiarare === 1 ? ' rata' : ' rate'), sprEuro(e.totale_da_dichiarare));
   }
 
   var avvisi =
@@ -5996,7 +6004,7 @@ function sprRender() {
        quante ne restano e perché (§55). */
     + (e.incassate_fuori
       ? '<div class="cnt-avv"><b>' + e.incassate_fuori + '</b> rate sono già state incassate con un mezzo (POS, bonifico, carta) '
-        + 'per <b>' + pfEuro(e.totale_incassate_fuori) + '</b>: quelle non le tiene una persona, arrivano da sole. '
+        + 'per <b>' + sprEuro(e.totale_incassate_fuori) + '</b>: quelle non le tiene una persona, arrivano da sole. '
         + 'Si seguono in <a href="#" onclick="selContabTab(\'incassi\');return false">Incassi da accreditare</a>.</div>'
       : '');
   if (!e.gruppi.length) {
@@ -6029,7 +6037,7 @@ function sprRender() {
         + '<i class="ti ' + icona + ' spr-i"></i>'
         + '<div class="spr-n"><div class="cnt-nome">' + esc(g.etichetta)
         + ' <span class="cnt-tag">' + g.n + (g.n === 1 ? ' rata' : ' rate') + '</span>'
-        + (g.n_versare ? ' <span class="cnt-tag uscita">' + g.n_versare + ' da versare · ' + pfEuro(g.totale_versare) + '</span>' : '')
+        + (g.n_versare ? ' <span class="cnt-tag uscita">' + g.n_versare + ' da versare · ' + sprEuro(g.totale_versare) + '</span>' : '')
         + (g.in_ritardo ? ' <span class="cnt-tag uscita">' + g.in_ritardo + ' fermi da troppo</span>' : '')
         + (g.tipo === 'da-dichiarare' ? ' <span class="cnt-tag transito">nessuno le tiene: non si sa</span>' : '')
         + '</div>'
@@ -6038,7 +6046,7 @@ function sprRender() {
         + (g.n_incassare ? g.n_incassare + ' che il cliente deve ancora pagare · ' : '')
         + (aperto ? 'clicca per richiudere' : 'clicca per vedere le rate')
         + '</div></div>'
-        + '<div class="spr-euro">' + pfEuro(g.totale) + '</div>'
+        + '<div class="spr-euro">' + sprEuro(g.totale) + '</div>'
         + '<i class="ti ' + (aperto ? 'ti-chevron-up' : 'ti-chevron-down') + ' spr-i"></i></div>'
         + (aperto ? sprRighe(g) : '')
         + '</div>';
@@ -6070,7 +6078,7 @@ function sprRighe(g) {
       + '<div class="cnt-nome">' + esc(r.cliente || '—') + '</div>'
       + '<div class="cnt-sotto">' + (r.numero_polizza ? esc(r.numero_polizza) + ' · ' : '')
       + (r.compagnia ? esc(r.compagnia) + ' · ' : '')
-      + (r.data ? (r.famiglia === 'versare' ? 'incassata il ' : 'dal ') + pfData(r.data) : 'senza data')
+      + (r.data ? (r.famiglia === 'versare' ? 'incassata il ' : 'dal ') + pntData(r.data) : 'senza data')
       + (r.giorni_fermo != null ? ' · fermo da ' + r.giorni_fermo + ' gg' : '')
       + '</div>'
       + (r.famiglia === 'versare' && r.mezzo_rata_l
@@ -6078,7 +6086,7 @@ function sprRighe(g) {
       + (r.ereditato ? '<div class="spr-come">la voce non è sulla rata: la dichiara la polizza</div>' : '')
       + '</div>'
       + '<div class="spr-imp ' + (r.in_ritardo ? 'spr-tardi' : '') + '">'
-      + (r.importo == null ? '<span title="Un importo che non c\'è non vale zero">—</span>' : pfEuro(r.importo))
+      + (r.importo == null ? '<span title="Un importo che non c\'è non vale zero">—</span>' : sprEuro(r.importo))
       + '</div>'
       + (r.famiglia === 'versare'
         ? '<button class="d-btn" type="button" onclick="sprAccredita()">Scarica</button>'
@@ -6296,8 +6304,10 @@ async function cntModSalva(codice) {
 
 function cntTrova(elenco, id) { return (elenco || []).find(x => x.id === id) || null; }
 
-function cntFormConto(id) {
+function cntFormConto(id, propostoSaldo) {
   const c = cntTrova(CNT_CONTI, id) || { tipologia: 'banca', saldo_iniziale: 0, attivo: true };
+  const saldoVal = (propostoSaldo != null && isFinite(propostoSaldo))
+    ? String(propostoSaldo) : (c.saldo_iniziale != null ? String(c.saldo_iniziale) : '0');
   const opz = (elenco, sel) => elenco.map(o => `<option value="${esc(o.k)}" ${o.k === sel ? 'selected' : ''}>${esc(o.l)}</option>`).join('');
   const el = id ? Contabilita.eliminabile(c, CNT_MOVIMENTI, { righe: CNT_RIGHE }) : { ok: false };
   return `
@@ -6316,7 +6326,8 @@ function cntFormConto(id) {
         <div class="fld ffull"><label>Intestato a</label><input type="text" id="cnt-intestatario" value="${esc(c.intestatario || '')}" placeholder="la ragione sociale che legge chi fa il bonifico"></div>
         <div class="fld ffull"><label><input type="checkbox" id="cnt-rimesse" ${c.rimesse ? 'checked' : ''}> È il conto su cui i collaboratori versano</label>
           <div class="cl-sub">Queste coordinate finiscono sull'estratto conto «da versare» che esce dal preventivatore. Uno solo può esserlo: due IBAN su due estratti conto dello stesso giorno non si spiegano. Se manca l'IBAN, o se non supera il controllo, il documento lo dice invece di stamparne uno indovinato.</div></div>
-        <div class="fld"><label>Saldo iniziale (€)</label><input type="text" id="cnt-saldo" value="${esc(c.saldo_iniziale != null ? String(c.saldo_iniziale) : '0')}" inputmode="decimal"></div>
+        <div class="fld"><label>Saldo iniziale (€)</label><input type="text" id="cnt-saldo" value="${esc(saldoVal)}" inputmode="decimal">
+          ${propostoSaldo != null && isFinite(propostoSaldo) ? `<div class="cl-sub">Questo numero arriva dalla quadratura: e' quello che farebbe tornare il saldo dichiarato con i movimenti registrati. Guardalo prima di salvarlo — se la differenza era un movimento mancante, il saldo di partenza resta quello di prima.</div>` : ''}</div>
         <div class="fld"><label>Ordine</label><input type="number" id="cnt-ordine" value="${esc(String(c.ordine || 0))}"></div>
         <div class="fld ffull"><label><input type="checkbox" id="cnt-attivo" ${c.attivo === false ? '' : 'checked'}> Conto attivo</label>
           <div class="cl-sub">Un conto spento esce dalle tendine e resta nei riepiloghi del passato: i movimenti che ci sono passati sono storia.</div></div>
@@ -7253,10 +7264,14 @@ function pntRenderQuadrature() {
                la banca ${Contabilita.euro(r.dichiarato)} — differenza ${Contabilita.euro(r.differenza)}</div>`
           : ''}
         ${r.motivo ? `<div class="cnt-sotto">${esc(r.motivo)}</div>` : ''}
+        ${(r.cause || []).map(c => `<div class="cnt-sotto">&bull; ${esc(c.testo)}</div>`).join('')}
       </div>
       <div style="text-align:right">
         ${puo ? `<button class="d-btn" type="button" style="padding:3px 9px;font-size:11px"
              onclick="pntApriQuadratura('${esc(r.conto_id)}')">Dichiara il saldo</button>` : ''}
+        ${puo && r.iniziale_che_torna != null ? `<button class="d-btn" type="button"
+             style="padding:3px 9px;font-size:11px;margin-top:4px"
+             onclick="cntApri('${esc(r.conto_id)}', ${Number(r.iniziale_che_torna)})">Correggi il saldo di partenza</button>` : ''}
       </div>
     </div>`;
   }).join('');

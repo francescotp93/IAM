@@ -2365,6 +2365,51 @@ prova('LE PERSONE STANNO IN CIMA, anche quando pesano molto meno di un mezzo', (
   return 'la persona da 400 € prima del mezzo da 20.000 €';
 });
 
+/* ═══ UNA DIFFERENZA HA DUE CAUSE, NON UNA (23/09/2026) ════════════════════
+
+   Francesco: «se il dichiarato è 3000 € ed ho una spesa di 170 € non può
+   essere un saldo da 3170 €».
+
+   Il conto era giusto e l'ACCUSA era sbagliata. Il ricostruito è saldo di
+   partenza + movimenti: con il saldo di partenza a zero e una spesa da 170,
+   contro un estratto conto da 3000 la differenza è 3170 — e il sistema
+   diceva una cosa sola, «c'è un movimento che non è stato registrato»,
+   mandando a cercare in banca un movimento che non manca. */
+prova('una differenza dice TUTTE E DUE le cause, e misura il saldo di partenza', () => {
+  const conto = { id: 'k', nome: 'CARTA', tipologia: 'banca', natura: 'aziendale',
+    saldo_iniziale: 0, saldo_dichiarato_il: '2026-09-21' };
+  const cau = [{ id: 'sp', nome: 'Spese in genere', segno: 'uscita', incide_su_utile: true }];
+  const mov = [{ id: 'm', data: '2026-09-23', importo: 170, conto_id: 'k', causale_id: 'sp' }];
+  const q = C.quadratura(conto, mov, [{ conto_id: 'k', data: '2026-09-23', saldo_dichiarato: 3000 }],
+    { causali: cau, al: '2026-09-23' });
+  deve(q.ricostruito === -170, 'la spesa non sottrae: ' + q.ricostruito);
+  deve(q.differenza === -3170, 'la differenza non è quella misurata: ' + q.differenza);
+  /* Il numero che farebbe tornare i conti: dichiarato meno i movimenti. */
+  deve(q.iniziale_che_torna === 3170, 'non misura il saldo di partenza che torna: ' + q.iniziale_che_torna);
+  const k = (q.cause || []).map(c => c.k);
+  deve(k.indexOf('saldo-iniziale') >= 0, 'non nomina il saldo di partenza fra le cause');
+  deve(k.indexOf('movimento') >= 0, 'non nomina più il movimento fra le cause');
+  /* E la causa del saldo di partenza viene PRIMA: su un conto con un
+     movimento solo è quella quasi sempre vera, e mandare a cercare per primo
+     un movimento mancante fa perdere un pomeriggio. */
+  deve(k[0] === 'saldo-iniziale', 'la causa più probabile non è la prima');
+  /* Resta una misura da guardare, non un valore scritto: il conto non cambia. */
+  deve(Number(conto.saldo_iniziale) === 0, 'la quadratura ha scritto sul conto');
+  return 'due cause, e il saldo di partenza che torna è € 3.170,00';
+});
+
+prova('un conto che QUADRA non accusa niente', () => {
+  const conto = { id: 'k', nome: 'CASSA', tipologia: 'cassa', natura: 'aziendale', saldo_iniziale: 1000 };
+  const cau = [{ id: 'sp', nome: 'Spese', segno: 'uscita', incide_su_utile: true }];
+  const mov = [{ id: 'm', data: '2026-09-23', importo: 100, conto_id: 'k', causale_id: 'sp' }];
+  const q = C.quadratura(conto, mov, [{ conto_id: 'k', data: '2026-09-23', saldo_dichiarato: 900 }],
+    { causali: cau, al: '2026-09-23' });
+  deve(q.quadra === true, 'un conto che torna risulta storto');
+  deve(!(q.cause || []).length, 'un conto che quadra elenca delle cause');
+  deve(q.iniziale_che_torna == null, 'propone un saldo di partenza su un conto che torna');
+  return 'quadra, e non manda a cercare niente';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

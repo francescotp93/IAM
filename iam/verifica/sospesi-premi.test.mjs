@@ -44,12 +44,46 @@ const esiti = [];
 const prova = (nome, fn) => esiti.push({ nome, fn });
 const deve = (c, m) => { if (!c) throw new Error(m); };
 
-function blocco() {
+function bloccoGrezzo() {
   const i = H.indexOf('/* ═══ I SOSPESI: I PREMI CHE QUALCUNO TIENE (22/09/2026)');
   deve(i >= 0, 'non trovo il blocco spr* in iam/index.html');
   const fine = H.indexOf('/* ═══ LE MODALITÀ DI PAGAMENTO (22/09/2026)', i);
   deve(fine > i, 'non trovo la fine del blocco spr*');
-  return soloJs(H.slice(i, fine));
+  return H.slice(i, fine);
+}
+function blocco() { return soloJs(bloccoGrezzo()); }
+
+/* Togliere i commenti riga per riga basta a non far scattare una prova su una
+   parola scritta in un commento, ma non basta a leggere le CHIAMATE: una riga
+   interna di un commento su piu' righe che comincia con del testo passa lo
+   stesso, e le sue parole italiane sembrano funzioni. Si legge carattere per
+   carattere, tenendo lo stato «sono dentro un commento» — mai una regex
+   globale, che su un documento intero si mangia codice vero. */
+/* E le stringhe: dentro un `select` PostgREST o un pezzo di HTML ci sono
+   parentesi che sembrano chiamate e non lo sono. */
+function senzaStringhe(src) {
+  let out = '', i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    if (c === '"' || c === "'" || c === '`') {
+      let j = i + 1;
+      while (j < src.length) { if (src[j] === '\\') { j += 2; continue; } if (src[j] === c) { j++; break; } j++; }
+      i = j; out += ' '; continue;
+    }
+    out += c; i++;
+  }
+  return out;
+}
+
+function senzaCommenti(src) {
+  let out = '', i = 0;
+  while (i < src.length) {
+    const c = src[i], d = src[i + 1];
+    if (c === '/' && d === '*') { const e = src.indexOf('*/', i + 2); i = e < 0 ? src.length : e + 2; out += ' '; continue; }
+    if (c === '/' && d === '/') { const e = src.indexOf('\n', i); i = e < 0 ? src.length : e; continue; }
+    out += c; i++;
+  }
+  return out;
 }
 
 /* ═══ LA MIGRAZIONE ════════════════════════════════════════════════════════ */
@@ -370,10 +404,148 @@ prova('la schermata disegna DUE SEZIONI, e le persone si aprono da sole', () => 
   return 'due sezioni, persone in cima e già aperte';
 });
 
+/* ═══ IL BANCO CHE FA GIRARE LA SCHERMATA (23/09/2026) ═════════════════════
+
+   Le prove qui sopra leggono il SORGENTE, e per due giorni sono state tutte
+   verdi mentre la schermata, aperta da Francesco, era vuota.
+
+   La causa: `sprRender` chiamava una funzione che vive nel preventivatore e
+   in questo documento non esiste. Non dava un numero sbagliato — sollevava
+   un errore e faceva morire il disegno a metà. Una prova che cerca una
+   stringa non può vederlo: la stringa c'è.
+
+   Quindi il banco costruisce un finto database che risponde come PostgREST
+   (compreso il filtro sulla tabella agganciata) e fa girare `sprCarica` per
+   davvero, sulle due righe vere del 22/09/2026. Se una funzione manca, o se
+   la lettura non aggancia, questa prova diventa rossa. */
+function bancoSpr(righe, modalita) {
+  const b = bloccoGrezzo();
+  const pezzi = ['async function cntTutte(fai)', 'async function cntMorbida(fai)']
+    .map(f => {
+      const i = H.indexOf(f);
+      deve(i >= 0, 'non trovo ' + f);
+      const fine = H.indexOf('\n}', i);
+      return H.slice(i, fine + 2);
+    }).join('\n');
+  const elementi = {};
+  const nodo = (id) => (elementi[id] = elementi[id] || { id, innerHTML: '', textContent: '', value: '' });
+  ['spr-lista', 'spr-cards', 'spr-avvisi'].forEach(nodo);
+  const doc = { getElementById: (id) => elementi[id] || null };
+
+  /* Il finto PostgREST: quello che conta è che onori il filtro sulla tabella
+     agganciata (`quote_polizze.mezzo_pagamento`), che è la strada con cui si
+     leggono le rate già incassate di chi tiene i premi. */
+  function q(tab) {
+    const st = { sel: '', filtri: [], dati: tab === 'quote_titoli' ? righe
+      : tab === 'iam_modalita_pagamento' ? modalita : [] };
+    const api = {
+      select(x) { st.sel = x || ''; return api; },
+      eq(c, v) { st.filtri.push([c, 'eq', v]); return api; },
+      in(c, v) { st.filtri.push([c, 'in', v]); return api; },
+      not() { return api; }, order() { return api; }, range() { return api; },
+      then(res) {
+        let d = st.dati.slice();
+        for (const [c, op, v] of st.filtri) {
+          if (c.indexOf('.') > 0) {
+            const [emb, col] = c.split('.');
+            deve(st.sel.indexOf(emb + '!inner(') >= 0,
+              'si filtra su ' + c + ' senza !inner: PostgREST non toglierebbe le righe');
+            d = d.filter(r => { const e = r[emb] || {}; return op === 'eq' ? e[col] === v : v.indexOf(e[col]) >= 0; });
+          } else {
+            d = d.filter(r => op === 'eq' ? r[c] === v : v.indexOf(r[c]) >= 0);
+          }
+        }
+        return Promise.resolve(res({ data: d, error: null }));
+      }
+    };
+    return api;
+  }
+  const src = pezzi + '\n' + b
+    + '\nreturn { sprCarica, sprRender, stato: () => ({ esito: SPR_ESITO, err: SPR_ERR, rate: SPR_RATE }) };';
+  const f = new Function('document', 'db', 'Contabilita', 'CNT_PASSO', 'CNT_GIRI',
+    'esc', 'selContabTab', 'cntOggiIso', 'pntData', 'window', src);
+  const api = f(doc, { from: q }, C, 1000, 50,
+    (x) => String(x == null ? '' : x), () => {}, () => '2026-09-23',
+    (d) => (d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—'),
+    { Contabilita: C });
+  return { api, el: elementi };
+}
+
+/* Le due righe vere del portafoglio, misurate il 23/09/2026: due polizze la
+   cui MODALITÀ è la persona, e le loro rate già incassate. */
+const RATE_VERE = [
+  { id: 't1', polizza_id: 'p1', tipo: 'quietanza', stato: 'incassato', mezzo_pagamento: null,
+    importo_lordo: '262.98', data_decorrenza: '2026-03-16', incassato_il: '2026-09-16',
+    quote_polizze: { numero_polizza: 'BLP918634492', cliente: 'SPADA VINCENZO EMANUELE',
+      cliente_id: 'c1', compagnia: 'PRIMA', mezzo_pagamento: 'col_oddo_francesco' } },
+  { id: 't2', polizza_id: 'p2', tipo: 'premio', stato: 'incassato', mezzo_pagamento: 'carta_credito',
+    importo_lordo: '400.00', data_decorrenza: '2026-09-18', incassato_il: '2026-09-18',
+    quote_polizze: { numero_polizza: 'BLP831839290', cliente: 'CARPITELLA GUIDO',
+      cliente_id: 'c2', compagnia: 'PRIMA', mezzo_pagamento: 'col_oddo_francesco' } },
+  { id: 't3', polizza_id: 'p3', tipo: 'quietanza', stato: 'aperto', mezzo_pagamento: 'carta_credito',
+    importo_lordo: '100.00', data_decorrenza: '2026-08-01', incassato_il: null,
+    quote_polizze: { numero_polizza: 'X1', cliente: 'ROSSI', cliente_id: 'c3',
+      compagnia: 'PRIMA', mezzo_pagamento: null } }
+];
+const MOD_VERE = [
+  { codice: 'contante', nome: 'Contanti', contabilizza: 'subito', collaboratore_id: null, attiva: true, giorni_attesi: 0, ordine: 1 },
+  { codice: 'carta_credito', nome: 'Carta di credito', contabilizza: 'sospeso', collaboratore_id: null, attiva: true, giorni_attesi: 3, ordine: 5 },
+  { codice: 'col_oddo_francesco', nome: 'Oddo Francesco', contabilizza: 'sospeso', collaboratore_id: '33109d90', attiva: true, giorni_attesi: 30, ordine: 99 }
+];
+
+prova('LA SCHERMATA GIRA DAVVERO, e Oddo Francesco ci sta dentro', async () => {
+  const { api, el } = bancoSpr(RATE_VERE, MOD_VERE);
+  await api.sprCarica(true);
+  const s = api.stato();
+  deve(!s.err, 'la lettura si è fermata: ' + s.err);
+  deve(s.rate.length === 3, 'non ha letto tutte le rate: ' + s.rate.length);
+  const h = el['spr-lista'].innerHTML;
+  /* Il sintomo che Francesco ha segnalato tre volte: la schermata era vuota. */
+  deve(h.length > 200, 'la schermata non ha disegnato niente');
+  deve(/Oddo Francesco/.test(h), 'Oddo Francesco non compare fra i sospesi');
+  deve(/CARPITELLA GUIDO/.test(h) && /SPADA VINCENZO EMANUELE/.test(h),
+    'le due polizze non compaiono sotto di lui');
+  deve(/662,98/.test(h), 'il totale della persona non è quello delle sue due rate');
+  /* E ci sta in CIMA: un gruppo da due righe sotto quattro gruppi da cento,
+     per chi guarda, non c'è (§66-bis). */
+  deve(h.indexOf('Oddo Francesco') < h.indexOf('Carta di credito'),
+    'la persona non viene prima dei mezzi');
+  return 'la schermata disegna, e la persona è in cima con € 662,98';
+});
+
+prova('NIENTE FUNZIONI DEL PREVENTIVATORE: quelle qui dentro non esistono', () => {
+  /* Il difetto del 22/09: `pfEuro` e `pfData` vivono in `index.html` alla
+     radice, non in questo documento. Chiamate qui sollevano un errore e
+     fanno morire il disegno — e una prova che legge il sorgente non lo vede,
+     perché la stringa c'è.
+     Le funzioni ammesse si dichiarano: un elenco «tutto tranne» ammetterebbe
+     domani un nome che nessuno ha deciso. */
+  const b = senzaStringhe(senzaCommenti(bloccoGrezzo()));
+  const GLOBALI = ['String', 'Number', 'Math', 'Object', 'Array', 'Date', 'Promise',
+    'parseInt', 'parseFloat', 'isFinite', 'isNaN', 'alert', 'confirm', 'encodeURIComponent'];
+  /* Le funzioni di casa sono quelle definite in QUESTO documento, non solo nel
+     blocco: la schermata ne chiama parecchie delle altre (cntTutte, pntData,
+     selContabTab), ed e' giusto. Quello che non deve succedere e' che ne
+     chiami una che qui dentro non c'e'. */
+  const qui = new Set([...H.matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map(r => r[1]));
+  ['esc'].forEach(n => qui.add(n));
+  const fuori = [];
+  for (const r of b.matchAll(/(^|[^\w$.])([a-z][A-Za-z0-9_$]{2,})\s*\(/g)) {
+    const n = r[2];
+    if (qui.has(n) || GLOBALI.indexOf(n) >= 0) continue;
+    if (/^(if|for|while|switch|catch|return|typeof|function|await|new|else|do|case|delete|void|in|of|throw|var|let|const|async|try)$/.test(n)) continue;
+    if (fuori.indexOf(n) < 0) fuori.push(n);
+  }
+  deve(!fuori.length, 'il blocco chiama funzioni che in IAM non esistono: ' + fuori.join(', '));
+  /* E le due colpevoli non tornano più. */
+  deve(!/\bpf[A-Z]/.test(b), 'è tornata una funzione con il prefisso del preventivatore');
+  return 'nessuna funzione presa in prestito dal preventivatore';
+});
+
 console.log('\n══ SOSPESI E MODALITÀ ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {
-  try { const r = fn(); console.log('  ok  ' + nome + (r ? '  — ' + r : '')); }
+  try { const r = await fn(); console.log('  ok  ' + nome + (r ? '  — ' + r : '')); }
   catch (e) { ko++; console.log('  ❌  ' + nome + '\n      ' + e.message); }
 }
 console.log('\nSOSPESI E MODALITÀ: ' + (esiti.length - ko) + ' superate, ' + ko + ' fallite');

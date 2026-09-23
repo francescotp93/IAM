@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.40.0">
-<meta name="app-versione-nome" content="I punti vendita">
+<meta name="app-versione" content="0.41.0">
+<meta name="app-versione-nome" content="Punti vendita: il responsabile, e le polizze">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -117,6 +117,7 @@
 .pvd-p-nome{font-weight:700;font-size:13.5px}
 .pvd-p-r{font-size:11.5px;color:var(--txt3);margin-top:2px}
 .pvd-vuoto{font-size:12.5px;color:var(--txt3);padding:14px 2px}
+.pvd-barra{display:flex;gap:8px;align-items:center;margin-bottom:10px}
 .cnt-r{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--bord);
   border-radius:var(--rs);background:var(--surf);margin-bottom:8px}
 .cnt-r.cnt-spento{opacity:.55}
@@ -2554,9 +2555,6 @@ input[type=file]{display:none;}
   <div id="op-pane-collab">
     <div style="padding:8px 12px 0;display:flex;gap:8px;align-items:center;">
       <input type="search" id="tm-search" placeholder="Cerca nome, cognome o ramo..." style="flex:1;padding:9px 13px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:22px;font-size:13px;color:var(--txt);font-family:inherit;" oninput="renderTeam()">
-      <select id="tm-hub-filter" onchange="renderTeam()" style="padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:22px;font-size:12px;color:var(--txt);font-family:inherit;">
-        <option value="">Tutti gli HUB</option>
-      </select>
       <button onclick="openCollabModal(null)" style="width:38px;height:38px;border-radius:50%;background:var(--acc);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-plus" style="font-size:18px;"></i></button>
     </div>
     <!-- §2.3 — Barra filtri. Le voci si riempiono da sole con quello che c'è
@@ -2806,19 +2804,6 @@ input[type=file]{display:none;}
   <div style="margin-top:16px;">
     <div class="slbl">Obiettivi operatori</div>
     <div class="card" style="padding:14px 16px;"><div id="obiettivi-admin-list"><div style="color:var(--txt3);font-size:13px;">Caricamento...</div></div></div>
-  </div>
-  <!-- HUB Produttori -->
-  <div style="margin-top:16px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px 6px;">
-      <div class="slbl" style="padding:0;"> HUB Produttori</div>
-      <button onclick="apriGestioneHub()"
-        style="display:flex;align-items:center;gap:5px;padding:7px 14px;background:var(--acc);color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">
-        <i class="ti ti-plus" style="font-size:13px;"></i> Nuovo HUB
-      </button>
-    </div>
-    <div class="card" style="padding:12px;">
-      <div id="hub-list"><div style="color:var(--txt3);font-size:13px;">Caricamento...</div></div>
-    </div>
   </div>
   <!-- Audit Log -->
   <div style="margin-top:16px;">
@@ -3743,10 +3728,16 @@ input[type=file]{display:none;}
           <div class="fld"><label>Tipo collaborazione</label>
             <select id="mc-tipo"><option>Subagente</option><option>Produttore</option><option>Dipendente</option><option>Altro</option></select>
           </div>
-          <div class="fld"><label>HUB di appartenenza</label>
-            <select id="mc-hub" style="width:100%;padding:9px 12px;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);font-size:14px;color:var(--txt);font-family:inherit;">
-              <option value="">— Nessun HUB —</option>
+          <!-- Gli HUB sono stati sostituiti dai PUNTI VENDITA (23/09/2026, §68):
+               la struttura dell'agenzia e' una sola, ad albero, con le sue
+               abilitazioni. Il punto vendita sta sulla PERSONA del registro,
+               non su questa scheda economica: una persona puo' cambiare scheda
+               e il posto in cui lavora resta suo. -->
+          <div class="fld"><label>Punto vendita</label>
+            <select id="mc-pv" style="width:100%;padding:9px 12px;background:var(--surf2);border:1.5px solid var(--bord);border-radius:var(--rs);font-size:14px;color:var(--txt);font-family:inherit;">
+              <option value="">— nessuno —</option>
             </select>
+            <div class="cl-sub" id="mc-pv-nota"></div>
           </div>
           <div class="fld ffull">
             <label>Compagnie operative</label>
@@ -7368,6 +7359,8 @@ var PVD_SCELTO = null;
 var PVD_FILTRI = { solo_attivi: true };
 var PVD_ERR = null;
 var PVD_LETTO = {};
+var PVD_MODULO = null;   // il punto vendita aperto nel modulo (null = nuovo)
+var PVD_HUB = [];        // gli HUB di prima, da trasformare a mano
 var PVD_GIRO = 0;
 
 function pvdOggi() { return typeof cntOggiIso === 'function' ? cntOggiIso() : null; }
@@ -7401,8 +7394,13 @@ async function pvdCarica(forza) {
     () => db.from('quote_collaboratori').select('id,nome,cognome,email,rui,stato,iam_id,punto_vendita_id,creato_il').order('cognome'), []);
   const account = await pvdLeggi('gli account di IAM',
     () => db.from('iam_utenti').select('id,iam_id,email,ruolo,attivo'), []);
+  /* Gli HUB di prima: si LEGGONO per proporre di trasformarli, non si
+     convertono da soli. Un punto vendita nato da un programma sarebbe una
+     struttura di agenzia che nessuno ha deciso (§8.1) — e su una struttura la
+     differenza fra proporre e scrivere e' tutta. */
+  const hub = await pvdLeggi('gli HUB di prima', () => db.from('iam_hub').select('id,nome').order('nome'), []);
   if (mio !== PVD_GIRO) return;
-  PVD_PUNTI = punti; PVD_PERSONE = persone; PVD_ACCOUNT = account;
+  PVD_PUNTI = punti; PVD_PERSONE = persone; PVD_ACCOUNT = account; PVD_HUB = hub;
   if (PVD_SCELTO && !PVD_PUNTI.some(p => p.id === PVD_SCELTO)) PVD_SCELTO = null;
   pvdRender();
 }
@@ -7413,6 +7411,24 @@ function pvdFiltro(k) {
 }
 
 function pvdScegli(id) { PVD_SCELTO = (PVD_SCELTO === id ? null : id); pvdRender(); }
+
+/* GLI INTERRUTTORI SONO QUELLI DI IAM (23/09/2026). `.sw`, `.sw-track`,
+   `.sw-thumb` e `.sw-row` esistono in questo documento dal primo giorno:
+   scriverne un secondo paio qui vorrebbe dire due interruttori che un giorno
+   si accendono in due modi diversi. Le due forme sono due usi dello stesso
+   interruttore — in riga dentro la barra dei filtri, su una riga sua dentro
+   il modulo, dove accanto ci sta scritto che cosa vuol dire. */
+function pvdSw(attr, acceso, testo) {
+  return '<label class="pvd-filtro"><span class="sw"><input type="checkbox" ' + attr
+    + (acceso ? ' checked' : '') + '><span class="sw-track"></span><span class="sw-thumb"></span></span> '
+    + esc(testo) + '</label>';
+}
+function pvdSwRiga(attr, acceso, testo, sotto) {
+  return '<div class="sw-row"><div style="flex:1;min-width:0"><div class="sw-lbl"><b>' + esc(testo) + '</b></div>'
+    + (sotto ? '<div class="cl-sub">' + esc(sotto) + '</div>' : '') + '</div>'
+    + '<label class="sw"><input type="checkbox" ' + attr + (acceso ? ' checked' : '')
+    + '><span class="sw-track"></span><span class="sw-thumb"></span></label></div>';
+}
 
 function pvdRender() {
   const box = document.getElementById('pvd-albero');
@@ -7430,10 +7446,8 @@ function pvdRender() {
   /* I filtri: «solo attivi» piu' le quattro abilitazioni del motore. L'elenco
      e' uno solo — contarle, disegnarle e applicarle sono la stessa domanda. */
   if (filtri) {
-    filtri.innerHTML = '<label class="pvd-filtro"><input type="checkbox" '
-      + (PVD_FILTRI.solo_attivi ? 'checked' : '') + ' onchange="pvdFiltro(\'solo_attivi\')"> Solo attivi</label>'
-      + PuntiVendita.ABILITAZIONI.map(a => '<label class="pvd-filtro"><input type="checkbox" '
-        + (PVD_FILTRI[a.k] ? 'checked' : '') + ' onchange="pvdFiltro(\'' + a.k + '\')"> ' + esc(a.l) + '</label>').join('');
+    filtri.innerHTML = pvdSw('onchange="pvdFiltro(\'solo_attivi\')"', PVD_FILTRI.solo_attivi, 'Solo attivi')
+      + PuntiVendita.ABILITAZIONI.map(a => pvdSw('onchange="pvdFiltro(\'' + a.k + '\')"', PVD_FILTRI[a.k], a.l)).join('');
   }
 
   const r = PuntiVendita.riepilogo(PVD_PUNTI, PVD_PERSONE, {
@@ -7457,6 +7471,16 @@ function pvdRender() {
       + ' punti vendita hanno un padre che non c\'e\' piu\': si vedono in cima, marcati. Non spariscono, altrimenti sparirebbero con loro le persone che ci lavorano.</div>';
     if (r.ciclici) a += '<div class="cnt-err" style="margin:0 16px 12px">' + r.ciclici
       + ' punti vendita formano un anello: vanno sistemati a mano.</div>';
+    /* «Elimina la parte degli HUB perche' i punti vendita li sostituiscono»
+       (Francesco). La schermata degli HUB non c'e' piu'; quelli che erano
+       scritti restano, e si trasformano uno alla volta con un bottone. */
+    const daFare = (PVD_HUB || []).filter(h => h && h.nome
+      && !PVD_PUNTI.some(x => (x.nome || '').trim().toLowerCase() === String(h.nome).trim().toLowerCase()));
+    if (daFare.length) a += '<div class="cnt-avv" style="margin:0 16px 12px">Gli HUB sono stati sostituiti dai punti vendita. '
+      + 'Ne restano ' + daFare.length + ' da trasformare, e non si trasformano da soli: '
+      + daFare.map(h => '<button class="d-btn" type="button" style="padding:2px 8px;font-size:11px;margin:2px 3px 0 0"'
+        + ' onclick="pvdDaHub(\'' + esc(String(h.nome).replace(/'/g, '')) + '\')">Crea «' + esc(h.nome) + '»</button>').join('')
+      + '<br><small>Le schede economiche che ci puntavano non cambiano: l\'HUB resta scritto, e nessuno lo cancella.</small></div>';
     if (!PVD_PUNTI.length && PVD_LETTO['la struttura dei punti vendita'])
       a += '<div class="cnt-avv" style="margin:0 16px 12px">Non c\'e\' ancora nessun punto vendita, ed e\' voluto: inventarne uno vorrebbe dire mettere in archivio una struttura che nessuno ha deciso. Il primo lo crei tu.</div>';
     avvisi.innerHTML = a;
@@ -7502,7 +7526,7 @@ function pvdNodo(nodo, eff) {
     + (nodo.ciclo ? ' <span class="cnt-tag uscita">anello</span>' : '')
     + (nodo.stato.ok ? '' : ' <span class="cnt-tag">' + esc(nodo.stato.motivo) + '</span>')
     + '</div>'
-    + '<div class="pvd-sotto">' + quante + (quante === 1 ? ' persona' : ' persone')
+    + '<div class="pvd-sotto">' + pvdCapo(nodo.riga) + quante + (quante === 1 ? ' persona' : ' persone')
     + (nodo.riga.data_inizio ? ' · dal ' + esc(pntData(nodo.riga.data_inizio)) : '')
     + (nodo.di_passaggio ? ' · non passa i filtri, si vede perche\' ha qualcuno sotto' : '')
     + '</div>'
@@ -7514,6 +7538,18 @@ function pvdNodo(nodo, eff) {
     + nodo.figli.map(x => pvdNodo(x, eff)).join('');
 }
 
+/* Chi risponde di questo punto vendita, letto sulla riga. Un responsabile
+   che non e' piu' nel registro NON sparisce e non diventa un vuoto: si dice
+   che c'e' e non si sa chi sia, altrimenti quel punto vendita sembrerebbe non
+   averne mai avuto uno. */
+function pvdCapo(riga) {
+  const r = PuntiVendita.responsabileDi(riga || {}, PVD_PERSONE);
+  if (!r) return '';
+  if (r.mancante) return '<span class="cnt-tag uscita">responsabile non piu\' in elenco</span> · ';
+  return '<b>' + esc(r.nome) + '</b> (responsabile)'
+    + (r.dentro ? '' : ' <span class="cnt-tag uscita">non risulta lavorare qui</span>') + ' · ';
+}
+
 function pvdPersone() {
   const box = document.getElementById('pvd-persone');
   const tit = document.getElementById('pvd-tit-persone');
@@ -7521,16 +7557,33 @@ function pvdPersone() {
   const pv = PVD_SCELTO ? PVD_PUNTI.find(x => x.id === PVD_SCELTO) : null;
   if (tit) tit.textContent = pv ? ('Chi lavora in ' + (pv.nome || '')) : 'Persone senza un punto vendita';
   const righe = PuntiVendita.personeDi(PVD_PERSONE, PVD_SCELTO, { account: PVD_ACCOUNT });
+  const capo = pv ? (PuntiVendita.responsabileDi(pv, PVD_PERSONE) || {}) : {};
+
+  /* «e poi poter aggiungere chi sta sotto» (Francesco, 23/09/2026). Prima le
+     persone si smistavano SOLO dalla loro scheda: aprire il punto vendita,
+     leggere che e' vuoto e doverlo riempire da un'altra schermata e' la stessa
+     distanza che aveva fatto perdere la voce «Importa» in una barra da
+     ventuno voci. Si aggiungono da qui, dove si guarda la struttura. */
+  const testa = (PVD_SCELTO && pvdPuoScrivere())
+    ? '<div class="pvd-barra"><select id="pvd-aggiungi" style="flex:1;height:34px;border-radius:var(--rs);'
+      + 'border:1px solid var(--bord);background:var(--surf);color:var(--txt);padding:0 9px;font-size:12.5px;font-family:inherit">'
+      + '<option value="">— aggiungi una persona qui —</option>'
+      + PuntiVendita.smistabili(PVD_PERSONE, PVD_SCELTO).map(x => '<option value="' + esc(x.id) + '">'
+        + esc(x.nome) + (x.da ? ' — viene via da ' + esc(pvdNomePv(x.da)) : '') + '</option>').join('')
+      + '</select><button class="d-btn primario" type="button" onclick="pvdMetti()">Aggiungi</button></div>'
+    : '';
+
   if (!righe.length) {
-    box.innerHTML = '<div class="pvd-vuoto">' + (PVD_SCELTO
-      ? 'Nessuno lavora ancora qui. Le persone si smistano dalla loro scheda, in Collaboratori.'
+    box.innerHTML = testa + '<div class="pvd-vuoto">' + (PVD_SCELTO
+      ? 'Nessuno lavora ancora qui: la prima persona la aggiungi tu, qui sopra.'
       : 'Tutte le persone hanno un punto vendita.') + '</div>';
     return;
   }
-  box.innerHTML = righe.map(p => '<div class="pvd-p">'
+  box.innerHTML = testa + righe.map(p => '<div class="pvd-p">'
     + '<i class="ti ti-user" style="margin-top:2px"></i>'
     + '<div style="flex:1;min-width:0">'
     + '<div class="pvd-p-nome">' + esc(p.nome)
+    + (p.id === capo.id ? ' <span class="cnt-tag utile">responsabile</span>' : '')
     + (p.stato === 'senza-account' ? ' <span class="cnt-tag">senza accesso a IAM</span>' : '')
     + (p.stato === 'sospeso' ? ' <span class="cnt-tag uscita">accesso sospeso</span>' : '')
     + '</div>'
@@ -7540,15 +7593,78 @@ function pvdPersone() {
     + (p.rui ? '<div class="pvd-p-r">RUI ' + esc(p.rui) + '</div>' : '')
     + (p.data_inizio ? '<div class="pvd-p-r">Data inizio ' + esc(pntData(p.data_inizio)) + '</div>' : '')
     + '</div>'
+    + (PVD_SCELTO && pvdPuoScrivere()
+      ? '<button class="d-btn" type="button" style="padding:3px 9px;font-size:11px"'
+        + ' onclick="pvdTogli(\'' + esc(p.id) + '\')">Togli da qui</button>' : '')
     + (typeof apriPermessiUtente === 'function' && pvdPuoScrivere()
       ? '<button class="d-btn" type="button" style="padding:3px 9px;font-size:11px"'
         + ' onclick="apriPermessiUtente(\'' + esc(p.id) + '\')"><i class="ti ti-settings"></i></button>' : '')
     + '</div>').join('');
 }
 
+function pvdNomePv(id) {
+  const x = PVD_PUNTI.find(p => p && p.id === id);
+  return x ? (x.nome || '') : 'un punto vendita che non c\'e\' piu\'';
+}
+
+/* ── SMISTARE UNA PERSONA ──────────────────────────────────────────────────
+   Una persona sta in un punto vendita SOLO. Quindi aggiungerla qui la toglie
+   da dove stava, e il motore lo dice prima: il nome dell'altro punto vendita
+   sta nella conferma, perche' spostare qualcuno in silenzio vuol dire
+   toglierlo a qualcun altro senza che nessuno se ne accorga. */
+async function pvdMetti() {
+  if (!pvdPuoScrivere() || !PVD_SCELTO) return;
+  const sel = document.getElementById('pvd-aggiungi');
+  const id = sel && sel.value;
+  if (!id) return;
+  const sp = PuntiVendita.spostamento(PVD_PERSONE, id, PVD_SCELTO);
+  if (!sp.ok) { alert(sp.motivo); return; }
+  const chi = PuntiVendita.nomeDi(PVD_PERSONE.find(p => p && p.id === id) || {});
+  if (sp.da && !confirm(chi + ' lavora in ' + pvdNomePv(sp.da)
+    + '. Spostandolo qui non fara\' piu\' parte di quel punto vendita. Procedo?')) return;
+  await pvdScriviPunto(id, PVD_SCELTO, 'Persona aggiunta a ' + pvdNomePv(PVD_SCELTO));
+}
+
+async function pvdTogli(id) {
+  if (!pvdPuoScrivere() || !PVD_SCELTO) return;
+  const chi = PuntiVendita.nomeDi(PVD_PERSONE.find(p => p && p.id === id) || {});
+  const pv = PVD_PUNTI.find(x => x.id === PVD_SCELTO) || {};
+  const avviso = (pv.responsabile_id === id)
+    ? '\n\nATTENZIONE: e\' il responsabile di questo punto vendita. Resta scritto come responsabile finche\' non ne scegli un altro.'
+    : '';
+  if (!confirm('Tolgo ' + chi + ' da ' + pvdNomePv(PVD_SCELTO)
+    + '? Non viene cancellato: resta nel registro, senza punto vendita.' + avviso)) return;
+  await pvdScriviPunto(id, null, 'Persona tolta da ' + pvdNomePv(PVD_SCELTO));
+}
+
+/* Un update che non tocca nessuna riga non e' un errore per PostgREST: e'
+   zero righe (§47). Qui si tocca la struttura dell'agenzia, quindi si chiede
+   indietro quello che ha cambiato e si guarda quanto e'. */
+async function pvdScriviPunto(personaId, pvId, testo) {
+  try {
+    const r = await db.from('quote_collaboratori').update({ punto_vendita_id: pvId })
+      .eq('id', personaId).select('id');
+    if (r.error) throw r.error;
+    if (!r.data || !r.data.length) { alert('Non e\' stato salvato: la riga non si e\' mossa. Ricarica e riprova.'); return; }
+    if (typeof logMovimento === 'function')
+      logMovimento(testo, 'collaboratore', PuntiVendita.nomeDi(PVD_PERSONE.find(p => p && p.id === personaId) || {}), personaId);
+    await pvdCarica();
+  } catch (e) { alert(e.message || String(e)); }
+}
+
 /* ─── IL MODULO ───────────────────────────────────────────────────────────── */
 function pvdChiudi() { const o = document.getElementById('pvd-ov'); if (o) o.style.display = 'none'; }
 function pvdNuovo() { pvdApri(null); }
+
+/* Il nome si propone nel CAMPO, visibile e correggibile: un punto vendita
+   scritto dietro le quinte finisce in archivio senza che nessuno l'abbia
+   letto (§8.1). Le abilitazioni restano spente, come per ogni punto vendita
+   nuovo — un HUB non diceva niente su chi puo' emettere o incassare. */
+function pvdDaHub(nome) {
+  pvdApri(null);
+  const el = document.getElementById('pvd-nome');
+  if (el) el.value = nome || '';
+}
 
 function pvdNuovoUtente() {
   /* «Nuovo utente» non si rifa' qui, e non si chiama nemmeno la finestra che
@@ -7563,8 +7679,16 @@ function pvdApri(id) {
   if (!pvdPuoScrivere()) return;
   const ov = document.getElementById('pvd-ov'), box = document.getElementById('pvd-box');
   if (!ov || !box) return;
+  PVD_MODULO = id || null;
   const c = PVD_PUNTI.find(x => x.id === id) || { attivo: true };
   const padri = PVD_PUNTI.filter(x => x.id !== id);
+  /* Il responsabile si sceglie fra TUTTE le persone del registro, non solo
+     fra quelle che gia' lavorano qui: un punto vendita nuovo non ha ancora
+     nessuno, e il responsabile e' la sua prima persona. Sceglierne uno che
+     lavora altrove lo sposta — e lo spostamento si legge qui sotto PRIMA di
+     salvare, col nome del punto vendita da cui verrebbe via. */
+  const gente = (PVD_PERSONE || []).slice().sort((a, b) =>
+    PuntiVendita.nomeDi(a).localeCompare(PuntiVendita.nomeDi(b), 'it'));
   const el = PuntiVendita.eliminabile(c, PVD_PUNTI, PVD_PERSONE);
   box.innerHTML = `
     <div style="padding:18px 18px 0"><div style="font-size:17px;font-weight:800">${id ? 'Modifica punto vendita' : 'Nuovo punto vendita'}</div>
@@ -7576,14 +7700,19 @@ function pvdApri(id) {
         <div class="fld"><label>Codice</label><input type="text" id="pvd-codice" value="${esc(c.codice || '')}" placeholder="es. 1499"></div>
         <div class="fld"><label>Sta sotto a</label><select id="pvd-padre"><option value="">— nessuno, e' una radice —</option>${
           padri.map(p => `<option value="${esc(p.id)}" ${p.id === c.padre_id ? 'selected' : ''}>${esc(p.nome)}</option>`).join('')}</select></div>
+        <div class="fld ffull"><label>Responsabile — l'intermediario di primo livello</label>
+          <select id="pvd-resp" onchange="pvdRespNota()"><option value="">— nessuno —</option>${
+            gente.map(x => `<option value="${esc(x.id)}" ${x.id === c.responsabile_id ? 'selected' : ''}>${esc(PuntiVendita.nomeDi(x))}</option>`).join('')}</select>
+          <div class="cl-sub" id="pvd-resp-nota"></div></div>
         <div class="fld"><label>Data inizio</label><input type="date" id="pvd-dal" value="${esc(c.data_inizio || '')}"></div>
         <div class="fld"><label>Data fine</label><input type="date" id="pvd-al" value="${esc(c.data_fine || '')}"></div>
         <div class="fld ffull"><label>Che cosa puo' fare</label>
-          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px">${
-            PuntiVendita.ABILITAZIONI.map(a => `<label class="pvd-filtro"><input type="checkbox" class="pvd-ab-c" value="${esc(a.k)}" ${c[a.k] ? 'checked' : ''}> ${esc(a.l)}</label>`).join('')}</div>
-          <div class="cl-sub" style="margin-top:5px">Quello che spunti qui vale solo se ce l'ha anche chi sta sopra: si puo' dare meno di quello che si ha, mai di piu'.</div></div>
-        <div class="fld ffull"><label><input type="checkbox" id="pvd-attivo" ${c.attivo === false ? '' : 'checked'}> Punto vendita attivo</label>
-          <div class="cl-sub">Uno spento esce dagli elenchi e resta nello storico: le persone che ci hanno lavorato sono storia.</div></div>
+          <div style="margin-top:4px">${
+            PuntiVendita.ABILITAZIONI.map(a => pvdSwRiga('class="pvd-ab-c" value="' + esc(a.k) + '"', !!c[a.k], a.l,
+              a.d || '')).join('')}
+            ${pvdSwRiga('id="pvd-attivo"', c.attivo !== false, 'Punto vendita attivo',
+              'Uno spento esce dagli elenchi e resta nello storico: le persone che ci hanno lavorato sono storia.')}</div>
+          <div class="cl-sub" style="margin-top:5px">Quello che accendi qui vale solo se ce l'ha anche chi sta sopra: si puo' dare meno di quello che si ha, mai di piu'.</div></div>
         <div class="fld ffull"><label>Note</label><textarea id="pvd-note" rows="2">${esc(c.note || '')}</textarea></div>
       </div>
       ${id ? `<div id="pvd-storia" style="margin-top:12px"></div>` : ''}
@@ -7595,7 +7724,29 @@ function pvdApri(id) {
       <button class="d-btn primario" type="button" onclick="pvdSalva(${id ? `'${esc(id)}'` : 'null'})">Salva</button>
     </div>`;
   ov.style.display = 'flex';
+  pvdRespNota();
   if (id && typeof regInstalla === 'function') regInstalla('pvd-storia', 'punto_vendita', id, { creato_il: c.creato_il });
+}
+
+/* Lo spostamento si dichiara PRIMA di salvare, non dopo. Chi sceglie un
+   responsabile che lavora in un'altra filiale deve poter leggere, con il nome
+   di quella filiale, che lo sta portando via. */
+function pvdRespNota() {
+  const box = document.getElementById('pvd-resp-nota');
+  const sel = document.getElementById('pvd-resp');
+  if (!box || !sel) return;
+  if (!sel.value) {
+    box.innerHTML = 'Chi risponde di questo punto vendita. Puoi lasciarlo vuoto: non si inventa un capo.';
+    return;
+  }
+  const sp = PuntiVendita.spostamento(PVD_PERSONE, sel.value, PVD_MODULO);
+  const chi = PuntiVendita.nomeDi(PVD_PERSONE.find(p => p && p.id === sel.value) || {});
+  if (!sp.ok) { box.innerHTML = esc(sp.motivo); return; }
+  if (!sp.serve) { box.innerHTML = 'Lavora gia\' qui.'; return; }
+  box.innerHTML = sp.da
+    ? '<b>' + esc(chi) + '</b> lavora in ' + esc(pvdNomePv(sp.da))
+      + ': salvando entra qui e non fara\' piu\' parte di quel punto vendita.'
+    : '<b>' + esc(chi) + '</b> non sta in nessun punto vendita: salvando entra qui.';
 }
 
 function pvdDati() {
@@ -7604,6 +7755,7 @@ function pvdDati() {
   const v = id => (document.getElementById(id) || {}).value || '';
   return Object.assign({
     nome: v('pvd-nome').trim(),
+    responsabile_id: v('pvd-resp') || null,
     codice: v('pvd-codice').trim() || null,
     padre_id: v('pvd-padre') || null,
     data_inizio: v('pvd-dal') || null,
@@ -7637,6 +7789,32 @@ async function pvdSalva(id) {
     }
     if (typeof logMovimento === 'function')
       logMovimento(id ? 'modifica' : 'creazione', 'punto_vendita', d.nome, r.data[0].id);
+
+    /* IL RESPONSABILE LAVORA DOVE RISPONDE (23/09/2026). E' la seconda
+       scrittura, e si fa DOPO: il punto vendita nuovo non ha un id finche'
+       non e' nato. Non e' una scrittura invisibile — la nota sotto la tendina
+       l'ha dichiarata prima di salvare, col nome del punto vendita da cui
+       quella persona viene via.
+
+       Se questa seconda scrittura non riesce, il punto vendita resta salvato
+       e lo si dice: un responsabile scritto sulla riga e una persona che
+       risulta lavorare altrove e' una cosa che si vede (la riga lo marca) e
+       si rifa'. Il contrario — tacere — sarebbe un capo che nessuno sa dove
+       lavora. */
+    const nuovoPv = r.data[0].id;
+    if (d.responsabile_id) {
+      const sp = PuntiVendita.spostamento(PVD_PERSONE, d.responsabile_id, nuovoPv);
+      if (sp.ok && sp.serve) {
+        const q = await db.from('quote_collaboratori').update({ punto_vendita_id: nuovoPv })
+          .eq('id', d.responsabile_id).select('id');
+        if (q.error || !q.data || !q.data.length) {
+          if (msg) msg.innerHTML = '<div class="cnt-err">Il punto vendita e\' salvato, ma il responsabile non e\' entrato: '
+            + esc(q.error ? (q.error.message || '') : 'la riga non si e\' mossa') + '. Riprova dalla sua scheda.</div>';
+          await pvdCarica();
+          return;
+        }
+      }
+    }
     pvdChiudi();
     await pvdCarica();
   } catch (e) {
@@ -12004,7 +12182,6 @@ function goTab(t) {
       renderKpiCtrl();
       renderGestioneObiettivi('obiettivi-admin-list');
       renderAuditLog(document.getElementById('audit-log-list'));
-      renderHubList();
     });
   }
   if (t === 'profilo') {
@@ -14197,7 +14374,7 @@ function riempiFiltriCollab(tutti) {
 }
 
 function azzeraFiltriCollab() {
-  ['tm-stato','tm-prov','tm-profilo','tm-compagnia','tm-ramo','tm-soldi','tm-hub-filter'].forEach(id => {
+  ['tm-stato','tm-prov','tm-profilo','tm-compagnia','tm-ramo','tm-soldi'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const s = document.getElementById('tm-search'); if (s) s.value = '';
@@ -14213,7 +14390,6 @@ function filtraCollab(tutti) {
   const q = (document.getElementById('tm-search')?.value || '').toLowerCase().trim();
   const stato = v('tm-stato'), prov = v('tm-prov'), prof = v('tm-profilo');
   const comp = v('tm-compagnia'), ramo = v('tm-ramo'), soldi = v('tm-soldi');
-  const hub = document.getElementById('tm-hub-filter')?.value || '';
 
   return tutti.filter(c => {
     // «Solo attivi» / «Solo lead»: i non proseguiti restano fuori se non li si chiede.
@@ -14225,7 +14401,6 @@ function filtraCollab(tutti) {
                  + ' ' + c.rami.join(' ').toLowerCase() + ' ' + c.compagnie.join(' ').toLowerCase();
       if (!dove.includes(q)) return false;
     }
-    if (hub  && !(c.tipo === 'attivo' && String(c.raw.hub_id) === String(hub))) return false;
     if (prov && c.prov !== prov) return false;
     if (prof && c.profilo !== prof) return false;
     if (comp && !c.compagnie.includes(comp)) return false;
@@ -15988,12 +16163,7 @@ async function openCollabModal(id) {
   const persona = personaId ? (COLLAB_LEAD || []).find(p => p.id === personaId) : null;
   TEAM_PERSONA = personaId || (eco && eco.collab_id) || null;
   const c = eco || (persona ? collabDaPersona(persona) : null);
-  await loadHubDB();
-  const hubSel = document.getElementById('mc-hub');
-  if (hubSel) {
-    hubSel.innerHTML = '<option value="">— Nessun HUB —</option>' +
-      HUB_LIST.map(h=>`<option value="${h.id}" ${c?.hub_id==h.id?'selected':''}>${h.nome}</option>`).join('');
-  }
+  await mcPuntiVendita(TEAM_PERSONA);
   document.getElementById('mc-title').textContent = c ? c.nome+' '+c.cogn : 'Nuovo collaboratore';
   const delBtn = document.getElementById('mc-del-btn'); if (delBtn) delBtn.style.display = (c && !c.senzaEconomia) ? 'inline-flex' : 'none';
   const sv = (fid,val) => { const el=document.getElementById(fid); if(el) el.value=val||''; };
@@ -16553,7 +16723,11 @@ function saveCollab() {
     tipo: gv('mc-tipo')||'Subagente', piva: gv('mc-piva'), iban1: gv('mc-iban1'),
     iban2: gv('mc-iban2'), port: parseNum(gv('mc-port'))||null, note: gv('mc-note'),
     dinizio: gv('mc-dinizio')||null,
-    hub_id: parseInt(document.getElementById('mc-hub')?.value) || null,
+    /* L'HUB non si sceglie piu' (§68) e NON si azzera: tre schede economiche
+       ce l'hanno scritto, ed e' l'unica traccia di come l'agenzia era
+       organizzata prima dei punti vendita. Un salvataggio che lo mette a null
+       la cancellerebbe senza che nessuno l'abbia chiesto. */
+    hub_id: (TEAM.find(x => x.id === (TEAM_ID || '')) || {}).hub_id || null,
     rami: { auto: !!document.getElementById('mr-auto')?.checked, vita: !!document.getElementById('mr-vita')?.checked, re: !!document.getElementById('mr-re')?.checked, cau: !!document.getElementById('mr-cau')?.checked, inf: !!document.getElementById('mr-inf')?.checked },
     compagnie: getCompagnieSelezionate(),
     anni: TEAM_ANNI.map(a=>({anno:a.anno,ore:a.ore,files:a.files||[]})),
@@ -16567,6 +16741,12 @@ function saveCollab() {
     docs: {}
   };
   if (!c.nome && !c.cogn) { alert('Inserisci almeno nome e cognome.'); return; }
+  /* La tendina si legge PRIMA di chiudere il modulo, e solo se era davvero
+     usabile: una tendina spenta o che non si e' potuta riempire non decide
+     niente. E' la stessa regola di `salvaPermessiUtente` (§10) — si legge
+     solo quello che il pannello ha mostrato. */
+  const selPv = document.getElementById('mc-pv');
+  MC_PV_SCELTO = (selPv && !selPv.disabled) ? (selPv.value || null) : undefined;
   loadTeam();
   // Merge documenti (restano in locale)
   if (TEAM_ID) { const ex = TEAM.find(x=>x.id===TEAM_ID); if(ex?.docs) c.docs={...ex.docs}; }
@@ -16595,6 +16775,11 @@ async function salvaPersonaRegistro(c) {
     codice_fiscale: String(c.cf || '').toUpperCase().replace(/[^A-Z0-9]/g, '') || null,
     rui_numero: c.rui || null, veste: c.tipo || null,
   };
+  /* Il punto vendita entra nella scrittura SOLO se e' cambiato davvero:
+     riscrivere lo stesso valore non fa danno, ma riscrivere un `null` letto
+     da una tendina che non si e' potuta riempire toglierebbe questa persona
+     dal suo punto vendita senza che nessuno l'abbia chiesto. */
+  if (MC_PV_SCELTO !== undefined && MC_PV_SCELTO !== MC_PV_ERA) persona.punto_vendita_id = MC_PV_SCELTO;
   try {
     if (c.collab_id) {
       const { error } = await db.from('quote_collaboratori').update(persona).eq('id', c.collab_id);
@@ -26062,264 +26247,76 @@ async function confermaModificaTicket() {
 // ─── FAB TRASCINABILE ─────────────────────────────────────────────────────────
 
 
-// ─── HUB PRODUTTORI ───────────────────────────────────────────────────────────
-let HUB_LIST = [];
+/* ── IL PUNTO VENDITA DI QUESTA PERSONA ────────────────────────────────────
 
-async function loadHubDB() {
-  if (!db) return;
-  try {
-    const { data } = await db.from('iam_hub').select('*').order('nome');
-    HUB_LIST = data || [];
-  } catch(e) { console.warn('loadHubDB:', e); }
-}
+   Sta su `quote_collaboratori`, cioe' sulla PERSONA, non su questa scheda
+   economica: una persona puo' cambiare scheda e il posto in cui lavora resta
+   suo (e' la stessa ragione per cui ci stanno i codici compagnia, §19).
 
-async function saveHubDB(hub) {
-  if (!db) return;
-  try {
-    if (hub.id) {
-      await db.from('iam_hub').update({ nome: hub.nome, colore: hub.colore, aggiornato_il: new Date().toISOString() }).eq('id', hub.id);
-    } else {
-      await db.from('iam_hub').insert({ nome: hub.nome, colore: hub.colore, creato_da: ME?.id });
-    }
-    await loadHubDB();
-  } catch(e) { alert('Errore: '+e.message); }
-}
+   Quindi una scheda economica che non e' agganciata a nessuna persona non ha
+   un punto vendita da mostrare — e lo DICE, invece di far credere che quella
+   persona non stia da nessuna parte. */
+var MC_PV = [];
+var MC_PV_ERA = null;
+var MC_PV_SCELTO;   // undefined = la tendina non era usabile, quindi non decide niente
 
-function apriGestioneHub() {
-  const cols = ['#E8500A','#2563EB','#16A34A','#7C3AED','#DC2626','#0D9488','#D97706','#DB2777'];
-  const html = `
-    <div style="background:rgba(0,0,0,.6);position:fixed;inset:0;z-index:9999;
-      display:flex;align-items:flex-end;" id="hub-overlay"
-      onclick="if(event.target.id==='hub-overlay')this.remove()">
-      <div style="background:var(--surf);border-radius:var(--r) var(--r) 0 0;
-        width:100%;padding:20px 16px 32px;max-height:85vh;overflow-y:auto;">
-        <div style="font-size:15px;font-weight:700;margin-bottom:14px;"> Gestione HUB</div>
-        <div id="hub-overlay-list" style="margin-bottom:16px;"></div>
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">+ Nuovo HUB</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div class="fld"><label>Nome HUB</label>
-            <input type="text" id="hub-nome" placeholder="Es. Hub Nord, Hub Sud...">
-          </div>
-          <div class="fld"><label>Colore</label>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;" id="hub-colori">
-              ${cols.map(c=>`<button onclick="selHubColore('${c}')"
-                style="width:28px;height:28px;border-radius:50%;background:${c};border:2px solid transparent;cursor:pointer;transition:transform .15s;"
-                id="hub-col-${c.replace('#','')}"></button>`).join('')}
-            </div>
-            <input type="hidden" id="hub-colore" value="#2563EB">
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:14px;">
-          <button onclick="salvaNuovoHub()"
-            style="flex:1;padding:12px;background:var(--acc);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">
-            Crea HUB</button>
-          <button onclick="document.getElementById('hub-overlay').remove()"
-            style="padding:12px 16px;background:var(--surf2);color:var(--txt);border:.5px solid var(--bord2);border-radius:var(--rs);cursor:pointer;">
-            Chiudi</button>
-        </div>
-      </div>
-    </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-  renderHubOverlay();
-  setTimeout(() => selHubColore('#2563EB'), 50);
-}
-
-function selHubColore(colore) {
-  document.getElementById('hub-colore').value = colore;
-  document.querySelectorAll('#hub-colori button').forEach(btn => {
-    btn.style.border = '2px solid transparent'; btn.style.transform = 'scale(1)';
-  });
-  const btn = document.getElementById('hub-col-'+colore.replace('#',''));
-  if (btn) { btn.style.border = '2px solid var(--txt)'; btn.style.transform = 'scale(1.2)'; }
-}
-
-function renderHubOverlay() {
-  const el = document.getElementById('hub-overlay-list');
-  if (!el) return;
-  if (!HUB_LIST.length) { el.innerHTML = '<div style="color:var(--txt3);font-size:12px;margin-bottom:8px;">Nessun HUB creato</div>'; return; }
-  loadTeam();
-  el.innerHTML = HUB_LIST.map(h => {
-    const membri = TEAM.filter(c => c.hub_id === h.id);
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surf2);border-radius:var(--rs);margin-bottom:6px;border-left:3px solid ${h.colore||'var(--acc)'};">
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;">${h.nome}</div>
-        <div style="font-size:11px;color:var(--txt3);">${membri.length} produttori</div>
-      </div>
-      <button onclick="eliminaHub(${h.id})" style="font-size:10px;padding:3px 8px;background:var(--red-bg);color:var(--red-txt);border:none;border-radius:6px;cursor:pointer;">✕</button>
-    </div>`;
-  }).join('');
-}
-
-async function salvaNuovoHub() {
-  const nome = document.getElementById('hub-nome')?.value.trim();
-  const colore = document.getElementById('hub-colore')?.value || '#2563EB';
-  if (!nome) { alert('Inserisci il nome dell\'HUB.'); return; }
-  await saveHubDB({ nome, colore });
-  const inp = document.getElementById('hub-nome'); if(inp) inp.value = '';
-  renderHubOverlay();
-  renderHubList();
-}
-
-async function eliminaHub(id) {
-  if (!confirm('Eliminare questo HUB? I produttori associati non verranno eliminati.')) return;
-  try {
-    await db.from('iam_hub').delete().eq('id', id);
-    await loadHubDB();
-    renderHubOverlay();
-    renderHubList();
-  } catch(e) { alert('Errore: '+e.message); }
-}
-
-async function renderHubList() {
-  await loadHubDB();
-  loadTeam();
-  const el = document.getElementById('hub-list');
-  if (!el) return;
-  if (!HUB_LIST.length) {
-    el.innerHTML = '<div style="color:var(--txt3);font-size:13px;">Nessun HUB. Creane uno con + Nuovo HUB.</div>';
+async function mcPuntiVendita(personaId) {
+  const sel = document.getElementById('mc-pv');
+  const nota = document.getElementById('mc-pv-nota');
+  MC_PV = []; MC_PV_ERA = null;
+  if (!sel) return;
+  if (!personaId) {
+    sel.innerHTML = '<option value="">— nessuno —</option>';
+    sel.disabled = true;
+    if (nota) nota.textContent = 'Questa scheda non e\' ancora agganciata a una persona del registro: il punto vendita si sceglie da li\'.';
     return;
   }
-  // Aggiorna filtro HUB nel team
-  const sel = document.getElementById('tm-hub-filter');
-  if (sel) {
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">Tutti gli HUB</option>' +
-      HUB_LIST.map(h=>`<option value="${h.id}" ${cur==h.id?'selected':''}>${h.nome}</option>`).join('');
+  sel.disabled = false;
+  try {
+    const r = await db.from('iam_punti_vendita').select('id,nome,codice,attivo').order('nome');
+    if (r.error) throw r.error;
+    MC_PV = r.data || [];
+    const q = await db.from('quote_collaboratori').select('punto_vendita_id').eq('id', personaId).maybeSingle();
+    if (q.error) throw q.error;
+    MC_PV_ERA = (q.data && q.data.punto_vendita_id) || null;
+    sel.innerHTML = '<option value="">— nessuno —</option>' + MC_PV.map(x =>
+      '<option value="' + esc(x.id) + '"' + (x.id === MC_PV_ERA ? ' selected' : '') + '>'
+      + esc(x.nome || '') + (x.codice ? ' (' + esc(x.codice) + ')' : '')
+      + (x.attivo === false ? ' — spento' : '') + '</option>').join('');
+    if (nota) nota.textContent = MC_PV.length
+      ? 'La struttura si gestisce in Agenzia › Punti vendita.'
+      : 'Non c\'e\' ancora nessun punto vendita: il primo si crea in Agenzia › Punti vendita.';
+  } catch (e) {
+    /* «Non si e' potuto leggere» non e' «non ce n'e'» (§12, §18): la tendina
+       resta ferma su quello che c'e' e lo dice, invece di offrire un vuoto
+       che, salvato, toglierebbe questa persona dal suo punto vendita. */
+    sel.innerHTML = '<option value="">— non letto —</option>';
+    sel.disabled = true;
+    if (nota) nota.textContent = 'Non si e\' potuto leggere la struttura: ' + (e.message || e)
+      + '. Non vuol dire che questa persona non stia da nessuna parte.';
   }
-  el.innerHTML = HUB_LIST.map(h => {
-    const membri = TEAM.filter(c => c.hub_id === h.id);
-    const totPort = membri.reduce((a,c) => a+(parseNum(c.port)||0), 0);
-    return `<div style="background:var(--surf2);border-radius:var(--rs);padding:14px;margin-bottom:10px;border-left:4px solid ${h.colore||'var(--acc)'};">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div>
-          <div style="font-size:14px;font-weight:700;">${h.nome}</div>
-          <div style="font-size:11px;color:var(--txt3);">${membri.length} produttori · €${fmt(totPort)} portafoglio</div>
-        </div>
-        <div style="display:flex;gap:6px;">
-          <button onclick="apriClassificaHub(${h.id})" style="font-size:11px;padding:5px 10px;background:${h.colore||'var(--acc)'};color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;"> Classifica</button>
-          <button onclick="apriAlertHub(${h.id})" style="font-size:11px;padding:5px 10px;background:var(--red-bg);color:var(--red-txt);border:none;border-radius:8px;cursor:pointer;font-family:inherit;"> Alert</button>
-        </div>
-      </div>
-      ${membri.length ? `
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          ${membri.sort((a,b)=>(parseNum(b.port)||0)-(parseNum(a.port)||0)).map((c,i) => {
-            const maxP = parseNum(membri[0]?.port)||1;
-            const perc = Math.round((parseNum(c.port)||0)/maxP*100);
-            const medal = i===0?'':i===1?'':i===2?'':'';
-            return `<div style="display:flex;align-items:center;gap:8px;font-size:12px;">
-              <span style="width:20px;text-align:center;">${medal||i+1}</span>
-              <span style="flex:1;font-weight:${i<3?'700':'400'};">${esc(c.nome)} ${esc(c.cogn)}</span>
-              <div style="width:80px;height:6px;background:var(--bord);border-radius:3px;overflow:hidden;"><div style="height:100%;background:${h.colore||'var(--acc)'};border-radius:3px;width:${perc}%;"></div></div>
-              <span style="font-size:11px;color:var(--acc);font-weight:600;min-width:60px;text-align:right;">€${fmt(parseNum(c.port)||0)}</span>
-            </div>`;
-          }).join('')}
-        </div>` :
-        '<div style="color:var(--txt3);font-size:12px;">Nessun produttore in questo HUB.</div>'}
-    </div>`;
-  }).join('');
 }
 
-function apriClassificaHub(hubId) {
-  const hub = HUB_LIST.find(h=>h.id===hubId); if (!hub) return;
-  loadTeam();
-  const membri = TEAM.filter(c=>c.hub_id===hubId).sort((a,b)=>(parseNum(b.port)||0)-(parseNum(a.port)||0));
-  const html = `
-    <div style="background:rgba(0,0,0,.6);position:fixed;inset:0;z-index:9999;
-      display:flex;align-items:flex-end;" id="class-overlay"
-      onclick="if(event.target.id==='class-overlay')this.remove()">
-      <div style="background:var(--surf);border-radius:var(--r) var(--r) 0 0;
-        width:100%;padding:20px 16px 32px;max-height:85vh;overflow-y:auto;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-          <div style="width:12px;height:12px;border-radius:50%;background:${hub.colore};flex-shrink:0;"></div>
-          <div style="font-size:15px;font-weight:700;"> Classifica ${hub.nome}</div>
-        </div>
-        ${!membri.length ? '<div style="color:var(--txt3);text-align:center;padding:20px;">Nessun produttore in questo HUB</div>' :
-          membri.map((c,i) => {
-            const medal = i===0?'':i===1?'':i===2?'':'';
-            const maxP = parseNum(membri[0]?.port)||1;
-            const perc = Math.round((parseNum(c.port)||0)/maxP*100);
-            const gareVinte = (c.gare_collab||[]).filter(g=>{
-              const tot=g.posizioni.reduce((a,p)=>a+(parseNum(p.valore)||0),0);
-              return tot>=g.target;
-            }).length;
-            return `<div style="display:flex;align-items:center;gap:12px;padding:12px;
-              background:${i===0?'rgba('+hexToRgb(hub.colore)+',.08)':'var(--surf2)'};border-radius:var(--rs);margin-bottom:8px;
-              border:${i===0?'1.5px solid '+hub.colore:'1px solid var(--bord)'};">
-              <div style="font-size:24px;width:36px;text-align:center;">${medal||i+1}</div>
-              <div style="flex:1;">
-                <div style="font-size:14px;font-weight:700;">${esc(c.nome)} ${esc(c.cogn)}</div>
-                <div style="font-size:11px;color:var(--txt3);">${c.tipo||'—'} · ${gareVinte} gare raggiunte</div>
-                <div style="background:var(--bord);border-radius:3px;height:6px;margin-top:6px;overflow:hidden;">
-                  <div style="height:100%;background:${hub.colore};border-radius:3px;width:${perc}%;transition:width .6s;"></div>
-                </div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:16px;font-weight:800;color:${hub.colore};">€${fmt(parseNum(c.port)||0)}</div>
-                <div style="font-size:10px;color:var(--txt3);">portafoglio</div>
-              </div>
-            </div>`;
-          }).join('')}
-        <button onclick="document.getElementById('class-overlay').remove()"
-          style="width:100%;margin-top:8px;padding:12px;background:var(--surf2);color:var(--txt);border:.5px solid var(--bord2);border-radius:var(--rs);cursor:pointer;font-family:inherit;">
-          Chiudi</button>
-      </div>
-    </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
+/* ═══ GLI HUB NON CI SONO PIU' (23/09/2026) ══════════════════════════════════
+   Francesco: «elimina la parte degli HUB perche' i punti vendita li
+   sostituiscono».
 
-function apriAlertHub(hubId) {
-  const hub = HUB_LIST.find(h=>h.id===hubId); if (!hub) return;
-  loadTeam();
-  const membri = TEAM.filter(c=>c.hub_id===hubId);
-  const alerts = [];
-  const oggi = new Date().toISOString().split('T')[0];
-  membri.forEach(c => {
-    (c.gare_collab||[]).forEach(g => {
-      if (g.dataFine && g.dataFine < oggi) return;
-      const tot = g.posizioni.reduce((a,p)=>a+(parseNum(p.valore)||0),0);
-      const perc = g.target>0 ? Math.round(tot/g.target*100) : 0;
-      if (perc < 50) alerts.push({ collab:c.nome+' '+c.cogn, gara:g.label, perc, tot, target:g.target, tipo:g.tipo, scadenza:g.dataFine||'—', livello:perc<25?'crit':'warn' });
-    });
-  });
-  const html = `
-    <div style="background:rgba(0,0,0,.6);position:fixed;inset:0;z-index:9999;
-      display:flex;align-items:flex-end;" id="alert-overlay"
-      onclick="if(event.target.id==='alert-overlay')this.remove()">
-      <div style="background:var(--surf);border-radius:var(--r) var(--r) 0 0;
-        width:100%;padding:20px 16px 32px;max-height:85vh;overflow-y:auto;">
-        <div style="font-size:15px;font-weight:700;margin-bottom:16px;"> Alert ${hub.nome}</div>
-        ${!alerts.length ?
-          `<div style="text-align:center;padding:24px;color:var(--grn-txt);">
-            <i class="ti ti-circle-check" style="font-size:36px;display:block;margin-bottom:8px;"></i>
-            Tutti i produttori sono in target! </div>` :
-          alerts.map(a=>`<div style="padding:12px;background:${a.livello==='crit'?'var(--red-bg)':'var(--amb-bg)'};border-radius:var(--rs);margin-bottom:8px;border-left:3px solid ${a.livello==='crit'?'var(--red)':'var(--amb)'};">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-              <div>
-                <div style="font-size:13px;font-weight:700;">${a.collab}</div>
-                <div style="font-size:12px;color:var(--txt2);">Gara: ${a.gara}</div>
-                <div style="font-size:11px;color:var(--txt3);">Scadenza: ${a.scadenza}</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:20px;font-weight:800;color:${a.livello==='crit'?'var(--red)':'var(--amb)'};">${a.perc}%</div>
-                <div style="font-size:10px;color:var(--txt3);">${a.tot}/${a.target} ${a.tipo}</div>
-              </div>
-            </div>
-            <div style="background:rgba(0,0,0,.1);border-radius:3px;height:6px;margin-top:8px;overflow:hidden;">
-              <div style="height:100%;background:${a.livello==='crit'?'var(--red)':'var(--amb)'};border-radius:3px;width:${a.perc}%;"></div>
-            </div>
-          </div>`).join('')}
-        <button onclick="document.getElementById('alert-overlay').remove()"
-          style="width:100%;margin-top:8px;padding:12px;background:var(--surf2);color:var(--txt);border:.5px solid var(--bord2);border-radius:var(--rs);cursor:pointer;font-family:inherit;">
-          Chiudi</button>
-      </div>
-    </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
+   Tolta la SCHERMATA, non i dati: `iam_hub` ha due righe e tre schede
+   economiche ci puntano (`iam_team.hub_id`), ed e' l'unica traccia di come
+   l'agenzia era organizzata prima. Cancellarle renderebbe quelle tre righe
+   orfane, e i due hub non diventano due punti vendita da soli — sarebbe
+   mettere in archivio una struttura che nessuno ha deciso (§8.1). La
+   schermata dei Punti vendita li mostra e propone di trasformarli, con un
+   bottone: proporre e scrivere sono due cose diverse.
 
-function hexToRgb(hex) {
-  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
-  return `${r},${g},${b}`;
-}
+   Cancellate invece TUTTE le undici funzioni che le servivano: la lettura, il
+   salvataggio, la finestra di gestione, il colore, l'elenco, la classifica,
+   gli alert e la conversione del colore, che serviva solo a loro. I nomi non
+   si scrivono qui: un guardiano che cerca una stringa la troverebbe in questo
+   commento e dichiarerebbe vivo un codice cancellato (la trappola dei
+   commenti, §10 e seguenti). Del codice che nessuno chiama e' il guasto
+   numero uno di questo repository (§1), e vale anche per il codice che
+   SMETTE di essere chiamato. */
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 // ─── TEMA & ACCENT ───────────────────────────────────────────────────────────

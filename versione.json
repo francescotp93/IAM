@@ -1,8 +1,21 @@
 {
-  "versione": "0.40.0",
-  "nome": "I punti vendita",
+  "versione": "0.41.0",
+  "nome": "Punti vendita: il responsabile, e le polizze",
   "data": "2026-09-23",
   "storia": [
+    {
+      "v": "0.41.0",
+      "data": "2026-09-23",
+      "nome": "Punti vendita: il responsabile, e le polizze",
+      "voci": [
+        "PUNTI VENDITA · IL RESPONSABILE. Ogni punto vendita ha ora il suo intermediario di primo livello, scelto dal registro dei collaboratori e non digitato a mano. Se la persona che scegli lavora in un'altra filiale, la schermata te lo dice PRIMA di salvare, col nome della filiale da cui verrebbe via: una persona sta in un punto vendita solo.",
+        "E CHI STA SOTTO SI AGGIUNGE DA QUI. Prima le persone si smistavano solo dalla loro scheda, cioè da un'altra schermata: adesso c'è una tendina in cima all'elenco, e accanto a ogni persona un «Togli da qui» che non cancella niente — la lascia nel registro, senza punto vendita.",
+        "I FLAG SONO DIVENTATI INTERRUTTORI, sia nei filtri sia nel modulo: sono quelli che IAM usa già da sempre, non un secondo paio.",
+        "LA POLIZZA VA ANCHE AL PUNTO VENDITA. Quando una polizza si assegna a un intermediario che fa parte di un punto vendita, adesso porta anche quello — e la regola sta in un punto solo del database, quindi vale per tutte e quattro le strade da cui una polizza può nascere: l'importazione della compagnia, la decisione su un codice produttore, «Assegna il pregresso» e «Nuova polizza».",
+        "Quello che il punto vendita si porta dietro si CONGELA sulla riga: se una persona domani cambia filiale, la produzione dell'anno scorso resta attribuita a dove è stata fatta. Un consuntivo chiuso non cambia da solo.",
+        "GLI HUB NON CI SONO PIÙ: i punti vendita li sostituiscono, e nella scheda del collaboratore al loro posto c'è il punto vendita. Quello che era scritto NON si cancella — le tre schede che avevano un HUB se lo tengono — e i due HUB di prima si vedono nei Punti vendita con un bottone per trasformarli, uno alla volta."
+      ]
+    },
     {
       "v": "0.40.0",
       "data": "2026-09-23",

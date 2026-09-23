@@ -51,7 +51,27 @@ function pulito(src) {
   return out;
 }
 
-prova('LA SCHERMATA GIRA DAVVERO: la struttura si disegna e le persone stanno sotto', async () => {
+const punti = () => [
+  { id: 'ag', nome: 'AGENZIA GENERALE 1499', codice: '1499', padre_id: null, attivo: true,
+    data_inizio: '2025-07-09', puo_proposta: true, puo_emissione: true, puo_incasso: true, puo_quotazione: true },
+  { id: 'f2', nome: 'FILIALE CATANIA', codice: 'CT', padre_id: 'ag', attivo: true,
+    puo_proposta: true, puo_emissione: false, puo_incasso: true, puo_quotazione: true },
+  { id: 'f3', nome: 'SPORTELLO ACIREALE', codice: 'AC', padre_id: 'f2', attivo: true,
+    puo_proposta: true, puo_emissione: true, puo_incasso: true, puo_quotazione: true }
+];
+const gente = () => [
+  { id: 'p1', cognome: 'ALEO', nome: 'ALESSANDRO', email: 'alex@x.it', punto_vendita_id: 'ag', iam_id: 'u1' },
+  { id: 'p2', cognome: 'ODDO', nome: 'FRANCESCO', email: 'f@x.it', punto_vendita_id: 'ag' },
+  { id: 'p3', cognome: 'ROSSI', nome: 'MARIO' }
+];
+const conti = () => [{ id: 'u1', iam_id: 'u1', email: 'alex@x.it', ruolo: 'top_master', attivo: true }];
+
+/* IL BANCO CHE FA GIRARE LA SCHERMATA, una volta sola. Tre prove lo usano, e
+   tre copie dello stesso finto database sarebbero tre banchi che un giorno
+   misurano cose diverse. `scritte` raccoglie quello che il codice MANDA al
+   database: una prova che guarda solo il riquadro disegnato dice come sta
+   adesso e non che cosa ha scritto (§42). */
+function banco(PUNTI, PERSONE, ACCOUNT, HUB) {
   const b = bloccoGrezzo();
   const elementi = {};
   const nodo = (id) => (elementi[id] = elementi[id] || { id, innerHTML: '', textContent: '', style: {} });
@@ -62,38 +82,39 @@ prova('LA SCHERMATA GIRA DAVVERO: la struttura si disegna e le persone stanno so
     querySelectorAll: () => []
   };
 
-  const PUNTI = [
-    { id: 'ag', nome: 'AGENZIA GENERALE 1499', codice: '1499', padre_id: null, attivo: true,
-      data_inizio: '2025-07-09', puo_proposta: true, puo_emissione: true, puo_incasso: true, puo_quotazione: true },
-    { id: 'f2', nome: 'FILIALE CATANIA', codice: 'CT', padre_id: 'ag', attivo: true,
-      puo_proposta: true, puo_emissione: false, puo_incasso: true, puo_quotazione: true },
-    { id: 'f3', nome: 'SPORTELLO ACIREALE', codice: 'AC', padre_id: 'f2', attivo: true,
-      puo_proposta: true, puo_emissione: true, puo_incasso: true, puo_quotazione: true }
-  ];
-  const PERSONE = [
-    { id: 'p1', cognome: 'ALEO', nome: 'ALESSANDRO', email: 'alex@x.it', punto_vendita_id: 'ag', iam_id: 'u1' },
-    { id: 'p2', cognome: 'ODDO', nome: 'FRANCESCO', email: 'f@x.it', punto_vendita_id: 'ag' },
-    { id: 'p3', cognome: 'ROSSI', nome: 'MARIO' }
-  ];
-  const ACCOUNT = [{ id: 'u1', iam_id: 'u1', email: 'alex@x.it', ruolo: 'top_master', attivo: true }];
-
+  const scritte = [];
   function q(tab) {
     const dati = tab === 'iam_punti_vendita' ? PUNTI
       : tab === 'quote_collaboratori' ? PERSONE
-      : tab === 'iam_utenti' ? ACCOUNT : [];
-    const api = { select() { return api; }, order() { return api; },
-      then(res) { return Promise.resolve(res({ data: dati, error: null })); } };
+      : tab === 'iam_utenti' ? ACCOUNT
+      : tab === 'iam_hub' ? (HUB || []) : [];
+    const mio = { tab, filtri: {} };
+    const api = {
+      select() { return api; }, order() { return api; },
+      update(v) { mio.update = v; scritte.push(mio); return api; },
+      eq(k, v) { mio.filtri[k] = v; return api; },
+      then(res) {
+        return Promise.resolve(res(mio.update
+          ? { data: [{ id: mio.filtri.id }], error: null }
+          : { data: dati, error: null }));
+      }
+    };
     return api;
   }
 
-  const src = b + '\nreturn { pvdCarica, pvdScegli, pvdRender, stato: () => ({ scelto: PVD_SCELTO, err: PVD_ERR }) };';
+  const src = b + '\nreturn { pvdCarica, pvdScegli, pvdRender, pvdApri, pvdMetti, pvdTogli,'
+    + ' stato: () => ({ scelto: PVD_SCELTO, err: PVD_ERR }) };';
   const f = new Function('document', 'db', 'PuntiVendita', 'PROFILO', 'ME', 'esc',
-    'cntOggiIso', 'pntData', 'goTab', 'window', src);
+    'cntOggiIso', 'pntData', 'goTab', 'window', 'confirm', 'logMovimento', 'regInstalla', src);
   const api = f(doc, { from: q }, PV, { ruolo: 'admin' }, { id: 'me' },
     (x) => String(x == null ? '' : x), () => '2026-09-23',
     (d) => (d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—'),
-    () => {}, {});
+    () => {}, {}, () => true, () => {}, () => {});
+  return { api, elementi, scritte, nodo };
+}
 
+prova('LA SCHERMATA GIRA DAVVERO: la struttura si disegna e le persone stanno sotto', async () => {
+  const { api, elementi } = banco(punti(), gente(), conti());
   await api.pvdCarica(true);
   deve(!api.stato().err, 'la lettura si è fermata: ' + JSON.stringify(api.stato().err));
 
@@ -125,6 +146,109 @@ prova('LA SCHERMATA GIRA DAVVERO: la struttura si disegna e le persone stanno so
   /* Il riepilogo conta, e conta chi è ancora da smistare. */
   deve(/Da smistare/.test(elementi['pvd-cards'].innerHTML), 'il riepilogo non conta chi è da smistare');
   return 'tre punti in albero, due persone sotto l’agenzia, una da smistare';
+});
+
+prova('IL RESPONSABILE SI LEGGE SULLA RIGA, e chi lavora altrove è marcato', async () => {
+  const P = punti(); P[0].responsabile_id = 'p2';        // Oddo, che lavora qui
+  P[1].responsabile_id = 'p3';                           // Rossi, che non ci lavora
+  P[2].responsabile_id = 'mai-esistito';                 // cancellato dal registro
+  const { api, elementi } = banco(P, gente(), conti());
+  await api.pvdCarica(true);
+  const alb = elementi['pvd-albero'].innerHTML;
+  deve(/ODDO FRANCESCO<\/b> \(responsabile\)/.test(alb), 'il responsabile non si legge sulla riga');
+  /* Un responsabile che NON lavora lì si marca: e' l'unico modo di accorgersi
+     che qualcuno risponde di un posto in cui non risulta. */
+  deve(/ROSSI MARIO[\s\S]{0,120}non risulta lavorare qui/.test(alb),
+    'un responsabile che lavora altrove non viene marcato');
+  /* E uno che non e' piu' nel registro NON sparisce (§67, la regola degli
+     orfani): sparire farebbe credere che quel punto vendita non ne abbia mai
+     avuto uno. */
+  deve(/responsabile non piu/.test(alb), 'un responsabile cancellato sparisce in silenzio');
+
+  api.pvdScegli('ag');
+  deve(/ODDO FRANCESCO[\s\S]{0,120}responsabile/.test(elementi['pvd-persone'].innerHTML),
+    'nell’elenco delle persone il responsabile non è marcato');
+  return 'il capo sulla riga, quello che lavora altrove e quello sparito';
+});
+
+prova('I FLAG SONO INTERRUTTORI, e sono quelli di IAM', async () => {
+  /* Richiesta di Francesco: «la parte dei flag deve essere fatta ad
+     interruttori». E sono QUELLI DI IAM (`.sw`), non un secondo paio: due
+     interruttori sono due modi di accendersi che un giorno divergono. */
+  const { api, elementi } = banco(punti(), gente(), conti());
+  await api.pvdCarica(true);
+  const f = elementi['pvd-filtri'].innerHTML;
+  const quanti = (f.match(/class="sw"/g) || []).length;
+  deve(quanti === PV.ABILITAZIONI.length + 1,
+    'i filtri non sono tutti interruttori: ' + quanti + ' su ' + (PV.ABILITAZIONI.length + 1));
+  deve(/sw-track/.test(f) && /sw-thumb/.test(f), 'l’interruttore non ha il suo binario');
+  /* CONTROPROVA DELLA REGOLA: una casella nuda non deve tornare. */
+  deve(!/<input type="checkbox"[^>]*>\s*Solo attivi/.test(f), 'i filtri sono tornati caselle');
+
+  /* E anche nel modulo: la stessa funzione, in riga invece che in linea. */
+  const grezzo = bloccoGrezzo();
+  deve(/pvdSwRiga\(/.test(pulito(grezzo)), 'il modulo non usa l’interruttore a riga');
+  /* Il modulo si legge GREZZO: e' scritto dentro un template, e la pulizia
+     delle stringhe lo cancellerebbe — una prova che misura una fetta vuota
+     dichiara a posto quello che non ha letto (§12). */
+  const modulo = grezzo.slice(grezzo.indexOf('function pvdApri'), grezzo.indexOf('function pvdDati'));
+  deve(!/type="checkbox"/.test(modulo), 'nel modulo ci sono ancora caselle scritte a mano');
+  deve(/ABILITAZIONI\.map/.test(modulo), 'le abilitazioni del modulo non vengono dal motore');
+  return PV.ABILITAZIONI.length + 1 + ' interruttori nei filtri, e il modulo sulla stessa funzione';
+});
+
+prova('SI AGGIUNGE E SI TOGLIE QUALCUNO, e lo spostamento si scrive davvero', async () => {
+  const { api, elementi, scritte, nodo } = banco(punti(), gente(), conti());
+  await api.pvdCarica(true);
+  api.pvdScegli('f2');                       // Catania, dove non lavora nessuno
+  const box = elementi['pvd-persone'].innerHTML;
+  deve(/pvd-aggiungi/.test(box), 'non c’è modo di aggiungere qualcuno da qui');
+  /* Chi viene da un altro punto vendita si legge PRIMA di sceglierlo: una
+     persona sta in un punto vendita solo, e spostarla la toglie a qualcuno. */
+  deve(/ODDO FRANCESCO — viene via da AGENZIA GENERALE 1499/.test(box),
+    'l’elenco non dice da dove verrebbe via');
+
+  /* E la scrittura si guarda per quello che MANDA al database, non per quello
+     che la schermata disegna dopo (§42). */
+  nodo('pvd-aggiungi').value = 'p3';
+  await api.pvdMetti();
+  const w = scritte.filter(x => x.tab === 'quote_collaboratori');
+  deve(w.length === 1, 'non ha scritto una volta sola: ' + w.length);
+  deve(w[0].update.punto_vendita_id === 'f2', 'non sposta nel punto vendita scelto');
+  deve(w[0].filtri.id === 'p3', 'sposta la persona sbagliata: ' + w[0].filtri.id);
+
+  await api.pvdTogli('p3');
+  const w2 = scritte.filter(x => x.tab === 'quote_collaboratori');
+  deve(w2.length === 2 && w2[1].update.punto_vendita_id === null,
+    'togliere qualcuno non lo lascia senza punto vendita');
+  return 'aggiunge, dice da dove viene via, e toglie senza cancellare';
+});
+
+prova('GLI HUB NON CI SONO PIÙ, ma quello che era scritto non si cancella', () => {
+  /* Francesco: «elimina la parte degli HUB perché i punti vendita li
+     sostituiscono». Via la schermata; la tabella e `iam_team.hub_id` restano,
+     perché tre schede economiche ci puntano ed è l'unica traccia di come
+     l'agenzia era organizzata prima. */
+  const codice = pulito(H);
+  ['apriGestioneHub', 'renderHubList', 'loadHubDB', 'apriClassificaHub', 'apriAlertHub']
+    .forEach(n => deve(codice.indexOf(n) < 0, n + ' è ancora nel documento'));
+  deve(codice.indexOf('tm-hub-filter') < 0, 'il filtro per HUB è ancora nell’elenco collaboratori');
+
+  /* E il salvataggio di una scheda NON azzera l'HUB che c'era: un campo che
+     non si mostra piu' non e' un campo da cancellare. */
+  const sc = codice.slice(codice.indexOf('function saveCollab'), codice.indexOf('async function salvaPersonaRegistro'));
+  deve(/hub_id:/.test(sc), 'saveCollab non scrive più l’hub_id: le tre schede che ce l’hanno lo perderebbero');
+  deve(!/mc-hub/.test(sc), 'saveCollab legge ancora un campo che non esiste più');
+
+  /* La schermata dei punti vendita li LEGGE per proporre di trasformarli, e
+     non li converte da sé: una struttura d'agenzia che nessuno ha deciso
+     dopo due settimane è un dato (§8.1). */
+  const b = pulito(bloccoGrezzo());
+  deve(/iam_hub/.test(bloccoGrezzo()), 'i punti vendita non leggono più gli HUB da trasformare');
+  deve(/function pvdDaHub/.test(b), 'non c’è il bottone che propone la trasformazione');
+  deve(!/insert\(/.test(b.slice(b.indexOf('function pvdDaHub'), b.indexOf('function pvdApri'))),
+    'la trasformazione scrive da sé invece di proporre');
+  return 'undici funzioni via, la tabella intatta, e la trasformazione proposta';
 });
 
 prova('NIENTE FUNZIONI DEL PREVENTIVATORE: quelle qui dentro non esistono', () => {
@@ -176,7 +300,7 @@ prova('ogni classe che la schermata scrive ESISTE nel foglio di stile', () => {
          leggono dal `classi.push(...)` qui sotto. */
       r[1].split(/\s+/).forEach(c => {
         if (!/^[a-z][a-z0-9-]*$/.test(c)) return;
-        if (/^(pvd|cnt|d|card|page|head|eyebrow|subtitle|pictogram|cl|modal|fld|fgrid|ffull)-?/.test(c)) usate.add(c);
+        if (/^(pvd|cnt|sw|d|card|page|head|eyebrow|subtitle|pictogram|cl|modal|fld|fgrid|ffull)-?/.test(c)) usate.add(c);
       });
     for (const r of src.matchAll(/classi\.push\('([a-z-]+)'\)/g)) usate.add(r[1]);
   }
@@ -240,7 +364,15 @@ prova('quello che non si è potuto leggere NON diventa uno ZERO', () => {
      compagnie per una colonna copiata dalla tabella accanto. */
   const b = bloccoGrezzo();
   deve(/async function pvdLeggi\(/.test(b), 'le letture non sono isolate');
-  deve((b.match(/await pvdLeggi\(/g) || []).length === 3, 'le tre letture non passano tutte di lì');
+  /* LA REGOLA NON È «TRE LETTURE»: è che OGNI lettura di `pvdCarica` passi di
+     lì. Il numero è cambiato il 23/09 (sono arrivati gli HUB da trasformare),
+     e una prova che fissa il numero diventa rossa su un codice giusto — è la
+     prova che misura il mondo di ieri (§15, §16, §33, §35). */
+  const carica = b.slice(b.indexOf('async function pvdCarica('), b.indexOf('function pvdFiltro('));
+  const tutte = (carica.match(/db\.from\(/g) || []).length;
+  const isolate = (carica.match(/await pvdLeggi\(/g) || []).length;
+  deve(tutte > 0 && isolate === tutte,
+    'in pvdCarica ci sono ' + tutte + ' letture e solo ' + isolate + ' passano da pvdLeggi');
   deve(!/Promise\.all/.test(b), 'le letture tornano a cadere tutte insieme');
   deve(/Non si e\\'e\\' potuto leggere|Non si e' potuto leggere/.test(b),
     'non dichiara la lettura caduta');

@@ -6,6 +6,53 @@ soltanto quello che Francesco potrebbe voler ribaltare.
 
 ---
 
+## 23/09/2026 — Punti vendita: il responsabile, e le polizze (0.41.0)
+
+**Perimetro:** il responsabile di un punto vendita, chi ci lavora, i flag a
+interruttori, la polizza che porta anche il punto vendita del suo
+intermediario, e gli HUB che vanno via.
+
+🔴 **Applicato al database, con la tua autorizzazione permanente.** Tre colonne
+nuove (`iam_punti_vendita.responsabile_id`, `quote_polizze.punto_vendita_id`,
+`quote_titoli.punto_vendita_id`) con i loro indici; due trigger che riempiono
+il punto vendita dalla persona; la funzione che applica una decisione su un
+codice produttore aggiornata. **Nessun dato riscritto, nessun backfill.**
+*Come tornare indietro:* i blocchi ROLLBACK in fondo alle migrazioni
+`20260923c`, `20260923d` e `20260923e`.
+
+🟡 **Scegliere un responsabile lo SPOSTA nel suo punto vendita.** Una persona
+sta in un punto vendita solo, quindi metterla responsabile di un altro la
+toglie da dove stava. Non succede in silenzio: la schermata lo scrive sotto la
+tendina, col nome del punto vendita da cui viene via, prima che tu salvi.
+*Come tornare indietro:* si rimette la persona dov'era dalla schermata stessa.
+
+🟡 **La polizza porta il punto vendita, e si congela.** Quando una polizza si
+assegna a un intermediario, prende anche il punto vendita che quella persona ha
+**in quel momento**, e da lì non cambia più. Se domani quella persona passa a
+un'altra filiale, la produzione dell'anno scorso resta dov'è stata fatta: un
+consuntivo chiuso non deve cambiare da solo. *Come tornare indietro:* si
+corregge la colonna sulla polizza; il trigger non la riscrive mai se c'è già
+qualcosa.
+
+🟡 **Gli HUB: via la schermata, non i dati.** La gestione HUB non c'è più e nella
+scheda del collaboratore al suo posto c'è il punto vendita. La tabella `iam_hub`
+e la colonna `iam_team.hub_id` **restano**, e le tre schede che avevano un HUB
+se lo tengono: un campo che non si mostra più non è un campo da cancellare. I
+due HUB si vedono nei Punti vendita con un bottone che propone di trasformarli
+— uno alla volta, col nome nel campo, e a premere Salva sei tu.
+*Come tornare indietro:* il codice della schermata sta nella storia di questo
+commit; i dati non sono mai stati toccati.
+
+📝 **Un guasto mio, trovato dalle prove e corretto nello stesso giro.** Avevo
+riscritto a memoria la funzione che applica una decisione su un codice
+produttore, e aveva perso tre regole su chi viene pagato. Postgres non se ne
+accorge finché quella funzione non gira davvero. È rimessa com'era, con due
+righe in più, e la prova adesso controlla anche quelle tre regole. Nessuna
+polizza è stata toccata nel frattempo: quella funzione la chiama una persona,
+e nessuno l'ha chiamata.
+
+---
+
 ## 22/09/2026 — Contabilità · Fase 3, i premi da recuperare (0.27.0)
 
 **Perimetro:** i sospesi — i premi messi a copertura e non ancora ricevuti dal

@@ -227,6 +227,67 @@
     return out;
   }
 
+  /* ── IL RESPONSABILE, E CHI STA SOTTO (23/09/2026) ────────────────────────
+
+     Richiesta di Francesco: «devo poter mettere un intermediario, e poter
+     scegliere un intermediario di primo livello (responsabile) e poi poter
+     aggiungere chi sta sotto».
+
+     Il responsabile è una PERSONA del registro (`responsabile_id` punta a
+     `quote_collaboratori`), non una riga di testo: un nome digitato non si
+     incrocia con niente, e il giorno in cui quella persona cambia cognome ci
+     sono due verità sulla stessa persona.
+
+     E IL RESPONSABILE LAVORA DOVE RISPONDE. Chi sta sotto sono le persone con
+     lo stesso `punto_vendita_id`; un responsabile che non è fra loro sarebbe
+     un capo senza squadra, o peggio una persona che risulta lavorare altrove
+     mentre risponde di qui. Quindi sceglierlo lo SPOSTA — e lo spostamento si
+     dice in faccia PRIMA di salvare, col nome del punto vendita da cui viene:
+     una persona sta in un punto vendita solo, e spostarla in silenzio vuol
+     dire toglierla a qualcun altro senza che nessuno se ne accorga.
+
+     Un responsabile che non è più nel registro non si nasconde: si dichiara
+     `mancante`, come un padre che non c'è più (regola dell'albero). Sparire
+     sarebbe far credere che quel punto vendita non abbia mai avuto un capo. */
+  function responsabileDi(pv, persone) {
+    if (!pv || !pv.responsabile_id) return null;
+    var p = null;
+    (persone || []).forEach(function (x) { if (x && x.id === pv.responsabile_id) p = x; });
+    if (!p) return { id: pv.responsabile_id, nome: null, mancante: true, dentro: false, altrove: null };
+    return {
+      id: p.id, nome: nomeDi(p), mancante: false,
+      dentro: p.punto_vendita_id === pv.id,
+      altrove: (p.punto_vendita_id && p.punto_vendita_id !== pv.id) ? p.punto_vendita_id : null
+    };
+  }
+
+  /* Che cosa succede mettendo questa persona in questo punto vendita. Tre
+     risposte, non due: non serve (ci è già), serve e viene da nessuna parte,
+     serve e VIENE VIA DA UN ALTRO — che è l'unica delle tre che qualcuno
+     deve leggere prima di premere Salva. */
+  function spostamento(persone, personaId, pvId) {
+    var p = null;
+    (persone || []).forEach(function (x) { if (x && x.id === personaId) p = x; });
+    if (!p) return { ok: false, serve: false, da: null, motivo: 'questa persona non è nel registro' };
+    var da = p.punto_vendita_id || null;
+    if (da === pvId) return { ok: true, serve: false, da: null, motivo: null };
+    return { ok: true, serve: true, da: da, motivo: null };
+  }
+
+  /* Chi si può aggiungere: tutti quelli che qui dentro non ci sono già. Chi
+     lavora altrove resta in elenco, marcato con il punto vendita da cui
+     verrebbe via — toglierlo vorrebbe dire non poter mai spostare nessuno, e
+     nasconderlo senza dirlo sarebbe peggio. */
+  function smistabili(persone, pvId) {
+    var out = (persone || []).filter(function (p) {
+      return p && p.id && p.punto_vendita_id !== pvId;
+    }).map(function (p) {
+      return { id: p.id, nome: nomeDi(p), da: p.punto_vendita_id || null };
+    });
+    out.sort(function (a, b) { return testo(a.nome).localeCompare(testo(b.nome), 'it'); });
+    return out;
+  }
+
   /* Il nominativo si compone in un posto solo: tre tendine che lo scrivono
      ognuna per conto suo sono tre modi di scrivere la stessa persona (§35). */
   function nomeDi(p) {
@@ -305,6 +366,7 @@
     ABILITAZIONI: ABILITAZIONI,
     albero: albero, catena: catena, effettive: effettive, filtra: filtra,
     attivo: attivo, personeDi: personeDi, nomeDi: nomeDi,
+    responsabileDi: responsabileDi, spostamento: spostamento, smistabili: smistabili,
     eliminabile: eliminabile, valida: valida, riepilogo: riepilogo
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

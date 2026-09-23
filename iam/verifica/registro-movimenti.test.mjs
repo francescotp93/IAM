@@ -96,8 +96,9 @@ prova('i punti di chiamata ci sono, e non scendono', () => {
      è la prima domanda che arriva, e arriva mesi dopo; 38 con la M4, dove
      ogni incasso portato in contabilità, accreditato o annullato lascia la
      sua riga — è denaro che entra, e si deve sapere chi l'ha detto. */
-  const SOGLIA = 62;   /* 21/09: la Fase 1 ne ha portati 3 — i conti minimi creati in blocco, lo storno e il movimento che nasce dallo storno.
+  const SOGLIA = 65;   /* 21/09: la Fase 1 ne ha portati 3 — i conti minimi creati in blocco, lo storno e il movimento che nasce dallo storno.
                           22/09: +2 dalla Fase 2 (l'incasso registrato e il suo storno) e +3 dalla Fase 3 (la rata messa a copertura, il recupero e lo storno del sospeso): sono denaro che entra, e «chi l'ha detto» è la prima domanda che arriva mesi dopo.
+                          23/09: +3 dai Punti vendita — creato, modificato, eliminato. Qui si decide chi può emettere una polizza e chi può incassare: «chi gliel'ha dato» è una domanda che arriva, e arriva mesi dopo.
                           La soglia sale, non scende. */
   deve(chiamate >= SOGLIA, 'movimenti registrati da IAM: ' + chiamate + ' (erano ' + SOGLIA + ')');
   deve(chiamate - SOGLIA < 3, 'adesso sono ' + chiamate + ': alza la soglia, altrimenti smette di sorvegliare');
@@ -111,7 +112,11 @@ prova('i tipi che IAM usa esistono nel vocabolario del motore', () => {
   /* Un tipo scritto qui e non conosciuto la' finirebbe nel registro come
      «fuori vocabolario»: si vedrebbe — ed e' voluto — ma sarebbe un refuso,
      non una scelta. */
-  const usati = [...H.matchAll(/logMovimento\([^;]*?,\s*'([a-z]+)'/g)].map(m => m[1]);
+  /* `[a-z]+` non vedeva i tipi con l'underscore: `punto_vendita` passava
+     inosservato, e un tipo fuori vocabolario in un registro non e' una scelta
+     — e' un refuso che si vede solo mesi dopo, quando quella riga non apre
+     niente. */
+  const usati = [...H.matchAll(/logMovimento\([^;]*?,\s*'([a-z_]+)'/g)].map(m => m[1]);
   deve(usati.length >= 10, 'non ha letto i tipi usati: ' + usati.length);
   const ignoti = [...new Set(usati)].filter(k => !R.VOCI[k]);
   deve(!ignoti.length, 'tipi usati da IAM e assenti dal vocabolario: ' + ignoti.join(' '));

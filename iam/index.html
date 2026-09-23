@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.39.1">
-<meta name="app-versione-nome" content="Una carta di credito non è un conto corrente">
+<meta name="app-versione" content="0.40.0">
+<meta name="app-versione-nome" content="I punti vendita">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -50,6 +50,7 @@
 <!-- Il catalogo prodotti: stesso file del preventivatore, perché l'import
      deve riconoscere compagnie e prodotti con le stesse regole. -->
 <script src="/nuovo-preventivo/tariffe/motore/catalogo.js?v=20260920"></script>
+<script src="/nuovo-preventivo/tariffe/motore/punti-vendita.js?v=20260923"></script>
 <!-- Sospensioni e fido (Blocco 3): stesso file del preventivatore, perche'
      il tetto al credito di una persona non puo' avere due regole. -->
 <script src="/nuovo-preventivo/tariffe/motore/sospensione.js?v=20260920"></script>
@@ -92,6 +93,30 @@
 .cnt-card .cnt-v{font-size:20px;font-weight:800;margin-top:4px}
 .cnt-card .cnt-s{font-size:11px;color:var(--txt3);margin-top:4px}
 .cnt-lista{padding:0 16px 24px}
+/* ── PUNTI VENDITA (23/09/2026) ──────────────────────────────────────────
+   Ogni classe porta il prefisso, comprese quelle annidate: nel foglio di
+   stile una classe e' un nome globale anche dentro un discendente, e il
+   guardiano delle collisioni sta a scarto zero.
+   E nessun colore scritto a mano: la tavolozza e' quella del kit. */
+.pvd-due{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 16px 24px;align-items:start}
+@media (max-width:900px){.pvd-due{grid-template-columns:1fr}}
+.pvd-filtri{display:flex;flex-wrap:wrap;gap:12px;padding-bottom:12px;margin-bottom:12px;
+  border-bottom:1px solid var(--bord)}
+.pvd-filtro{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer}
+.pvd-n{border:1px solid var(--bord);border-radius:var(--rs);background:var(--surf);
+  padding:9px 11px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.pvd-n:hover{border-color:var(--acc)}
+.pvd-n.pvd-scelto{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
+.pvd-n.pvd-spento{opacity:.55}
+.pvd-n.pvd-strada{opacity:.6;border-style:dashed}
+.pvd-nome{font-weight:700;font-size:13.5px}
+.pvd-sotto{font-size:11.5px;color:var(--txt3);margin-top:2px}
+.pvd-ab{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.pvd-p{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--bord);
+  border-radius:var(--rs);background:var(--surf);padding:11px 12px;margin-bottom:8px}
+.pvd-p-nome{font-weight:700;font-size:13.5px}
+.pvd-p-r{font-size:11.5px;color:var(--txt3);margin-top:2px}
+.pvd-vuoto{font-size:12.5px;color:var(--txt3);padding:14px 2px}
 .cnt-r{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--bord);
   border-radius:var(--rs);background:var(--surf);margin-bottom:8px}
 .cnt-r.cnt-spento{opacity:.55}
@@ -999,6 +1024,7 @@ input[type=file]{display:none;}
 #contab-panel-sospesi,
 #panel-catalogo,
 #panel-produzione,
+#panel-punti-vendita,
 #contab-panel-conto {
   --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
   --w1-sfondo:#f3f5f7; --w1-bordo:#e3e8ec;
@@ -4461,6 +4487,54 @@ input[type=file]{display:none;}
   </div>
 </div>
 
+<!-- ══ PUNTI VENDITA (23/09/2026) ═══════════════════════════════════════
+     A sinistra la STRUTTURA, a destra le PERSONE di quello scelto. Le due
+     domande sono diverse — «com'è fatta l'agenzia» e «chi ci lavora» — e
+     metterle in un elenco solo costringe a scorrere l'una per trovare
+     l'altra. Le regole stanno nel motore (tariffe/motore/punti-vendita.js),
+     qui c'e' la lettura e il disegno. -->
+<div class="panel" id="panel-punti-vendita" style="overflow-y:auto;">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow">Agenzia</div>
+      <h1>Punti vendita</h1>
+      <div class="subtitle">La struttura dell'agenzia, chi puo' fare che cosa, e chi ci lavora.</div>
+    </div>
+    <div class="head-actions">
+      <button class="d-btn" type="button" onclick="pvdCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+      <button class="d-btn primario" type="button" id="pvd-nuovo" onclick="pvdNuovo()"><i class="ti ti-plus"></i> Nuovo punto vendita</button>
+    </div>
+  </section>
+
+  <div id="pvd-cards" class="cnt-somma"></div>
+  <div id="pvd-avvisi"></div>
+
+  <div class="pvd-due">
+    <div class="d-card">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-sitemap"></i></span> Struttura punto vendita</div></div>
+      <div class="card-body">
+        <div id="pvd-filtri" class="pvd-filtri"></div>
+        <div id="pvd-albero"></div>
+      </div>
+    </div>
+    <div class="d-card">
+      <div class="card-head"><div class="card-title">
+        <span class="pictogram"><i class="ti ti-users"></i></span> <span id="pvd-tit-persone">Chi ci lavora</span></div>
+        <button class="d-btn" type="button" id="pvd-nuovo-utente" onclick="pvdNuovoUtente()"><i class="ti ti-user-plus"></i> Nuovo utente</button>
+      </div>
+      <div class="card-body"><div id="pvd-persone"></div></div>
+    </div>
+  </div>
+
+  <div id="pvd-ov" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);
+       backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px"
+       onclick="if(event.target===this)pvdChiudi()">
+    <div id="pvd-box" style="background:var(--surf);border-radius:var(--r);width:min(620px,100%);
+         max-height:88vh;overflow:auto;box-shadow:var(--shd2)"></div>
+  </div>
+</div>
+
 <!-- ══ STATO COLLEGAMENTI ═══════════════════════════════════════════════
      Che cosa è, e perché non è la stessa cosa di «Fonti compagnie».
 
@@ -7275,6 +7349,317 @@ function pntRenderQuadrature() {
       </div>
     </div>`;
   }).join('');
+}
+
+/* ═══ I PUNTI VENDITA (23/09/2026) ════════════════════════════════════════════
+
+   Le REGOLE stanno nel motore (`/nuovo-preventivo/tariffe/motore/punti-vendita.js`,
+   quattordici prove in Node): l'albero, le abilitazioni effettive, i filtri,
+   che cosa non si cancella. Qui c'e' la lettura e il disegno.
+
+   Il motore SI CARICA, non si copia: IAM e il preventivatore sono la stessa
+   origine, e quell'indirizzo punta a un file solo. Due copie delle regole su
+   chi puo' emettere una polizza sarebbero due regole, e quella sbagliata
+   sarebbe quella che nessuno guarda. */
+var PVD_PUNTI = [];
+var PVD_PERSONE = [];
+var PVD_ACCOUNT = [];
+var PVD_SCELTO = null;
+var PVD_FILTRI = { solo_attivi: true };
+var PVD_ERR = null;
+var PVD_LETTO = {};
+var PVD_GIRO = 0;
+
+function pvdOggi() { return typeof cntOggiIso === 'function' ? cntOggiIso() : null; }
+function pvdPuoScrivere() { return PROFILO?.ruolo === 'admin'; }
+
+/* Ogni lettura sta in piedi da sola: una query sbagliata su tre non deve
+   spegnere la schermata intera, e quello che manca si dichiara COL SUO NOME
+   invece di diventare un elenco vuoto. */
+async function pvdLeggi(nome, fai, vuoto) {
+  try {
+    const r = await fai();
+    if (r.error) throw r.error;
+    PVD_LETTO[nome] = true;
+    return r.data || vuoto;
+  } catch (e) {
+    PVD_LETTO[nome] = false;
+    (PVD_ERR = PVD_ERR || []).push(nome + ': ' + (e.message || e));
+    return vuoto;
+  }
+}
+
+async function pvdCarica(forza) {
+  if (!db) return;
+  const mio = ++PVD_GIRO;
+  const box = document.getElementById('pvd-albero');
+  if (forza && box) box.innerHTML = '<div class="pvd-vuoto">Carico la struttura…</div>';
+  PVD_ERR = null; PVD_LETTO = {};
+  const punti = await pvdLeggi('la struttura dei punti vendita',
+    () => db.from('iam_punti_vendita').select('*').order('nome'), []);
+  const persone = await pvdLeggi('il registro delle persone',
+    () => db.from('quote_collaboratori').select('id,nome,cognome,email,rui,stato,iam_id,punto_vendita_id,creato_il').order('cognome'), []);
+  const account = await pvdLeggi('gli account di IAM',
+    () => db.from('iam_utenti').select('id,iam_id,email,ruolo,attivo'), []);
+  if (mio !== PVD_GIRO) return;
+  PVD_PUNTI = punti; PVD_PERSONE = persone; PVD_ACCOUNT = account;
+  if (PVD_SCELTO && !PVD_PUNTI.some(p => p.id === PVD_SCELTO)) PVD_SCELTO = null;
+  pvdRender();
+}
+
+function pvdFiltro(k) {
+  PVD_FILTRI[k] = !PVD_FILTRI[k];
+  pvdRender();
+}
+
+function pvdScegli(id) { PVD_SCELTO = (PVD_SCELTO === id ? null : id); pvdRender(); }
+
+function pvdRender() {
+  const box = document.getElementById('pvd-albero');
+  const cards = document.getElementById('pvd-cards');
+  const avvisi = document.getElementById('pvd-avvisi');
+  const pers = document.getElementById('pvd-persone');
+  const filtri = document.getElementById('pvd-filtri');
+  if (!box || !cards) return;
+  const puo = pvdPuoScrivere();
+  const nuovo = document.getElementById('pvd-nuovo');
+  if (nuovo) nuovo.style.display = puo ? '' : 'none';
+  const nuovoU = document.getElementById('pvd-nuovo-utente');
+  if (nuovoU) nuovoU.style.display = puo ? '' : 'none';
+
+  /* I filtri: «solo attivi» piu' le quattro abilitazioni del motore. L'elenco
+     e' uno solo — contarle, disegnarle e applicarle sono la stessa domanda. */
+  if (filtri) {
+    filtri.innerHTML = '<label class="pvd-filtro"><input type="checkbox" '
+      + (PVD_FILTRI.solo_attivi ? 'checked' : '') + ' onchange="pvdFiltro(\'solo_attivi\')"> Solo attivi</label>'
+      + PuntiVendita.ABILITAZIONI.map(a => '<label class="pvd-filtro"><input type="checkbox" '
+        + (PVD_FILTRI[a.k] ? 'checked' : '') + ' onchange="pvdFiltro(\'' + a.k + '\')"> ' + esc(a.l) + '</label>').join('');
+  }
+
+  const r = PuntiVendita.riepilogo(PVD_PUNTI, PVD_PERSONE, {
+    oggi: pvdOggi(),
+    letto: { punti: PVD_LETTO['la struttura dei punti vendita'], persone: PVD_LETTO['il registro delle persone'] }
+  });
+  const n = v => (v == null ? '·' : String(v));
+  cards.innerHTML =
+      pvdCard('Punti vendita', n(r.punti), n(r.attivi) + ' attivi · ' + n(r.spenti) + ' spenti')
+    + pvdCard('Persone in struttura', n(r.persone == null ? null : r.persone - (r.senza_punto || 0)),
+        n(r.senza_punto) + ' ancora da smistare')
+    + pvdCard('Da smistare', n(r.senza_punto), 'persone senza un punto vendita');
+
+  /* «Non si e' potuto leggere» non e' «non ce n'e'»: si dice, col nome della
+     lettura caduta, sopra a quello che invece c'e' (§35). */
+  if (avvisi) {
+    let a = '';
+    if (PVD_ERR) a += '<div class="cnt-err" style="margin:0 16px 12px">Non si e\' potuto leggere: '
+      + esc(PVD_ERR.join(' · ')) + '.<br><small>Quello che manca non e\' «non ce n\'e\'»: e\' quello che non si e\' potuto guardare.</small></div>';
+    if (r.orfani) a += '<div class="cnt-avv" style="margin:0 16px 12px">' + r.orfani
+      + ' punti vendita hanno un padre che non c\'e\' piu\': si vedono in cima, marcati. Non spariscono, altrimenti sparirebbero con loro le persone che ci lavorano.</div>';
+    if (r.ciclici) a += '<div class="cnt-err" style="margin:0 16px 12px">' + r.ciclici
+      + ' punti vendita formano un anello: vanno sistemati a mano.</div>';
+    if (!PVD_PUNTI.length && PVD_LETTO['la struttura dei punti vendita'])
+      a += '<div class="cnt-avv" style="margin:0 16px 12px">Non c\'e\' ancora nessun punto vendita, ed e\' voluto: inventarne uno vorrebbe dire mettere in archivio una struttura che nessuno ha deciso. Il primo lo crei tu.</div>';
+    avvisi.innerHTML = a;
+  }
+
+  const f = PuntiVendita.filtra(PVD_PUNTI, PVD_FILTRI, { oggi: pvdOggi() });
+  box.innerHTML = f.radici.length
+    ? f.radici.map(x => pvdNodo(x, f.effettive)).join('')
+    : '<div class="pvd-vuoto">Nessun punto vendita con questi filtri.</div>';
+
+  pvdPersone(f.effettive);
+}
+
+function pvdCard(k, v, s) {
+  return '<div class="cnt-card"><div class="cnt-k">' + esc(k) + '</div>'
+    + '<div class="cnt-v">' + esc(v) + '</div><div class="cnt-s">' + esc(s) + '</div></div>';
+}
+
+function pvdNodo(nodo, eff) {
+  const e = eff[nodo.id] || {};
+  const quante = PVD_PERSONE.filter(p => p && p.punto_vendita_id === nodo.id).length;
+  const classi = ['pvd-n'];
+  if (PVD_SCELTO === nodo.id) classi.push('pvd-scelto');
+  if (!nodo.stato.ok) classi.push('pvd-spento');
+  if (nodo.di_passaggio) classi.push('pvd-strada');
+  /* Le abilitazioni si mostrano EFFETTIVE, e quando una casella e' spuntata
+     ma il padre la toglie si dice CHI la toglie: «non emette» senza dire
+     perche' fa riaprire questa casella dieci volte. */
+  const tag = PuntiVendita.ABILITAZIONI.map(a => {
+    const x = e[a.k] || {};
+    if (x.effettiva) return '<span class="cnt-tag utile">' + esc(a.l) + '</span>';
+    if (x.tolta_da) return '<span class="cnt-tag uscita" title="Spuntata qui, ma la toglie ' + esc(x.tolta_da) + '">'
+      + esc(a.l) + ' — la toglie ' + esc(x.tolta_da) + '</span>';
+    return '';
+  }).join('');
+  return '<div class="' + classi.join(' ') + '" style="margin-left:' + (nodo.livello * 18) + 'px"'
+    + ' onclick="pvdScegli(\'' + esc(nodo.id) + '\')">'
+    + '<i class="ti ti-building-store"></i>'
+    + '<div style="flex:1;min-width:0">'
+    + '<div class="pvd-nome">' + esc(nodo.nome)
+    + (nodo.codice ? ' <span class="cnt-tag">' + esc(nodo.codice) + '</span>' : '')
+    + (nodo.orfano ? ' <span class="cnt-tag uscita">padre mancante</span>' : '')
+    + (nodo.ciclo ? ' <span class="cnt-tag uscita">anello</span>' : '')
+    + (nodo.stato.ok ? '' : ' <span class="cnt-tag">' + esc(nodo.stato.motivo) + '</span>')
+    + '</div>'
+    + '<div class="pvd-sotto">' + quante + (quante === 1 ? ' persona' : ' persone')
+    + (nodo.riga.data_inizio ? ' · dal ' + esc(pntData(nodo.riga.data_inizio)) : '')
+    + (nodo.di_passaggio ? ' · non passa i filtri, si vede perche\' ha qualcuno sotto' : '')
+    + '</div>'
+    + '<div class="pvd-ab">' + tag + '</div>'
+    + '</div>'
+    + (pvdPuoScrivere() ? '<button class="d-btn" type="button" style="padding:3px 9px;font-size:11px"'
+      + ' onclick="event.stopPropagation();pvdApri(\'' + esc(nodo.id) + '\')">Modifica</button>' : '')
+    + '</div>'
+    + nodo.figli.map(x => pvdNodo(x, eff)).join('');
+}
+
+function pvdPersone() {
+  const box = document.getElementById('pvd-persone');
+  const tit = document.getElementById('pvd-tit-persone');
+  if (!box) return;
+  const pv = PVD_SCELTO ? PVD_PUNTI.find(x => x.id === PVD_SCELTO) : null;
+  if (tit) tit.textContent = pv ? ('Chi lavora in ' + (pv.nome || '')) : 'Persone senza un punto vendita';
+  const righe = PuntiVendita.personeDi(PVD_PERSONE, PVD_SCELTO, { account: PVD_ACCOUNT });
+  if (!righe.length) {
+    box.innerHTML = '<div class="pvd-vuoto">' + (PVD_SCELTO
+      ? 'Nessuno lavora ancora qui. Le persone si smistano dalla loro scheda, in Collaboratori.'
+      : 'Tutte le persone hanno un punto vendita.') + '</div>';
+    return;
+  }
+  box.innerHTML = righe.map(p => '<div class="pvd-p">'
+    + '<i class="ti ti-user" style="margin-top:2px"></i>'
+    + '<div style="flex:1;min-width:0">'
+    + '<div class="pvd-p-nome">' + esc(p.nome)
+    + (p.stato === 'senza-account' ? ' <span class="cnt-tag">senza accesso a IAM</span>' : '')
+    + (p.stato === 'sospeso' ? ' <span class="cnt-tag uscita">accesso sospeso</span>' : '')
+    + '</div>'
+    + (p.account ? '<div class="pvd-p-r">Utente ' + esc(p.account.email || '—')
+        + (p.account.ruolo ? ' · ' + esc(p.account.ruolo) : '') + '</div>' : '')
+    + (p.email ? '<div class="pvd-p-r">' + esc(p.email) + '</div>' : '')
+    + (p.rui ? '<div class="pvd-p-r">RUI ' + esc(p.rui) + '</div>' : '')
+    + (p.data_inizio ? '<div class="pvd-p-r">Data inizio ' + esc(pntData(p.data_inizio)) + '</div>' : '')
+    + '</div>'
+    + (typeof apriPermessiUtente === 'function' && pvdPuoScrivere()
+      ? '<button class="d-btn" type="button" style="padding:3px 9px;font-size:11px"'
+        + ' onclick="apriPermessiUtente(\'' + esc(p.id) + '\')"><i class="ti ti-settings"></i></button>' : '')
+    + '</div>').join('');
+}
+
+/* ─── IL MODULO ───────────────────────────────────────────────────────────── */
+function pvdChiudi() { const o = document.getElementById('pvd-ov'); if (o) o.style.display = 'none'; }
+function pvdNuovo() { pvdApri(null); }
+
+function pvdNuovoUtente() {
+  /* «Nuovo utente» non si rifa' qui, e non si chiama nemmeno la finestra che
+     c'era: l'attivazione di un accesso passa dal SERVER e vive dentro Utenti
+     e permessi (§10). Due strade per creare un account sarebbero due regole
+     su chi puo' entrare, e quella sbagliata sarebbe quella che nessuno
+     guarda. Da qui si va li'. */
+  goTab('utenti');
+}
+
+function pvdApri(id) {
+  if (!pvdPuoScrivere()) return;
+  const ov = document.getElementById('pvd-ov'), box = document.getElementById('pvd-box');
+  if (!ov || !box) return;
+  const c = PVD_PUNTI.find(x => x.id === id) || { attivo: true };
+  const padri = PVD_PUNTI.filter(x => x.id !== id);
+  const el = PuntiVendita.eliminabile(c, PVD_PUNTI, PVD_PERSONE);
+  box.innerHTML = `
+    <div style="padding:18px 18px 0"><div style="font-size:17px;font-weight:800">${id ? 'Modifica punto vendita' : 'Nuovo punto vendita'}</div>
+      <div class="cl-sub" style="margin-top:3px">Le abilitazioni nascono spente: quello che non si spunta, non si puo' fare. E un punto vendita non puo' potere piu' del suo padre.</div></div>
+    <div class="modal-body" style="padding:14px 18px">
+      <div id="pvd-msg"></div>
+      <div class="fgrid">
+        <div class="fld ffull"><label>Nome *</label><input type="text" id="pvd-nome" value="${esc(c.nome || '')}" placeholder="es. Agenzia generale 1499"></div>
+        <div class="fld"><label>Codice</label><input type="text" id="pvd-codice" value="${esc(c.codice || '')}" placeholder="es. 1499"></div>
+        <div class="fld"><label>Sta sotto a</label><select id="pvd-padre"><option value="">— nessuno, e' una radice —</option>${
+          padri.map(p => `<option value="${esc(p.id)}" ${p.id === c.padre_id ? 'selected' : ''}>${esc(p.nome)}</option>`).join('')}</select></div>
+        <div class="fld"><label>Data inizio</label><input type="date" id="pvd-dal" value="${esc(c.data_inizio || '')}"></div>
+        <div class="fld"><label>Data fine</label><input type="date" id="pvd-al" value="${esc(c.data_fine || '')}"></div>
+        <div class="fld ffull"><label>Che cosa puo' fare</label>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px">${
+            PuntiVendita.ABILITAZIONI.map(a => `<label class="pvd-filtro"><input type="checkbox" class="pvd-ab-c" value="${esc(a.k)}" ${c[a.k] ? 'checked' : ''}> ${esc(a.l)}</label>`).join('')}</div>
+          <div class="cl-sub" style="margin-top:5px">Quello che spunti qui vale solo se ce l'ha anche chi sta sopra: si puo' dare meno di quello che si ha, mai di piu'.</div></div>
+        <div class="fld ffull"><label><input type="checkbox" id="pvd-attivo" ${c.attivo === false ? '' : 'checked'}> Punto vendita attivo</label>
+          <div class="cl-sub">Uno spento esce dagli elenchi e resta nello storico: le persone che ci hanno lavorato sono storia.</div></div>
+        <div class="fld ffull"><label>Note</label><textarea id="pvd-note" rows="2">${esc(c.note || '')}</textarea></div>
+      </div>
+      ${id ? `<div id="pvd-storia" style="margin-top:12px"></div>` : ''}
+    </div>
+    <div style="padding:12px 18px 18px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--bord)">
+      ${id && el.ok ? `<button class="d-btn" type="button" style="margin-right:auto" onclick="pvdElimina('${esc(id)}')">Elimina</button>`
+        : id ? `<span class="cl-sub" style="margin-right:auto">Non si elimina: ${esc(el.motivo)}</span>` : ''}
+      <button class="d-btn" type="button" onclick="pvdChiudi()">Annulla</button>
+      <button class="d-btn primario" type="button" onclick="pvdSalva(${id ? `'${esc(id)}'` : 'null'})">Salva</button>
+    </div>`;
+  ov.style.display = 'flex';
+  if (id && typeof regInstalla === 'function') regInstalla('pvd-storia', 'punto_vendita', id, { creato_il: c.creato_il });
+}
+
+function pvdDati() {
+  const ab = {};
+  document.querySelectorAll('.pvd-ab-c').forEach(x => { ab[x.value] = x.checked; });
+  const v = id => (document.getElementById(id) || {}).value || '';
+  return Object.assign({
+    nome: v('pvd-nome').trim(),
+    codice: v('pvd-codice').trim() || null,
+    padre_id: v('pvd-padre') || null,
+    data_inizio: v('pvd-dal') || null,
+    data_fine: v('pvd-al') || null,
+    note: v('pvd-note').trim() || null,
+    attivo: !!(document.getElementById('pvd-attivo') || {}).checked
+  }, ab);
+}
+
+async function pvdSalva(id) {
+  if (!pvdPuoScrivere()) return;
+  const msg = document.getElementById('pvd-msg');
+  const d = pvdDati();
+  const check = PuntiVendita.valida(Object.assign({ id: id }, d), PVD_PUNTI);
+  if (!check.ok) { if (msg) msg.innerHTML = '<div class="cnt-err">' + esc(check.errori.join(' ')) + '</div>'; return; }
+  try {
+    let r;
+    if (id) {
+      /* Un update che non tocca nessuna riga non e' un errore per PostgREST:
+         e' zero righe, e la schermata direbbe «salvato» su un salvataggio che
+         non e' avvenuto. Si chiede indietro quello che ha cambiato. */
+      r = await db.from('iam_punti_vendita').update(Object.assign({ aggiornato_il: new Date().toISOString() }, d))
+        .eq('id', id).select('id');
+    } else {
+      r = await db.from('iam_punti_vendita').insert(Object.assign({ creato_da: ME?.id || null }, d)).select('id');
+    }
+    if (r.error) throw r.error;
+    if (!r.data || !r.data.length) {
+      if (msg) msg.innerHTML = '<div class="cnt-err">Il salvataggio non ha toccato nessuna riga. Non e\' stato salvato: ricarica e riprova.</div>';
+      return;
+    }
+    if (typeof logMovimento === 'function')
+      logMovimento(id ? 'modifica' : 'creazione', 'punto_vendita', d.nome, r.data[0].id);
+    pvdChiudi();
+    await pvdCarica();
+  } catch (e) {
+    if (msg) msg.innerHTML = '<div class="cnt-err">' + esc(e.message || String(e)) + '</div>';
+  }
+}
+
+async function pvdElimina(id) {
+  if (!pvdPuoScrivere()) return;
+  const c = PVD_PUNTI.find(x => x.id === id);
+  const el = PuntiVendita.eliminabile(c || {}, PVD_PUNTI, PVD_PERSONE);
+  if (!el.ok) return;
+  if (!confirm('Elimino «' + (c?.nome || '') + '»? Se ci ha lavorato qualcuno, spegnilo invece di eliminarlo.')) return;
+  const msg = document.getElementById('pvd-msg');
+  try {
+    const r = await db.from('iam_punti_vendita').delete().eq('id', id).select('id');
+    if (r.error) throw r.error;
+    if (typeof logMovimento === 'function') logMovimento('eliminazione', 'punto_vendita', c?.nome || id);
+    pvdChiudi();
+    await pvdCarica();
+  } catch (e) {
+    if (msg) msg.innerHTML = '<div class="cnt-err">' + esc(e.message || String(e)) + '</div>';
+  }
 }
 
 /* ═══ DECISIONI APERTE (21/09/2026) ═══════════════════════════════════════════
@@ -11565,6 +11950,7 @@ function goTab(t) {
   if (t === 'catalogo')    { catTab(CAT_VISTA); catCarica(true); }
   if (t === 'decisioni')   { decCarica(true); }
   if (t === 'produzione')  { prdCarica(true); }
+  if (t === 'punti-vendita') { pvdCarica(true); }
   if (t === 'dashboard') { loadTickets(); caricaDaFareOggi(); caricaKpiScrivania(); volCarica(); }   // Blocco B
   if (t === 'agenti')    { loadAgentiAI(); }
   if (t === 'quoto') {
@@ -25993,8 +26379,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: 59be1d80 — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260922a"></script>
+<!-- impronta withus-one.js: 77d19d87 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20260923a"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

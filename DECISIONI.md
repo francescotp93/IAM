@@ -1182,3 +1182,36 @@ decisione, non una conseguenza.
 - **`CASSA CONTANTI` è di tipologia `altro`** (aperta dal 22/09, §53): il fondo
   cassa somma solo le tipologie `cassa`, quindi quel conto non ci entra e il
   fondo resta a zero. È una decisione contabile, non una correzione.
+
+## 23/09/2026 — 0.40.0 · I punti vendita
+
+### 🟡 Scelte prese da solo
+
+1. **Il punto vendita sta sulla PERSONA** (`quote_collaboratori.punto_vendita_id`),
+   non sull'account. Dodici persone su diciassette non hanno un accesso a IAM:
+   appendendolo all'account resterebbero fuori dalla struttura.
+   *Come tornare indietro:* il ROLLBACK della migrazione toglie la colonna.
+2. **Una filiale non può potere più del padre.** Le abilitazioni effettive sono
+   l'AND della catena. È la scelta che decide che cosa il sistema permette, ed
+   è scritta nel motore con quattro prove sopra.
+   *Come tornare indietro:* `effettive` in `tariffe/motore/punti-vendita.js`.
+3. **La tabella nasce vuota e le abilitazioni nascono spente.** Niente seme.
+4. **«Nuovo utente» porta in Utenti e permessi** invece di aprire un modulo
+   qui: l'attivazione di un accesso passa dal server dal 17/09.
+5. **Il guardiano della prima nota adesso misura la TABELLA**, non una fetta di
+   documento lunga tremila righe: la regola era «un movimento non si cancella».
+   È più forte di prima, e la controprova lo dimostra.
+6. **Il guardiano del vocabolario del registro vede i tipi con l'underscore.**
+   Rinforzandolo ha trovato che `modalita_pagamento` si registrava dal 22/09
+   senza essere nel vocabolario: aggiunto.
+
+### 🔴 Resta da decidere
+
+- **«Assegna polizze»**, il terzo bottone della schermata che hai mandato. Qui
+  le polizze si attribuiscono già a una PERSONA (produzione per collaboratore):
+  aggiungere il punto vendita come secondo asse è una decisione, perché due
+  elenchi della stessa produzione direbbero numeri diversi.
+- **Le abilitazioni non filtrano ancora niente nel preventivatore**: oggi si
+  dichiarano e si leggono. Collegarle a chi può emettere davvero tocca i
+  permessi, e va fatto con la sua migrazione.
+- **`CASSA CONTANTI` è di tipologia `altro`**: il fondo cassa resta a zero.

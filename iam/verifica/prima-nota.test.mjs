@@ -50,7 +50,17 @@ prova('UN MOVIMENTO NON SI CANCELLA: nel blocco non si toglie una riga', () => {
      righe di codice, e si tolgono soltanto i commenti che cominciano a inizio
      riga (togliere tutto con una regex globale mangia codice vero, §12). */
   const codice = b.split('\n').filter(r => !/^\s*(\/\*|\*|\/\/)/.test(r)).join('\n');
-  deve(!/\.delete\(\s*\)/.test(codice), 'da qualche parte nella prima nota si toglie una riga invece di annullarla');
+  /* E si guarda la TABELLA, non un `delete` qualunque dentro una fetta.
+     La fetta della prima nota finisce tremila righe piu' in la', al blocco
+     delle tariffe, quindi comprende schermate che con la prima nota non
+     c'entrano: il 23/09/2026 e' bastato che i Punti vendita cancellassero un
+     punto vendita (che si puo' cancellare, se e' vuoto) per far dichiarare
+     rotta la prima nota. La regola non era «nessun delete da qui a li'»: era
+     «un MOVIMENTO non si cancella», e quella si misura sulla tabella — in
+     tutto il documento, non solo qui. */
+  const mov = /from\(\s*['"]iam_movimenti(_righe)?['"]\s*\)[\s\S]{0,300}?\.delete\(/;
+  deve(!mov.test(H.split('\n').filter(r => !/^\s*(\/\*|\*|\/\/)/.test(r)).join('\n')),
+    'da qualche parte si cancella un movimento invece di annullarlo');
   /* Si annulla, e il motivo è obbligatorio anche di qua — non solo nel check
      del database, perché far fallire un insert è il modo peggiore di dire a
      una persona che manca un campo. */

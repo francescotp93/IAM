@@ -605,6 +605,12 @@
            IAM e senza questa riga esisterebbe ed sarebbe invisibile — il
            guasto numero uno di questo repository. */
         { l: 'Produzione', i: 'i-chart', act: 'produzione', go: function () { vai('produzione'); } },
+        /* «Punti vendita» (23/09/2026): la struttura dell'agenzia, chi puo'
+           fare che cosa e chi ci lavora. Prima esisteva solo come campo di
+           testo libero su un account (`iam_utenti.rete`), e la pagina del
+           preventivatore era un segnaposto vuoto. Senza questa riga la
+           schermata esisterebbe e sarebbe invisibile. */
+        { l: 'Punti vendita', i: 'i-users', act: 'punti-vendita', go: function () { vai('punti-vendita'); } },
         { hr: true },
         /* Le convenzioni sono un accordo DELL'AGENZIA con un ente (il primo e'
            ASE Sicilia), non un prodotto: stanno qui, non nel preventivatore.
@@ -782,6 +788,7 @@
     workdiary:   ['Diario di lavoro', 'Agenzia'],
     performance: ['KPI e gare', 'Agenzia'],
     produzione:  ['Produzione', 'Agenzia'],
+    'punti-vendita': ['Punti vendita', 'Agenzia'],
     marketing:   ['Marketing', 'Marketing'],
     utenti:      ['Utenti e permessi', 'Amministrazione'],
     azienda:     ['Azienda', 'Amministrazione'],

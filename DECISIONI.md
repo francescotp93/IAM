@@ -1118,3 +1118,46 @@ deve all'agenzia, e nei «premi da incassare» sarebbero un numero grande,
 credibile e falso. Restano contate e dichiarate con la porta dove si lavorano.
 Se la lettura giusta è l'altra, si cambia una riga in `daIncassare` — ma è una
 decisione, non una conseguenza.
+
+## 23/09/2026 — 0.39.0 · Sospesi che si aprono, e la quadratura che dice le due cause
+
+### 🟡 Scelte prese da solo
+
+1. **`sprEuro` nuova invece di importare `pfEuro`.** In IAM esistono già
+   `recEuro` e `incaEuro` con la stessa forma (`window.Contabilita ?
+   Contabilita.euro(n) : String(n)`): se ne è aggiunta una terza per il blocco
+   dei Sospesi, invece di spostare la funzione del preventivatore in un file
+   condiviso. Spostarla avrebbe toccato QUOTO per un guasto di IAM.
+   *Come tornare indietro:* è una riga sola accanto a `sprOggi`.
+2. **Le date dei Sospesi passano da `pntData`**, che è la funzione della
+   contabilità di IAM e conta sui numeri della stringa invece di passare da
+   `new Date()` (§44). `pfData` faceva la conversione via fuso orario.
+   *Come tornare indietro:* una sostituzione in una riga.
+3. **La prova dei Sospesi adesso FA GIRARE la schermata** con un finto
+   PostgREST, e il ciclo che esegue le prove è diventato `await fn()` per
+   accettare prove asincrone. Le 22 prove di prima non sono cambiate.
+   *Come tornare indietro:* si tolgono le due prove nuove e si rimette `fn()`.
+4. **La quadratura elenca due cause e mette per prima quella del saldo di
+   partenza.** È una scelta di ordine, non di contenuto: su un conto con pochi
+   movimenti è quella che risponde.
+   *Come tornare indietro:* si invertono i due `out.cause.push` in
+   `tariffe/motore/contabilita.js`.
+5. **Il tasto «Correggi il saldo di partenza» PRECOMPILA il campo e non
+   salva.** Il numero è una misura (§43) e si vede prima di scriverlo (§44).
+   *Come tornare indietro:* si toglie il secondo bottone nella riga della
+   quadratura; il modulo del conto continua a funzionare com'era.
+
+### 🔴 Da decidere (nessuna applicata)
+
+- **`CARTA DI CREDITO UNICREDIT` è classificata `banca`.** Una carta di credito
+  non è un conto corrente: quello che si legge su una carta è un debito o un
+  plafond, non un saldo. Finché non è deciso, il sistema conta e non giudica.
+- **Il saldo di partenza vero di quel conto.** Il sistema propone 3.170,00 €
+  perché è il numero che fa tornare i conti, non perché sappia che è quello.
+
+### 📝 Fuori perimetro, annotato
+
+- Gli altri blocchi di IAM (prima nota, incassi, recuperi, cruscotto) non hanno
+  ancora un banco che li fa girare: nessuno di loro chiama funzioni del
+  preventivatore — censito — ma la prova che lo dimostrerebbe girando esiste
+  solo per i Sospesi.

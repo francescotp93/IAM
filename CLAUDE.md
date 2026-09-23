@@ -7811,3 +7811,119 @@ incassate** con un mezzo «sospeso», per **896.627,80 €** (misurato). Quelle 
 ha incassate la compagnia, non l'agenzia: nessuno le deve a nessuno, e
 metterle fra i premi da incassare sarebbe un numero grande, credibile e falso
 (§8.1, §62). Restano contate e dichiarate, con la porta dove si lavorano.
+
+---
+
+## 67. La schermata che non si vedeva, e la differenza che accusava la cosa sbagliata (23/09/2026)
+
+Due segnalazioni, e la prima era la terza volta che Francesco la ripeteva:
+*«la posizione messa come sospeso continua a non essere tra i sospesi»*.
+
+### 1. Una funzione che non esiste non dà un numero sbagliato: spegne la pagina
+
+Misurato prima di toccare qualsiasi cosa, nell'ordine:
+
+| controllo | esito |
+|---|---|
+| `iam_modalita_pagamento` | `col_oddo_francesco` c'è, con il suo `collaboratore_id` |
+| le due polizze con quella modalità | ci sono, 2 rate, 662,98 € |
+| `iam_movimenti` / `_righe` / `iam_incassi_rate` / `iam_sospesi` su quelle rate | **0** — quindi non sono «già in contabilità» |
+| `Contabilita.daIncassare` girato su quelle righe | `Oddo Francesco · 2 rate · 662,98 €` |
+| la sintassi PostgREST del filtro sulla tabella agganciata | arriva alla RLS, quindi si legge |
+| `quoto.withusassicurazioni.it/versione.json` | `0.38.0`, pubblicata |
+
+**I dati erano giusti, il motore era giusto, il rilascio era pubblicato — e la
+schermata era vuota.** Restava un posto solo dove guardare: il disegno. Per
+guardarci davvero si è costruito un banco che fa **girare** `sprCarica` con un
+finto PostgREST, e la prima riga di esito è stata:
+
+```
+ReferenceError: pfEuro is not defined
+```
+
+`pfEuro` e `pfData` vivono in `index.html` alla radice — sono **del
+preventivatore**. In `iam/index.html` non esistono, e in mezzo al disegno
+sollevano un errore.
+
+> **Una classe CSS che non esiste viene ignorata in silenzio (§65): la
+> schermata esce brutta. Una FUNZIONE che non esiste no — interrompe il
+> disegno a metà, e quello che restava da disegnare non compare mai.** Nessun
+> numero sbagliato, nessuna riga storta: il vuoto. E dal di fuori è
+> indistinguibile da «non ci sono sospesi», che è la risposta che Francesco ha
+> letto tre volte.
+
+**Ventidue prove verdi non l'hanno visto, e non potevano.** Leggevano il
+sorgente e cercavano delle stringhe: le stringhe c'erano tutte. È §1 in una
+forma nuova — *una suite verde non dimostra che il codice serva a qualcosa* —
+applicata al disegno invece che al collegamento.
+
+Due prove nuove, e la prima è quella che conta:
+
+1. **`sprCarica` gira davvero**, con un finto PostgREST che onora anche il
+   filtro sulla tabella agganciata (e pretende il `!inner`, senza il quale
+   PostgREST non toglierebbe le righe), sulle due righe vere del portafoglio.
+   Pretende che la schermata disegni, che Oddo Francesco ci sia con i suoi
+   662,98 €, e che stia **prima** dei mezzi (§66-bis).
+2. **Nessuna funzione presa in prestito**: ogni `xxx(` chiamata nel blocco deve
+   essere definita in `iam/index.html`. Le funzioni di casa sono quelle di
+   **tutto il documento**, non del solo blocco — la schermata ne chiama
+   parecchie delle altre ed è giusto; quello che non deve succedere è che ne
+   chiami una che qui dentro non c'è.
+
+Per la seconda, il sorgente si legge **senza commenti e senza stringhe**, a
+carattere a carattere: dentro un `select` PostgREST o un pezzo di HTML ci sono
+parentesi che sembrano chiamate e non lo sono, e le parole italiane di un
+commento sembrano funzioni. È la trappola dei commenti (§10, §12, §18, §26,
+§29, §31, §33, §34, §37, §41, §42, §45, §55, §61, §63), presa in anticipo
+invece che subita.
+
+**Controprova**: rimessa `pfEuro` in una riga sola, diventano rosse tutte e
+due — la prima con l'errore vero, la seconda col nome.
+
+E un censimento sul resto del documento: `pfEuro` e `pfData` erano **le uniche
+due** funzioni del preventivatore chiamate dentro IAM. Non ce n'erano altre.
+
+### 2. Una differenza ha due cause, e il sistema ne diceva una sola
+
+> «se il dichiarato è 3000 € ed ho una spesa di 170 € non può essere un saldo
+> da 3170 €» — Francesco, sulla Quadratura conti.
+
+Misurato: `CARTA DI CREDITO UNICREDIT`, `saldo_iniziale` **0,00** (dichiarato
+il 21/09), **un** movimento vivo da 170 € in uscita, saldo dichiarato 3.000 €.
+Ricostruito −170, differenza −3.170. **Il conto era giusto. L'accusa no.**
+
+Il sistema scriveva: *«La banca ha € 3.170,00 in più del sistema: c'è un
+movimento che non è stato registrato»* — e mandava a cercare in banca un
+movimento che non manca.
+
+> **Il ricostruito è SALDO DI PARTENZA + movimenti. Quindi una differenza ha
+> due famiglie di causa, non una: o manca (o avanza) un movimento, o il saldo
+> di partenza non è quello scritto.** Su un conto nato oggi con il saldo di
+> partenza a zero mentre in banca c'erano già dei soldi, la seconda è quasi
+> sempre quella vera — ed era l'unica che il sistema non nominava.
+
+La seconda causa è **misurabile**, e il numero si dà: il dichiarato meno la
+somma dei movimenti, cioè 3.000 − (−170) = **3.170,00**. Ma resta una misura
+da guardare, non un valore da scrivere (§43): applicarlo da soli vorrebbe dire
+mettere in contabilità un saldo che nessuno ha deciso. Il tasto «Correggi il
+saldo di partenza» apre il conto con quel numero **nel campo**, visibile e
+correggibile (§44), e a salvare è una persona.
+
+L'ordine delle due cause non è estetica: **il saldo di partenza viene prima**,
+perché su un conto con un movimento solo è quella che risponde, e mandare a
+cercare per primo un movimento mancante fa perdere un pomeriggio.
+
+Un conto che **quadra** non elenca niente: due cause su una riga verde sono
+rumore che si impara a saltare.
+
+### Cosa resta aperto
+
+- **`CARTA DI CREDITO UNICREDIT` è di tipologia `banca`.** Una carta di credito
+  non è un conto: il suo «saldo» è un debito, e un plafond disponibile non è un
+  saldo di partenza. Finché nessuno lo decide, il sistema conta e non giudica.
+- **Il saldo di partenza vero di quel conto non lo sa nessuno**: il sistema
+  adesso propone 3.170,00 perché è il numero che fa tornare i conti, non perché
+  sappia che è quello.
+- **Gli altri blocchi di IAM non hanno un banco che li fa girare**: quello dei
+  Sospesi è il primo. Si aggiungono uno alla volta, come le schermate sul kit
+  (§31).

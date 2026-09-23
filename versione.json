@@ -1,8 +1,19 @@
 {
-  "versione": "0.38.0",
-  "nome": "I sospesi delle persone si vedono per primi",
-  "data": "2026-09-22",
+  "versione": "0.39.0",
+  "nome": "I sospesi si vedono davvero, e una differenza dice le sue due cause",
+  "data": "2026-09-23",
   "storia": [
+    {
+      "v": "0.39.0",
+      "data": "2026-09-23",
+      "nome": "I sospesi si vedono davvero, e una differenza dice le sue due cause",
+      "voci": [
+        "CONTABILITÀ › SOSPESI SI APRE. La schermata era vuota per tutti, e non per colpa dei dati: nel disegno c'erano due funzioni prese in prestito dal preventivatore che in IAM non esistono, e bastava questo a far morire la pagina a metà senza dire niente. Adesso Oddo Francesco compare con le sue due polizze e il suo totale.",
+        "E adesso c'è una prova che APRE la schermata per davvero, con i dati veri, invece di limitarsi a leggere il codice: era l'unico modo di accorgersene, perché tutte le prove di prima erano verdi mentre la pagina non si vedeva.",
+        "QUADRATURA CONTI: UNA DIFFERENZA HA DUE CAUSE, e finora ne diceva una sola. Se dichiari 3.000 € su un conto che parte da zero e ha una spesa di 170, la differenza di 3.170 non vuol dire «manca un movimento»: quasi sempre vuol dire che il saldo di partenza di quel conto non è zero.",
+        "Adesso te le dice tutte e due, e ti dà il numero: «perché torni, il saldo di partenza dovrebbe essere 3.170,00 €». È una misura da guardare, non un valore scritto da solo — c'è un tasto che apre il conto con quel numero già nel campo, e sei tu a salvarlo se è giusto."
+      ]
+    },
     {
       "v": "0.38.0",
       "data": "2026-09-22",

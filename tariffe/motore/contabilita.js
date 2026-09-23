@@ -2338,10 +2338,38 @@
     out.quadra = Math.abs(out.differenza) <= TOLLERANZA;
     out.dichiarata_il = d.data;
     out.nota = d.nota || null;
+    /* Il ricostruito e' SALDO DI PARTENZA + movimenti. Quindi una differenza
+       ha due famiglie di causa, non una: o manca (o avanza) un movimento, o
+       il saldo di partenza non e' quello scritto. Fin qui si diceva solo la
+       prima, e mandava a cercare in banca un movimento che spesso non manca:
+       il conto e' nato oggi con un saldo di partenza a zero mentre in banca
+       c'erano gia' dei soldi.
+       La seconda causa e' MISURABILE, e il numero si da': quello che farebbe
+       tornare i conti e' il dichiarato meno la somma dei movimenti. Resta una
+       misura da guardare, non un valore da scrivere (§43): applicarlo da soli
+       vorrebbe dire mettere in contabilita' un saldo che nessuno ha deciso. */
+    out.iniziale = s.iniziale;
+    out.iniziale_dichiarato_il = conto ? (conto.saldo_dichiarato_il || null) : null;
+    out.iniziale_che_torna = null;
+    out.cause = [];
     if (!out.quadra) {
+      out.iniziale_che_torna = cent(out.dichiarato - (out.ricostruito - s.iniziale));
       out.motivo = out.differenza > 0
-        ? 'Il sistema ha ' + euro(Math.abs(out.differenza)) + ' in più della banca: o c’è un movimento registrato due volte, o uno che non è mai uscito.'
-        : 'La banca ha ' + euro(Math.abs(out.differenza)) + ' in più del sistema: c’è un movimento che non è stato registrato.';
+        ? 'Il sistema ha ' + euro(Math.abs(out.differenza)) + ' in più della banca.'
+        : 'La banca ha ' + euro(Math.abs(out.differenza)) + ' in più del sistema.';
+      out.cause.push({
+        k: 'saldo-iniziale',
+        testo: 'Il saldo di partenza di questo conto è ' + euro(s.iniziale)
+          + (s.iniziale === 0 && !out.iniziale_dichiarato_il ? ', e non l’ha mai dichiarato nessuno' : '')
+          + '. Se all’inizio c’era altro, la differenza è tutta qui: perché torni dovrebbe essere '
+          + euro(out.iniziale_che_torna) + '.'
+      });
+      out.cause.push({
+        k: 'movimento',
+        testo: out.differenza > 0
+          ? 'Oppure c’è un movimento registrato due volte, o uno che non è mai uscito davvero.'
+          : 'Oppure c’è un movimento che non è stato registrato.'
+      });
     }
     return out;
   }

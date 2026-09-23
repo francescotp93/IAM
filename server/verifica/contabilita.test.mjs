@@ -2483,6 +2483,82 @@ prova('un resoconto VUOTO non parte, e il testo non promette una data', () => {
   return 'vuoto non parte, e nessuna data promessa';
 });
 
+/* ══ I CONTI CHE LA CAUSALE PROPONE (23/09/2026) ════════════════════════════
+   «Devo poter indicare su quale conto vanno e da quale conto escono»
+   — Francesco, con l'esempio del versamento in banca fatto in contanti. */
+const CONTI_P = () => [
+  { id: 'cc', nome: 'CONTO CORRENTE', tipologia: 'banca', attivo: true },
+  { id: 'ca', nome: 'CASSA CONTANTI', tipologia: 'cassa', attivo: true },
+  { id: 'co', nome: 'Costi di agenzia', tipologia: 'costo', attivo: true },
+  { id: 'sp', nome: 'CONTO SPENTO', tipologia: 'banca', attivo: false }
+];
+
+prova('IL VERSO DECIDE QUALE DEI DUE CONTI SI MUOVE', () => {
+  /* Su un'ENTRATA il conto che si muove è quello su cui il denaro entra;
+     su un'USCITA è quello da cui esce. Invertirli scriverebbe il movimento
+     al contrario, e un saldo rovesciato ha l'aria di uno giusto. */
+  const versamento = { id: 'g1', nome: 'Versamento in banca', segno: 'entrata',
+    incide_su_utile: false, conto_entrata_id: 'cc', conto_uscita_id: 'ca' };
+  const a = C.contiDaCausale(versamento, { conti: CONTI_P() });
+  deve(a.conto_id === 'cc' && a.contropartita_id === 'ca',
+    'il versamento non propone banca ← cassa: ' + JSON.stringify(a));
+
+  const prelievo = Object.assign({}, versamento, { id: 'g2', segno: 'uscita' });
+  const b = C.contiDaCausale(prelievo, { conti: CONTI_P() });
+  deve(b.conto_id === 'ca' && b.contropartita_id === 'cc',
+    'sull’uscita i due conti non si scambiano: ' + JSON.stringify(b));
+
+  /* Senza verso non si indovina: sbaglierebbe una volta su due. */
+  const muta = Object.assign({}, versamento, { id: 'g3', segno: null });
+  const c = C.contiDaCausale(muta, { conti: CONTI_P() });
+  deve(!c.conto_id && c.avvisi.some(x => /verso|entrata o un/.test(x)),
+    'senza verso propone lo stesso');
+  return 'entrata banca←cassa, uscita cassa←banca, e il muto che non indovina';
+});
+
+prova('LA PROPOSTA NON SCAVALCA IL CANCELLO', () => {
+  /* La contropartita configurata passa per la STESSA funzione che riempie la
+     tendina e che poi rifiuta: se la causale diventa un costo, un conto
+     corrente in contropartita non è più ammesso (§«la spesa che non
+     sottrae»), e allora NON si propone. Una configurazione che scavalca un
+     controllo è un controllo che non esiste. */
+  const spesa = { id: 's1', nome: 'Spese', segno: 'uscita', incide_su_utile: true,
+    conto_entrata_id: 'cc', conto_uscita_id: 'ca' };
+  const a = C.contiDaCausale(spesa, { conti: CONTI_P() });
+  deve(a.conto_id === 'ca', 'il conto che si muove non è quello da cui esce');
+  deve(a.contropartita_id === null, 'propone un conto corrente come contropartita di una spesa');
+  deve(a.avvisi.some(x => /CONTO CORRENTE/.test(x)), 'non dice quale conto non va più bene');
+
+  /* E con la configurazione giusta la propone. */
+  const ok = Object.assign({}, spesa, { id: 's2', conto_entrata_id: 'co' });
+  const b = C.contiDaCausale(ok, { conti: CONTI_P() });
+  deve(b.contropartita_id === 'co', 'una configurazione corretta non si propone: ' + JSON.stringify(b));
+  return 'la spesa mal configurata si ferma, quella giusta passa';
+});
+
+prova('un conto SPENTO o sparito non si propone, e non sparisce in silenzio', () => {
+  const c1 = C.contiDaCausale({ id: 'x1', segno: 'entrata', incide_su_utile: false,
+    conto_entrata_id: 'sp', conto_uscita_id: 'ca' }, { conti: CONTI_P() });
+  deve(!c1.conto_id, 'propone un conto spento');
+  deve(c1.avvisi.some(x => /spento/.test(x)), 'non dice che è spento');
+
+  const c2 = C.contiDaCausale({ id: 'x2', segno: 'entrata', incide_su_utile: false,
+    conto_entrata_id: 'cc', conto_uscita_id: 'mai-esistito' }, { conti: CONTI_P() });
+  deve(c2.conto_id === 'cc' && !c2.contropartita_id, 'propone un conto che non c’è');
+  deve(c2.avvisi.some(x => /non c’è più|non c’è più/.test(x)),
+    'un conto sparito sparisce in silenzio: ' + JSON.stringify(c2.avvisi));
+  return 'spento e sparito: non si propongono, e si dicono';
+});
+
+prova('una causale senza i due conti non propone niente, e non è un errore', () => {
+  /* Le quattordici causali di oggi hanno tutte e due le colonne vuote: non
+     proporre niente è la risposta giusta, non un guasto da segnalare. */
+  const v = C.contiDaCausale({ id: 'v', segno: 'uscita', incide_su_utile: true }, { conti: CONTI_P() });
+  deve(!v.conto_id && !v.contropartita_id && !v.avvisi.length,
+    'una causale non configurata si lamenta invece di tacere');
+  return 'niente proposta, e nessun avviso';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

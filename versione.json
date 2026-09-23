@@ -1,8 +1,20 @@
 {
-  "versione": "0.42.0",
-  "nome": "I sospesi: la pagina di chi tiene i premi",
+  "versione": "0.43.0",
+  "nome": "Le causali dicono dove il denaro entra e da dove esce",
   "data": "2026-09-23",
   "storia": [
+    {
+      "v": "0.43.0",
+      "data": "2026-09-23",
+      "nome": "Le causali dicono dove il denaro entra e da dove esce",
+      "voci": [
+        "CONTI E CAUSALI · ogni causale può dichiarare DUE CONTI: quello su cui il denaro entra e quello da cui esce. Esempio: «Versamento in banca» entra sul conto corrente ed esce dalla cassa contanti.",
+        "Registrando un movimento con quella causale, i due campi si riempiono da soli — ma restano visibili e correggibili: un conto scritto dietro le quinte finisce in contabilità senza che nessuno l'abbia letto.",
+        "E si riempiono SOLO i campi vuoti: se avevi già scelto un conto non te lo cancella, e ti dice che cosa avrebbe proposto.",
+        "LA PROPOSTA NON SCAVALCA I CONTROLLI. Se qualcuno cambia la causale (da «denaro in transito» a «costo»), o spegne quel conto, la coppia salvata smette di andare bene — e allora non si propone, e la schermata dice perché. Una configurazione che scavalca un controllo è un controllo che non esiste.",
+        "Le quattordici causali che ci sono restano com'erano, coi due campi vuoti: i conti li scegli tu, uno alla volta."
+      ]
+    },
     {
       "v": "0.42.0",
       "data": "2026-09-23",

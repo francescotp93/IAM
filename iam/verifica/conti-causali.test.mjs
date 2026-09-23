@@ -294,6 +294,38 @@ function blocco() {
   return H.slice(i, fine < 0 ? H.length : fine);
 }
 
+prova('LA CAUSALE DICE DOVE IL DENARO ENTRA E DA DOVE ESCE', () => {
+  /* Richiesta di Francesco: «devo poter indicare su quale conto vanno e da
+     quale conto escono». Due campi, facoltativi, e una PROPOSTA — non una
+     decisione: registrando un movimento finiscono nei campi visibili. */
+  const H2 = fs.readFileSync(path.join(QUI, '..', 'index.html'), 'utf8');
+  const f = H2.slice(H2.indexOf('function cntFormCausale'), H2.indexOf('function cntSalvaConto'));
+  deve(/id="cnt-centrata"/.test(f) && /id="cnt-cuscita"/.test(f),
+    'i due conti non si possono dichiarare sulla causale');
+  /* Le due tendine si riempiono con la STESSA funzione: due elenchi scritti
+     ognuno per conto suo sono due modi di elencare gli stessi conti. */
+  deve((f.match(/cntOpzioniConto\(/g) || []).length === 2,
+    'le due tendine non si riempiono dalla stessa funzione');
+
+  const sv = H2.slice(H2.indexOf('async function cntSalvaCausale'), H2.indexOf('async function cntEliminaCausale'));
+  deve(/conto_entrata_id:/.test(sv) && /conto_uscita_id:/.test(sv),
+    'il salvataggio non scrive i due conti');
+  /* Lo stesso conto da tutte e due le parti non muove niente: lo dice prima,
+     invece di far compilare un modulo per poi respingerlo. */
+  deve(/conto_entrata_id === riga\.conto_uscita_id/.test(sv),
+    'lo stesso conto da tutte e due le parti passa');
+
+  /* E la migrazione non semina niente: le quattordici causali di oggi restano
+     con le due colonne vuote — scrivere una coppia «ragionevole» vorrebbe
+     dire decidere al posto di chi tiene i conti (§8.1). */
+  const m = fs.readFileSync(path.join(QUI, '..', '..', 'supabase', 'migrations',
+    '20260923f_causali_conti_predefiniti.sql'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').filter(r => !/^\s*--/.test(r)).join('\n');
+  deve(!/^\s*update\s+iam_causali/mi.test(m), 'la migrazione riempie le causali che ci sono');
+  deve(/check \(conto_entrata_id is null/.test(m), 'il divieto dei due conti uguali non sta nel database');
+  return 'due campi, una funzione per le tendine, e niente seminato';
+});
+
 console.log('\n══ CONTI E CAUSALI (IAM) ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

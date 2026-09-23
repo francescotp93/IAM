@@ -1897,6 +1897,87 @@
 
      E la proposta si fa **solo se è una** (§19): con due conti di costo non
      si indovina quale, con zero si dice che manca e dove si crea. */
+  /* ── I CONTI CHE LA CAUSALE PROPONE (23/09/2026) ─────────────────────────
+
+     «Devo poter indicare su quale conto vanno e da quale conto escono»
+     — Francesco. Le due colonne stanno sulla causale (`conto_entrata_id`,
+     `conto_uscita_id`) e questa funzione le traduce nei due campi del
+     movimento: quello che si MUOVE e la CONTROPARTITA.
+
+     Quale dei due si muove lo dice il verso della causale: su un'entrata il
+     conto che si muove e' quello su cui il denaro entra, su un'uscita e'
+     quello da cui esce. Invertirli scriverebbe il movimento al contrario, e
+     un saldo rovesciato ha esattamente l'aria di uno giusto.
+
+     TRE COSE CHE NON FA, e sono la meta' del lavoro:
+
+     1. NON SCAVALCA IL CANCELLO. La contropartita configurata passa per la
+        stessa `contropartiteAmmesse` che riempie la tendina e che poi
+        rifiuta: se qualcuno cambia `incide_su_utile` della causale, o spegne
+        quel conto, la coppia salvata smette di essere ammessa — e allora NON
+        si propone. Una configurazione che scavalca un controllo e' un
+        controllo che non esiste.
+     2. NON PROPONE UN CONTO CHE NON C'E' PIU', o che e' spento. E non lo
+        nasconde: lo dice, perche' una causale che ha smesso di proporre
+        senza spiegare perche' si legge come un guasto del programma.
+     3. NON DECIDE. Torna una proposta; a metterla nei campi — visibili e
+        correggibili — e' chi chiama (§8.1, §44). */
+  function contiDaCausale(causale, opz) {
+    opz = opz || {};
+    var c = causale || {};
+    var conti = opz.conti || [];
+    var idx = indice(conti);
+    var out = { conto_id: null, contropartita_id: null, avvisi: [] };
+    if (!c.conto_entrata_id && !c.conto_uscita_id) return out;
+
+    function leggi(id, dove) {
+      if (!id) return null;
+      var x = idx[id];
+      if (!x) {
+        out.avvisi.push('Il conto ' + dove + ' che questa causale propone non c’è più: '
+          + 'va riscelto in Conti e causali.');
+        return null;
+      }
+      if (x.attivo === false) {
+        out.avvisi.push('«' + testo(x.nome) + '» è spento, quindi non si propone.');
+        return null;
+      }
+      return x;
+    }
+
+    var entra = leggi(c.conto_entrata_id, 'su cui il denaro ENTRA');
+    var esce = leggi(c.conto_uscita_id, 'da cui il denaro ESCE');
+    var v = segnoDi(testo(c.segno));
+    /* Senza verso non si sa quale dei due si muove, e indovinarlo vorrebbe
+       dire scrivere il movimento al contrario una volta su due. */
+    if (!v) {
+      out.avvisi.push('Questa causale non dice se è un’entrata o un’uscita: '
+        + 'senza il verso non si sa quale dei due conti si muove.');
+      return out;
+    }
+    var muove = v > 0 ? entra : esce;
+    var altro = v > 0 ? esce : entra;
+    if (!muove) return out;
+    out.conto_id = muove.id;
+    if (!altro) return out;
+
+    /* LA STESSA FUNZIONE CHE RIEMPIE LA TENDINA. Due elenchi diversi
+       vorrebbero dire una causale che propone quello che il salvataggio poi
+       respinge — ed e' il difetto che il 22/09 aveva reso impossibile
+       registrare una spesa. */
+    var amm = contropartiteAmmesse({ conto_id: muove.id, causale_id: c.id,
+      segno: c.segno, incide_su_utile: c.incide_su_utile }, { causali: [c], conti: conti });
+    var ok = amm.conti.some(function (x) { return x.id === altro.id; });
+    if (!ok) {
+      out.avvisi.push('«' + testo(altro.nome) + '» non va più bene come contropartita di '
+        + 'questa causale. ' + (amm.motivo || 'La causale è cambiata da quando è stata configurata.')
+        + ' Si risceglie in Conti e causali.');
+      return out;
+    }
+    out.contropartita_id = altro.id;
+    return out;
+  }
+
   function contropartiteAmmesse(m, opz) {
     opz = opz || {};
     m = m || {};
@@ -3318,7 +3399,7 @@
        gambe di un movimento sono denaro vero (Fase 4-bis). Averla provabile da
        fuori e' l'unico modo di misurare che un conto di costo non risulti aver
        incassato. */
-    denaroDi: denaroDi, LIQUIDE: LIQUIDE,
+    denaroDi: denaroDi, LIQUIDE: LIQUIDE, contiDaCausale: contiDaCausale,
     /* Il resoconto di un sospeso: Excel, PDF ed email dallo stesso documento */
     resocontoSospesi: resocontoSospesi, testoSospesi: testoSospesi,
     documentoSospesi: documentoSospesi, dataIt: dataIt,

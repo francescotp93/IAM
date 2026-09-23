@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.42.0">
-<meta name="app-versione-nome" content="I sospesi: la pagina di chi tiene i premi">
+<meta name="app-versione" content="0.43.0">
+<meta name="app-versione-nome" content="Le causali dicono dove il denaro entra e da dove esce">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -6792,6 +6792,22 @@ function cntFormConto(id, propostoSaldo) {
     </div>`;
 }
 
+/* Le opzioni dei conti, in un posto solo: due tendine scritte ognuna per conto
+   suo sono due modi di elencare gli stessi conti, e quello sbagliato e' quello
+   che nessuno guarda. Un conto SPENTO resta in elenco se e' quello scelto —
+   una tendina che perde il proprio valore lo cancella al primo salvataggio
+   (§48). */
+function cntOpzioniConto(scelto) {
+  var out = '<option value="">— nessuno —</option>';
+  (CNT_CONTI || []).forEach(function (c) {
+    if (!c) return;
+    if (c.attivo === false && c.id !== scelto) return;
+    out += '<option value="' + esc(c.id) + '"' + (c.id === scelto ? ' selected' : '') + '>'
+      + esc(c.nome || '') + (c.attivo === false ? ' — spento' : '') + '</option>';
+  });
+  return out;
+}
+
 function cntFormCausale(id) {
   const c = cntTrova(CNT_CAUSALI, id) || { segno: 'uscita', attiva: true };
   const el = id ? Contabilita.causaleEliminabile(c, CNT_MOVIMENTI) : { ok: false };
@@ -6818,6 +6834,17 @@ function cntFormCausale(id) {
         <div class="fld ffull"><label>Da quale flusso nasce</label><select id="cnt-cgenere">
           ${Contabilita.GENERI.map(g => `<option value="${esc(g.k)}" ${(c.genere || 'manuale') === g.k ? 'selected' : ''}>${esc(g.l)}</option>`).join('')}</select>
           <div class="cl-sub">Il segno dice il <b>verso</b>, questo dice <b>chi scrive</b>. Serve a proporre la causale giusta nel flusso giusto, e a riconoscere un movimento che ha scritto il sistema: quello si corregge dove è nato, non dalla prima nota — altrimenti la rata e la contabilità direbbero due cose diverse, e nessuna delle due saprebbe di essere quella sbagliata.</div></div>
+        <!-- I DUE CONTI CHE LA CAUSALE PROPONE (23/09/2026, richiesta di
+             Francesco: «devo poter indicare su quale conto vanno e da quale
+             conto escono»). Sono una PROPOSTA: registrando un movimento
+             finiscono nei due campi, visibili e correggibili. E non
+             scavalcano il cancello — una contropartita che non e' piu'
+             ammessa non si propone, e la prima nota dice perche'. -->
+        <div class="fld"><label>Il conto su cui il denaro ENTRA</label>
+          <select id="cnt-centrata">${cntOpzioniConto(c.conto_entrata_id)}</select></div>
+        <div class="fld"><label>Il conto da cui il denaro ESCE</label>
+          <select id="cnt-cuscita">${cntOpzioniConto(c.conto_uscita_id)}</select>
+          <div class="cl-sub">Facoltativi. Esempio: un versamento in banca fatto in contanti entra sul conto corrente ed esce dalla cassa contanti. Registrando un movimento con questa causale i due campi si riempiono da soli, e restano correggibili.</div></div>
         <div class="fld"><label>Ordine</label><input type="number" id="cnt-cordine" value="${esc(String(c.ordine || 0))}"></div>
         <div class="fld"><label><input type="checkbox" id="cnt-cattiva" ${c.attiva === false ? '' : 'checked'}> Causale attiva</label></div>
         <div class="fld ffull"><label>Note</label><textarea id="cnt-cnote" rows="2">${esc(c.note || '')}</textarea></div>
@@ -6912,8 +6939,17 @@ async function cntSalvaCausale(id) {
     genere: val('cnt-cgenere') || 'manuale',
     ordine: parseInt(val('cnt-cordine'), 10) || 0,
     attiva: !!document.getElementById('cnt-cattiva')?.checked,
+    conto_entrata_id: val('cnt-centrata') || null,
+    conto_uscita_id: val('cnt-cuscita') || null,
     note: val('cnt-cnote').trim() || null
   };
+  /* Lo stesso conto da tutte e due le parti non muove niente: lo vieta anche
+     il database, ma dirlo qui evita di far compilare un modulo per poi
+     respingerlo. */
+  if (riga.conto_entrata_id && riga.conto_entrata_id === riga.conto_uscita_id) {
+    cntMsg({ ok: false, errori: ['Il conto di entrata e quello di uscita sono lo stesso: un movimento da un conto a se stesso non muove niente.'] });
+    return;
+  }
   const v = Contabilita.validaCausale(Object.assign({ id: id || null }, riga), CNT_CAUSALI);
   cntMsg(v);
   if (!v.ok) return;
@@ -7366,6 +7402,51 @@ function pntCambiaConto() {
    riempie la tendina con la STESSA funzione che poi rifiuta: due elenchi
    diversi vorrebbero dire una schermata che propone quello che il
    salvataggio respinge. Qui c'è solo la resa. */
+/* ── I CONTI CHE LA CAUSALE PROPONE (23/09/2026) ───────────────────────────
+   «Devo poter indicare su quale conto vanno e da quale conto escono»
+   (Francesco). Le due colonne stanno sulla causale; qui si mettono nei campi.
+
+   SI RIEMPIONO SOLO I CAMPI VUOTI. Chi ha già scelto un conto sapeva qualcosa
+   che la causale non sa, e cancellarglielo cambiando causale sarebbe lavoro
+   perso che nessuno si accorge di aver perso (§19, regola 2). Dove la
+   proposta è diversa da quello che c'è, si DICE — invece di applicarla o di
+   tacere. */
+function pntCausaleScelta() {
+  var c = null;
+  (PNT_CAUSALI || []).forEach(function (x) { if (x && x.id === pntVal('pnt-m-causale')) c = x; });
+  var p = (c && window.Contabilita) ? Contabilita.contiDaCausale(c, { conti: PNT_CONTI }) : null;
+
+  var selC = document.getElementById('pnt-m-conto');
+  if (selC && !selC.disabled && !selC.value && p && p.conto_id) selC.value = p.conto_id;
+
+  /* Prima si mette il conto, poi si ricostruisce la tendina dell'altro: le
+     contropartite ammesse dipendono dal conto scelto, e riempirla prima
+     vorrebbe dire offrire un elenco che non c'entra. */
+  pntContro();
+
+  var selX = document.getElementById('pnt-m-contro');
+  if (selX && !selX.disabled && !selX.value && p && p.contropartita_id) {
+    selX.value = p.contropartita_id;
+    if (selX.value === p.contropartita_id) pntEffetto();
+  }
+
+  var box = document.getElementById('pnt-proposta');
+  if (!box) return;
+  var righe = [];
+  if (p) {
+    (p.avvisi || []).forEach(function (a) { righe.push(a); });
+    /* La proposta che NON si è potuta applicare perché il campo era già
+       pieno: si dichiara, col nome del conto, invece di sparire. */
+    if (p.conto_id && selC && selC.value && selC.value !== p.conto_id)
+      righe.push('Questa causale propone «' + (pntConto(p.conto_id) || {}).nome + '» come conto che si muove: '
+        + 'non l\'ho cambiato perché ne avevi già scelto un altro.');
+    if (p.contropartita_id && selX && selX.value && selX.value !== p.contropartita_id)
+      righe.push('E propone «' + (pntConto(p.contropartita_id) || {}).nome + '» come altro conto.');
+  }
+  box.className = righe.length ? 'cnt-avv' : 'cl-sub';
+  box.innerHTML = righe.map(function (r) { return esc(r); }).join('<br>');
+}
+
 function pntContro() {
   const sel = document.getElementById('pnt-m-contro');
   const nota = document.getElementById('pnt-contro-nota');
@@ -7475,7 +7556,7 @@ function pntApriMovimento(id) {
               `<option value="${esc(c.id)}" ${c.id === m.conto_id ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}
           </select></div>
         <div class="fld"><label>Causale</label>
-          <select id="pnt-m-causale" onchange="pntContro()" ${auto ? 'disabled' : ''}>
+          <select id="pnt-m-causale" onchange="pntCausaleScelta()" ${auto ? 'disabled' : ''}>
             <option value="">— scegli —</option>${pntOpzCausali(m.conto_id, m.causale_id)}
           </select></div>
         <div class="fld ffull"><label id="pnt-contro-lab">${id ? 'Contropartita' : 'L’altro conto'}</label>
@@ -7484,7 +7565,8 @@ function pntApriMovimento(id) {
             ${PNT_CONTI.filter(c => c.attivo !== false || c.id === contro).map(c =>
               `<option value="${esc(c.id)}" ${c.id === contro ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}
           </select>
-          <div id="pnt-contro-nota" class="cl-sub">È l'altro conto: da dove il denaro arriva, o dove va a finire. Un incasso di premi entra in cassa <b>e</b> diventa un debito verso la compagnia: sono due fatti dello stesso evento, e registrarne uno solo lascia l'altro alla memoria di chi c'era.${id ? ' Su un movimento già registrato non si cambia: si storna.' : ''}</div></div>
+          <div id="pnt-contro-nota" class="cl-sub">È l'altro conto: da dove il denaro arriva, o dove va a finire. Un incasso di premi entra in cassa <b>e</b> diventa un debito verso la compagnia: sono due fatti dello stesso evento, e registrarne uno solo lascia l'altro alla memoria di chi c'era.${id ? ' Su un movimento già registrato non si cambia: si storna.' : ''}</div>
+          <div id="pnt-proposta" class="cl-sub"></div></div>
         <div class="fld ffull" id="pnt-effetto"></div>
         <div class="fld"><label>Controparte</label>
           <input type="text" id="pnt-m-controparte" value="${esc(m.controparte || '')}" placeholder="chi ha pagato, o chi è stato pagato"></div>

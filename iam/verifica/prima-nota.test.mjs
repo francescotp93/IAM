@@ -373,11 +373,41 @@ prova('la tendina si riempie ANCHE quando la finestra si apre', () => {
      repository (§1): senza questa riga la proposta arriverebbe solo dopo aver
      toccato la causale. */
   const b = blocco();
-  deve(/onchange="pntContro\(\)"/.test(b), 'la causale non ricalcola la contropartita');
+  /* LA REGOLA È «scegliere la causale ricalcola», non «chiama proprio quella
+     funzione». Dal 23/09 passa da `pntCausaleScelta`, che prima mette i conti
+     proposti dalla causale e POI ricostruisce la tendina — l'ordine conta,
+     perché le contropartite ammesse dipendono dal conto scelto. Una prova che
+     fissa il nome della funzione diventa rossa su un codice giusto (§15, §16,
+     §33, §35). */
+  deve(/onchange="pnt(Contro|CausaleScelta)\(\)"/.test(b), 'la causale non ricalcola la contropartita');
+  deve(/function pntCausaleScelta\([\s\S]{0,1600}?pntContro\(\);/.test(b),
+    'la scelta della causale non ricostruisce la tendina della contropartita');
   deve(/oninput="pntEffetto\(\)"/.test(b), 'l\'importo non aggiorna l\'effetto');
   deve(/regInstalla\('pnt-storia'[\s\S]{0,300}?\n  pntContro\(\);/.test(b),
     'aprendo la finestra la tendina non si riempie');
   return 'all\'apertura, al cambio di causale e a ogni cifra';
+});
+
+prova('I CONTI DELLA CAUSALE SI PROPONGONO, e non cancellano quello che c’è', () => {
+  const b = blocco();
+  /* La regola sta nel motore (`Contabilita.contiDaCausale`, quattro prove in
+     Node): qui si guarda che la schermata la chiami e che non decida. */
+  deve(/Contabilita\.contiDaCausale\(/.test(b), 'la schermata non chiede i conti alla causale');
+  const f = b.slice(b.indexOf('function pntCausaleScelta'), b.indexOf('function pntContro'));
+
+  /* SI RIEMPIONO SOLO I CAMPI VUOTI: chi ha già scelto un conto sapeva
+     qualcosa che la causale non sa, e cancellarglielo cambiando causale
+     sarebbe lavoro perso che nessuno si accorge di aver perso (§19, regola 2). */
+  deve((f.match(/!sel[CX]\.value/g) || []).length === 2,
+    'la proposta sovrascrive i conti già scelti');
+  /* E quello che NON si è potuto applicare si dichiara, invece di sparire. */
+  deve(/propone/.test(f) && /pnt-proposta/.test(f),
+    'una proposta scartata sparisce in silenzio');
+  /* Prima il conto, POI la tendina dell'altro: le contropartite ammesse
+     dipendono dal conto scelto. */
+  deve(f.indexOf("'pnt-m-conto'") < f.indexOf('pntContro();'),
+    'la tendina si ricostruisce prima di sapere quale conto si muove');
+  return 'chiama il motore, riempie solo i vuoti, e dice quello che scarta';
 });
 
 console.log('\n══ PRIMA NOTA E QUADRATURA (IAM) ══');

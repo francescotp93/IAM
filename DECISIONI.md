@@ -6,6 +6,33 @@ soltanto quello che Francesco potrebbe voler ribaltare.
 
 ---
 
+## 23/09/2026 — Le causali dicono dove il denaro entra e da dove esce (0.43.0)
+
+**Perimetro:** due conti facoltativi su ogni causale, proposti nei campi della
+prima nota.
+
+🔴 **Applicato al database, con la tua autorizzazione permanente.** Due colonne
+nuove su `iam_causali` (`conto_entrata_id`, `conto_uscita_id`), due indici e un
+vincolo che vieta di metterci lo stesso conto. **Nessuna causale toccata:** le
+quattordici che ci sono restano coi due campi vuoti. *Come tornare indietro:*
+il blocco ROLLBACK in fondo a `20260923f_causali_conti_predefiniti.sql`.
+
+🟡 **È una proposta, non una decisione.** I due conti finiscono nei campi
+visibili e correggibili, e si riempiono SOLO se erano vuoti: se avevi già
+scelto un conto non te lo cancella, e ti scrive che cosa avrebbe proposto.
+
+🟡 **La proposta non scavalca i controlli.** Se cambi la causale da «denaro in
+transito» a «costo», o spegni quel conto, la coppia salvata smette di andare
+bene: non si propone più, e la prima nota dice perché. *Come tornare indietro:*
+si risceglie la coppia in Conti e causali.
+
+📝 **Fuori perimetro, annotato in CLAUDE.md §71:** la proposta non arriva agli
+incassi automatici (Fase 2 e Fase 3), che scelgono il conto dalla
+configurazione dei mezzi di pagamento — è un'altra domanda, e unirle sarebbe
+una decisione.
+
+---
+
 ## 23/09/2026 — I sospesi: la pagina di chi tiene i premi (0.42.0)
 
 **Perimetro:** la pagina di dettaglio di un sospeso, la selezione multipla, lo

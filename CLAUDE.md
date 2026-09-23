@@ -8322,3 +8322,90 @@ diverse: l'errore si scrive in schermata, non si tace.
   altri export di casa: il PDF con la carta intestata si scarica a parte.
 - **Una sola voce è abbinata a una persona** (Oddo Francesco): finché è così,
   la pagina di dettaglio con l'email precompilata vale per lei sola.
+
+---
+
+## 71. Le causali dicono dove il denaro entra e da dove esce (23/09/2026)
+
+> «Quando in una causale, devo aver la possibilità di indicare su quale conto
+> vanno e da quale conto escono. Esempio un versamento su conto corrente e lo
+> faccio in contanti, devo poter aggiungere il conto dove entrano, ma anche il
+> conto dove escono, come ad esempio il conto contanti.» — Francesco.
+
+| pezzo | dove |
+|---|---|
+| la regola | `Contabilita.contiDaCausale` in `tariffe/motore/contabilita.js` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **130** (erano 126) |
+| le due colonne, l'indice e il divieto | `supabase/migrations/20260923f_causali_conti_predefiniti.sql` (applicata) |
+| i due campi nella causale | `cntFormCausale`, `cntOpzioniConto`, `cntSalvaCausale` in `iam/index.html` |
+| la proposta nella prima nota | `pntCausaleScelta` in `iam/index.html` |
+| prove sulle schermate | `conti-causali.test.mjs` (17), `prima-nota.test.mjs` (19) |
+
+### Il verso decide quale dei due conti si muove
+
+Le due colonne sono nelle parole di Francesco — **dove il denaro entra** e **da
+dove esce** — e il motore le traduce nei due campi del movimento: quello che si
+*muove* e la *contropartita*.
+
+Su un'**entrata** il conto che si muove è quello su cui il denaro entra; su
+un'**uscita** è quello da cui esce. Invertirli scriverebbe il movimento al
+contrario, e **un saldo rovesciato ha esattamente l'aria di uno giusto**. Senza
+verso non si indovina: sbaglierebbe una volta su due, e allora non si propone
+niente e si dice perché.
+
+### La proposta non scavalca il cancello
+
+È la parte che conta. La contropartita configurata passa per la **stessa**
+`contropartiteAmmesse` che riempie la tendina e che poi rifiuta (§«la spesa che
+non sottrae»): se qualcuno cambia `incide_su_utile` della causale, o spegne
+quel conto, la coppia salvata smette di essere ammessa — e allora **non si
+propone**, col motivo scritto.
+
+> **Una configurazione che scavalca un controllo è un controllo che non
+> esiste.** Un conto corrente proposto come contropartita di una spesa
+> risulterebbe *aver incassato* quei soldi: un saldo più alto del vero, che la
+> quadratura troverebbe sbagliato senza saper dire da dove viene.
+
+Stessa cosa per un conto **spento** o che non c'è più: non si propone, e non
+sparisce in silenzio — una causale che smette di proporre senza spiegare si
+legge come un guasto del programma.
+
+### Si riempiono solo i campi vuoti
+
+Chi ha già scelto un conto sapeva qualcosa che la causale non sa, e
+cancellarglielo cambiando causale sarebbe lavoro perso che nessuno si accorge
+di aver perso (§19, regola 2). Quello che **non** si è potuto applicare si
+dichiara sotto i campi, col nome del conto, invece di sparire.
+
+E l'ordine non è estetica: prima si mette il conto che si muove, **poi** si
+ricostruisce la tendina della contropartita — le contropartite ammesse
+dipendono dal conto scelto, e riempirla prima vorrebbe dire offrire un elenco
+che non c'entra.
+
+### Niente seminato
+
+Le quattordici causali di oggi restano con tutte e due le colonne vuote.
+Scrivere una coppia «ragionevole» vorrebbe dire decidere al posto di chi tiene
+i conti, e dopo due settimane quel conto sarebbe un dato che nessuno sa di aver
+scelto (§8.1).
+
+Il divieto «i due conti non possono essere lo stesso» sta nel database, non
+solo nella schermata: la schermata è una delle strade, non l'unica. E il
+riferimento ai conti è `on delete set null` e non `restrict` — un conto che si
+cancella non deve restare bloccato dietro una causale che lo nominava, e la
+causale resta col campo vuoto, che è la verità («non è più deciso»).
+
+### Una prova aggiornata nella regola
+
+`prima-nota.test.mjs` pretendeva `onchange="pntContro()"` sulla causale: la
+regola era «scegliere la causale ricalcola», non «chiama proprio quella
+funzione». Adesso passa da `pntCausaleScelta`, e la prova misura la **catena**
+(prima il conto, poi la tendina) invece del nome.
+
+### Cosa resta aperto
+
+- **Nessuna causale ha ancora i due conti**, ed è il punto: il primo lo scegli
+  tu. La causale «versamento in banca» dell'esempio **non esiste**: va creata.
+- **La proposta non arriva agli incassi automatici** (Fase 2, Fase 3): quelli
+  scelgono il conto dalla configurazione dei mezzi (§32), che è un'altra
+  domanda. Unirle sarebbe una decisione, non una conseguenza.

@@ -2410,6 +2410,79 @@ prova('un conto che QUADRA non accusa niente', () => {
   return 'quadra, e non manda a cercare niente';
 });
 
+/* ══ IL RESOCONTO DI UN SOSPESO (23/09/2026) ════════════════════════════════
+   Excel, PDF ed email escono dallo stesso documento: se fossero tre
+   costruzioni, quella sbagliata sarebbe quella che il collaboratore ha
+   ricevuto. */
+const GRUPPO = () => ({
+  voce: 'col_oddo_francesco', etichetta: 'Oddo Francesco', tipo: 'collaboratore',
+  sezione: 'persone', collaboratore_id: 'p-oddo',
+  righe: [
+    { id: 'a', famiglia: 'versare', importo: 300, cliente: 'ROSSI', numero_polizza: 'P1',
+      compagnia: 'PRIMA', mezzo_rata_l: 'Carta di credito', data: '2026-09-01', in_ritardo: true },
+    { id: 'b', famiglia: 'incassare', importo: 200, cliente: 'BIANCHI', numero_polizza: 'P2',
+      compagnia: 'HDI', data: '2026-09-10' },
+    { id: 'c', famiglia: 'versare', importo: null, cliente: 'VERDI', numero_polizza: 'P3', data: '2026-09-05' }
+  ]
+});
+
+prova('LE DUE FAMIGLIE NON SI SOMMANO IN UN NUMERO SOLO', () => {
+  const r = C.resocontoSospesi(GRUPPO(), {});
+  deve(r.totali.totale_versare === 300, 'il «da versare» non torna: ' + r.totali.totale_versare);
+  deve(r.totali.totale_incassare === 200, 'il «da incassare» non torna: ' + r.totali.totale_incassare);
+  deve(r.caso === 'misto', 'il caso non è misto: ' + r.caso);
+  /* E il TESTO che esce di casa lo dice: chiedere a una persona la somma
+     delle due famiglie vorrebbe dire chiedergli dei soldi che il cliente non
+     ha ancora versato. */
+  const t = C.testoSospesi(r, { oggi: '2026-09-23', nome: 'Oddo Francesco' });
+  deve(t.ok, 'il testo non parte');
+  deve(/non si sommano/.test(t.testo), 'il testo non dice che i due numeri non si sommano');
+  deve(!/500/.test(t.testo), 'il testo mette in giro un totale unico da 500');
+  return '300 da versare, 200 da incassare, e il testo che lo spiega';
+});
+
+prova('UN IMPORTO CHE NON C’È NON VALE ZERO, e l’avviso sta in TUTTI i formati', () => {
+  const r = C.resocontoSospesi(GRUPPO(), {});
+  deve(r.totali.senza_importo === 1, 'non conta la riga senza importo');
+  deve(r.totali.importo === 500, 'la riga senza importo è entrata nel totale: ' + r.totali.importo);
+  /* L'avviso è la parte che un formato breve sarebbe tentato di togliere, ed
+     è esattamente quella che deve restare (§34). Un foglio scaricato vive da
+     solo per mesi, lontano dallo schermo che lo spiegava (§62). */
+  deve(r.avvisi.some(a => /non entra nel totale/.test(a)), 'il resoconto non lo dichiara');
+  const t = C.testoSospesi(r, { oggi: '2026-09-23' });
+  deve(/non entra nel totale/.test(t.testo), 'l’email non lo dichiara');
+  const d = C.documentoSospesi(r, { oggi: '2026-09-23' });
+  const nota = JSON.stringify(d.blocchi.filter(b => b.tipo === 'testo'));
+  deve(/non entra nel totale/.test(nota), 'il PDF non lo dichiara');
+  return '1 fuori dal totale, dichiarata nei tre formati';
+});
+
+prova('una SELEZIONE si dichiara: non è tutto quello che risulta', () => {
+  const r = C.resocontoSospesi(GRUPPO(), { scelte: { a: true } });
+  deve(r.righe.length === 1 && r.totali.n === 1, 'la selezione non restringe');
+  deve(r.selezione === true && r.righe_totali === 3, 'non dice da quante righe è stata presa');
+  deve(r.avvisi.some(a => /selezione/.test(a)), 'il documento non dichiara che è una selezione');
+  /* Un resoconto parziale che non lo dice fa credere che quello sia tutto:
+     è il tetto nascosto di §50 e §53 su un foglio che esce di casa. */
+  const t = C.testoSospesi(r, { oggi: '2026-09-23' });
+  deve(/selezione/.test(t.testo), 'l’email non dichiara che è una selezione');
+  return '1 riga su 3, e tutti e due i formati lo scrivono';
+});
+
+prova('un resoconto VUOTO non parte, e il testo non promette una data', () => {
+  const vuoto = C.resocontoSospesi({ voce: 'x', etichetta: 'X', righe: [] }, {});
+  deve(vuoto.caso === 'vuoto', 'un gruppo senza righe non è dichiarato vuoto');
+  const t = C.testoSospesi(vuoto, { oggi: '2026-09-23' });
+  deve(t.ok === false && t.motivo, 'un resoconto vuoto parte lo stesso');
+  /* Nessun testo promette QUANDO si paga: non l'ha deciso nessuno, e una
+     promessa in un testo automatico è una promessa che l'agenzia non sa di
+     aver fatto (§34). */
+  const pieno = C.testoSospesi(C.resocontoSospesi(GRUPPO(), {}), { oggi: '2026-09-23' });
+  deve(!/entro il|entro \d|scadenza|termine di pagamento/i.test(pieno.testo),
+    'il testo promette una data di pagamento che nessuno ha deciso');
+  return 'vuoto non parte, e nessuna data promessa';
+});
+
 console.log('\n══ CONTI E CAUSALI ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

@@ -77,7 +77,13 @@ prova('la schermata esiste, è raggiungibile e ha il suo inizializzatore', () =>
   const elenco = (H.match(/\[('[a-z]+',\s*)+'storico'\]\.forEach/) || [])[0] || '';
   deve(/'incassa'/.test(elenco),
     'la sotto-scheda non è nell\'elenco che accende i pannelli: la linguetta non spegnerebbe le altre');
-  deve(/if \(sub==='incassa'\) incaApri\(\)/.test(H),
+  /* LA REGOLA È «qualcuno la chiama», non «la chiama in quel modo esatto».
+     Dal 23/09 la promessa si tiene (`INCA_PRONTA = incaApri()`), perché chi
+     arriva qui con delle rate già scelte dai Sospesi deve poter aspettare che
+     l'apertura finisca — altrimenti se le vede azzerare a metà strada (§17).
+     Una prova che fissa la forma della chiamata diventa rossa su un codice
+     giusto (§15, §16, §33, §35). */
+  deve(/if \(sub==='incassa'\)[^\n]*incaApri\(\)/.test(H),
     'nessuno riempie il pannello: la linguetta aprirebbe un riquadro vuoto (§6b)');
   deve(/const contabSub = \[[^\]]*'incassa'/.test(H),
     'la sotto-scheda non è fra quelle che l\'indirizzo sa aprire');

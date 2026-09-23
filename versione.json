@@ -1,8 +1,21 @@
 {
-  "versione": "0.41.0",
-  "nome": "Punti vendita: il responsabile, e le polizze",
+  "versione": "0.42.0",
+  "nome": "I sospesi: la pagina di chi tiene i premi",
   "data": "2026-09-23",
   "storia": [
+    {
+      "v": "0.42.0",
+      "data": "2026-09-23",
+      "nome": "I sospesi: la pagina di chi tiene i premi",
+      "voci": [
+        "SOSPESI · CLICCA SU UN NOME E SI APRE LA SUA PAGINA. Da lì vedi tutte le sue rate, una per una, divise fra quelle che il cliente ha già pagato (quei soldi li tiene lui) e quelle che il cliente deve ancora pagare.",
+        "FLAGGHI QUELLE CHE VUOI E LE SCARICHI INSIEME: le rate scelte arrivano già spuntate nella schermata dove si registra l'incasso, così è un gesto solo invece di dieci. Le due famiglie però non si scaricano insieme, e la schermata dice perché: una rata che il cliente non ha ancora pagato si INCASSA, una già incassata si PORTA IN CONTABILITÀ — sono due cose diverse.",
+        "EXCEL, PDF ED EMAIL escono tutti e tre dallo stesso documento: se fossero tre costruzioni diverse, un giorno direbbero tre cose diverse e quella sbagliata sarebbe quella che il collaboratore ha in mano. Il PDF ha la carta intestata With Us.",
+        "L'EMAIL PARTE CON UN CLIC: l'indirizzo si precompila da chi è abbinato a quella voce, e parte dalla casella della contabilità — perché le risposte devono arrivare dove quei conti li tengono.",
+        "ABBINARE UNA VOCE A UNA PERSONA si fa dalla sua pagina, e solo dove la voce è già una persona: attaccare un collaboratore al POS vorrebbe dire dire che tutte le rate pagate col POS le tiene lui.",
+        "Quello che resta fuori dal totale viaggia SUL FOGLIO, non solo sullo schermo: una rata senza importo dichiarato non vale zero, e una selezione parziale lo scrive — un file scaricato vive da solo per mesi, lontano dalla schermata che lo spiegava."
+      ]
+    },
     {
       "v": "0.41.0",
       "data": "2026-09-23",

@@ -144,6 +144,13 @@
     { k: 'credito',            l: 'Crediti (sospesi)',       i: 'ti-clock-dollar' },
     { k: 'debito',             l: 'Debiti e crediti verso terzi', i: 'ti-scale' },
     { k: 'rettifica',          l: 'Rettifiche (abbuoni)',    i: 'ti-adjustments' },
+    /* CARTA DI CREDITO, 23/09/2026. Non e' un conto corrente, ed e' il
+       motivo per cui esiste: un conto corrente sta fra le tipologie LIQUIDE,
+       cioe' «soldi che l'agenzia ha». Il saldo di una carta dice quanto si
+       DEVE, e sommarlo alla liquidita' fa leggere un'agenzia piu' povera di
+       quello che e'. Il segno resta negativo — quello e' giusto — cambia il
+       mucchio in cui finisce. */
+    { k: 'carta_credito',      l: 'Carta di credito',        i: 'ti-credit-card' },
     /* COSTO e RICAVO, aggiunte il 22/09/2026 — e la segnalazione che le ha
        fatte nascere è: «ho inserito un saldo iniziale ed ho aggiunto delle
        spese, ma essendo spese si dovrebbe defalcare dal saldo, invece il

@@ -1161,3 +1161,24 @@ decisione, non una conseguenza.
   ancora un banco che li fa girare: nessuno di loro chiama funzioni del
   preventivatore — censito — ma la prova che lo dimostrerebbe girando esiste
   solo per i Sospesi.
+
+## 23/09/2026 — 0.39.1 · Una carta di credito non è un conto corrente
+
+### 🟡 Scelte prese da solo (su «ok per carta di credito»)
+
+1. **Tipologia nuova `carta_credito`** invece di riusare `debito`, che è
+   «debiti e crediti verso terzi» — cioè le compagnie. Una carta ha un nome
+   che chi lavora riconosce, e in una tendina «debito» non lo direbbe.
+   *Come tornare indietro:* una riga in `TIPOLOGIE` e il ROLLBACK in
+   `supabase/migrations/20260923_carta_di_credito.sql`.
+2. **L'aggiornamento tocca SOLO quel conto**, e solo se è ancora classificato
+   `banca`. Un aggiornamento largo («tutti i conti che si chiamano carta…»)
+   riclassificherebbe domani un conto chiamato così di proposito.
+3. **Il saldo di partenza non è stato toccato.** Resta 0,00: la quadratura
+   adesso propone 3.170,00, ma proporre e scrivere sono due cose diverse.
+
+### 🔴 Resta da decidere
+
+- **`CASSA CONTANTI` è di tipologia `altro`** (aperta dal 22/09, §53): il fondo
+  cassa somma solo le tipologie `cassa`, quindi quel conto non ci entra e il
+  fondo resta a zero. È una decisione contabile, non una correzione.

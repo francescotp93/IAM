@@ -1,8 +1,17 @@
 {
-  "versione": "0.39.0",
-  "nome": "I sospesi si vedono davvero, e una differenza dice le sue due cause",
+  "versione": "0.39.1",
+  "nome": "Una carta di credito non è un conto corrente",
   "data": "2026-09-23",
   "storia": [
+    {
+      "v": "0.39.1",
+      "data": "2026-09-23",
+      "nome": "Una carta di credito non è un conto corrente",
+      "voci": [
+        "LA CARTA DI CREDITO HA LA SUA TIPOLOGIA. Era classificata come conto corrente bancario, e per IAM un conto corrente è liquidità: il debito della carta veniva tolto dal riquadro «Soldi dell'agenzia», facendo leggere un'agenzia più povera di quello che è.",
+        "Il saldo della carta resta negativo, ed è giusto: dice quanto si deve alla banca. Quello che cambia è il mucchio in cui finisce — un debito non è cassa."
+      ]
+    },
     {
       "v": "0.39.0",
       "data": "2026-09-23",

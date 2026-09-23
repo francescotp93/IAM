@@ -418,7 +418,8 @@ prova('la schermata disegna DUE SEZIONI, e le persone si aprono da sole', () => 
    (compreso il filtro sulla tabella agganciata) e fa girare `sprCarica` per
    davvero, sulle due righe vere del 22/09/2026. Se una funzione manca, o se
    la lettura non aggancia, questa prova diventa rossa. */
-function bancoSpr(righe, modalita) {
+function bancoSpr(righe, modalita, extra) {
+  extra = extra || {};
   const b = bloccoGrezzo();
   const pezzi = ['async function cntTutte(fai)', 'async function cntMorbida(fai)']
     .map(f => {
@@ -429,21 +430,29 @@ function bancoSpr(righe, modalita) {
     }).join('\n');
   const elementi = {};
   const nodo = (id) => (elementi[id] = elementi[id] || { id, innerHTML: '', textContent: '', value: '' });
-  ['spr-lista', 'spr-cards', 'spr-avvisi'].forEach(nodo);
-  const doc = { getElementById: (id) => elementi[id] || null };
+  ['spr-lista', 'spr-cards', 'spr-avvisi', 'spr-somma', 'spr-mail', 'spr-abbina'].forEach(nodo);
+  const scaricati = [], mandate = [], scritte = [];
+  const doc = {
+    getElementById: (id) => elementi[id] || null,
+    createElement: () => ({ style: {}, click() {}, remove() {}, setAttribute() {} }),
+    body: { appendChild() {}, removeChild() {} }
+  };
 
   /* Il finto PostgREST: quello che conta è che onori il filtro sulla tabella
      agganciata (`quote_polizze.mezzo_pagamento`), che è la strada con cui si
      leggono le rate già incassate di chi tiene i premi. */
   function q(tab) {
-    const st = { sel: '', filtri: [], dati: tab === 'quote_titoli' ? righe
-      : tab === 'iam_modalita_pagamento' ? modalita : [] };
+    const st = { tab, sel: '', filtri: [], dati: tab === 'quote_titoli' ? righe
+      : tab === 'iam_modalita_pagamento' ? modalita
+      : tab === 'quote_collaboratori' ? (extra.persone || []) : [] };
     const api = {
+      update(v) { st.update = v; scritte.push(st); return api; },
       select(x) { st.sel = x || ''; return api; },
       eq(c, v) { st.filtri.push([c, 'eq', v]); return api; },
       in(c, v) { st.filtri.push([c, 'in', v]); return api; },
       not() { return api; }, order() { return api; }, range() { return api; },
       then(res) {
+        if (st.update) return Promise.resolve(res({ data: [{ codice: 'x' }], error: null }));
         let d = st.dati.slice();
         for (const [c, op, v] of st.filtri) {
           if (c.indexOf('.') > 0) {
@@ -461,14 +470,23 @@ function bancoSpr(righe, modalita) {
     return api;
   }
   const src = pezzi + '\n' + b
-    + '\nreturn { sprCarica, sprRender, stato: () => ({ esito: SPR_ESITO, err: SPR_ERR, rate: SPR_RATE }) };';
+    + '\nreturn { sprCarica, sprRender, sprApri, sprChiudi, sprSel, sprSelTutte, sprRes,'
+    + ' sprExcel, sprMail, sprAbbina, sprScarica, sprDocHTML,'
+    + ' stato: () => ({ esito: SPR_ESITO, err: SPR_ERR, rate: SPR_RATE, dett: SPR_DETT,'
+    + ' sel: SPR_SEL, invio: SPR_ESITO_INVIO }) };';
   const f = new Function('document', 'db', 'Contabilita', 'CNT_PASSO', 'CNT_GIRI',
-    'esc', 'selContabTab', 'cntOggiIso', 'pntData', 'window', src);
+    'esc', 'selContabTab', 'cntOggiIso', 'pntData', 'window', 'mailFetch', 'confirm',
+    'logMovimento', 'goTab', 'cntTab', 'Blob', 'URL', 'INCA_PRONTA', 'incaConRate', src);
   const api = f(doc, { from: q }, C, 1000, 50,
-    (x) => String(x == null ? '' : x), () => {}, () => '2026-09-23',
+    (x) => String(x == null ? '' : x), (t) => scaricati.push(t), () => '2026-09-23',
     (d) => (d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—'),
-    { Contabilita: C });
-  return { api, el: elementi };
+    { Contabilita: C },
+    (path, opts) => { mandate.push({ path, body: JSON.parse(opts.body) }); return Promise.resolve({}); },
+    () => true, () => {}, () => {}, () => {},
+    function () { return { size: 0 }; },
+    { createObjectURL: () => 'blob:x', revokeObjectURL: () => {} },
+    Promise.resolve(), async () => {});
+  return { api, el: elementi, scaricati, mandate, scritte };
 }
 
 /* Le due righe vere del portafoglio, misurate il 23/09/2026: due polizze la
@@ -513,6 +531,136 @@ prova('LA SCHERMATA GIRA DAVVERO, e Oddo Francesco ci sta dentro', async () => {
   return 'la schermata disegna, e la persona è in cima con € 662,98';
 });
 
+prova('LA PAGINA DI UN SOSPESO SI APRE, e prende il posto dell’elenco', async () => {
+  const { api, el } = bancoSpr(RATE_VERE, MOD_VERE, {
+    persone: [{ id: '33109d90', nome: 'Francesco', cognome: 'Oddo', email: 'f@x.it' }]
+  });
+  await api.sprCarica(true);
+  await api.sprApri('col_oddo_francesco');
+  const h = el['spr-lista'].innerHTML;
+  deve(api.stato().dett === 'col_oddo_francesco', 'la pagina non risulta aperta');
+  /* Prende il POSTO dell'elenco: due liste della stessa cosa aperte insieme
+     fanno perdere quale delle due si sta guardando. */
+  deve(!/Per mezzo di pagamento/.test(h), 'l’elenco di tutti i gruppi è rimasto sotto');
+  deve(/CARPITELLA GUIDO/.test(h) && /SPADA VINCENZO EMANUELE/.test(h),
+    'le due rate della persona non ci sono');
+  deve(/Tutti i sospesi/.test(h), 'non c’è come tornare indietro');
+  /* L'email si precompila con quella della persona ABBINATA: è questo che
+     rende vero il «con un semplice click». */
+  deve(/value="f@x.it"/.test(h), 'l’indirizzo non si precompila da chi è abbinato');
+  /* E i totali di testa sono quelli del resoconto, non di tutto il gruppo. */
+  deve(/Da versare in agenzia/.test(el['spr-somma'].innerHTML), 'la testa non separa le due famiglie');
+  api.sprChiudi();
+  deve(api.stato().dett === null && /Per mezzo di pagamento/.test(el['spr-lista'].innerHTML),
+    'chiudendo non si torna all’elenco');
+  return 'si apre, mostra le due rate, precompila l’email e si richiude';
+});
+
+prova('SI FLAGGA PIÙ DI UNA, e quello che esce dichiara che è una SELEZIONE', async () => {
+  const { api, el, scaricati } = bancoSpr(RATE_VERE, MOD_VERE, {});
+  await api.sprCarica(true);
+  await api.sprApri('col_oddo_francesco');
+
+  /* Senza niente di flaggato vale TUTTO il gruppo: chi non ha scelto niente
+     vuole il quadro intero, non un foglio vuoto. */
+  deve(api.sprRes().righe.length === 2, 'senza selezione non vale tutto il gruppo');
+
+  api.sprSel('t1', true);
+  const res = api.sprRes();
+  deve(res.righe.length === 1 && res.selezione === true, 'la selezione non restringe');
+  /* E il documento LO DICE: un foglio parziale che non si dichiara fa credere
+     che quello sia tutto (§50, §53, applicati a un file che esce di casa). */
+  const doc = api.sprDocHTML(res);
+  deve(/selezione/.test(doc), 'il foglio non dichiara che è una selezione');
+
+  api.sprSelTutte('tutte');
+  deve(Object.keys(api.stato().sel).length === 2, '«Tutte» non ne prende due');
+  api.sprSelTutte('nessuna');
+  deve(Object.keys(api.stato().sel).length === 0, '«Nessuna» non svuota');
+
+  api.sprExcel();
+  deve(scaricati.length === 0, 'l’export è passato da selContabTab invece che da un file');
+  return 'una su due, e il foglio scrive che è una selezione';
+});
+
+prova('LE DUE FAMIGLIE NON SI SCARICANO INSIEME, e lo dice', async () => {
+  /* Una rata APERTA si incassa (il cliente non ha ancora pagato), una già
+     incassata si porta in contabilità: sono due schermate diverse, e
+     mescolarle vorrebbe dire registrare un incasso già avvenuto (§32). */
+  const RATE = RATE_VERE.concat([{
+    id: 't4', polizza_id: 'p4', tipo: 'quietanza', stato: 'aperto', mezzo_pagamento: null,
+    importo_lordo: '50.00', data_decorrenza: '2026-09-01', incassato_il: null,
+    quote_polizze: { numero_polizza: 'Z9', cliente: 'NERI', cliente_id: 'c4',
+      compagnia: 'PRIMA', mezzo_pagamento: 'col_oddo_francesco' }
+  }]);
+  const { api } = bancoSpr(RATE, MOD_VERE, {});
+  await api.sprCarica(true);
+  await api.sprApri('col_oddo_francesco');
+  api.sprSel('t1', true); api.sprSel('t4', true);
+  await api.sprScarica();
+  deve(/due tipi|tutte e due/.test(api.stato().invio),
+    'mescolare le due famiglie passa senza dire niente: ' + api.stato().invio);
+
+  /* E senza niente di scelto non si va da nessuna parte. */
+  api.sprSelTutte('nessuna');
+  await api.sprScarica();
+  deve(/nessuna rata/.test(api.stato().invio), 'scaricare senza scegliere non dice niente');
+  return 'le due famiglie restano separate, e il vuoto lo dice';
+});
+
+prova('L’EMAIL PARTE DALLA CASELLA DELLA CONTABILITÀ, e porta l’allegato', async () => {
+  const { api, el, mandate } = bancoSpr(RATE_VERE, MOD_VERE, {
+    persone: [{ id: '33109d90', nome: 'Francesco', cognome: 'Oddo', email: 'f@x.it' }]
+  });
+  await api.sprCarica(true);
+  await api.sprApri('col_oddo_francesco');
+  el['spr-mail'].value = 'f@x.it';
+  await api.sprMail();
+  deve(mandate.length === 1, 'l’email non è partita: ' + api.stato().invio);
+  const b = mandate[0].body;
+  /* §34: la casella è quella che tiene questi conti, e non si ripiega — una
+     risposta che arriva dove quei conti non li tiene nessuno è persa. */
+  deve(/contabilita@/.test(b.casella), 'parte dalla casella sbagliata: ' + b.casella);
+  deve(b.to === 'f@x.it', 'non va al destinatario scelto');
+  deve(b.attachments && b.attachments.length === 1, 'manca il resoconto in allegato');
+  /* E l'avviso delle righe fuori dal totale viaggia nel TESTO, non solo a
+     schermo: un allegato che nessuno apre non ha detto niente (§17). */
+  deve(/non si sommano|DA VERSARE/.test(b.text), 'il corpo non ripete i numeri che contano');
+
+  /* Senza indirizzo non parte, e lo dice. */
+  el['spr-mail'].value = '';
+  await api.sprMail();
+  deve(mandate.length === 1 && /indirizzo/.test(api.stato().invio),
+    'parte anche senza destinatario');
+  return 'contabilita@, allegato, e il vuoto rifiutato';
+});
+
+prova('ABBINARE SI OFFRE SOLO DOVE LA VOCE È GIÀ UNA PERSONA', async () => {
+  /* Abbinare un collaboratore al POS vorrebbe dire dire che tutte le rate
+     pagate col POS le tiene lui: un numero grande, credibile e falso (§8.1). */
+  const { api, el, scritte } = bancoSpr(RATE_VERE, MOD_VERE, {
+    persone: [{ id: '33109d90', nome: 'Francesco', cognome: 'Oddo', email: 'f@x.it' }]
+  });
+  await api.sprCarica(true);
+  await api.sprApri('carta_credito');
+  deve(!/spr-abbina/.test(el['spr-lista'].innerHTML),
+    'un mezzo di pagamento si può abbinare a una persona');
+  deve(/Conti e causali/.test(el['spr-lista'].innerHTML),
+    'non dice dove si crea la voce di una persona');
+
+  await api.sprApri('col_oddo_francesco');
+  deve(/spr-abbina/.test(el['spr-lista'].innerHTML), 'una persona non si può riabbinare');
+  el['spr-abbina'].value = '33109d90';
+  await api.sprAbbina();
+  const w = scritte.filter(x => x.tab === 'iam_modalita_pagamento' && x.update);
+  deve(w.length === 1, 'l’abbinamento non scrive: ' + w.length);
+  deve(w[0].update.collaboratore_id === '33109d90', 'scrive la persona sbagliata');
+  /* E NON tocca nessuna rata: il dato di chi ha prodotto sta sulla polizza. */
+  deve(!scritte.some(x => x.tab === 'quote_titoli' && x.update),
+    'abbinare una voce riscrive anche le rate');
+  return 'sul mezzo no, sulla persona sì, e nessuna rata toccata';
+});
+
 prova('NIENTE FUNZIONI DEL PREVENTIVATORE: quelle qui dentro non esistono', () => {
   /* Il difetto del 22/09: `pfEuro` e `pfData` vivono in `index.html` alla
      radice, non in questo documento. Chiamate qui sollevano un errore e
@@ -521,8 +669,12 @@ prova('NIENTE FUNZIONI DEL PREVENTIVATORE: quelle qui dentro non esistono', () =
      Le funzioni ammesse si dichiarano: un elenco «tutto tranne» ammetterebbe
      domani un nome che nessuno ha deciso. */
   const b = senzaStringhe(senzaCommenti(bloccoGrezzo()));
+  /* I nomi del BROWSER non sono «funzioni prese in prestito»: esistono ovunque
+     e non dipendono da quale documento sta girando. Quello che questa prova
+     cerca è un nome che vive solo nel preventivatore. */
   const GLOBALI = ['String', 'Number', 'Math', 'Object', 'Array', 'Date', 'Promise',
-    'parseInt', 'parseFloat', 'isFinite', 'isNaN', 'alert', 'confirm', 'encodeURIComponent'];
+    'parseInt', 'parseFloat', 'isFinite', 'isNaN', 'alert', 'confirm', 'encodeURIComponent',
+    'setTimeout', 'clearTimeout', 'btoa', 'atob', 'unescape', 'fetch', 'Blob', 'URL', 'JSON'];
   /* Le funzioni di casa sono quelle definite in QUESTO documento, non solo nel
      blocco: la schermata ne chiama parecchie delle altre (cntTutte, pntData,
      selContabTab), ed e' giusto. Quello che non deve succedere e' che ne

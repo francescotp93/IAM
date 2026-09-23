@@ -6,6 +6,36 @@ soltanto quello che Francesco potrebbe voler ribaltare.
 
 ---
 
+## 23/09/2026 — I sospesi: la pagina di chi tiene i premi (0.42.0)
+
+**Perimetro:** la pagina di dettaglio di un sospeso, la selezione multipla, lo
+scarico insieme, Excel/PDF/email del resoconto e l'abbinamento voce → persona.
+
+🔴 **Niente database.** Nessuna tabella nuova, nessuna colonna, nessun dato
+riscritto: l'abbinamento voce → collaboratore usa la colonna che c'è già dal
+22/09. *Come tornare indietro:* è tutto codice, basta un `git revert`.
+
+🟡 **Le due famiglie non si scaricano insieme.** Una rata che il cliente non
+ha ancora pagato si INCASSA; una già incassata si PORTA IN CONTABILITÀ. Sono
+due schermate diverse, e sceglierne di tutti e due i tipi non fa niente: la
+pagina dice perché, invece di registrare un incasso già avvenuto.
+
+🟡 **Abbinare una persona si offre solo dove la voce è già una persona.**
+Attaccare un collaboratore al POS vorrebbe dire dire che 135 rate per
+34.172 € le tiene lui. Dove non si può, la pagina manda dove si crea una voce
+nuova. *Come tornare indietro:* è una riga della schermata.
+
+🟡 **L'email del resoconto parte da `contabilita@` e non ripiega.** Se quella
+casella non è raggiungibile l'invio non parte e lo dice, invece di uscire da
+un indirizzo dove le risposte non le legge nessuno. *Come tornare indietro:*
+`SPR_CASELLA` in `iam/index.html`.
+
+📝 **Fuori perimetro, annotato in CLAUDE.md §70:** non c'è un registro degli
+invii dedicato come per l'estratto conto — l'invio lascia una riga nel
+registro dei movimenti, ma non congela i totali di quel giorno.
+
+---
+
 ## 23/09/2026 — Punti vendita: il responsabile, e le polizze (0.41.0)
 
 **Perimetro:** il responsabile di un punto vendita, chi ci lavora, i flag a

@@ -1350,6 +1350,182 @@
     return { k: '', m: null, ereditato: false, persona: false };
   }
 
+  /* ── IL RESOCONTO DI UN SOSPESO (23/09/2026) ─────────────────────────────
+
+     «Cliccando ad esempio su Oddo Francesco deve aprirsi una pagina dove vedo
+     tutti i sospesi di riferimento […] devo avere la possibilità di stampare
+     un PDF, o un file EXCEL, o inviare una mail con il resoconto»
+     — Francesco.
+
+     Excel, PDF ed email escono DALLO STESSO documento. Se fossero tre
+     costruzioni diverse prima o poi direbbero tre cose diverse, e quella
+     sbagliata sarebbe quella che il collaboratore ha ricevuto — e' la regola
+     dell'estratto conto (§17), qui applicata ai sospesi.
+
+     LE DUE FAMIGLIE NON SI SOMMANO IN UN NUMERO SOLO. «Il cliente ha gia'
+     pagato, i soldi li tieni tu» e «il cliente deve ancora pagare» sono due
+     lavori diversi: il primo e' denaro che si puo' farsi dare oggi, il
+     secondo e' una telefonata al cliente. Un totale unico mandato a una
+     persona gli chiederebbe dei soldi che nessuno gli ha ancora dato. */
+  function resocontoSospesi(gruppo, opz) {
+    opz = opz || {};
+    var g = gruppo || {};
+    var scelte = opz.scelte || null;   /* null = tutte; altrimenti { id: true } */
+    var tutte = (g.righe || []).slice();
+    var righe = scelte ? tutte.filter(function (r) { return r && scelte[r.id]; }) : tutte;
+
+    var t = { n: 0, importo: 0, senza_importo: 0,
+      n_versare: 0, totale_versare: 0, n_incassare: 0, totale_incassare: 0,
+      in_ritardo: 0, totale_ritardo: 0 };
+    righe.forEach(function (r) {
+      t.n++;
+      var v = numero(r.importo);
+      /* Un importo che non c'e' NON vale zero: resta fuori dal totale e si
+         conta (§17). Sommarlo come zero farebbe un resoconto piu' leggero del
+         vero, e un numero piu' basso su un foglio che esce di casa nessuno lo
+         mette in dubbio. */
+      if (v == null) t.senza_importo++;
+      else t.importo = cent(t.importo + Math.abs(v));
+      if (r.famiglia === 'versare') {
+        t.n_versare++;
+        if (v != null) t.totale_versare = cent(t.totale_versare + Math.abs(v));
+      } else {
+        t.n_incassare++;
+        if (v != null) t.totale_incassare = cent(t.totale_incassare + Math.abs(v));
+      }
+      if (r.in_ritardo) {
+        t.in_ritardo++;
+        if (v != null) t.totale_ritardo = cent(t.totale_ritardo + Math.abs(v));
+      }
+    });
+
+    var caso = !t.n ? 'vuoto'
+      : (t.n_incassare && t.n_versare) ? 'misto'
+      : (t.n_versare ? 'versare' : 'incassare');
+
+    /* GLI AVVISI SONO PARTE DEL DOCUMENTO, non della schermata: un foglio
+       scaricato vive da solo per mesi, lontano dallo schermo che lo spiegava
+       (§62). Quello delle righe fuori dal totale e' esattamente la parte che
+       un formato breve sarebbe tentato di togliere. */
+    var avvisi = [];
+    if (t.senza_importo) avvisi.push(t.senza_importo + (t.senza_importo === 1
+      ? ' rata non ha un importo dichiarato e non entra nel totale: non vale zero, va chiesta alla compagnia.'
+      : ' rate non hanno un importo dichiarato e non entrano nel totale: non valgono zero, vanno chieste alla compagnia.'));
+    if (scelte) avvisi.push('Questo resoconto riguarda ' + t.n + ' rate su ' + tutte.length
+      + ': e’ una selezione, non tutto quello che risulta.');
+    if (opz.parziale) avvisi.push('La lettura del portafoglio si e’ fermata prima della fine: '
+      + 'questi numeri sono in DIFETTO, non in eccesso.');
+
+    return {
+      chiave: g.voce || '', etichetta: g.etichetta || '', tipo: g.tipo || null,
+      collaboratore_id: g.collaboratore_id || null,
+      sezione: g.sezione || null,
+      selezione: !!scelte, righe_totali: tutte.length,
+      righe: righe, totali: t, caso: caso, avvisi: avvisi
+    };
+  }
+
+  /* IL TESTO CHE ESCE DI CASA STA NEL MOTORE, non nella pagina: e' l'unica
+     cosa che esce, quindi e' l'unica che va provata (§5, §34). Il caso lo
+     decide il RISULTATO, non chi scrive. */
+  function testoSospesi(res, opz) {
+    opz = opz || {};
+    var r = res || {};
+    var t = r.totali || {};
+    var chi = testo(opz.nome) || r.etichetta || '';
+    var agenzia = testo(opz.agenzia) || 'la tua agenzia';
+    var firma = testo(opz.firma) || '';
+
+    if (r.caso === 'vuoto') {
+      return { ok: false, motivo: 'Non c’e’ niente da mandare: nessuna rata in questo resoconto.' };
+    }
+
+    var righe = [];
+    righe.push('Ciao ' + (chi || '') + ',');
+    righe.push('');
+    righe.push('questo e’ il riepilogo dei premi che risultano in sospeso al ' + dataIt(opz.oggi) + '.');
+    righe.push('');
+    if (t.n_versare) {
+      righe.push('DA VERSARE IN AGENZIA — ' + t.n_versare
+        + (t.n_versare === 1 ? ' rata' : ' rate') + ' per ' + euro(t.totale_versare) + '.');
+      righe.push('Sono premi che il cliente ha gia’ pagato e che risultano ancora presso di te.');
+      righe.push('');
+    }
+    if (t.n_incassare) {
+      righe.push('ANCORA DA INCASSARE DAL CLIENTE — ' + t.n_incassare
+        + (t.n_incassare === 1 ? ' rata' : ' rate') + ' per ' + euro(t.totale_incassare) + '.');
+      righe.push('Questi non li devi tu: sono clienti da sollecitare.');
+      righe.push('');
+    }
+    /* I due numeri NON si sommano in un totale unico, e il testo lo dice:
+       chiedere a una persona la somma delle due famiglie vorrebbe dire
+       chiedergli dei soldi che il cliente non ha ancora versato. */
+    if (r.caso === 'misto') {
+      righe.push('I due numeri non si sommano: il primo e’ quello che risulta presso di te, '
+        + 'il secondo e’ quello che i clienti non hanno ancora pagato.');
+      righe.push('');
+    }
+    (r.avvisi || []).forEach(function (a) { righe.push(a); });
+    if ((r.avvisi || []).length) righe.push('');
+    righe.push('Il dettaglio riga per riga e’ nell’allegato.');
+    righe.push('Se qualcosa non torna, scrivimi prima di versare: si guarda insieme.');
+    righe.push('');
+    righe.push(firma || agenzia);
+
+    return {
+      ok: true,
+      oggetto: 'Riepilogo premi in sospeso — ' + (chi || agenzia) + ' al ' + dataIt(opz.oggi),
+      testo: righe.join('\n')
+    };
+  }
+
+  /* Il documento per la carta intestata (`PdfWithus.disegna`). Le stesse
+     righe e gli stessi totali del resoconto: il PDF non ricalcola niente. */
+  function documentoSospesi(res, opz) {
+    opz = opz || {};
+    var r = res || {}, t = r.totali || {};
+    var blocchi = [
+      { tipo: 'tessere', voci: [
+        { etichetta: 'Da versare in agenzia', valore: euro(t.totale_versare),
+          nota: t.n_versare + (t.n_versare === 1 ? ' rata gia’ incassata' : ' rate gia’ incassate') },
+        { etichetta: 'Ancora da incassare dal cliente', valore: euro(t.totale_incassare),
+          nota: t.n_incassare + (t.n_incassare === 1 ? ' rata' : ' rate') },
+        { etichetta: 'Ferme da troppo', valore: euro(t.totale_ritardo),
+          nota: t.in_ritardo + (t.in_ritardo === 1 ? ' rata' : ' rate') }
+      ] },
+      { tipo: 'titolo', testo: 'Dettaglio' },
+      { tipo: 'tabella',
+        intestazioni: ['Stato', 'Data', 'Cliente', 'Polizza', 'Compagnia', 'Pagata con', 'Importo'],
+        larghezze: [.13, .1, .22, .14, .15, .14, .12],
+        righe: (r.righe || []).map(function (x) {
+          return [x.famiglia === 'versare' ? 'da versare' : 'da incassare',
+            dataIt(x.data), x.cliente || '—', x.numero_polizza || '—',
+            x.compagnia || '—', x.mezzo_rata_l || '—',
+            { testo: x.importo == null ? '—' : euro(x.importo), allinea: 'right' }];
+        }), size: 7 }
+    ];
+    if ((r.avvisi || []).length) blocchi.push({ tipo: 'testo', titolo: 'Da sapere',
+      tono: 'ambra', paragrafi: r.avvisi });
+    return {
+      tipo: 'PREMI IN SOSPESO', numero: r.etichetta || '',
+      sotto: 'al ' + dataIt(opz.oggi),
+      azienda: opz.azienda || {}, banda: null, filigrana: null, colonne: [],
+      blocchi: blocchi, firma: null,
+      avvertenze: 'Le due famiglie non si sommano: «da versare» sono premi che il cliente ha gia’ '
+        + 'pagato e che risultano presso chi li tiene; «da incassare» sono premi che il cliente non ha '
+        + 'ancora versato. Le rate senza un importo dichiarato sono elencate e non sommate.',
+      piedeSinistra: (opz.azienda && opz.azienda.ragioneSociale) || '',
+      piedeDestra: 'Premi in sospeso — ' + (r.etichetta || ''),
+      titoloPdf: 'Premi in sospeso ' + (r.etichetta || ''),
+      nomeFile: 'sospesi_' + String(r.chiave || 'tutti').replace(/[^a-z0-9_-]+/gi, '-') + '.pdf'
+    };
+  }
+
+  function dataIt(v) {
+    var d = testo(v).slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d.split('-').reverse().join('/') : '—';
+  }
+
   function destinoIncasso(riga, conti, voc) {
     riga = riga || {};
     var V = (voc && voc.length) ? vocabolario(voc) : null;
@@ -3143,6 +3319,9 @@
        fuori e' l'unico modo di misurare che un conto di costo non risulti aver
        incassato. */
     denaroDi: denaroDi, LIQUIDE: LIQUIDE,
+    /* Il resoconto di un sospeso: Excel, PDF ed email dallo stesso documento */
+    resocontoSospesi: resocontoSospesi, testoSospesi: testoSospesi,
+    documentoSospesi: documentoSospesi, dataIt: dataIt,
     /* Fase 3 — i sospesi: i premi a copertura e non ricevuti */
     STATI_CREDITO: STATI_CREDITO, recuperiVivi: recuperiVivi,
     residuoCredito: residuoCredito, statoCredito: statoCredito,

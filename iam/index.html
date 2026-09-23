@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.41.0">
-<meta name="app-versione-nome" content="Punti vendita: il responsabile, e le polizze">
+<meta name="app-versione" content="0.42.0">
+<meta name="app-versione-nome" content="I sospesi: la pagina di chi tiene i premi">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -51,6 +51,9 @@
      deve riconoscere compagnie e prodotti con le stesse regole. -->
 <script src="/nuovo-preventivo/tariffe/motore/catalogo.js?v=20260920"></script>
 <script src="/nuovo-preventivo/tariffe/motore/punti-vendita.js?v=20260923"></script>
+<!-- La carta intestata dei PDF: lo STESSO file del preventivatore. Ricopiarne
+     il disegno vorrebbe dire due carte intestate che un giorno divergono. -->
+<script src="/nuovo-preventivo/tariffe/motore/pdf-withus.js?v=20260923"></script>
 <!-- Sospensioni e fido (Blocco 3): stesso file del preventivatore, perche'
      il tetto al credito di una persona non puo' avere due regole. -->
 <script src="/nuovo-preventivo/tariffe/motore/sospensione.js?v=20260920"></script>
@@ -153,6 +156,16 @@
 .spr-t .spr-i{font-size:17px;color:var(--txt3);flex:none}
 .spr-t .spr-n{flex:1;min-width:0}
 .spr-t .spr-euro{font-weight:800;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.spr-testa{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.spr-abb{border:1px solid var(--bord);border-radius:var(--rs);background:var(--surf);
+  padding:11px 12px;margin-bottom:12px}
+.spr-abb label{display:block;font-size:11.5px;font-weight:700;color:var(--txt3);margin-bottom:4px}
+.spr-abb select{width:100%;max-width:340px;height:34px;border-radius:var(--rs);
+  border:1px solid var(--bord);background:var(--surf);color:var(--txt);padding:0 9px;
+  font-size:13px;font-family:inherit}
+.spr-barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.spr-sceglibile{cursor:pointer}
+.spr-sceglibile input[type=checkbox]{width:17px;height:17px;flex:none;cursor:pointer;margin-right:2px}
 .spr-corpo{border-top:1px solid var(--bord);padding:4px 13px 10px}
 .spr-riga{display:flex;align-items:center;gap:10px;padding:7px 0;flex-wrap:wrap;border-top:1px solid var(--bord2)}
 .spr-riga:first-child{border-top:0}
@@ -5935,6 +5948,10 @@ var SPR_PARZIALE = false;
 var SPR_APERTI = {};      /* quale gruppo è aperto */
 var SPR_TOCCATO = false;  /* qualcuno ha aperto o chiuso a mano */
 var SPR_GIRO = 0;         /* due caricamenti insieme non si sommano (§63-bis) */
+var SPR_DETT = null;      /* la voce aperta a tutta pagina (null = l'elenco) */
+var SPR_SEL = {};         /* le rate flaggate nel dettaglio */
+var SPR_COLLAB = [];      /* il registro delle persone, per abbinare e per l'email */
+var SPR_ESITO_INVIO = '';
 
 function sprOggi() { return typeof cntOggiIso === 'function' ? cntOggiIso() : null; }
 /* Gli importi si scrivono con la stessa funzione del motore, come
@@ -6038,6 +6055,10 @@ function sprRender() {
   var box = document.getElementById('spr-lista');
   var somma = document.getElementById('spr-somma');
   if (!box) return;
+  /* La pagina di dettaglio prende il posto dell'elenco, non gli si affianca:
+     due liste della stessa cosa aperte insieme fanno perdere quale delle due
+     si sta guardando. */
+  if (SPR_DETT && SPR_ESITO && !SPR_ERR) { sprDettaglio(box, somma); return; }
   if (SPR_ERR) {
     /* «Non si è potuto leggere» non è «non ce n'è» (§12, §18): un elenco
        vuoto qui direbbe che non c'è niente da incassare. */
@@ -6112,6 +6133,8 @@ function sprRender() {
         + (aperto ? 'clicca per richiudere' : 'clicca per vedere le rate')
         + '</div></div>'
         + '<div class="spr-euro">' + sprEuro(g.totale) + '</div>'
+        + '<button class="d-btn" type="button" style="padding:3px 10px;font-size:11px"'
+        + ' onclick="event.stopPropagation();sprApri(\'' + esc(chiave) + '\')">Apri</button>'
         + '<i class="ti ' + (aperto ? 'ti-chevron-up' : 'ti-chevron-down') + ' spr-i"></i></div>'
         + (aperto ? sprRighe(g) : '')
         + '</div>';
@@ -6159,6 +6182,344 @@ function sprRighe(g) {
       + '</div>';
   });
   return out + '</div>';
+}
+
+/* ═══ LA PAGINA DI UN SOSPESO (23/09/2026) ═════════════════════════════════
+   «Cliccando ad esempio su Oddo Francesco deve aprirsi una pagina dove vedo
+   tutti i sospesi di riferimento, e devo avere la possibilità di flaggare più
+   di uno e scaricarli insieme […] stampare un PDF, o un file EXCEL, o inviare
+   una mail con il resoconto» — Francesco.
+
+   I NUMERI E I TESTI STANNO NEL MOTORE (`Contabilita.resocontoSospesi`,
+   `testoSospesi`, `documentoSospesi`): Excel, PDF ed email escono dallo
+   stesso documento, perché tre costruzioni diverse direbbero un giorno tre
+   cose diverse, e quella sbagliata sarebbe quella che il collaboratore ha
+   ricevuto (§17). Qui c'è il disegno e la spedizione. */
+const SPR_CASELLA = 'contabilita@withusassicurazioni.it';
+
+function sprGruppoDi(chiave) {
+  if (!SPR_ESITO) return null;
+  var out = null;
+  SPR_ESITO.gruppi.forEach(function (g) { if ((g.voce || '(vuoto)') === chiave) out = g; });
+  return out;
+}
+
+/* `async` e non «lancia e dimentica»: il registro delle persone serve a
+   precompilare l'indirizzo dell'email, e disegnando prima che arrivi si
+   vedrebbe un campo vuoto che si riempie da solo mezzo secondo dopo — cioe'
+   chi clicca «Manda» subito non manda niente. */
+async function sprApri(chiave) {
+  SPR_DETT = chiave; SPR_SEL = {}; SPR_ESITO_INVIO = '';
+  await sprCollabCarica();
+  sprRender();
+}
+function sprChiudi() { SPR_DETT = null; SPR_SEL = {}; SPR_ESITO_INVIO = ''; sprRender(); }
+
+/* Il registro delle persone serve a due cose: abbinare una voce a un
+   collaboratore e sapere a chi mandare l'email. Si legge una volta sola e non
+   fa cadere la pagina: senza, si perde l'abbinamento, non l'elenco. */
+async function sprCollabCarica() {
+  if (SPR_COLLAB.length || !db) return;
+  try {
+    var r = await db.from('quote_collaboratori').select('id,nome,cognome,email').order('cognome');
+    if (r.error) throw r.error;
+    SPR_COLLAB = r.data || [];
+  } catch (e) { SPR_COLLAB = []; }
+}
+
+function sprSel(id, acceso) { if (acceso) SPR_SEL[id] = true; else delete SPR_SEL[id]; sprRender(); }
+
+/* Tre scorciatoie, e nessuna decide al posto di chi guarda: «tutte», «solo
+   quelle già incassate» (quelle che si possono farsi dare oggi) e «solo
+   quelle ferme da troppo». */
+function sprSelTutte(quali) {
+  var g = sprGruppoDi(SPR_DETT); if (!g) return;
+  SPR_SEL = {};
+  if (quali !== 'nessuna') g.righe.forEach(function (r) {
+    if (quali === 'tutte'
+      || (quali === 'versare' && r.famiglia === 'versare')
+      || (quali === 'tardi' && r.in_ritardo)) SPR_SEL[r.id] = true;
+  });
+  sprRender();
+}
+
+/* Il resoconto di quello che si sta guardando. Senza nulla di flaggato è
+   TUTTO il gruppo: un foglio vuoto non serve a nessuno, e chi non ha scelto
+   niente vuole il quadro intero. */
+function sprRes() {
+  var g = sprGruppoDi(SPR_DETT); if (!g) return null;
+  var quante = Object.keys(SPR_SEL).length;
+  return Contabilita.resocontoSospesi(g, {
+    scelte: quante ? SPR_SEL : null, parziale: SPR_PARZIALE
+  });
+}
+
+function sprPersonaDi(g) {
+  if (!g || !g.collaboratore_id) return null;
+  var out = null;
+  SPR_COLLAB.forEach(function (c) { if (c && c.id === g.collaboratore_id) out = c; });
+  return out;
+}
+
+function sprDettaglio(box, somma) {
+  var g = sprGruppoDi(SPR_DETT);
+  if (!g) { SPR_DETT = null; sprRender(); return; }
+  var res = sprRes(), t = res.totali;
+  var quante = Object.keys(SPR_SEL).length;
+  var persona = sprPersonaDi(g);
+
+  if (somma) {
+    somma.innerHTML = ''
+      + sprCard('Da versare in agenzia', t.n_versare + (t.n_versare === 1 ? ' rata' : ' rate'), sprEuro(t.totale_versare))
+      + sprCard('Ancora da incassare dal cliente', t.n_incassare + (t.n_incassare === 1 ? ' rata' : ' rate'), sprEuro(t.totale_incassare))
+      + sprCard('Ferme da troppo', t.in_ritardo + (t.in_ritardo === 1 ? ' rata' : ' rate'), sprEuro(t.totale_ritardo))
+      + sprCard('Selezionate', quante ? (quante + ' su ' + res.righe_totali) : 'nessuna: vale tutto', sprEuro(t.importo));
+  }
+
+  /* CHI RICEVE L'EMAIL. Si precompila con l'indirizzo della persona abbinata
+     alla voce — è quello che rende vero il «con un semplice click» — e resta
+     correggibile: una voce che non è una persona (POS, bonifico) non ha un
+     destinatario suo, e inventarglielo sarebbe peggio di chiederlo. */
+  var mail = persona && persona.email ? persona.email : '';
+
+  var testa = '<div class="spr-testa">'
+    + '<button class="d-btn" type="button" onclick="sprChiudi()"><i class="ti ti-arrow-left"></i> Tutti i sospesi</button>'
+    + '<div style="flex:1;min-width:0"><div class="cnt-nome" style="font-size:16px">' + esc(g.etichetta) + '</div>'
+    + '<div class="cnt-sotto">' + (g.tipo === 'collaboratore'
+        ? 'Questi premi li tiene una persona: a lei si chiede.'
+        : g.tipo === 'da-dichiarare'
+          ? 'Nessuno ha detto come sono state pagate: prima si dichiara la voce, poi si sa a chi chiedere.'
+          : 'È un mezzo di pagamento: questi accrediti arrivano da soli.')
+    + '</div></div></div>';
+
+  /* L'ABBINAMENTO SI OFFRE SOLO DOVE LA VOCE È GIÀ UNA PERSONA. Abbinare un
+     collaboratore al POS vorrebbe dire dire che 135 rate le tiene lui: un
+     numero grande, credibile e falso (§8.1). Una voce nuova per una persona
+     si crea in Conti e causali, e la schermata ci manda. */
+  var abbina = g.tipo === 'collaboratore'
+    ? '<div class="spr-abb"><label>Chi è, nel registro</label>'
+      + '<select id="spr-abbina" onchange="sprAbbina()">'
+      + '<option value="">— nessuno —</option>'
+      + SPR_COLLAB.map(function (c) {
+          var n = ((c.cognome || '') + ' ' + (c.nome || '')).trim() || c.email || '(senza nome)';
+          return '<option value="' + esc(c.id) + '"' + (c.id === g.collaboratore_id ? ' selected' : '') + '>'
+            + esc(n) + '</option>';
+        }).join('')
+      + '</select>'
+      + '<div class="cl-sub">' + (persona
+          ? (persona.email ? 'Email: ' + esc(persona.email) : 'Questa persona non ha un’email nel registro: il resoconto va scritto a mano.')
+          : 'Questa voce non è ancora abbinata a nessuno: senza, l’email non sa dove andare.') + '</div></div>'
+    : '<div class="spr-abb"><div class="cl-sub">Una voce come questa non la tiene una persona, quindi non si abbina a nessuno. '
+      + 'Se questi premi li tiene qualcuno, la voce si crea in <a href="#" onclick="goTab(\'conti\');cntTab(\'modalita\');return false">Conti e causali</a>.</div></div>';
+
+  var barra = '<div class="spr-barra">'
+    + '<button class="d-btn" type="button" onclick="sprSelTutte(\'tutte\')">Tutte</button>'
+    + '<button class="d-btn" type="button" onclick="sprSelTutte(\'versare\')">Solo già incassate</button>'
+    + '<button class="d-btn" type="button" onclick="sprSelTutte(\'tardi\')">Solo ferme da troppo</button>'
+    + '<button class="d-btn" type="button" onclick="sprSelTutte(\'nessuna\')">Nessuna</button>'
+    + '<span style="flex:1"></span>'
+    + '<button class="d-btn primario" type="button" onclick="sprScarica()">Scarica le selezionate</button>'
+    + '</div>';
+
+  var azioni = '<div class="spr-barra">'
+    + '<button class="d-btn" type="button" onclick="sprExcel()"><i class="ti ti-table"></i> Excel</button>'
+    + '<button class="d-btn" type="button" onclick="sprPdf()"><i class="ti ti-file-type-pdf"></i> PDF</button>'
+    + '<input type="email" id="spr-mail" value="' + esc(mail) + '" placeholder="a chi mandarlo"'
+    + ' style="flex:1;min-width:160px;height:34px;border-radius:var(--rs);border:1px solid var(--bord);'
+    + 'background:var(--surf);color:var(--txt);padding:0 10px;font-size:13px;font-family:inherit">'
+    + '<button class="d-btn primario" type="button" onclick="sprMail()"><i class="ti ti-mail"></i> Manda il resoconto</button>'
+    + '</div>'
+    + (SPR_ESITO_INVIO ? '<div class="' + (SPR_ESITO_INVIO.indexOf('✓') === 0 ? 'cnt-avv' : 'cnt-err') + '">'
+        + esc(SPR_ESITO_INVIO) + '</div>' : '');
+
+  /* Gli avvisi del documento si vedono anche a schermo, e sono gli STESSI che
+     finiscono nel foglio: se lo schermo dicesse una cosa e il file un'altra,
+     quella sbagliata sarebbe quella che qualcuno ha in mano (§62). */
+  var avvisi = (res.avvisi || []).map(function (a) {
+    return '<div class="cnt-avv">' + esc(a) + '</div>';
+  }).join('');
+
+  var fam = null;
+  var righe = g.righe.map(function (r) {
+    var testa2 = '';
+    if (r.famiglia !== fam) {
+      fam = r.famiglia;
+      testa2 = '<div class="spr-fam">' + (fam === 'versare'
+        ? 'Il cliente ha già pagato: questi soldi li tiene ' + esc(g.etichetta)
+        : 'Il cliente deve ancora pagare') + '</div>';
+    }
+    return testa2 + '<label class="spr-riga spr-sceglibile">'
+      + '<input type="checkbox" ' + (SPR_SEL[r.id] ? 'checked' : '')
+      + ' onchange="sprSel(\'' + esc(r.id) + '\', this.checked)">'
+      + '<div class="spr-chi">'
+      + '<div class="cnt-nome">' + esc(r.cliente || '—') + '</div>'
+      + '<div class="cnt-sotto">' + (r.numero_polizza ? esc(r.numero_polizza) + ' · ' : '')
+      + (r.compagnia ? esc(r.compagnia) + ' · ' : '')
+      + (r.data ? (r.famiglia === 'versare' ? 'incassata il ' : 'dal ') + pntData(r.data) : 'senza data')
+      + (r.giorni_fermo != null ? ' · fermo da ' + r.giorni_fermo + ' gg' : '') + '</div>'
+      + (r.famiglia === 'versare' && r.mezzo_rata_l
+        ? '<div class="spr-come">il cliente l’ha pagata con ' + esc(r.mezzo_rata_l) + '</div>' : '')
+      + (r.ereditato ? '<div class="spr-come">la voce non è sulla rata: la dichiara la polizza</div>' : '')
+      + '</div>'
+      + '<div class="spr-imp ' + (r.in_ritardo ? 'spr-tardi' : '') + '">'
+      + (r.importo == null ? '<span title="Un importo che non c\'è non vale zero">—</span>' : sprEuro(r.importo))
+      + '</div></label>';
+  }).join('');
+
+  box.innerHTML = testa + abbina + avvisi + barra + azioni
+    + '<div class="spr-corpo">' + righe + '</div>';
+}
+
+/* ABBINARE UNA VOCE A UNA PERSONA. Non si tocca nessuna rata: cambia solo chi
+   è quella voce, cioè a chi si manda il resoconto e di chi è il credito. Le
+   rate restano dove sono — il dato sta sulla polizza, non qui. */
+async function sprAbbina() {
+  var sel = document.getElementById('spr-abbina');
+  if (!sel || !SPR_DETT) return;
+  var g = sprGruppoDi(SPR_DETT); if (!g) return;
+  var v = sel.value || null;
+  try {
+    var r = await db.from('iam_modalita_pagamento')
+      .update({ collaboratore_id: v }).eq('codice', SPR_DETT).select('codice');
+    if (r.error) throw r.error;
+    /* Zero righe non è un successo silenzioso (§47, BUG 1): qui si decide a
+       chi si chiedono dei soldi. */
+    if (!r.data || !r.data.length) { SPR_ESITO_INVIO = 'Non è stato salvato: la riga non si è mossa.'; sprRender(); return; }
+    if (typeof logMovimento === 'function')
+      logMovimento('Voce di pagamento abbinata', 'modalita_pagamento', g.etichetta, SPR_DETT);
+    await sprCarica();
+  } catch (e) { SPR_ESITO_INVIO = e.message || String(e); sprRender(); }
+}
+
+/* «Scaricarli insieme» è registrare l'incasso, e quella scrittura ha la sua
+   schermata (Fase 2) — rifarla qui vorrebbe dire due regole su come nasce un
+   movimento. Le rate scelte ci arrivano GIÀ selezionate: è questo che rende
+   il gesto uno solo invece di dieci. */
+async function sprScarica() {
+  var g = sprGruppoDi(SPR_DETT); if (!g) return;
+  var ids = g.righe.filter(function (r) { return SPR_SEL[r.id]; }).map(function (r) { return r.id; });
+  if (!ids.length) { SPR_ESITO_INVIO = 'Non hai scelto nessuna rata da scaricare.'; sprRender(); return; }
+  /* Le due famiglie si scaricano in due posti diversi, e non è un dettaglio:
+     una rata APERTA si incassa (il cliente non ha ancora pagato), una già
+     incassata si porta in contabilità (§32). Mescolarle vorrebbe dire
+     registrare un incasso che è già avvenuto. */
+  var aperte = g.righe.filter(function (r) { return SPR_SEL[r.id] && r.famiglia !== 'versare'; });
+  var chiuse = g.righe.filter(function (r) { return SPR_SEL[r.id] && r.famiglia === 'versare'; });
+  if (aperte.length && chiuse.length) {
+    SPR_ESITO_INVIO = 'Hai scelto rate di tutte e due i tipi: quelle che il cliente deve ancora pagare si INCASSANO, '
+      + 'quelle già incassate si PORTANO IN CONTABILITÀ. Sono due schermate diverse: scegline un tipo alla volta.';
+    sprRender(); return;
+  }
+  if (chiuse.length) { selContabTab('incassi'); return; }
+  selContabTab('incassa');
+  try { await INCA_PRONTA; } catch (e) {}
+  await incaConRate(aperte.map(function (r) { return r.id; }));
+}
+
+/* Il documento in HTML: Excel lo apre e lo riconosce, come tutti gli altri
+   export di casa, e l'email se lo porta in allegato. UNA costruzione sola. */
+function sprDocHTML(res) {
+  var t = res.totali;
+  var r = '<h2>Premi in sospeso &mdash; ' + esc(res.etichetta) + '</h2>'
+    + '<p>al ' + esc(Contabilita.dataIt(sprOggi())) + '</p>'
+    + '<table border="1" cellspacing="0" cellpadding="4"><tr>'
+    + '<th>Stato</th><th>Data</th><th>Cliente</th><th>Polizza</th><th>Compagnia</th><th>Pagata con</th><th>Importo</th></tr>'
+    + res.righe.map(function (x) {
+        return '<tr><td>' + (x.famiglia === 'versare' ? 'da versare' : 'da incassare') + '</td>'
+          + '<td>' + esc(Contabilita.dataIt(x.data)) + '</td>'
+          + '<td>' + esc(x.cliente || '') + '</td><td>' + esc(x.numero_polizza || '') + '</td>'
+          + '<td>' + esc(x.compagnia || '') + '</td><td>' + esc(x.mezzo_rata_l || '') + '</td>'
+          + '<td>' + (x.importo == null ? '' : String(x.importo).replace('.', ',')) + '</td></tr>';
+      }).join('')
+    + '<tr><th colspan="6">Da versare in agenzia (' + t.n_versare + ')</th>'
+    + '<th>' + String(t.totale_versare).replace('.', ',') + '</th></tr>'
+    + '<tr><th colspan="6">Ancora da incassare dal cliente (' + t.n_incassare + ')</th>'
+    + '<th>' + String(t.totale_incassare).replace('.', ',') + '</th></tr>'
+    + '</table>';
+  /* Gli avvisi sono parte del documento, non della schermata: un file vive da
+     solo per mesi, lontano da quello che lo spiegava. */
+  if (res.avvisi.length) r += '<p><b>Da sapere</b></p><ul>'
+    + res.avvisi.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul>';
+  return '<html><head><meta charset="utf-8"></head><body>' + r + '</body></html>';
+}
+
+function sprSalvaFile(nome, tipo, contenuto) {
+  var blob = new Blob(['﻿' + contenuto], { type: tipo });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+}
+
+function sprExcel() {
+  var res = sprRes(); if (!res) return;
+  if (res.caso === 'vuoto') { SPR_ESITO_INVIO = 'Non c’è niente da esportare.'; sprRender(); return; }
+  sprSalvaFile('sospesi_' + String(res.chiave || 'tutti').replace(/[^a-z0-9_-]+/gi, '-') + '.xls',
+    'application/vnd.ms-excel', sprDocHTML(res));
+}
+
+async function sprPdf() {
+  var res = sprRes(); if (!res) return;
+  if (res.caso === 'vuoto') { SPR_ESITO_INVIO = 'Non c’è niente da stampare.'; sprRender(); return; }
+  try {
+    var jsPDF = await abCaricaJsPdf();
+    var logo = await abLogo();
+    var az = await abAzienda();
+    /* La carta intestata è UNA (§5): non si ricopia il disegno, si costruisce
+       un documento e lo si passa a `PdfWithus.disegna`. */
+    var doc = PdfWithus.disegna(jsPDF, Contabilita.documentoSospesi(res, {
+      oggi: sprOggi(),
+      azienda: { ragioneSociale: az.rs || az.ragione_sociale || '', sede: az.sede || '',
+        piva: az.piva || '', contatti: [az.tel, az.email, az.pec].filter(Boolean) }
+    }), { logo: logo });
+    var blob = doc.output('blob');
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'sospesi_' + String(res.chiave || 'tutti').replace(/[^a-z0-9_-]+/gi, '-') + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  } catch (e) {
+    SPR_ESITO_INVIO = 'Non riesco a produrre il PDF: ' + (e.message || e);
+    sprRender();
+  }
+}
+
+async function sprMail() {
+  var res = sprRes(); if (!res) return;
+  var g = sprGruppoDi(SPR_DETT);
+  var campo = document.getElementById('spr-mail');
+  var to = String((campo || {}).value || '').trim();
+  if (!to) { SPR_ESITO_INVIO = 'Manca l’indirizzo: scrivi a chi deve arrivare.'; sprRender(); return; }
+  var persona = sprPersonaDi(g);
+  var testo = Contabilita.testoSospesi(res, {
+    oggi: sprOggi(),
+    nome: persona ? ((persona.cognome || '') + ' ' + (persona.nome || '')).trim() : g.etichetta,
+    agenzia: 'With Us Assicurazioni'
+  });
+  if (!testo.ok) { SPR_ESITO_INVIO = testo.motivo; sprRender(); return; }
+  if (!confirm('Mando il resoconto a ' + to + '?\n\n' + res.totali.n + ' rate, '
+    + sprEuro(res.totali.importo) + '.')) return;
+  try {
+    var html = sprDocHTML(res);
+    await mailFetch('/mail/send', { method: 'POST', body: JSON.stringify({
+      to: to, subject: testo.oggetto, text: testo.testo,
+      /* LA CASELLA È QUELLA DELLA CONTABILITÀ, e non si ripiega (§34): una
+         risposta che arriva in una casella che quei conti non li tiene è una
+         risposta persa. Se non c'è, meglio non mandarlo. */
+      casella: SPR_CASELLA,
+      attachments: [{ name: 'sospesi.xls', content: btoa(unescape(encodeURIComponent(html))) }]
+    }) });
+    SPR_ESITO_INVIO = '✓ Mandato a ' + to + '.';
+    if (typeof logMovimento === 'function')
+      logMovimento('Resoconto sospesi mandato a ' + to + ' · ' + res.totali.n + ' rate · '
+        + sprEuro(res.totali.importo), 'modalita_pagamento', g.etichetta, SPR_DETT);
+  } catch (e) {
+    /* «Non gliel'ho mandato» e «gliel'ho mandato e non è arrivato» sono due
+       lavori diversi (§34): l'errore si scrive, non si tace. */
+    SPR_ESITO_INVIO = 'Non è partito: ' + (e.message || e);
+  }
+  sprRender();
 }
 
 /* «Scaricare» un sospeso è registrare l'incasso, e quella schermata esiste
@@ -9147,6 +9508,7 @@ var INCA_RATE = [];        /* le rate trovate dalla ricerca */
 var INCA_SCELTE = {};      /* titolo_id → riga scelta */
 var INCA_PAGAMENTI = [];
 var INCA_GUASTI = [];
+var INCA_PRONTA = null;    /* l'apertura in corso, da aspettare prima di preselezionare */
 var INCA_CHIAVE = null;    /* la chiave di idempotenza: nasce all'apertura,
                               NON al clic. Generata al clic, il secondo
                               tentativo dopo un timeout ne avrebbe una nuova e
@@ -9280,6 +9642,38 @@ function incaDisegnaRate() {
       (ok.si ? '' : ' · <b>' + esc(ok.motivo) + '</b>') + '</div></div>' +
       '<div><b>' + incaEuro(t.importo_lordo) + '</b></div></label>';
   }).join('');
+}
+
+/* LE RATE SCELTE ALTROVE ARRIVANO GIA' SELEZIONATE (23/09/2026). E' quello
+   che rende «scaricarle insieme» un gesto solo invece di dieci: dai Sospesi si
+   flagga e si arriva qui con quelle rate gia' spuntate.
+
+   Si leggono PER ID, non con la ricerca per testo: cercare «Rossi» ne
+   troverebbe anche altre, e una rata in piu' spuntata per sbaglio e' un
+   incasso registrato che non e' avvenuto. Quello che non si trova SI DICE:
+   una riga sparita in silenzio e' un premio che nessuno cerchera' piu'. */
+async function incaConRate(ids) {
+  var box = document.getElementById('inca-risultati');
+  INCA_RATE = []; INCA_SCELTE = {};
+  if (!ids || !ids.length) return;
+  if (box) box.innerHTML = '<div class="cl-sub">Carico le rate scelte…</div>';
+  var rate = await incaLeggi('le rate scelte',
+    db.from('quote_titoli').select('*').in('id', ids).eq('stato', 'aperto').order('data_decorrenza'), []);
+  var polIds = [];
+  rate.forEach(function (t) { if (t.polizza_id && polIds.indexOf(t.polizza_id) < 0) polIds.push(t.polizza_id); });
+  var pol = polIds.length ? await incaLeggi('le polizze',
+    db.from('quote_polizze').select('id,numero_polizza,compagnia,cliente,cliente_id,dati').in('id', polIds), []) : [];
+  var perPol = {}; pol.forEach(function (p) { perPol[p.id] = p; });
+  INCA_RATE = rate.map(function (t) { return { titolo: t, polizza: perPol[t.polizza_id] || {} }; });
+  INCA_RATE.forEach(function (r) {
+    var ok = window.Contabilita ? Contabilita.incassabile(r.titolo) : { si: true };
+    if (ok.si) INCA_SCELTE[r.titolo.id] = r;
+  });
+  incaDisegnaRate();
+  incaSomma();
+  if (box && rate.length < ids.length) box.insertAdjacentHTML('afterbegin',
+    '<div class="cnt-avv">Di ' + ids.length + ' rate scelte ne sono arrivate ' + rate.length
+    + ': le altre non risultano piu\' aperte, oppure non si sono potute leggere. Non vuol dire che non ci siano.</div>');
 }
 
 function incaScegli(id, acceso) {
@@ -11844,7 +12238,11 @@ function selContabTab(sub) {
   if (sub==='primanota' || sub==='quadconti') pntCarica();
   if (sub==='incassi') incCarica();
   if (sub==='cruscotto') cruCarica();
-  if (sub==='incassa') incaApri();
+  /* La linguetta fa partire un caricamento ASINCRONO che azzera le rate
+     scelte: chi arriva qui con delle rate gia' flaggate (dai Sospesi) deve
+     poterlo aspettare, altrimenti se le vede cancellare a meta' strada. E' la
+     trappola gia' scritta per l'estratto conto (§17). */
+  if (sub==='incassa') INCA_PRONTA = incaApri();
   if (sub==='recuperi') recApri();
   if (sub==='sospesi') sprCarica();
   /* La contabilità ricostruita (M5) sta SOPRA quattro schermate che esistevano

@@ -8203,3 +8203,122 @@ d'agenzia la differenza è tutta.
   dopo, e va fatto con la sua migrazione.
 - **Nessuna schermata mostra ancora la produzione PER PUNTO VENDITA**: le due
   colonne si riempiono da oggi, e il consuntivo che le legge è un lavoro a sé.
+
+---
+
+## 70. I sospesi: la pagina di chi tiene i premi (23/09/2026)
+
+> «In questa schermata dovrei vedere una sintesi di sospeso, poi cliccando ad
+> esempio su Oddo Francesco deve aprirsi una pagina dove vedo tutti i sospesi
+> di riferimento, e devo avere la possibilità di flaggare più di uno e
+> scaricarli insieme […] stampare un PDF, o un file EXCEL, o inviare una mail
+> con il resoconto, e mi devi dare inoltre la possibilità di abbinare un conto
+> sospesi ad un determinato collaboratore, così da potergli inviare una mail
+> con un semplice click» — Francesco.
+
+| pezzo | dove |
+|---|---|
+| i numeri e i testi che escono di casa | `resocontoSospesi`, `testoSospesi`, `documentoSospesi` in `tariffe/motore/contabilita.js` |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **126** (erano 122) |
+| la pagina, la selezione, i tre formati | blocco `spr*` in `iam/index.html` |
+| le rate scelte arrivano già spuntate | `incaConRate` in `iam/index.html` |
+| la carta intestata, **lo stesso file** | `/nuovo-preventivo/tariffe/motore/pdf-withus.js`, caricato da `iam/index.html` |
+| prove sulla schermata | `iam/verifica/sospesi-premi.test.mjs` — **29** (erano 24), tre controprove |
+
+### Excel, PDF ed email escono dallo stesso documento
+
+È la regola dell'estratto conto (§17) applicata ai sospesi: tre costruzioni
+diverse dello stesso foglio direbbero, prima o poi, tre cose diverse — e
+**quella sbagliata sarebbe quella che il collaboratore ha in mano**. Il motore
+produce un resoconto solo; la pagina lo disegna, l'Excel lo scrive, il PDF lo
+impagina con `PdfWithus.disegna` e l'email se lo porta in allegato.
+
+Il motore della carta intestata **si carica, non si copia**: IAM adesso legge
+`pdf-withus.js` dal preventivatore (§18, §26). Due carte intestate sarebbero
+due carte intestate che un giorno divergono.
+
+### Le due famiglie non si sommano, e non si scaricano insieme
+
+«Il cliente ha già pagato, i soldi li tieni tu» e «il cliente deve ancora
+pagare» sono **due lavori diversi**: il primo è denaro che si può farsi dare
+oggi, il secondo è una telefonata al cliente. Un totale unico mandato a una
+persona gli chiederebbe dei soldi che nessuno gli ha ancora dato, e il testo
+dell'email lo scrive a chiare lettere.
+
+Per la stessa ragione **non si scaricano insieme**: una rata aperta si
+*incassa* (Fase 2), una già incassata si *porta in contabilità* (§32).
+Mescolarle vorrebbe dire registrare un incasso che è già avvenuto. Chi ne
+sceglie di tutti e due i tipi riceve il motivo, non un errore.
+
+### Quello che resta fuori viaggia SUL FOGLIO
+
+Un file scaricato vive da solo per mesi, lontano dallo schermo che lo spiegava
+(§62). Quindi gli avvisi sono parte del **documento**, non della schermata:
+
+- una rata senza importo dichiarato **non vale zero** — resta fuori dal totale
+  e si conta (§17);
+- una **selezione** si dichiara: «riguarda 3 rate su 12, è una selezione, non
+  tutto quello che risulta». Un foglio parziale che non lo dice fa credere che
+  quello sia tutto — è il tetto nascosto di §50 e §53, su un file che esce di
+  casa;
+- se la lettura del portafoglio si è fermata, il foglio dice che i numeri sono
+  **in difetto**.
+
+Sono esattamente le tre righe che un formato breve sarebbe tentato di
+togliere, e c'è una prova che le pretende in tutti e tre i formati (§34).
+
+### «Scaricarle insieme» è un gesto solo, e non è una seconda scrittura
+
+La scrittura dell'incasso ha la sua schermata (Fase 2, §59): rifarla qui
+vorrebbe dire due regole su come nasce un movimento. Quello che cambia è che
+le rate scelte **arrivano già spuntate** (`incaConRate`), lette **per id** e
+non con la ricerca per testo — cercare «Rossi» ne troverebbe anche altre, e una
+rata spuntata per sbaglio è un incasso registrato che non è avvenuto. Quelle
+che non arrivano **si dicono**: una riga sparita in silenzio è un premio che
+nessuno cercherà più (§55).
+
+> **Una trappola annotata.** La linguetta «Incassa una rata» fa partire un
+> caricamento asincrono che AZZERA le rate scelte. Chi ci arriva con una
+> selezione deve poterlo aspettare: `selContabTab` adesso tiene la promessa
+> (`INCA_PRONTA`), e chi preseleziona l'aspetta. Senza, le rate si vedevano
+> cancellare a metà strada — è la trappola di §17 (`showPage` che rilegge
+> tutto), un piano più in là. La prova che sorvegliava quella riga fissava la
+> **forma** della chiamata: si è aggiornata la regola («qualcuno la chiama»),
+> non il numero.
+
+### Abbinare si offre solo dove la voce è già una persona
+
+Il collegamento «voce di pagamento → collaboratore» esiste dal 22/09 (§64) ed
+è quello che rende vero il «con un semplice click»: l'indirizzo dell'email si
+precompila da lì.
+
+Ma **abbinare un collaboratore al POS** vorrebbe dire dire che tutte le rate
+pagate col POS le tiene lui — sul portafoglio vero sono 135 righe per 34.172 €.
+Un numero grande, credibile e falso (§8.1). Quindi l'abbinamento si offre solo
+dove la voce è già una persona, e dove non lo è la schermata dice **dove si
+crea** una voce nuova, invece di offrire la cosa pericolosa.
+
+E abbinare **non tocca nessuna rata**: cambia chi è quella voce, non chi ha
+prodotto quelle polizze. C'è una prova che lo misura.
+
+### L'email parte dalla casella della contabilità
+
+`contabilita@`, e **non si ripiega** (§34): una risposta che arriva in una
+casella che quei conti non li tiene è una risposta persa. Il destinatario è
+precompilato e sempre correggibile — una voce che non è una persona non ha un
+destinatario suo, e inventarglielo sarebbe peggio che chiederlo.
+
+«Non gliel'ho mandato» e «gliel'ho mandato e non è arrivato» restano due cose
+diverse: l'errore si scrive in schermata, non si tace.
+
+### Cosa resta aperto
+
+- **Non c'è un registro degli invii** come quello dell'estratto conto
+  (`iam_invii_estratto`, §34): l'invio lascia una riga nel registro dei
+  movimenti, con destinatario, numero di rate e importo, ma non congela i
+  totali di quel giorno. «Io il resoconto non l'ho ricevuto» si risponde dal
+  registro movimenti, non da una tabella sua.
+- **L'allegato è un Excel** (una tabella HTML che Excel apre), come tutti gli
+  altri export di casa: il PDF con la carta intestata si scarica a parte.
+- **Una sola voce è abbinata a una persona** (Oddo Francesco): finché è così,
+  la pagina di dettaglio con l'email precompilata vale per lei sola.

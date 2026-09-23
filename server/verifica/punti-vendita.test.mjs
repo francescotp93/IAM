@@ -19,7 +19,14 @@ const RADICE = path.join(QUI, '..', '..');
 const require = createRequire(import.meta.url);
 const PV = require(path.join(RADICE, 'tariffe', 'motore', 'punti-vendita.js'));
 const MIGR = fs.readFileSync(path.join(RADICE, 'supabase', 'migrations', '20260923b_punti_vendita.sql'), 'utf8');
-const soloSql = s => s.split('\n').filter(r => !/^\s*--/.test(r)).join('\n');
+const MIGR_C = fs.readFileSync(path.join(RADICE, 'supabase', 'migrations', '20260923c_punti_vendita_responsabile_e_polizze.sql'), 'utf8');
+const MIGR_D = fs.readFileSync(path.join(RADICE, 'supabase', 'migrations', '20260923d_polizza_segue_il_punto_vendita.sql'), 'utf8');
+const MIGR_E = fs.readFileSync(path.join(RADICE, 'supabase', 'migrations', '20260923e_decisione_codice_col_punto_vendita.sql'), 'utf8');
+/* Via i commenti, tutti e due i tipi: una regola NOMINATA in un commento per
+   spiegare perché non c'è risulterebbe presente, ed è la trappola dei commenti
+   (§10, §12, §18, §26, §29, §31, §33, §34, §37, §41, §42, §45, §55, §61, §63). */
+const soloSql = s => s.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n')
+  .filter(r => !/^\s*--/.test(r)).join('\n');
 
 const esiti = [];
 const prova = (nome, fn) => esiti.push({ nome, fn });
@@ -208,6 +215,120 @@ prova('il riepilogo non trasforma una lettura caduta in uno ZERO', () => {
   deve(c.persone === null && c.senza_punto === null, 'una lettura caduta diventa uno zero');
   deve(c.cieco === true, 'non dichiara di non aver potuto leggere');
   return 'quattro punti, uno da smistare, e il null quando non si è letto';
+});
+
+/* Le persone della struttura, riusate dalle prove del responsabile. */
+const GENTE = [
+  { id: 'p1', cognome: 'ALEO', nome: 'ALESSANDRO', punto_vendita_id: 'ag' },
+  { id: 'p2', cognome: 'ODDO', nome: 'FRANCESCO', punto_vendita_id: 'ag' },
+  { id: 'p3', cognome: 'ROSSI', nome: 'MARIO', punto_vendita_id: 'f1' },
+  { id: 'p4', cognome: 'VERDI', nome: 'ANNA' }
+];
+
+prova('IL RESPONSABILE È UNA PERSONA DEL REGISTRO, e si dice se lavora altrove', () => {
+  const dentro = PV.responsabileDi({ id: 'ag', responsabile_id: 'p2' }, GENTE);
+  deve(dentro && dentro.nome === 'ODDO FRANCESCO', 'il nome non si compone dal registro');
+  deve(dentro.dentro === true && !dentro.altrove, 'chi lavora qui risulta altrove');
+
+  /* Mario lavora in filiale: metterlo responsabile dell'agenzia generale lo
+     porta via da lì, e questa è la cosa che va letta PRIMA di salvare. */
+  const fuori = PV.responsabileDi({ id: 'ag', responsabile_id: 'p3' }, GENTE);
+  deve(fuori.dentro === false && fuori.altrove === 'f1',
+    'non dice da quale punto vendita verrebbe via: ' + fuori.altrove);
+
+  /* Chi non è più nel registro NON sparisce: sparire farebbe credere che
+     quel punto vendita non abbia mai avuto un capo. */
+  const perso = PV.responsabileDi({ id: 'ag', responsabile_id: 'zzz' }, GENTE);
+  deve(perso && perso.mancante === true, 'un responsabile cancellato sparisce in silenzio');
+
+  deve(PV.responsabileDi({ id: 'ag' }, GENTE) === null, 'senza responsabile non torna null');
+  return 'nome dal registro, «viene via da f1», e il mancante dichiarato';
+});
+
+prova('SPOSTARE UNA PERSONA LA TOGLIE A QUALCUN ALTRO, e lo dice', () => {
+  /* Tre risposte, non due. La terza è l'unica che qualcuno deve leggere. */
+  const gia = PV.spostamento(GENTE, 'p1', 'ag');
+  deve(gia.ok && gia.serve === false, 'chi è già dentro risulta da spostare');
+
+  const libero = PV.spostamento(GENTE, 'p4', 'ag');
+  deve(libero.serve === true && libero.da === null, 'chi non sta da nessuna parte risulta venire da qualcosa');
+
+  const altrui = PV.spostamento(GENTE, 'p3', 'ag');
+  deve(altrui.serve === true && altrui.da === 'f1',
+    'spostare da un altro punto vendita non dice da dove: ' + altrui.da);
+
+  const ignoto = PV.spostamento(GENTE, 'mai-visto', 'ag');
+  deve(ignoto.ok === false && ignoto.motivo, 'una persona che non è nel registro passa lo stesso');
+  return 'non serve / serve e viene da nessuno / serve e VIENE VIA DA f1';
+});
+
+prova('chi si può aggiungere: tutti tranne chi c’è già, e chi lavora altrove è marcato', () => {
+  const lista = PV.smistabili(GENTE, 'ag');
+  deve(lista.length === 2, 'non offre le due persone di fuori: ' + lista.length);
+  deve(!lista.some(x => x.id === 'p1' || x.id === 'p2'), 'offre di aggiungere chi c’è già');
+  const mario = lista.find(x => x.id === 'p3');
+  deve(mario && mario.da === 'f1', 'chi viene da un altro punto vendita non è marcato');
+  /* In ordine alfabetico: ROSSI prima di VERDI. */
+  deve(lista[0].id === 'p3', 'l’elenco non è in ordine di cognome');
+  return '2 su 4, con ROSSI marcato «viene da f1»';
+});
+
+prova('LA POLIZZA VA ANCHE AL PUNTO VENDITA, e la colonna non si ricava dal vivo', () => {
+  const sql = soloSql(MIGR_C);
+  deve(/alter table quote_polizze[\s\S]{0,200}punto_vendita_id/.test(sql),
+    'la polizza non porta il punto vendita');
+  deve(/alter table quote_titoli[\s\S]{0,200}punto_vendita_id/.test(sql),
+    'la rata non porta il punto vendita');
+  deve(/alter table iam_punti_vendita[\s\S]{0,200}responsabile_id[\s\S]{0,120}quote_collaboratori/.test(sql),
+    'il responsabile non punta al registro delle persone');
+
+  /* LA DECISIONE SU UN CODICE NON RISCRIVE QUESTA FUNZIONE A MEMORIA. Il
+     23/09 l'avevo riscritta da capo e aveva perso i quattro stati del motore:
+     in plpgsql i campi di un `record` si risolvono quando la funzione GIRA,
+     quindi si e' installata senza un errore. La versione buona e' quella del
+     22/09 con due righe in piu', e sta in `20260923e`. */
+  const fn = soloSql(MIGR_E);
+  deve(/update quote_polizze[\s\S]{0,400}punto_vendita_id\s*=/.test(fn),
+    'la funzione non tocca il punto vendita sulle polizze');
+  deve(/update quote_titoli[\s\S]{0,400}punto_vendita_id\s*=/.test(fn),
+    'la funzione non tocca il punto vendita sulle rate');
+  /* Dove il produttore NON cambia il punto vendita non si tocca: chi l'ha
+     messo a mano sapeva qualcosa che il codice non sa (§19, regola 2). */
+  deve(/is distinct from r\.collaboratore_id/.test(fn),
+    'azzera il punto vendita anche quando il produttore resta lo stesso');
+  /* E le regole del 22/09 sono ancora tutte lì. */
+  ['non-deciso', 'persona', 'nessuno', 'da-ridecidere'].forEach(x =>
+    deve(fn.indexOf("'" + x + "'") >= 0, 'la funzione ha perso lo stato «' + x + '»'));
+  deve(/r\.attivo is false/.test(fn), 'la funzione ha perso la sospensione');
+  deve(!/current_date|now\(\)/i.test(fn), 'la funzione chiede l’ora al computer');
+  /* E gli HUB non si cancellano: sono l'unica traccia di com'era organizzata
+     l'agenzia, e tre schede economiche ci puntano. */
+  deve(!/drop table[^\n]*iam_hub/i.test(sql), 'la migrazione cancella gli HUB');
+  return 'due colonne, il responsabile al registro, e la decisione col punto vendita';
+});
+
+prova('UNA REGOLA SOLA, nel punto da cui passano tutte le scritture', () => {
+  const sql = soloSql(MIGR_D);
+  /* Le strade che scrivono una polizza sono quattro (import, decisione sul
+     codice, «Assegna il pregresso», «Nuova polizza»). La regola sta in un
+     trigger, non in quattro punti di chiamata. */
+  deve(/create trigger quote_polizze_pv_trg[\s\S]{0,200}before insert or update/.test(sql),
+    'il trigger sulle polizze non c’è');
+  deve(/create trigger quote_titoli_pv_trg[\s\S]{0,200}before insert or update/.test(sql),
+    'il trigger sulle rate non c’è');
+
+  /* NON SOVRASCRIVE QUELLO CHE C’È: riempie solo una colonna vuota. Chi l’ha
+     messo a mano sapeva qualcosa che il programma non sa (§19, regola 2). */
+  deve(/new\.punto_vendita_id is null/.test(sql),
+    'il trigger riscrive anche un punto vendita già messo a mano');
+  /* E senza un collaboratore non inventa niente. */
+  deve(/new\.collaboratore_id is not null/.test(sql),
+    'il trigger scrive anche quando non c’è un intermediario');
+
+  /* NESSUN BACKFILL: riempire all’indietro vorrebbe dire attribuire la
+     produzione di un anno chiuso a una struttura che allora non esisteva. */
+  deve(!/^\s*update\s+quote_polizze/mi.test(sql), 'la migrazione riscrive il pregresso');
+  return 'due trigger, «solo se è vuoto», e nessun backfill';
 });
 
 prova('LA TABELLA NASCE VUOTA: non si semina una struttura che nessuno ha deciso', () => {

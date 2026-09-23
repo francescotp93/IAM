@@ -8053,3 +8053,153 @@ figlio dalla sua radice.
 - **Nessuna abilitazione filtra ancora niente nel preventivatore**: oggi i
   punti vendita si dichiarano e si leggono. Collegarli a chi può emettere
   davvero è il passo dopo, e va fatto con la sua migrazione.
+
+---
+
+## 69. Punti vendita: il responsabile, e la polizza che ne porta uno (23/09/2026)
+
+> «per quanto riguarda i punti vendita devo poter mettere un intermediario, e
+> poter scegliere un intermediario di primo livello (responsabile) e poi poter
+> aggiungere chi sta sotto. la parte dei flag deve essere fatta ad interruttori
+> […] se la polizza si deve sempre poter assegnare all'intermediario, che però
+> se fa parte di un punto vendita si deve assegnare anche al punto vendita.
+> Elimina la parte degli HUB perché i punti vendita li sostituiscono.»
+> — Francesco.
+
+| pezzo | dove |
+|---|---|
+| le regole nuove | `responsabileDi`, `spostamento`, `smistabili` in `tariffe/motore/punti-vendita.js` |
+| prove in Node | `server/verifica/punti-vendita.test.mjs` — **19** (erano 14) |
+| le tre colonne | `supabase/migrations/20260923c_punti_vendita_responsabile_e_polizze.sql` (applicata) |
+| la regola che riempie il punto vendita, **una sola** | `supabase/migrations/20260923d_polizza_segue_il_punto_vendita.sql` (applicata) |
+| la decisione sul codice che la porta dietro | `supabase/migrations/20260923e_decisione_codice_col_punto_vendita.sql` (applicata) |
+| responsabile, interruttori, smistamento | blocco `pvd*` in `iam/index.html` |
+| il punto vendita nella scheda del collaboratore | `mcPuntiVendita` in `iam/index.html` |
+| prove sulla schermata | `iam/verifica/punti-vendita.test.mjs` — **12** (erano 8), tre controprove |
+
+### Il responsabile lavora dove risponde
+
+Punta alla **persona** del registro (`responsabile_id` → `quote_collaboratori`),
+non a una riga di testo: un nome digitato non si incrocia con niente, e il
+giorno in cui quella persona cambia cognome ci sono due verità.
+
+E chi sta sotto sono le persone con lo stesso `punto_vendita_id`: un
+responsabile che non è fra loro sarebbe un capo senza squadra, o peggio una
+persona che risulta lavorare altrove mentre risponde di qui. **Quindi
+sceglierlo lo SPOSTA** — e lo spostamento **si dichiara prima di salvare**, col
+nome del punto vendita da cui viene via. Una persona sta in un punto vendita
+solo: spostarla in silenzio vuol dire toglierla a qualcun altro senza che
+nessuno se ne accorga.
+
+Un responsabile che non è più nel registro **non sparisce**: si marca, come un
+padre che non c'è più. Sparire farebbe credere che quel punto vendita non ne
+abbia mai avuto uno (§12, §18 applicati a una persona invece che a un numero).
+
+### «e poi poter aggiungere chi sta sotto»
+
+Prima le persone si smistavano **solo** dalla loro scheda: aprire il punto
+vendita, vederlo vuoto e doverlo riempire da un'altra schermata è la stessa
+distanza che aveva fatto perdere la voce «Importa» in una barra da ventuno voci
+(§15). Adesso c'è una tendina in cima all'elenco e un «Togli da qui» su ogni
+riga — che **non cancella niente**: la persona resta nel registro, senza punto
+vendita.
+
+Chi lavora altrove resta in elenco, marcato con il punto vendita da cui
+verrebbe via: toglierlo vorrebbe dire non poter mai spostare nessuno, e
+nasconderlo senza dirlo sarebbe peggio.
+
+### Gli interruttori sono quelli di IAM
+
+`.sw`, `.sw-track`, `.sw-thumb`, `.sw-row` esistono in `iam/index.html` dal
+primo giorno. Scriverne un secondo paio qui vorrebbe dire due interruttori che
+un giorno si accendono in due modi diversi — è la regola dei motori (§18)
+applicata al foglio di stile. Due forme, una funzione: in riga nella barra dei
+filtri, su una riga sua nel modulo, dove accanto ci sta scritto che cosa vuol
+dire.
+
+### La regola che riempie il punto vendita sta in UN posto
+
+Le strade che scrivono una polizza sono **quattro**: l'importazione del flusso,
+l'applicazione di una decisione sul codice produttore, «Assegna il pregresso»
+(che aggiorna dal browser) e «Nuova polizza». Scrivere la regola in tutte e
+quattro vorrebbe dire quattro regole su chi produce per chi, e quella sbagliata
+sarebbe quella che nessuno guarda.
+
+> **Un trigger, nel punto da cui passano tutte.** `iam_pv_dal_collaboratore`
+> riempie `punto_vendita_id` leggendolo dalla persona — e fa due cose sole.
+
+1. **Non sovrascrive quello che c'è.** Riempie solo una colonna vuota: chi
+   l'ha messo a mano sapeva qualcosa che il programma non sa (§19, regola 2).
+2. **Non rilegge il passato.** La colonna si riempie quando la riga si scrive e
+   da quel momento resta com'è. Il punto vendita di una persona cambia, e se la
+   produzione lo leggesse dal vivo **il consuntivo di un anno già chiuso
+   cambierebbe da solo** — è la stessa ragione per cui il produttore si congela
+   sulla polizza (§45) e i requisiti del fascicolo alla creazione (§11).
+
+Collaudato sul database vero e annullato: la polizza e la rata nascono col
+punto vendita, quello messo a mano non si tocca, e senza un intermediario non
+si inventa niente. **Controprova**: tolto «solo se è vuoto», il punto vendita
+messo a mano viene riscritto.
+
+### Il guasto peggiore di questa giornata, ed era mio
+
+Nella prima stesura avevo **riscritto a memoria**
+`iam_applica_decisione_codice`, credendo di sapere che cosa facesse. Il
+risultato aveva perso i **quattro stati** del motore (`non-deciso`, `persona`,
+`nessuno`, `da-ridecidere`), la **sospensione** di un abbinamento e i nomi dei
+numeri che torna: tre delle cinque regole di §19 e §49, tutte su chi viene
+pagato.
+
+E si è installata **senza un errore**. In plpgsql i campi di un `record` si
+risolvono **quando la funzione gira**, non quando si crea: una funzione che
+legge una colonna che non esiste nasce verde e muore al primo uso vero.
+
+> **Una funzione che esiste non si riscrive: si copia e si aggiunge.** Quello
+> che «si sa che fa» è il ricordo di chi legge, non il codice.
+
+L'ha presa `assegnazione.test.mjs`, che legge l'**ultima** migrazione che
+definisce quella funzione e le chiede le stesse regole del motore — la stessa
+disciplina già scritta in §55 e §60. La versione buona è quella del 22/09 con
+due righe in più, in `20260923e`, e la sua prova adesso pretende anche i
+quattro stati e la sospensione, non solo il punto vendita.
+
+Nello stesso giro il `soloSql` di `punti-vendita.test.mjs` ha smesso di
+guardare solo i `--`: toglie anche i commenti `/* */`, altrimenti una regola
+nominata in un commento risulta presente (la trappola dei commenti, ennesima
+occorrenza).
+
+### Gli HUB: via la schermata, non i dati
+
+Misurato prima di toccare: `iam_hub` ha **2 righe** (HUB PANTELLERIA, HUB
+VILLABATE) e `iam_team.hub_id` è valorizzato su **3 schede su 12**.
+
+Cancellate **undici funzioni** e tre pezzi di interfaccia (la scheda «HUB
+Produttori», il filtro nell'elenco collaboratori, il campo nella scheda) —
+*del codice che nessuno chiama è il guasto numero uno di questo repository
+(§1), e vale anche per il codice che SMETTE di essere chiamato.*
+
+Ma la tabella e la colonna **restano**, e `saveCollab` continua a riscrivere
+l'`hub_id` che c'era: un campo che non si mostra più non è un campo da
+cancellare, e un salvataggio che lo mette a `null` cancellerebbe quelle tre
+righe senza che nessuno l'abbia chiesto. Al posto del campo, nella scheda del
+collaboratore c'è il **punto vendita** — che sta sulla persona, non sulla
+scheda economica, e se la scheda non è agganciata a nessuna persona **lo dice**
+invece di far credere che quella persona non stia da nessuna parte.
+
+E i due HUB **non diventano due punti vendita da soli**: sarebbe mettere in
+archivio una struttura che nessuno ha deciso (§8.1). La schermata li mostra con
+un bottone che apre il modulo **col nome già nel campo**, visibile e
+correggibile — proporre e scrivere sono due cose diverse, e su una struttura
+d'agenzia la differenza è tutta.
+
+### Cosa resta aperto
+
+- **Nessun responsabile è ancora dichiarato**, e c'è un punto vendita solo con
+  zero persone dentro: finché è così la schermata conta e non giudica.
+- **`iam_utenti.rete`** resta il campo di testo da cui si viene, non letto da
+  nessuno. Si toglie quando i punti vendita veri ci sono.
+- **Le abilitazioni non filtrano ancora niente nel preventivatore**: oggi si
+  dichiarano e si leggono. Collegarle a chi può emettere davvero è il passo
+  dopo, e va fatto con la sua migrazione.
+- **Nessuna schermata mostra ancora la produzione PER PUNTO VENDITA**: le due
+  colonne si riempiono da oggi, e il consuntivo che le legge è un lavoro a sé.

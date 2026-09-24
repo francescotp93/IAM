@@ -1344,3 +1344,32 @@ indietro: si cancellano `supabase/colonne.json` e
 
 **Fuori perimetro, annotato:** il guardiano non copre `.eq()`/`.order()`/
 `.gte()` né le chiavi di `insert`/`update`. Sono la stessa famiglia.
+
+## 24/09/2026 — 0.44.0 «I sospesi si scaricano scegliendo il conto»
+
+**Chiesto:** la schermata che si apre su «Scarica le selezionate», e il testo
+nuovo dell'email dei sospesi.
+
+🟡 **La modalità che si sceglie scaricando NON riscrive quella della rata.**
+Francesco ha scritto «deve aggiornare il conto/modalità di pagamento»: la
+modalità della rata dice come ha pagato il CLIENTE — è un fatto della
+compagnia e resta vero — mentre quella che si sceglie qui è come il denaro è
+arrivato in agenzia, e vive sul movimento. Riscrivere la rata direbbe una cosa
+che non è successa (§8.1). *Come tornare indietro: sarebbe una `update` su
+`quote_titoli` dentro `sprScaricoRegistra`, e una prova la vieta apposta.*
+
+🟡 **Il movimento ha una riga sola**, come quello che «Incassi da accreditare»
+scrive già da giorni. La partita doppia piena (Dare conto / Avere conto
+compagnia) qui sarebbe una terza forma di movimento in casa: si fa per tutti
+insieme, non per una schermata. *Come tornare indietro: `pianoScarico` produce
+già tutto quello che servirebbe per le due gambe.*
+
+🟢 Nell'email gli accenti sono diventati accenti (`e'` → `è`): erano una
+sbadataggine di ieri, non una convenzione.
+
+🟡 **Il testo dell'email cambia nome al foglio quando non c'è niente da
+versare**: «rimesse da effettuare» su rate che il cliente non ha ancora pagato
+chiederebbe dei soldi che quella persona non ha.
+
+**Fuori perimetro, annotato:** nessun conto dichiara ancora quali mezzi riceve
+(§32), quindi la proposta del conto quasi mai scatta e si sceglie a mano.

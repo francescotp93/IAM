@@ -2469,18 +2469,58 @@ prova('una SELEZIONE si dichiara: non è tutto quello che risulta', () => {
   return '1 riga su 3, e tutti e due i formati lo scrivono';
 });
 
-prova('un resoconto VUOTO non parte, e il testo non promette una data', () => {
+prova('un resoconto VUOTO non parte, e l’AGENZIA non promette una data', () => {
   const vuoto = C.resocontoSospesi({ voce: 'x', etichetta: 'X', righe: [] }, {});
   deve(vuoto.caso === 'vuoto', 'un gruppo senza righe non è dichiarato vuoto');
   const t = C.testoSospesi(vuoto, { oggi: '2026-09-23' });
   deve(t.ok === false && t.motivo, 'un resoconto vuoto parte lo stesso');
-  /* Nessun testo promette QUANDO si paga: non l'ha deciso nessuno, e una
-     promessa in un testo automatico è una promessa che l'agenzia non sa di
-     aver fatto (§34). */
+  /* LA REGOLA È CAMBIATA DI VERSO, NON DI SOSTANZA (24/09/2026). Fino a ieri
+     diceva «nessuna data»: era giusta perché §34 vieta di promettere QUANDO
+     L'AGENZIA PAGA — una promessa che nessuno ha deciso. Francesco ha chiesto
+     il verso opposto, che è una richiesta dell'agenzia a chi tiene i suoi
+     soldi, e quella la decide lui. Resta vietato l'impegno a pagare. */
   const pieno = C.testoSospesi(C.resocontoSospesi(GRUPPO(), {}), { oggi: '2026-09-23' });
-  deve(!/entro il|entro \d|scadenza|termine di pagamento/i.test(pieno.testo),
-    'il testo promette una data di pagamento che nessuno ha deciso');
-  return 'vuoto non parte, e nessuna data promessa';
+  deve(/Ti chiediamo di effettuare la rimessa/.test(pieno.testo),
+    'il testo non chiede la rimessa: è il motivo per cui parte');
+  deve(!/ti pagheremo|verrai pagato|accredit/i.test(pieno.testo),
+    'il testo promette un pagamento dell’agenzia che nessuno ha deciso');
+  return 'vuoto non parte, la rimessa si chiede, e l’agenzia non promette niente';
+});
+
+prova('LA RIMESSA SI CHIEDE SOLO SU QUELLO CHE UNA PERSONA HA IN MANO', () => {
+  /* «Rimesse da effettuare» su rate che il cliente non ha ancora pagato
+     chiederebbe dei soldi che quella persona non ha: sarebbe il difetto delle
+     due famiglie sommate (§64), scritto in italiano invece che in aritmetica. */
+  const solo = C.resocontoSospesi({ voce: 'v', etichetta: 'POS', tipo: 'mezzo', righe: [
+    { id: 'z', famiglia: 'incassare', importo: 100, cliente: 'BIANCHI', numero_polizza: 'P9', data: '2026-09-01' }
+  ] }, {});
+  deve(solo.caso === 'incassare', 'il caso non è «incassare»: ' + solo.caso);
+  const t = C.testoSospesi(solo, { oggi: '2026-09-23' });
+  deve(!/rimessa|rimesse/i.test(t.testo), 'chiede una rimessa su premi che il cliente non ha pagato');
+  deve(!/rimesse/i.test(t.oggetto), 'l’oggetto parla di rimesse: ' + t.oggetto);
+  deve(/non hanno ancora pagato/.test(t.testo), 'non dice di che cosa si tratta');
+  /* E nel caso misto la richiesta c'è, ma dichiara di riguardare UN solo
+     importo: in fondo, dopo il secondo blocco, si leggerebbe come la somma. */
+  const m = C.testoSospesi(C.resocontoSospesi(GRUPPO(), {}), { oggi: '2026-09-23' });
+  deve(/riguarda solo il primo/.test(m.testo), 'nel misto non dice a quale importo si riferisce');
+  return 'solo-da-incassare non chiede rimesse, il misto dice quale importo';
+});
+
+prova('un apostrofo NON è un accento, in un testo che esce di casa', () => {
+  /* «questo e’ il riepilogo», «gia’ pagato»: si leggono male e sembrano
+     scritti male da chi li manda. Il file è UTF-8 e gli accenti veri ci
+     stanno — erano una mia sbadataggine, non una convenzione. */
+  const testi = [
+    C.testoSospesi(C.resocontoSospesi(GRUPPO(), { scelte: { a: true } }), { oggi: '2026-09-23' }).testo,
+    C.testoSospesi(C.resocontoSospesi(GRUPPO(), {}), { oggi: '2026-09-23' }).testo,
+    JSON.stringify(C.documentoSospesi(C.resocontoSospesi(GRUPPO(), {}), { oggi: '2026-09-23' }))
+  ];
+  const brutto = /\b(e|gia|piu|perche|cosi|puo|sara|meta|citta|qualita|si)['’](\s|$|,|\.)/;
+  testi.forEach((x, i) => {
+    const r = (x || '').split('\n').find(l => brutto.test(l));
+    deve(!r, 'apostrofo al posto dell’accento nel formato ' + i + ': ' + r);
+  });
+  return 'tre formati, nessun apostrofo al posto di un accento';
 });
 
 /* ══ I CONTI CHE LA CAUSALE PROPONE (23/09/2026) ════════════════════════════
@@ -2557,6 +2597,101 @@ prova('una causale senza i due conti non propone niente, e non è un errore', ()
   deve(!v.conto_id && !v.contropartita_id && !v.avvisi.length,
     'una causale non configurata si lamenta invece di tacere');
   return 'niente proposta, e nessun avviso';
+});
+
+/* ══ SCARICARE UN SOSPESO (24/09/2026) ══════════════════════════════════════
+   «Quando clicco scarica le selezionate, deve aprirsi una schermata dove
+   posso decidere come ho incassato le selezionate, che deve aggiornare il
+   conto per aggiornare la quadratura» — Francesco. */
+const SC_CONTI = () => [
+  { id: 'cassa', nome: 'CASSA CONTANTI', tipologia: 'cassa', natura: 'premi', attivo: true },
+  { id: 'debito', nome: 'DEBITO VERSO PRIMA', tipologia: 'debito_compagnia', natura: 'premi', attivo: true },
+  { id: 'spento', nome: 'VECCHIO CONTO', tipologia: 'banca', natura: 'premi', attivo: false }
+];
+const SC_CAUS = () => [{ id: 'ip', codice: 'incasso_premi', nome: 'Incasso premi', natura: 'premi', segno: 'entrata' }];
+const SC_MOD = () => [
+  { codice: 'contante', nome: 'Contanti', contabilizza: true, giorni_attesi: 0, attiva: true },
+  { codice: 'col_oddo', nome: 'Oddo Francesco', collaboratore_id: 'p1', contabilizza: false, attiva: true }
+];
+const SC_RIGHE = () => [
+  { id: 't1', famiglia: 'versare', importo: 262.98, cliente: 'SPADA', numero_polizza: 'BLP1' },
+  { id: 't2', famiglia: 'versare', importo: 400, cliente: 'CARPITELLA', numero_polizza: 'BLP2' }
+];
+const SC_OK = { mezzo: 'contante', conto_id: 'cassa', data: '2026-09-24' };
+
+prova('SCARICARE: due rate, un conto, e il saldo si muove', () => {
+  const p = C.pianoScarico(SC_RIGHE(), Object.assign({ conti: SC_CONTI(), causali: SC_CAUS(), modalita: SC_MOD() }, SC_OK));
+  deve(p.ok === true, 'il piano non parte: ' + JSON.stringify(p.errori));
+  deve(p.movimenti.length === 2, 'non fa due movimenti: ' + p.movimenti.length);
+  deve(p.totale === 662.98, 'il totale non torna: ' + p.totale);
+  deve(p.movimenti.every(m => m.conto_id === 'cassa' && m.causale_id === 'ip' && m.data === '2026-09-24'),
+    'i movimenti non portano conto, causale e data');
+  deve(p.movimenti.every(m => m.titolo_id), 'un movimento senza la sua rata non si ritrova più');
+  return '2 movimenti per 662,98 su CASSA CONTANTI';
+});
+
+prova('UNA PERSONA NON È UN MODO DI PAGARE', () => {
+  /* «Oddo Francesco» dice CHI teneva i soldi (§64). Sceglierlo qui vorrebbe
+     dire dire che il denaro è arrivato «con Oddo Francesco»: non è un conto
+     e non muove nessuna quadratura. */
+  const p = C.pianoScarico(SC_RIGHE(), { conti: SC_CONTI(), causali: SC_CAUS(), modalita: SC_MOD(),
+    mezzo: 'col_oddo', conto_id: 'cassa', data: '2026-09-24' });
+  deve(p.ok === false, 'accetta una persona come modalità di pagamento');
+  deve(/è una persona/.test(p.errori.join(' ')), 'non dice perché: ' + p.errori.join(' '));
+  return 'rifiutata, col motivo';
+});
+
+prova('IL CONTO DEVE ESSERE DI DENARO, e acceso', () => {
+  /* Un incasso su un conto di debito direbbe che il debito verso la
+     compagnia è aumentato incassando: è `denaroDi` (Fase 4-bis) applicata
+     PRIMA di scrivere invece che dopo. */
+  const d = C.pianoScarico(SC_RIGHE(), { conti: SC_CONTI(), causali: SC_CAUS(), modalita: SC_MOD(),
+    mezzo: 'contante', conto_id: 'debito', data: '2026-09-24' });
+  deve(d.ok === false && /il denaro c’è davvero/.test(d.errori.join(' ')),
+    'accetta un conto che denaro non è: ' + d.errori.join(' '));
+  const s = C.pianoScarico(SC_RIGHE(), { conti: SC_CONTI(), causali: SC_CAUS(), modalita: SC_MOD(),
+    mezzo: 'contante', conto_id: 'spento', data: '2026-09-24' });
+  deve(s.ok === false && /spento/.test(s.errori.join(' ')), 'accetta un conto spento');
+  return 'debito no, spento no';
+});
+
+prova('SI SCARICA SOLO QUELLO CHE IL CLIENTE HA GIÀ PAGATO', () => {
+  /* Una rata ancora aperta non si scarica: si incassa, ed è un'altra
+     schermata. Registrarla qui vorrebbe dire dire che il cliente ha pagato. */
+  const righe = SC_RIGHE().concat([
+    { id: 't3', famiglia: 'incassare', importo: 100, cliente: 'BIANCHI' },
+    { id: 't4', famiglia: 'versare', importo: null, cliente: 'VERDI' }
+  ]);
+  const p = C.pianoScarico(righe, Object.assign({ conti: SC_CONTI(), causali: SC_CAUS(), modalita: SC_MOD() }, SC_OK));
+  deve(p.movimenti.length === 2, 'scrive anche quello che non doveva: ' + p.movimenti.length);
+  deve(p.fuori.length === 2, 'quello che resta fuori non si conta: ' + p.fuori.length);
+  deve(p.fuori.some(x => x.id === 't3' && /si incassa/.test(x.perche)), 'non dice perché la rata aperta resta fuori');
+  /* Un importo che non c'è NON VALE ZERO (§17): esce col motivo, e il totale
+     resta quello delle righe vere. */
+  deve(p.fuori.some(x => x.id === 't4' && /non vale zero/.test(x.perche)), 'la rata senza importo entra come zero');
+  deve(p.totale === 662.98, 'il totale ha contato una riga che non doveva: ' + p.totale);
+  return '2 dentro, 2 fuori col motivo';
+});
+
+prova('senza conto, senza mezzo o senza data non si scrive niente', () => {
+  const base = { conti: SC_CONTI(), causali: SC_CAUS(), modalita: SC_MOD() };
+  const senzaConto = C.pianoScarico(SC_RIGHE(), Object.assign({}, base, { mezzo: 'contante', data: '2026-09-24' }));
+  deve(!senzaConto.ok && /quale conto/.test(senzaConto.errori.join(' ')), 'scrive senza conto');
+  const senzaMezzo = C.pianoScarico(SC_RIGHE(), Object.assign({}, base, { conto_id: 'cassa', data: '2026-09-24' }));
+  deve(!senzaMezzo.ok && /come sono arrivati/.test(senzaMezzo.errori.join(' ')), 'scrive senza sapere come sono arrivati');
+  const senzaData = C.pianoScarico(SC_RIGHE(), Object.assign({}, base, SC_OK, { data: '' }));
+  deve(!senzaData.ok && /il giorno/.test(senzaData.errori.join(' ')), 'scrive senza data');
+  /* E la data non passa da `new Date()`: in Italia tornerebbe indietro di un
+     giorno, e un incasso finirebbe nella quadratura di ieri (§44). */
+  const p = C.pianoScarico(SC_RIGHE(), Object.assign({}, base, SC_OK));
+  deve(p.movimenti[0].data === '2026-09-24', 'la data è cambiata per strada: ' + p.movimenti[0].data);
+  return 'tre rifiuti, e la data resta quella scritta';
+});
+
+prova('senza la causale «Incasso premi» non si scrive, e lo dice', () => {
+  const p = C.pianoScarico(SC_RIGHE(), Object.assign({ conti: SC_CONTI(), causali: [], modalita: SC_MOD() }, SC_OK));
+  deve(!p.ok && /Incasso premi/.test(p.errori.join(' ')), 'scrive senza causale: ' + p.errori.join(' '));
+  return 'niente causale, niente movimento';
 });
 
 console.log('\n══ CONTI E CAUSALI ══');

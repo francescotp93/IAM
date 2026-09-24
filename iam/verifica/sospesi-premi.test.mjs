@@ -159,18 +159,34 @@ prova('la schermata non rifà le regole: chiama il motore', () => {
   return 'le regole stanno nel motore';
 });
 
-prova('la schermata NON scrive l\'incasso: manda dove si scrive', () => {
-  /* «Scaricare» un sospeso è registrare l'incasso, e quella schermata esiste
-     già (Fase 2): si sceglie il conto e anche un mezzo diverso da quello
-     dichiarato. Rifare qui la scrittura sarebbe la seconda regola su come
-     nasce un movimento. */
+prova('quello che la schermata NON riscrive mai: i fatti della rata', () => {
+  /* LA REGOLA È CAMBIATA IL 24/09/2026, NON IL NUMERO. Fino a ieri diceva
+     «qui non si scrive niente», e l'ha chiesto Francesco: «quando clicco
+     scarica le selezionate deve aprirsi una schermata dove posso decidere
+     come ho incassato le selezionate, che deve aggiornare il conto per
+     aggiornare la quadratura». Quindi adesso un movimento qui nasce.
+     Restano vietate le due cose che lo erano per una ragione, e la ragione
+     non è cambiata:
+       · `quote_titoli` — come il CLIENTE ha pagato è un fatto della
+         compagnia, e resta vero anche dopo che il collaboratore ha portato i
+         soldi in agenzia. Riscriverlo direbbe una cosa che non è successa.
+       · `iam_incassi` — è l'incasso di una rata ANCORA APERTA (Fase 2), e ha
+         la sua schermata: rifarlo qui sarebbe la seconda regola su come si
+         incassa da un cliente. */
   const b = blocco();
-  ['quote_titoli', 'iam_movimenti', 'iam_incassi'].forEach(t => {
+  ['quote_titoli', 'iam_incassi'].forEach(t => {
     deve(!new RegExp("from\\('" + t + "'\\)[\\s\\S]{0,200}\\.(update|insert|upsert|delete)\\(").test(b),
       'la schermata dei sospesi scrive su ' + t);
   });
+  /* E il movimento non se lo costruisce da sé: la regola di che cosa si può
+     scaricare, su quale conto e con che mezzo sta nel motore, ed è provata in
+     Node. Una seconda regola qui sarebbe quella che nessuno guarda. */
+  deve(/Contabilita\.pianoScarico\(/.test(b), 'il movimento non passa dal motore');
+  const ins = b.slice(b.indexOf('async function sprScaricoRegistra'));
+  deve(/from\('iam_movimenti'\)[\s\S]{0,400}\.insert\(/.test(ins),
+    'lo scarico non scrive nessun movimento: il conto non si muove e la quadratura non lo sa');
   deve(/selContabTab\('incassa'\)/.test(b), 'il tasto «Incassa» non porta dove si incassa');
-  return 'legge e manda, non scrive';
+  return 'la rata non si riscrive, e il movimento passa dal motore';
 });
 
 prova('«non si è potuto leggere» non diventa «non ce n\'è»', () => {
@@ -429,8 +445,9 @@ function bancoSpr(righe, modalita, extra) {
       return H.slice(i, fine + 2);
     }).join('\n');
   const elementi = {};
-  const nodo = (id) => (elementi[id] = elementi[id] || { id, innerHTML: '', textContent: '', value: '' });
-  ['spr-lista', 'spr-cards', 'spr-avvisi', 'spr-somma', 'spr-mail', 'spr-abbina'].forEach(nodo);
+  const nodo = (id) => (elementi[id] = elementi[id] || { id, innerHTML: '', textContent: '', value: '', style: {} });
+  ['spr-lista', 'spr-cards', 'spr-avvisi', 'spr-somma', 'spr-mail', 'spr-abbina',
+   'spr-ov', 'spr-box', 'spr-sc-mezzo', 'spr-sc-conto', 'spr-sc-data'].forEach(nodo);
   const scaricati = [], mandate = [], scritte = [];
   const doc = {
     getElementById: (id) => elementi[id] || null,
@@ -444,14 +461,27 @@ function bancoSpr(righe, modalita, extra) {
   function q(tab) {
     const st = { tab, sel: '', filtri: [], dati: tab === 'quote_titoli' ? righe
       : tab === 'iam_modalita_pagamento' ? modalita
-      : tab === 'quote_collaboratori' ? (extra.persone || []) : [] };
+      : tab === 'quote_collaboratori' ? (extra.persone || [])
+      : tab === 'iam_conti' ? (extra.conti || [])
+      : tab === 'iam_causali' ? (extra.causali || []) : [] };
     const api = {
       update(v) { st.update = v; scritte.push(st); return api; },
+      insert(v) { st.insert = v; scritte.push(st); return api; },
       select(x) { st.sel = x || ''; return api; },
       eq(c, v) { st.filtri.push([c, 'eq', v]); return api; },
       in(c, v) { st.filtri.push([c, 'in', v]); return api; },
       not() { return api; }, order() { return api; }, range() { return api; },
       then(res) {
+        if (st.insert) {
+          if (extra.insertKo) return Promise.resolve(res({ data: null, error: { message: extra.insertKo } }));
+          /* IL CASO DI BUG 1 (§47): PostgREST NON dà errore quando la
+             scrittura tocca zero righe — `error` è null e `data` è vuoto.
+             Senza questo caso nel banco, una prova che crede di misurarlo
+             misura solo il ramo dell'errore, e resta verde comunque. */
+          if (extra.insertZero) return Promise.resolve(res({ data: [], error: null }));
+          const n = Array.isArray(st.insert) ? st.insert.length : 1;
+          return Promise.resolve(res({ data: Array.from({ length: n }, (_, i) => ({ id: 'mov' + i })), error: null }));
+        }
         if (st.update) return Promise.resolve(res({ data: [{ codice: 'x' }], error: null }));
         let d = st.dati.slice();
         for (const [c, op, v] of st.filtri) {
@@ -472,8 +502,9 @@ function bancoSpr(righe, modalita, extra) {
   const src = pezzi + '\n' + b
     + '\nreturn { sprCarica, sprRender, sprApri, sprChiudi, sprSel, sprSelTutte, sprRes,'
     + ' sprExcel, sprMail, sprAbbina, sprScarica, sprDocHTML,'
+    + ' sprScaricoApri, sprScaricoRender, sprScaricoRegistra, sprScaricoChiudi,'
     + ' stato: () => ({ esito: SPR_ESITO, err: SPR_ERR, rate: SPR_RATE, dett: SPR_DETT,'
-    + ' sel: SPR_SEL, invio: SPR_ESITO_INVIO }) };';
+    + ' sel: SPR_SEL, invio: SPR_ESITO_INVIO, scMsg: SPR_SC_MSG, scarico: SPR_SCARICO }) };';
   const f = new Function('document', 'db', 'Contabilita', 'CNT_PASSO', 'CNT_GIRI',
     'esc', 'selContabTab', 'cntOggiIso', 'pntData', 'window', 'mailFetch', 'confirm',
     'logMovimento', 'goTab', 'cntTab', 'Blob', 'URL', 'INCA_PRONTA', 'incaConRate', src);
@@ -554,6 +585,96 @@ prova('LA PAGINA DI UN SOSPESO SI APRE, e prende il posto dell’elenco', async 
   deve(api.stato().dett === null && /Per mezzo di pagamento/.test(el['spr-lista'].innerHTML),
     'chiudendo non si torna all’elenco');
   return 'si apre, mostra le due rate, precompila l’email e si richiude';
+});
+
+const SC_CONTI_V = [
+  { id: 'cassa', nome: 'CASSA CONTANTI', tipologia: 'cassa', natura: 'premi', attivo: true, ordine: 1 },
+  { id: 'debito', nome: 'DEBITO VERSO PRIMA', tipologia: 'debito_compagnia', natura: 'premi', attivo: true, ordine: 2 }
+];
+const SC_CAUS_V = [{ id: 'ip', codice: 'incasso_premi', nome: 'Incasso premi', natura: 'premi', segno: 'entrata', attiva: true }];
+
+prova('«SCARICA LE SELEZIONATE» APRE LA SCHERMATA, e il conto si muove', async () => {
+  /* Francesco: «quando clicco scarica le selezionate, deve aprirsi una
+     schermata dove posso decidere come ho incassato le selezionate, che
+     ovviamente deve aggiornare il conto per aggiornare la quadratura». */
+  const { api, el, scritte } = bancoSpr(RATE_VERE, MOD_VERE,
+    { conti: SC_CONTI_V, causali: SC_CAUS_V });
+  await api.sprCarica(true);
+  await api.sprApri('col_oddo_francesco');
+  api.sprSelTutte('tutte');
+  await api.sprScarica();
+  /* La finestra si apre DAVVERO: `spr-ov` è fuori dai pannelli apposta, una
+     finestra dentro un pannello nascosto non si vede (§46). */
+  deve(el['spr-ov'].style.display === 'flex', 'la finestra non si apre');
+  const h = el['spr-box'].innerHTML;
+  deve(/662,98/.test(h), 'la finestra non dice quanto si sta scaricando: ' + h.slice(0, 200));
+  deve(/Come sono arrivati/.test(h), 'non chiede come sono arrivati i soldi');
+  /* UNA PERSONA NON È UN MODO DI PAGARE: «Oddo Francesco» dice CHI teneva i
+     soldi, e in questa tendina non ci va (§64). */
+  deve(!/Oddo Francesco<\/option>/.test(h), 'propone una persona come modo di pagare');
+  /* E il conto di DEBITO non è un posto dove il denaro c'è: un incasso lì
+     direbbe che il debito verso la compagnia è cresciuto incassando. */
+  deve(/CASSA CONTANTI<\/option>/.test(h), 'non propone la cassa');
+  deve(!/DEBITO VERSO PRIMA<\/option>/.test(h), 'propone un conto su cui il denaro non c’è');
+
+  el['spr-sc-mezzo'].value = 'contante';
+  el['spr-sc-conto'].value = 'cassa';
+  el['spr-sc-data'].value = '2026-09-24';
+  await api.sprScaricoRegistra();
+
+  const mov = scritte.filter(s => s.tab === 'iam_movimenti' && s.insert);
+  deve(mov.length === 1, 'non scrive i movimenti: ' + mov.length);
+  const righe = mov[0].insert;
+  deve(righe.length === 2, 'non scrive un movimento per rata: ' + righe.length);
+  deve(righe.every(r => r.conto_id === 'cassa' && r.causale_id === 'ip' && r.data === '2026-09-24'),
+    'i movimenti non portano conto, causale e data');
+  deve(righe.every(r => r.titolo_id), 'un movimento senza la sua rata non si ritrova più');
+  /* LA RATA NON SI RISCRIVE: come ha pagato il cliente è un fatto della
+     compagnia, e resta vero anche dopo che il collaboratore ha versato. */
+  deve(!scritte.some(s => s.tab === 'quote_titoli'), 'riscrive il mezzo della rata');
+  deve(/2 rate scaricate/.test(api.stato().invio), 'non dice che cosa ha fatto: ' + api.stato().invio);
+  deve(el['spr-ov'].style.display === 'none', 'la finestra resta aperta dopo aver registrato');
+  return '2 movimenti su CASSA CONTANTI, e la rata non si tocca';
+});
+
+prova('lo scarico si ferma, e dice perché: niente conto, niente movimento', async () => {
+  const { api, el, scritte } = bancoSpr(RATE_VERE, MOD_VERE,
+    { conti: SC_CONTI_V, causali: SC_CAUS_V });
+  await api.sprCarica(true);
+  await api.sprApri('col_oddo_francesco');
+  api.sprSelTutte('tutte');
+  await api.sprScarica();
+  el['spr-sc-mezzo'].value = 'contante';
+  el['spr-sc-conto'].value = '';           /* nessun conto */
+  el['spr-sc-data'].value = '2026-09-24';
+  await api.sprScaricoRegistra();
+  deve(!scritte.some(s => s.tab === 'iam_movimenti' && s.insert), 'scrive lo stesso');
+  deve(api.stato().scMsg.some(m => /quale conto/.test(m)), 'non dice perché: ' + api.stato().scMsg.join(' '));
+  deve(/quale conto/.test(el['spr-box'].innerHTML), 'il motivo non arriva in schermata');
+  return 'niente conto, niente movimento, e il motivo si legge';
+});
+
+prova('ZERO RIGHE SCRITTE NON È UN SUCCESSO SILENZIOSO', async () => {
+  /* BUG 1 (§47): PostgREST non dà errore quando una scrittura tocca zero
+     righe. Dove si toccano dei soldi si guarda quante righe il database ha
+     davvero cambiato, e non si fa credere che sia andata. */
+  const { api, el } = bancoSpr(RATE_VERE, MOD_VERE,
+    { conti: SC_CONTI_V, causali: SC_CAUS_V, insertZero: true });
+  await api.sprCarica(true);
+  await api.sprApri('col_oddo_francesco');
+  api.sprSelTutte('tutte');
+  await api.sprScarica();
+  el['spr-sc-mezzo'].value = 'contante';
+  el['spr-sc-conto'].value = 'cassa';
+  el['spr-sc-data'].value = '2026-09-24';
+  await api.sprScaricoRegistra();
+  deve(!/scaricate/.test(api.stato().invio || ''), 'dice che è andata: ' + api.stato().invio);
+  /* E il motivo deve essere QUELLO: un TypeError qualunque farebbe passare
+     una prova che crede di misurare il controllo sulle righe scritte. */
+  deve(api.stato().scMsg.some(m => /non ha scritto nessun movimento/.test(m)),
+    'non dice che il database non ha scritto niente: ' + api.stato().scMsg.join(' '));
+  deve(el['spr-ov'].style.display === 'flex', 'chiude la finestra su un guasto, e la correzione si perde');
+  return 'il guasto si dice, e la finestra resta aperta';
 });
 
 prova('SI FLAGGA PIÙ DI UNA, e quello che esce dichiara che è una SELEZIONE', async () => {

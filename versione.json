@@ -1,8 +1,21 @@
 {
-  "versione": "0.43.1",
-  "nome": "Tre colonne che non esistevano",
+  "versione": "0.44.0",
+  "nome": "I sospesi si scaricano scegliendo il conto",
   "data": "2026-09-24",
   "storia": [
+    {
+      "v": "0.44.0",
+      "data": "2026-09-24",
+      "nome": "I sospesi si scaricano scegliendo il conto",
+      "voci": [
+        "SOSPESI · «Scarica le selezionate» adesso apre una schermata: si dice COME i soldi sono arrivati in agenzia (contanti, bonifico, assegno…), su quale conto e in che giorno. Da lì in poi il conto li conta e la quadratura si muove.",
+        "Come ha pagato il CLIENTE resta scritto sulla rata e non si riscrive: è un fatto della compagnia, e resta vero anche dopo che il collaboratore ha versato. Quella che scegli qui riguarda il versamento.",
+        "Una PERSONA non compare fra i modi di pagare: «Oddo Francesco» dice chi teneva i soldi, non come sono arrivati. E non si può scegliere un conto su cui il denaro non c'è (un debito verso la compagnia): il saldo direbbe di avere soldi che non ci sono.",
+        "Se il database non scrive niente non ti dice che è andata: te lo dice, e la finestra resta aperta con quello che avevi compilato.",
+        "EMAIL DEI SOSPESI · il testo è nuovo: «questo è il riepilogo delle rimesse da effettuare all'Agenzia», con la richiesta di versare entro la giornata e l'invito a segnalare le incongruenze PRIMA di versare. Dove non c'è niente da versare non si parla di rimesse: sono clienti da sollecitare, e si chiama così.",
+        "E gli accenti sono accenti: «questo è» invece di «questo e'», che in un'email che esce di casa si legge male."
+      ]
+    },
     {
       "v": "0.43.1",
       "data": "2026-09-24",

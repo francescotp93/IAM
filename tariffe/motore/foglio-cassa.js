@@ -71,8 +71,26 @@
 
        Le due date restano tutte e due su ogni riga: una polizza emessa il 21
        e incassata il 30 appartiene a due periodi diversi per due domande
-       diverse, e nasconderne una obbligherebbe a tenere il conto a mente. */
-    var su = (o.su === 'emissione') ? 'emissione' : 'incasso';
+       diverse, e nasconderne una obbligherebbe a tenere il conto a mente.
+
+         'effetto'   — da quando la polizza COPRE. Aggiunta il 24/09/2026,
+                     dopo che il portafoglio di HDI e' entrato in archivio e
+                     non si vedeva da nessuna parte: il tracciato PASS-133
+                     non manda la data di emissione, e quelle diciotto
+                     polizze sarebbero rimaste invisibili per sempre sull'unico
+                     asse che le avrebbe mostrate tutte.
+
+                     NON E' la data di emissione travestita. La regola qui
+                     sopra resta intera: guardando per emissione, una polizza
+                     senza quella data resta fuori e non la si indovina
+                     dall'effetto. Qui e' chi guarda a dire «mostrami per
+                     decorrenza», e sa che cosa sta chiedendo. */
+    var su = (o.su === 'emissione' || o.su === 'effetto') ? o.su : 'incasso';
+    /* Quante righe restano fuori SOLO perche' manca la data su cui si sta
+       guardando. Senza questo numero la schermata mostra una tabella vuota e
+       lascia credere che non sia entrato niente — che e' esattamente quello
+       che e' successo il 24/09 dopo un'importazione riuscita. */
+    var fuoriPerLaData = 0;
 
     (o.titoli || []).forEach(function (t) {
       if (!t) return;
@@ -80,13 +98,24 @@
       var incassata = t.stato === 'incassato' && !!t.incassato_il;
       var dIncasso = incassata ? giorno(t.incassato_il) : null;
       var dEmissione = giorno(pol.data_emissione);
+      var dEffetto = giorno(pol.data_effetto);
       /* Guardando per incasso, una rata non incassata non c'è: non è un
          incasso. Guardando per emissione, una polizza senza data di emissione
          non si mette in un periodo indovinandolo dall'effetto — si emette
          prima che decorra, e una data indovinata conta la riga nel mese
          sbagliato (§21). Resta fuori, e la schermata dice quante sono. */
-      var data = su === 'emissione' ? dEmissione : dIncasso;
-      if (!data) return;
+      var data = su === 'emissione' ? dEmissione : (su === 'effetto' ? dEffetto : dIncasso);
+      if (!data) {
+        /* Si conta solo quello che sarebbe entrato per davvero: una riga di
+           un'altra compagnia, o di un altro collaboratore, non e' «esclusa
+           perche' manca la data» — e' esclusa dai filtri. */
+        if ((!o.compagnia || testo(pol.compagnia) === o.compagnia) &&
+            (!o.mezzo || testo(t.mezzo_pagamento) === o.mezzo) &&
+            (!o.collaboratore_id || t.collaboratore_id === o.collaboratore_id)) {
+          fuoriPerLaData++;
+        }
+        return;
+      }
       if (o.dal && data < String(o.dal).slice(0, 10)) return;
       if (o.al && data > String(o.al).slice(0, 10)) return;
       if (o.compagnia && testo(pol.compagnia) !== o.compagnia) return;
@@ -136,6 +165,11 @@
     });
 
     righe.sort(function (a, b) { return String(b.data).localeCompare(String(a.data)) || String(a.cliente || '').localeCompare(String(b.cliente || '')); });
+    /* Attaccato all'elenco invece che restituito a parte: chi chiama `righe()`
+       oggi continua a ricevere un array e non si accorge di niente, e chi
+       vuole il numero lo trova li'. */
+    righe.fuoriPerLaData = fuoriPerLaData;
+    righe.su = su;
     return righe;
   }
 

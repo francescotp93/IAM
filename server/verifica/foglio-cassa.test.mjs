@@ -208,6 +208,95 @@ prova('il documento PDF porta gli stessi numeri del foglio, le tre quadrature e 
   return 'PDF con 2 righe (contante), tessere e tre quadrature';
 });
 
+/* ═══ IL TERZO ASSE, E LA TABELLA CHE DICE PERCHÉ È VUOTA ═══════════════════
+   Il 24/09/2026 Francesco ha importato il portafoglio di HDI — undici
+   clienti, diciotto polizze, dodici rate, tutto scritto in archivio — e ha
+   trovato il foglio cassa vuoto. Il motivo era preciso: guardava per data di
+   emissione, e il tracciato PASS-133 non la manda. A schermo però c'era solo
+   «Nessuna polizza emessa in questo periodo», la stessa identica frase che
+   compare quando davvero non si è prodotto niente. */
+
+const SENZA_EMISSIONE = {
+  hdi1: { id: 'hdi1', compagnia: 'HDI', cliente: 'UNO', numero_polizza: 'H1',
+          data_effetto: '2026-09-23', data_emissione: null },
+  hdi2: { id: 'hdi2', compagnia: 'HDI', cliente: 'DUE', numero_polizza: 'H2',
+          data_effetto: '2026-09-23', data_emissione: null },
+  altra: { id: 'altra', compagnia: 'PRIMA', cliente: 'TRE', numero_polizza: 'P1',
+           data_effetto: '2026-09-23', data_emissione: '2026-09-23' },
+};
+const RATE_HDI = [
+  { id: 'r1', polizza_id: 'hdi1', stato: 'incassato', incassato_il: '2026-09-23', importo_lordo: 100 },
+  { id: 'r2', polizza_id: 'hdi2', stato: 'incassato', incassato_il: '2026-09-23', importo_lordo: 200 },
+  { id: 'r3', polizza_id: 'altra', stato: 'incassato', incassato_il: '2026-09-23', importo_lordo: 50 },
+];
+const GIORNO = { polizze: SENZA_EMISSIONE, titoli: RATE_HDI, dal: '2026-09-23', al: '2026-09-23' };
+
+prova('per data di effetto si vede anche chi non ha la data di emissione', () => {
+  const r = F.movimenti(Object.assign({}, GIORNO, { su: 'effetto' }));
+  deve(r.length === 3, 'per effetto escono ' + r.length + ' righe invece di 3');
+  const perEmissione = F.movimenti(Object.assign({}, GIORNO, { su: 'emissione' }));
+  deve(perEmissione.length === 1, 'per emissione escono ' + perEmissione.length + ' righe invece di 1');
+  return '3 per effetto, 1 per emissione';
+});
+
+prova('ma «effetto» non è «emissione» travestita', () => {
+  /* La regola vecchia resta intera: guardando per emissione, una polizza
+     senza quella data NON viene ripescata dall'effetto. Si emette prima che
+     decorra, e una data indovinata conta la riga nel mese sbagliato. */
+  const r = F.movimenti(Object.assign({}, GIORNO, { su: 'emissione' }));
+  deve(r.every(x => x.polizza_id === 'altra'),
+    'per emissione sono entrate polizze senza data di emissione: ' + JSON.stringify(r.map(x => x.polizza_id)));
+  return 'le due HDI restano fuori';
+});
+
+prova('e la schermata sa quante ne restano fuori', () => {
+  /* Senza questo numero la tabella è vuota e sembra che non sia entrato
+     niente: è esattamente quello che è successo dopo un\'importazione
+     riuscita. */
+  const r = F.movimenti(Object.assign({}, GIORNO, { su: 'emissione' }));
+  deve(r.fuoriPerLaData === 2, 'restano fuori ' + r.fuoriPerLaData + ' rate invece di 2');
+  deve(r.su === 'emissione', 'l\'asse non viene dichiarato: ' + r.su);
+  const perEffetto = F.movimenti(Object.assign({}, GIORNO, { su: 'effetto' }));
+  deve(perEffetto.fuoriPerLaData === 0, 'per effetto non dovrebbe restare fuori nessuno');
+  return '2 rate senza data di emissione, contate';
+});
+
+prova('chi è escluso dagli altri filtri non si conta come «senza data»', () => {
+  /* Altrimenti il messaggio direbbe «2 rate non hanno la data di emissione»
+     anche quando quelle due rate sono semplicemente di un\'altra compagnia:
+     una spiegazione sbagliata è peggio di nessuna spiegazione. */
+  const r = F.movimenti(Object.assign({}, GIORNO, { su: 'emissione', compagnia: 'PRIMA' }));
+  deve(r.fuoriPerLaData === 0,
+    'contate ' + r.fuoriPerLaData + ' rate come «senza data» mentre sono escluse dal filtro compagnia');
+  const soloHdi = F.movimenti(Object.assign({}, GIORNO, { su: 'emissione', compagnia: 'HDI' }));
+  deve(soloHdi.fuoriPerLaData === 2, 'filtrando su HDI le due senza data devono essere contate');
+  return 'il conteggio rispetta gli altri filtri';
+});
+
+prova('la pagina offre il terzo asse e spiega il vuoto', () => {
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  deve(/<option value="effetto">Data di effetto<\/option>/.test(pagina),
+    'la tendina «Date su» non offre la data di effetto');
+  const i = pagina.indexOf("su: ['incasso', 'effetto']");
+  deve(i > 0, 'la scelta non arriva al motore: la tendina mostrerebbe una voce che non fa niente');
+  deve(/function fcFuori\(\)/.test(pagina), 'manca la funzione che spiega il vuoto');
+  const j = pagina.indexOf('function fcFuori()');
+  const corpo = pagina.slice(j, pagina.indexOf('function fcRender()', j));
+  deve(/fuoriPerLaData/.test(corpo), 'il messaggio non guarda quante righe restano fuori');
+  deve(/HDI non la manda/.test(corpo), 'non dice che certe compagnie non mandano la data di emissione');
+  deve(/Date su/.test(corpo), 'non dice dove guardare per vederle');
+  /* E il vuoto deve chiamarla: una funzione giusta che nessuno invoca è
+     esattamente il guasto del 22/09 sulla candidatura. */
+  /* TUTTE E DUE le frasi di vuoto, non una: il foglio ne ha una per
+     l'emissione e una per l'incasso, e con `||` bastava che una sola fosse
+     collegata perché la prova restasse verde. */
+  const chiamate = (pagina.match(/questi filtri\.' \+ fcFuori\(\)/g) || []).length;
+  deve(chiamate === 2,
+    'fcFuori() è chiamata da ' + chiamate + ' messaggi di tabella vuota invece che da entrambi');
+  return 'terza voce, spiegazione, e il vuoto la usa';
+});
+
 console.log('\n══ FOGLIO CASSA ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

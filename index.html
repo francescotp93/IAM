@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.45.0">
-<meta name="app-versione-nome" content="CRM · Analisi, e la porta del portafoglio HDI">
+<meta name="app-versione" content="0.46.0">
+<meta name="app-versione-nome" content="Il portafoglio HDI si carica, e il foglio cassa sa delle spese">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -11207,7 +11207,7 @@ function caDisegnaFiltri() {
 
   box.innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">'
-    + caCampo('Comune', 'comune', '<select id="ca-comune" style="' + st + '"><option value="">Tutti</option>' + comuni.map(c => '<option>' + esc(c) + '</option>').join('') + '</select>')
+    + caCampo('Comune di residenza', 'comune', '<select id="ca-comune" style="' + st + '"><option value="">Tutti</option>' + comuni.map(c => '<option>' + esc(c) + '</option>').join('') + '</select>')
     + caCampo('Età da', 'data_nascita', '<input id="ca-eta-da" type="number" min="0" max="120" placeholder="—" style="' + st + '">')
     + caCampo('Età a', 'data_nascita', '<input id="ca-eta-a" type="number" min="0" max="120" placeholder="—" style="' + st + '">')
     + caCampo('Tipo di polizza', 'comune', '<select id="ca-ramo" style="' + st + '"><option value="">Tutte</option>' + moduli.map(m => '<option>' + esc(m) + '</option>').join('') + '</select>')
@@ -20072,6 +20072,13 @@ async function cdocTogliRegola(id) {
    ha creato quattrocento anagrafiche doppie, sono già lì.
    ═══════════════════════════════════════════════════════════════════════════ */
 let FLU_PIANO = null;   // il piano visto a schermo, in attesa di conferma
+/* QUALE TRACCIATO STIAMO IMPORTANDO. Non è un'etichetta: `fonte` + `fonte_id`
+   sono la chiave con cui il database riconosce «questa polizza l'ho già
+   caricata». Marcare HDI come 'ssf' vorrebbe dire mettere due tracciati nello
+   stesso spazio di chiavi, e una collisione lì non dà errore: dà una polizza
+   che non entra, in silenzio. */
+let FLU_FONTE = 'ssf';
+let FLU_ESAME_HDI = null;
 let FLU_CODICI = {};    // le decisioni già prese su chi è ogni codice collaboratore
 let FLU_PROPOSTE = {};  // chi POTREBBE essere ogni codice, per RUI o per email
 let FLU_NOMI = '';      // i file da cui è nato, per il registro
@@ -20155,6 +20162,7 @@ async function fluAnteprimaHdi(testo, box) {
     return;
   }
   const c = r.conteggi;
+  FLU_ESAME_HDI = r;
   const riga = (n, t) => '<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:.5px solid var(--bord)"><span>' + t + '</span><b>' + n + '</b></div>';
 
   box.innerHTML =
@@ -20174,9 +20182,13 @@ async function fluAnteprimaHdi(testo, box) {
       : '') +
     '<div style="margin-top:12px;padding:11px 13px;background:var(--surf2);border-radius:9px;font-size:12.5px;color:var(--txt2);line-height:1.55">' +
       (r.caricabile
-        ? 'Questa è solo una lettura: <b>in archivio non è stato scritto niente</b>. La scrittura non è ancora accesa — vedi il riepilogo del 24/09/2026.'
+        ? 'Per ora non è stato scritto niente. Qui sotto si prepara il caricamento: si vede riga per riga che cosa entrerebbe, e solo dopo si conferma.'
         : '<b>Questo file non si carica.</b> Non si importa «la parte buona», perché non si sa dove finisca la parte buona.') +
-    '</div>';
+    '</div>' +
+    (r.caricabile
+      ? '<div style="margin-top:12px"><button class="flu-btn flu-primario" onclick="fluPreparaHdi()">'
+        + '<i class="ti ti-arrow-right"></i> Prepara il caricamento</button></div>'
+      : '');
 }
 
 /* ── SI GUARDA DENTRO, NON IL NOME (24/09/2026) ────────────────────────────
@@ -20201,6 +20213,48 @@ async function fluAnnusaHdi(f) {
   } catch (e) { console.warn('flusso, annuso HDI:', e); return null; }
 }
 
+/* ── DALL'ANTEPRIMA AL PIANO (24/09/2026) ──────────────────────────────────
+   Il portafoglio di HDI si scrive dalla PORTA CHE C'E' GIA': il lettore lo
+   traduce nella forma dell'SSF (`FlussoHDI.converti`), e da lì in poi è tutto
+   codice che ha già importato dei portafogli veri — il piano, la schermata di
+   conferma, la scrittura transazionale. Due modi di scrivere un portafoglio
+   vorrebbero dire due modi di sbagliarlo, e il secondo senza le cicatrici del
+   primo. */
+async function fluPreparaHdi() {
+  const box = document.getElementById('flu-esito');
+  const H = (typeof window !== 'undefined') ? window.FlussoHDI : null;
+  const M = fluMotore();
+  if (!box || !H || !FLU_ESAME_HDI) return;
+  if (!fluPuo()) return fluVietato(box);
+  if (!M || !M.piano) { box.innerHTML = '<div class="empty-state">Il motore del flusso non è caricato.</div>'; return; }
+
+  box.innerHTML = '<div class="pdoc-attesa">Guardo che cosa c\'è già in archivio…</div>';
+  let analisi;
+  try { analisi = H.converti(FLU_ESAME_HDI); }
+  catch (e) {
+    box.innerHTML = '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> Non riesco a preparare il caricamento: ' + esc(e.message || e) + '</div>';
+    return;
+  }
+
+  let esistenti;
+  try { esistenti = await fluEsistenti(analisi); }
+  catch (e) {
+    box.innerHTML = '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> Non riesco a leggere che cosa c\'è già: ' + esc(e.message || e) + '</div>';
+    return;
+  }
+
+  FLU_PIANO = M.piano(analisi, esistenti);
+  FLU_PIANO._ignorati = [];
+  /* Le rate lasciate fuori perché il tracciato non ne porta l'importo: sono
+     la cosa più importante da dire in questa schermata, e non arrivano dal
+     piano — le sa solo il lettore di HDI. */
+  FLU_PIANO._senzaImporto = analisi.titoliSenzaImporto || [];
+  (analisi.avvisi || []).forEach(a => { (FLU_PIANO.avvisi = FLU_PIANO.avvisi || []).push(a); });
+  FLU_CODICI = {}; FLU_PROPOSTE = {};
+  FLU_PIANO._catalogo = await fluCatalogo(FLU_PIANO);
+  fluMostra();
+}
+
 async function fluScelto(files) {
   const box = document.getElementById('flu-esito');
   const M = fluMotore();
@@ -20214,7 +20268,7 @@ async function fluScelto(files) {
   if (uno) {
     box.innerHTML = '<div class="pdoc-attesa">Leggo il portafoglio…</div>';
     const testo = await fluAnnusaHdi(uno);
-    if (testo) { FLU_PIANO = null; return fluAnteprimaHdi(testo, box); }
+    if (testo) { FLU_PIANO = null; FLU_FONTE = 'hdi'; FLU_NOMI = uno.name; return fluAnteprimaHdi(testo, box); }
   }
 
   /* Un `.dat` che non è di HDI: si dice COSA c'è scritto nella prima riga
@@ -20231,6 +20285,7 @@ async function fluScelto(files) {
 
   if (!M) { box.innerHTML = '<div class="empty-state">Il motore del flusso non è caricato.</div>'; return; }
   FLU_PIANO = null;
+  FLU_FONTE = 'ssf';
   FLU_NOMI = Array.from(files).map(f => f.name).join(', ');
   box.innerHTML = '<div class="pdoc-attesa">Leggo l\'archivio…</div>';
 
@@ -20327,12 +20382,12 @@ async function fluEsistenti(analisi) {
     (data || []).forEach(a => { if (a.partita_iva) out.clientiPerPiva[String(a.partita_iva).trim()] = a.id; });
   });
   await aBlocchi(polKey, async (blocco) => {
-    const { data, error } = await db.from('quote_polizze').select('id,fonte_id').eq('fonte', 'ssf').in('fonte_id', blocco);
+    const { data, error } = await db.from('quote_polizze').select('id,fonte_id').eq('fonte', FLU_FONTE).in('fonte_id', blocco);
     if (error) throw error;
     (data || []).forEach(p => { out.polizzePerFonte[p.fonte_id] = p.id; });
   });
   await aBlocchi(titKey, async (blocco) => {
-    const { data, error } = await db.from('quote_titoli').select('id,fonte_id').eq('fonte', 'ssf').in('fonte_id', blocco);
+    const { data, error } = await db.from('quote_titoli').select('id,fonte_id').eq('fonte', FLU_FONTE).in('fonte_id', blocco);
     if (error) throw error;
     (data || []).forEach(t => { out.titoliPerFonte[t.fonte_id] = t.id; });
   });
@@ -20874,7 +20929,7 @@ async function fluConferma() {
        fa chiudere la scheda — che è esattamente il modo in cui il 21/09 si è
        perso mezzo portafoglio. Si ferma appena sotto e lo dice. */
     fluAvanza('Il database sta scrivendo tutto insieme… non chiudere la pagina', righeTot, totBarra);
-    const { data, error } = await db.rpc('iam_importa_flusso', { p_lotto: lotto });
+    const { data, error } = await db.rpc('iam_importa_flusso', { p_lotto: lotto, p_fonte: FLU_FONTE });
     if (error) throw error;
     const r = data || {};
 

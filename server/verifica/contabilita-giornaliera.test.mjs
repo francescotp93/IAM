@@ -213,6 +213,173 @@ prova('e una rata senza mezzo si conta, invece di sparire', () => {
   deve(f.avvisi.some(a => /con che mezzo/i.test(a.t)), 'il foglio non lo segnala');
 });
 
+/* ═══ GLI APPUNTI DEL GIORNO ═══════════════════════════════════════════════
+   Il 24/09/2026 Francesco ha allegato i due fogli che la compagnia stampa
+   ogni sera: «Appunti Incassi» e «Situazione Incassi». Sono la forma vera di
+   quello che serve, e contengono tre distinzioni che sarebbe facilissimo
+   perdere — e perderne una vuol dire un cassetto che non torna.
+
+   Il caso vero, dal foglio del 22/09/2026 (SPOTO MASSIMILIANO):
+     · tre titoli — Allianz Auto 270,00 + National Assistenza 17,50 +
+       Tutela 9,50 — con «Pagamento: Oddo Francesco». Non è un mezzo: è il
+       sottoconto sospeso di una persona. Quei 297,00 NON sono entrati.
+     · in fondo al foglio, «Totale sospesi incassati: 1 — 297,00», saldato
+       con Banca Assicurativa Plurimandato. QUELLI sono entrati.
+   Sommare i due blocchi conterebbe 594,00 dove sono passati 297,00. */
+
+const CONTI = [
+  { id: 'k1', nome: 'Contante', e_conto_sospeso: false },
+  { id: 'k2', nome: 'POS', e_conto_sospeso: false },
+  { id: 'k3', nome: 'Assegni', e_conto_sospeso: false },
+  { id: 'k4', nome: 'Banca Assicurativa Plurimandato', e_conto_sospeso: false },
+  { id: 's1', nome: 'Oddo Francesco', e_conto_sospeso: true, collaboratore_id: 'u1' },
+];
+const R = (o) => Object.assign({ data: '2026-09-22', compagnia: 'HDI', nominativo: 'Tizio',
+  polizza: '1', importo: 0, provvigione: 0, mezzo: 'Contante' }, o);
+
+prova('un pagamento appoggiato al sospeso di un collaboratore non è cassa', () => {
+  /* È la richiesta, alla lettera: «i pagamenti delle polizze a netto di
+     quelle sospese (pagamenti da perfezionare)». */
+  const a = C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [
+    R({ importo: 470, mezzo: 'Contanti' }),
+    R({ importo: 270, mezzo: 'Oddo Francesco' }),
+    R({ importo: 17.50, mezzo: 'Oddo Francesco' }),
+    R({ importo: 9.50, mezzo: 'Oddo Francesco' }),
+  ]});
+  deve(a.totale === 767, 'il totale degli incassi è ' + a.totale + ' invece di 767');
+  deve(a.daPerfezionare.totale === 297, 'da perfezionare ' + a.daPerfezionare.totale + ' invece di 297');
+  deve(a.netto === 470, 'il netto è ' + a.netto + ' invece di 470: le sospese non sono state tolte');
+});
+
+prova('e non compare in nessuna colonna di cassa', () => {
+  /* Il rischio vero non è il totale: è che 297 € finiscano nella colonna del
+     contante e il cassetto la sera non torni di 297. */
+  const a = C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [
+    R({ importo: 470, mezzo: 'Contante' }),
+    R({ importo: 297, mezzo: 'Oddo Francesco' }),
+  ]});
+  const tot = a.perMezzo.reduce((t, m) => t + m.totale, 0);
+  deve(tot === 470, 'nelle colonne di cassa ci sono ' + tot + ' invece di 470');
+  deve(!a.perMezzo.some(m => /oddo/i.test(m.etichetta)), 'il sospeso compare fra i mezzi di cassa');
+});
+
+prova('un sospeso incassato entra in cassa senza essere ricontato', () => {
+  const a = C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [
+    R({ importo: 470, mezzo: 'Contante' }),
+    R({ importo: 297, mezzo: 'Oddo Francesco' }),
+  ]});
+  const s = C.sospesiIncassati([
+    { data: '2026-09-22', descrizione: 'SPOTO MASSIMILIANO', tipo: 'ODDO FRANCESCO',
+      mezzo: 'Banca Assicurativa Plurimandato', importo: 297 },
+  ], '2026-09-22', CONTI);
+  const cassa = C.cassaDelGiorno(a, s, null);
+  deve(s.totale === 297, 'i sospesi incassati fanno ' + s.totale);
+  deve(cassa.incassi === 767, 'il totale incassi è cambiato: ' + cassa.incassi);
+  deve(cassa.entrato === 767,
+    'entrato ' + cassa.entrato + ': dovrebbe essere 470 di cassa + 297 di sospeso saldato = 767');
+  /* La controprova del doppio conteggio: se qualcuno sommasse i sospesi al
+     totale invece che al netto, qui uscirebbe 1064. */
+  deve(cassa.entrato !== cassa.incassi + s.totale,
+    'lo stesso denaro è contato due volte: una come rata messa a sospeso e una come sospeso saldato');
+});
+
+prova('una spesa in contanti si toglie dai contanti, non da un totale qualunque', () => {
+  /* Il caso di Francesco, parola per parola: «se abbiamo pagato 30 € contanti
+     ma le polizze del giorno contanti sono 100 €, il totale dei contanti
+     dev'essere 70». */
+  const a = C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [
+    R({ importo: 100, mezzo: 'Contante' }),
+    R({ importo: 50, mezzo: 'POS' }),
+  ]});
+  const u = C.speseDelGiorno([{ data: '2026-09-22', descrizione: 'Cancelleria', importo: 30, mezzo: 'Contante' }], '2026-09-22', CONTI);
+  const cassa = C.cassaDelGiorno(a, null, u);
+  const contante = cassa.perMezzo.find(m => /contante/i.test(m.etichetta));
+  const pos = cassa.perMezzo.find(m => /pos/i.test(m.etichetta));
+  deve(contante && contante.saldo === 70, 'nel contante restano ' + (contante && contante.saldo) + ' invece di 70');
+  deve(pos && pos.saldo === 50, 'il POS è stato toccato dalla spesa in contanti: ' + (pos && pos.saldo));
+  deve(cassa.resta === 120, 'in cassa restano ' + cassa.resta + ' invece di 120');
+});
+
+prova('una spesa col segno meno non diventa un incasso', () => {
+  const u = C.speseDelGiorno([{ data: '2026-09-22', descrizione: 'Bollo', importo: -16, mezzo: 'Contante' }], '2026-09-22', CONTI);
+  deve(u.totale === 16, 'la spesa vale ' + u.totale + ': il segno andava normalizzato dal motore');
+  const cassa = C.cassaDelGiorno(C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [R({ importo: 100 })] }), null, u);
+  const contante = cassa.perMezzo.find(m => /contante/i.test(m.etichetta));
+  deve(contante.saldo === 84, 'il contante fa ' + contante.saldo + ' invece di 84: la spesa è stata sommata');
+});
+
+prova('una spesa senza mezzo non si toglie dal contante per abitudine', () => {
+  /* Toglierla «perché di solito le spese sono in contanti» farebbe quadrare
+     un cassetto che non quadra: il numero uscirebbe giusto e il contante
+     dichiarato la sera non tornerebbe. */
+  const a = C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [R({ importo: 100, mezzo: 'Contante' })] });
+  /* Due forme della stessa ignoranza: la casella vuota, e un nome che non è
+     fra i conti («cassa piccola»). La seconda è la pericolosa: sembra un
+     mezzo, e senza controllo si apre una colonna che non esiste. */
+  const u = C.speseDelGiorno([
+    { data: '2026-09-22', descrizione: 'Non si sa', importo: 10, mezzo: '' },
+    { data: '2026-09-22', descrizione: 'Cassa piccola', importo: 20, mezzo: 'Cassa piccola' },
+  ], '2026-09-22', CONTI);
+  deve(u.senzaMezzo.quante === 2 && u.senzaMezzo.totale === 30,
+    'le spese non attribuibili sono ' + u.senzaMezzo.quante + ' per ' + u.senzaMezzo.totale + ': dovevano essere 2 per 30');
+  deve(u.perMezzo.length === 0,
+    'una spesa che non si sa come è stata pagata ha aperto una colonna: ' + u.perMezzo.map(x => x.etichetta).join(', '));
+  const cassa = C.cassaDelGiorno(a, null, u);
+  deve(cassa.perMezzo.length === 1, 'la cassa ha ' + cassa.perMezzo.length + ' colonne invece di una');
+  const contante = cassa.perMezzo.find(m => /contante/i.test(m.etichetta));
+  deve(contante.saldo === 100, 'il contante è stato ridotto a ' + contante.saldo + ' da spese di cui non si sa il mezzo');
+  deve(cassa.resta === 70, 'il totale però deve tenerne conto: i soldi sono usciti. Fa ' + cassa.resta);
+  deve(cassa.avvisi.some(x => x.g === 'grave'), 'spese senza mezzo non vengono segnalate');
+});
+
+prova('un pagamento che non si riesce ad attribuire si dichiara', () => {
+  /* Un nome che non è fra i conti può essere un collaboratore (e allora è un
+     sospeso) o un conto che nessuno ha creato (e allora è cassa). Indovinare
+     vuol dire sbagliare il netto senza accorgersene. */
+  const a = C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [
+    R({ importo: 100, mezzo: 'Contante' }),
+    R({ importo: 55, mezzo: 'Bianchi Mario' }),
+  ]});
+  deve(a.nonAttribuiti.quante === 1, 'il pagamento sconosciuto non è stato marcato');
+  deve(a.netto === 155, 'il netto è ' + a.netto + ': un pagamento incerto non va tolto, va dichiarato');
+  deve(a.avvisi.some(x => x.g === 'grave'), 'nessun avviso grave su un pagamento non attribuibile');
+  deve(!a.perMezzo.some(m => /bianchi/i.test(m.etichetta)), 'il pagamento incerto è finito in una colonna di cassa');
+});
+
+prova('i mezzi si riconoscono comunque siano scritti', () => {
+  const a = C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [
+    R({ importo: 10, mezzo: 'CONTANTE' }), R({ importo: 10, mezzo: '  contante ' }),
+    R({ importo: 10, mezzo: 'Pos' }), R({ importo: 10, mezzo: 'BANCA  ASSICURATIVA   PLURIMANDATO' }),
+  ]});
+  deve(a.nonAttribuiti.quante === 0, 'maiuscole, spazi doppi o minuscole hanno creato conti diversi');
+});
+
+prova('le righe si raggruppano per compagnia, come nel foglio', () => {
+  const a = C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [
+    R({ compagnia: 'HDI', importo: 100, provvigione: 10 }),
+    R({ compagnia: 'HDI', importo: 200, provvigione: 20 }),
+    R({ compagnia: 'ALLIANZ', importo: 50, provvigione: 5 }),
+  ]});
+  deve(a.gruppi.length === 2, 'le compagnie sono ' + a.gruppi.length);
+  deve(a.gruppi[0].compagnia === 'HDI' && a.gruppi[0].totale === 300, 'il gruppo HDI non torna');
+  deve(a.gruppi[0].provvigioni === 30, 'le provvigioni del gruppo fanno ' + a.gruppi[0].provvigioni);
+  deve(a.provvigioni === 35, 'le provvigioni totali fanno ' + a.provvigioni);
+});
+
+prova('il giorno è un filtro, non un suggerimento', () => {
+  const a = C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [
+    R({ data: '2026-09-22', importo: 100 }), R({ data: '2026-09-21', importo: 999 }),
+  ]});
+  deve(a.quante === 1 && a.totale === 100, 'entrano righe di altri giorni: ' + a.totale);
+});
+
+prova('i centesimi non si perdono per strada', () => {
+  const a = C.appunti({ giorno: '2026-09-22', conti: CONTI, righe: [
+    R({ importo: 0.1 }), R({ importo: 0.2 }),
+  ]});
+  deve(a.totale === 0.3, '0,10 + 0,20 fa ' + a.totale);
+});
+
 /* ── esecuzione ─────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

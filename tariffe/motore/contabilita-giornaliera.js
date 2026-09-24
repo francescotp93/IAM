@@ -226,9 +226,281 @@
     };
   }
 
+  /* ═══ GLI APPUNTI DEL GIORNO ══════════════════════════════════════════════
+     Questa è la forma dei due fogli che la compagnia stampa ogni sera —
+     «Appunti Incassi» e «Situazione Incassi» — e che Francesco usa davvero.
+     Riprodurla vuol dire rispettare tre cose che quei fogli tengono separate
+     e che sarebbe facilissimo mescolare.
+
+     R1. UN PAGAMENTO MESSO SU UN SOSPESO NON È CASSA. Nel foglio della
+         compagnia, il «Pagamento» di una rata può essere un mezzo (Contanti,
+         Pos, Assegni, Banca) oppure IL NOME DI UN COLLABORATORE. Il secondo
+         caso non è un incasso: è un pagamento da perfezionare, appoggiato al
+         sottoconto sospeso di quella persona — nel foglio è una riga come
+         «04010009 ODDO FRANCESCO». Entra nel totale degli incassi e NON entra
+         nella cassa. È esattamente il «a netto di quelle sospese» chiesto.
+
+     R2. UN SOSPESO INCASSATO È CASSA, MA NON È UN INCASSO NUOVO. Quando quel
+         sospeso viene poi pagato, i soldi entrano. Se lo si sommasse al totale
+         degli incassi si conterebbe DUE VOLTE lo stesso denaro: una quando la
+         rata è stata messa a sospeso, una quando il sospeso è stato saldato.
+         Per questo i sospesi incassati stanno in un blocco a parte — come nel
+         foglio, sotto il titolo «Totale sospesi incassati» — e la cassa si
+         ottiene sommando, non ricontando.
+
+     R3. IL MEZZO SI RICONOSCE, NON SI INDOVINA. Un pagamento che non si
+         riesce ad attribuire a nessun conto resta «non attribuito». Diventare
+         «Altro» vorrebbe dire far quadrare il foglio per sbaglio.
+     ════════════════════════════════════════════════════════════════════════ */
+
+  /* Il nome del conto come chiave: «Banca Assicurativa Hdi», «BANCA
+     ASSICURATIVA HDI» e «banca assicurativa hdi» sono lo stesso sottoconto. */
+  function nomeConto(s) {
+    return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  /* Decide se un «Pagamento» è cassa o è un sospeso. `conti` è l'elenco dei
+     sottoconti (da `iam_conti`): quelli con `e_conto_sospeso` sono le persone.
+     Senza elenco non si tira a indovinare sui nomi propri — si dichiara che
+     non si sa, e la riga esce marcata. */
+  function classificaMezzo(mezzo, conti) {
+    var k = nomeConto(mezzo);
+    if (!k) return { chiave: null, etichetta: 'Non indicato', sospeso: false, noto: false };
+    var trovato = null;
+    (conti || []).forEach(function (c) {
+      if (trovato) return;
+      if (nomeConto(c.nome) === k) trovato = c;
+      else if (c.mezzi && [].concat(c.mezzi).some(function (m) { return nomeConto(m) === k; })) trovato = c;
+    });
+    if (trovato) {
+      return {
+        chiave: String(trovato.id || nomeConto(trovato.nome)),
+        etichetta: trovato.nome || mezzo,
+        sospeso: !!trovato.e_conto_sospeso,
+        collaboratore_id: trovato.collaboratore_id || null,
+        noto: true,
+      };
+    }
+    /* Non è fra i conti. Se è una delle parole note dei mezzi, è cassa; se no,
+       non si sa: potrebbe essere il nome di una persona (quindi un sospeso) o
+       un conto che nessuno ha ancora creato. Le due cose non si indovinano. */
+    var vocabolario = { contante: 1, contanti: 1, pos: 1, assegno: 1, assegni: 1, bonifico: 1,
+      incasso: 1, 'carta di credito': 1, prepagata: 1, paypal: 1, sdd: 1, domiciliazione: 1 };
+    if (vocabolario[k]) return { chiave: k, etichetta: MEZZI[k] || mezzo, sospeso: false, noto: true };
+    return { chiave: k, etichetta: mezzo, sospeso: false, noto: false };
+  }
+
+  function appunti(dati) {
+    var d = dati || {};
+    var g = giorno(d.giorno);
+    var conti = d.conti || [];
+
+    var righe = (d.righe || []).filter(function (r) {
+      return !g || giorno(r.data || r.incassato_il) === g;
+    }).map(function (r) {
+      var m = classificaMezzo(r.mezzo || r.mezzo_pagamento, conti);
+      return {
+        compagnia: String(r.compagnia || '').trim() || '—',
+        data: giorno(r.data || r.incassato_il),
+        nominativo: r.nominativo || r.cliente || '',
+        ramo: r.ramo || r.modulo || r.prodotto || '',
+        polizza: r.polizza || r.numero_polizza || '',
+        effetto: giorno(r.effetto || r.data_effetto),
+        mezzo: m,
+        produttore: r.produttore || r.collaboratore || '',
+        importo: cent(r.importo != null ? r.importo : r.importo_lordo),
+        provvigione: cent(r.provvigione),
+      };
+    });
+
+    /* Raggruppate per compagnia, come nel foglio: ogni compagnia col suo
+       conteggio, il suo totale e le sue provvigioni. */
+    var per = {};
+    righe.forEach(function (r) {
+      if (!per[r.compagnia]) per[r.compagnia] = { compagnia: r.compagnia, quante: 0, totale: 0, provvigioni: 0, righe: [] };
+      var b = per[r.compagnia];
+      b.quante++;
+      b.totale = cent(b.totale + r.importo);
+      b.provvigioni = cent(b.provvigioni + r.provvigione);
+      b.righe.push(r);
+    });
+    var gruppi = Object.keys(per).map(function (k) { return per[k]; })
+      .sort(function (a, b) { return b.totale - a.totale; });
+
+    var somma = function (l) { return cent(l.reduce(function (t, r) { return t + r.importo; }, 0)); };
+    var daPerf = righe.filter(function (r) { return r.mezzo.sospeso; });
+    var incerte = righe.filter(function (r) { return !r.mezzo.noto; });
+    var cassa = righe.filter(function (r) { return r.mezzo.noto && !r.mezzo.sospeso; });
+
+    /* Solo la cassa vera si ripartisce per mezzo: mettere i sospesi qui dentro
+       vorrebbe dire far comparire nel POS dei soldi che nessuno ha incassato. */
+    var perMezzo = {};
+    cassa.forEach(function (r) {
+      var k = r.mezzo.chiave;
+      if (!perMezzo[k]) perMezzo[k] = { chiave: k, etichetta: r.mezzo.etichetta, quante: 0, totale: 0 };
+      perMezzo[k].quante++;
+      perMezzo[k].totale = cent(perMezzo[k].totale + r.importo);
+    });
+
+    var totale = somma(righe);
+    var perfTot = somma(daPerf);
+
+    var avvisi = [];
+    if (incerte.length) {
+      avvisi.push({ g: 'grave', t: incerte.length + ' pagamenti non si riescono ad attribuire a nessun conto (' +
+        incerte.slice(0, 4).map(function (r) { return r.mezzo.etichetta || '(vuoto)'; }).join(', ') +
+        '): finché non si sa se sono cassa o sospesi, il netto del giorno è incompleto.' });
+    }
+    if (perfTot) {
+      avvisi.push({ g: 'avviso', t: daPerf.length + ' pagamenti per ' + perfTot.toFixed(2).replace('.', ',') +
+        ' € sono appoggiati al sospeso di un collaboratore: sono da perfezionare, e non sono entrati in cassa.' });
+    }
+
+    return {
+      giorno: g,
+      gruppi: gruppi,
+      righe: righe,
+      quante: righe.length,
+      totale: totale,
+      provvigioni: cent(righe.reduce(function (t, r) { return t + r.provvigione; }, 0)),
+      daPerfezionare: { quante: daPerf.length, totale: perfTot, righe: daPerf },
+      nonAttribuiti: { quante: incerte.length, totale: somma(incerte), righe: incerte },
+      /* Il numero che Francesco ha chiesto: gli incassi al netto delle
+         sospese. I non attribuiti restano DENTRO, perché toglierli
+         significherebbe aver deciso che sono sospesi — e non lo si sa. */
+      netto: cent(totale - perfTot),
+      perMezzo: Object.keys(perMezzo).map(function (k) { return perMezzo[k]; })
+        .sort(function (a, b) { return b.totale - a.totale; }),
+      avvisi: avvisi,
+    };
+  }
+
+  /* ── I SOSPESI INCASSATI ─────────────────────────────────────────────────
+     Il blocco in fondo al foglio. Righe: di chi era il sospeso, con che mezzo
+     è stato saldato, quanto. Non si somma agli incassi (R2). */
+  function sospesiIncassati(righe, quando, conti) {
+    var g = giorno(quando);
+    var lista = (righe || []).filter(function (r) {
+      return !g || giorno(r.data || r.data_incasso || r.accreditato_il) === g;
+    }).map(function (r) {
+      return {
+        data: giorno(r.data || r.data_incasso || r.accreditato_il),
+        descrizione: r.descrizione || r.controparte || '',
+        tipo: r.tipo || r.tipo_sospeso || r.collaboratore || '',
+        mezzo: classificaMezzo(r.mezzo || r.mezzo_pagamento, conti),
+        importo: cent(r.importo),
+      };
+    });
+    var per = {};
+    lista.forEach(function (r) {
+      var k = r.mezzo.chiave || 'non_detto';
+      if (!per[k]) per[k] = { chiave: k, etichetta: r.mezzo.etichetta, quante: 0, totale: 0 };
+      per[k].quante++;
+      per[k].totale = cent(per[k].totale + r.importo);
+    });
+    return {
+      quante: lista.length,
+      totale: cent(lista.reduce(function (t, r) { return t + r.importo; }, 0)),
+      righe: lista,
+      perMezzo: Object.keys(per).map(function (k) { return per[k]; }).sort(function (a, b) { return b.totale - a.totale; }),
+    };
+  }
+
+  /* ── LE SPESE ────────────────────────────────────────────────────────────
+     Una spesa senza il mezzo con cui è stata pagata non serve a chiudere la
+     cassa: se oggi sono entrati 100 € in contanti e ne sono usciti 30, in
+     cassa ce ne sono 70 — ma solo se si sa che quei 30 sono usciti DAL
+     CONTANTE e non dal POS. Per questo la spesa senza mezzo non viene tolta
+     da nessuna colonna: esce a parte e si dichiara. Toglierla dal contante
+     «perché di solito è così» farebbe quadrare un cassetto che non quadra. */
+  function speseDelGiorno(righe, quando, conti) {
+    var g = giorno(quando);
+    var lista = (righe || []).filter(function (r) {
+      return !g || giorno(r.data) === g;
+    }).map(function (r) {
+      return {
+        data: giorno(r.data),
+        descrizione: String(r.descrizione || r.causale || '').trim() || 'Spesa',
+        mezzo: classificaMezzo(r.mezzo || r.mezzo_pagamento, conti),
+        /* Una spesa è un'uscita: il segno lo mette il motore, così chi scrive
+           il numero non deve ricordarsi se va col meno. */
+        importo: Math.abs(cent(r.importo)),
+      };
+    });
+    var per = {};
+    lista.forEach(function (r) {
+      if (!r.mezzo.noto) return;
+      var k = r.mezzo.chiave;
+      if (!per[k]) per[k] = { chiave: k, etichetta: r.mezzo.etichetta, quante: 0, totale: 0 };
+      per[k].quante++;
+      per[k].totale = cent(per[k].totale + r.importo);
+    });
+    var senza = lista.filter(function (r) { return !r.mezzo.noto; });
+    return {
+      quante: lista.length,
+      totale: cent(lista.reduce(function (t, r) { return t + r.importo; }, 0)),
+      righe: lista,
+      perMezzo: Object.keys(per).map(function (k) { return per[k]; }).sort(function (a, b) { return b.totale - a.totale; }),
+      senzaMezzo: { quante: senza.length, totale: cent(senza.reduce(function (t, r) { return t + r.importo; }, 0)), righe: senza },
+    };
+  }
+
+  /* ── LA CASSA DEL GIORNO ─────────────────────────────────────────────────
+     Il conto che chiude la giornata, e l'unico punto in cui i due blocchi si
+     incontrano. Si somma — non si riconta: gli incassi al netto delle sospese
+     (soldi entrati oggi per polizze di oggi) più i sospesi saldati oggi
+     (soldi entrati oggi per polizze di prima). */
+  function cassaDelGiorno(app, sos, spe) {
+    var a = app || { netto: 0, totale: 0, daPerfezionare: { totale: 0 }, perMezzo: [] };
+    var s = sos || { totale: 0, perMezzo: [] };
+    var u = spe || { totale: 0, perMezzo: [], senzaMezzo: { quante: 0, totale: 0 } };
+    var per = {};
+    var tocca = function (r) {
+      if (!per[r.chiave]) per[r.chiave] = { chiave: r.chiave, etichetta: r.etichetta, entrato: 0, uscito: 0, quante: 0, saldo: 0 };
+      return per[r.chiave];
+    };
+    (a.perMezzo || []).concat(s.perMezzo || []).forEach(function (r) {
+      var c = tocca(r); c.quante += r.quante; c.entrato = cent(c.entrato + r.totale);
+    });
+    (u.perMezzo || []).forEach(function (r) {
+      var c = tocca(r); c.uscito = cent(c.uscito + r.totale);
+    });
+    var colonne = Object.keys(per).map(function (k) {
+      per[k].saldo = cent(per[k].entrato - per[k].uscito);
+      return per[k];
+    }).sort(function (x, y) { return y.saldo - x.saldo; });
+
+    var avvisi = [];
+    if (u.senzaMezzo && u.senzaMezzo.quante) {
+      avvisi.push({ g: 'grave', t: u.senzaMezzo.quante + ' spese per ' +
+        u.senzaMezzo.totale.toFixed(2).replace('.', ',') + ' € non dicono con che mezzo sono state pagate: ' +
+        'restano fuori dalle colonne, perché toglierle dal contante senza saperlo farebbe quadrare un cassetto che non quadra.' });
+    }
+
+    return {
+      incassi: a.totale,
+      daPerfezionare: a.daPerfezionare.totale,
+      incassiNetti: a.netto,
+      sospesiIncassati: s.totale,
+      entrato: cent(a.netto + s.totale),
+      spese: u.totale,
+      speseAttribuite: cent((u.perMezzo || []).reduce(function (t, r) { return t + r.totale; }, 0)),
+      speseSenzaMezzo: u.senzaMezzo ? u.senzaMezzo.totale : 0,
+      /* Quello che resta davvero nel cassetto. Le spese senza mezzo NON sono
+         tolte dalle colonne ma SONO tolte dal totale: il totale è un fatto
+         (sono usciti quei soldi), la colonna sarebbe un'attribuzione. */
+      resta: cent(a.netto + s.totale - u.totale),
+      perMezzo: colonne,
+      avvisi: avvisi,
+    };
+  }
+
   var API = {
     MEZZI: MEZZI, num: num, cent: cent, giorno: giorno, chiave: chiave, idSospeso: idSospeso,
     sospesiScaricati: sospesiScaricati, incassiPerMezzo: incassiPerMezzo, foglio: foglio,
+    nomeConto: nomeConto, classificaMezzo: classificaMezzo,
+    appunti: appunti, sospesiIncassati: sospesiIncassati,
+    speseDelGiorno: speseDelGiorno, cassaDelGiorno: cassaDelGiorno,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.ContabilitaGiornaliera = API;

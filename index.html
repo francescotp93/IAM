@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.46.2">
-<meta name="app-versione-nome" content="Quattordici persone non sono una persona sola">
+<meta name="app-versione" content="0.46.3">
+<meta name="app-versione-nome" content="L anteprima dice che cosa conta">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -1461,6 +1461,7 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .flu-num{padding:18px 12px;border:1px solid var(--line);border-radius:12px;background:#fbfcff;text-align:center;min-width:0}
 .flu-num .flu-v{font-size:34px;font-weight:800;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums}
 .flu-num .flu-k{font-size:12px;color:var(--muted);margin-top:4px;text-transform:lowercase}
+.flu-gia{font-size:11px;color:var(--txt3,#8a8a8a);margin-top:3px}
 .flu-scarti{margin-top:4px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.55;
   background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
 .flu-link{background:none;border:none;padding:0;font:inherit;color:var(--blue);
@@ -20448,10 +20449,20 @@ function fluMostra() {
         t.intermediario ? ' · agenzia ' + esc(t.intermediario) : ''}</div>
     </div>
 
+    <!-- QUESTI NUMERI CONTANO CIÒ CHE ENTRA, NON CIÒ CHE C'È NEL FILE
+         (24/09/2026). Dicevano «11 clienti» su un file di 14, e per due volte
+         Francesco si è fermato a chiedere se fosse un errore: la prima volta
+         lo era davvero (il lettore fondeva le persone), la seconda no — tre
+         erano già in archivio. Un numero che costringe a chiedere «e gli
+         altri?» è un numero scritto male, anche quando è giusto. Adesso
+         dicono cosa contano, e quanti restano fuori perché ci sono già. -->
     <div class="flu-tre">
-      <div class="flu-num"><div class="flu-v">${n(p.clienti.nuovi.length)}</div><div class="flu-k">client${p.clienti.nuovi.length === 1 ? 'e' : 'i'}</div></div>
-      <div class="flu-num"><div class="flu-v">${n(p.polizze.nuove.length)}</div><div class="flu-k">polizz${p.polizze.nuove.length === 1 ? 'a' : 'e'}</div></div>
-      <div class="flu-num"><div class="flu-v">${n(p.titoli.nuovi.length)}</div><div class="flu-k">rat${p.titoli.nuovi.length === 1 ? 'a' : 'e'}</div></div>
+      <div class="flu-num"><div class="flu-v">${n(p.clienti.nuovi.length)}</div><div class="flu-k">client${p.clienti.nuovi.length === 1 ? 'e' : 'i'} nuov${p.clienti.nuovi.length === 1 ? 'o' : 'i'}</div>${
+        (p.clienti.gia || []).length ? `<div class="flu-gia">${n(p.clienti.gia.length)} già in archivio</div>` : ''}</div>
+      <div class="flu-num"><div class="flu-v">${n(p.polizze.nuove.length)}</div><div class="flu-k">polizz${p.polizze.nuove.length === 1 ? 'a' : 'e'} nuov${p.polizze.nuove.length === 1 ? 'a' : 'e'}</div>${
+        (p.polizze.gia || []).length ? `<div class="flu-gia">${n(p.polizze.gia.length)} già in archivio</div>` : ''}</div>
+      <div class="flu-num"><div class="flu-v">${n(p.titoli.nuovi.length)}</div><div class="flu-k">rat${p.titoli.nuovi.length === 1 ? 'a' : 'e'} nuov${p.titoli.nuovi.length === 1 ? 'a' : 'e'}</div>${
+        (p.titoli.gia || []).length ? `<div class="flu-gia">${n(p.titoli.gia.length)} già in archivio</div>` : ''}</div>
     </div>
 
     ${fuori ? `<div class="flu-scarti"><b>${n(fuori)} righe restano fuori.</b>

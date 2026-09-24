@@ -1373,3 +1373,23 @@ chiederebbe dei soldi che quella persona non ha.
 
 **Fuori perimetro, annotato:** nessun conto dichiara ancora quali mezzi riceve
 (§32), quindi la proposta del conto quasi mai scatta e si sceglie a mano.
+
+## 24/09/2026 — 0.44.1 «Il tasto Conferma, e i motori che restavano indietro»
+
+**Chiesto:** «Il tasto registra l'arrivo non funziona […] rinominalo in
+CONFERMA».
+
+🟡 **Ho corretto tutti e ventuno i contrassegni, non solo quello del tasto.**
+Il `?v=` di ogni motore era fermo a date vecchie (fino a quaranta giorni): il
+browser poteva servire la pagina nuova con il motore vecchio, e non lo diceva
+nessuno. *Come tornare indietro: sono ventuno date in due file HTML.*
+
+🟡 **Ho aggiunto un guardiano** (`server/verifica/versione-motori.test.mjs`)
+che diventa rosso se un contrassegno resta indietro. È la stessa disciplina di
+§27 sul numero di versione. *Come tornare indietro: si cancella quel file.*
+
+🟢 Il tasto adesso dice «Conferma», e quando il motore in memoria è vecchio lo
+dichiara invece di non fare niente.
+
+**Fuori perimetro, annotato:** due modifiche allo stesso motore nello stesso
+giorno condividono il contrassegno; la seconda arriva entro dieci minuti.

@@ -165,16 +165,32 @@ prova('le garanzie sommano al premio della polizza', () => {
 
 /* ── 6. quello che non si sa non prende un nome ─────────────────────────── */
 
-prova('le date della polizza restano numerate, non battezzate', () => {
+prova('effetto e scadenza sono quelli che confermano i titoli', () => {
+  /* Come si è saputo quali colonne sono: incrociandole con i titoli, che
+     portano il periodo della rata. Sul file vero combaciano 29 volte su 29
+     sulle polizze annuali. Sulle semestrali no, e nemmeno devono: lì il titolo
+     è la prima rata — stessa partenza, metà durata. Sbagliare esattamente dove
+     ci si aspetta è la conferma migliore. */
+  const r = H.esamina(FILE, []);
+  const p = r.polizze[0], t = r.titoli[0];
+  deve(p.effetto === '2025-11-17', 'l\'effetto non è la colonna 19: ' + p.effetto);
+  deve(p.scadenza === '2026-11-17', 'la scadenza non è la colonna 21: ' + p.scadenza);
+  deve(p.frazionamento === 'Annuale' && t.effetto === p.effetto && t.scadenza === p.scadenza,
+    'su una polizza annuale il titolo non copre lo stesso periodo: ' + t.effetto + '→' + t.scadenza);
+});
+
+prova('le altre tre date restano numerate, non battezzate', () => {
   /* Al primo giro le avevo chiamate «effetto» e «scadenza»: ne usciva una
      polizza annuale lunga due anni. Una decorrenza sbagliata sposta la
      telefonata di rinnovo di un anno, e il numero sembra giusto. */
   const r = H.esamina(FILE, []);
   const p = r.polizze[0];
-  deve(p.date && p.date.c19 && p.date.c20, 'le date non ci sono più');
-  deve(p.effetto === undefined && p.scadenza === undefined,
-    'qualcuno ha ribattezzato le date senza il tracciato di HDI');
-  deve(p.date.c20 === '2024-11-17', 'la colonna 20 non si legge: ' + p.date.c20);
+  /* c20 non è la decorrenza in corso: sulla polizza che sostituisce un'altra
+     porta la decorrenza ORIGINALE del contratto sostituito. Finché non lo dice
+     il tracciato, non prende un nome. */
+  deve(p.date && p.date.c20 === '2024-11-17', 'la colonna 20 non si legge: ' + JSON.stringify(p.date));
+  deve(p.date.c19 === undefined && p.date.c21 === undefined,
+    'c19 e c21 sono rimaste anche fra quelle senza nome: ora si chiamano effetto e scadenza');
 });
 
 prova('e ogni record si porta dietro la riga intera', () => {
@@ -200,6 +216,41 @@ prova('una riga di tipo sconosciuto si segnala invece di sparire', () => {
   const r = H.esamina(FILE.replace(CODA, '77;roba;nuova\r\n' + CODA), []);
   deve(r.avvisi.some(a => /tipo «77»/.test(a.t)),
     'un tipo di record nuovo passa inosservato: al prossimo aggiornamento del tracciato si perderebbero righe in silenzio');
+});
+
+/* ── 8. il tasto ────────────────────────────────────────────────────────── */
+
+prova('il file di HDI entra dallo stesso tasto dell\'altro flusso', () => {
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  deve(/accept="\.zip,\.csv,\.dat"/.test(pagina),
+    'il tasto non accetta il .dat: il file di HDI non si può nemmeno scegliere');
+  deve(/flusso-hdi\.js/.test(pagina), 'il lettore non viene caricato dalla pagina');
+  deve(/fluAnteprimaHdi/.test(pagina), 'non c\'è nessuna anteprima per il file di HDI');
+});
+
+prova('si riconosce dalla prima riga, non dal nome del file', () => {
+  /* Il nome lo sceglie chi scarica: basterebbe rinominare un file per farlo
+     leggere dal lettore sbagliato, e uscirebbero numeri da un tracciato che
+     non è quello. */
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const fn = pagina.slice(pagina.indexOf('function fluEHdi'), pagina.indexOf('async function fluAnteprimaHdi'));
+  deve(/PASS-/.test(fn), 'non guarda il tracciato dichiarato nella prima riga');
+  deve(/fluEHdi\(testo\)/.test(pagina), 'il controllo esiste ma non lo chiama nessuno');
+});
+
+prova('e l\'anteprima dice, nero su bianco, che non ha scritto niente', () => {
+  /* Un\'importazione che scrive prima di farsi vedere è una cosa che si
+     subisce. Se un giorno questa frase sparisce, è perché qualcuno ha acceso
+     la scrittura: allora questa prova va aggiornata apposta, non per caso. */
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const fn = pagina.slice(pagina.indexOf('async function fluAnteprimaHdi'), pagina.indexOf('async function fluScelto'));
+  deve(/non è stato scritto niente|non si scrive/i.test(fn),
+    'l\'anteprima non dice che in archivio non è stato scritto niente');
+  deve(!/\.insert\(|\.upsert\(|\.update\(/.test(fn),
+    'l\'anteprima scrive in archivio: doveva solo guardare');
 });
 
 /* ── esecuzione ─────────────────────────────────────────────────────────── */

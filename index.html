@@ -75,6 +75,7 @@
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
 <script src="tariffe/motore/flusso-ssf.js?v=20260921"></script>
+<script src="tariffe/motore/flusso-hdi.js?v=20260924"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260920"></script>
 <!-- Le coordinate su cui i collaboratori versano stanno sui conti, e i conti
      li conosce il motore della contabilità: il controllo dell'IBAN è già lì
@@ -3280,9 +3281,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="flu-scelta">
         <label class="flu-file">
           <i class="ti ti-upload"></i> Scegli l'archivio della compagnia
-          <input type="file" id="flu-file" accept=".zip,.csv" multiple hidden onchange="fluScelto(this.files)">
+          <input type="file" id="flu-file" accept=".zip,.csv,.dat" multiple hidden onchange="fluScelto(this.files)">
         </label>
-        <div class="cl-sub">Lo <b>.zip</b> così com'è, oppure i file <b>REC…csv</b> estratti. Niente viene scritto finché non lo dici tu.</div>
+        <div class="cl-sub">Lo <b>.zip</b> così com'è, i file <b>REC…csv</b> estratti, oppure il <b>.dat</b> di HDI. Niente viene scritto finché non lo dici tu.</div>
       </div>
 
       <div id="flu-esito"></div>
@@ -19880,13 +19881,83 @@ function fluVietato(box) {
   return false;
 }
 
+/* ── IL PORTAFOGLIO DI HDI PASSA DALLA STESSA PORTA (24/09/2026) ───────────
+   Stesso tasto, stessa anteprima, stessa regola: niente si scrive finché non
+   lo dici tu. Cambia solo il lettore, perché il file di HDI non è lo Standard
+   Share File — quello è uno zip di CSV con le intestazioni, questo è un file
+   solo, posizionale (tracciato PASS-133). Le regole di lettura stanno tutte in
+   `tariffe/motore/flusso-hdi.js`.
+
+   Si riconosce dalla PRIMA RIGA, non dal nome del file: `0;UTF-8;PASS-133;…`.
+   Il nome lo sceglie chi scarica, e basta rinominarlo per far leggere un file
+   col lettore sbagliato. */
+function fluEHdi(testo) {
+  return /^\s*0;[^;]*;PASS-/.test(String(testo || '').slice(0, 200));
+}
+
+async function fluAnteprimaHdi(testo, box) {
+  const H = (typeof window !== 'undefined') ? window.FlussoHDI : null;
+  if (!H) { box.innerHTML = '<div class="empty-state">Il lettore del portafoglio HDI non è caricato.</div>'; return; }
+
+  /* Le polizze già in archivio servono per decidere sui titoli: una rata di
+     una polizza caricata il mese scorso è buona; una di una polizza che
+     nessuno ha mai visto no. */
+  let note = [];
+  try {
+    const { data } = await db.from('quote_polizze').select('numero_polizza').eq('compagnia', 'HDI').limit(5000);
+    note = (data || []).map(x => x.numero_polizza).filter(Boolean);
+  } catch (e) { console.warn('flusso HDI, polizze già in archivio:', e); }
+
+  const r = H.esamina(testo, note);
+  const c = r.conteggi;
+  const riga = (n, t) => '<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:.5px solid var(--bord)"><span>' + t + '</span><b>' + n + '</b></div>';
+
+  box.innerHTML =
+    '<div class="flu-sez" style="margin-top:14px">Portafoglio HDI · tracciato ' + esc(r.busta.tracciato || '—') +
+      (r.busta.estratto_il ? ' · estratto il ' + esc(new Date(r.busta.estratto_il + 'T12:00:00').toLocaleDateString('it-IT')) : '') + '</div>' +
+    (r.busta.ok ? '' : '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> ' + esc(r.busta.guai.join(' ')) + '</div>') +
+    '<div style="background:var(--surf);border:.5px solid var(--bord2);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:13px">' +
+      riga(c.anagrafiche, 'Clienti') + riga(c.polizze, 'Polizze') + riga(c.garanzie, 'Garanzie') +
+      riga(c.titoliCaricabili + ' <span style="color:var(--txt3);font-weight:400">su ' + c.titoli + '</span>', 'Rate') +
+      riga(c.sinistri, 'Sinistri') + riga(c.incassi, 'Incassi') +
+    '</div>' +
+    (r.avvisi.length
+      ? '<div style="margin-top:10px">' + r.avvisi.map(a =>
+          '<div style="font-size:12.5px;line-height:1.55;padding:9px 11px;border-radius:8px;margin-bottom:6px;background:' +
+          (a.g === 'grave' ? 'var(--red-bg,#fdecec);color:var(--red,#c0392b)' : 'var(--amb-bg,#fff5e0);color:var(--amb,#b8860b)') +
+          '">' + esc(a.t) + '</div>').join('') + '</div>'
+      : '') +
+    '<div style="margin-top:12px;padding:11px 13px;background:var(--surf2);border-radius:9px;font-size:12.5px;color:var(--txt2);line-height:1.55">' +
+      (r.caricabile
+        ? 'Questa è solo una lettura: <b>in archivio non è stato scritto niente</b>. La scrittura non è ancora accesa — vedi il riepilogo del 24/09/2026.'
+        : '<b>Questo file non si carica.</b> Non si importa «la parte buona», perché non si sa dove finisca la parte buona.') +
+    '</div>';
+}
+
 async function fluScelto(files) {
   const box = document.getElementById('flu-esito');
   const M = fluMotore();
   if (!box) return;
   if (!fluPuo()) return fluVietato(box);
-  if (!M) { box.innerHTML = '<div class="empty-state">Il motore del flusso non è caricato.</div>'; return; }
   if (!files || !files.length) return;
+
+  /* Prima si guarda se è il file di HDI: il lettore dell'SSF non saprebbe che
+     farsene e direbbe «non è un flusso», che è vero e inutile. */
+  const uno = files.length === 1 ? files[0] : null;
+  if (uno && /\.dat$/i.test(uno.name)) {
+    box.innerHTML = '<div class="pdoc-attesa">Leggo il portafoglio…</div>';
+    let testo;
+    try { testo = await uno.text(); }
+    catch (e) { box.innerHTML = '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> Non riesco a leggere il file.</div>'; return; }
+    if (!fluEHdi(testo)) {
+      box.innerHTML = '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> Questo .dat non è un portafoglio HDI: la prima riga non dichiara il tracciato.</div>';
+      return;
+    }
+    FLU_PIANO = null;
+    return fluAnteprimaHdi(testo, box);
+  }
+
+  if (!M) { box.innerHTML = '<div class="empty-state">Il motore del flusso non è caricato.</div>'; return; }
   FLU_PIANO = null;
   FLU_NOMI = Array.from(files).map(f => f.name).join(', ');
   box.innerHTML = '<div class="pdoc-attesa">Leggo l\'archivio…</div>';

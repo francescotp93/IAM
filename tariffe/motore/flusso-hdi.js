@@ -47,8 +47,10 @@
    valore ha una forma inconfondibile (un codice fiscale, una data, una targa),
    o perché un id combacia con un altro record del file.
 
-   Vale anche per le DATE, ed è la mancanza che pesa di più: sposta le
-   scadenze, cioè le telefonate di rinnovo.
+   Le DATE della polizza sono state chiuse così: incrociandole con i titoli,
+   che portano il periodo della rata. Tre polizze su diciotto hanno i loro
+   titoli nel file, e tutte e tre danno effetto = c19 e scadenza = c21, al
+   giorno. Le altre tre date restano numerate.
 
    Le altre restano accessibili come `grezzo[n]`, NON con un nome inventato.
    Un nome sbagliato su una colonna di soldi produce un numero credibile e
@@ -162,19 +164,32 @@
       stato: c(r, 16),
       motivo_storno: c(r, 17),
       annullata_il: data(c(r, 18)),
-      /* LE DATE NON SONO BATTEZZATE, ED È UNA CORREZIONE. Al primo giro avevo
-         chiamato la 19 «emissione» e la 20 «effetto»: ne usciva una polizza
-         dal 17/11/2024 al 17/11/2026 con frazionamento ANNUALE, cioè due anni
-         di annualità. Il file ha 17/11/2025, 17/11/2024 e tre volte
-         17/11/2026: leggendole bene, l'annualità in corso è 2025→2026 e il
-         2024 è la decorrenza originale del contratto. «Bene» però qui vuol
-         dire «secondo me», e una decorrenza sbagliata sposta la scadenza nello
-         scadenzario — cioè la telefonata di rinnovo parte un anno prima o un
-         anno dopo. Restano numerate finché HDI non manda il tracciato. */
-      date: {
-        c19: data(c(r, 19)), c20: data(c(r, 20)), c21: data(c(r, 21)),
-        c22: data(c(r, 22)), c23: data(c(r, 23)),
-      },
+      /* LE DATE, E COME SI È SAPUTO QUALI SONO. Al primo giro le avevo
+         battezzate a naso e ne usciva una polizza annuale lunga due anni.
+         Invece di indovinare, gliel'ho chiesto al file: tre polizze hanno i
+         loro titoli dentro, e il titolo porta il periodo della rata. Tutte e
+         tre combaciano con c19 → c21, al giorno:
+
+            polizza …4999   c19 16/09/2026 → c21 16/09/2027   titolo idem
+            polizza …7270   c19 23/09/2026 → c21 23/09/2027   titolo idem
+            polizza …7271   c19 23/09/2026 → c21 17/11/2026   titolo idem
+
+         L'ultima è la conferma indipendente: è la sostituzione della …3577, e
+         si porta in c20 il 17/11/2024, cioè la decorrenza ORIGINALE del
+         contratto sostituito. Ecco perché c20 non è la decorrenza in corso, e
+         perché resta senza nome insieme a c22 e c23.
+
+         Controprova su tutti i 42 titoli caricabili: sulle ANNUALI combacia
+         29 volte su 29; sulle SEMESTRALI non combacia mai, 13 su 13 — e
+         nemmeno deve, perché lì il titolo è la PRIMA RATA: stessa partenza,
+         metà durata (23/09/2026 → 19/12/2026 contro una polizza che arriva al
+         19/06/2027). Il fatto che sbagli esattamente dove ci si aspetta che
+         sbagli è la conferma migliore che le due colonne sono quelle giuste.
+
+         Se un domani il tracciato di HDI dirà altro, vince il tracciato. */
+      effetto: data(c(r, 19)),
+      scadenza: data(c(r, 21)),
+      date: { c20: data(c(r, 20)), c22: data(c(r, 22)), c23: data(c(r, 23)) },
       frazionamento: c(r, 24),
       anagrafica_id: c(r, 61),
       codice_fiscale: c(r, 79),
@@ -205,9 +220,11 @@
     return {
       polizza_id: c(r, 2),
       tipo: c(r, 14),
-      /* Stessa prudenza delle polizze: due date, e quale sia la decorrenza
-         della rata lo dice il tracciato, non io. */
-      date: { c11: data(c(r, 11)), c13: data(c(r, 13)) },
+      /* È il titolo che ha permesso di battezzare le date della polizza:
+         c11 → c13 è il periodo della rata, e su tre polizze combacia al
+         giorno con effetto → scadenza. */
+      effetto: data(c(r, 11)),
+      scadenza: data(c(r, 13)),
       frazionamento: c(r, 18),
       stato: c(r, 19),
       incassato_il: data(c(r, 22)),

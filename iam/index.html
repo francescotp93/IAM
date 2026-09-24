@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.43.0">
-<meta name="app-versione-nome" content="Le causali dicono dove il denaro entra e da dove esce">
+<meta name="app-versione" content="0.43.1">
+<meta name="app-versione-nome" content="Tre colonne che non esistevano">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -7834,9 +7834,9 @@ async function pvdCarica(forza) {
   const punti = await pvdLeggi('la struttura dei punti vendita',
     () => db.from('iam_punti_vendita').select('*').order('nome'), []);
   const persone = await pvdLeggi('il registro delle persone',
-    () => db.from('quote_collaboratori').select('id,nome,cognome,email,rui,stato,iam_id,punto_vendita_id,creato_il').order('cognome'), []);
+    () => db.from('quote_collaboratori').select('id,nome,cognome,email,rui_numero,stato,iam_id,punto_vendita_id,creato_il').order('cognome'), []);
   const account = await pvdLeggi('gli account di IAM',
-    () => db.from('iam_utenti').select('id,iam_id,email,ruolo,attivo'), []);
+    () => db.from('iam_utenti').select('id,email,ruolo,attivo'), []);
   /* Gli HUB di prima: si LEGGONO per proporre di trasformarli, non si
      convertono da soli. Un punto vendita nato da un programma sarebbe una
      struttura di agenzia che nessuno ha deciso (§8.1) — e su una struttura la
@@ -13155,8 +13155,8 @@ async function caricaKpiScrivania(forza) {
     }),
     leggi('incassato', async () => {
       const { data, error } = await db.from('quote_titoli')
-        .select('data_incasso,importo_lordo')
-        .gte('data_incasso', Kpi.primoDelMese(mPrima));
+        .select('incassato_il,importo_lordo')
+        .gte('incassato_il', Kpi.primoDelMese(mPrima));
       if (error) throw error;
       const fine = (d) => { const x = new Date(d + '-01'); x.setMonth(x.getMonth() + 1); x.setDate(0); return wdsISO(x); };
       return {

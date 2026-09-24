@@ -100,10 +100,10 @@ prova('l’incassato guarda la data dell’INCASSO, non la decorrenza', () => {
   /* È la stessa regola dell'estratto conto (§17) e del foglio cassa (§25):
      una rata emessa e non pagata non ha prodotto niente per nessuno. */
   const t = [
-    { data_incasso: '2026-09-10', importo_lordo: 200, data_scadenza: '2026-08-01' },
-    { data_incasso: '2026-08-31', importo_lordo: 999 },
-    { data_incasso: null, importo_lordo: 500, data_scadenza: '2026-09-02' },
-    { data_incasso: '2026-09-15', importo_lordo: null }
+    { incassato_il: '2026-09-10', importo_lordo: 200, data_scadenza: '2026-08-01' },
+    { incassato_il: '2026-08-31', importo_lordo: 999 },
+    { incassato_il: null, importo_lordo: 500, data_scadenza: '2026-09-02' },
+    { incassato_il: '2026-09-15', importo_lordo: null }
   ];
   const r = P.incassato(t, '2026-09-01', '2026-09-30');
   deve(r.importo === 200, 'l’incassato del mese non è 200: ' + r.importo);

@@ -153,12 +153,12 @@ prova('un ANELLO non manda in cerchio chi disegna', () => {
 
 prova('LE PERSONE SONO QUELLE DEL REGISTRO, non gli account', () => {
   const persone = [
-    { id: 'p1', cognome: 'ALEO', nome: 'ALESSANDRO', email: 'alex@x.it', punto_vendita_id: 'ag', iam_id: 'u1' },
+    { id: 'p1', cognome: 'ALEO', nome: 'ALESSANDRO', email: 'alex@x.it', punto_vendita_id: 'ag', iam_id: 'u1', rui_numero: 'E000111111' },
     { id: 'p2', cognome: 'ODDO', nome: 'FRANCESCO', email: 'f@x.it', punto_vendita_id: 'ag' },
     { id: 'p3', cognome: 'ROSSI', nome: 'MARIO', punto_vendita_id: 'f1' },
     { id: 'p4', cognome: 'VERDI', nome: 'ANNA' }
   ];
-  const account = [{ id: 'u1', iam_id: 'u1', email: 'alex@x.it', ruolo: 'top_master', attivo: true }];
+  const account = [{ id: 'u1', email: 'alex@x.it', ruolo: 'top_master', attivo: true }];
   const dentro = PV.personeDi(persone, 'ag', { account });
   deve(dentro.length === 2, 'non trova le due persone dell’agenzia: ' + dentro.length);
   /* Chi non ha un accesso NON sparisce: dodici persone su diciassette sono
@@ -167,6 +167,11 @@ prova('LE PERSONE SONO QUELLE DEL REGISTRO, non gli account', () => {
   deve(odd && odd.stato === 'senza-account', 'una persona senza account non è dichiarata');
   const aleo = dentro.find(x => x.id === 'p1');
   deve(aleo && aleo.account && aleo.account.ruolo === 'top_master', 'l’account non si aggancia alla persona');
+  /* Il RUI arriva dalla colonna vera del registro (`rui_numero`, 24/09/2026):
+     chiedendone un'altra PostgREST risponde 400 e la schermata dichiara di
+     non aver potuto leggere il registro — che è il guasto vero, perché
+     sembra che non ci sia nessuno. */
+  deve(aleo.rui === 'E000111111', 'il RUI non arriva dal registro: ' + aleo.rui);
   /* E chi non sta in nessun punto vendita si trova chiedendo `null`: è la
      lista da cui si comincia a smistare. */
   deve(PV.personeDi(persone, null, { account }).length === 1, 'non si trova chi è senza punto vendita');

@@ -135,7 +135,7 @@
     var out = { righe: 0, importo: 0, senza_importo: 0 };
     (titoli || []).forEach(function (t) {
       if (!t) return;
-      var q = giorno(t.data_incasso);
+      var q = giorno(t.incassato_il);
       if (!q) return;
       if (d && q < d) return;
       if (a && q > a) return;

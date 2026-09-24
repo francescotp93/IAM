@@ -204,8 +204,11 @@
     var conti = {};
     (opz.account || []).forEach(function (u) {
       if (!u) return;
-      var k = u.iam_id || u.persona_id || u.id;
-      if (k) conti[k] = u;
+      /* La chiave e' `id`: in `iam_utenti` l'id E' l'identificativo
+         dell'account, ed e' `quote_collaboratori.iam_id` a puntare a lui.
+         Chiedere un'altra colonna a quella tabella vuol dire una risposta
+         400 e la schermata che dichiara di non aver potuto leggere. */
+      if (u.id) conti[u.id] = u;
       if (u.email) conti['@' + testo(u.email).toLowerCase()] = u;
     });
     var out = (persone || []).filter(function (p) {
@@ -214,7 +217,10 @@
       var a = conti[p.iam_id] || conti[p.id] || (p.email ? conti['@' + testo(p.email).toLowerCase()] : null) || null;
       return {
         id: p.id, nome: nomeDi(p), email: testo(p.email) || null,
-        rui: testo(p.rui) || null,
+        /* Nel registro la colonna si chiama `rui_numero` (ci sono anche
+           `rui_data` e `rui_sezione`). Il campo che esce di qui resta `rui`
+           perche' e' quello che la schermata legge. */
+        rui: testo(p.rui_numero) || null,
         data_inizio: data(p.data_inizio) || data(p.creato_il) || null,
         account: a ? { id: a.id, email: testo(a.email) || null, ruolo: testo(a.ruolo) || null,
                        attivo: a.attivo !== false } : null,

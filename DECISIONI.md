@@ -1319,3 +1319,28 @@ decisione, non una conseguenza.
   dichiarano e si leggono. Collegarle a chi può emettere davvero tocca i
   permessi, e va fatto con la sua migrazione.
 - **`CASSA CONTANTI` è di tipologia `altro`**: il fondo cassa resta a zero.
+
+## 24/09/2026 — 0.43.1 «Tre colonne che non esistevano»
+
+**Chiesto:** «Risolvi questo problema» (Punti vendita: due colonne che non
+esistono).
+
+🟡 **Ho censito TUTTE le select, non solo quella segnalata.** 398 select
+letterali nei due documenti, 886 colonne chieste, confrontate con lo schema
+vero del database. Sono uscite **tre** colonne inesistenti invece di due: la
+terza spegneva il riquadro «Incassato questo mese» sulla Scrivania dal
+20/09. *Come tornare indietro: le tre correzioni sono tre righe, in
+`iam/index.html`, `tariffe/motore/kpi.js` e `tariffe/motore/punti-vendita.js`.*
+
+🟡 **Ho aggiunto una fotografia dello schema** (`supabase/colonne.json`, 106
+tabelle) e un guardiano che confronta con lei ogni colonna chiesta. È un file
+in più da rifare dopo una migrazione che aggiunge colonne — il costo è quello,
+il guadagno è che questa famiglia di guasti non passa più. *Come tornare
+indietro: si cancellano `supabase/colonne.json` e
+`server/verifica/colonne-che-esistono.test.mjs`.*
+
+🟢 Le fixture delle prove sono state allineate ai nomi veri delle colonne
+(prima dicevano `data_incasso` e `iam_id`, cioè il mondo che non esiste).
+
+**Fuori perimetro, annotato:** il guardiano non copre `.eq()`/`.order()`/
+`.gte()` né le chiavi di `insert`/`update`. Sono la stessa famiglia.

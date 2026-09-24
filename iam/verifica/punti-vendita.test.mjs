@@ -60,11 +60,11 @@ const punti = () => [
     puo_proposta: true, puo_emissione: true, puo_incasso: true, puo_quotazione: true }
 ];
 const gente = () => [
-  { id: 'p1', cognome: 'ALEO', nome: 'ALESSANDRO', email: 'alex@x.it', punto_vendita_id: 'ag', iam_id: 'u1' },
+  { id: 'p1', cognome: 'ALEO', nome: 'ALESSANDRO', email: 'alex@x.it', punto_vendita_id: 'ag', iam_id: 'u1', rui_numero: 'E000111111' },
   { id: 'p2', cognome: 'ODDO', nome: 'FRANCESCO', email: 'f@x.it', punto_vendita_id: 'ag' },
   { id: 'p3', cognome: 'ROSSI', nome: 'MARIO' }
 ];
-const conti = () => [{ id: 'u1', iam_id: 'u1', email: 'alex@x.it', ruolo: 'top_master', attivo: true }];
+const conti = () => [{ id: 'u1', email: 'alex@x.it', ruolo: 'top_master', attivo: true }];
 
 /* IL BANCO CHE FA GIRARE LA SCHERMATA, una volta sola. Tre prove lo usano, e
    tre copie dello stesso finto database sarebbero tre banchi che un giorno

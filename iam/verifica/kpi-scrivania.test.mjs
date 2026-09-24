@@ -98,7 +98,7 @@ await e.provaAsync('i tre riquadri si riempiono con i numeri del motore', async 
       { creato_il: OGGI, polizza_emessa: true, polizza_il: OGGI },
       { creato_il: OGGI, polizza_emessa: false }
     ],
-    quote_titoli: [{ data_incasso: OGGI, importo_lordo: 150 }]
+    quote_titoli: [{ incassato_il: OGGI, importo_lordo: 150 }]
   });
   await s.ctx.caricaKpiScrivania(true);
   const h = dentro(s);
@@ -118,7 +118,7 @@ await e.provaAsync('UNA LETTURA CHE CADE NON SPEGNE LE ALTRE', async () => {
   const s = conScrivania({
     quote_polizze: new Error('column "boh" does not exist'),
     quote_preventivi: [{ creato_il: OGGI, polizza_emessa: true, polizza_il: OGGI }],
-    quote_titoli: [{ data_incasso: OGGI, importo_lordo: 99 }]
+    quote_titoli: [{ incassato_il: OGGI, importo_lordo: 99 }]
   });
   await s.ctx.caricaKpiScrivania(true);
   const h = dentro(s);

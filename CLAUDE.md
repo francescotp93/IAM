@@ -8409,3 +8409,88 @@ funzione». Adesso passa da `pntCausaleScelta`, e la prova misura la **catena**
 - **La proposta non arriva agli incassi automatici** (Fase 2, Fase 3): quelli
   scelgono il conto dalla configurazione dei mezzi (§32), che è un'altra
   domanda. Unirle sarebbe una decisione, non una conseguenza.
+
+---
+
+## 72. Tre colonne che non esistevano, e il banco non poteva vederle (24/09/2026)
+
+> «Non si è potuto leggere: il registro delle persone: column
+> `quote_collaboratori.rui` does not exist · gli account di IAM: column
+> `iam_utenti.iam_id` does not exist» — Francesco, con la fotografia della
+> schermata Punti vendita vuota.
+
+| pezzo | dove |
+|---|---|
+| la fotografia dello schema vero | `supabase/colonne.json` |
+| il guardiano | `server/verifica/colonne-che-esistono.test.mjs` — 3 |
+| le due select dei punti vendita | `pvdCarica` in `iam/index.html` |
+| il RUI e l'account nel motore | `personeDi` in `tariffe/motore/punti-vendita.js` |
+| la data dell'incasso | `incassato` in `tariffe/motore/kpi.js`, e il riquadro in `iam/index.html` |
+
+### Non erano due: erano tre, e la terza non l'aveva vista nessuno
+
+Il censimento delle **398 select letterali** dei due documenti, confrontate
+con lo schema vero, ha dato **tre** colonne inesistenti su 886 chieste:
+
+| dove | chiedeva | la colonna è |
+|---|---|---|
+| Punti vendita, il registro | `quote_collaboratori.rui` | `rui_numero` |
+| Punti vendita, gli account | `iam_utenti.iam_id` | non esiste: l'id dell'account **è** `id` |
+| **Scrivania, «Incassato questo mese»** | `quote_titoli.data_incasso` | `incassato_il` |
+
+La terza è quella che insegna qualcosa. È lì dal **20/09** (§42, punto 10), e
+per quattro giorni quel riquadro ha detto «non si è potuto leggere» senza che
+nessuno lo segnalasse.
+
+> **La regola «ogni lettura sta in piedi da sola» (§35) ha funzionato, ed è
+> esattamente per questo che il guasto è rimasto nascosto quattro giorni.**
+> Una pagina che si spegne la segnala qualcuno entro un'ora. Un riquadro che
+> dichiara di non aver potuto leggere si legge come un problema di rete.
+
+### Perché nessuna prova lo prendeva, e il rimedio
+
+`kpi-scrivania.test.mjs` fa **girare** il codice con un finto PostgREST, e il
+finto PostgREST **non guarda i nomi delle colonne**: restituisce quello che
+gli si mette dentro. La prova del motore passava fixture con `data_incasso`,
+il motore leggeva `data_incasso`, la schermata chiedeva `data_incasso`: tre
+pezzi d'accordo fra loro e tutti e tre sbagliati rispetto alla tabella.
+
+> **Una suite verde dice che il codice fa quello che chi l'ha scritto aveva in
+> mente** (§1). Sul nome di una colonna, quello che chi scrive ha in mente non
+> conta niente: conta il database.
+
+Quindi il guardiano non misura il codice contro se stesso: misura il codice
+contro una **fotografia dello schema vero**, presa dal database e datata. Il
+suo rosso ha due cause e le dice tutte e due — *o è un refuso, o la
+fotografia è vecchia* — e la riga per rifarla sta dentro il file.
+
+**Una tabella che la fotografia non conosce non fa rosso**, e l'asimmetria è
+voluta: una tabella nuova si vede a occhio nudo, una colonna sbagliata su una
+tabella che c'è no, ed è quella che si sta cercando. Le tabelle saltate si
+contano, così non spariscono in silenzio. *Un guardiano permanentemente rosso
+insegna a ignorare i rossi* (§40).
+
+### Il nome che esce non è il nome che entra
+
+Nel registro le colonne del RUI sono tre (`rui_numero`, `rui_data`,
+`rui_sezione`); il campo che `personeDi` restituisce resta `rui`, perché è
+quello che la schermata legge. Si è cambiato **quello che si chiede al
+database**, non il contratto verso la pagina — e la prova adesso pretende che
+il RUI arrivi davvero, invece di limitarsi a esistere.
+
+Per gli account la correzione è una sottrazione: la chiave dell'indice era
+`u.iam_id || u.persona_id || u.id`, due dei tre nomi non esistono, e in
+`iam_utenti` l'id dell'account **è** `id` — è `quote_collaboratori.iam_id` a
+puntare a lui. Una catena di ripieghi su nomi inventati non è tolleranza: è
+un modo di non accorgersi che il primo è sbagliato.
+
+### Cosa resta aperto
+
+- **Il guardiano legge solo le `select` letterali** dei due documenti: non
+  vede le colonne passate a `.eq()`, `.order()` e `.gte()`, né gli elenchi di
+  colonne costruiti in una variabile. Un `.gte('colonna_sbagliata')` da solo
+  passerebbe ancora.
+- **La fotografia si rifà a mano** dopo una migrazione che aggiunge colonne.
+  È il prezzo di non avere un accesso al database dal banco di prova.
+- **Le scritture non sono coperte**: `insert` e `update` passano un oggetto, e
+  una chiave sbagliata lì dentro è la stessa famiglia di guasto.

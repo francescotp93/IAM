@@ -1,8 +1,18 @@
 {
-  "versione": "0.43.0",
-  "nome": "Le causali dicono dove il denaro entra e da dove esce",
-  "data": "2026-09-23",
+  "versione": "0.43.1",
+  "nome": "Tre colonne che non esistevano",
+  "data": "2026-09-24",
   "storia": [
+    {
+      "v": "0.43.1",
+      "data": "2026-09-24",
+      "nome": "Tre colonne che non esistevano",
+      "voci": [
+        "PUNTI VENDITA · la schermata diceva «non si è potuto leggere il registro delle persone» e restava vuota: chiedeva al database due colonne che non esistono (il RUI e il collegamento all'account). Adesso legge, e l'elenco delle persone si vede.",
+        "SCRIVANIA · il riquadro «Incassato questo mese» era spento dal 20 settembre, per lo stesso motivo: chiedeva una data che sulla rata si chiama in un altro modo. Nessuno se n'era accorto perché la pagina non si rompeva — diceva solo «non si è potuto leggere».",
+        "E da oggi c'è un controllo che impedisce che succeda ancora: una fotografia delle colonne vere del database, e una prova che confronta con quella ogni colonna che il programma chiede. Erano tre errori dello stesso tipo, trovati tutti in una volta guardando."
+      ]
+    },
     {
       "v": "0.43.0",
       "data": "2026-09-23",

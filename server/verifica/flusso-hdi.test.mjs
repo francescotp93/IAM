@@ -355,7 +355,7 @@ prova('una partita IVA non finisce nella casella del codice fiscale', () => {
     polizze: [], garanzie: [], sinistri: [], titoli: [], incassi: [], busta: {} });
   deve(a.clienti[0].partita_iva === '01234567890', 'gli undici caratteri non sono stati letti come partita IVA');
   deve(!a.clienti[0].codice_fiscale, 'la partita IVA è finita anche nel codice fiscale');
-  deve(a.clienti[0].tipo === 'azienda', 'l\'azienda è stata schedata come privato');
+  deve(a.clienti[0].tipo === 'giuridica', 'l\'azienda è stata schedata come ' + a.clienti[0].tipo);
 });
 
 prova('polizze e rate portano una chiave stabile', () => {
@@ -448,6 +448,108 @@ prova('un .dat che non è di HDI dice cosa ha trovato', () => {
     'il messaggio non mostra cosa c\'era scritto davvero: «non è un portafoglio HDI» è vero e inutile');
 });
 
+/* ── QUELLO CHE LE TABELLE ACCETTANO ──────────────────────────────────────
+   Il 24/09/2026 il convertitore era pronto, provato, e non avrebbe scritto
+   una riga. `quote_titoli.tipo` ha un vincolo e i valori sono quattro:
+   prima_rata, rata, quietanza, appendice. HDI manda «Nuova Polizza»,
+   «Quietanza di Rinnovo», «Sostituzione», «Appendice» — e nessuno dei
+   quattro coincide, nemmeno l'ultimo, che differisce per la maiuscola.
+
+   Siccome la scrittura è UNA TRANSAZIONE, non sarebbero entrate meno rate:
+   non sarebbe entrato niente, con un errore che parla di un vincolo e non
+   nomina HDI. Trovarlo dopo aver pubblicato avrebbe voluto dire un tasto che
+   sembra pronto e non carica mai.
+
+   Questi sono i valori ammessi, copiati dai vincoli del database
+   (`pg_constraint` su quote_titoli e quote_polizze, 24/09/2026). Se domani
+   cambiano lì e non qui, questa prova non se ne accorge: è il suo limite, ed
+   è scritto perché si sappia. */
+const AMMESSI = {
+  tipoRata: ['prima_rata', 'rata', 'quietanza', 'appendice'],
+  statoRata: ['aperto', 'incassato', 'insoluto', 'stornato', 'annullato'],
+  statoPagamento: ['non_pagato', 'sospeso', 'pagato', 'annullata'],
+  /* Non è un vincolo del database: è quello che usano le altre 2.536 schede.
+     Una terza parola per la stessa cosa è un filtro che da domani non trova
+     più tutti. */
+  tipoCliente: ['fisica', 'giuridica'],
+};
+
+prova('ogni rata esce con un tipo che la tabella accetta', () => {
+  /* Le quattro parole vere di HDI, più una inventata per il caso ignoto. */
+  const parole = ['Nuova Polizza', 'Quietanza di Rinnovo', 'Sostituzione', 'Appendice',
+    'Quietanza di Frazionamento', 'Zibaldone', '', null];
+  const a = H.converti({
+    anagrafiche: [ANA({})],
+    polizze: parole.map((_, n) => POL({ id: 'p' + n, numero: 'P' + n })),
+    garanzie: [], sinistri: [],
+    titoli: parole.map((w, n) => TIT({ polizza_id: 'p' + n, tipo: w, grezzo: ['40', 'PG' + n] })),
+    incassi: parole.map((_, n) => INC({ polizza_numero: 'P' + n, importo: 100 })),
+    busta: {},
+  });
+  deve(a.titoli.length === parole.length, 'sono entrate ' + a.titoli.length + ' rate su ' + parole.length);
+  const fuori = a.titoli.filter(t => AMMESSI.tipoRata.indexOf(t.tipo) < 0);
+  deve(fuori.length === 0,
+    'tipi che il vincolo rifiuterebbe — e una sola riga così fa fallire TUTTA l\'importazione: ' +
+    JSON.stringify([...new Set(fuori.map(t => t.tipo))]));
+});
+
+prova('e con uno stato che la tabella accetta', () => {
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+    titoli: [TIT({ stato: 'Incassato' }), TIT({ stato: 'Da incassare', grezzo: ['40', 'PG2'] })],
+    incassi: [], busta: {} });
+  const fuori = a.titoli.filter(t => AMMESSI.statoRata.indexOf(t.stato) < 0);
+  deve(fuori.length === 0, 'stati rifiutati dal vincolo: ' + JSON.stringify(fuori.map(t => t.stato)));
+});
+
+prova('la parola vera di HDI non si perde nella traduzione', () => {
+  /* Fra sei mesi «prima_rata» non racconterà che era una sostituzione. */
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+    titoli: [TIT({ tipo: 'Sostituzione' })], incassi: [INC({ importo: 100 })], busta: {} });
+  deve(a.titoli[0].tipo === 'prima_rata', 'Sostituzione è diventata ' + a.titoli[0].tipo);
+  deve(/Sostituzione/.test(a.titoli[0].note || ''),
+    'la parola di HDI non è rimasta scritta da nessuna parte: ' + a.titoli[0].note);
+});
+
+prova('un tipo che non conosco si dichiara, non si nasconde', () => {
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+    titoli: [TIT({ tipo: 'Zibaldone' })], incassi: [INC({ importo: 100 })], busta: {} });
+  deve(a.avvisi.some(x => /Zibaldone/.test(x.t)),
+    'un tipo sconosciuto entra come «rata» senza che nessuno lo sappia');
+});
+
+prova('i clienti escono con le parole che usa il resto dell\'archivio', () => {
+  const a = H.converti({
+    anagrafiche: [ANA({ id: 'c1', codice_fiscale: 'RSSMRA80A01L331X' }),
+                  ANA({ id: 'c2', codice_fiscale: '01234567890' })],
+    polizze: [], garanzie: [], sinistri: [], titoli: [], incassi: [], busta: {} });
+  const fuori = a.clienti.filter(c => AMMESSI.tipoCliente.indexOf(c.tipo) < 0);
+  deve(fuori.length === 0,
+    'tipi cliente che nessun\'altra scheda usa: ' + JSON.stringify(fuori.map(c => c.tipo)));
+  deve(a.clienti[0].tipo === 'fisica' && a.clienti[1].tipo === 'giuridica',
+    'persona e azienda non sono distinte: ' + a.clienti.map(c => c.tipo).join(', '));
+});
+
+prova('sul file vero di Francesco non esce un solo valore fuori vincolo', () => {
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const a = H.converti(H.esamina(fs.readFileSync(percorso, 'utf8'), []));
+  const guai = [];
+  a.titoli.forEach(t => {
+    if (AMMESSI.tipoRata.indexOf(t.tipo) < 0) guai.push('rata.tipo=' + t.tipo);
+    if (AMMESSI.statoRata.indexOf(t.stato) < 0) guai.push('rata.stato=' + t.stato);
+  });
+  a.clienti.forEach(c => {
+    if (AMMESSI.tipoCliente.indexOf(c.tipo) < 0) guai.push('cliente.tipo=' + c.tipo);
+  });
+  a.polizze.forEach(p => {
+    if (p.stato_pagamento != null && AMMESSI.statoPagamento.indexOf(p.stato_pagamento) < 0) {
+      guai.push('polizza.stato_pagamento=' + p.stato_pagamento);
+    }
+  });
+  deve(guai.length === 0, 'il file vero produrrebbe valori rifiutati: ' + JSON.stringify([...new Set(guai)]));
+});
+
 /* ── la scrittura passa dalla porta che c'è già ────────────────────────────
    Non c'è una seconda funzione che scrive portafogli. Se un domani qualcuno
    ne aggiungesse una, queste prove restano verdi — ma quella che guarda la
@@ -501,6 +603,9 @@ prova('la migrazione che apre la porta esiste, e non tocca l\'SSF', () => {
   const f = fs.readdirSync(dir).find(n => /import_anche_hdi/.test(n));
   deve(f, 'la migrazione che fa accettare la fonte non è stata scritta');
   const sql = fs.readFileSync(new URL(f, dir), 'utf8');
+  deve(/drop function if exists public\.iam_importa_flusso\(uuid\);/.test(sql),
+    'la versione vecchia non viene tolta: con f(uuid) e f(uuid,text default) insieme, la chiamata a un argomento '
+    + 'diventa ambigua e Postgres la rifiuta — cioè la migrazione per HDI spegnerebbe l\'importazione SSF');
   deve(/p_fonte text default 'ssf'/.test(sql),
     'la fonte non ha il valore di prima come predefinito: le chiamate che esistono cambierebbero comportamento');
   deve(/not in \('ssf', 'hdi'\)/.test(sql),

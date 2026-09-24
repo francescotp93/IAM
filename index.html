@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.44.1">
-<meta name="app-versione-nome" content="Il tasto Conferma, e i motori che restavano indietro">
+<meta name="app-versione" content="0.45.0">
+<meta name="app-versione-nome" content="CRM · Analisi, e la porta del portafoglio HDI">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -76,6 +76,7 @@
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
 <script src="tariffe/motore/flusso-ssf.js?v=20260921"></script>
 <script src="tariffe/motore/flusso-hdi.js?v=20260924"></script>
+<script src="tariffe/motore/crm-analisi.js?v=20260924"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260920"></script>
 <!-- Le coordinate su cui i collaboratori versano stanno sui conti, e i conti
      li conosce il motore della contabilità: il controllo dell'IBAN è già lì
@@ -2128,6 +2129,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="nav-item" id="nav-reti" style="display:none" onclick="showPage('reti')"><i class="ti ti-sitemap"></i><span>Reti</span></div>
       <div class="nav-item" id="nav-log" style="display:none" onclick="showPage('log')"><i class="ti ti-activity"></i><span>Attività</span></div>
       <div class="nav-item" id="nav-gruppi" style="display:none" onclick="showPage('gruppi')"><i class="ti ti-affiliate"></i><span>Gruppi</span></div>
+      <!-- CRM · Analisi (24/09/2026): estrarre pezzi di portafoglio. Sta
+           accanto ai Gruppi perche' e' la stessa famiglia di lavoro — segmenti
+           e liste — e chi cerca l'una trova l'altra. -->
+      <div class="nav-item" id="nav-crm" style="display:none" onclick="showPage('crm-analisi')"><i class="ti ti-filter-search"></i><span>CRM · Analisi</span></div>
       <div class="nav-item" id="nav-conv" style="display:none" onclick="showPage('convenzioni')"><i class="ti ti-users-group"></i><span>Convenzioni</span><span class="nav-badge" id="conv-badge" style="display:none">0</span></div>
       <!-- I NUMERI DI LEGGE. Il pallino qui conta quelli scaduti o in scadenza:
            un coefficiente scaduto continua a dare un numero plausibile e
@@ -2242,6 +2247,31 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <!-- ── GRUPPI · insiemi di anagrafiche, la base delle campagne mirate ── -->
+    <!-- ── CRM · ANALISI (24/09/2026) ───────────────────────────────────
+         Si scelgono dei filtri, esce una lista: da li' una campagna, un foglio
+         Excel o un PDF. Le regole stanno in `tariffe/motore/crm-analisi.js`.
+
+         ACCANTO A OGNI FILTRO C'E' QUANTO E' PIENO QUEL CAMPO, e non e' un
+         vezzo: su 2.536 anagrafiche la professione e' compilata 1 volta, il
+         collaboratore 1, lo stato di famiglia 3. Una schermata che risponde
+         «0 clienti» senza aggiungere altro fa pensare che il portafoglio non
+         abbia quel tipo di cliente; la verita' e' che quel campo non l'ha
+         compilato nessuno. Sono due risposte diverse e portano a due decisioni
+         diverse. ──────────────────────────────────────────────────────── -->
+    <div class="page" id="page-crm-analisi">
+      <div class="page-title">CRM · Analisi</div>
+      <div class="page-sub">Estrai un pezzo di portafoglio · da qui una campagna, un foglio Excel o un PDF</div>
+
+      <div id="ca-filtri" style="background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:16px;margin-top:14px"></div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="rin-az" onclick="caCerca()"><i class="ti ti-search"></i> Cerca</button>
+        <button class="rin-az" onclick="caPulisci()"><i class="ti ti-eraser"></i> Pulisci</button>
+      </div>
+
+      <div id="ca-esito" style="margin-top:16px"></div>
+    </div>
+
     <div class="page" id="page-gruppi">
       <button class="back-link" onclick="showPage('home')"><i class="ti ti-arrow-left"></i> Moduli</button>
       <div class="page-title">Gruppi</div>
@@ -3281,7 +3311,12 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div class="flu-scelta">
         <label class="flu-file">
           <i class="ti ti-upload"></i> Scegli l'archivio della compagnia
-          <input type="file" id="flu-file" accept=".zip,.csv,.dat" multiple hidden onchange="fluScelto(this.files)">
+          <input type="file" id="flu-file" accept=".zip,.csv,.dat,.txt,text/plain,text/csv,application/zip,application/octet-stream" multiple hidden onchange="fluScelto(this.files)">
+          <!-- L'`accept` e' largo apposta: su iPhone un'estensione che iOS
+               non conosce — `.dat` e' una di quelle — fa comparire il file in
+               grigio, e non lo si riesce nemmeno a scegliere. Tanto chi
+               decide qual e' il lettore giusto non e' l'estensione: e'
+               `fluAnnusaHdi`, che guarda dentro. -->
         </label>
         <div class="cl-sub">Lo <b>.zip</b> così com'è, i file <b>REC…csv</b> estratti, oppure il <b>.dat</b> di HDI. Niente viene scritto finché non lo dici tu.</div>
       </div>
@@ -4791,6 +4826,7 @@ function initMain() {
   const navAnP=document.getElementById('nav-analprev'); if(navAnP) navAnP.style.display='flex';
   if(typeof contaParametriDaVedere==='function') contaParametriDaVedere();
   const navGr=document.getElementById('nav-gruppi'); if(navGr) navGr.style.display='flex';
+  const navCrm=document.getElementById('nav-crm'); if(navCrm) navCrm.style.display='flex';
   contaConvenzioniDaVedere();
   loadTickets();
   loadNotifiche();
@@ -11050,7 +11086,7 @@ function showPage(name) {
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',portafoglio:'nav-portafoglio','foglio-cassa':'nav-portafoglio',scadenzario:'nav-scadenzario','controllo-documenti':'nav-cdoc','importa-flusso':'nav-import',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi'};
+  const map = {home:'nav-home',anagrafiche:'nav-anag',utility:'nav-doc',portafoglio:'nav-portafoglio','foglio-cassa':'nav-portafoglio',scadenzario:'nav-scadenzario','controllo-documenti':'nav-cdoc','importa-flusso':'nav-import',titoli:'nav-titoli',storico:'nav-stor',emissioni:'nav-emiss',richieste:'nav-rich',estratto:'nav-estratto',sinistri:'nav-sinistri',ticket:'nav-ticket',utenti:'nav-utenti',reti:'nav-reti',log:'nav-log',fonti:'nav-fonti',convenzioni:'nav-conv',gruppi:'nav-gruppi','crm-analisi':'nav-crm'};
   if (map[name]) document.getElementById(map[name]).classList.add('active');
   else document.getElementById('nav-home').classList.add('active'); // moduli figli → evidenzia Moduli
   if (name === 'portafoglio') loadPortafoglio();   // CRM Punto 2
@@ -11059,6 +11095,7 @@ function showPage(name) {
      `pnuApri` ha gia' il suo (`pnuPuo`/`isStaff`), e due cancelli scritti a
      mano divergono al primo ruolo nuovo (§1). */
   if (_pnuDaAprire && typeof pnuApri === 'function') pnuApri();
+  if (name === 'crm-analisi') caCarica();
   if (name === 'foglio-cassa') fcCarica();         // M5: la cassa, dentro il Portafoglio
   if (name === 'controllo-documenti') cdocCarica();  // Lavoro 3 §3.8
   if (name === 'importa-flusso') fluRegistro();      // il registro dei caricamenti
@@ -11105,6 +11142,203 @@ function showPage(name) {
    dove arrivano, invece di lasciare un numero senza spiegazione. */
 let GRUPPI = [];
 const TIPI_GRUPPO = { convenzione:['Convenzione','#0a7a55','#e8f6ef'], lavoro:['Lavoro','#8a5300','#fff4e5'], famiglia:['Famiglia','#7a3fb5','#f3eaff'] };
+
+/* ═══ CRM · ANALISI ═══════════════════════════════════════════════════════
+   La schermata: il motore sta in crm-analisi.js e non sa niente di HTML, cosi'
+   le due regole che contano (la campagna va solo a chi ha dato il consenso;
+   un campo vuoto si dichiara invece di tornare zero) si provano senza aprire
+   un browser. Qui si disegna e basta. */
+let CA_ANAG = null, CA_POLIZZE = {}, CA_GRUPPI = [], CA_COPERTURA = [], CA_RISULTATO = null;
+
+function caMotore() { return (typeof window !== 'undefined' && window.CrmAnalisi) ? window.CrmAnalisi : null; }
+
+async function caCarica() {
+  const box = document.getElementById('ca-filtri');
+  if (!box) return;
+  if (CA_ANAG) return caDisegnaFiltri();
+  box.innerHTML = '<div style="color:var(--muted);font-size:13px">Carico il portafoglio…</div>';
+  try {
+    const [an, pz, gr] = await Promise.all([
+      db.from('quote_anagrafiche').select('id,nominativo,comune,provincia,res_dich_comune,res_dich_provincia,data_nascita,email,cellulare,note,sposato,ha_figli,professione,condizione_lavorativa,intermediario_id,consenso_marketing,lead').limit(20000),
+      db.from('quote_polizze').select('cliente_id,modulo,prodotto').limit(20000),
+      db.from('quote_gruppi').select('id,nome'),
+    ]);
+    if (an.error) throw an.error;
+    CA_ANAG = an.data || [];
+    CA_POLIZZE = {};
+    (pz.data || []).forEach(x => {
+      const k = String(x.cliente_id || '');
+      if (!k) return;
+      (CA_POLIZZE[k] = CA_POLIZZE[k] || []).push(x);
+    });
+    CA_GRUPPI = gr.data || [];
+    CA_COPERTURA = caMotore() ? caMotore().copertura(CA_ANAG) : [];
+    caDisegnaFiltri();
+  } catch (e) {
+    console.error('caCarica:', e);
+    box.innerHTML = '<div style="color:var(--rosso,#c0392b);font-size:13px">Non riesco a leggere il portafoglio. Riprova fra un minuto.</div>';
+  }
+}
+
+/* Il cartellino che dice quanto e' pieno un campo. E' la parte che rende
+   onesta questa schermata: senza, «0 risultati» e «campo mai compilato» si
+   confondono. */
+function caCopertura(campo) {
+  const c = (CA_COPERTURA || []).find(x => x.campo === campo);
+  if (!c || !c.totale) return '';
+  const perc = Math.round(c.quota * 100);
+  const col = c.inutilizzabile ? '#c0392b' : (perc < 60 ? '#b8860b' : '#1c9c4c');
+  return '<span style="font-size:10px;font-weight:700;color:' + col + ';margin-left:6px;white-space:nowrap" title="Quante anagrafiche hanno questo dato compilato">'
+    + c.compilati + '/' + c.totale + (c.inutilizzabile ? ' · quasi vuoto' : '') + '</span>';
+}
+
+function caCampo(etichetta, campo, dentro) {
+  return '<div style="display:flex;flex-direction:column;gap:4px">'
+    + '<label style="font-size:11px;font-weight:700;color:var(--muted);display:flex;align-items:center">' + etichetta + caCopertura(campo) + '</label>'
+    + dentro + '</div>';
+}
+
+function caDisegnaFiltri() {
+  const box = document.getElementById('ca-filtri');
+  if (!box) return;
+  const st = 'padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font:inherit;font-size:13px;width:100%;box-sizing:border-box';
+  const comuni = [...new Set((CA_ANAG || []).map(r => (r.res_dich_comune || r.comune || '').trim()).filter(Boolean))].sort();
+  const moduli = [...new Set(Object.values(CA_POLIZZE).flat().map(p => (p.modulo || p.prodotto || '').trim()).filter(Boolean))].sort();
+
+  box.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">'
+    + caCampo('Comune', 'comune', '<select id="ca-comune" style="' + st + '"><option value="">Tutti</option>' + comuni.map(c => '<option>' + esc(c) + '</option>').join('') + '</select>')
+    + caCampo('Età da', 'data_nascita', '<input id="ca-eta-da" type="number" min="0" max="120" placeholder="—" style="' + st + '">')
+    + caCampo('Età a', 'data_nascita', '<input id="ca-eta-a" type="number" min="0" max="120" placeholder="—" style="' + st + '">')
+    + caCampo('Tipo di polizza', 'comune', '<select id="ca-ramo" style="' + st + '"><option value="">Tutte</option>' + moduli.map(m => '<option>' + esc(m) + '</option>').join('') + '</select>')
+    + caCampo('Professione', 'professione', '<input id="ca-prof" type="text" placeholder="contiene…" style="' + st + '">')
+    + caCampo('Collaboratore', 'intermediario_id', '<input id="ca-collab" type="text" placeholder="id collaboratore" style="' + st + '">')
+    + caCampo('Sposato', 'sposato', '<select id="ca-sposato" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No (dichiarato)</option></select>')
+    + caCampo('Ha figli', 'sposato', '<select id="ca-figli" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No (dichiarato)</option></select>')
+    + caCampo('Nelle note c\'è', 'note', '<input id="ca-note" type="text" placeholder="cerca nel testo…" style="' + st + '">')
+    + caCampo('Gruppo', 'comune', '<select id="ca-gruppo" style="' + st + '"><option value="">Tutti</option>' + (CA_GRUPPI || []).map(g => '<option value="' + esc(g.id) + '">' + esc(g.nome) + '</option>').join('') + '</select>')
+    + '</div>'
+    + '<div style="margin-top:10px;font-size:11.5px;color:var(--muted);line-height:1.5">Il numero accanto a ogni filtro dice su quante anagrafiche quel dato è compilato. Quando è quasi vuoto, filtrarci sopra non seleziona: restituisce il poco che c\'è.</div>';
+}
+
+function caPulisci() {
+  ['ca-comune','ca-eta-da','ca-eta-a','ca-ramo','ca-prof','ca-collab','ca-sposato','ca-figli','ca-note','ca-gruppo']
+    .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const b = document.getElementById('ca-esito'); if (b) b.innerHTML = '';
+  CA_RISULTATO = null;
+}
+
+async function caCerca() {
+  const M = caMotore(), box = document.getElementById('ca-esito');
+  if (!M || !box) return;
+  const g = id => { const e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
+  const tri = v => v === 'si' ? true : v === 'no' ? false : null;
+  const num = v => v === '' ? null : Number(v);
+
+  let membri = null;
+  const gruppo = g('ca-gruppo');
+  if (gruppo) {
+    try {
+      const { data } = await db.from('quote_gruppi_membri').select('cliente_id').eq('gruppo_id', gruppo);
+      membri = new Set((data || []).map(x => String(x.cliente_id)));
+    } catch (e) { console.warn('gruppo:', e); }
+  }
+
+  const righe = M.filtra(CA_ANAG || [], {
+    comuni: g('ca-comune') ? [g('ca-comune')] : [],
+    etaDa: num(g('ca-eta-da')), etaA: num(g('ca-eta-a')),
+    rami: g('ca-ramo') ? [g('ca-ramo')] : [],
+    professione: g('ca-prof') || null,
+    collaboratoreId: g('ca-collab') || null,
+    sposato: tri(g('ca-sposato')), haFigli: tri(g('ca-figli')),
+    testoNote: g('ca-note') || null,
+  }, { polizzePerCliente: CA_POLIZZE, membriGruppo: membri });
+
+  CA_RISULTATO = righe;
+  const rec = M.recapiti(righe);
+  const mail = M.perCampagna(righe, 'email');
+  const sms = M.perCampagna(righe, 'sms');
+
+  box.innerHTML =
+    '<div style="background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:16px">'
+    + '<div style="font-size:19px;font-weight:800">' + righe.length + ' <span style="font-size:13px;font-weight:600;color:var(--muted)">su ' + (CA_ANAG || []).length + ' anagrafiche</span></div>'
+    + (righe.length ? '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--muted)">'
+        + '<span>Con email <b style="color:var(--txt,#222)">' + rec.email + '</b></span>'
+        + '<span>Con cellulare <b style="color:var(--txt,#222)">' + rec.cellulare + '</b></span>'
+        + '<span>Senza recapito <b style="color:var(--txt,#222)">' + rec.senzaRecapito + '</b></span></div>' : '')
+    + (righe.length
+        ? '<div style="margin-top:12px;padding:11px 13px;background:#f6f8f7;border-radius:9px;font-size:12.5px;line-height:1.55">'
+          + '<b>Per una campagna</b> arriverebbero a <b>' + mail.quanti + '</b> per email e <b>' + sms.quanti + '</b> per SMS o WhatsApp.'
+          + (mail.esclusi.senzaConsenso ? ' Restano fuori ' + mail.esclusi.senzaConsenso + ' persone perché non hanno dato il consenso.' : '')
+          + '<div style="color:var(--muted);margin-top:5px">' + esc(mail.perche) + '</div></div>'
+        : '<div style="margin-top:10px;font-size:13px;color:var(--muted)">Nessuna anagrafica con questi filtri. Se hai filtrato su un campo quasi vuoto, il risultato dice più su quel campo che sul portafoglio.</div>')
+    + (righe.length ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">'
+        + '<button class="rin-az" onclick="caEsportaExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>'
+        + '<button class="rin-az" onclick="caEsportaPdf()"><i class="ti ti-file-type-pdf"></i> PDF</button>'
+        + '<button class="rin-az" onclick="caCampagna()"><i class="ti ti-send"></i> Crea campagna</button></div>' : '')
+    + '</div>'
+    + (righe.length ? caTabella(righe.slice(0, 200), righe.length) : '');
+}
+
+function caTabella(righe, totale) {
+  const M = caMotore();
+  return '<div style="background:#fff;border:1px solid #e6e6e6;border-radius:14px;margin-top:12px;overflow:auto">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:12.5px">'
+    + '<thead><tr>' + M.COLONNE.map(c => '<th style="text-align:left;padding:9px 11px;border-bottom:1px solid #eee;font-size:11px;color:var(--muted);white-space:nowrap">' + esc(c.e) + '</th>').join('') + '</tr></thead><tbody>'
+    + M.righeEsporta(righe).map(r => '<tr>' + M.COLONNE.map(c => '<td style="padding:8px 11px;border-bottom:1px solid #f4f4f4">' + esc(r[c.e] || '') + '</td>').join('') + '</tr>').join('')
+    + '</tbody></table>'
+    + (totale > righe.length ? '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Mostrate le prime ' + righe.length + ' di ' + totale + '. L\'esportazione le prende tutte.</div>' : '')
+    + '</div>';
+}
+
+function caEsportaExcel() {
+  const M = caMotore();
+  if (!M || !CA_RISULTATO || !CA_RISULTATO.length) return;
+  /* Il BOM davanti: senza, Excel italiano legge gli accenti come geroglifici. */
+  const blob = new Blob(['\ufeff' + M.csv(CA_RISULTATO)], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'analisi-portafoglio-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function caEsportaPdf() {
+  const M = caMotore();
+  if (!M || !CA_RISULTATO || !CA_RISULTATO.length) return;
+  const righe = M.righeEsporta(CA_RISULTATO);
+  const w = window.open('', '_blank');
+  if (!w) { alert('Il browser ha bloccato la finestra di stampa.'); return; }
+  w.document.write('<!doctype html><meta charset="utf-8"><title>Analisi portafoglio</title>'
+    + '<style>body{font:12px system-ui,sans-serif;padding:24px;color:#222}h1{font-size:17px;margin:0 0 4px}'
+    + 'p{color:#666;margin:0 0 14px;font-size:11px}table{width:100%;border-collapse:collapse}'
+    + 'th{text-align:left;font-size:10px;color:#666;border-bottom:1px solid #ccc;padding:6px 8px}'
+    + 'td{padding:5px 8px;border-bottom:1px solid #eee}</style>'
+    + '<h1>Analisi portafoglio</h1><p>' + righe.length + ' anagrafiche · estratto il '
+    + new Date().toLocaleDateString('it-IT') + ' · documento a uso interno</p>'
+    + '<table><thead><tr>' + M.COLONNE.map(c => '<th>' + c.e + '</th>').join('') + '</tr></thead><tbody>'
+    + righe.map(r => '<tr>' + M.COLONNE.map(c => '<td>' + String(r[c.e] || '') + '</td>').join('') + '</tr>').join('')
+    + '</tbody></table>');
+  w.document.close();
+  setTimeout(() => w.print(), 300);
+}
+
+/* La campagna non parte da qui: si porta la lista dove le campagne si fanno
+   gia'. Due posti da cui si manda sono due posti in cui sbagliare. */
+function caCampagna() {
+  const M = caMotore();
+  if (!M || !CA_RISULTATO) return;
+  const c = M.perCampagna(CA_RISULTATO, 'email');
+  if (!c.quanti) {
+    alert('Con questi filtri non c\'è nessuno a cui poter scrivere.\n\n'
+      + c.esclusi.senzaConsenso + ' persone non hanno dato il consenso al marketing e '
+      + c.esclusi.senzaRecapito + ' non hanno un\'email.\n\nL\'elenco resta esportabile in Excel e PDF per uso interno.');
+    return;
+  }
+  if (!confirm('La campagna raggiungerebbe ' + c.quanti + ' persone su ' + CA_RISULTATO.length + '.\n\n'
+      + c.esclusi.senzaConsenso + ' restano fuori perché non hanno dato il consenso.\n\nVai alle Campagne con questa lista?')) return;
+  try { sessionStorage.setItem('ca_lista_campagna', JSON.stringify(c.destinatari.map(r => r.id))); } catch (e) {}
+  showPage('campagne');
+}
 
 async function loadGruppi(){
   const box=document.getElementById('gruppi-list'); if(!box) return;
@@ -19908,7 +20142,18 @@ async function fluAnteprimaHdi(testo, box) {
     note = (data || []).map(x => x.numero_polizza).filter(Boolean);
   } catch (e) { console.warn('flusso HDI, polizze già in archivio:', e); }
 
-  const r = H.esamina(testo, note);
+  /* Se il lettore inciampa, si dice. Senza questo `try`, un file storto
+     lascerebbe la pagina ferma su «Leggo il portafoglio…» per sempre, e
+     «non e' andato» resta l'unica cosa che si puo' raccontare. */
+  let r;
+  try { r = H.esamina(testo, note); }
+  catch (e) {
+    console.error('flusso HDI:', e);
+    box.innerHTML = '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> '
+      + 'Il file si apre ma il lettore si ferma: ' + esc(e && e.message ? e.message : String(e))
+      + '</div>';
+    return;
+  }
   const c = r.conteggi;
   const riga = (n, t) => '<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:.5px solid var(--bord)"><span>' + t + '</span><b>' + n + '</b></div>';
 
@@ -19934,6 +20179,28 @@ async function fluAnteprimaHdi(testo, box) {
     '</div>';
 }
 
+/* ── SI GUARDA DENTRO, NON IL NOME (24/09/2026) ────────────────────────────
+   Prima il lettore di HDI si sceglieva dall'estensione `.dat`. Tre modi per
+   sbagliare: il file rinominato o salvato come `.txt` dal telefono; il file
+   dentro lo zip che la compagnia manda per email; e l'estensione che iOS non
+   conosce, che rende il file impossibile da scegliere. Il tracciato invece si
+   dichiara da solo nella prima riga — `0;UTF-8;PASS-133;…` — e quella non si
+   puo' rinominare. Si leggono 400 byte: se sono i suoi, si legge tutto. */
+async function fluAnnusaHdi(f) {
+  try {
+    if (/\.zip$/i.test(f.name)) {
+      const M = fluMotore();
+      if (!M || !M.apriZip) return null;
+      const dentro = await M.apriZip(await f.arrayBuffer());
+      const nome = Object.keys(dentro || {}).find(n => fluEHdi(dentro[n]));
+      return nome ? dentro[nome] : null;
+    }
+    const assaggio = await f.slice(0, 400).text();
+    if (!fluEHdi(assaggio)) return null;
+    return await f.text();
+  } catch (e) { console.warn('flusso, annuso HDI:', e); return null; }
+}
+
 async function fluScelto(files) {
   const box = document.getElementById('flu-esito');
   const M = fluMotore();
@@ -19944,17 +20211,22 @@ async function fluScelto(files) {
   /* Prima si guarda se è il file di HDI: il lettore dell'SSF non saprebbe che
      farsene e direbbe «non è un flusso», che è vero e inutile. */
   const uno = files.length === 1 ? files[0] : null;
-  if (uno && /\.dat$/i.test(uno.name)) {
+  if (uno) {
     box.innerHTML = '<div class="pdoc-attesa">Leggo il portafoglio…</div>';
-    let testo;
-    try { testo = await uno.text(); }
-    catch (e) { box.innerHTML = '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> Non riesco a leggere il file.</div>'; return; }
-    if (!fluEHdi(testo)) {
-      box.innerHTML = '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> Questo .dat non è un portafoglio HDI: la prima riga non dichiara il tracciato.</div>';
-      return;
-    }
-    FLU_PIANO = null;
-    return fluAnteprimaHdi(testo, box);
+    const testo = await fluAnnusaHdi(uno);
+    if (testo) { FLU_PIANO = null; return fluAnteprimaHdi(testo, box); }
+  }
+
+  /* Un `.dat` che non è di HDI: si dice COSA c'è scritto nella prima riga
+     invece di «non è un portafoglio HDI», che è vero e non aiuta nessuno. */
+  if (uno && /\.dat$/i.test(uno.name)) {
+    let inizio = '';
+    try { inizio = (await uno.slice(0, 300).text()).split(/\r?\n/)[0] || ''; } catch (e) {}
+    box.innerHTML = '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> '
+      + 'Questo .dat non è un portafoglio HDI. La prima riga dovrebbe cominciare con '
+      + '<code>0;…;PASS-</code>' + (inizio ? ', invece comincia con <code>' + esc(inizio.slice(0, 70)) + '</code>' : ', ma il file risulta vuoto')
+      + '.</div>';
+    return;
   }
 
   if (!M) { box.innerHTML = '<div class="empty-state">Il motore del flusso non è caricato.</div>'; return; }

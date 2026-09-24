@@ -223,8 +223,9 @@ prova('una riga di tipo sconosciuto si segnala invece di sparire', () => {
 prova('il file di HDI entra dallo stesso tasto dell\'altro flusso', () => {
   const fs = require('fs');
   const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
-  deve(/accept="\.zip,\.csv,\.dat"/.test(pagina),
-    'il tasto non accetta il .dat: il file di HDI non si può nemmeno scegliere');
+  const acc = (/id="flu-file"[^>]*accept="([^"]*)"/.exec(pagina) || [])[1] || '';
+  deve(/\.dat\b/.test(acc),
+    'il tasto non accetta il .dat: il file di HDI non si può nemmeno scegliere — ' + acc);
   deve(/flusso-hdi\.js/.test(pagina), 'il lettore non viene caricato dalla pagina');
   deve(/fluAnteprimaHdi/.test(pagina), 'non c\'è nessuna anteprima per il file di HDI');
 });
@@ -251,6 +252,66 @@ prova('e l\'anteprima dice, nero su bianco, che non ha scritto niente', () => {
     'l\'anteprima non dice che in archivio non è stato scritto niente');
   deve(!/\.insert\(|\.upsert\(|\.update\(/.test(fn),
     'l\'anteprima scrive in archivio: doveva solo guardare');
+});
+
+/* ── il file dev'essere anche SCEGLIBILE ────────────────────────────────────
+   Il 24/09/2026 Francesco ha provato a caricare il suo file e «non è andato»,
+   mentre il lettore qui sopra lo leggeva senza una piega: 14 clienti, 18
+   polizze, 154 rate. Il motore era giusto e la porta era stretta. Queste
+   prove guardano la porta. */
+
+prova('il lettore si sceglie dal contenuto, non dall\'estensione', () => {
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = pagina.indexOf('async function fluScelto(');
+  deve(i > 0, 'fluScelto non esiste');
+  const corpo = pagina.slice(i, i + 900);
+  deve(corpo.indexOf('fluAnnusaHdi(') >= 0,
+    'fluScelto non annusa il file: un .dat rinominato .txt, o dentro uno zip, finirebbe nel lettore sbagliato');
+});
+
+prova('anche dentro uno zip il portafoglio HDI si trova', () => {
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = pagina.indexOf('async function fluAnnusaHdi(');
+  deve(i > 0, 'fluAnnusaHdi non esiste');
+  const corpo = pagina.slice(i, i + 800);
+  deve(/\.zip\$\/i\.test/.test(corpo) && corpo.indexOf('apriZip') >= 0,
+    'lo zip non viene aperto: la compagnia lo manda così per email');
+  deve(corpo.indexOf('slice(0, 400)') >= 0,
+    'per annusare legge tutto il file invece dei primi byte');
+});
+
+prova('l\'estensione .dat da sola non basta come `accept`', () => {
+  /* Su iPhone un\'estensione che iOS non conosce fa comparire il file in
+     grigio: il tasto c\'è, la schermata c\'è, e il file non si riesce a
+     scegliere. */
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const m = /id="flu-file"[^>]*accept="([^"]*)"/.exec(pagina) || /accept="([^"]*)"[^>]*id="flu-file"/.exec(pagina);
+  deve(m, 'non trovo l\'accept del tasto di caricamento');
+  deve(/text\/plain|application\/octet-stream/.test(m[1]),
+    'l\'accept elenca solo estensioni: su iOS il .dat resta grigio — ' + m[1]);
+});
+
+prova('se il lettore inciampa la pagina lo dice, non resta ad aspettare', () => {
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = pagina.indexOf('async function fluAnteprimaHdi(');
+  const corpo = pagina.slice(i, pagina.indexOf('async function fluScelto(', i));
+  const j = corpo.indexOf('H.esamina(');
+  deve(j > 0, 'l\'anteprima non chiama esamina');
+  deve(/try\s*\{[^}]*H\.esamina\(/.test(corpo),
+    'esamina non è dentro un try: un file storto lascerebbe la pagina ferma su «Leggo il portafoglio…»');
+});
+
+prova('un .dat che non è di HDI dice cosa ha trovato', () => {
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = pagina.indexOf('Questo .dat non è un portafoglio HDI');
+  deve(i > 0, 'manca il messaggio per un .dat di un\'altra compagnia');
+  deve(pagina.slice(i - 400, i + 400).indexOf('PASS-') >= 0,
+    'il messaggio non mostra cosa c\'era scritto davvero: «non è un portafoglio HDI» è vero e inutile');
 });
 
 /* ── esecuzione ─────────────────────────────────────────────────────────── */

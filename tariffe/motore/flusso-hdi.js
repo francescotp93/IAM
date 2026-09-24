@@ -134,6 +134,32 @@
 
   /* ── I RECORD, SOLO NEI CAMPI VERIFICATI ──────────────────────────────── */
 
+  /* ── LE COLONNE DELL'ANAGRAFICA, E COME SI E' SAPUTO QUALI SONO ──────────
+     Al primo giro erano sbagliate da `provincia` in poi, sfalsate di una o
+     due posizioni. Non si vedeva: la provincia usciva «IT», il CAP usciva
+     «TP», e il codice fiscale usciva «IT» — cioe' LO STESSO PER TUTTI.
+
+     Ed e' li' che stava il danno vero. Il codice fiscale e' la chiave con cui
+     si riconosce «questa persona ce l'ho gia'»: uguale per tutti vuol dire
+     che quattordici persone diverse sono la stessa persona. Nell'anteprima
+     si leggeva «1 cliente, 18 polizze», e Francesco si e' fermato a chiedere
+     se non fosse strano. Lo era: stavano per entrare tredici clienti fusi in
+     uno, con le polizze di tutti attaccate al primo.
+
+     Quali siano davvero non l'ho indovinato: ho preso le quattordici righe
+     del file e ho chiesto a ognuna di rispettare la forma del suo campo —
+     due lettere per la provincia, cinque cifre per il CAP, sedici caratteri
+     per il codice fiscale, una chiocciola per l'email. La colonna giusta e'
+     quella che risponde 14 volte su 14; quella vecchia rispondeva 0 su 14.
+
+         c12 comune        c14 nazione (IT)     c15 provincia
+         c16 CAP           c18 data di nascita  c19 comune di nascita
+         c20 nazione di nascita (IT)            c21 CODICE FISCALE
+         c25 telefono      c26 email
+
+     Le due «IT» — c14 e c20 — sono le due trappole: stanno una prima della
+     provincia e una prima del codice fiscale, e prendendole per buone il
+     campo dopo slitta senza che niente protesti. */
   function anagrafica(r) {
     return {
       id: c(r, 6),                    // combacia con la colonna 61 della polizza
@@ -141,15 +167,25 @@
       denominazione: c(r, 10),
       indirizzo: c(r, 11),
       comune: c(r, 12),
-      provincia: c(r, 14),
-      cap: c(r, 15),
-      nato_il: data(c(r, 17)),
-      comune_nascita: c(r, 18),
-      codice_fiscale: c(r, 20),
-      telefono: c(r, 24),
-      email: c(r, 25),
+      nazione: c(r, 14),              // «IT» — non e' la provincia
+      provincia: c(r, 15),
+      cap: c(r, 16),
+      nato_il: data(c(r, 18)),
+      comune_nascita: c(r, 19),
+      nazione_nascita: c(r, 20),      // «IT» — non e' il codice fiscale
+      codice_fiscale: c(r, 21),
+      telefono: c(r, 25),
+      email: c(r, 26),
       grezzo: r,
     };
+  }
+
+  /* Sedici caratteri per una persona, undici cifre per una partita IVA.
+     Tutto il resto non e' un codice fiscale, e soprattutto NON PUO' FARE DA
+     CHIAVE: una chiave sbagliata non da' errore, fonde delle persone. */
+  function codiceFiscaleValido(v) {
+    var k = String(v == null ? '' : v).trim().toUpperCase();
+    return /^[A-Z0-9]{16}$/.test(k) || /^[0-9]{11}$/.test(k);
   }
 
   function polizza(r) {
@@ -285,6 +321,38 @@
     if (senzaAnagrafica.length) {
       avvisi.push({ g: 'grave', t: senzaAnagrafica.length + ' polizze richiamano un cliente che nel file non c\'è: entrerebbero senza intestatario.' });
     }
+    /* ── LA CHIAVE CHE NON E' UNA CHIAVE ────────────────────────────────
+       Il 24/09/2026 il lettore prendeva la colonna 20 come codice fiscale.
+       La colonna 20 vale «IT» su ogni riga: quattordici persone con lo
+       stesso codice fiscale. Nessun controllo protestava, perche' il file
+       era formalmente a posto — e a valle quel codice e' la chiave con cui
+       si decide «questa persona ce l'ho gia'». Sarebbero entrati tredici
+       clienti fusi in uno.
+
+       La regola generale, che vale anche per il prossimo tracciato che
+       slitta: UN IDENTIFICATIVO UGUALE PER TUTTI NON E' UN IDENTIFICATIVO.
+       Qui si guardano le due cose insieme — la forma e la varieta' — perche'
+       una sola delle due non basta: sedici caratteri li ha anche una
+       colonna sbagliata, e due persone possono avere davvero lo stesso
+       codice solo se sono la stessa persona due volte. */
+    var cfValidi = anagrafiche.filter(function (a) { return codiceFiscaleValido(a.codice_fiscale); });
+    if (anagrafiche.length && cfValidi.length < anagrafiche.length) {
+      var quanti = anagrafiche.length - cfValidi.length;
+      avvisi.push({ g: 'grave', t: quanti + ' anagrafiche su ' + anagrafiche.length +
+        ' hanno un codice fiscale che non ne ha la forma (attesi 16 caratteri, o 11 cifre per una partita IVA): ' +
+        'la colonna letta non è quella giusta, e il codice fiscale è la chiave con cui si riconosce chi c̀è già.' });
+    }
+    if (anagrafiche.length >= 3) {
+      var cfDistinti = {};
+      anagrafiche.forEach(function (a) { cfDistinti[String(a.codice_fiscale || '').trim().toUpperCase()] = true; });
+      var quantiDistinti = Object.keys(cfDistinti).length;
+      if (quantiDistinti <= 1) {
+        avvisi.push({ g: 'grave', t: 'Tutte e ' + anagrafiche.length +
+          ' le anagrafiche hanno lo stesso codice fiscale: un identificativo uguale per tutti non è un identificativo. ' +
+          'Caricando, queste persone diventerebbero una sola scheda con le polizze di tutte attaccate.' });
+      }
+    }
+
     var premiRotti = polizze.filter(function (p) { return p.premio_quadra === false; });
     if (premiRotti.length) {
       avvisi.push({ g: 'grave', t: premiRotti.length + ' polizze hanno un premio che non si scompone: la colonna del premio non è più quella attesa, il tracciato va riletto prima di caricare.' });
@@ -411,8 +479,14 @@
       (perPol[k] = perPol[k] || []).push(i);
     });
 
+    var cfScartati = 0;
     var clienti = anag.map(function (a) {
       var cf = String(a.codice_fiscale || '').trim().toUpperCase();
+      /* Se non ha la forma di un codice fiscale non lo si usa: meglio un
+         cliente nuovo di troppo che due persone fuse in una. Un doppione si
+         vede e si unisce; una fusione si scopre quando qualcuno chiama per
+         una polizza che risulta di un altro. */
+      if (cf && !codiceFiscaleValido(cf)) { cf = ''; cfScartati++; }
       /* Sedici caratteri e' una persona, undici e' una partita IVA. Sbagliare
          qui vuol dire cercare il cliente nell'indice sbagliato e creare il
          doppione di uno che c'e' gia'. */
@@ -573,6 +647,11 @@
     });
 
     var note = [];
+    if (cfScartati) {
+      note.push({ g: 'grave', t: cfScartati + ' anagrafiche hanno un codice fiscale di forma sbagliata: entrano SENZA, ' +
+        'cioè come clienti nuovi anche se in archivio ci fossero già. Meglio un doppione, che si vede e si unisce, ' +
+        'che due persone fuse in una, che si scopre quando qualcuno chiama per una polizza che risulta di un altro.' });
+    }
     var ignoti = Object.keys(tipiIgnoti);
     if (ignoti.length) {
       note.push({ g: 'avviso', t: 'Tipi di rata che non conosco, entrati come «rata» generica: ' +
@@ -612,6 +691,7 @@
     anagrafica: anagrafica, polizza: polizza, garanzia: garanzia,
     titolo: titolo, sinistro: sinistro, incasso: incasso,
     mezzoNostro: mezzoNostro, converti: converti,
+    codiceFiscaleValido: codiceFiscaleValido,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.FlussoHDI = API;

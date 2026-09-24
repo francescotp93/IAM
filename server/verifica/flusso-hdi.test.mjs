@@ -55,9 +55,15 @@ const col = (n, valori) => {
 
 const TESTATA = '0;UTF-8;PASS-133;0;N;24/09/2026';
 const CODA    = '99;UTF-8;PASS-133;0;N;24/09/2026';
+/* Le colonne sono quelle vere, comprese le DUE «IT» — nazione di residenza
+   (14) e nazione di nascita (20). Sono le trappole che il 24/09/2026 hanno
+   fatto leggere «IT» come provincia e come codice fiscale: se il finto file
+   non le avesse, non somiglierebbe abbastanza a quello vero per accorgersi
+   che il lettore è tornato a sbagliare. */
 const CLIENTE = col(31, { 1: '10', 6: 'ANA1', 7: 'M', 10: 'ROSSI MARIO', 11: 'VIA FINTA 1',
-                          12: 'TRAPANI', 14: 'TP', 15: '91100', 17: '01/10/1980',
-                          20: 'RSSMRA80R01L331X', 24: '3330000000', 25: 'finto@esempio.it' });
+                          12: 'TRAPANI', 14: 'IT', 15: 'TP', 16: '91100',
+                          18: '01/10/1980', 19: 'ERICE', 20: 'IT',
+                          21: 'RSSMRA80R01L331X', 25: '3330000000', 26: 'finto@esempio.it' });
 const POLIZZA = col(82, { 1: '20', 2: 'POL1', 4: '133', 5: '1428', 6: '1428000001',
                           9: 'Auto', 12: 'Auto HDI', 16: 'Polizza attiva',
                           19: '17/11/2025', 20: '17/11/2024', 21: '17/11/2026',
@@ -446,6 +452,116 @@ prova('un .dat che non è di HDI dice cosa ha trovato', () => {
   deve(i > 0, 'manca il messaggio per un .dat di un\'altra compagnia');
   deve(pagina.slice(i - 400, i + 400).indexOf('PASS-') >= 0,
     'il messaggio non mostra cosa c\'era scritto davvero: «non è un portafoglio HDI» è vero e inutile');
+});
+
+/* ═══ LE COLONNE DELL'ANAGRAFICA ═══════════════════════════════════════════
+   Il 24/09/2026 l'anteprima diceva «1 cliente, 18 polizze» e Francesco si è
+   fermato a chiedere se non fosse strano. Lo era. Il lettore prendeva la
+   colonna 20 come codice fiscale, e la colonna 20 vale «IT» su ogni riga:
+   quattordici persone con lo stesso codice fiscale.
+
+   Nessun controllo protestava, perché il file era formalmente a posto. Ma a
+   valle quel codice è LA CHIAVE con cui si decide «questa persona ce l'ho
+   già»: uguale per tutti vuol dire che quattordici persone sono la stessa
+   persona. Sarebbero entrati tredici clienti fusi in uno, con le polizze di
+   tutti attaccate al primo — e non si sarebbe visto fino a quando qualcuno
+   avesse chiamato per una polizza che risulta di un altro.
+
+   Erano sbagliate anche provincia, CAP, data di nascita, comune di nascita,
+   telefono ed email: sfalsate da due colonne che contengono «IT» (nazione di
+   residenza e nazione di nascita), ognuna appoggiata giusto prima del campo
+   che conta.
+
+   Le colonne giuste non sono state indovinate: si è chiesto a ognuna delle
+   quattordici righe di rispettare la forma del suo campo. La vecchia
+   ipotesi rispondeva 0 su 14; la nuova 14 su 14. */
+
+prova('ogni anagrafica esce con un codice fiscale suo', () => {
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const r = H.esamina(fs.readFileSync(percorso, 'utf8'), []);
+  const cf = r.anagrafiche.map(a => String(a.codice_fiscale || '').trim().toUpperCase());
+  const distinti = new Set(cf).size;
+  deve(distinti === r.anagrafiche.length,
+    'su ' + r.anagrafiche.length + ' anagrafiche ci sono solo ' + distinti + ' codici fiscali distinti: ' +
+    'la colonna letta non è quella del codice fiscale, e quelle persone verrebbero fuse in una');
+  deve(cf.every(v => H.codiceFiscaleValido(v)),
+    'ci sono codici fiscali che non ne hanno la forma: ' + JSON.stringify(cf.filter(v => !H.codiceFiscaleValido(v))));
+});
+
+prova('e con gli altri campi nelle caselle giuste', () => {
+  /* La provincia usciva «IT» e il CAP usciva «TP». Nessuno dei due dava
+     errore: entravano così. */
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const a = H.converti(H.esamina(fs.readFileSync(percorso, 'utf8'), []));
+  /* «Due lettere» NON basta: «IT» è due lettere, ed è esattamente il valore
+     sbagliato che si leggeva. Serve la lista vera delle sigle. */
+  const SIGLE = ('AG AL AN AO AP AQ AR AT AV BA BG BI BL BN BO BR BS BT BZ CA CB CE CH CL CN CO CR CS CT CZ ' +
+    'EN FC FE FG FI FM FR GE GO GR IM IS KR LC LE LI LO LT LU MB MC ME MI MN MO MS MT NA NO NU OR PA PC PD ' +
+    'PE PG PI PN PO PR PT PU PV PZ RA RC RE RG RI RM RN RO SA SI SO SP SR SS SU SV TA TE TN TO TP TR TS TV ' +
+    'UD VA VB VC VE VI VR VT VV').split(' ');
+  const guai = [];
+  a.clienti.forEach(c => {
+    if (c.provincia && SIGLE.indexOf(c.provincia) < 0) guai.push('provincia=' + c.provincia);
+    if (c.cap && !/^[0-9]{5}$/.test(c.cap)) guai.push('cap=' + c.cap);
+    if (c.data_nascita && !/^\d{4}-\d{2}-\d{2}$/.test(c.data_nascita)) guai.push('data_nascita=' + c.data_nascita);
+    if (c.email && c.email.indexOf('@') < 0) guai.push('email senza chiocciola');
+    if (c.cellulare && !/^[0-9 +]{6,}$/.test(c.cellulare)) guai.push('telefono=' + c.cellulare);
+  });
+  deve(guai.length === 0, 'campi nella casella sbagliata: ' + JSON.stringify([...new Set(guai)]));
+  /* La controprova che le caselle sono piene davvero: se il lettore slittasse
+     di nuovo, molti campi uscirebbero vuoti e la prova sopra passerebbe. */
+  deve(a.clienti.filter(c => c.provincia).length === a.clienti.length, 'delle province sono vuote');
+  deve(a.clienti.filter(c => c.cap).length === a.clienti.length, 'dei CAP sono vuoti');
+  /* Una colonna sbagliata spesso non dà un valore storto: dà un valore che
+     non si riesce a leggere, e il campo esce vuoto. Un campo vuoto passa
+     ogni controllo di forma, quindi va contato. Nel file vero le date di
+     nascita compilate sono 13 su 14. */
+  deve(a.clienti.filter(c => c.data_nascita).length >= a.clienti.length - 1,
+    'solo ' + a.clienti.filter(c => c.data_nascita).length + ' date di nascita su ' + a.clienti.length +
+    ': la colonna letta non è quella della data');
+  deve(a.clienti.filter(c => c.email).length >= a.clienti.length - 1, 'troppe email vuote');
+});
+
+prova('un identificativo uguale per tutti ferma il file', () => {
+  /* La regola generale, che vale anche per il prossimo tracciato che slitta:
+     non è un identificativo se non identifica. */
+  const righe = ['0;UTF-8;PASS-133;0;N;24/09/2026'];
+  for (let i = 1; i <= 4; i++) {
+    const col = new Array(30).fill('');
+    col[0] = '10'; col[1] = '133'; col[2] = 'PASS-133'; col[3] = '1428';
+    col[5] = 'A' + i; col[6] = 'M'; col[9] = 'PERSONA ' + i;
+    col[11] = 'TRAPANI'; col[13] = 'IT'; col[14] = 'TP'; col[15] = '91100';
+    col[19] = 'IT'; col[20] = 'IT';           // <- la colonna sbagliata: uguale per tutti
+    righe.push(col.join(';'));
+  }
+  const r = H.esamina(righe.join('\r\n'), []);
+  deve(r.avvisi.some(a => a.g === 'grave' && /stesso codice fiscale/i.test(a.t)),
+    'quattro persone con lo stesso codice fiscale non producono nessun avviso grave');
+  deve(r.caricabile === false, 'un file così resta caricabile: entrerebbero quattro persone fuse in una');
+});
+
+prova('un codice fiscale storto non viene mai usato come chiave', () => {
+  /* L'ultima rete: anche se un giorno la colonna slittasse di nuovo e
+     l'avviso non bastasse, un codice di forma sbagliata NON diventa la
+     chiave con cui si cerca «ce l'ho già». Meglio un doppione, che si vede
+     e si unisce, che due persone fuse, che si scopre per telefono. */
+  const a = H.converti({
+    anagrafiche: [ANA({ id: 'c1', codice_fiscale: 'IT' }), ANA({ id: 'c2', codice_fiscale: 'IT' })],
+    polizze: [], garanzie: [], sinistri: [], titoli: [], incassi: [], busta: {} });
+  deve(a.clienti.every(c => !c.codice_fiscale && !c.partita_iva),
+    'un codice fiscale di due lettere è stato tenuto come chiave: ' + JSON.stringify(a.clienti.map(c => c.codice_fiscale)));
+  deve(a.avvisi.some(x => x.g === 'grave'), 'nessun avviso grave su codici fiscali scartati');
+});
+
+prova('la forma del codice fiscale si riconosce', () => {
+  ['RSSMRA80A01L331X', '01234567890'].forEach(v =>
+    deve(H.codiceFiscaleValido(v), v + ' dovrebbe essere valido'));
+  ['IT', '', 'TP', '91027', 'RSSMRA80A01L33', 'RSSMRA80A01L331XY'].forEach(v =>
+    deve(!H.codiceFiscaleValido(v), JSON.stringify(v) + ' non dovrebbe essere valido'));
 });
 
 /* ── QUELLO CHE LE TABELLE ACCETTANO ──────────────────────────────────────

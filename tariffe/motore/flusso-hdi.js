@@ -366,6 +366,39 @@
 
   function annuale(f) { return /^annuale$/i.test(String(f || '').trim()); }
 
+  /* ── IL VOCABOLARIO DELLE RATE ────────────────────────────────────────────
+     `quote_titoli.tipo` non accetta testo libero: ha un vincolo, e i valori
+     sono quattro — prima_rata, rata, quietanza, appendice. HDI ne manda
+     altri: «Nuova Polizza», «Quietanza di Rinnovo», «Sostituzione»,
+     «Appendice». Nessuno dei quattro coincide, nemmeno «Appendice», che
+     differisce per la maiuscola.
+
+     Questo non e' un dettaglio di stile: senza traduzione OGNI rata viene
+     rifiutata dal vincolo, e siccome la scrittura e' una transazione sola,
+     non e' che «entrano meno rate» — non entra NIENTE. L'intera importazione
+     muore, e l'errore che si legge parla di un vincolo, non di HDI.
+
+     La parola originale non si perde: finisce nella nota della rata, perche'
+     fra sei mesi «prima_rata» non raccontera' che era una sostituzione. */
+  var TIPI_RATA = {
+    'nuova polizza': 'prima_rata',
+    'sostituzione': 'prima_rata',
+    'quietanza di rinnovo': 'quietanza',
+    'quietanza di frazionamento': 'rata',
+    'appendice': 'appendice',
+    'quietanza': 'quietanza',
+    'rata': 'rata'
+  };
+  function tipoRata(t) {
+    var k = String(t == null ? '' : t).trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!k) return { tipo: 'rata', noto: false, originale: null };
+    if (TIPI_RATA[k]) return { tipo: TIPI_RATA[k], noto: true, originale: String(t).trim() };
+    /* Non riconosciuta: si sceglie il valore piu' neutro fra i quattro e si
+       dice che non la si e' capita, invece di lasciar morire l'importazione
+       su un vincolo. */
+    return { tipo: 'rata', noto: false, originale: String(t).trim() };
+  }
+
   function converti(esame) {
     var e = esame || {};
     var anag = e.anagrafiche || [], pol = e.polizze || [],
@@ -386,7 +419,10 @@
       var persona = cf.length !== 11;
       return {
         _chiave: 'hdi:a:' + a.id,
-        tipo: persona ? 'privato' : 'azienda',
+        /* `fisica` e `giuridica`, non `privato`/`azienda`: sono le parole che
+           usano le altre 2.536 schede, e una terza parola per la stessa cosa
+           e' un filtro che da domani non trova piu' tutti. */
+        tipo: persona ? 'fisica' : 'giuridica',
         nominativo: a.denominazione || '',
         ragione_sociale: persona ? null : (a.denominazione || null),
         codice_fiscale: persona ? (cf || null) : null,
@@ -451,7 +487,7 @@
        Vale anche per il ripiego sul premio annuo: solo se la polizza ha una
        rata sola. Con sei rate si moltiplicherebbe il premio per sei, che e'
        lo stesso errore da un'altra porta. */
-    var titoli = [], scartati = [];
+    var titoli = [], scartati = [], tipiIgnoti = {};
 
     /* PRIMA DI TUTTO, LE RIPETIZIONI. Nel file la polizza 1428407270 ha sei
        righe di rata identiche — stesso tipo, stessa decorrenza, e soprattutto
@@ -511,11 +547,16 @@
               : 'il tracciato non porta l\'importo della rata e non c\'è un incasso che lo dica' });
             return;
           }
+          var tp = tipoRata(t.tipo);
+          if (!tp.noto && tp.originale) tipiIgnoti[tp.originale] = (tipiIgnoti[tp.originale] || 0) + 1;
+          var perche = [];
+          if (tp.originale) perche.push('HDI: ' + tp.originale + '.');
+          if (nota) perche.push(nota);
           titoli.push({
             _fonte_id: 'hdi:t:' + (t.grezzo && t.grezzo[1] ? String(t.grezzo[1]).trim() : num + ':' + (t.effetto || '')),
             _polizza: 'hdi:p:' + num,
             _senzaPolizza: false,
-            tipo: t.tipo || null,
+            tipo: tp.tipo,
             data_decorrenza: t.effetto || null,
             data_scadenza: t.scadenza || null,
             importo_lordo: importo,
@@ -525,13 +566,19 @@
             stato: /incassat/i.test(String(t.stato || '')) ? 'incassato' : 'aperto',
             mezzo_pagamento: i ? mezzoNostro(i.mezzo) : null,
             incassato_il: t.incassato_il || (i ? i.data : null),
-            note: nota
+            note: perche.length ? perche.join(' ') : null
           });
         });
       });
     });
 
     var note = [];
+    var ignoti = Object.keys(tipiIgnoti);
+    if (ignoti.length) {
+      note.push({ g: 'avviso', t: 'Tipi di rata che non conosco, entrati come «rata» generica: ' +
+        ignoti.map(function (k) { return k + ' (' + tipiIgnoti[k] + ')'; }).join(', ') +
+        '. La parola di HDI resta scritta sulla rata.' });
+    }
     if (ripetute) {
       note.push({ g: 'avviso', t: ripetute + ' righe di rata erano ripetizioni della stessa rata (stesso progressivo, una riga per sezione): contate una volta sola.' });
     }

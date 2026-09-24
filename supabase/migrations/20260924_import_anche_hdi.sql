@@ -29,6 +29,24 @@
 --    sostituisce il corpo di una funzione. Il ritorno indietro è in fondo.
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- ── PRIMA SI TOGLIE LA VECCHIA, E NON È UN DETTAGLIO ──────────────────────
+--  Tenerle tutte e due sembrava prudente: «la vecchia resta, chi chiama con
+--  un argomento prende quella». Non funziona così. Con `f(uuid)` e
+--  `f(uuid, text default)` insieme, una chiamata a un argomento solo diventa
+--  AMBIGUA e Postgres la rifiuta:
+--
+--      function public.iam_importa_flusso(uuid) is not unique
+--
+--  Cioè: la migrazione pensata per aggiungere HDI avrebbe spento
+--  l'importazione dell'SSF, quella che funziona. Provato su due funzioni
+--  finte il 24/09/2026, e poi cancellate.
+--
+--  Quindi ne resta UNA SOLA, con il parametro in più e il suo valore
+--  predefinito. Chi chiama passando solo `p_lotto` — il codice di oggi, e
+--  anche una pagina rimasta aperta da ieri — trova questa e si comporta
+--  esattamente come prima.
+drop function if exists public.iam_importa_flusso(uuid);
+
 create or replace function public.iam_importa_flusso(p_lotto uuid, p_fonte text default 'ssf')
 returns jsonb
 language plpgsql
@@ -282,10 +300,14 @@ end;
 $function$;
 
 -- ── COME SI TORNA INDIETRO ────────────────────────────────────────────────
---  La versione a un parametro non è stata toccata: Postgres le tiene
---  entrambe, e chi chiama con un argomento solo prendeva e prende quella.
---  Per togliere questa:
+--  Questa migrazione SOSTITUISCE la funzione: la versione a un parametro non
+--  c'è più (vedi sopra il perché — tenerle entrambe rompeva l'SSF). Per
+--  tornare indietro bisogna rimetterla, in questo ordine:
 --      drop function if exists public.iam_importa_flusso(uuid, text);
+--  e poi ricreare la versione a un parametro dalla migrazione precedente
+--  (`20260922b_import_non_muore_per_una_riga.sql`), che è quella da cui
+--  questa discende: il corpo è identico, cambia solo che 'ssf' era scritto
+--  dentro invece di arrivare da fuori.
 --  Le righe già scritte con fonte 'hdi' restano, e si tolgono così:
 --      delete from quote_titoli      where fonte = 'hdi';
 --      delete from quote_polizze     where fonte = 'hdi';

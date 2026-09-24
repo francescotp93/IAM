@@ -731,6 +731,34 @@ prova('la migrazione che apre la porta esiste, e non tocca l\'SSF', () => {
     'la migrazione tocca le tabelle: doveva sostituire solo il corpo di una funzione');
 });
 
+prova('l\'anteprima dice CHE COSA conta, e quanti restano fuori', () => {
+  /* Il 24/09/2026 il riquadro diceva «11 clienti» su un file di 14, e per due
+     volte Francesco si è fermato a chiedere se fosse un errore. La prima
+     volta lo era (il lettore fondeva le persone), la seconda no: tre erano
+     già in archivio. Un numero che costringe a chiedere «e gli altri?» è un
+     numero scritto male, anche quando è giusto. */
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  /* SOLO il riquadro dei clienti, non tutti e tre: guardandoli insieme
+     bastava che uno fosse scritto bene perché la prova passasse, e infatti
+     due sabotaggi su due non la facevano diventare rossa. */
+  const i = pagina.indexOf('<div class="flu-tre">');
+  deve(i > 0, 'non trovo i tre riquadri dell\'anteprima');
+  const fine = pagina.indexOf('polizz', i);
+  deve(fine > i, 'non trovo dove finisce il riquadro dei clienti');
+  const tassello = pagina.slice(i, fine);
+  /* «} nuov», cioè la parola scritta DOPO la fine dell'espressione: è
+     l'etichetta che si legge. Cercare solo «nuov» non basta — dentro
+     `p.clienti.nuovi.length` quella parola c'è comunque, e la prova
+     passerebbe anche a etichetta cancellata. */
+  deve(/flu-k">client[^<]*\} nuov/.test(tassello),
+    'il riquadro dei clienti non dice che conta i NUOVI: su un file di 14 clienti di cui 3 già in archivio, «11 clienti» sembra una perdita');
+  deve(/clienti\.gia/.test(tassello),
+    'il riquadro dei clienti non guarda quanti ce ne sono già');
+  deve(/già in archivio/.test(tassello),
+    'non scrive da nessuna parte quanti restano fuori perché ci sono già: è l\'informazione che spiega la differenza');
+});
+
 /* ── esecuzione ─────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

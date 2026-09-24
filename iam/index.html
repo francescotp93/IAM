@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.44.0">
-<meta name="app-versione-nome" content="I sospesi si scaricano scegliendo il conto">
+<meta name="app-versione" content="0.44.1">
+<meta name="app-versione-nome" content="Il tasto Conferma, e i motori che restavano indietro">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -33,7 +33,7 @@
      stessa agenzia, e quella sbagliata sarebbe quella che nessuno guarda.
      Se non si carica, `logMovimento` non scrive e non rompe niente: un
      movimento perso è meglio di una schermata che non si apre. -->
-<script src="/nuovo-preventivo/tariffe/motore/registro.js?v=20260919"></script>
+<script src="/nuovo-preventivo/tariffe/motore/registro.js?v=20260923"></script>
 <script src="/nuovo-preventivo/tariffe/motore/assegnazione.js?v=20260921"></script>
 <!-- Le anagrafiche: che cos'è un lead, che cos'è un consenso valido. Stesso
      file del preventivatore, perché i due contatori — quello della Scrivania e
@@ -44,21 +44,21 @@
 <script src="/nuovo-preventivo/tariffe/motore/anagrafica.js?v=20260921"></script>
 <!-- I conti e le causali (brief #02 M1). Stesso file del preventivatore, per lo
      stesso motivo: il vocabolario della contabilità dev'essere uno solo. -->
-<script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260919"></script>
+<script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260924"></script>
 <!-- Le provvigioni (brief #02 M2): stesso file del preventivatore. -->
 <script src="/nuovo-preventivo/tariffe/motore/provvigioni.js?v=20260920"></script>
 <!-- Il catalogo prodotti: stesso file del preventivatore, perché l'import
      deve riconoscere compagnie e prodotti con le stesse regole. -->
-<script src="/nuovo-preventivo/tariffe/motore/catalogo.js?v=20260920"></script>
-<script src="/nuovo-preventivo/tariffe/motore/punti-vendita.js?v=20260923"></script>
+<script src="/nuovo-preventivo/tariffe/motore/catalogo.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/punti-vendita.js?v=20260924"></script>
 <!-- La carta intestata dei PDF: lo STESSO file del preventivatore. Ricopiarne
      il disegno vorrebbe dire due carte intestate che un giorno divergono. -->
 <script src="/nuovo-preventivo/tariffe/motore/pdf-withus.js?v=20260923"></script>
 <!-- Sospensioni e fido (Blocco 3): stesso file del preventivatore, perche'
      il tetto al credito di una persona non puo' avere due regole. -->
-<script src="/nuovo-preventivo/tariffe/motore/sospensione.js?v=20260920"></script>
-<script src="/nuovo-preventivo/tariffe/motore/collegamenti.js?v=20260920"></script>
-<script src="/nuovo-preventivo/tariffe/motore/kpi.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/sospensione.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/collegamenti.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/kpi.js?v=20260924"></script>
 <script src="/nuovo-preventivo/tariffe/motore/decisioni.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/produzione.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/collaboratori.js?v=20260921"></script>
@@ -6526,7 +6526,7 @@ function sprScaricoRender() {
     + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;padding:0 18px 18px">'
     + '<button class="d-btn" type="button" onclick="sprScaricoChiudi()">Chiudi</button>'
-    + '<button class="d-btn primario" type="button" onclick="sprScaricoRegistra()">Registra l’arrivo</button>'
+    + '<button class="d-btn primario" type="button" onclick="sprScaricoRegistra()">Conferma</button>'
     + '</div>';
   ov.style.display = 'flex';
   /* La tendina del conto si propone da quella configurazione che già esiste
@@ -6539,6 +6539,18 @@ function sprScaricoRender() {
 
 async function sprScaricoRegistra() {
   if (!SPR_SCARICO) return;
+  /* IL MOTORE IN MEMORIA PUÒ ESSERE PIÙ VECCHIO DELLA PAGINA (24/09/2026).
+     La pagina esce `no-cache`, i motori con `max-age=600`: se il contrassegno
+     `?v=` non cambia, il browser tiene l'HTML nuovo e il motore vecchio, e una
+     funzione che qui esiste lì dentro non c'è ancora. Senza questa riga la
+     chiamata solleva e basta: il bottone non fa niente, in silenzio — che è
+     esattamente come si è presentato il guasto. Un guardiano impedisce che il
+     contrassegno resti indietro; questo dice la verità se succede lo stesso. */
+  if (!window.Contabilita || typeof Contabilita.pianoScarico !== 'function') {
+    SPR_SC_MSG = ['Il programma caricato in questa scheda è più vecchio della pagina: '
+      + 'ricarica (Ctrl+F5 o ⌘+R) e riprova. Non è stato registrato niente.'];
+    sprScaricoRender(); return;
+  }
   var piano = Contabilita.pianoScarico(SPR_SCARICO, {
     conti: SPR_SC_CONTI, causali: SPR_SC_CAUSALI, modalita: SPR_MODALITA,
     mezzo: (document.getElementById('spr-sc-mezzo') || {}).value || '',

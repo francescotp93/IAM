@@ -637,6 +637,43 @@ prova('«SCARICA LE SELEZIONATE» APRE LA SCHERMATA, e il conto si muove', async
   return '2 movimenti su CASSA CONTANTI, e la rata non si tocca';
 });
 
+prova('IL MOTORE VECCHIO IN CACHE NON FA FALLIRE IL TASTO IN SILENZIO', async () => {
+  /* Il guasto del 24/09: `iam/index.html` caricava il motore con un
+     contrassegno `?v=` di cinque giorni prima. La pagina esce `no-cache`, i
+     motori con `max-age=600`: il browser teneva l'HTML nuovo e il motore
+     vecchio, dove `pianoScarico` non c'era ancora. La chiamata sollevava e
+     basta — il bottone non faceva NIENTE, senza dire niente.
+     Un guardiano impedisce che il contrassegno resti indietro
+     (`server/verifica/versione-motori.test.mjs`); questo misura che, se
+     succede lo stesso, la schermata lo dica invece di tacere. */
+  const { api, el, scritte } = bancoSpr(RATE_VERE, MOD_VERE,
+    { conti: SC_CONTI_V, causali: SC_CAUS_V });
+  await api.sprCarica(true);
+  await api.sprApri('col_oddo_francesco');
+  api.sprSelTutte('tutte');
+  await api.sprScarica();
+  el['spr-sc-mezzo'].value = 'contante';
+  el['spr-sc-conto'].value = 'cassa';
+  el['spr-sc-data'].value = '2026-09-24';
+  /* Il motore in memoria è quello di prima: la funzione non c'è. */
+  const vera = C.pianoScarico;
+  delete C.pianoScarico;
+  try { await api.sprScaricoRegistra(); } finally { C.pianoScarico = vera; }
+  deve(!scritte.some(s => s.tab === 'iam_movimenti' && s.insert), 'scrive lo stesso');
+  deve(api.stato().scMsg.some(m => /ricarica/i.test(m)),
+    'non dice che la pagina è da ricaricare: ' + api.stato().scMsg.join(' '));
+  deve(el['spr-ov'].style.display === 'flex', 'chiude la finestra e fa ricompilare tutto');
+  return 'niente scrittura, e il motivo vero in schermata';
+});
+
+prova('il tasto dice CONFERMA', () => {
+  /* Francesco: «rinominalo in CONFERMA». */
+  const b = blocco();
+  deve(/>Conferma</.test(b), 'il tasto non dice Conferma');
+  deve(!/Registra l[’']arrivo/.test(b), 'il nome vecchio è rimasto');
+  return 'Conferma';
+});
+
 prova('lo scarico si ferma, e dice perché: niente conto, niente movimento', async () => {
   const { api, el, scritte } = bancoSpr(RATE_VERE, MOD_VERE,
     { conti: SC_CONTI_V, causali: SC_CAUS_V });

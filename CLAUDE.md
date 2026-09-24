@@ -8604,3 +8604,86 @@ casa. Corretti, e c'è una prova che li cerca nei tre formati.
 - **Nessun conto dichiara ancora quali mezzi riceve** (§32): la tendina del
   conto si propone solo dove quella configurazione c'è, e per il resto si
   sceglie a mano — che è la strada giusta, solo più lenta.
+
+---
+
+## 74. Il tasto che non faceva niente: il motore vecchio in cache (24/09/2026)
+
+> «Il tasto registra l'arrivo non funziona, ad ogni modo oltre a sistemarlo
+> rinominalo in CONFERMA» — Francesco, con la fotografia della finestra
+> compilata correttamente.
+
+| pezzo | dove |
+|---|---|
+| il guardiano dei contrassegni | `server/verifica/versione-motori.test.mjs` — 3 |
+| il tasto che non tace più | `sprScaricoRegistra` in `iam/index.html` |
+| prove | `iam/verifica/sospesi-premi.test.mjs` — **34** (erano 32) |
+
+### La causa non era nel tasto
+
+Misurato prima di toccare qualsiasi cosa:
+
+| controllo | esito |
+|---|---|
+| `pianoScarico` nel file **pubblicato** | c'è |
+| header della **pagina** | `cache-control: no-cache` (§12) |
+| header del **motore** | `cache-control: max-age=600` |
+| `?v=` di `contabilita.js` in `iam/index.html` | **20260919** |
+| ultimo commit di `tariffe/motore/contabilita.js` | **20260924** |
+
+> **Il contrassegno `?v=` non è un dettaglio: è l'unica cosa che tiene
+> d'accordo l'HTML e il motore.** Con la pagina servita `no-cache` e i motori
+> con dieci minuti di validità, un contrassegno che non cambia lascia il
+> browser libero di prendere **l'HTML nuovo e il motore vecchio** — e la
+> finestra nuova chiama una funzione che nel motore in memoria non esiste
+> ancora. `TypeError`, nessun messaggio, il bottone non fa niente.
+
+È §38 un piano più in giù: lì una scheda aperta non richiedeva mai la pagina,
+qui la pagina arriva nuova e uno dei suoi pezzi no.
+
+### Il censimento: ventuno, non uno
+
+Confrontando ogni `?v=` con la data dell'ultimo commit del suo motore, sui due
+documenti: **21 contrassegni indietro**, alcuni di quaranta giorni
+(`amtrust`, `salute`, `viaggio`, `tutelalegale` fermi al 17/08 su file del
+10/09). Non era un caso isolato: era una disciplina che nessuno aveva mai
+misurato — **§27 applicato ai motori invece che all'applicazione.**
+
+E il rimedio è lo stesso di §27: non una regola scritta, una prova.
+`versione-motori.test.mjs` pretende che il contrassegno sia **≥** alla data
+dell'ultimo commit del motore, e in più — perché il guasto nasce *prima* del
+commit — che un motore **modificato adesso** porti il contrassegno di oggi.
+Su un clone superficiale la storia non c'è: dice «saltata», non rossa *per la
+strada* (§4).
+
+### Il tasto non tace più
+
+Il guardiano impedisce che ricapiti; ma se ricapita lo stesso — un altro
+documento, un altro motore — la schermata deve dirlo. `sprScaricoRegistra`
+adesso controlla che la funzione ci sia e scrive *«il programma caricato in
+questa scheda è più vecchio della pagina: ricarica e riprova. Non è stato
+registrato niente.»*
+
+**La controprova riproduce l'errore esatto** che il browser di Francesco
+incontrava: tolto il controllo, la prova diventa rossa con
+`Contabilita.pianoScarico is not a function`. È la conferma diretta della
+diagnosi, non una deduzione.
+
+### La trappola di §31, presa dentro il file che la cita
+
+Il commento di apertura del guardiano nuovo spiegava come riallineare un
+contrassegno, e per farlo scriveva `/* … */` dentro un commento a blocco: la
+sequenza di chiusura ha chiuso il commento a metà e il file non si caricava
+più. È **non si scrive il carattere vietato dentro il costrutto che lo vieta**
+(§31, §47, §50, §58), stavolta nel file che quella lezione la cita.
+
+### Cosa resta aperto
+
+- **Due modifiche allo stesso motore nello stesso giorno** condividono il
+  contrassegno: la seconda arriva quando scadono i dieci minuti, non subito.
+  È dichiarato, e per il caso vero (si lavora e si ricarica) basta.
+- **Il guardiano legge la data del COMMIT.** Un motore modificato e non ancora
+  committato lo prende la terza prova, che guarda l'albero di lavoro.
+- **`withus-one.js` ha la sua disciplina a parte** (`versione-scocca.test.mjs`,
+  §9): impronta annotata invece della data. Sono due meccanismi per due file
+  con due ritmi diversi, ed è voluto (§12).

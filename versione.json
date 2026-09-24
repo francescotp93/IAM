@@ -1,8 +1,18 @@
 {
-  "versione": "0.44.0",
-  "nome": "I sospesi si scaricano scegliendo il conto",
+  "versione": "0.44.1",
+  "nome": "Il tasto Conferma, e i motori che restavano indietro",
   "data": "2026-09-24",
   "storia": [
+    {
+      "v": "0.44.1",
+      "data": "2026-09-24",
+      "nome": "Il tasto Conferma, e i motori che restavano indietro",
+      "voci": [
+        "SOSPESI · il tasto per scaricare adesso si chiama «Conferma», e soprattutto FUNZIONA: non faceva niente perché il tuo browser teneva in memoria una parte del programma vecchia di cinque giorni, e la finestra nuova le chiedeva una cosa che lì dentro non c'era ancora.",
+        "Non era solo quel tasto: ho controllato tutti i pezzi del programma e ne ho trovati VENTUNO con la stessa etichetta vecchia, alcuni di quaranta giorni. Adesso sono tutti allineati, e c'è un controllo automatico che impedisce che ricapiti.",
+        "E se dovesse succedere lo stesso, il tasto non tace più: dice «il programma caricato in questa scheda è più vecchio della pagina, ricarica e riprova» invece di non fare niente."
+      ]
+    },
     {
       "v": "0.44.0",
       "data": "2026-09-24",

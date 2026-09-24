@@ -323,11 +323,248 @@
     };
   }
 
+  /* ═══ DALLA LETTURA ALLA SCRITTURA ════════════════════════════════════════
+     Fin qui il file si guardava. Da qui si carica — e si carica dalla PORTA
+     CHE C'E' GIA': `iam_import_lotti` + `iam_importa_flusso`, la scrittura
+     transazionale dell'SSF, quella che il 21/09 ha imparato a essere tutto o
+     niente. Aprirne una seconda vorrebbe dire due modi di sbagliare a
+     scrivere un portafoglio, e il secondo senza le cicatrici del primo.
+
+     Quindi `converti` non scrive niente: traduce il PASS-133 nella forma che
+     quella porta gia' accetta, e poi e' `FlussoSSF.piano()` a decidere cosa
+     e' nuovo e cosa c'e' gia'.
+
+     UNA COSA VA DETTA FORTE: IL TITOLO DI HDI NON PORTA L'IMPORTO.
+     Nel tracciato la rata ha tipo, decorrenza, scadenza e stato, e basta. La
+     colonna 23 vale 293 su OGNI riga del file: e' un codice, non dei soldi —
+     e uno che la scambiasse per un importo caricherebbe un portafoglio di
+     rate da 293 € l'una. I soldi stanno in due altri posti: nei record di
+     incasso (con importo E mezzo di pagamento, ed e' il dato buono perche' e'
+     quello davvero entrato), e nel premio della polizza, che coincide con la
+     rata solo se il frazionamento e' annuale. Fuori da questi due casi la
+     rata NON si carica: dividere il premio per il frazionamento sarebbe
+     aritmetica plausibile su soldi veri, e il numero uscirebbe credibile e
+     sbagliato. ═════════════════════════════════════════════════════════════ */
+
+  /* Il vocabolario di HDI verso il nostro. Quello che non si riconosce resta
+     null: «altro» e' una risposta, «non lo so» e' un'altra. */
+  var MEZZI_HDI = {
+    'contante': 'contante', 'contanti': 'contante', 'pos': 'pos',
+    'assegno': 'assegno', 'assegni': 'assegno', 'bonifico': 'bonifico',
+    'sdd': 'domiciliazione', 'rid': 'domiciliazione', 'domiciliazione': 'domiciliazione',
+    'altro': 'altro'
+  };
+  function mezzoNostro(m) {
+    var k = String(m == null ? '' : m).trim().toLowerCase();
+    if (!k) return null;
+    if (MEZZI_HDI[k]) return MEZZI_HDI[k];
+    if (k.indexOf('carta di credito') === 0 || k === 'carta') return 'carta_credito';
+    if (k.indexOf('prepagata') >= 0) return 'prepagata';
+    if (k.indexOf('paypal') >= 0) return 'paypal';
+    return null;
+  }
+
+  function annuale(f) { return /^annuale$/i.test(String(f || '').trim()); }
+
+  function converti(esame) {
+    var e = esame || {};
+    var anag = e.anagrafiche || [], pol = e.polizze || [],
+        tit = e.titoli || [], gar = e.garanzie || [], inc = e.incassi || [];
+
+    var perPol = {};
+    inc.forEach(function (i) {
+      var k = String(i.polizza_numero || '');
+      if (!k || i.importo == null) return;
+      (perPol[k] = perPol[k] || []).push(i);
+    });
+
+    var clienti = anag.map(function (a) {
+      var cf = String(a.codice_fiscale || '').trim().toUpperCase();
+      /* Sedici caratteri e' una persona, undici e' una partita IVA. Sbagliare
+         qui vuol dire cercare il cliente nell'indice sbagliato e creare il
+         doppione di uno che c'e' gia'. */
+      var persona = cf.length !== 11;
+      return {
+        _chiave: 'hdi:a:' + a.id,
+        tipo: persona ? 'privato' : 'azienda',
+        nominativo: a.denominazione || '',
+        ragione_sociale: persona ? null : (a.denominazione || null),
+        codice_fiscale: persona ? (cf || null) : null,
+        partita_iva: persona ? null : (cf || null),
+        indirizzo: a.indirizzo || null, cap: a.cap || null,
+        comune: a.comune || null, provincia: a.provincia || null,
+        cellulare: a.telefono || null, telefono: null,
+        email: a.email || null, data_nascita: a.nato_il || null
+      };
+    });
+
+    /* Le garanzie non hanno una tabella loro: viaggiano dentro la polizza,
+       dove servono a chi la guarda e non pesano su nessun conto. */
+    var garPerPol = {};
+    gar.forEach(function (g) { (garPerPol[g.polizza_id] = garPerPol[g.polizza_id] || []).push(g); });
+
+    var polPerId = {};
+    pol.forEach(function (p) { polPerId[p.id] = p; });
+
+    var polizze = pol.map(function (p) {
+      var num = String(p.numero || '').trim();
+      var gs = (garPerPol[p.id] || []).map(function (g) {
+        return { codice: g.codice, descrizione: g.descrizione, massimale: g.massimale,
+                 bene: g.bene, premio_lordo: g.premio_lordo };
+      });
+      return {
+        _fonte_id: 'hdi:p:' + num,
+        _cliente: 'hdi:a:' + p.anagrafica_id,
+        _senzaCliente: !p.anagrafica_id,
+        cliente: null,
+        numero_polizza: num,
+        compagnia: 'HDI',
+        prodotto: p.prodotto || p.ramo || null,
+        modulo: p.ramo || null,
+        data_effetto: p.effetto || null,
+        data_scadenza: p.scadenza || null,
+        data_emissione: null,
+        copertura_dal: p.effetto || null,
+        copertura_al: p.scadenza || null,
+        frazionamento: p.frazionamento || null,
+        tacito_rinnovo: null,
+        mezzo_pagamento: null,
+        premio_annuo: p.premio_lordo != null ? p.premio_lordo : null,
+        premio_rata: annuale(p.frazionamento) && p.premio_lordo != null ? p.premio_lordo : null,
+        stato_pagamento: null,
+        dati: { fonte: 'hdi', ania: p.compagnia_ania, agenzia: p.agenzia,
+                stato_hdi: p.stato, premio_netto: p.premio_netto, garanzie: gs }
+      };
+    });
+
+    /* IL PUNTO DELICATO, E LA TRAPPOLA CHE C'E' DENTRO.
+       «Cercare l'incasso della polizza» non basta: nel file del 23/09 la
+       polizza 1428407270 ha SEI rate con la stessa data e UN SOLO incasso da
+       733 €. Appaiare per polizza+data dava 733 € a tutte e sei, e il totale
+       delle rate saliva a 7.985 € contro 2.735 € davvero incassati: 5.912 €
+       di soldi che non esistono, con l'aria di essere veri.
+
+       Quindi: OGNI INCASSO SI CONSUMA UNA VOLTA SOLA, e si appaia solo dove
+       non c'e' ambiguita' — una rata, un incasso. Dove sono molte contro uno
+       non si sceglie a caso: nessuna prende l'importo.
+
+       Vale anche per il ripiego sul premio annuo: solo se la polizza ha una
+       rata sola. Con sei rate si moltiplicherebbe il premio per sei, che e'
+       lo stesso errore da un'altra porta. */
+    var titoli = [], scartati = [];
+
+    /* PRIMA DI TUTTO, LE RIPETIZIONI. Nel file la polizza 1428407270 ha sei
+       righe di rata identiche — stesso tipo, stessa decorrenza, e soprattutto
+       STESSO PROGRESSIVO `143290000001401117`. Non sono sei rate: e' una rata
+       sola, ripetuta una volta per sezione. Il progressivo e' l'identita' vera
+       del record, ed e' li' che la ripetizione si vede. Caricarle tutte
+       moltiplicherebbe per sei una rata da 733 €. */
+    var visti = {}, ripetute = 0;
+    tit = tit.filter(function (t) {
+      var prog = t.grezzo && t.grezzo[1] ? String(t.grezzo[1]).trim() : '';
+      if (!prog) return true;
+      if (visti[prog]) { ripetute++; return false; }
+      visti[prog] = true;
+      return true;
+    });
+
+    var perPolizza = {};
+    tit.forEach(function (t) { (perPolizza[t.polizza_id] = perPolizza[t.polizza_id] || []).push(t); });
+
+    Object.keys(perPolizza).forEach(function (pid) {
+      var gruppo = perPolizza[pid];
+      var p = polPerId[pid];
+      if (!p) {
+        gruppo.forEach(function (t) { scartati.push({ t: t, perche: 'la polizza non è in questo file' }); });
+        return;
+      }
+      var num = String(p.numero || '').trim();
+      var liberi = (perPol[num] || []).slice();
+
+      var perData = {};
+      gruppo.forEach(function (t) { (perData[t.incassato_il || ''] = perData[t.incassato_il || ''] || []).push(t); });
+
+      Object.keys(perData).forEach(function (d) {
+        var rate = perData[d];
+        rate.forEach(function (t) {
+          var i = null;
+          if (rate.length === 1) {
+            var quelGiorno = d ? liberi.filter(function (x) { return x.data === d; }) : [];
+            if (quelGiorno.length === 1) i = quelGiorno[0];
+            else if (!i && gruppo.length === 1 && liberi.length === 1) i = liberi[0];
+          }
+          var importo = null, nota = null;
+          if (i) {
+            importo = i.importo;
+            /* Consumato. Con la deduplicazione per progressivo questo caso
+               oggi non si raggiunge: e' una difesa, non una regola viva. Se un
+               domani la deduplicazione si allenta, e' quello che impedisce a un
+               incasso di pagare due rate. */
+            liberi = liberi.filter(function (x) { return x !== i; });
+          } else if (gruppo.length === 1 && annuale(p.frazionamento) && p.premio_lordo != null) {
+            importo = p.premio_lordo;
+            nota = 'Importo dal premio annuo: il tracciato non porta l\'importo della rata.';
+          }
+          if (importo == null) {
+            scartati.push({ t: t, perche: rate.length > 1
+              ? rate.length + ' rate della stessa polizza nello stesso giorno: attribuire l\'importo vorrebbe dire sceglierlo a caso'
+              : 'il tracciato non porta l\'importo della rata e non c\'è un incasso che lo dica' });
+            return;
+          }
+          titoli.push({
+            _fonte_id: 'hdi:t:' + (t.grezzo && t.grezzo[1] ? String(t.grezzo[1]).trim() : num + ':' + (t.effetto || '')),
+            _polizza: 'hdi:p:' + num,
+            _senzaPolizza: false,
+            tipo: t.tipo || null,
+            data_decorrenza: t.effetto || null,
+            data_scadenza: t.scadenza || null,
+            importo_lordo: importo,
+            /* HDI non manda la provvigione nel PASS-133. Zero sarebbe una
+               cifra; null e' la verita', e non falsa nessun rendiconto. */
+            provvigione: null,
+            stato: /incassat/i.test(String(t.stato || '')) ? 'incassato' : 'aperto',
+            mezzo_pagamento: i ? mezzoNostro(i.mezzo) : null,
+            incassato_il: t.incassato_il || (i ? i.data : null),
+            note: nota
+          });
+        });
+      });
+    });
+
+    var note = [];
+    if (ripetute) {
+      note.push({ g: 'avviso', t: ripetute + ' righe di rata erano ripetizioni della stessa rata (stesso progressivo, una riga per sezione): contate una volta sola.' });
+    }
+    if (scartati.length) {
+      note.push({ g: 'avviso', t: scartati.length + ' rate su ' + tit.length +
+        ' non si caricano perchè il tracciato non ne porta l\'importo e non c\'è un incasso che lo dica: ' +
+        'metterci il premio diviso per il frazionamento sarebbe un numero credibile e inventato.' });
+    }
+    if (titoli.length) {
+      note.push({ g: 'avviso', t: 'Il PASS-133 non porta le provvigioni: le ' + titoli.length +
+        ' rate entrano senza, e i rendiconti provvigionali su queste restano da fare a parte.' });
+    }
+
+    return {
+      testata: { emittente: 'HDI', intermediario: (pol[0] && pol[0].agenzia) || null,
+                 versione: e.busta && e.busta.tracciato, dal: null, al: e.busta && e.busta.estratto_il },
+      tracciato: { nome: 'PASS-133', nonPorta: ['provvigioni', 'importo della singola rata', 'codice del produttore'] },
+      clienti: clienti,
+      polizze: polizze,
+      offerte: [],
+      titoli: titoli,
+      titoliSenzaImporto: scartati,
+      collaboratori: [],
+      avvisi: note
+    };
+  }
+
   var API = {
     TIPI: TIPI, euro: euro, data: data, colonna: c,
     leggi: leggi, controllaBusta: controllaBusta, esamina: esamina,
     anagrafica: anagrafica, polizza: polizza, garanzia: garanzia,
     titolo: titolo, sinistro: sinistro, incasso: incasso,
+    mezzoNostro: mezzoNostro, converti: converti,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.FlussoHDI = API;

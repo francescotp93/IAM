@@ -254,6 +254,140 @@ prova('e l\'anteprima dice, nero su bianco, che non ha scritto niente', () => {
     'l\'anteprima scrive in archivio: doveva solo guardare');
 });
 
+/* ═══ DALLA LETTURA ALLA SCRITTURA ════════════════════════════════════════
+   `converti` traduce il PASS-133 nella forma che la scrittura dell'SSF già
+   accetta. Tradurre soldi è il punto in cui un errore non si vede: il numero
+   esce, è plausibile, e finisce in un portafoglio. Le due prove che contano
+   qui nascono da due errori veri, fatti il 24/09/2026 su questo file.
+
+   IL PRIMO: appaiare le rate agli incassi per polizza+data. La polizza
+   1428407270 aveva sei righe di rata e un incasso solo da 733 €, e tutte e
+   sei si prendevano 733 €. Il totale delle rate saliva a 7.985 € contro
+   2.735 € davvero incassati: 5.912 € di soldi inesistenti.
+
+   IL SECONDO, che è la causa del primo: quelle sei righe NON erano sei rate.
+   Avevano tutte lo stesso progressivo — erano la stessa rata scritta una
+   volta per sezione. */
+
+const INC = (o) => Object.assign({ data: '2026-09-23', polizza_numero: 'P1', importo: 0, mezzo: 'Contante' }, o);
+const TIT = (o) => Object.assign({ polizza_id: 'a1', tipo: 'Nuova Polizza', effetto: '2026-09-23',
+  scadenza: '2027-09-23', frazionamento: 'Annuale', stato: 'Incassato', incassato_il: '2026-09-23',
+  grezzo: ['40', 'PROG1'] }, o);
+const POL = (o) => Object.assign({ id: 'a1', numero: 'P1', ramo: 'Auto', prodotto: 'RCA', agenzia: '1428',
+  effetto: '2026-09-23', scadenza: '2027-09-23', frazionamento: 'Annuale',
+  premio_lordo: 735.54, premio_netto: 600, anagrafica_id: 'c1' }, o);
+const ANA = (o) => Object.assign({ id: 'c1', denominazione: 'ROSSI MARIO', codice_fiscale: 'RSSMRA80A01L331X',
+  comune: 'Trapani', provincia: 'TP' }, o);
+
+prova('la stessa rata ripetuta per sezione si conta una volta sola', () => {
+  /* Sei righe, un progressivo. Sono una rata. */
+  const sei = [1, 2, 3, 4, 5, 6].map(() => TIT({}));
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+    titoli: sei, incassi: [INC({ importo: 733, mezzo: 'Bonifico' })], busta: { tracciato: 'PASS-133' } });
+  deve(a.titoli.length === 1, 'sono entrate ' + a.titoli.length + ' rate invece di una');
+  const somma = a.titoli.reduce((t, x) => t + x.importo_lordo, 0);
+  deve(somma === 733, 'il totale delle rate fa ' + somma + ' invece di 733: la rata è stata moltiplicata');
+});
+
+prova('un incasso non può pagare due rate diverse', () => {
+  /* Due rate vere (progressivi diversi) e un incasso solo: l'importo non si
+     sa attribuire, e nessuna delle due se lo prende. Prendersi 733 € a testa
+     è il modo in cui nascono 5.912 € dal nulla. */
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({ premio_lordo: null })], garanzie: [], sinistri: [],
+    titoli: [TIT({ grezzo: ['40', 'PROG1'] }), TIT({ grezzo: ['40', 'PROG2'] })],
+    incassi: [INC({ importo: 733 })], busta: { tracciato: 'PASS-133' } });
+  const somma = a.titoli.reduce((t, x) => t + x.importo_lordo, 0);
+  deve(somma <= 733, 'le rate caricate valgono ' + somma + ': più di quanto è stato incassato');
+  deve(a.titoliSenzaImporto.length >= 1, 'nessuna rata è stata lasciata fuori: l\'importo è stato indovinato');
+});
+
+prova('la colonna 23 non è un importo', () => {
+  /* Vale 293 su ogni riga del file: è un codice. Chi la scambiasse per soldi
+     caricherebbe un portafoglio intero di rate da 293 €. */
+  const fs = require('fs');
+  const src = fs.readFileSync(new URL('../../tariffe/motore/flusso-hdi.js', import.meta.url), 'utf8');
+  const i = src.indexOf('function converti(');
+  const corpo = src.slice(i, src.indexOf('var API = {', i));
+  deve(!/c\(r,\s*23\)|grezzo\[22\]/.test(corpo), 'converti legge la colonna 23 come se fosse un importo');
+});
+
+prova('senza un importo scritto da qualcuno la rata non si carica', () => {
+  /* Il premio diviso per il frazionamento sarebbe aritmetica plausibile su
+     soldi veri: credibile e inventata. */
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({ frazionamento: 'Semestrale', premio_lordo: 600 })],
+    garanzie: [], sinistri: [], titoli: [TIT({ frazionamento: 'Semestrale' })], incassi: [],
+    busta: { tracciato: 'PASS-133' } });
+  deve(a.titoli.length === 0, 'una rata semestrale senza incasso è entrata con un importo inventato: ' +
+    (a.titoli[0] && a.titoli[0].importo_lordo));
+  deve(a.titoliSenzaImporto.length === 1, 'la rata scartata non è stata contata');
+});
+
+prova('ma una rata annuale vale il premio annuo, e lo dice', () => {
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+    titoli: [TIT({})], incassi: [], busta: { tracciato: 'PASS-133' } });
+  deve(a.titoli.length === 1 && a.titoli[0].importo_lordo === 735.54, 'la rata annuale non prende il premio annuo');
+  deve(/premio annuo/i.test(a.titoli[0].note || ''), 'da dove viene l\'importo non è scritto sulla rata');
+});
+
+prova('le provvigioni restano vuote, non zero', () => {
+  /* Zero è una cifra e finisce nei rendiconti come «non ha guadagnato
+     niente». Vuoto è la verità: HDI non le manda. */
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+    titoli: [TIT({})], incassi: [INC({ importo: 100 })], busta: { tracciato: 'PASS-133' } });
+  deve(a.titoli[0].provvigione === null, 'la provvigione è ' + a.titoli[0].provvigione + ' invece che vuota');
+});
+
+prova('il mezzo di pagamento arriva dall\'incasso, tradotto', () => {
+  /* È il dato che serve al foglio cassa: senza, la contabilità giornaliera
+     nasce con la colonna più importante vuota. */
+  const m = { 'Contante': 'contante', 'Pos': 'pos', 'Bonifico': 'bonifico', 'SDD': 'domiciliazione',
+    'Carta di credito Visa': 'carta_credito', 'Altro': 'altro' };
+  Object.keys(m).forEach(k => {
+    deve(H.mezzoNostro(k) === m[k], k + ' diventa ' + H.mezzoNostro(k) + ' invece di ' + m[k]);
+  });
+  deve(H.mezzoNostro('Zibaldone') === null, 'un mezzo sconosciuto diventa qualcosa invece di restare vuoto');
+});
+
+prova('una partita IVA non finisce nella casella del codice fiscale', () => {
+  /* Cercare l'azienda nell'indice delle persone vuol dire non trovarla e
+     crearne il doppione. */
+  const a = H.converti({ anagrafiche: [ANA({ codice_fiscale: '01234567890', denominazione: 'ACME SRL' })],
+    polizze: [], garanzie: [], sinistri: [], titoli: [], incassi: [], busta: {} });
+  deve(a.clienti[0].partita_iva === '01234567890', 'gli undici caratteri non sono stati letti come partita IVA');
+  deve(!a.clienti[0].codice_fiscale, 'la partita IVA è finita anche nel codice fiscale');
+  deve(a.clienti[0].tipo === 'azienda', 'l\'azienda è stata schedata come privato');
+});
+
+prova('polizze e rate portano una chiave stabile', () => {
+  /* Se la chiave cambia da un\'importazione all\'altra, ricaricare lo stesso
+     file raddoppia il portafoglio: è `_fonte_id` a dire «questa l\'ho già». */
+  const uno = () => H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+    titoli: [TIT({})], incassi: [INC({ importo: 100 })], busta: {} });
+  const a = uno(), b = uno();
+  deve(a.polizze[0]._fonte_id === b.polizze[0]._fonte_id && /P1/.test(a.polizze[0]._fonte_id),
+    'la chiave della polizza non è stabile: ' + a.polizze[0]._fonte_id);
+  deve(a.titoli[0]._fonte_id === b.titoli[0]._fonte_id && /PROG1/.test(a.titoli[0]._fonte_id),
+    'la chiave della rata non è stabile: ' + a.titoli[0]._fonte_id);
+  deve(a.polizze[0]._cliente === a.clienti[0]._chiave, 'la polizza non si aggancia al suo cliente');
+});
+
+prova('il totale caricato non supera mai quello incassato davvero', () => {
+  /* La prova di chiusura, sul file vero di Francesco: qualunque cosa faccia
+     l\'accoppiamento, la somma delle rate che prendono l\'importo da un
+     incasso non può superare la somma degli incassi. */
+  const fs2 = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs2.existsSync(percorso)) { deve(true, ''); return; }
+  const r = H.esamina(fs2.readFileSync(percorso, 'utf8'), []);
+  const a = H.converti(r);
+  const daIncasso = a.titoli.filter(t => !/premio annuo/i.test(t.note || ''));
+  const somma = daIncasso.reduce((t, x) => t + x.importo_lordo, 0);
+  const incassato = r.incassi.reduce((t, i) => t + (i.importo || 0), 0);
+  deve(somma <= incassato + 0.005,
+    'le rate valgono ' + somma.toFixed(2) + ' ma di incassi ce ne sono ' + incassato.toFixed(2) +
+    ': ' + (somma - incassato).toFixed(2) + ' € nati dal nulla');
+});
+
 /* ── il file dev'essere anche SCEGLIBILE ────────────────────────────────────
    Il 24/09/2026 Francesco ha provato a caricare il suo file e «non è andato»,
    mentre il lettore qui sopra lo leggeva senza una piega: 14 clienti, 18
@@ -312,6 +446,68 @@ prova('un .dat che non è di HDI dice cosa ha trovato', () => {
   deve(i > 0, 'manca il messaggio per un .dat di un\'altra compagnia');
   deve(pagina.slice(i - 400, i + 400).indexOf('PASS-') >= 0,
     'il messaggio non mostra cosa c\'era scritto davvero: «non è un portafoglio HDI» è vero e inutile');
+});
+
+/* ── la scrittura passa dalla porta che c'è già ────────────────────────────
+   Non c'è una seconda funzione che scrive portafogli. Se un domani qualcuno
+   ne aggiungesse una, queste prove restano verdi — ma quella che guarda la
+   fonte diventa rossa appena HDI prova a entrare marcato 'ssf'. */
+
+prova('il portafoglio HDI si prepara con il piano dell\'SSF', () => {
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = pagina.indexOf('async function fluPreparaHdi(');
+  deve(i > 0, 'non c\'è nessuna funzione che prepara il caricamento di HDI');
+  /* Fino all'inizio della funzione dopo, non «duemila caratteri»: fluScelto
+     viene subito sotto e ha anch'essa il suo controllo dei permessi. Una
+     fetta troppo larga leggeva quello e dichiarava protetta una funzione che
+     non lo era più. */
+  const fine = pagina.indexOf('async function fluScelto(', i);
+  deve(fine > i, 'non trovo dove finisce fluPreparaHdi');
+  const corpo = pagina.slice(i, fine);
+  deve(corpo.indexOf('H.converti(') >= 0, 'il piano non parte dalla conversione del tracciato');
+  deve(corpo.indexOf('M.piano(') >= 0, 'HDI non usa il piano dell\'SSF: è una seconda strada per scrivere un portafoglio');
+  deve(corpo.indexOf('fluEsistenti(') >= 0, 'non si guarda che cosa c\'è già: ricaricare lo stesso file raddoppierebbe il portafoglio');
+  deve(/fluPuo\(\)/.test(corpo), 'chiunque può preparare un caricamento del portafoglio');
+});
+
+prova('il tasto per caricare c\'è, e solo se il file è caricabile', () => {
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = pagina.indexOf('async function fluAnteprimaHdi(');
+  const corpo = pagina.slice(i, pagina.indexOf('async function fluPreparaHdi(', i));
+  const j = corpo.indexOf('fluPreparaHdi()');
+  deve(j > 0, 'l\'anteprima non offre nessun tasto per caricare');
+  deve(/r\.caricabile[\s\S]{0,200}fluPreparaHdi\(\)/.test(corpo),
+    'il tasto compare anche su un file che il lettore ha dichiarato non caricabile');
+});
+
+prova('HDI non entra in archivio spacciandosi per SSF', () => {
+  /* `fonte` + `fonte_id` sono la chiave con cui il database riconosce «questa
+     polizza l'ho già caricata». Due tracciati nello stesso spazio di chiavi
+     vuol dire una collisione che non dà errore: dà una polizza che non entra,
+     in silenzio. */
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  deve(/FLU_FONTE\s*=\s*'hdi'/.test(pagina), 'la strada di HDI non dichiara mai la sua fonte');
+  deve(/p_fonte:\s*FLU_FONTE/.test(pagina), 'la scrittura non dice al database da quale tracciato arriva');
+  deve(!/\.eq\('fonte',\s*'ssf'\)/.test(pagina),
+    'si cerca ancora quello che c\'è già fra le sole righe dell\'SSF: le polizze HDI già caricate risulterebbero nuove, e si raddoppierebbero');
+});
+
+prova('la migrazione che apre la porta esiste, e non tocca l\'SSF', () => {
+  const fs = require('fs');
+  const dir = new URL('../../supabase/migrations/', import.meta.url);
+  const f = fs.readdirSync(dir).find(n => /import_anche_hdi/.test(n));
+  deve(f, 'la migrazione che fa accettare la fonte non è stata scritta');
+  const sql = fs.readFileSync(new URL(f, dir), 'utf8');
+  deve(/p_fonte text default 'ssf'/.test(sql),
+    'la fonte non ha il valore di prima come predefinito: le chiamate che esistono cambierebbero comportamento');
+  deve(/not in \('ssf', 'hdi'\)/.test(sql),
+    'la fonte non viene controllata: una chiamata sbagliata creerebbe uno spazio di chiavi nuovo senza che nessuno se ne accorga');
+  deve(/COME SI TORNA INDIETRO/i.test(sql), 'la migrazione non dice come si torna indietro');
+  deve(!/alter table|drop table|truncate/i.test(sql.replace(/^--.*$/gm, '')),
+    'la migrazione tocca le tabelle: doveva sostituire solo il corpo di una funzione');
 });
 
 /* ── esecuzione ─────────────────────────────────────────────────────────── */

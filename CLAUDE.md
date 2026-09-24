@@ -8494,3 +8494,113 @@ un modo di non accorgersi che il primo è sbagliato.
   È il prezzo di non avere un accesso al database dal banco di prova.
 - **Le scritture non sono coperte**: `insert` e `update` passano un oggetto, e
   una chiave sbagliata lì dentro è la stessa famiglia di guasto.
+
+---
+
+## 73. Scaricare un sospeso, e l'email che lo annuncia (24/09/2026)
+
+Due richieste di fila sulla stessa schermata.
+
+> «Quando clicco scarica le selezionate, deve aprirsi una schermata dove posso
+> decidere la nuova modalità di pagamento, quindi come ho incassato le
+> selezionate, che ovviamente deve aggiornare il conto/modalità di pagamento
+> per aggiornare la quadratura dei conti.» — Francesco.
+
+| pezzo | dove |
+|---|---|
+| la regola di che cosa si può scaricare | `Contabilita.pianoScarico` in `tariffe/motore/contabilita.js` |
+| il testo dell'email | `Contabilita.testoSospesi`, stesso file |
+| prove in Node | `server/verifica/contabilita.test.mjs` — **138** (erano 130) |
+| la finestra | `#spr-ov` e `sprScarico*` in `iam/index.html` |
+| prove che la fanno GIRARE | `iam/verifica/sospesi-premi.test.mjs` — **32** (erano 29) |
+
+### Quale modalità cambia, e quale no
+
+È la distinzione che tiene in piedi tutto il resto, ed è la stessa già scritta
+in §66 vista dal lato di chi scrive:
+
+> **`quote_titoli.mezzo_pagamento` dice COME IL CLIENTE HA PAGATO.** È un
+> fatto della compagnia, e resta vero anche dopo che il collaboratore ha
+> portato i soldi in agenzia. **Quella che si sceglie qui è COME IL DENARO È
+> ARRIVATO IN AGENZIA**, ed è una proprietà del MOVIMENTO.
+
+Riscrivere la rata «contanti» perché il collaboratore ha consegnato dei
+contanti direbbe che il cliente ha pagato in contanti, e non è successo. La
+prova lo misura sul banco: dopo lo scarico, **nessuna scrittura su
+`quote_titoli`**.
+
+### Le tre cose che il motore rifiuta
+
+1. **Una persona non è un modo di pagare.** Le voci del vocabolario che sono
+   un collaboratore (§64) dicono *chi* teneva i soldi: sceglierne una qui
+   direbbe che il denaro è arrivato «con Oddo Francesco», che non è un conto e
+   non muove nessuna quadratura. Nella tendina non ci sono.
+2. **Il conto dev'essere di denaro.** Un incasso su un conto di debito verso
+   la compagnia direbbe che il debito è cresciuto incassando. È `denaroDi`
+   (§62) applicata **prima** di scrivere invece che dopo, e l'elenco delle
+   tipologie liquide è **dichiarato** (`LIQUIDE`), non ricavato per
+   sottrazione.
+3. **Si scarica solo quello che il cliente ha già pagato.** Una rata ancora
+   aperta si *incassa* (Fase 2), e resta fuori **col motivo**. Un importo che
+   non c'è non vale zero (§17): esce anche lui, contato.
+
+### Zero righe scritte non è un successo silenzioso
+
+`insert` che tocca zero righe non dà errore (BUG 1, §47): si guarda quante
+righe il database ha davvero restituito, e la finestra **resta aperta** con
+quello che era stato compilato — chiuderla su un guasto vuol dire far
+ricompilare tutto.
+
+> **Una controprova restata verde, e la prova era debole — due volte.**
+> La prima: il banco non aveva il caso di BUG 1. Il finto PostgREST sapeva
+> solo dare un errore, e una prova che crede di misurare «zero righe» misurava
+> il ramo dell'errore. Aggiunto il caso (`data: []`, `error: null`), la
+> controprova è restata verde **lo stesso**: tolto il controllo, il codice
+> moriva un rigo più in là su un `TypeError` — e la prova, che cercava un
+> messaggio d'errore qualunque, si accontentava. Adesso pretende **quel**
+> messaggio. *Un rosso qualunque non dimostra che sia scattato il controllo
+> che si voleva misurare.*
+
+### Il guardiano che ha cambiato regola, non numero
+
+`sospesi-premi.test.mjs` vietava alla schermata di scrivere su `quote_titoli`,
+`iam_movimenti` e `iam_incassi`. Adesso un movimento qui nasce, ed è quello
+che Francesco ha chiesto. Le altre due restano vietate **per la ragione per
+cui lo erano**, che non è cambiata — e in più il movimento non se lo costruisce
+la schermata: passa da `pianoScarico`, che è provato in Node. Una seconda
+regola su quando un premio entra in cassa sarebbe quella che nessuno guarda.
+
+### L'email: «rimesse», e solo dove ci sono
+
+Il testo nuovo è quello che Francesco ha scritto. Le due cose che non si
+perdono:
+
+- **L'apertura segue il caso.** «Riepilogo delle rimesse da effettuare
+  all'Agenzia» su un elenco di rate che il cliente non ha ancora pagato
+  chiederebbe a una persona dei soldi che non ha in mano: è il difetto delle
+  due famiglie sommate (§64), scritto in italiano invece che in aritmetica.
+  Dove non c'è niente da versare, il foglio si chiama con l'altro nome.
+- **La richiesta sta accanto al suo importo**, non in fondo: in fondo, dopo il
+  secondo blocco, si leggerebbe come se riguardasse la somma dei due.
+
+La regola «nessuna data promessa» (§34) **non è stata rimossa: è cambiata di
+verso**. Vietava di promettere quando l'AGENZIA paga — una promessa che
+nessuno ha deciso. Qui è l'agenzia che chiede a chi tiene i suoi soldi, e
+quella la decide Francesco. Resta vietato l'impegno a pagare, e c'è la prova.
+
+### Un apostrofo non è un accento
+
+L'email diceva *«questo e' il riepilogo»*, *«gia' pagato»*. Non era una
+convenzione del repository — nello stesso file ci sono 269 accenti veri e 7
+apostrofi: erano una mia sbadataggine, proprio nell'unica cosa che esce di
+casa. Corretti, e c'è una prova che li cerca nei tre formati.
+
+### Cosa resta aperto
+
+- **Il movimento ha una riga sola** (testata: conto, importo, causale), come
+  quello di `incPorta`: è la forma che questi flussi hanno da sempre, e
+  aggiungerne una terza sarebbe peggio. La partita doppia piena (Dare conto /
+  Avere conto compagnia) è un lavoro a sé, e va fatto per tutti insieme.
+- **Nessun conto dichiara ancora quali mezzi riceve** (§32): la tendina del
+  conto si propone solo dove quella configurazione c'è, e per il resto si
+  sceglie a mano — che è la strada giusta, solo più lenta.

@@ -1412,8 +1412,8 @@
       ? ' rata non ha un importo dichiarato e non entra nel totale: non vale zero, va chiesta alla compagnia.'
       : ' rate non hanno un importo dichiarato e non entrano nel totale: non valgono zero, vanno chieste alla compagnia.'));
     if (scelte) avvisi.push('Questo resoconto riguarda ' + t.n + ' rate su ' + tutte.length
-      + ': e’ una selezione, non tutto quello che risulta.');
-    if (opz.parziale) avvisi.push('La lettura del portafoglio si e’ fermata prima della fine: '
+      + ': è una selezione, non tutto quello che risulta.');
+    if (opz.parziale) avvisi.push('La lettura del portafoglio si è fermata prima della fine: '
       + 'questi numeri sono in DIFETTO, non in eccesso.');
 
     return {
@@ -1437,44 +1437,61 @@
     var firma = testo(opz.firma) || '';
 
     if (r.caso === 'vuoto') {
-      return { ok: false, motivo: 'Non c’e’ niente da mandare: nessuna rata in questo resoconto.' };
+      return { ok: false, motivo: 'Non c’è niente da mandare: nessuna rata in questo resoconto.' };
     }
+
+    /* L'APERTURA SEGUE IL CASO, e non è una cortesia: «rimesse da effettuare»
+       su un elenco di rate che il cliente non ha ancora pagato chiederebbe a
+       una persona dei soldi che non ha in mano. Dove non c'è niente da
+       versare, questo foglio non è una richiesta di rimessa: è una lista di
+       clienti da sollecitare, e si chiama così. */
+    var soloDaIncassare = r.caso === 'incassare';
+    var apertura = soloDaIncassare
+      ? 'questo è il riepilogo dei premi che i clienti non hanno ancora pagato, aggiornato al '
+      : 'questo è il riepilogo delle rimesse da effettuare all’Agenzia, aggiornato al ';
 
     var righe = [];
     righe.push('Ciao ' + (chi || '') + ',');
     righe.push('');
-    righe.push('questo e’ il riepilogo dei premi che risultano in sospeso al ' + dataIt(opz.oggi) + '.');
+    righe.push(apertura + dataIt(opz.oggi) + '.');
     righe.push('');
     if (t.n_versare) {
       righe.push('DA VERSARE IN AGENZIA — ' + t.n_versare
-        + (t.n_versare === 1 ? ' rata' : ' rate') + ' per ' + euro(t.totale_versare) + '.');
-      righe.push('Sono premi che il cliente ha gia’ pagato e che risultano ancora presso di te.');
+        + (t.n_versare === 1 ? ' rata' : ' rate') + ' per ' + euro(t.totale_versare));
+      righe.push('');
+      /* LA RICHIESTA RIGUARDA SOLO QUESTO IMPORTO, ed è il motivo per cui sta
+         qui dentro e non in fondo: in fondo, dopo il secondo blocco, si
+         leggerebbe come se riguardasse la somma dei due. */
+      righe.push('Ti chiediamo di effettuare la rimessa dell’importo indicato entro la giornata odierna.');
       righe.push('');
     }
     if (t.n_incassare) {
       righe.push('ANCORA DA INCASSARE DAL CLIENTE — ' + t.n_incassare
-        + (t.n_incassare === 1 ? ' rata' : ' rate') + ' per ' + euro(t.totale_incassare) + '.');
-      righe.push('Questi non li devi tu: sono clienti da sollecitare.');
+        + (t.n_incassare === 1 ? ' rata' : ' rate') + ' per ' + euro(t.totale_incassare));
+      righe.push('Questo importo non lo devi tu: sono clienti da sollecitare.');
       righe.push('');
     }
     /* I due numeri NON si sommano in un totale unico, e il testo lo dice:
        chiedere a una persona la somma delle due famiglie vorrebbe dire
        chiedergli dei soldi che il cliente non ha ancora versato. */
     if (r.caso === 'misto') {
-      righe.push('I due numeri non si sommano: il primo e’ quello che risulta presso di te, '
-        + 'il secondo e’ quello che i clienti non hanno ancora pagato.');
+      righe.push('I due importi non si sommano, e la rimessa riguarda solo il primo: '
+        + 'il secondo è quello che i clienti non hanno ancora pagato.');
       righe.push('');
     }
     (r.avvisi || []).forEach(function (a) { righe.push(a); });
     if ((r.avvisi || []).length) righe.push('');
-    righe.push('Il dettaglio riga per riga e’ nell’allegato.');
-    righe.push('Se qualcosa non torna, scrivimi prima di versare: si guarda insieme.');
+    righe.push('Il dettaglio delle singole rate è disponibile in allegato.');
+    righe.push(soloDaIncassare
+      ? 'Se riscontri qualche incongruenza, scrivici: la verifichiamo insieme.'
+      : 'Se riscontri qualche incongruenza, scrivici prima di effettuare il versamento, così da verificarla insieme.');
     righe.push('');
     righe.push(firma || agenzia);
 
     return {
       ok: true,
-      oggetto: 'Riepilogo premi in sospeso — ' + (chi || agenzia) + ' al ' + dataIt(opz.oggi),
+      oggetto: (soloDaIncassare ? 'Premi ancora da incassare — ' : 'Rimesse da effettuare — ')
+        + (chi || agenzia) + ' al ' + dataIt(opz.oggi),
       testo: righe.join('\n')
     };
   }
@@ -1487,7 +1504,7 @@
     var blocchi = [
       { tipo: 'tessere', voci: [
         { etichetta: 'Da versare in agenzia', valore: euro(t.totale_versare),
-          nota: t.n_versare + (t.n_versare === 1 ? ' rata gia’ incassata' : ' rate gia’ incassate') },
+          nota: t.n_versare + (t.n_versare === 1 ? ' rata già incassata' : ' rate già incassate') },
         { etichetta: 'Ancora da incassare dal cliente', valore: euro(t.totale_incassare),
           nota: t.n_incassare + (t.n_incassare === 1 ? ' rata' : ' rate') },
         { etichetta: 'Ferme da troppo', valore: euro(t.totale_ritardo),
@@ -1511,7 +1528,7 @@
       sotto: 'al ' + dataIt(opz.oggi),
       azienda: opz.azienda || {}, banda: null, filigrana: null, colonne: [],
       blocchi: blocchi, firma: null,
-      avvertenze: 'Le due famiglie non si sommano: «da versare» sono premi che il cliente ha gia’ '
+      avvertenze: 'Le due famiglie non si sommano: «da versare» sono premi che il cliente ha già '
         + 'pagato e che risultano presso chi li tiene; «da incassare» sono premi che il cliente non ha '
         + 'ancora versato. Le rate senza un importo dichiarato sono elencate e non sommate.',
       piedeSinistra: (opz.azienda && opz.azienda.ragioneSociale) || '',
@@ -1560,6 +1577,104 @@
     out.conto = d.conto;
     out.tipo = m.immediato ? 'cassa' : 'sospeso';
     out.giorni_attesi = m.immediato ? 0 : (m.giorni || null);
+    return out;
+  }
+
+  /* ═══ SCARICARE UN SOSPESO: il denaro arriva in agenzia  (24/09/2026) ══════
+
+     Francesco: «quando clicco scarica le selezionate, deve aprirsi una
+     schermata dove posso decidere la nuova modalita' di pagamento, quindi
+     come ho incassato le selezionate, che ovviamente deve aggiornare il
+     conto per aggiornare la quadratura dei conti».
+
+     QUALE MODALITA' CAMBIA, E QUALE NO. Sono due domande diverse, e
+     confonderle falsifica un dato vero:
+
+       · `quote_titoli.mezzo_pagamento` dice COME IL CLIENTE HA PAGATO quella
+         rata. E' un fatto della compagnia, ed e' vero anche dopo: NON si
+         tocca. Riscriverlo «contanti» perche' il collaboratore ha portato i
+         contanti in agenzia vorrebbe dire dire che il cliente ha pagato in
+         contanti, e non e' successo.
+       · Quella che si sceglie qui e' COME IL DENARO E' ARRIVATO IN AGENZIA,
+         ed e' una proprieta' del MOVIMENTO, non della rata.
+
+     UNA PERSONA NON E' UN MODO DI PAGARE. Le voci del vocabolario che sono
+     un collaboratore (§64) dicono CHI teneva i soldi: sceglierne una qui
+     vorrebbe dire dire che il denaro e' arrivato «con Oddo Francesco», che
+     non e' un conto e non muove nessuna quadratura.
+
+     IL CONTO DEVE ESSERE DI DENARO. Un conto di costo o di debito non
+     riceve un incasso: e' la stessa regola di `denaroDi` (Fase 4-bis), qui
+     applicata prima di scrivere invece che dopo. */
+  function pianoScarico(righe, opz) {
+    opz = opz || {};
+    var conti = opz.conti || [];
+    var V = vocabolario(opz.modalita || []);
+    var out = { movimenti: [], fuori: [], totale: 0, errori: [] };
+
+    var causale = (opz.causali || []).filter(function (c) {
+      return c && testo(c.codice) === CAUSALE_INCASSO;
+    })[0] || null;
+    if (!causale) out.errori.push('Manca la causale «Incasso premi»: si ricrea in Strumenti › Conti e causali.');
+
+    var m = testo(opz.mezzo) ? mezzo(testo(opz.mezzo), V) : null;
+    if (!testo(opz.mezzo)) out.errori.push('Scegli come sono arrivati i soldi in agenzia.');
+    else if (!m) out.errori.push('«' + testo(opz.mezzo) + '» non è nel vocabolario delle modalità di pagamento.');
+    else if (m.collaboratore_id) out.errori.push('«' + m.l + '» è una persona, non un modo di pagare: dice CHI teneva i soldi. '
+      + 'Qui serve come sono arrivati in agenzia — contanti, bonifico, assegno…');
+
+    var conto = null;
+    if (!testo(opz.conto_id)) out.errori.push('Scegli su quale conto è arrivato il denaro: senza, la quadratura non si muove.');
+    else {
+      conto = conti.filter(function (c) { return c && c.id === opz.conto_id; })[0] || null;
+      if (!conto) out.errori.push('Il conto scelto non c’è più.');
+      else if (conto.attivo === false) out.errori.push('«' + testo(conto.nome) + '» è spento: scegline un altro.');
+      else if (LIQUIDE.indexOf(testo(conto.tipologia)) < 0) out.errori.push('«' + testo(conto.nome)
+        + '» non è un conto su cui il denaro c’è davvero (è ' + (testo(conto.tipologia) || 'senza tipologia')
+        + '): un incasso ci finisce e il saldo direbbe di avere soldi che non ci sono.');
+      else if (causale) {
+        var c = compatibile(conto, causale);
+        if (!c.ok) out.errori.push(c.motivo);
+      }
+    }
+
+    /* La data si legge dai numeri della stringa, mai facendola passare da
+       `new Date(...)` + `toISOString()`: in Italia tornerebbe indietro di un
+       giorno (§44). */
+    var quando = testo(opz.data).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(quando)) {
+      out.errori.push('Metti il giorno in cui il denaro è arrivato: è quello che il saldo conta.');
+      quando = null;
+    }
+
+    (righe || []).forEach(function (r) {
+      if (!r) return;
+      /* SOLO QUELLO CHE IL CLIENTE HA GIA' PAGATO. Una rata ancora aperta non
+         si «scarica»: si incassa, ed e' un'altra schermata (Fase 2).
+         Registrarla qui vorrebbe dire dire che il cliente ha pagato. */
+      if (r.famiglia !== 'versare') {
+        out.fuori.push({ id: r.id, cliente: r.cliente || null,
+          perche: 'il cliente non l’ha ancora pagata: si incassa, non si scarica.' });
+        return;
+      }
+      var imp = numero(r.importo);
+      if (imp == null || imp <= 0) {
+        out.fuori.push({ id: r.id, cliente: r.cliente || null,
+          perche: 'non ha un importo dichiarato: non vale zero, va chiesto alla compagnia.' });
+        return;
+      }
+      out.movimenti.push({
+        titolo_id: r.id, importo: imp, cliente: r.cliente || null,
+        numero_polizza: r.numero_polizza || null,
+        conto_id: conto ? conto.id : null, causale_id: causale ? causale.id : null,
+        data: quando, mezzo: m ? m.k : null,
+        descrizione: 'Rimessa in agenzia' + (m ? ' · ' + m.l : '')
+      });
+      out.totale = cent(out.totale + imp);
+    });
+
+    if (!out.movimenti.length && !out.errori.length) out.errori.push('Non resta niente da scaricare.');
+    out.ok = !out.errori.length && out.movimenti.length > 0;
     return out;
   }
 
@@ -3391,6 +3506,7 @@
     destinoIncasso: destinoIncasso,
     giorniDa: giorniDa, inRitardo: inRitardo, sospesiAperti: sospesiAperti,
     riepilogoSospesi: riepilogoSospesi, validaAccredito: validaAccredito,
+    pianoScarico: pianoScarico,
     /* Fase 2 — l'incasso di una o più rate */
     incassabile: incassabile, contoCompagnia: contoCompagnia, contoIncasso: contoIncasso,
     righeIncasso: righeIncasso, mezzoIncasso: mezzoIncasso, giornoBello: giornoBello,

@@ -8,8 +8,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.43.1">
-<meta name="app-versione-nome" content="Tre colonne che non esistevano">
+<meta name="app-versione" content="0.44.0">
+<meta name="app-versione-nome" content="I sospesi si scaricano scegliendo il conto">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2336,6 +2336,19 @@ input[type=file]{display:none;}
        backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px"
        onclick="if(event.target===this)dcoChiudi()">
     <div id="dco-box" style="background:var(--surf);border-radius:var(--r);width:min(860px,100%);
+         max-height:90vh;overflow:auto;box-shadow:var(--shd2)"></div>
+  </div>
+
+  <!-- ══ SCARICARE UN SOSPESO (24/09/2026) ══════════════════════════════════
+       Francesco: «quando clicco scarica le selezionate, deve aprirsi una
+       schermata dove posso decidere come ho incassato le selezionate, che
+       deve aggiornare il conto per aggiornare la quadratura dei conti».
+       Overlay SUO e fuori dai pannelli: una finestra dentro un pannello
+       nascosto è una finestra che non si vede (§46). -->
+  <div id="spr-ov" style="display:none;position:fixed;inset:0;z-index:602;background:rgba(0,0,0,.55);
+       backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px"
+       onclick="if(event.target===this)sprScaricoChiudi()">
+    <div id="spr-box" style="background:var(--surf);border-radius:var(--r);width:min(660px,100%);
          max-height:90vh;overflow:auto;box-shadow:var(--shd2)"></div>
   </div>
 </div>
@@ -6410,10 +6423,159 @@ async function sprScarica() {
       + 'quelle già incassate si PORTANO IN CONTABILITÀ. Sono due schermate diverse: scegline un tipo alla volta.';
     sprRender(); return;
   }
-  if (chiuse.length) { selContabTab('incassi'); return; }
+  if (chiuse.length) { await sprScaricoApri(chiuse); return; }
   selContabTab('incassa');
   try { await INCA_PRONTA; } catch (e) {}
   await incaConRate(aperte.map(function (r) { return r.id; }));
+}
+
+/* ═══ COME SONO ARRIVATI IN AGENZIA ═════════════════════════════════════════
+
+   La rata è già incassata: il cliente ha pagato, e i soldi li teneva una
+   persona. Quello che manca è il fatto contabile — quel denaro è entrato in
+   agenzia, su un conto, un certo giorno. Da qui in poi la quadratura lo conta.
+
+   LA MODALITÀ CHE SI SCEGLIE QUI NON È QUELLA DELLA RATA. `quote_titoli
+   .mezzo_pagamento` dice come il CLIENTE ha pagato, ed è un fatto della
+   compagnia che resta vero: riscriverlo perché il collaboratore ha portato i
+   contanti direbbe che il cliente ha pagato in contanti, e non è successo.
+   Quella che si sceglie qui è una proprietà del MOVIMENTO. */
+var SPR_SCARICO = null;     /* le righe che la finestra sta lavorando */
+var SPR_SC_CONTI = [];
+var SPR_SC_CAUSALI = [];
+var SPR_SC_ERR = null;      /* la configurazione non si è potuta leggere */
+var SPR_SC_MSG = [];
+
+function sprScaricoChiudi() {
+  var o = document.getElementById('spr-ov');
+  if (o) o.style.display = 'none';
+  SPR_SCARICO = null; SPR_SC_MSG = [];
+}
+
+async function sprScaricoApri(righe) {
+  SPR_SCARICO = righe || []; SPR_SC_MSG = []; SPR_SC_ERR = null;
+  /* La configurazione si legge QUI e non col resto della pagina: se non si
+     riesce, a cadere è questa finestra e non l'elenco dei sospesi (§35). */
+  try {
+    var c = await db.from('iam_conti').select('id,nome,tipologia,natura,attivo,mezzi').order('ordine');
+    if (c.error) throw c.error;
+    SPR_SC_CONTI = c.data || [];
+    var k = await db.from('iam_causali').select('id,codice,nome,natura,segno,attiva');
+    if (k.error) throw k.error;
+    SPR_SC_CAUSALI = k.data || [];
+  } catch (e) { SPR_SC_ERR = e.message || String(e); }
+  sprScaricoRender();
+}
+
+function sprScaricoRender() {
+  var ov = document.getElementById('spr-ov'), box = document.getElementById('spr-box');
+  if (!ov || !box || !SPR_SCARICO) return;
+  var righe = SPR_SCARICO;
+  var tot = righe.reduce(function (a, r) { return a + (Contabilita.numero(r.importo) || 0); }, 0);
+  var voc = Contabilita.vocabolario(SPR_MODALITA);
+  /* Una PERSONA non è un modo di pagare: dice CHI teneva i soldi (§64). In
+     questa tendina non ci va, altrimenti si sceglierebbe «Oddo Francesco»
+     come modo in cui il denaro è arrivato, che non è un conto. */
+  var mezzi = voc.filter(function (m) { return m && !m.collaboratore_id; });
+  var LIQ = Contabilita.LIQUIDE;
+  var conti = SPR_SC_CONTI.filter(function (c) {
+    return c && c.attivo !== false && LIQ.indexOf(String(c.tipologia || '')) >= 0;
+  });
+  var scelto = (document.getElementById('spr-sc-mezzo') || {}).value || '';
+  var contoSc = (document.getElementById('spr-sc-conto') || {}).value || '';
+
+  box.innerHTML = '<div style="padding:18px 18px 0">'
+    + '<div style="font-size:17px;font-weight:800">Scarica ' + esc(sprEuro(tot)) + '</div>'
+    + '<div class="cnt-sotto" style="margin-top:3px">' + righe.length
+    + (righe.length === 1 ? ' rata già incassata dal cliente.' : ' rate già incassate dal cliente.')
+    + ' Qui si dice <b>come sono arrivate in agenzia</b>: da lì in poi il conto le conta,'
+    + ' e la quadratura si muove.</div></div>'
+    + '<div class="modal-body" style="padding:14px 18px">'
+    + (SPR_SC_ERR
+        ? '<div class="cnt-err">Non riesco a leggere conti e causali.<br><small>' + esc(SPR_SC_ERR)
+          + ' — non vuol dire che non ce ne siano: vuol dire che non si è potuto leggerli.</small></div>'
+        : '')
+    + (SPR_SC_MSG.length
+        ? '<div class="cnt-err">' + SPR_SC_MSG.map(function (m) { return esc(m); }).join('<br>') + '</div>'
+        : '')
+    + '<div class="fgrid">'
+    + '<div class="fld"><label>Come sono arrivati</label><select id="spr-sc-mezzo" onchange="sprScaricoRender()">'
+    + '<option value="">— scegli —</option>'
+    + mezzi.map(function (m) {
+        return '<option value="' + esc(m.k) + '"' + (m.k === scelto ? ' selected' : '') + '>' + esc(m.l) + '</option>';
+      }).join('')
+    + '</select></div>'
+    + '<div class="fld"><label>Su quale conto</label><select id="spr-sc-conto">'
+    + '<option value="">— scegli —</option>'
+    + conti.map(function (c) {
+        return '<option value="' + esc(c.id) + '"' + (c.id === contoSc ? ' selected' : '') + '>' + esc(c.nome) + '</option>';
+      }).join('')
+    + '</select></div>'
+    + '<div class="fld"><label>Arrivati il</label><input type="date" id="spr-sc-data" value="'
+    + esc((document.getElementById('spr-sc-data') || {}).value || cntOggiIso()) + '"></div>'
+    + '</div>'
+    + (conti.length ? '' : '<div class="cnt-avv" style="margin-top:10px">Non c’è nessun conto su cui il denaro '
+        + 'ci sia davvero (cassa, banca…): si crea in Strumenti › Conti e causali.</div>')
+    + '<div class="cnt-sotto" style="margin-top:12px">La modalità che scegli qui riguarda <b>questo versamento</b>. '
+    + 'Come ha pagato il cliente resta scritto sulla rata: è un fatto della compagnia e non si riscrive.</div>'
+    + '<div style="margin-top:10px">' + righe.map(function (r) {
+        return '<div class="cnt-r"><div class="cnt-nome">' + esc(r.cliente || '—')
+          + '<div class="cnt-sotto">' + esc(r.numero_polizza || '') + '</div></div>'
+          + '<div class="cnt-v">' + esc(sprEuro(r.importo)) + '</div></div>';
+      }).join('') + '</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;padding:0 18px 18px">'
+    + '<button class="d-btn" type="button" onclick="sprScaricoChiudi()">Chiudi</button>'
+    + '<button class="d-btn primario" type="button" onclick="sprScaricoRegistra()">Registra l’arrivo</button>'
+    + '</div>';
+  ov.style.display = 'flex';
+  /* La tendina del conto si propone da quella configurazione che già esiste
+     (§32), e resta correggibile: proporre e scrivere sono due cose diverse. */
+  if (scelto && !contoSc) {
+    var d = Contabilita.destinoIncasso({ mezzo_pagamento: scelto, importo: 1 }, SPR_SC_CONTI, SPR_MODALITA);
+    if (d && d.conto) { var s = document.getElementById('spr-sc-conto'); if (s) s.value = d.conto.id; }
+  }
+}
+
+async function sprScaricoRegistra() {
+  if (!SPR_SCARICO) return;
+  var piano = Contabilita.pianoScarico(SPR_SCARICO, {
+    conti: SPR_SC_CONTI, causali: SPR_SC_CAUSALI, modalita: SPR_MODALITA,
+    mezzo: (document.getElementById('spr-sc-mezzo') || {}).value || '',
+    conto_id: (document.getElementById('spr-sc-conto') || {}).value || '',
+    data: (document.getElementById('spr-sc-data') || {}).value || ''
+  });
+  SPR_SC_MSG = piano.errori.slice();
+  if (!piano.ok) { sprScaricoRender(); return; }
+  var conto = SPR_SC_CONTI.filter(function (c) { return c.id === piano.movimenti[0].conto_id; })[0] || {};
+  if (!confirm('Registro ' + piano.movimenti.length + (piano.movimenti.length === 1 ? ' movimento' : ' movimenti')
+    + ' per ' + sprEuro(piano.totale) + ' su ' + (conto.nome || '') + '?')) return;
+  try {
+    var r = await db.from('iam_movimenti').insert(piano.movimenti.map(function (m) {
+      return {
+        data: m.data, conto_id: m.conto_id, causale_id: m.causale_id,
+        importo: m.importo, titolo_id: m.titolo_id, origine: 'titolo',
+        descrizione: m.descrizione
+      };
+    })).select('id');
+    if (r.error) throw r.error;
+    /* Zero righe scritte NON è un successo silenzioso (BUG 1, §47): dove si
+       toccano dei soldi si guarda quante righe il database ha davvero
+       cambiato, e non si fa credere che sia andata. */
+    var nate = (r.data || []).length;
+    if (!nate) throw new Error('il database non ha scritto nessun movimento: rifallo e guarda i permessi.');
+    logMovimento('Sospesi scaricati', 'movimento',
+      nate + ' rate per ' + sprEuro(piano.totale) + ' su ' + (conto.nome || ''), r.data[0].id);
+    SPR_ESITO_INVIO = nate + (nate === 1 ? ' rata scaricata' : ' rate scaricate') + ' per '
+      + sprEuro(piano.totale) + ' su ' + (conto.nome || '') + '.'
+      + (piano.fuori.length ? ' ' + piano.fuori.length + ' restano fuori: ' + piano.fuori[0].perche : '');
+    SPR_SEL = {};
+    sprScaricoChiudi();
+    await sprCarica(true);
+  } catch (e) {
+    SPR_SC_MSG = ['Non riesco a registrare: ' + (e.message || e)];
+    sprScaricoRender();
+  }
 }
 
 /* Il documento in HTML: Excel lo apre e lo riconosce, come tutti gli altri

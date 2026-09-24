@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.46.3">
-<meta name="app-versione-nome" content="L anteprima dice che cosa conta">
+<meta name="app-versione" content="0.47.0">
+<meta name="app-versione-nome" content="Il foglio cassa guarda anche per data di effetto">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -3488,6 +3488,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
                un totale si legge senza sapere a che periodo si riferisce. -->
           <div class="pf-f"><label>Date su</label><select id="fc-su">
             <option value="emissione">Data di emissione</option>
+            <option value="effetto">Data di effetto</option>
             <option value="incasso">Data di incasso</option></select></div>
           <div class="pf-f"><label>dal</label><input id="fc-da" type="date"></div>
           <div class="pf-f"><label>al</label><input id="fc-a" type="date"></div>
@@ -29743,7 +29744,12 @@ function fcFiltri() {
               perché è la domanda che si fa aprendo il foglio della giornata:
               «che cosa ho prodotto oggi». Quello che si è incassato oggi è
               un'altra domanda, e ha la sua voce. */
-           su: v('fc-su') === 'incasso' ? 'incasso' : 'emissione' };
+           /* Tre assi, non due. «Effetto» è nato il 24/09/2026: il portafoglio
+              di HDI era entrato in archivio e non si vedeva da nessuna parte,
+              perché il tracciato PASS-133 non manda la data di emissione e
+              quelle polizze restavano fuori dall'unico asse che le avrebbe
+              mostrate tutte. */
+           su: ['incasso', 'effetto'].indexOf(v('fc-su')) >= 0 ? v('fc-su') : 'emissione' };
 }
 
 /* ── Leggere TUTTE le righe, non le prime mille ────────────────────────────
@@ -29838,6 +29844,32 @@ function fcAzzera() {
   fcRender();
 }
 
+/* ── UNA TABELLA VUOTA DEVE DIRE PERCHÉ (24/09/2026) ───────────────────────
+   Francesco ha importato il portafoglio di HDI — undici clienti, diciotto
+   polizze, dodici rate, tutto scritto in archivio — e ha trovato il foglio
+   cassa vuoto. Il motivo c'era ed era preciso: guardava per data di
+   emissione, e il tracciato PASS-133 non la manda. Ma a schermo c'era solo
+   «Nessuna polizza emessa in questo periodo», che è la stessa identica frase
+   che compare quando davvero non si è prodotto niente.
+
+   Sono due cose molto diverse — «non hai prodotto» e «queste righe non hanno
+   la data su cui stai guardando» — e finché la schermata le dice con le
+   stesse parole, chi legge va a cercare un guasto nell'importazione. */
+function fcFuori() {
+  const righe = (FC_VISTA && FC_VISTA.righe) || null;
+  const n = (righe && righe.fuoriPerLaData) || 0;
+  if (!n) return '';
+  const su = righe.su === 'emissione' ? 'emissione' : righe.su === 'effetto' ? 'effetto' : 'incasso';
+  const manca = su === 'emissione' ? 'una data di emissione'
+              : su === 'effetto' ? 'una data di effetto' : 'una data di incasso';
+  const altrove = su === 'incasso' ? ''
+    : ' Per vederle, scegli <b>Date su → Data di ' + (su === 'emissione' ? 'effetto' : 'incasso') + '</b>.';
+  return '<br><small>' + n + (n === 1 ? ' rata non ha ' : ' rate non hanno ') + manca +
+    ', e con questa scelta restano fuori.' +
+    (su === 'emissione' ? ' Alcune compagnie non la mandano nel flusso: HDI non la manda.' : '') +
+    altrove + '</small>';
+}
+
 function fcRender() {
   const body = document.getElementById('fc-body'), sum = document.getElementById('fc-summary'), quad = document.getElementById('fc-quadrature');
   if (!body || !window.FoglioCassa) return;
@@ -29882,8 +29914,8 @@ function fcRender() {
       !FC_TITOLI.length
         ? 'Nessuna rata in portafoglio: nascono con la polizza, dal flusso della compagnia o da «Nuova polizza».'
         : perEmissione
-          ? 'Nessuna polizza emessa in questo periodo con questi filtri.<br><small>Una polizza senza data di emissione non compare qui: si scrive dal suo dettaglio.</small>'
-          : 'Nessun incasso con questi filtri.'}</div></td></tr>`;
+          ? 'Nessuna polizza emessa in questo periodo con questi filtri.' + fcFuori()
+          : 'Nessun incasso con questi filtri.' + fcFuori()}</div></td></tr>`;
     if (quad) quad.innerHTML = '';
     return;
   }

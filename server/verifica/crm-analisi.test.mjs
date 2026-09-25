@@ -277,10 +277,53 @@ prova('ogni filtro che Francesco ha chiesto ha il suo campo', () => {
     'tipo di polizze': 'ca-ramo', 'età da': 'ca-eta-da', 'età a': 'ca-eta-a',
     'se hanno famiglia': 'ca-figli', 'tipo di lavoro': 'ca-prof',
     'note in anagrafica': 'ca-note', 'gruppo': 'ca-gruppo',
+    /* Aggiunti il 25/09/2026: sono quelli che mancavano alle domande del
+       mandato — «clienti HDI», «Prima in scadenza fra 30 giorni», «auto SENZA
+       casa», per provincia, per fascia di premio. */
+    'compagnia': 'ca-compagnia', 'provincia': 'ca-prov',
+    'ma NON ha (l\'assenza)': 'ca-senza-ramo', 'scadenza': 'ca-scadenza',
+    'premio da': 'ca-premio-da', 'premio a': 'ca-premio-a',
   };
-  const mancanti = Object.keys(chiesti).filter(k => PAGINA.indexOf("id=\"" + chiesti[k] + "\"") < 0
-    && PAGINA.indexOf("'" + chiesti[k] + "'") < 0);
-  deve(mancanti.length === 0, 'filtri chiesti e non presenti: ' + mancanti.join(', '));
+  /* IL CAMPO DEVE ESISTERE SULLO SCHERMO, e si controlla solo la forma
+     `id="ca-x"`. Prima bastava che il nome comparisse da qualche parte, anche
+     solo nel codice che LEGGE quel campo: così cancellare il menu della
+     compagnia dalla schermata lasciava la prova verde, perché `g('ca-compagnia')`
+     era ancora lì a nominarlo. L'ha trovato una controprova, non una rilettura. */
+  const mancanti = Object.keys(chiesti).filter(k => PAGINA.indexOf('id="' + chiesti[k] + '"') < 0);
+  deve(mancanti.length === 0, 'filtri chiesti e non disegnati sullo schermo: ' + mancanti.join(', '));
+});
+
+prova('e ogni campo a schermo è davvero collegato alla ricerca', () => {
+  /* Un campo che si vede, si compila e non arriva al filtro è PEGGIO di un
+     campo che non c'è: chi lo usa crede di aver ristretto la ricerca e legge
+     un elenco più largo di quello che ha chiesto. */
+  const i = PAGINA.indexOf('const righe = M.filtra(');
+  deve(i > 0, 'non trovo la chiamata al filtro');
+  const chiamata = PAGINA.slice(PAGINA.lastIndexOf('async function caCerca', i), PAGINA.indexOf('}, {', i));
+  const disegnati = [...new Set([...PAGINA.matchAll(/id="(ca-[a-z-]+)"/g)].map((m) => m[1]))]
+    .filter((x) => x !== 'ca-esito' && x !== 'ca-filtri');   // contenitori, non filtri
+  const scollegati = disegnati.filter((id) => chiamata.indexOf("'" + id + "'") < 0);
+  deve(scollegati.length === 0, 'campi disegnati e mai letti dalla ricerca: ' + scollegati.join(', '));
+  return disegnati.length + ' campi, tutti collegati';
+});
+
+prova('la pagina legge le colonne che i filtri nuovi richiedono', () => {
+  /* Compagnia, scadenza e premio non si possono filtrare se non si leggono.
+     Fino al 25/09/2026 la pagina chiedeva solo `modulo` e `prodotto`: i
+     filtri sarebbero stati verdi restituendo sempre zero. */
+  const i = PAGINA.indexOf("db.from('quote_polizze').select(");
+  deve(i > 0, 'non trovo la lettura delle polizze');
+  const sel = PAGINA.slice(i, PAGINA.indexOf(')', i + 40));
+  for (const c of ['compagnia', 'data_scadenza', 'premio_annuo', 'modulo', 'prodotto']) {
+    deve(sel.indexOf(c) >= 0, 'la pagina non legge «' + c + '»: ' + sel);
+  }
+});
+
+prova('e la ricerca sa che giorno è, altrimenti la scadenza tace', () => {
+  const i = PAGINA.indexOf('const righe = M.filtra(');
+  const blocco = PAGINA.slice(i, PAGINA.indexOf('CA_RISULTATO', i));
+  deve(/oggi:/.test(blocco),
+    'il filtro sulla scadenza non riceve la data di oggi: restituirebbe sempre zero');
 });
 
 prova('i tre tasti in fondo chiamano le tre strade', () => {
@@ -304,6 +347,149 @@ prova('la campagna passa dal filtro del consenso, l\'esportazione no', () => {
   const exp = PAGINA.slice(j, j + 700);
   deve(exp.indexOf('perCampagna(') < 0,
     'l\'esportazione passa dal filtro della campagna: il foglio per l\'ufficio perderebbe dei clienti');
+});
+
+/* ── LE RICERCHE SUL PORTAFOGLIO ─────────────────────────────────────────────
+   Sono le domande che Francesco ha scritto nel mandato, e valgono più di
+   tutte le altre perché è lì che sta la vendita:
+
+     «auto ma non casa» · «HDI con RCA senza infortuni» · «Prima in scadenza
+     nei prossimi 30 giorni» · «fra 30 e 50 anni per il fondo pensione»
+
+   Fino al 25/09/2026 il motore sapeva chiedere solo la PRESENZA di un ramo:
+   «ha almeno una polizza auto». L'ASSENZA — che è la metà che serve — non
+   esisteva, e nemmeno compagnia, provincia, scadenza e premio.
+
+   Un filtro sbagliato qui non dà errore: manda l'offerta alla persona
+   sbagliata, e non se ne accorge nessuno. */
+
+const PORTAFOGLIO = {
+  '1': [{ modulo: 'auto', compagnia: 'HDI', data_scadenza: '2026-10-10', premio_annuo: 600 }],
+  '2': [{ modulo: 'auto', compagnia: 'HDI', data_scadenza: '2027-05-01', premio_annuo: 600 },
+        { modulo: 'casa', compagnia: 'HDI', data_scadenza: '2027-05-01', premio_annuo: 300 }],
+  '3': [{ modulo: 'casa', compagnia: 'Prima', data_scadenza: '2026-10-05', premio_annuo: 200 }],
+  /* il 4 non ha nessuna polizza, ed è il caso che fa sbagliare l'assenza */
+};
+const OGGI = { polizzePerCliente: PORTAFOGLIO, oggi: '2026-09-25' };
+const chi = (f) => A.filtra(GENTE, f, OGGI).map((x) => x.id).sort().join(',');
+
+prova('«auto ma non casa» — l\'assenza, che è dove sta la vendita', () => {
+  deve(chi({ rami: ['auto'], senzaRami: ['casa'] }) === '1',
+    'dovrebbe uscire solo chi ha l\'auto e NON la casa, esce: ' + chi({ rami: ['auto'], senzaRami: ['casa'] }));
+});
+
+prova('e chi non ha NESSUNA polizza non sparisce da «senza casa»', () => {
+  /* È vero che non ha la casa: la domanda è quella, e la risposta è sì. Se
+     non lo si vuole si aggiunge `rami`. Il motore risponde alla domanda che
+     gli è stata fatta, non a un'altra che pareva sottintesa. */
+  deve(chi({ senzaRami: ['casa'] }) === '1,4',
+    'chi non ha polizze è stato escluso da «senza casa»: ' + chi({ senzaRami: ['casa'] }));
+});
+
+prova('«clienti HDI» e «clienti Prima» si distinguono', () => {
+  deve(chi({ compagnie: ['hdi'] }) === '1,2', 'HDI: ' + chi({ compagnie: ['hdi'] }));
+  deve(chi({ compagnie: ['prima'] }) === '3', 'Prima: ' + chi({ compagnie: ['prima'] }));
+  /* Maiuscole e minuscole non devono contare: nel portafoglio c'è «HDI». */
+  deve(chi({ compagnie: ['HDI'] }) === '1,2', 'la compagnia scritta in maiuscolo non viene riconosciuta');
+});
+
+prova('«Prima in scadenza nei prossimi 30 giorni»', () => {
+  deve(chi({ compagnie: ['prima'], scadenzaEntroGiorni: 30 }) === '3',
+    chi({ compagnie: ['prima'], scadenzaEntroGiorni: 30 }));
+});
+
+prova('la finestra della scadenza è una finestra, non un «entro sempre»', () => {
+  /* Il 2 scade il 01/05/2027: dentro 30 giorni no, dentro 400 sì. Senza
+     questa prova, un filtro che ignora la data resterebbe verde. */
+  deve(chi({ scadenzaEntroGiorni: 30 }) === '1,3', '30 giorni: ' + chi({ scadenzaEntroGiorni: 30 }));
+  deve(chi({ scadenzaEntroGiorni: 400 }) === '1,2,3', '400 giorni: ' + chi({ scadenzaEntroGiorni: 400 }));
+  deve(chi({ scadenzaEntroGiorni: 0 }) === '', 'zero giorni non è «tutte»: ' + chi({ scadenzaEntroGiorni: 0 }));
+});
+
+prova('e una polizza già scaduta non è «in scadenza»', () => {
+  const passato = { polizzePerCliente: { '1': [{ modulo: 'auto', data_scadenza: '2026-09-01' }] }, oggi: '2026-09-25' };
+  const r = A.filtra(GENTE, { scadenzaEntroGiorni: 30 }, passato);
+  deve(r.length === 0, 'una polizza scaduta il 01/09 è stata contata fra quelle in scadenza');
+  const s = A.filtra(GENTE, { scadute: true }, passato);
+  deve(s.length === 1 && s[0].id === '1', 'il filtro delle scadute non la trova: ' + s.length);
+});
+
+prova('senza una data di riferimento il filtro sulla scadenza tace', () => {
+  /* Meglio zero righe che righe sbagliate: una finestra calcolata su una data
+     che non c'è darebbe un elenco plausibile e falso. */
+  const r = A.filtra(GENTE, { scadenzaEntroGiorni: 30 }, { polizzePerCliente: PORTAFOGLIO });
+  deve(r.length === 0, 'ha calcolato una finestra senza sapere che giorno è: ' + r.length);
+});
+
+prova('«fra 30 e 50 anni» per il fondo pensione', () => {
+  /* Al 25/09/2026: ALFA 36, BETA 51, GAMMA 65, DELTA 24. */
+  deve(chi({ etaDa: 30, etaA: 50 }) === '1', chi({ etaDa: 30, etaA: 50 }));
+});
+
+prova('la provincia filtra, e la residenza dichiarata batte l\'anagrafica', () => {
+  deve(chi({ province: ['tp'] }) === '1,2,3,4', 'tutti sono in TP: ' + chi({ province: ['tp'] }));
+  const gente = GENTE.map((g) => (g.id === '1' ? { ...g, res_dich_provincia: 'PA' } : g));
+  const r = A.filtra(gente, { province: ['pa'] }, OGGI);
+  deve(r.length === 1 && r[0].id === '1',
+    'la provincia dichiarata dal cliente non ha battuto quella anagrafica');
+});
+
+prova('il premio è la somma delle polizze del cliente', () => {
+  deve(chi({ premioDa: 800 }) === '2', 'il 2 ha 600+300=900: ' + chi({ premioDa: 800 }));
+  deve(chi({ premioA: 500 }) === '3', 'il 3 ha 200: ' + chi({ premioA: 500 }));
+});
+
+prova('e chi non dichiara il premio non finisce nella fascia più bassa', () => {
+  /* Il verso pericoloso: contare «nessun premio» come zero metterebbe mezzo
+     portafoglio nella fascia «fino a 500 €», e l'offerta andrebbe a chi
+     magari paga tremila euro l'anno. */
+  const senzaPremio = { polizzePerCliente: { '1': [{ modulo: 'auto' }] }, oggi: '2026-09-25' };
+  const r = A.filtra(GENTE, { premioA: 500 }, senzaPremio);
+  deve(r.length === 0, 'un cliente senza premio dichiarato è entrato nella fascia bassa');
+});
+
+prova('i filtri si compongono: «HDI, auto senza casa, in scadenza»', () => {
+  /* La domanda vera di una campagna non è mai una sola condizione. */
+  deve(chi({ compagnie: ['hdi'], rami: ['auto'], senzaRami: ['casa'], scadenzaEntroGiorni: 30 }) === '1',
+    chi({ compagnie: ['hdi'], rami: ['auto'], senzaRami: ['casa'], scadenzaEntroGiorni: 30 }));
+});
+
+prova('nessun filtro vuol dire tutti, non nessuno', () => {
+  deve(chi({}) === '1,2,3,4', 'un filtro vuoto ha tolto qualcuno: ' + chi({}));
+  deve(chi({ rami: [], senzaRami: [], compagnie: [], province: [] }) === '1,2,3,4',
+    'elenchi vuoti si comportano come un filtro attivo');
+});
+
+prova('giorniDopo dà lo stesso risultato in qualunque fuso orario', () => {
+  /* Questa prova gira in un contenitore in UTC, dove l'ora legale non esiste:
+     un calcolo fatto con l'ora LOCALE sembrerebbe giusto qui e sbaglierebbe
+     di un giorno a Roma, la domenica in cui l'ora cambia. Una finestra
+     «entro 30 giorni» che ne prende 29 lascia fuori una polizza in scadenza.
+
+     Quindi non ci si fida dell'orologio di questa macchina: lo stesso conto
+     si rifà in tre fusi diversi, e devono dire tutti la stessa cosa. */
+  const { execFileSync } = require('child_process');
+  const src = new URL('../../tariffe/motore/crm-analisi.js', import.meta.url).pathname;
+  const prog = 'const M=require(' + JSON.stringify(src) + ');'
+    + 'console.log([M.giorniDopo("2026-10-20",20),M.giorniDopo("2026-03-25",10),'
+    + 'M.giorniDopo("2026-12-31",1),M.giorniDopo("2026-02-27",2)].join("|"))';
+  const risposte = ['UTC', 'Europe/Rome', 'Pacific/Auckland'].map((tz) =>
+    execFileSync(process.execPath, ['-e', prog], { encoding: 'utf8', env: { ...process.env, TZ: tz } }).trim());
+  deve(new Set(risposte).size === 1,
+    'il conto cambia col fuso orario: ' + risposte.map((r, i) => ['UTC', 'Roma', 'Auckland'][i] + '→' + r).join('  '));
+  deve(risposte[0] === '2026-11-09|2026-04-04|2027-01-01|2026-03-01',
+    'i giorni non tornano: ' + risposte[0]);
+  return risposte[0].split('|')[0] + ' anche a Roma e ad Auckland';
+});
+
+prova('giorniDopo non sbaglia il giorno per colpa dell\'ora', () => {
+  /* A mezzanotte un cambio di ora legale sposta il risultato di un giorno, e
+     una finestra «entro 30» che ne prende 29 lascia fuori una polizza in
+     scadenza — cioè un cliente che nessuno richiama. */
+  deve(A.giorniDopo('2026-09-25', 30) === '2026-10-25', A.giorniDopo('2026-09-25', 30));
+  deve(A.giorniDopo('2026-10-20', 20) === '2026-11-09', A.giorniDopo('2026-10-20', 20));  // oltre il cambio d'ora
+  deve(A.giorniDopo('2026-02-27', 2) === '2026-03-01', A.giorniDopo('2026-02-27', 2));    // fine mese
+  deve(A.giorniDopo('2026-12-31', 1) === '2027-01-01', A.giorniDopo('2026-12-31', 1));    // fine anno
 });
 
 /* ── IL FILTRO PER GRUPPO CHIEDE E LEGGE LA STESSA COLONNA ───────────────────

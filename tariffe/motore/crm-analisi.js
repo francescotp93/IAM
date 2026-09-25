@@ -69,6 +69,34 @@
      l'intero portafoglio. */
   function tri(v) { return v === true ? true : v === false ? false : null; }
 
+  /* Una data come aaaa-mm-gg, o niente. Le date arrivano dal database già in
+     questa forma, e confrontate come TESTO si ordinano da sole: niente fusi
+     orari, niente `new Date()` che sposta di un giorno a seconda dell'ora. */
+  function giorno(v) {
+    var m = /^(\d{4}-\d{2}-\d{2})/.exec(testo(v));
+    return m ? m[1] : null;
+  }
+
+  /* `giorniDopo('2026-09-25', 30)` → '2026-10-25'.
+
+     TUTTO IN UTC, e non è pignoleria. Facendo i conti con l'ora locale, il
+     giorno in cui cambia l'ora legale dura 23 o 25 ore, e «oggi più 30» può
+     uscire il 24 o il 26. Una finestra «entro 30 giorni» che ne prende 29
+     lascia fuori una polizza in scadenza — cioè un cliente che nessuno
+     richiama, e nessuno se ne accorge perché il numero esce lo stesso.
+
+     La prima versione si difendeva mettendo l'orario a mezzogiorno. Funziona,
+     ma protegge un calcolo fragile invece di renderlo solido — e una prova
+     lanciata in UTC (come il nostro contenitore) non può nemmeno accorgersi
+     se qualcuno toglie quel mezzogiorno. In UTC non esiste ora legale: il
+     conto è sempre lo stesso, ovunque giri. */
+  function giorniDopo(dal, n) {
+    var g = giorno(dal); if (!g) return null;
+    var p = g.split('-');
+    var t = Date.UTC(+p[0], +p[1] - 1, +p[2]) + Number(n || 0) * 86400000;
+    return new Date(t).toISOString().slice(0, 10);
+  }
+
   var CAMPI_COPERTURA = [
     { k: 'comune',                e: 'Comune',              pieno: function (r) { return !!testo(r.comune); } },
     { k: 'data_nascita',          e: 'Età',                 pieno: function (r) { return eta(r.data_nascita) != null; } },
@@ -108,7 +136,11 @@
     var oggi = extra.oggi || null;
 
     var comuni = (f.comuni || []).map(chiave).filter(Boolean);
+    var province = (f.province || []).map(chiave).filter(Boolean);
     var rami = (f.rami || []).map(chiave).filter(Boolean);
+    var senzaRami = (f.senzaRami || []).map(chiave).filter(Boolean);
+    var compagnie = (f.compagnie || []).map(chiave).filter(Boolean);
+    var senzaCompagnie = (f.senzaCompagnie || []).map(chiave).filter(Boolean);
     var cerca = chiave(f.testoNote);
 
     return (righe || []).filter(function (r) {
@@ -132,13 +164,85 @@
       if (f.conNote === true && !testo(r.note)) return false;
       if (cerca && chiave(r.note).indexOf(cerca) < 0) return false;
       if (membriGruppo && !membriGruppo.has(testo(r.id))) return false;
+      if (province.length) {
+        var pv = chiave(r.res_dich_provincia || r.provincia);
+        if (province.indexOf(pv) < 0) return false;
+      }
+
+      /* ── QUELLO CHE IL CLIENTE HA, E QUELLO CHE NON HA ─────────────────────
+         Le polizze si leggono UNA volta sola: servono a sei filtri diversi, e
+         rileggerle sei volte per 2.500 clienti si sente. */
+      var pz = perCliente[testo(r.id)] || [];
+
       if (rami.length) {
-        var pz = perCliente[testo(r.id)] || [];
         var ha = pz.some(function (p) {
           return rami.indexOf(chiave(p.modulo || p.prodotto)) >= 0;
         });
         if (!ha) return false;
       }
+
+      /* L'ASSENZA, ed è il filtro che vale di più: è lì che sta la vendita.
+         «Auto SENZA casa», «RCA senza infortuni», «clienti senza previdenza».
+         Si compone con `rami`: rami=[auto] + senzaRami=[casa] vuol dire «ha
+         l'auto e non ha la casa».
+
+         UN CASO CHE SEMBRA UGUALE E NON LO È: un cliente senza NESSUNA polizza
+         passa questo filtro, perché è vero che non ha la casa. Se non lo si
+         vuole, si mette anche `rami`. Da solo, `senzaRami` risponde alla
+         domanda che gli è stata fatta e non a un'altra che pareva sottintesa. */
+      if (senzaRami.length) {
+        var haVietato = pz.some(function (p) {
+          return senzaRami.indexOf(chiave(p.modulo || p.prodotto)) >= 0;
+        });
+        if (haVietato) return false;
+      }
+
+      if (compagnie.length) {
+        var haComp = pz.some(function (p) { return compagnie.indexOf(chiave(p.compagnia)) >= 0; });
+        if (!haComp) return false;
+      }
+      if (senzaCompagnie.length) {
+        var haCompVietata = pz.some(function (p) { return senzaCompagnie.indexOf(chiave(p.compagnia)) >= 0; });
+        if (haCompVietata) return false;
+      }
+
+      /* LA SCADENZA: basta UNA polizza che scade nella finestra. Si misura da
+         `oggi`, che arriva da fuori e non da `new Date()`: così la stessa
+         domanda dà la stessa risposta anche fra sei mesi, in una prova. */
+      if (f.scadenzaEntroGiorni != null) {
+        if (!oggi) return false;              // senza data di riferimento non si può dire
+        var limite = giorniDopo(oggi, f.scadenzaEntroGiorni);
+        var inScadenza = pz.some(function (p) {
+          var s = giorno(p.data_scadenza);
+          return s && s >= oggi && s <= limite;
+        });
+        if (!inScadenza) return false;
+      }
+      if (f.scadute === true) {
+        if (!oggi) return false;
+        var haScaduta = pz.some(function (p) {
+          var s = giorno(p.data_scadenza);
+          return s && s < oggi;
+        });
+        if (!haScaduta) return false;
+      }
+
+      /* IL PREMIO: la somma di quelli annui del cliente. Le polizze che non
+         dichiarano il premio NON valgono zero — sarebbe una fascia sbagliata —
+         restano fuori dalla somma, e un cliente di cui non si sa niente non
+         entra in nessuna fascia invece di entrare in quella più bassa. */
+      if (f.premioDa != null || f.premioA != null) {
+        var somma = 0, visti = 0;
+        pz.forEach(function (p) {
+          var v = Number(p.premio_annuo);
+          if (p.premio_annuo != null && p.premio_annuo !== '' && !isNaN(v)) { somma += v; visti++; }
+        });
+        if (!visti) return false;
+        somma = Math.round(somma * 100) / 100;
+        if (f.premioDa != null && somma < f.premioDa) return false;
+        if (f.premioA != null && somma > f.premioA) return false;
+      }
+
       if (f.soloClienti === true && r.lead === true) return false;
       if (f.soloLead === true && r.lead !== true) return false;
       return true;
@@ -223,6 +327,7 @@
   var API = {
     CAMPI_COPERTURA: CAMPI_COPERTURA, COLONNE: COLONNE,
     testo: testo, chiave: chiave, eta: eta, tri: tri,
+    giorno: giorno, giorniDopo: giorniDopo,
     copertura: copertura, filtra: filtra, recapiti: recapiti,
     perCampagna: perCampagna, righeEsporta: righeEsporta, csv: csv,
   };

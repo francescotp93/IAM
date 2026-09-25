@@ -60,6 +60,15 @@
 (function () {
   'use strict';
 
+  /* La regola che decide se una rata ha portato soldi sta in un posto solo,
+     ed è lo stesso per tutte le compagnie: `pagamento-rata.js`. Qui si prende
+     com'è scritto nell'SSF, che carica l'anagrafica allo stesso modo. */
+  var pag = (function () {
+    if (typeof window !== 'undefined' && window.PagamentoRata) return window.PagamentoRata;
+    if (typeof require === 'function') { try { return require('./pagamento-rata.js'); } catch (e) { return null; } }
+    return null;
+  })();
+
   var TIPI = {
     '0':  'testata',
     '10': 'anagrafiche',
@@ -869,6 +878,15 @@
 
       var i2 = incPerRif[String(t.riferimento_incasso || '').trim()] || null;
       var tp = tipoRata(t.tipo);
+      /* La prova dell'incasso è il record 80 della compagnia, con la sua data.
+         `t.incassato_il` è la data che la rata porta addosso (c22/c24) e
+         combacia con quella del record 80 su 14 rate su 14: vale come
+         movimento solo se il record c'è, altrimenti è di nuovo un'etichetta. */
+      var pg = pag.decide({
+        incassoContabile: i2 ? (i2.data || t.incassato_il) : null,
+        dichiaratoPagato: /incassat|pagat/i.test(String(t.stato || '')),
+        dichiaratoSospeso: /sospes/i.test(String(t.stato || '')),
+      }, null);
       if (!tp.noto && tp.originale) tipiIgnoti[tp.originale] = (tipiIgnoti[tp.originale] || 0) + 1;
 
       titoli.push({
@@ -884,11 +902,41 @@
            «Appunti Incassi» della compagnia. Per due giorni ho scritto il
            contrario, e ogni rata entrava senza. */
         provvigione: t.provvigione,
-        stato: /incassat/i.test(String(t.stato || '')) ? 'incassato' : 'aperto',
+        /* LO STATO VIENE DAL MOVIMENTO, NON DALLA PAROLA. Prima qui c'era
+           `/incassat/i.test(t.stato)`: si guardava l'etichetta scritta sulla
+           rata invece del record di incasso della compagnia. Sul file del
+           22/09/2026 le due cose coincidevano — 12 rate incassate, 12 con
+           l'incasso in allegato — quindi il difetto non si vedeva. È
+           esattamente il modo in cui un difetto arriva in produzione.
+           La regola sta tutta in `pagamento-rata.js`, ed è la stessa dell'SSF. */
+        stato: pag.versoStato(pg.pagamento),
+        pagamento: pg.pagamento,
+        pagamento_dichiarato_senza_incasso: pg.dichiaratoSenzaIncasso || false,
         mezzo_pagamento: i2 ? mezzoNostro(i2.mezzo) : null,
         incassato_il: t.incassato_il || (i2 ? i2.data : null),
         note: tp.originale ? ('HDI: ' + tp.originale + '.') : null,
       });
+    });
+
+    /* LA POLIZZA SEGUE LE SUE RATE. Fino al 25/09/2026 qui restava
+       `stato_pagamento: null`, cioè «non pagato» per il valore predefinito
+       della colonna: in archivio ci sono 18 polizze HDI che dicono «non
+       pagato» mentre 12 delle loro rate sono incassate. Chi guardava la
+       polizza vedeva una cosa e chi guardava la rata ne vedeva un'altra.
+       La regola (un solo sospeso rende sospesa la polizza) sta nel motore. */
+    var pagPerPolizza = {};
+    titoli.forEach(function (t) {
+      if (!pagPerPolizza[t._polizza]) pagPerPolizza[t._polizza] = [];
+      pagPerPolizza[t._polizza].push(t.pagamento);
+    });
+    polizze.forEach(function (p) {
+      /* La rata punta alla polizza con `_polizza`, la polizza si chiama
+         `_fonte_id`: è la stessa stringa, ed è la sola chiave che le lega. */
+      var l = pagPerPolizza[p._fonte_id];
+      /* Senza rate nel file non si tocca: `null` vuol dire «non lo dico io»,
+         e lascia alla colonna il suo valore. Scrivere «non pagato» su una
+         polizza di cui questo estratto non parla sarebbe un'affermazione. */
+      p.stato_pagamento = (l && l.length) ? pag.statoPolizza(l) : null;
     });
 
     /* I CODICI DI CHI HA PRODOTTO, uno per riga, con quante polizze e quante

@@ -580,6 +580,14 @@ function mezzoDa(codice) {
     if (typeof require === 'function') { try { return require('./anagrafica.js'); } catch (e) { return null; } }
     return null;
   }
+  /* Idem per la regola che decide se una rata ha portato soldi: sta in
+     `pagamento-rata.js`, è la stessa per tutte le compagnie, e si cerca a
+     ogni chiamata per lo stesso motivo (l'ordine di caricamento). */
+  function motorePagamento() {
+    if (typeof window !== 'undefined' && window.PagamentoRata) return window.PagamentoRata;
+    if (typeof require === 'function') { try { return require('./pagamento-rata.js'); } catch (e) { return null; } }
+    return null;
+  }
   function nascitaDaCf(cf) {
     var M = motoreAnagrafica();
     if (!M || !cf) return null;
@@ -741,6 +749,29 @@ function mezzoDa(codice) {
   function versoTitolo(r, tipo) {
     var stato = String(r.STATO_SHARE || '').toUpperCase();
     var pagato = data(r.DT_PAG_CLIENTE);
+    /* La stessa regola dell'HDI, scritta in un posto solo. Qui non cambia il
+       risultato — l'SSF guardava già la data di pagamento e non l'etichetta —
+       ma aggiunge il terzo stato: `SP` diventa `sospeso` anche sulla RATA,
+       mentre prima quella distinzione viveva solo sulla polizza. Sono 51
+       polizze vere al 25/09/2026, e le loro rate finivano tutte in «aperto»
+       insieme a quelle di cui la compagnia non dice niente. */
+    var pag = motorePagamento();
+    /* LA DATA DA SOLA NON BASTA, e la prova «quello che la compagnia ha già
+       mandato non si duplica» me l'ha ricordato bruscamente: passando qui
+       `pagato` senza guardare lo stato, una rata da incassare in più
+       diventava incassata. Il motivo è che un titolo STORNATO si porta
+       dietro la data di pagamento di prima — è la data di quando era vivo, e
+       leggerla come un incasso vorrebbe dire contare due volte soldi
+       restituiti.
+       Quindi la data vale come movimento contabile solo quando la compagnia
+       dichiara il titolo pagato: è la stessa condizione che c'era prima di
+       questa modifica, e resta scritta qui invece che dentro al motore
+       perché è una regola del tracciato SSF, non una regola generale. */
+    var pg = pag ? pag.decide({
+      incassoContabile: (stato === 'P') ? pagato : null,
+      dichiaratoPagato: stato === 'P',
+      dichiaratoSospeso: stato === 'SP',
+    }, null) : null;
     return {
       _fonte_id: testo(r.ID_TITOLO_EXP) || testo(r.ID_TITOLO_INVIO),
       tipo: tipo,
@@ -752,7 +783,9 @@ function mezzoDa(codice) {
          cliente: uno stato senza una data è una promessa, e in contabilità
          non si incassa una promessa. Tutto il resto resta «aperto», che è la
          cosa vera: la rata c'è e non risulta pagata. */
-      stato: (stato === 'P' && pagato) ? 'incassato' : 'aperto',
+      stato: pg ? pg.stato : ((stato === 'P' && pagato) ? 'incassato' : 'aperto'),
+      pagamento: pg ? pg.pagamento : ((stato === 'P' && pagato) ? 'incassato' : 'da_incassare'),
+      pagamento_dichiarato_senza_incasso: pg ? !!pg.dichiaratoSenzaIncasso : false,
       mezzo_pagamento: mezzoDa(r.MEZZO_PAGAMENTO_CMP),
       incassato_il: pagato,
       note: null,

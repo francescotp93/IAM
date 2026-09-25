@@ -1174,6 +1174,107 @@ prova('l\'anteprima dice CHE COSA conta, e quanti restano fuori', () => {
     'non scrive da nessuna parte quanti restano fuori perché ci sono già: è l\'informazione che spiega la differenza');
 });
 
+/* ── IL PAGAMENTO VIENE DAL MOVIMENTO, NON DALL'ETICHETTA ────────────────────
+   Fino al 25/09/2026 qui si leggeva la PAROLA scritta sulla rata:
+   `/incassat/i.test(t.stato)`. Sul file del 22/09 le due cose coincidevano —
+   12 rate «incassate», 12 con l'incasso in allegato — quindi il difetto non
+   si vedeva. Ma un'etichetta e un movimento contabile non sono la stessa
+   cosa, e il giorno in cui si scollano è il giorno in cui l'agenzia crede di
+   aver incassato soldi che non ha. */
+
+prova('la rata è incassata quando c\'è il movimento della compagnia', () => {
+  const a = H.converti({
+    anagrafiche: [ANA({ id: 'c1' })], polizze: [POL({})], garanzie: [], sinistri: [], veicoli: [],
+    titoli: [TIT({ riferimento_incasso: 'INC-A' })],
+    incassi: [INC({ riferimento: 'INC-A', importo: 100 })], busta: {} });
+  const t = a.titoli[0];
+  deve(t.stato === 'incassato', 'stato: ' + t.stato);
+  deve(t.pagamento === 'incassato', 'pagamento: ' + t.pagamento);
+});
+
+prova('e NON lo è quando la rata lo dice ma l\'incasso non c\'è', () => {
+  /* `stato: 'Incassato'` è il valore predefinito del campione: qui c'è la
+     parola e manca il movimento. È il caso che prima passava. */
+  const a = H.converti({
+    anagrafiche: [ANA({ id: 'c1' })], polizze: [POL({})], garanzie: [], sinistri: [], veicoli: [],
+    titoli: [TIT({ riferimento_incasso: '', incassato_il: '2026-09-23', stato: 'Incassato' })],
+    incassi: [], busta: {} });
+  const t = a.titoli[0];
+  deve(t.stato !== 'incassato', 'la sola parola «Incassato» ha prodotto un incasso');
+  deve(t.pagamento !== 'incassato', 'pagamento: ' + t.pagamento);
+  deve(t.pagamento_dichiarato_senza_incasso === true,
+    'la rata non è stata marcata: la compagnia la dà per pagata e il movimento non c\'è');
+});
+
+prova('una rata che la compagnia dichiara sospesa diventa un sospeso', () => {
+  const a = H.converti({
+    anagrafiche: [ANA({ id: 'c1' })], polizze: [POL({})], garanzie: [], sinistri: [], veicoli: [],
+    titoli: [TIT({ riferimento_incasso: '', stato: 'Sospeso' })], incassi: [], busta: {} });
+  deve(a.titoli[0].pagamento === 'sospeso', 'pagamento: ' + a.titoli[0].pagamento);
+  /* E per la colonna del database resta «aperto»: il vincolo non ammette
+     «sospeso», e scriverlo farebbe fallire tutta l'importazione. */
+  deve(a.titoli[0].stato === 'aperto', 'stato: ' + a.titoli[0].stato);
+});
+
+prova('la polizza segue le sue rate, invece di dire sempre «non pagato»', () => {
+  /* In archivio ci sono 18 polizze HDI che dicono «non pagato» mentre 12
+     delle loro rate sono incassate: qui restava `stato_pagamento: null`. */
+  const a = H.converti({
+    anagrafiche: [ANA({ id: 'c1' })], polizze: [POL({ id: 'a1', numero: 'P1' })],
+    garanzie: [], sinistri: [], veicoli: [],
+    titoli: [TIT({ polizza_numero: 'P1', riferimento_incasso: 'INC-A' })],
+    incassi: [INC({ riferimento: 'INC-A', importo: 100 })], busta: {} });
+  deve(a.polizze[0].stato_pagamento === 'pagato', 'stato_pagamento: ' + a.polizze[0].stato_pagamento);
+});
+
+prova('e un solo sospeso basta a rendere sospesa la polizza', () => {
+  const a = H.converti({
+    anagrafiche: [ANA({ id: 'c1' })], polizze: [POL({ id: 'a1', numero: 'P1' })],
+    garanzie: [], sinistri: [], veicoli: [],
+    titoli: [
+      TIT({ progressivo: 'R1', polizza_numero: 'P1', riferimento_incasso: 'INC-A' }),
+      TIT({ progressivo: 'R2', polizza_numero: 'P1', riferimento_incasso: '', stato: 'Sospeso' }),
+    ],
+    incassi: [INC({ riferimento: 'INC-A', importo: 100 })], busta: {} });
+  deve(a.polizze[0].stato_pagamento === 'sospeso',
+    'il sospeso è stato coperto dall\'incasso dell\'altra rata: ' + a.polizze[0].stato_pagamento);
+});
+
+prova('una polizza di cui l\'estratto non porta rate non viene dichiarata', () => {
+  /* `null` vuol dire «non lo dico io» e lascia alla colonna il suo valore.
+     Scrivere «non pagato» su una polizza di cui questo file non parla
+     sarebbe un'affermazione, non una lettura. */
+  const a = H.converti({
+    anagrafiche: [ANA({ id: 'c1' })], polizze: [POL({ id: 'a1', numero: 'P1' })],
+    garanzie: [], sinistri: [], veicoli: [], titoli: [], incassi: [], busta: {} });
+  deve(a.polizze[0].stato_pagamento === null, 'stato_pagamento: ' + a.polizze[0].stato_pagamento);
+});
+
+prova('e sul file vero i conti restano quelli dell\'archivio', () => {
+  /* La prova che vale più di tutte le altre: la regola nuova, applicata al
+     file che Francesco ha caricato davvero, deve dare gli stessi numeri che
+     stanno in archivio — 12 rate incassate per 3.217,39 € su 3.944,39 €. Se
+     cambiassero, avrei spostato dei soldi senza accorgermene. */
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const a = H.converti(H.esamina(fs.readFileSync(percorso, 'utf8'), []));
+  const inc = a.titoli.filter(t => t.pagamento === 'incassato');
+  const euro = (l) => Math.round(l.reduce((s, t) => s + t.importo_lordo, 0) * 100) / 100;
+  deve(a.titoli.length === 13, 'le rate sono ' + a.titoli.length);
+  deve(inc.length === 12, 'le rate incassate sono ' + inc.length + ' invece di 12');
+  deve(euro(inc) === 3217.39, 'incassato ' + euro(inc) + ' € invece di 3217,39');
+  deve(euro(a.titoli) === 3944.39, 'totale ' + euro(a.titoli) + ' € invece di 3944,39');
+  /* E nessuna rata è «dichiarata pagata senza incasso»: su questo file la
+     parola e il movimento vanno d'accordo, ed è il motivo per cui il difetto
+     era invisibile. */
+  deve(a.titoli.filter(t => t.pagamento_dichiarato_senza_incasso).length === 0,
+    'su questo file la parola e il movimento dovrebbero coincidere');
+  /* Le polizze non dicono più tutte «non pagato». */
+  deve(a.polizze.filter(p => p.stato_pagamento === 'pagato').length === 12,
+    'le polizze pagate sono ' + a.polizze.filter(p => p.stato_pagamento === 'pagato').length);
+});
+
 /* ── esecuzione ─────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

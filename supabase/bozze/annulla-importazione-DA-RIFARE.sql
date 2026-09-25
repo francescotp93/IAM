@@ -1,3 +1,69 @@
+-- ╔═════════════════════════════════════════════════════════════════════════╗
+-- ║  NON ESEGUIRE. QUESTA BOZZA È ROTTA.                       25/09/2026  ║
+-- ╚═════════════════════════════════════════════════════════════════════════╝
+--
+--  Era finita in `supabase/migrations/` — cioè nella cartella che dice «questo
+--  va applicato» — per una distrazione mia: un `git add -A` l'ha portata dentro
+--  insieme a un'altra pubblicazione. Spostata qui, che è dove stanno le cose
+--  ancora da finire.
+--
+--  Sei revisori indipendenti l'hanno esaminata prima che la applicassi, ognuno
+--  con una lente diversa, e hanno trovato la stessa cosa da sei direzioni: così
+--  com'è NON FUNZIONA, e nei modi peggiori — quelli che non danno errore.
+--
+--  I TRE BLOCCHI, verificati sul database vero:
+--
+--    1. LA FUNZIONE NON PARTE. Legge `quote_titoli.aggiornato_il`, che non
+--       esiste. (quote_polizze ce l'ha, quote_titoli no.) Muore alla prima
+--       chiamata.
+--
+--    2. IL TASTO CANCELLEREBBE SEMPRE ZERO. Tutto si regge su
+--       `importazione_id`, ma `iam_importa_flusso` non lo scrive: il commento
+--       qui sotto racconta una modifica che non ho fatto. La colonna resterebbe
+--       vuota per sempre, il conto direbbe zero, e il verbale verrebbe comunque
+--       timbrato «annullata».
+--
+--    3. IL CANCELLO E LA SERRATURA NON COINCIDONO. Il controllo dei permessi
+--       chiede `iam_is_staff()`, ma le politiche di cancellazione delle tre
+--       tabelle chiedono `iam_is_admin()`. Un master passerebbe il controllo,
+--       la RLS gli cancellerebbe zero righe in silenzio, e il verbale direbbe
+--       «annullata». È il difetto peggiore dei tre: non dà errore, mente.
+--
+--  E SETTE COSE GRAVI, tutte della stessa famiglia — guardie che non guardano
+--  dove serve:
+--
+--    · le RATE aggiunte a polizze GIÀ in archivio non verrebbero né cancellate
+--      né contate (nell'ultima importazione SSF sono 323);
+--    · `iam_sospesi` non è guardata: sono soldi incassati dal cliente e non
+--      ancora versati;
+--    · i movimenti contabili agganciati alla RATA (`titolo_id`) sfuggono,
+--      perché le guardie guardano solo `polizza_id`;
+--    · `quote_preventivi_personalizzati` non è controllata e la sua chiave
+--      esterna è NO ACTION: invece di trattenere il cliente, farebbe fallire
+--      tutto l'annullamento;
+--    · la guardia su `quote_progetti_previdenziali` è cieca: la tabella ha RLS
+--      accesa e nessuna politica, quindi `not exists` è sempre vero mentre la
+--      cascata cancella davvero;
+--    · due chiavi esterne verso il cliente con SET NULL non sono nell'elenco;
+--    · il verbale si marca «annullata» anche quando non ha tolto niente, e il
+--      marchio è a senso unico: dopo non si riprova più.
+--
+--  COSA SERVE PER RIFARLA BENE
+--    · `security definer` con il controllo dei permessi scritto dentro, così il
+--      cancello e la serratura sono la stessa cosa, più `set search_path`;
+--    · cancellare le rate per `importazione_id`, non attraverso la polizza:
+--      è l'unico modo di prendere anche quelle finite su polizze preesistenti;
+--    · `iam_importa_flusso` che il verbale lo crea PRIMA e lo scrive su ogni
+--      riga (e per le righe già in archivio, nessun collegamento a occhio);
+--    · tutte le guardie mancanti, prese dallo schema e non dalla memoria;
+--    · il verbale si marca solo se ha davvero tolto qualcosa.
+--
+--  Il testo che segue resta come traccia del ragionamento — le cascate, il
+--  principio di non portarsi via il lavoro fatto dopo, la doppia conferma —
+--  che quello regge. È l'esecuzione a essere da rifare.
+--
+-- ═══════════════════════════════════════════════════════════════════════════
+
 -- ═══════════════════════════════════════════════════════════════════════════
 --  DISFARE UN'IMPORTAZIONE                                    (25/09/2026)
 --

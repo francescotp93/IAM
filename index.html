@@ -21071,74 +21071,6 @@ async function fluConferma() {
 }
 
 /* Il registro dei caricamenti: serve il giorno in cui un numero non torna. */
-/* ── DISFARE UN'IMPORTAZIONE (25/09/2026) ──────────────────────────────────
-   «Come cancello?» — Francesco, dopo aver caricato il portafoglio HDI con un
-   lettore che leggeva un terzo del file. Non si poteva: il registro elencava
-   le importazioni e non le disfaceva, e l'unica strada era che le cancellassi
-   io con una query sul database. Una cancellazione irreversibile deve stare
-   in mano a chi risponde dei dati.
-
-   PRIMA SI GUARDA, POI SI DECIDE — la stessa regola dell'anteprima. Il conto
-   arriva dal database, che è l'unico a sapere che cosa si è attaccato a quelle
-   righe da quando sono entrate: una polizza che ha già un movimento di cassa,
-   un cliente su cui qualcuno ha scritto una nota. Quelle NON si toccano, e il
-   messaggio dice quante sono rimaste indietro. */
-async function fluAnnulla(verbale, emittente) {
-  const box = document.getElementById('flu-esito');
-  if (!fluPuo()) return fluVietato(box);
-
-  let conto;
-  try {
-    const { data, error } = await db.rpc('iam_conta_annullabili', { p_verbale: verbale });
-    if (error) throw error;
-    conto = data || {};
-  } catch (e) {
-    alert('Non riesco a leggere che cosa verrebbe tolto: ' + (e.message || e));
-    return;
-  }
-
-  const tr = conto.trattenute || {};
-  const nulla = !conto.polizze && !conto.rate && !conto.clienti;
-  if (nulla) {
-    alert('Di questa importazione non resta niente da togliere.\n\n' +
-      (tr.polizze_trattenute || tr.clienti_trattenuti
-        ? (tr.polizze_trattenute || 0) + ' polizze e ' + (tr.clienti_trattenuti || 0) +
-          ' clienti restano perché nel frattempo ci si è attaccato qualcosa: un movimento di cassa, una nota, un preventivo. Quelli si tolgono a mano, uno per uno.'
-        : 'Le righe erano già state tolte, oppure questa importazione è precedente al registro delle righe (24/09/2026) e non si sa più quali fossero.'));
-    return;
-  }
-
-  const righe = [
-    (conto.clienti || 0) + ' client' + (conto.clienti === 1 ? 'e' : 'i'),
-    (conto.polizze || 0) + ' polizz' + (conto.polizze === 1 ? 'a' : 'e'),
-    (conto.rate || 0) + ' rat' + (conto.rate === 1 ? 'a' : 'e'),
-  ].join(', ');
-  const trattenute = (tr.polizze_trattenute || tr.clienti_trattenuti)
-    ? '\n\nRESTANO IN ARCHIVIO ' + (tr.polizze_trattenute || 0) + ' polizze e ' +
-      (tr.clienti_trattenuti || 0) + ' clienti: nel frattempo ci si è attaccato qualcosa (un movimento di cassa, una nota, un preventivo) e toglierli porterebbe via anche quello.'
-    : '';
-
-  if (!confirm('Tolgo dall\'archivio ' + righe + ' caricati da ' + (emittente || 'questa importazione') +
-      '.' + trattenute + '\n\nNON SI TORNA INDIETRO.\n\nProcedo?')) return;
-
-  /* La seconda domanda non è burocrazia: la prima si può premere per inerzia,
-     e qui si cancellano clienti veri. */
-  const parola = prompt('Per confermare, scrivi ANNULLA in maiuscolo.');
-  if (parola !== 'ANNULLA') { if (parola !== null) alert('Non ho toccato niente.'); return; }
-
-  try {
-    const { data, error } = await db.rpc('iam_annulla_importazione', { p_verbale: verbale, p_conferma: 'ANNULLA' });
-    if (error) throw error;
-    const d = data || {};
-    try { logMovimento('Importazione annullata · ' + (emittente || '') + ' · ' +
-      (d.clienti || 0) + ' clienti, ' + (d.polizze || 0) + ' polizze, ' + (d.rate || 0) + ' rate', 'documento', ''); } catch (e) {}
-    alert('Tolti ' + (d.clienti || 0) + ' clienti, ' + (d.polizze || 0) + ' polizze e ' + (d.rate || 0) + ' rate.');
-    fluRegistro();
-  } catch (e) {
-    alert('Non sono riuscito a disfare l\'importazione: ' + (e.message || e) + '\n\nNiente è stato tolto a metà: o tutto o niente.');
-  }
-}
-
 async function fluRegistro() {
   const el = document.getElementById('flu-registro');
   if (!el) return;
@@ -21165,9 +21097,8 @@ async function fluRegistro() {
         <span class="tk-badge st-risolto">${c.polizze_scritte || 0} polizze</span>
         <span class="tk-badge st-risolto">${c.titoli_scritti || 0} rate</span>
         ${c.annullata
-          ? `<span class="tk-badge st-aperto" title="Disfatta il ${esc(new Date(c.annullata_il).toLocaleString('it-IT'))}">annullata · tolte ${c.annullate_polizze || 0} polizze</span>`
-          : `<button class="rin-az" onclick="fluAnnulla('${esc(r.id)}','${esc(r.emittente || '')}')"
-               title="Toglie dall'archivio quello che questa importazione ha scritto"><i class="ti ti-arrow-back-up"></i> Annulla</button>`}
+          ? `<span class="tk-badge st-aperto">annullata${c.annullate_polizze ? ' · tolte ' + c.annullate_polizze + ' polizze' : ''}</span>`
+          : ''}
       </div></div>`;
   }).join('');
 }

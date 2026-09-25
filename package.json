@@ -4,5 +4,21 @@
   "type": "module",
   "scripts": {
     "start": "node scraper/health.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@supabase/supabase-js": "^2.117.2",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
+    "express": "^4.22.3",
+    "imapflow": "^2.0.7",
+    "jose": "^6.2.12",
+    "mailparser": "^3.9.28",
+    "nodemailer": "^10.0.10"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   }
 }

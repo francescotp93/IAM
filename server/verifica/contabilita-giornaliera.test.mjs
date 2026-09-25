@@ -380,6 +380,98 @@ prova('i centesimi non si perdono per strada', () => {
   deve(a.totale === 0.3, '0,10 + 0,20 fa ' + a.totale);
 });
 
+/* ── I MEZZI VERI DEL DATABASE ───────────────────────────────────────────────
+   Queste prove nascono da un difetto che quelle QUI SOPRA non potevano
+   vedere, perché usano valori scritti a mano («Contante», «Pos»). Il database
+   scrive `carta_credito`, `pos_bianco`, `altro`: parole che vengono da un
+   vincolo, non da come uno le ha digitate.
+
+   Il motore non le riconosceva. Il 23/09/2026 erano due mezzi su cinque:
+   quelle rate finivano fra i «non si riesce ad attribuire», il netto del
+   giorno usciva incompleto, e la schermata dava la colpa a un dato che invece
+   era scritto benissimo.
+
+   L'elenco è copiato da `select distinct mezzo_pagamento from quote_titoli`,
+   non dalla memoria. Se domani ne compare uno nuovo, questa prova deve
+   diventare rossa: è il suo mestiere. */
+const MEZZI_DEL_DATABASE = [
+  ['contante', 'Contante'], ['pos', 'POS'], ['bonifico', 'Bonifico'],
+  ['carta_credito', 'Carta di credito'], ['paypal', 'PayPal'],
+  ['prepagata', 'Carta prepagata'], ['altro', 'Altro'],
+  ['pos_bianco', 'POS bianco'], ['pos_nero', 'POS nero'],
+  ['assegno', 'Assegno'], ['domiciliazione', 'Domiciliazione (SDD)'],
+];
+
+prova('ogni mezzo che il database scrive viene riconosciuto', () => {
+  /* Senza conti: si misura il motore, non la configurazione dell'agenzia. */
+  const muti = MEZZI_DEL_DATABASE.filter(([v]) => !C.classificaMezzo(v, []).noto);
+  deve(muti.length === 0, 'non riconosciuti: ' + muti.map(([v]) => v).join(', '));
+});
+
+prova('e lo chiama col suo nome, non col codice del database', () => {
+  const storti = MEZZI_DEL_DATABASE
+    .filter(([v, atteso]) => C.classificaMezzo(v, []).etichetta !== atteso)
+    .map(([v, atteso]) => v + ' dà «' + C.classificaMezzo(v, []).etichetta + '» invece di «' + atteso + '»');
+  deve(storti.length === 0, storti.join(' · '));
+});
+
+prova('scritto a mano o scritto dal database, è la STESSA colonna', () => {
+  /* Se «contanti» e `contante` fanno due chiavi diverse, il foglio mostra due
+     mezze colonne di contante e nessuna delle due quadra col cassetto. */
+  const coppie = [['contanti', 'contante'], ['carta di credito', 'carta_credito'],
+    ['CARTA DI CREDITO', 'carta_credito'], ['pos bianco', 'pos_bianco'], ['sdd', 'domiciliazione']];
+  const rotte = coppie.filter(([a, b]) => C.classificaMezzo(a, []).chiave !== C.classificaMezzo(b, []).chiave);
+  deve(rotte.length === 0, 'finiscono in colonne diverse: ' + rotte.map(c => c.join(' ≠ ')).join(' · '));
+});
+
+prova('un nome di persona resta «non si sa», non diventa un mezzo', () => {
+  /* È il verso pericoloso. Se il motore si mettesse a riconoscere tutto, il
+     sospeso di un collaboratore entrerebbe in cassa come se fosse incassato. */
+  const r = C.classificaMezzo('Giuseppe Verdi', []);
+  deve(r.noto === false, 'un nome proprio è stato preso per un mezzo: ' + r.etichetta);
+});
+
+prova('il conto dell\'agenzia batte il vocabolario', () => {
+  /* `contante` è una parola nota, ma se l'agenzia ha un conto che dichiara di
+     raccoglierlo, la riga deve finire su QUEL conto: è lì che Francesco andrà
+     a cercarla. */
+  const conti = [{ id: 'hdi', nome: 'CONTO CORRENTE HDI', mezzi: ['contante', 'pos', 'bonifico'] }];
+  const r = C.classificaMezzo('contante', conti);
+  deve(r.chiave === 'hdi' && r.etichetta === 'CONTO CORRENTE HDI',
+    'il conto non ha vinto: ' + r.chiave + ' / ' + r.etichetta);
+});
+
+prova('e il sospeso di un collaboratore resta un sospeso', () => {
+  const conti = [{ id: 'mario', nome: 'Mario Rossi', e_conto_sospeso: true }];
+  const r = C.classificaMezzo('Mario Rossi', conti);
+  deve(r.noto === true && r.sospeso === true, 'noto:' + r.noto + ' sospeso:' + r.sospeso);
+});
+
+prova('la casella vuota resta vuota: non diventa «Altro»', () => {
+  /* Il verso sbagliato più tentante. «Altro» è una scelta che qualcuno ha
+     fatto; il vuoto è una casella che nessuno ha compilato. Confonderli fa
+     sparire il problema invece di mostrarlo. */
+  const vuoto = C.classificaMezzo('', []);
+  const altro = C.classificaMezzo('altro', []);
+  deve(vuoto.noto === false && altro.noto === true, 'vuoto:' + vuoto.noto + ' altro:' + altro.noto);
+});
+
+prova('una giornata coi mezzi veri non lascia fuori niente', () => {
+  /* La prova d'insieme, sui valori del 23/09/2026: cinque mezzi, cinque
+     colonne, nessun «non attribuito». Prima della correzione ne restavano
+     fuori due su cinque. */
+  const a = C.appunti({ giorno: '2026-09-23', conti: [], righe: [
+    R({ data: '2026-09-23', importo: 100, mezzo: 'contante' }),
+    R({ data: '2026-09-23', importo: 200, mezzo: 'pos' }),
+    R({ data: '2026-09-23', importo: 300, mezzo: 'bonifico' }),
+    R({ data: '2026-09-23', importo: 400, mezzo: 'carta_credito' }),
+    R({ data: '2026-09-23', importo: 500, mezzo: 'altro' }),
+  ]});
+  deve(a.nonAttribuiti.quante === 0, a.nonAttribuiti.quante + ' pagamenti restano non attribuiti');
+  deve(a.perMezzo.length === 5, 'le colonne sono ' + a.perMezzo.length + ' invece di 5');
+  deve(a.netto === 1500, 'il netto fa ' + a.netto + ' invece di 1500');
+});
+
 /* ── esecuzione ─────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

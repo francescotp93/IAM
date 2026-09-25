@@ -134,7 +134,7 @@ i numeri si credono.
 
 ---
 
-## 6. La decisione che non posso prendere io
+## 6. La decisione, presa il 25/09/2026
 
 **Oggi «IAM» sono due applicazioni separate.** Sette dei dieci moduli
 della prima milestone — clienti, polizze, portafoglio, HDI, Prima,
@@ -158,13 +158,30 @@ gestionale centrale» diventa vera dal punto di vista di chi lo usa.
 **(c) Si sposta solo il minimo**: la scheda cliente unificata e le
 scadenze dentro IAM, il resto dov'è. Via di mezzo.
 
-**La mia raccomandazione è (b)**, e poi (c) per la scheda cliente. Il
-motivo non è la comodità: è che (a) rimanderebbe di mesi ogni altro
-lavoro su un file da 33.000 righe, e i moduli che servono davvero — Prima,
-i sospesi, la documentazione — non aspettano.
+### ▶ Francesco ha scelto la (b): un nome solo, due moduli.
 
-*Questa decisione resta aperta finché Francesco non risponde. Nel
-frattempo si lavora su P0 e P1, che non dipendono da essa.*
+Quindi, e da qui in avanti vale questo:
+
+- **«IAM» è il nome dell'intero gestionale**, non di una delle due
+  applicazioni. Chi ci lavora deve vedere un prodotto solo.
+- Dentro ci sono due moduli: **Portafoglio** (oggi `index.html`, con
+  clienti, polizze, scadenze, documentazione, CRM·Analisi, foglio cassa,
+  importazione flussi) e **Gestione** (oggi `iam/index.html`, con
+  contabilità, intermediari, KPI, work diary).
+- Serve **un menu comune** che passi dall'uno all'altro senza far
+  ricaricare l'identità: la sessione è già condivisa, quindi è lavoro di
+  navigazione, non di autenticazione.
+- **Non si spostano pagine fra i due file.** È la ragione della scelta:
+  muovere migliaia di righe fra due monoliti rimanderebbe di mesi Prima,
+  i sospesi e la documentazione, che sono le cose che servono davvero.
+- La scheda cliente unificata — tutte le polizze di tutte le compagnie
+  in una riga — resta il pezzo che vale di più, e si fa **dentro il
+  modulo Portafoglio**, dove i dati già stanno.
+
+Scartate: **(a)** IAM assorbe il portafoglio (migliaia di righe da
+muovere, rischio di regressione alto); **(c)** spostare solo scheda
+cliente e scadenze (metà del costo di (a) per un terzo del beneficio,
+e lascia il prodotto diviso lo stesso).
 
 ---
 

@@ -652,16 +652,31 @@ prova('le garanzie si cercano dove HDI le scrive, non solo dove le scrive l\'SSF
 });
 
 prova('il tacito rinnovo non si afferma quando non si sa', () => {
-  /* «Senza tacito rinnovo» era una frase stampata su tutte e diciotto le
-     polizze, non una lettura: il campo arriva vuoto dal flusso. */
+  /* LA COLONNA NON SA DIRE «NON SI SA». `quote_polizze.tacito_rinnovo` è
+     NOT NULL: la scrittura ci mette `false` anche quando il flusso non dice
+     niente, e sulla scheda `false` diventa «senza tacito rinnovo» — una
+     risposta a una domanda che nessuno ha fatto.
+
+     Il 25/09/2026 avevo provato a togliere il `coalesce(..., false)` dalla
+     funzione di scrittura. Non si può: il vincolo NOT NULL fa fallire ogni
+     importazione. (L'ho scoperto rompendola per qualche minuto.)
+
+     Quindi la verità si scrive accanto, in `dati`, e la scheda guarda prima
+     lì. Conta: il tacito rinnovo decide se una polizza si rinnova da sola. */
   const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
     veicoli: [], titoli: [], incassi: [], busta: {} });
-  deve(a.polizze[0].tacito_rinnovo === null, 'il flusso dichiara un tacito rinnovo che non ha letto');
+  deve(a.polizze[0].dati.tacito_non_dichiarato === true,
+    'la polizza non dice che la compagnia il tacito rinnovo non l\'ha dichiarato');
+
   const fs = require('fs');
   const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
-  deve(/tacito_rinnovo === true \? ' · tacito rinnovo'/.test(pagina),
-    'la scheda tratta «non si sa» come «no»');
-  deve(/non dichiarato dalla compagnia/.test(pagina), 'non c\'è il terzo caso');
+  /* La scheda deve guardare `dati` PRIMA del booleano: guardando solo il
+     booleano leggerebbe sempre «no», perché in archivio è sempre false. */
+  const i2 = pagina.indexOf('tacito_non_dichiarato');
+  const j2 = pagina.indexOf("p.tacito_rinnovo === false");
+  deve(i2 > 0 && j2 > 0 && i2 < j2,
+    'la scheda guarda il booleano prima della dichiarazione: leggerebbe «no» dove non c\'era risposta');
+  deve(/non dichiarato da/.test(pagina), 'non dice CHI non l\'ha dichiarato');
 });
 
 prova('cognome e nome si chiedono al codice fiscale, non allo spazio', () => {

@@ -784,6 +784,18 @@
         copertura_dal: p.effetto || null,
         copertura_al: p.scadenza || null,
         frazionamento: p.frazionamento || null,
+        /* IL TACITO RINNOVO: LA COLONNA NON SA DIRE «NON SI SA».
+           `quote_polizze.tacito_rinnovo` è NOT NULL, quindi un valore ce lo
+           deve avere per forza, e la scrittura ci mette `false`. Ma HDI il
+           tacito rinnovo non lo manda affatto — censite tutte le colonne del
+           record polizza — e `false`, letto sulla scheda, diventa «senza
+           tacito rinnovo»: una risposta a una domanda che nessuno ha fatto.
+
+           Non si può tenere vuota la colonna e non si deve mentire, quindi la
+           verità si scrive accanto, in `dati`, e la scheda guarda prima lì.
+           Conta: il tacito rinnovo decide se una polizza si rinnova da sola,
+           e detto «no» per sbaglio la manda nell'elenco delle cose da
+           richiamare — o, peggio, la fa scadere senza che nessuno chiami. */
         tacito_rinnovo: null,
         mezzo_pagamento: null,
         premio_annuo: p.premio_lordo != null ? p.premio_lordo : null,
@@ -805,6 +817,7 @@
              `dati.produttore` è neutro e vale per tutte le compagnie. */
           /* Da dove viene la data di emissione. `null` vorrebbe dire che l'ha
              mandata la compagnia; qui l'abbiamo ricavata noi, e si dice. */
+          tacito_non_dichiarato: true,
           emissione_derivata: p.effetto ? 'effetto' : null,
           emissione_non_inviata: true,
           produttore: p.produttore || null,

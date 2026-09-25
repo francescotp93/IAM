@@ -21,10 +21,16 @@
 
 ## Quadro d'insieme
 
-**961 prove superate su 68 suite; 16 suite rosse.** Delle 16:
-9 non partono perché manca `express` (P0 dipendenze), 2 hanno perso il
-riferimento storico contro cui confrontavano, 1 ha trovato un difetto
-vero, 1 fallisce su dati mancanti, 3 restano da triare.
+**1.111 prove superate su 68 suite; 4 suite rosse.**
+
+All'inizio dell'audit erano 961 e 16. Le dodici recuperate lo sono state
+dichiarando le dipendenze (P0), non toccando il codice: dodici suite
+sembravano a posto e non partivano affatto.
+
+Le quattro rimaste: `colonne-che-esistono` **è tornata verde** dopo la
+correzione del filtro per gruppo; restano `tracciabilita` (P1.3) e le
+due `parita-*` che confrontano contro un riferimento git che non esiste
+più (P2.4).
 
 ---
 
@@ -41,7 +47,7 @@ vero, 1 fallisce su dati mancanti, 3 restano da triare.
 | 7 | **Intermediari** | 🟡 | IAM | 17 collaboratori, suite `collaboratori` e `assegnazione` (47) verdi. Ma **6 codici produttore HDI non sono ancora abbinati a una persona**: quelle polizze sono in archivio senza intestatario |
 | 8 | **Documentazione** | ❔ | QUOTO | `quote_documenti` 9 righe, `quote_pratica_documenti` 1, `quote_regole_documenti` 1. Praticamente non usata. «Documenti mancanti / scaduti» è da verificare |
 | 9 | **Contabilità** | 🟡 | IAM | Vedi la sezione dedicata |
-| 10 | **CRM / segmentazione** | 🟡 | QUOTO+IAM | `crm-analisi` 31/31 verde, ma **il filtro per gruppo restituisce sempre zero** (difetto confermato). `iam_lead` e `quote_segmenti` sono vuote |
+| 10 | **CRM / segmentazione** | 🟡 | QUOTO+IAM | `crm-analisi` 33/33. Il filtro per gruppo è stato **corretto il 25/09**. Restano vuote `iam_lead` e `quote_segmenti`: lead e segmenti salvati non sono in uso |
 
 ---
 
@@ -94,9 +100,9 @@ dall'app. È un modulo con un buon motore e senza carburante.
 
 | # | pri | difetto | prova |
 |---|:--:|---|---|
-| 1 | **P0** | `package.json` non dichiara nessuna delle 12 dipendenze usate | 9 suite su 68 non partono |
+| ~~1~~ | ~~P0~~ | ~~`package.json` non dichiara nessuna delle 12 dipendenze~~ — **corretto il 25/09**: +150 prove, −12 suite rosse | |
 | 2 | **P1** | 5 tabelle con RLS accesa e zero politiche, di cui 3 con dati dentro | misurato su `pg_policies` |
-| 3 | **P1** | Il CRM chiede `quote_gruppi_membri.cliente_id`; la colonna è `anagrafica_id`. Il filtro per gruppo restituisce **sempre zero**, e il `catch` scrive solo in console | suite `colonne-che-esistono`, `index.html:11245` |
+| ~~3~~ | ~~P1~~ | ~~Il CRM chiede `quote_gruppi_membri.cliente_id`~~ — **corretto il 25/09**, con due prove nuove e cinque sabotaggi | |
 | 4 | **P1** | Suite `tracciabilita` rossa: «Manca il cliente dell'anagrafica», `Cannot read properties of undefined` | eseguita |
 | 5 | **P1** | 6 codici produttore HDI senza persona abbinata | A12556 (7 polizze), A12559 (5), A18544, A18545, A4346, A12558 |
 | 6 | **P2** | `parita-tariffe` e `parita-catastrofali` confrontano contro un riferimento git **che non esiste più** | «nessun commit contiene più `const TL_MYDRIVE`» |

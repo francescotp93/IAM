@@ -29,9 +29,27 @@
 --       la RLS gli cancellerebbe zero righe in silenzio, e il verbale direbbe
 --       «annullata». È il difetto peggiore dei tre: non dà errore, mente.
 --
---  E SETTE COSE GRAVI, tutte della stessa famiglia — guardie che non guardano
+--  E OTTO COSE GRAVI, tutte della stessa famiglia — guardie che non guardano
 --  dove serve:
 --
+--    · LA GUARDIA SULL'INCASSO CERCA NELLA TABELLA SBAGLIATA. Il controllo
+--      «questa rata l'ha già incassata qualcuno» va a vedere in
+--      `iam_incassi_rate`. Contato sul database vero: 2799 rate hanno
+--      `quote_titoli.incassato_il` valorizzato, e di quelle 2799 NESSUNA ha
+--      una riga in `iam_incassi_rate`. Cioè l'incasso oggi si registra solo
+--      scrivendo `incassato_il` e `stato` sulla riga della rata, e la tabella
+--      dove la guardia guarda è di fatto vuota. Risultato: Francesco importa,
+--      nei giorni dopo l'operatore incassa qualche rata e la segna nell'app,
+--      poi si disfa l'importazione — e quelle rate se ne vanno in silenzio,
+--      con dentro data, mezzo di pagamento, pagatore, collaboratore e
+--      provvigione. Soldi già entrati in agenzia di cui non resta scritto
+--      niente, e il verbale le conta fra le «annullate», non fra le
+--      «trattenute»: nessuno ha modo di accorgersene.
+--      Attenzione a come si ripara: `incassato_il` lo scrive anche
+--      l'importazione stessa, quindi «non nullo» da solo tratterrebbe pure le
+--      rate che erano già incassate nel file. Finché non si sa distinguere, la
+--      scelta prudente è trattenere qualunque rata con `incassato_il` valorizzato
+--      e lasciare che sia Francesco a decidere sui conteggi trattenuti;
 --    · le RATE aggiunte a polizze GIÀ in archivio non verrebbero né cancellate
 --      né contate (nell'ultima importazione SSF sono 323);
 --    · `iam_sospesi` non è guardata: sono soldi incassati dal cliente e non

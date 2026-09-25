@@ -67,11 +67,18 @@ Due prove nuove — `colonne-che-esistono` copriva solo metà del problema
 (che la colonna esista, non che sia la stessa che poi si legge).
 Cinque sabotaggi, cinque rossi; il secondo lo prende solo la prova nuova.
 
-### P1.3 · Suite `tracciabilita` rossa
-«Manca il cliente dell'anagrafica: ogni analisi…» e
-`Cannot read properties of undefined (reading 'parametri_usati')`.
-Da capire se è la prova a essere scritta su dati che non esistono più o
-il codice a essere rotto.
+### ~~P1.3 · Suite `tracciabilita` rossa~~ — **fatto 26/09/2026**
+Era la prova, non il codice. Rossa **dal 17 settembre**: quel giorno è
+entrata la regola «ogni analisi parte da un cliente dell'anagrafica» e
+il campione non è mai stato aggiornato. Nove giorni di rosso che nessuno
+ha guardato — lo stesso schema di `colonne-che-esistono`, che nel
+frattempo nascondeva un difetto vero.
+
+Tre prove rimesse in piedi, e due di loro dicevano il contrario di
+quello che il codice fa **adesso**, che è meglio: un riferimento storto
+viene rifiutato invece che azzerato in silenzio, e il foglio esce come
+PDF prima di essere archiviato. Una terza ritagliava un pezzo di file
+troppo largo e finiva dentro le funzioni di email e WhatsApp.
 
 ### P1.4 · Triare le tre suite rosse rimaste
 `esiti` (4 superate, 16 fallite), `otp-dalla-posta` (5/12),
@@ -222,6 +229,7 @@ indicazioni scritte nell'intestazione del file.
 |---|---|
 | 25/09/2026 | **Stato di pagamento dai flussi**: incassato/sospeso/da incassare deciso dal movimento della compagnia e non dall'etichetta; l'importazione aggiorna le rate già in archivio ma non tocca mai una correzione a mano. Verificato sul file vero (12 rate, 3.217,39 €) |
 | 25/09/2026 | **Le polizze HDI** dicevano tutte «non pagato» con 12 rate incassate |
+| 26/09/2026 | **`tracciabilita` torna verde**: era rossa dal 17/09 per un campione mai aggiornato. Restano 2 suite rosse su 71, e nessuna per un difetto dell'app |
 | 26/09/2026 | **I codici produttore nudi**: l'importazione li scartava se il flusso non portava un nome, e il tracciato HDI il nome non ce l'ha. Sei codici non arrivavano mai alla schermata che li decide |
 | 26/09/2026 | **Il vocabolario delle compagnie e dei rami**: `rca` e `auto` erano due rami diversi, «HDI» e «HDI Assicurazioni» due compagnie. «Polizza auto» trovava 15 polizze invece di 4.005 |
 | 26/09/2026 | **La ricerca per garanzia** («auto senza infortuni del conducente») e il filtro «ha note in anagrafica» |

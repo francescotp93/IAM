@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.48.0">
-<meta name="app-versione-nome" content="HDI: il tracciato porta il triplo di quello che leggevamo">
+<meta name="app-versione" content="0.49.0">
+<meta name="app-versione-nome" content="La data di emissione, le garanzie, cognome e nome">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -16273,9 +16273,15 @@ async function polDettaglio(id) {
     return;
   }
   if (!p) { document.getElementById('pol-bd').innerHTML = '<div class="empty-state">Polizza non trovata.</div>'; return; }
-  const ssf = (p.dati && p.dati.ssf) || {};
-  const gar = ssf.garanzie || [];
-  const v = ssf.veicolo;
+  const dati = p.dati || {};
+  const ssf = dati.ssf || {};
+  /* DUE TRACCIATI, DUE POSTI (25/09/2026). Lo Standard Share File annida tutto
+     sotto `dati.ssf`; HDI scrive alla radice, perché «ssf» è il nome di un
+     altro tracciato e scriverlo sopra i dati di HDI sarebbe una bugia. La
+     scheda guardava solo nel primo posto: le garanzie delle polizze HDI erano
+     in archivio, tutte e 63, e la scheda mostrava un vuoto. */
+  const gar = ssf.garanzie || dati.garanzie || [];
+  const v = ssf.veicolo || dati.veicolo;
 
   /* M1.3 (19/09/2026): il dettaglio deve bastare da solo — pagamento, rate in
      scadenza e produttore stanno QUI, non in tre pannelli da aprire uno dopo
@@ -16323,11 +16329,18 @@ async function polDettaglio(id) {
     </div>
     <div class="pol-griglia">
       ${riga('Emissione', `<input type="date" id="pol-emissione" value="${esc(p.data_emissione || '')}" onchange="polSalvaEmissione('${esc(p.id)}')" style="font:inherit;border:1px solid var(--line);border-radius:4px;padding:2px 4px">`
-          + (p.data_emissione ? '' : ' <span class="cl-sub">da indicare</span>'))}
+          + polEmissioneDaDove(p))}
       ${riga('Effetto → scadenza', polData(p.data_effetto) + ' → ' + (p.data_scadenza ? polData(p.data_scadenza) : '<span class="tk-badge st-aperto">da confermare</span>') + sosRigaScadenza(p))}
       ${sosRigaStato(p)}
       ${riga('Coperta fino al', ssf.scadenza_incassato ? polData(ssf.scadenza_incassato) : (p.copertura_al ? polData(p.copertura_al) : '—'))}
-      ${riga('Frazionamento', esc(p.frazionamento || '—') + (p.tacito_rinnovo ? ' · tacito rinnovo' : ' · senza tacito rinnovo'))}
+      ${riga('Frazionamento', esc(p.frazionamento || '—') + (
+          /* «Senza tacito rinnovo» era una frase stampata, non una lettura: il
+             campo arriva vuoto dal flusso di HDI e la scheda lo raccontava
+             come un fatto su tutte e diciotto le polizze. Adesso dice che non
+             si sa, che è un'altra cosa. */
+          p.tacito_rinnovo === true ? ' · tacito rinnovo'
+          : p.tacito_rinnovo === false ? ' · senza tacito rinnovo'
+          : ' · <span class="cl-sub">tacito rinnovo non dichiarato dalla compagnia</span>'))}
       ${riga('Premio', (p.premio_annuo != null ? 'annuo ' + pfEuro(p.premio_annuo) : '<span class="cl-sub">annuo da confermare</span>')
           + (p.premio_rata != null ? ' · rata ' + pfEuro(p.premio_rata) : ''))}
       ${riga('Come paga', (mezzo ? esc(mezzo) : '<span class="cl-sub">da indicare</span>')
@@ -16780,6 +16793,35 @@ const PF_MEZZI = (typeof window !== 'undefined' && window.FlussoSSF && window.Fl
 const pfMezzoNome = (id) => (typeof mezNome === 'function' ? mezNome(id) : null)
   || (PF_MEZZI.find(m => m.id === id) || {}).l || null;
 
+/* ── DA DOVE VIENE LA DATA DI EMISSIONE (25/09/2026) ───────────────────────
+   Tre risposte diverse, e finora ce n'era una sola.
+
+     · la manda la compagnia          → non si dice niente, è il caso normale
+     · l'abbiamo ricavata noi         → si dice da cosa, perché una data
+                                        derivata e taciuta diventa in sei mesi
+                                        una data che nessuno sa di aver scritto
+     · manca davvero                  → «da indicare», che è un invito a
+                                        riempirla
+
+   Il terzo caso, applicato a HDI, era sbagliato: chiedeva a Francesco di
+   riempire a mano diciotto caselle con un dato che la compagnia non manda e
+   non manderà. */
+function polEmissioneDaDove(p) {
+  const d = (p && p.dati) || {};
+  if (p && p.data_emissione) {
+    if (d.emissione_derivata === 'effetto') {
+      return ' <span class="cl-sub">dalla decorrenza — ' + esc(p.compagnia || 'la compagnia') +
+             ' non invia la data di emissione</span>';
+    }
+    return '';
+  }
+  if (d.emissione_non_inviata) {
+    return ' <span class="cl-sub">' + esc(p.compagnia || 'la compagnia') +
+           ' non invia la data di emissione</span>';
+  }
+  return ' <span class="cl-sub">da indicare</span>';
+}
+
 function pfMezzo(p) {
   const nome = pfMezzoNome(p.mezzo_pagamento);
   /* Quello che non si sa non si indovina: «da indicare» è un invito a
@@ -16931,7 +16973,10 @@ function pfRender() {
       <td><i class="ti ${ICON[p.modulo] || 'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(p.prodotto || p.modulo || '—')}
         ${p.compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.compagnia)}</div>` : ''}</td>
       <td style="font-size:12px">${pfData(p.data_effetto)} → ${scad}${avviso}
-        <div style="font-size:11px;color:var(--muted);margin-top:2px" class="pf-em">${p.data_emissione ? 'emessa il ' + pfData(p.data_emissione) : 'emissione da indicare'}</div></td>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" class="pf-em">${
+          p.data_emissione
+            ? 'emessa il ' + pfData(p.data_emissione) + ((p.dati && p.dati.emissione_derivata) ? ' (dalla decorrenza)' : '')
+            : ((p.dati && p.dati.emissione_non_inviata) ? 'emissione non inviata dalla compagnia' : 'emissione da indicare')}</div></td>
       <td><a href="#" onclick="event.preventDefault();event.stopPropagation();polPagamento('${p.id}')"
              title="Il pagamento: rate, mezzo, stato — e si corregge"
              style="color:var(--blue);font-weight:700;text-decoration:underline">${pfPremio(p)}</a>

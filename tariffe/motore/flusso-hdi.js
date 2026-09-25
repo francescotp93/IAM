@@ -237,6 +237,16 @@
   /* Sedici caratteri per una persona, undici cifre per una partita IVA.
      Tutto il resto non e' un codice fiscale, e soprattutto NON PUO' FARE DA
      CHIAVE: una chiave sbagliata non da' errore, fonde delle persone. */
+  function telefonoNudo(v) {
+    var t = String(v == null ? '' : v).replace(/[\s.\-/]/g, '');
+    if (!t) return null;
+    /* Solo l'Italia: +39 o 0039 davanti a un numero che comincia per 3 (i
+       cellulari) o per 0 (i fissi). Fuori da questi casi non si tocca niente:
+       tagliare tre cifre a un numero estero lo rompe. */
+    var m = /^(?:\+39|0039)(3\d{8,10}|0\d{5,10})$/.exec(t);
+    return m ? m[1] : t;
+  }
+
   function codiceFiscaleValido(v) {
     var k = String(v == null ? '' : v).trim().toUpperCase();
     return /^[A-Z0-9]{16}$/.test(k) || /^[0-9]{11}$/.test(k);
@@ -386,12 +396,26 @@
         riferimento_incasso: c(capo, 20),
         produttore: c(capo, 47),
         competenza: c(capo, 43),
-        importo: somma(39),
+        /* L'IMPORTO E' c39 PIU' c64, e il «piu'» toglie (25/09/2026).
+           La c39 e' il premio lordo di sezione; la c64 e' l'arrotondamento di
+           sezione, sempre negativo o zero, presente su tutte e 154 le righe.
+           Sommando la sola c39 l'importo combacia con quello davvero
+           incassato 5 volte su 14, e sulle altre 9 e' piu' alto da 0,71 a
+           5,86 €: 735,54 invece di 733,00, 605,86 invece di 600,00, 74,69
+           invece di 70,00. Sommando tutte e due: 14 su 14.
+
+           Non e' un dettaglio estetico. Una rata caricata a 735,54 quando il
+           cliente ne ha pagati 733,00 lascia in archivio un insoluto di 2,54 €
+           che non esiste — su ogni rata, per sempre, e sono proprio i soldi
+           che lo scadenzario esiste per inseguire. */
+        importo: cent(somma(39) + somma(64)),
         provvigione: somma(40),
         /* Da cosa e' fatta: serve a chi guarda una rata e vuole sapere quanto
            pesa l'RCA e quanto l'assistenza. */
         voci: rs.map(function (r) {
-          return { garanzia: c(r, 10), importo: euro(c(r, 39)), provvigione: euro(c(r, 40)) };
+          return { garanzia: c(r, 10), importo: cent(euro(c(r, 39)) + euro(c(r, 64))),
+                   premio_lordo: euro(c(r, 39)), arrotondamento: euro(c(r, 64)),
+                   provvigione: euro(c(r, 40)) };
         }),
         righe: rs.length,
         grezzo: capo,
@@ -684,7 +708,13 @@
         partita_iva: persona ? null : (cf || null),
         indirizzo: a.indirizzo || null, cap: a.cap || null,
         comune: a.comune || null, provincia: a.provincia || null,
-        cellulare: a.telefono || null, telefono: null,
+        /* IL TELEFONO ARRIVA COL PREFISSO ATTACCATO: «0039347…» su 11 numeri
+           su 13. Scritto così non combacia con lo stesso numero già in
+           archivio scritto nudo — fa doppioni — e non è cliccabile per
+           chiamare o per WhatsApp. Si toglie il prefisso italiano, e solo
+           quello: un numero straniero resta com'è, perché lì il prefisso è
+           parte del numero. */
+        cellulare: telefonoNudo(a.telefono), telefono: null,
         email: a.email || null, data_nascita: a.nato_il || null
       };
     });
@@ -914,7 +944,7 @@
     anagrafica: anagrafica, polizza: polizza, garanzia: garanzia,
     rate: rate, veicolo: veicolo, sinistro: sinistro, incasso: incasso,
     mezzoNostro: mezzoNostro, converti: converti,
-    pezzoCf: pezzoCf, dividiNome: dividiNome,
+    pezzoCf: pezzoCf, dividiNome: dividiNome, telefonoNudo: telefonoNudo,
     codiceFiscaleValido: codiceFiscaleValido,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

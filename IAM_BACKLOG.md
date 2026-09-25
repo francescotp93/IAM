@@ -187,10 +187,13 @@ indicazioni scritte nell'intestazione del file.
 
 ## P5 — funzioni nuove (non prima che P0 e P1 siano chiusi)
 
-- **P5.1 · Prima Assicurazioni nel portafoglio.** È un obiettivo
-  strategico dichiarato e oggi **non esiste**: zero polizze Prima in
-  archivio. Serve decidere da dove arrivano i dati (flusso, estrazione,
-  API) prima di scrivere una riga.
+- ~~**P5.1 · Prima Assicurazioni nel portafoglio.**~~ **Era già fatto, e
+  l'avevo scritto al contrario.** Prima è il **99,4% del portafoglio**:
+  4.073 polizze su 4.097, 2.477 clienti, dal maggio 2024. Avevo guardato
+  la tabella `prima_preventivi` (vuota, serve all'estensione dei
+  preventivi) invece della colonna `compagnia` delle polizze. Una
+  tabella vuota non dimostra che una funzione non c'è: dimostra che
+  quella tabella è vuota.
 - **P5.2** Segmenti **salvabili e riusabili**: i filtri adesso ci sono
   tutti, ma ogni ricerca va ricomposta a mano. `quote_segmenti` è pronta
   e vuota — è il passo che trasforma una ricerca in una campagna
@@ -207,6 +210,8 @@ indicazioni scritte nell'intestazione del file.
 |---|---|
 | 25/09/2026 | **Stato di pagamento dai flussi**: incassato/sospeso/da incassare deciso dal movimento della compagnia e non dall'etichetta; l'importazione aggiorna le rate già in archivio ma non tocca mai una correzione a mano. Verificato sul file vero (12 rate, 3.217,39 €) |
 | 25/09/2026 | **Le polizze HDI** dicevano tutte «non pagato» con 12 rate incassate |
+| 26/09/2026 | **Il vocabolario delle compagnie e dei rami**: `rca` e `auto` erano due rami diversi, «HDI» e «HDI Assicurazioni» due compagnie. «Polizza auto» trovava 15 polizze invece di 4.005 |
+| 26/09/2026 | **La ricerca per garanzia** («auto senza infortuni del conducente») e il filtro «ha note in anagrafica» |
 | 25/09/2026 | **Le ricerche sul portafoglio**: l'assenza («auto senza casa»), compagnia, provincia, scadenza e premio. Le otto domande del mandato ora rispondono tutte |
 | 25/09/2026 | **I tasti**: una prova controlla che tutti e 2.108 i gestori chiamino qualcosa che esiste. Nessun tasto morto |
 | 25/09/2026 | **Lo zoom con le dita** era bloccato in IAM; i campi vanno a 16px dove si tocca, così iOS non ingrandisce da solo |

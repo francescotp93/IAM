@@ -283,6 +283,8 @@ prova('ogni filtro che Francesco ha chiesto ha il suo campo', () => {
     'compagnia': 'ca-compagnia', 'provincia': 'ca-prov',
     'ma NON ha (l\'assenza)': 'ca-senza-ramo', 'scadenza': 'ca-scadenza',
     'premio da': 'ca-premio-da', 'premio a': 'ca-premio-a',
+    'ha la garanzia': 'ca-garanzia', 'ma NON la garanzia': 'ca-senza-garanzia',
+    'ha note in anagrafica': 'ca-con-note',
   };
   /* IL CAMPO DEVE ESISTERE SULLO SCHERMO, e si controlla solo la forma
      `id="ca-x"`. Prima bastava che il nome comparisse da qualche parte, anche
@@ -300,11 +302,32 @@ prova('e ogni campo a schermo è davvero collegato alla ricerca', () => {
   const i = PAGINA.indexOf('const righe = M.filtra(');
   deve(i > 0, 'non trovo la chiamata al filtro');
   const chiamata = PAGINA.slice(PAGINA.lastIndexOf('async function caCerca', i), PAGINA.indexOf('}, {', i));
-  const disegnati = [...new Set([...PAGINA.matchAll(/id="(ca-[a-z-]+)"/g)].map((m) => m[1]))]
-    .filter((x) => x !== 'ca-esito' && x !== 'ca-filtri');   // contenitori, non filtri
+  /* Solo i CAMPI, riconosciuti dal tag e non da un elenco di eccezioni: un
+     `<div>` è un contenitore e un `<datalist>` è un elenco di suggerimenti —
+     nessuno dei due si compila. Una lista di nomi da saltare, invece, cresce
+     ogni volta che si aggiunge qualcosa e prima o poi ci finisce dentro un
+     campo vero, che da quel momento non è più controllato da nessuno. */
+  const disegnati = [...new Set(
+    [...PAGINA.matchAll(/<(input|select|textarea)\b[^>]*\bid="(ca-[a-z-]+)"/g)].map((m) => m[2]))]
   const scollegati = disegnati.filter((id) => chiamata.indexOf("'" + id + "'") < 0);
   deve(scollegati.length === 0, 'campi disegnati e mai letti dalla ricerca: ' + scollegati.join(', '));
   return disegnati.length + ' campi, tutti collegati';
+});
+
+prova('i menu si costruiscono sui nomi unificati, non su quelli grezzi', () => {
+  /* Senza questo, il menu «Ha la polizza» mostra `rca` e `auto` come due voci
+     diverse — sono la stessa cosa scritta da due compagnie — e chi sceglie una
+     delle due ottiene metà delle polizze senza saperlo. Stessa storia per
+     «HDI» e «HDI Assicurazioni». */
+  const i = PAGINA.indexOf('function caDisegnaFiltri');
+  deve(i > 0, 'non trovo la funzione che disegna i filtri');
+  const corpo = PAGINA.slice(i, PAGINA.indexOf('function caPulisci', i));
+  deve(/ramoCanonico/.test(corpo), 'il menu dei rami non passa dal vocabolario');
+  deve(/compagniaCanonica/.test(corpo), 'il menu delle compagnie non passa dal vocabolario');
+  /* E non deve restare la vecchia strada accanto alla nuova: due menu
+     costruiti in due modi diversi sono peggio di uno costruito male. */
+  deve(!/map\(p => \(p\.modulo \|\| p\.prodotto \|\| ''\)\.trim\(\)\)/.test(corpo),
+    'c\'è ancora un menu costruito sui nomi grezzi');
 });
 
 prova('la pagina legge le colonne che i filtri nuovi richiedono', () => {
@@ -490,6 +513,83 @@ prova('giorniDopo non sbaglia il giorno per colpa dell\'ora', () => {
   deve(A.giorniDopo('2026-10-20', 20) === '2026-11-09', A.giorniDopo('2026-10-20', 20));  // oltre il cambio d'ora
   deve(A.giorniDopo('2026-02-27', 2) === '2026-03-01', A.giorniDopo('2026-02-27', 2));    // fine mese
   deve(A.giorniDopo('2026-12-31', 1) === '2027-01-01', A.giorniDopo('2026-12-31', 1));    // fine anno
+});
+
+
+/* ── IL VOCABOLARIO DELLE COMPAGNIE E DEI RAMI ───────────────────────────────
+   Misurato sul portafoglio vero il 25/09/2026: Prima scrive `rca`, HDI scrive
+   `auto`, e sono la stessa cosa. La compagnia compare come «HDI» e come «HDI
+   Assicurazioni». Finché non si mettono d'accordo, ogni filtro dà una
+   risposta sbagliata SENZA DIRLO:
+
+     · «clienti HDI» ne trovava 13 invece di 15
+     · «polizza auto» ne trovava 15 invece di 4.005
+     · «senza polizza casa» non si poteva nemmeno chiedere: il ramo `casa` non
+       esiste, quello che c'è si chiama `beni` */
+
+prova('«rca» e «auto» sono lo stesso ramo', () => {
+  deve(A.ramoCanonico('rca') === A.ramoCanonico('auto'), 
+    'rca=' + A.ramoCanonico('rca') + ' auto=' + A.ramoCanonico('auto'));
+  deve(A.stessoRamo('RCA', ' auto ') === true, 'maiuscole e spazi non devono contare');
+  deve(A.stessoRamo('rca', 'beni') === false, 'auto e casa sono stati accorpati');
+});
+
+prova('«HDI» e «HDI Assicurazioni» sono la stessa compagnia', () => {
+  deve(A.stessaCompagnia('HDI', 'HDI Assicurazioni') === true, 'restano due aziende diverse');
+  deve(A.stessaCompagnia('HDI', 'Prima') === false, 'HDI e Prima sono state accorpate');
+  deve(A.compagniaCanonica('PRIMA') === 'Prima', A.compagniaCanonica('PRIMA'));
+});
+
+prova('una compagnia che il vocabolario non conosce resta com\'è scritta', () => {
+  /* Il verso pericoloso sarebbe farne un mucchio «altro»: due compagnie nuove
+     e diverse combacerebbero, e una campagna andrebbe ai clienti di un\'altra. */
+  deve(A.compagniaCanonica('Zurigo Vita') === 'Zurigo Vita', A.compagniaCanonica('Zurigo Vita'));
+  deve(A.stessaCompagnia('Zurigo Vita', 'Generali') === false,
+    'due compagnie sconosciute sono state confuse fra loro');
+});
+
+prova('e il filtro usa il vocabolario, non il confronto esatto', () => {
+  /* È la prova che conta: le due scritture devono uscire INSIEME. */
+  const pz = {
+    '1': [{ modulo: 'rca',  compagnia: 'PRIMA' }],
+    '2': [{ modulo: 'auto', compagnia: 'HDI' }],
+    '3': [{ modulo: 'beni', compagnia: 'HDI Assicurazioni' }],
+  };
+  const q = (f) => A.filtra(GENTE, f, { polizzePerCliente: pz, oggi: '2026-09-25' }).map(x => x.id).sort().join(',');
+  deve(q({ rami: ['auto'] }) === '1,2', 'chiedendo «auto» non escono le `rca`: ' + q({ rami: ['auto'] }));
+  deve(q({ rami: ['rca'] }) === '1,2', 'e neanche il contrario: ' + q({ rami: ['rca'] }));
+  deve(q({ compagnie: ['HDI'] }) === '2,3', '«HDI» non prende «HDI Assicurazioni»: ' + q({ compagnie: ['HDI'] }));
+  deve(q({ senzaRami: ['auto'] }) === '3,4', 'l\'assenza non usa il vocabolario: ' + q({ senzaRami: ['auto'] }));
+});
+
+/* ── LE GARANZIE ─────────────────────────────────────────────────────────────
+   «Cliente senza una determinata garanzia nella polizza auto.» Le risolve il
+   database (5 MB di jsonb non si portano nel browser a ogni apertura) e qui
+   arrivano come elenchi di clienti. */
+
+prova('la garanzia tiene chi ce l\'ha e scarta chi non ce l\'ha', () => {
+  const con = new Set(['1', '2']);
+  const q = (extra) => A.filtra(GENTE, {}, { polizzePerCliente: {}, ...extra }).map(x => x.id).sort().join(',');
+  deve(q({ conGaranzia: con }) === '1,2', 'con garanzia: ' + q({ conGaranzia: con }));
+  deve(q({ senzaGaranzia: con }) === '3,4', 'senza garanzia: ' + q({ senzaGaranzia: con }));
+});
+
+prova('un elenco vuoto di garanzia non è «nessun filtro»', () => {
+  /* Se la ricerca nel database non trova nessuno, «chi ha quella garanzia»
+     deve essere NESSUNO — non «tutti». È la differenza fra una campagna a
+     zero persone e una a tutto il portafoglio. */
+  const q = (extra) => A.filtra(GENTE, {}, { polizzePerCliente: {}, ...extra }).map(x => x.id).join(',');
+  deve(q({ conGaranzia: new Set() }) === '', 'un elenco vuoto ha lasciato passare tutti');
+  deve(q({ senzaGaranzia: new Set() }) === '1,2,3,4', 'un «senza» vuoto ha tolto qualcuno');
+  deve(q({ conGaranzia: null }) === '1,2,3,4', 'null deve voler dire «filtro non chiesto»');
+});
+
+prova('«ha note in anagrafica» trova chi ha scritto qualcosa', () => {
+  /* Solo DELTA ha una nota nel campione. Non è la ricerca nel testo: è
+     «questo cliente ha una nota, qualunque essa sia». */
+  const q = (f) => A.filtra(GENTE, f, { polizzePerCliente: {} }).map(x => x.id).join(',');
+  deve(q({ conNote: true }) === '4', 'con note: ' + q({ conNote: true }));
+  deve(q({}) === '1,2,3,4', 'senza il filtro devono esserci tutti');
 });
 
 /* ── IL FILTRO PER GRUPPO CHIEDE E LEGGE LA STESSA COLONNA ───────────────────

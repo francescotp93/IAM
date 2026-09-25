@@ -46,12 +46,12 @@ a 16px dove si tocca).
 | 2 | **Polizze** | 🟡 | QUOTO | 4.097 righe. Le polizze HDI dichiaravano tutte «non pagato» con 12 rate incassate: **corretto il 25/09**. `quote_rinnovi` è vuota: il rinnovo non è in uso |
 | 3 | **Portafoglio** | 🟢 | QUOTO | 4.097 polizze + 3.218 rate, suite `produzione`, `provvigioni`, `estratto-conto`, `scadenzario` verdi |
 | 4 | **HDI** | 🟢 | QUOTO | Importazione PASS-133 verificata sul file vero: 11 clienti, 18 polizze, 13 rate, 3.944,39 €, 367,40 € di provvigioni — combaciano col file e con gli «Appunti Incassi» della compagnia. Suite `flusso-hdi` 75/75 |
-| 5 | **Prima Assicurazioni** | 🔴 | — | `prima_preventivi` e `prima_scrape_runs` sono **a zero righe**. Esistono `prima-extension/` e `prima-intermediari/`, ma nel portafoglio non c'è una sola polizza Prima. È un obiettivo dichiarato, non una funzione esistente |
+| 5 | **Prima Assicurazioni** | 🟢 | QUOTO | **CORREZIONE DEL 26/09: il 25 avevo scritto «non esiste, zero polizze». Era falso.** Avevo guardato `prima_preventivi` (vuota — serve ai preventivi dell'estensione) invece della colonna `compagnia` delle polizze. **Prima è il 99,4% del portafoglio: 4.073 polizze su 4.097, 2.477 clienti, dal 14/05/2024.** Rami `rca` e `beni`, garanzie complete su tutte |
 | 6 | **Scadenze** | 🟡 | QUOTO | Suite `scadenzario` 30/30 verde. Le finestre 7/30/60/90 giorni e «rinnovate / non rinnovate» sono **da verificare** contro la schermata |
 | 7 | **Intermediari** | 🟡 | IAM | 17 collaboratori, suite `collaboratori` e `assegnazione` (47) verdi. Ma **6 codici produttore HDI non sono ancora abbinati a una persona**: quelle polizze sono in archivio senza intestatario |
 | 8 | **Documentazione** | ❔ | QUOTO | `quote_documenti` 9 righe, `quote_pratica_documenti` 1, `quote_regole_documenti` 1. Praticamente non usata. «Documenti mancanti / scaduti» è da verificare |
 | 9 | **Contabilità** | 🟡 | IAM | Vedi la sezione dedicata |
-| 10 | **CRM / segmentazione** | 🟢 | QUOTO+IAM | `crm-analisi` **51/51**. Il 25/09 sono entrate le ricerche che mancavano — l'**assenza** («auto senza casa»), compagnia, provincia, scadenza, fascia di premio — e si compongono fra loro. Tutte e otto le domande del mandato ora rispondono. Restano vuote `iam_lead` e `quote_segmenti`: lead e segmenti *salvati* non sono in uso |
+| 10 | **CRM / segmentazione** | 🟢 | QUOTO+IAM | `crm-analisi` **59/59**. Il 26/09 sono entrate la ricerca **per garanzia** («auto senza infortuni del conducente»: 1.006 clienti veri), il filtro «ha note», e soprattutto il **vocabolario** che mette d'accordo le compagnie — senza, «polizza auto» trovava 15 polizze invece di 4.005. Prima: Il 25/09 sono entrate le ricerche che mancavano — l'**assenza** («auto senza casa»), compagnia, provincia, scadenza, fascia di premio — e si compongono fra loro. Tutte e otto le domande del mandato ora rispondono. Restano vuote `iam_lead` e `quote_segmenti`: lead e segmenti *salvati* non sono in uso |
 
 ---
 

@@ -283,10 +283,34 @@
     }
     /* Non è fra i conti. Se è una delle parole note dei mezzi, è cassa; se no,
        non si sa: potrebbe essere il nome di una persona (quindi un sospeso) o
-       un conto che nessuno ha ancora creato. Le due cose non si indovinano. */
-    var vocabolario = { contante: 1, contanti: 1, pos: 1, assegno: 1, assegni: 1, bonifico: 1,
-      incasso: 1, 'carta di credito': 1, prepagata: 1, paypal: 1, sdd: 1, domiciliazione: 1 };
-    if (vocabolario[k]) return { chiave: k, etichetta: MEZZI[k] || mezzo, sospeso: false, noto: true };
+       un conto che nessuno ha ancora creato. Le due cose non si indovinano.
+
+       PRIMA DI TUTTO, le chiavi di MEZZI: sono i valori che il database scrive
+       davvero in `quote_titoli.mezzo_pagamento`, e vengono da un vincolo, non
+       da come uno l'ha digitato. Mancavano, e costava caro: `carta_credito`,
+       `pos_bianco`, `pos_nero` e `altro` finivano fra i «non si riesce ad
+       attribuire». Sul 23/09/2026 erano 2 mezzi su 5 — il netto del giorno
+       usciva incompleto e la schermata dava la colpa a un dato che invece era
+       scritto benissimo. Il vocabolario qui sotto è il SECONDO tentativo: serve
+       per quello che si scrive a mano («contanti» al plurale, «sdd»). */
+    /* Il vocabolario di chi scrive a mano. Ogni parola porta alla chiave
+       canonica, non a se stessa: così «contanti» e `contante` finiscono nella
+       STESSA colonna invece di farne due mezze, e l'etichetta esce scritta
+       bene una volta sola. */
+    var vocabolario = {
+      contanti: 'contante', cash: 'contante',
+      assegni: 'assegno',
+      'carta di credito': 'carta_credito', 'carta credito': 'carta_credito', carta: 'carta_credito',
+      'carta prepagata': 'prepagata',
+      'pos bianco': 'pos_bianco', 'pos nero': 'pos_nero',
+      sdd: 'domiciliazione', rid: 'domiciliazione',
+      incasso: 'contante',
+    };
+    /* Ultimo tentativo: la stessa parola col trattino basso al posto dello
+       spazio. «carta di credito» scritto a mano e `carta_credito` scritto dal
+       database sono la stessa cosa, e distinguerli non aiuta nessuno. */
+    var canonica = vocabolario[k] || k.replace(/[\s-]+/g, '_');
+    if (MEZZI[canonica]) return { chiave: canonica, etichetta: MEZZI[canonica], sospeso: false, noto: true };
     return { chiave: k, etichetta: mezzo, sospeso: false, noto: false };
   }
 

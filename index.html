@@ -11183,7 +11183,12 @@ async function caCarica() {
   try {
     const [an, pz, gr] = await Promise.all([
       db.from('quote_anagrafiche').select('id,nominativo,comune,provincia,res_dich_comune,res_dich_provincia,data_nascita,email,cellulare,note,sposato,ha_figli,professione,condizione_lavorativa,intermediario_id,consenso_marketing,lead').limit(20000),
-      db.from('quote_polizze').select('cliente_id,modulo,prodotto').limit(20000),
+      /* LE COLONNE CHE SERVONO ALLE RICERCHE VERE. Fino al 25/09/2026 qui si
+         leggevano solo `modulo` e `prodotto`: compagnia, scadenza e premio non
+         arrivavano nemmeno, quindi «clienti Prima in scadenza fra 30 giorni»
+         non era una domanda che si potesse porre. Sono 4.097 righe con tre
+         colonne in più: si carica lo stesso in una volta sola. */
+      db.from('quote_polizze').select('cliente_id,modulo,prodotto,compagnia,data_scadenza,premio_annuo').limit(20000),
       db.from('quote_gruppi').select('id,nome'),
     ]);
     if (an.error) throw an.error;
@@ -11227,13 +11232,24 @@ function caDisegnaFiltri() {
   const st = 'padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font:inherit;font-size:13px;width:100%;box-sizing:border-box';
   const comuni = [...new Set((CA_ANAG || []).map(r => (r.res_dich_comune || r.comune || '').trim()).filter(Boolean))].sort();
   const moduli = [...new Set(Object.values(CA_POLIZZE).flat().map(p => (p.modulo || p.prodotto || '').trim()).filter(Boolean))].sort();
+  const province = [...new Set((CA_ANAG || []).map(r => (r.res_dich_provincia || r.provincia || '').trim()).filter(Boolean))].sort();
+  const compagnie = [...new Set(Object.values(CA_POLIZZE).flat().map(p => (p.compagnia || '').trim()).filter(Boolean))].sort();
 
   box.innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">'
     + caCampo('Comune di residenza', 'comune', '<select id="ca-comune" style="' + st + '"><option value="">Tutti</option>' + comuni.map(c => '<option>' + esc(c) + '</option>').join('') + '</select>')
+    + caCampo('Provincia', 'comune', '<select id="ca-prov" style="' + st + '"><option value="">Tutte</option>' + province.map(p => '<option>' + esc(p) + '</option>').join('') + '</select>')
     + caCampo('Età da', 'data_nascita', '<input id="ca-eta-da" type="number" min="0" max="120" placeholder="—" style="' + st + '">')
     + caCampo('Età a', 'data_nascita', '<input id="ca-eta-a" type="number" min="0" max="120" placeholder="—" style="' + st + '">')
-    + caCampo('Tipo di polizza', 'comune', '<select id="ca-ramo" style="' + st + '"><option value="">Tutte</option>' + moduli.map(m => '<option>' + esc(m) + '</option>').join('') + '</select>')
+    + caCampo('Compagnia', 'comune', '<select id="ca-compagnia" style="' + st + '"><option value="">Tutte</option>' + compagnie.map(c => '<option>' + esc(c) + '</option>').join('') + '</select>')
+    + caCampo('Ha la polizza', 'comune', '<select id="ca-ramo" style="' + st + '"><option value="">Qualunque</option>' + moduli.map(m => '<option>' + esc(m) + '</option>').join('') + '</select>')
+    /* IL CAMPO CHE VALE DI PIÙ, ed è il motivo per cui questa schermata serve:
+       «auto MA NON casa», «RCA senza infortuni», «clienti senza previdenza».
+       È lì che sta la vendita, ed è la domanda che prima non si poteva porre. */
+    + caCampo('…ma NON ha', 'comune', '<select id="ca-senza-ramo" style="' + st + '"><option value="">—</option>' + moduli.map(m => '<option>' + esc(m) + '</option>').join('') + '</select>')
+    + caCampo('Scade entro', 'comune', '<select id="ca-scadenza" style="' + st + '"><option value="">Indifferente</option><option value="7">7 giorni</option><option value="30">30 giorni</option><option value="60">60 giorni</option><option value="90">90 giorni</option><option value="scadute">Già scadute</option></select>')
+    + caCampo('Premio annuo da', 'comune', '<input id="ca-premio-da" type="number" min="0" step="10" placeholder="€ —" style="' + st + '">')
+    + caCampo('Premio annuo a', 'comune', '<input id="ca-premio-a" type="number" min="0" step="10" placeholder="€ —" style="' + st + '">')
     + caCampo('Professione', 'professione', '<input id="ca-prof" type="text" placeholder="contiene…" style="' + st + '">')
     + caCampo('Collaboratore', 'intermediario_id', '<input id="ca-collab" type="text" placeholder="id collaboratore" style="' + st + '">')
     + caCampo('Sposato', 'sposato', '<select id="ca-sposato" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No (dichiarato)</option></select>')
@@ -11245,7 +11261,8 @@ function caDisegnaFiltri() {
 }
 
 function caPulisci() {
-  ['ca-comune','ca-eta-da','ca-eta-a','ca-ramo','ca-prof','ca-collab','ca-sposato','ca-figli','ca-note','ca-gruppo']
+  ['ca-comune','ca-prov','ca-eta-da','ca-eta-a','ca-compagnia','ca-ramo','ca-senza-ramo',
+   'ca-scadenza','ca-premio-da','ca-premio-a','ca-prof','ca-collab','ca-sposato','ca-figli','ca-note','ca-gruppo']
     .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
   const b = document.getElementById('ca-esito'); if (b) b.innerHTML = '';
   CA_RISULTATO = null;
@@ -11289,15 +11306,29 @@ async function caCerca() {
     membri = new Set((data || []).map(x => String(x.anagrafica_id)));
   }
 
+  /* «Scade entro» tiene due domande diverse in un campo solo: una finestra in
+     avanti («entro 30 giorni») e una all'indietro («già scadute»). Si separano
+     qui e non nel motore, dove sono due filtri distinti — mescolarli lì
+     vorrebbe dire una regola che cambia significato a seconda del valore. */
+  const sc = g('ca-scadenza');
+
   const righe = M.filtra(CA_ANAG || [], {
     comuni: g('ca-comune') ? [g('ca-comune')] : [],
+    province: g('ca-prov') ? [g('ca-prov')] : [],
     etaDa: num(g('ca-eta-da')), etaA: num(g('ca-eta-a')),
+    compagnie: g('ca-compagnia') ? [g('ca-compagnia')] : [],
     rami: g('ca-ramo') ? [g('ca-ramo')] : [],
+    senzaRami: g('ca-senza-ramo') ? [g('ca-senza-ramo')] : [],
+    scadenzaEntroGiorni: (sc && sc !== 'scadute') ? Number(sc) : null,
+    scadute: sc === 'scadute' ? true : null,
+    premioDa: num(g('ca-premio-da')), premioA: num(g('ca-premio-a')),
     professione: g('ca-prof') || null,
     collaboratoreId: g('ca-collab') || null,
     sposato: tri(g('ca-sposato')), haFigli: tri(g('ca-figli')),
     testoNote: g('ca-note') || null,
-  }, { polizzePerCliente: CA_POLIZZE, membriGruppo: membri });
+    /* `oggi` arriva da qui e non da dentro al motore: la stessa domanda deve
+       dare la stessa risposta in una prova, anche fra sei mesi. */
+  }, { polizzePerCliente: CA_POLIZZE, membriGruppo: membri, oggi: new Date().toISOString().slice(0, 10) });
 
   CA_RISULTATO = righe;
   const rec = M.recapiti(righe);

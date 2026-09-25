@@ -79,13 +79,25 @@ il codice a essere rotto.
 deve **dirlo e saltare**, non fallire: una suite che fallisce per
 l'ambiente insegna a ignorare il rosso.
 
-### P1.5 · Sei codici produttore HDI senza persona
-A12556 (7 polizze), A12559 (5), A18544, A18545, A4346, A12558. Quelle
-polizze sono in archivio **senza intestatario**: non contano per nessun
-collaboratore, né in produzione né in provvigioni.
+### P1.5 · L'85% del portafoglio non ha un intestatario
+**3.494 polizze su 4.097** (85,3%), per **1.113.069 € di premio annuo**,
+non risalgono a nessun collaboratore. Su 23 codici produttore ne
+risultano decisi **due**.
 
-**Fatto quando**: ogni codice è abbinato, e le polizze risalgono alla
-persona giusta.
+Il 26/09 ho corretto il difetto che rendeva il problema più piccolo di
+quanto fosse: l'importazione registrava un codice solo se il flusso
+portava anche un nome, e il tracciato HDI il nome non ce l'ha. Sei
+codici HDI non arrivavano mai alla schermata dell'abbinamento — non era
+una dimenticanza di Francesco, l'app non gliel'ha mai chiesto. Adesso ci
+sono tutti.
+
+**Cosa resta, e non è codice**: chi sia ogni codice lo può dire solo
+Francesco. La schermata è in IAM (Abbinamento) e nel preventivatore.
+Quindici codici Prima coprono da soli 3.470 polizze: deciderne quattro
+— U25236, U25274, U25940, U29015 — ne copre 2.667.
+
+**Fatto quando**: le polizze risalgono alla persona giusta, e la
+produzione di ogni collaboratore somma quello che ha venduto davvero.
 
 ---
 
@@ -210,6 +222,7 @@ indicazioni scritte nell'intestazione del file.
 |---|---|
 | 25/09/2026 | **Stato di pagamento dai flussi**: incassato/sospeso/da incassare deciso dal movimento della compagnia e non dall'etichetta; l'importazione aggiorna le rate già in archivio ma non tocca mai una correzione a mano. Verificato sul file vero (12 rate, 3.217,39 €) |
 | 25/09/2026 | **Le polizze HDI** dicevano tutte «non pagato» con 12 rate incassate |
+| 26/09/2026 | **I codici produttore nudi**: l'importazione li scartava se il flusso non portava un nome, e il tracciato HDI il nome non ce l'ha. Sei codici non arrivavano mai alla schermata che li decide |
 | 26/09/2026 | **Il vocabolario delle compagnie e dei rami**: `rca` e `auto` erano due rami diversi, «HDI» e «HDI Assicurazioni» due compagnie. «Polizza auto» trovava 15 polizze invece di 4.005 |
 | 26/09/2026 | **La ricerca per garanzia** («auto senza infortuni del conducente») e il filtro «ha note in anagrafica» |
 | 25/09/2026 | **Le ricerche sul portafoglio**: l'assenza («auto senza casa»), compagnia, provincia, scadenza e premio. Le otto domande del mandato ora rispondono tutte |

@@ -21136,8 +21136,25 @@ async function fluConferma() {
        Fuori dalla transazione e in un try: sono evidenze, non portafoglio, e
        se non entrano l'importazione resta buona. */
     try {
+      /* BASTA IL CODICE, e la riga qui sotto prima chiedeva di più.
+
+         C'era `c.codice && (c.nome || c.email || c.rui || c.produttore)`:
+         un codice si registrava solo se il flusso portava anche un nome, una
+         email o un RUI. È una condizione scritta guardando l'SSF, che quei
+         campi li manda. Il tracciato HDI no: manda IL SOLO CODICE, e il nome
+         non c'è da nessuna parte — è già scritto nel lettore.
+
+         Risultato, misurato il 26/09/2026: sei codici produttore HDI non
+         entravano mai in `quote_codici_collaboratore`, quindi non comparivano
+         sulla schermata dell'abbinamento, quindi non si potevano decidere. Le
+         loro polizze restavano senza intestatario per sempre, e non per una
+         dimenticanza di Francesco: l'app non gliel'ha mai chiesto.
+
+         Un codice nudo è proprio il caso che ha PIÙ bisogno di finire in quella
+         schermata: non c'è un nome da cui indovinare, e l'unico che può dire
+         di chi è, è una persona. */
       const evidenze = (p.collaboratori || [])
-        .filter(c => c.codice && (c.nome || c.email || c.rui || c.produttore))
+        .filter(c => c.codice)
         .filter(c => !mappaCodici[Assegnazione.chiave(p.testata.emittente, c.codice)])
         .map(c => ({
           compagnia: String(p.testata.emittente || '').trim().toUpperCase(),

@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.49.1">
-<meta name="app-versione-nome" content="L importo della rata e quello che il cliente ha pagato">
+<meta name="app-versione" content="0.49.2">
+<meta name="app-versione-nome" content="Il tacito rinnovo non si afferma quando non si sa">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -16338,9 +16338,15 @@ async function polDettaglio(id) {
              campo arriva vuoto dal flusso di HDI e la scheda lo raccontava
              come un fatto su tutte e diciotto le polizze. Adesso dice che non
              si sa, che è un'altra cosa. */
-          p.tacito_rinnovo === true ? ' · tacito rinnovo'
+          /* Si guarda PRIMA se la compagnia l'ha dichiarato. La colonna
+             `tacito_rinnovo` è NOT NULL e la scrittura ci mette `false` anche
+             quando il flusso non dice niente: fidarsi solo di lei vuol dire
+             leggere «no» dove non c'era nessuna risposta. */
+          (dati.tacito_non_dichiarato || ssf.tacito_non_dichiarato)
+            ? ' · <span class="cl-sub">tacito rinnovo non dichiarato da ' + esc(p.compagnia || 'la compagnia') + '</span>'
+          : p.tacito_rinnovo === true ? ' · tacito rinnovo'
           : p.tacito_rinnovo === false ? ' · senza tacito rinnovo'
-          : ' · <span class="cl-sub">tacito rinnovo non dichiarato dalla compagnia</span>'))}
+          : ' · <span class="cl-sub">tacito rinnovo non dichiarato</span>'))}
       ${riga('Premio', (p.premio_annuo != null ? 'annuo ' + pfEuro(p.premio_annuo) : '<span class="cl-sub">annuo da confermare</span>')
           + (p.premio_rata != null ? ' · rata ' + pfEuro(p.premio_rata) : ''))}
       ${riga('Come paga', (mezzo ? esc(mezzo) : '<span class="cl-sub">da indicare</span>')

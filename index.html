@@ -2026,6 +2026,26 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 .pv-cliente-fisso{min-height:38px;display:flex;align-items:center;padding:0 10px;border:1px dashed var(--line);border-radius:10px;font-weight:600;background:#fafbfc}
 .clp-form{padding:10px 12px;cursor:default}
 .clp-res{max-height:420px}
+
+/* ─── I CAMPI SUI DISPOSITIVI CHE SI TOCCANO ────────────────────────────────
+   iOS ingrandisce la pagina da solo quando si entra in un campo con carattere
+   sotto i 16px, e non c'e' modo di dirgli di no se non dandogli 16px. Per
+   anni la scorciatoia e' stata bloccare lo zoom da `<meta viewport>`: cosi'
+   pero' si toglie anche lo zoom CON LE DITA, che serve per leggere un numero
+   dentro una tabella da un telefono.
+
+   Qui si fa il contrario: i campi vanno a 16px SOLO dove si tocca
+   (`pointer: coarse`), iOS non ha piu' motivo di ingrandire da se', e le dita
+   restano libere. Sul computer non cambia niente: il puntatore e' fine e
+   questa regola non si applica.
+
+   Fuori restano caselle, interruttori e cursori: li' il carattere non conta e
+   ingrandirli sposterebbe le righe. */
+@media (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+  select,
+  textarea { font-size: 16px; }
+}
 </style>
 <script>
 /* ── CHI PUO' INCORNICIARE QUOTO ────────────────────────────────────────────

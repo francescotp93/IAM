@@ -1,7 +1,18 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- LO ZOOM CON LE DITA RESTA LIBERO.
+     Qui c'era `maximum-scale=1.0, user-scalable=no`, e su Android voleva dire
+     non poter ingrandire un numero dentro una tabella. Francesco lavora dal
+     telefono: e' una cosa che toglie ogni giorno.
+
+     Ci stava per un motivo vero, pero': iOS ingrandisce da solo quando si
+     entra in un campo con carattere sotto i 16px, e i campi di questa pagina
+     sono a 14 (alcuni a 11,5). Bloccare lo zoom curava il sintomo togliendo
+     una cosa utile. La cura giusta sta in fondo al foglio di stile: sui
+     dispositivi che si toccano i campi vanno a 16px, cosi' iOS non ha motivo
+     di ingrandire e le dita restano libere. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- LA VERSIONE DI QUESTO RILASCIO.
      Annotata, non calcolata: la fonte unica e' `versione.json` alla radice, e
      `iam/verifica/versione-app.test.mjs` diventa rossa se qui e li' non dicono
@@ -1628,6 +1639,26 @@ input[type=file]{display:none;}
 }
 .pu-btn{font-size:11.5px;padding:6px 10px;background:var(--surf3);color:var(--txt2);border:none;border-radius:8px;cursor:pointer;font-family:inherit}
 #utenti-albero summary::-webkit-details-marker{display:none}#utenti-albero[open] .ut-chev{transform:rotate(90deg)}.ut-chev{transition:transform .15s}
+
+/* ─── I CAMPI SUI DISPOSITIVI CHE SI TOCCANO ────────────────────────────────
+   iOS ingrandisce la pagina da solo quando si entra in un campo con carattere
+   sotto i 16px, e non c'e' modo di dirgli di no se non dandogli 16px. Per
+   anni la scorciatoia e' stata bloccare lo zoom da `<meta viewport>`: cosi'
+   pero' si toglie anche lo zoom CON LE DITA, che serve per leggere un numero
+   dentro una tabella da un telefono.
+
+   Qui si fa il contrario: i campi vanno a 16px SOLO dove si tocca
+   (`pointer: coarse`), iOS non ha piu' motivo di ingrandire da se', e le dita
+   restano libere. Sul computer non cambia niente: il puntatore e' fine e
+   questa regola non si applica.
+
+   Fuori restano caselle, interruttori e cursori: li' il carattere non conta e
+   ingrandirli sposterebbe le righe. */
+@media (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+  select,
+  textarea { font-size: 16px; }
+}
 </style>
 <link rel="stylesheet" href="withus-pictograms.css?v=20260804">
 <!-- impronta withus-one.css: 9d3672a1 — se cambia, cambia anche il ?v= qui sotto -->

@@ -191,6 +191,49 @@
     };
   }
 
+  /* ── COGNOME E NOME, CHIESTI AL CODICE FISCALE ───────────────────────────
+     HDI manda un campo solo, «denominazione»: «OROMBELLO GIROLAMO». In
+     archivio cognome e nome sono due colonne, e restavano vuote su tutte e
+     undici le schede — che non è un dettaglio estetico: la scheda del cliente
+     non si salva senza, e Francesco non poteva correggere un indirizzo.
+
+     Tagliare al primo spazio sbaglia: nel file ci sono «DI BELLA GIUSEPPA»,
+     «LO VERDE FABIOLA», «DI GAETANO GIUSEPPE MICHELE». Ma il codice fiscale
+     il cognome e il nome li contiene già — le prime tre lettere sono le
+     consonanti del cognome, le tre dopo quelle del nome — quindi non si
+     indovina: si prova ogni punto di taglio e si tiene quello che RIGENERA i
+     primi sei caratteri del codice fiscale. Se nessuno li rigenera, non si
+     divide niente: meglio due colonne vuote di un cognome sbagliato su una
+     scheda. Sulle quattordici anagrafiche del file funziona 13 su 13 (la
+     quattordicesima è un'azienda, e non ha cognome). */
+  function pezzoCf(parola, eNome) {
+    var t = String(parola || '').toUpperCase().replace(/[^A-Z]/g, '');
+    var cons = t.replace(/[AEIOU]/g, ''), voc = t.replace(/[^AEIOU]/g, '');
+    var out;
+    /* Per il NOME, con quattro consonanti o più si prendono la 1ª, la 3ª e la
+       4ª — non le prime tre. È la regola che distingue «Giovanni» (GVN) da
+       «Giovanna» (GVN) e che, sbagliata, fa fallire proprio i nomi lunghi. */
+    if (eNome && cons.length >= 4) out = cons.charAt(0) + cons.charAt(2) + cons.charAt(3);
+    else out = (cons + voc).slice(0, 3);
+    while (out.length < 3) out += 'X';
+    return out;
+  }
+
+  function dividiNome(nominativo, cf) {
+    var k = String(cf || '').trim().toUpperCase();
+    if (k.length !== 16) return null;
+    var parole = String(nominativo || '').trim().split(/\s+/).filter(Boolean);
+    if (parole.length < 2) return null;
+    for (var i = 1; i < parole.length; i++) {
+      var cog = parole.slice(0, i).join(' ');
+      var nom = parole.slice(i).join(' ');
+      if (pezzoCf(cog, false) + pezzoCf(nom, true) === k.slice(0, 6)) {
+        return { cognome: cog, nome: nom };
+      }
+    }
+    return null;
+  }
+
   /* Sedici caratteri per una persona, undici cifre per una partita IVA.
      Tutto il resto non e' un codice fiscale, e soprattutto NON PUO' FARE DA
      CHIAVE: una chiave sbagliata non da' errore, fonde delle persone. */
@@ -622,6 +665,7 @@
          vede e si unisce; una fusione si scopre quando qualcuno chiama per
          una polizza che risulta di un altro. */
       if (cf && !codiceFiscaleValido(cf)) { cf = ''; cfScartati++; }
+      var diviso = dividiNome(a.denominazione, cf);
       /* Sedici caratteri e' una persona, undici e' una partita IVA. Sbagliare
          qui vuol dire cercare il cliente nell'indice sbagliato e creare il
          doppione di uno che c'e' gia'. */
@@ -633,6 +677,8 @@
            e' un filtro che da domani non trova piu' tutti. */
         tipo: persona ? 'fisica' : 'giuridica',
         nominativo: a.denominazione || '',
+        cognome: diviso ? diviso.cognome : null,
+        nome: diviso ? diviso.nome : null,
         ragione_sociale: persona ? null : (a.denominazione || null),
         codice_fiscale: persona ? (cf || null) : null,
         partita_iva: persona ? null : (cf || null),
@@ -686,13 +732,39 @@
         modulo: p.ramo || null,
         data_effetto: p.effetto || null,
         data_scadenza: p.scadenza || null,
-        data_emissione: null,
+        /* ── LA DATA DI EMISSIONE, CHE NEL TRACCIATO NON C'E' ──────────────
+           Censite tutte le 396 colonne di tutti e nove i tipi di record: HDI
+           la data di emissione non la manda. Lasciarla vuota però non è
+           gratis: il foglio cassa filtra per emissione ed è il suo filtro
+           PREDEFINITO, quindi un portafoglio intero risultava invisibile; e
+           in elenco compariva «emissione da indicare», che a Francesco
+           chiedeva di riempire a mano diciotto volte una casella che nessuno
+           gli manderà mai.
+
+           Si usa la DECORRENZA, e il file dice che è difendibile: per le
+           polizze nuove di questo estratto il primo premio è stato incassato
+           lo STESSO GIORNO in cui la polizza decorre, dieci volte su dieci.
+           Una RCA fatta al banco si emette, si paga e parte in giornata.
+
+           Ma non si fa di nascosto: accanto resta scritto da dove viene
+           (`emissione_derivata`), e ogni schermata che la mostra lo dice. Una
+           data derivata e dichiarata è un dato; una data derivata e taciuta è
+           una bugia che fra sei mesi nessuno sa più di aver scritto. */
+        data_emissione: p.effetto || null,
         copertura_dal: p.effetto || null,
         copertura_al: p.scadenza || null,
         frazionamento: p.frazionamento || null,
         tacito_rinnovo: null,
         mezzo_pagamento: null,
         premio_annuo: p.premio_lordo != null ? p.premio_lordo : null,
+        /* IL PREMIO DELLA RATA SI SCRIVE SOLO DOVE E' ESATTO: sulle annuali,
+           dove la rata E' il premio dell'anno. Sulle semestrali il tracciato
+           non lo dichiara, e ricavarlo dalle rate incassate non regge: fra le
+           rate di una polizza ci sono storni (importo negativo) e appendici
+           da un euro, e prendendo «la piu' recente» uscivano premi di rata di
+           −141,61 € e di 1,04 € su polizze da seicento euro l'anno.
+           Sulla scheda resta «Semestrale · —», che e' una casella vuota; un
+           premio di rata sbagliato sarebbe un numero, e i numeri si credono. */
         premio_rata: annuale(p.frazionamento) && p.premio_lordo != null ? p.premio_lordo : null,
         stato_pagamento: null,
         dati: {
@@ -701,6 +773,10 @@
           /* IL CODICE DI CHI L'HA FATTA, nel posto dove l'assegnazione lo va a
              cercare. Non sotto `ssf`, che è il nome di un altro tracciato:
              `dati.produttore` è neutro e vale per tutte le compagnie. */
+          /* Da dove viene la data di emissione. `null` vorrebbe dire che l'ha
+             mandata la compagnia; qui l'abbiamo ricavata noi, e si dice. */
+          emissione_derivata: p.effetto ? 'effetto' : null,
+          emissione_non_inviata: true,
           produttore: p.produttore || null,
           competenza: p.competenza || null,
           sostituisce_numero: p.sostituisce_numero || null,
@@ -838,6 +914,7 @@
     anagrafica: anagrafica, polizza: polizza, garanzia: garanzia,
     rate: rate, veicolo: veicolo, sinistro: sinistro, incasso: incasso,
     mezzoNostro: mezzoNostro, converti: converti,
+    pezzoCf: pezzoCf, dividiNome: dividiNome,
     codiceFiscaleValido: codiceFiscaleValido,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

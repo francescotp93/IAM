@@ -599,6 +599,118 @@ prova('il mezzo di pagamento viene dall\'incasso giusto, non da uno qualsiasi', 
     'le rate agganciate sono ' + agganciate.length + ' ma solo ' + conMezzo.length + ' hanno il mezzo');
 });
 
+/* ═══ QUELLO CHE LA SCHERMATA MOSTRAVA MALE ════════════════════════════════
+   «Manca la parte della data di emissione che risulta sempre da indicare.»
+   La data nel tracciato non c'è — censite tutte le 396 colonne — ma «da
+   indicare» era comunque la risposta sbagliata: chiedeva di riempire a mano
+   diciotto caselle con un dato che la compagnia non manda e non manderà. */
+
+prova('la data di emissione si ricava dalla decorrenza, e lo dice', () => {
+  /* Difendibile sul file: per le polizze nuove il primo premio è stato
+     incassato lo stesso giorno in cui la polizza decorre, dieci volte su
+     dieci. Ma una data derivata e taciuta diventa, in sei mesi, una data che
+     nessuno sa di aver scritto. */
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({ effetto: '2026-09-23' })],
+    garanzie: [], sinistri: [], veicoli: [], titoli: [], incassi: [], busta: {} });
+  deve(a.polizze[0].data_emissione === '2026-09-23',
+    'la data di emissione resta vuota: il foglio cassa filtra per emissione ed è il suo filtro predefinito');
+  deve(a.polizze[0].dati.emissione_derivata === 'effetto',
+    'non è scritto da dove viene la data: passerebbe per un dato della compagnia');
+  deve(a.polizze[0].dati.emissione_non_inviata === true,
+    'non è scritto che la compagnia non la manda');
+});
+
+prova('e la schermata dice «dalla decorrenza» invece di «da indicare»', () => {
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = pagina.indexOf('function polEmissioneDaDove(');
+  deve(i > 0, 'non c\'è niente che spieghi da dove viene la data di emissione');
+  const corpo = pagina.slice(i, pagina.indexOf('\nfunction ', i + 10));
+  deve(/emissione_derivata/.test(corpo), 'non distingue una data ricavata da una mandata dalla compagnia');
+  deve(/dalla decorrenza/.test(corpo), 'non dice da cosa è stata ricavata');
+  deve(/emissione_non_inviata/.test(corpo), 'non distingue «la compagnia non la manda» da «manca»');
+  deve(/da indicare/.test(corpo), 'ha perso il caso in cui la data manca davvero e va messa a mano');
+  /* E dev'essere usata: una funzione giusta che nessuno chiama è il guasto
+     del 22/09 sulla candidatura. */
+  /* La CHIAMATA, non il nome: `function polEmissioneDaDove(p) {` contiene
+     «polEmissioneDaDove(p)» e faceva passare la prova anche a chiamata
+     cancellata. */
+  deve(/\+ polEmissioneDaDove\(p\)\)\}/.test(pagina), 'la scheda non la chiama');
+  deve(/emissione non inviata dalla compagnia/.test(pagina), 'l\'elenco del portafoglio dice ancora solo «da indicare»');
+});
+
+prova('le garanzie si cercano dove HDI le scrive, non solo dove le scrive l\'SSF', () => {
+  /* Le 63 garanzie erano in archivio e la scheda mostrava un vuoto: guardava
+     solo `dati.ssf.garanzie`, mentre HDI scrive alla radice — perché «ssf» è
+     il nome di un altro tracciato. */
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  deve(/const gar = ssf\.garanzie \|\| dati\.garanzie \|\| \[\]/.test(pagina),
+    'la scheda cerca le garanzie in un posto solo');
+  deve(/const v = ssf\.veicolo \|\| dati\.veicolo/.test(pagina),
+    'la scheda cerca il veicolo in un posto solo');
+});
+
+prova('il tacito rinnovo non si afferma quando non si sa', () => {
+  /* «Senza tacito rinnovo» era una frase stampata su tutte e diciotto le
+     polizze, non una lettura: il campo arriva vuoto dal flusso. */
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+    veicoli: [], titoli: [], incassi: [], busta: {} });
+  deve(a.polizze[0].tacito_rinnovo === null, 'il flusso dichiara un tacito rinnovo che non ha letto');
+  const fs = require('fs');
+  const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  deve(/tacito_rinnovo === true \? ' · tacito rinnovo'/.test(pagina),
+    'la scheda tratta «non si sa» come «no»');
+  deve(/non dichiarato dalla compagnia/.test(pagina), 'non c\'è il terzo caso');
+});
+
+prova('cognome e nome si chiedono al codice fiscale, non allo spazio', () => {
+  /* Senza cognome e nome la scheda del cliente non si salva. Tagliare al
+     primo spazio sbaglia su «DI BELLA GIUSEPPA» e «LO VERDE FABIOLA». */
+  deve(JSON.stringify(H.dividiNome('DI BELLA GIUSEPPA', 'DBLGPP84T66D423L')) ===
+       JSON.stringify({ cognome: 'DI BELLA', nome: 'GIUSEPPA' }), 'cognome doppio diviso male');
+  deve(JSON.stringify(H.dividiNome('LO VERDE FABIOLA', 'LVRFBL95D45G273U')) ===
+       JSON.stringify({ cognome: 'LO VERDE', nome: 'FABIOLA' }), 'cognome doppio diviso male');
+  deve(JSON.stringify(H.dividiNome('DI GAETANO GIUSEPPE MICHELE', 'DGTGPP99L13D423K')) ===
+       JSON.stringify({ cognome: 'DI GAETANO', nome: 'GIUSEPPE MICHELE' }), 'nome doppio diviso male');
+  /* E quando il codice fiscale NON conferma nessun taglio, non si divide:
+     meglio due colonne vuote di un cognome sbagliato su una scheda. */
+  deve(H.dividiNome('ROSSI MARIO', 'XXXXXX00X00X000X') === null,
+    'ha diviso un nominativo che il codice fiscale non conferma');
+  deve(H.dividiNome('ACME SRL', '01234567890') === null, 'ha provato a dividere una partita IVA');
+});
+
+prova('e sul file vero si dividono tutte le persone', () => {
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const a = H.converti(H.esamina(fs.readFileSync(percorso, 'utf8'), []));
+  const persone = a.clienti.filter(c => c.tipo === 'fisica');
+  const divise = persone.filter(c => c.cognome && c.nome);
+  deve(divise.length === persone.length,
+    'divise ' + divise.length + ' su ' + persone.length + ' persone');
+  deve(a.clienti.filter(c => c.tipo === 'giuridica').every(c => !c.cognome),
+    'a un\'azienda è stato attribuito un cognome');
+});
+
+prova('il premio della rata si scrive solo dove è esatto', () => {
+  /* Ricavarlo dalle rate incassate non regge: fra le rate di una polizza ci
+     sono storni (negativi) e appendici da un euro, e «la più recente» dava
+     premi di rata di −141,61 € e di 1,04 € su polizze da seicento l'anno.
+     «Semestrale · —» è una casella vuota; un premio sbagliato è un numero, e
+     i numeri si credono. */
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const a = H.converti(H.esamina(fs.readFileSync(percorso, 'utf8'), []));
+  const conRata = a.polizze.filter(p => p.premio_rata != null);
+  deve(conRata.every(p => p.premio_rata > 0), 'c\'è un premio di rata negativo');
+  deve(conRata.every(p => p.premio_annuo == null || p.premio_rata <= p.premio_annuo + 0.01),
+    'un premio di rata supera il premio dell\'anno');
+  deve(conRata.every(p => /annuale/i.test(String(p.frazionamento || ''))),
+    'un premio di rata è stato scritto su una polizza non annuale, dove il tracciato non lo dichiara');
+});
+
 /* ── il file dev'essere anche SCEGLIBILE ────────────────────────────────────
    Il 24/09/2026 Francesco ha provato a caricare il suo file e «non è andato»,
    mentre il lettore qui sopra lo leggeva senza una piega: 14 clienti, 18

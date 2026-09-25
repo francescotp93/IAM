@@ -91,8 +91,17 @@
      mano, non si attribuiscono a chi ha fatto l'importazione. */
   function codiceDi(polizza) {
     if (!polizza) return null;
-    var ssf = (polizza.dati && polizza.dati.ssf) || {};
-    var cod = norm(ssf.collaboratore);
+    var dati = polizza.dati || {};
+    var ssf = dati.ssf || {};
+    /* DUE POSTI, PERCHÉ I TRACCIATI SONO DUE (24/09/2026).
+       L'SSF scrive il codice sotto `dati.ssf.collaboratore`. Quando è arrivato
+       HDI, mettere il suo codice lì dentro avrebbe voluto dire scrivere «ssf»
+       sopra un dato che dell'SSF non è: il nome di un tracciato dentro i dati
+       di un altro è il genere di bugia che fra un anno fa sbagliare qualcuno.
+       Il posto neutro è `dati.produttore`, e vale per tutte le compagnie —
+       quelle che verranno comprese. Si guarda prima il vecchio, così niente
+       di quello che è già in archivio cambia comportamento. */
+    var cod = norm(ssf.collaboratore) || norm(dati.produttore);
     if (!cod) return null;
     var comp = norm(polizza.compagnia);
     if (!comp) return null;

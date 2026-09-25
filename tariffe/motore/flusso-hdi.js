@@ -80,6 +80,17 @@
   /* Gli importi arrivano all'italiana: 1.234,56. `parseFloat` su quella
      stringa restituisce 1 — cioè un premio da 1.234 euro diventa 1, e non se ne
      accorge nessuno perché 1 è un numero valido. */
+  /* Somme di soldi: si arrotonda al centesimo a ogni passo. Sommando quattro
+     garanzie in virgola mobile, 144.51 + 9.03 + 22.40 + 9.49 puo' uscire
+     185.42999999999998, e quel numero stampato diventa 185,43 ma confrontato
+     con l'incasso non combacia mai. */
+  function cent(n) {
+    var v = Number(n);
+    if (!isFinite(v)) return 0;
+    var seg = v < 0 ? -1 : 1;
+    return seg * Math.round(Math.abs(v) * 100) / 100;
+  }
+
   function euro(s) {
     s = String(s === undefined || s === null ? '' : s).trim();
     if (!s) return null;
@@ -199,6 +210,27 @@
       prodotto: c(r, 12),
       stato: c(r, 16),
       motivo_storno: c(r, 17),
+      /* CHI L'HA FATTA (24/09/2026). Per due giorni ho detto a Francesco che
+         il PASS-133 non porta il produttore, e mi sbagliavo: c'e', in c31, e
+         il codice di competenza in c30. I codici sono A12559, A12556, A4346, A18545,
+         A12558, A18544 — sei su diciotto polizze, nove sui titoli — e le
+         subagenzie sono «1428» e «02379», che combaciano con i «Subagente
+         1428» e «Subagente 02379a185» del foglio Appunti Incassi che stampa
+         la compagnia. Senza questo, ogni polizza importata nasce senza
+         collaboratore e le provvigioni indirette non si calcolano. */
+      produttore: c(r, 31),
+      /* NON è una «subagenzia», per quanto ci somigli. Vale 1428 su 165 righe
+         su 190 — cioè il codice dell'agenzia stessa, lo stesso numero che è
+         già costante in ogni record e nel nome del file — e 02379 sulle
+         altre. È il CODICE DI COMPETENZA: «agenzia diretta» oppure «quell'unico
+         intermediario esterno». Chiamarla subagenzia faceva pensare a un
+         secondo livello commerciale che non c'è: la gerarchia vera sta tutta
+         nel produttore (c31), e questa colonna è quasi sempre ridondante. */
+      competenza: c(r, 30),
+      /* La polizza che questa rimpiazza: sette polizze su diciotto ce l'hanno,
+         e quattro puntano a numeri che in questo file non ci sono (stanno in
+         archivio, o in un estratto precedente). */
+      sostituisce_numero: c(r, 46),
       annullata_il: data(c(r, 18)),
       /* LE DATE, E COME SI È SAPUTO QUALI SONO. Al primo giro le avevo
          battezzate a naso e ne usciva una polizza annuale lunga due anni.
@@ -252,18 +284,106 @@
     };
   }
 
-  function titolo(r) {
+  /* ── LE RATE, E PERCHE' NON SONO LE RIGHE ────────────────────────────────
+     Il record 40 e' UNA RIGA PER GARANZIA, non una per rata. Nel file del
+     23/09 ci sono 154 righe e 35 rate: una polizza auto con RCA, infortuni e
+     assistenza occupa tre righe, e il progressivo (c2) e' lo stesso su tutte
+     e tre.
+
+     Il 24/09 l'avevo letto al contrario. Vedendo sei righe con lo stesso
+     progressivo le avevo chiamate «ripetizioni» e ne tenevo una, buttando via
+     le altre cinque — cioe' buttando via l'importo di cinque garanzie su sei.
+     Poi, non trovando l'importo (perche' l'avevo buttato), lo andavo a
+     cercare nell'incasso. Da li' in avanti era tutto sbagliato in modo
+     coerente: 12 rate su 35, e quelle 12 con l'importo arrotondato
+     dell'incasso invece del premio esatto.
+
+     La lettura giusta e' semplice: SI SOMMA.
+       · importo    = somma di c39 su tutte le righe del gruppo
+       · provvigione = somma di c40
+     E si verifica da sola: sommate cosi', le provvigioni combaciano AL
+     CENTESIMO con il foglio «Appunti Incassi» che la compagnia stampa ogni
+     sera — Norrito 117,87, Castiglione 56,56, Fiore 36,27, Leto 38,92, e
+     cosi' per tredici polizze su tredici.
+
+     E il collegamento alla polizza e' la c7 (il numero), non la c2: la c2 e'
+     il progressivo della RATA. Che finora funzionasse era un caso — dodici
+     progressivi di rata coincidevano per sbaglio con dodici id di polizza. */
+  function rate(righe40) {
+    var per = {};
+    (righe40 || []).forEach(function (r) {
+      var prog = c(r, 2);
+      if (!prog) return;
+      if (!per[prog]) per[prog] = [];
+      per[prog].push(r);
+    });
+    return Object.keys(per).map(function (prog) {
+      var rs = per[prog];
+      var capo = rs[0];
+      var somma = function (n) {
+        return cent(rs.reduce(function (t, r) { return t + (euro(c(r, n)) || 0); }, 0));
+      };
+      return {
+        progressivo: prog,
+        polizza_numero: c(capo, 7),
+        tipo: c(capo, 14),
+        ramo: c(capo, 10),
+        effetto: data(c(capo, 11)),
+        scadenza: data(c(capo, 13)),
+        scadenza_rata: data(c(capo, 22)),
+        frazionamento: c(capo, 18),
+        stato: c(capo, 19),
+        /* c22 e c24 portano tutte e due la data dell'incasso, e combaciano
+           con quella del record 80 su 14 rate su 14. */
+        incassato_il: data(c(capo, 22)),
+        /* IL LEGAME DIRETTO CON L'INCASSO: la c20 della rata e' la c10 del
+           record di incasso. Serve a prendere il MEZZO di pagamento da quello
+           giusto invece di cercarlo per polizza e data, che con due incassi
+           lo stesso giorno sceglierebbe a caso. */
+        riferimento_incasso: c(capo, 20),
+        produttore: c(capo, 47),
+        competenza: c(capo, 43),
+        importo: somma(39),
+        provvigione: somma(40),
+        /* Da cosa e' fatta: serve a chi guarda una rata e vuole sapere quanto
+           pesa l'RCA e quanto l'assistenza. */
+        voci: rs.map(function (r) {
+          return { garanzia: c(r, 10), importo: euro(c(r, 39)), provvigione: euro(c(r, 40)) };
+        }),
+        righe: rs.length,
+        grezzo: capo,
+      };
+    });
+  }
+
+  /* ── IL VEICOLO (record 21) ───────────────────────────────────────────────
+     Quindici righe su diciotto polizze, e fino al 24/09/2026 non le leggeva
+     nessuno: il tipo era censito in TIPI ma il contenuto finiva nel nulla.
+     Dentro c'e' quello che serve a riconoscere una polizza auto senza aprire
+     il PDF — targa, telaio, marca, modello — e quello che serve a rifarne il
+     prezzo: classe di merito, alimentazione, cilindrata, immatricolazione.
+
+     Quello che non so con certezza NON lo battezzo: le colonne dalla 59 in
+     poi contengono sei anni (2020-2025) e una fila di valori, e hanno tutta
+     l'aria dell'attestato di rischio — ma «tutta l'aria» non e' una prova, e
+     un attestato letto male e' una tariffa sbagliata. Restano grezze, con il
+     loro nome onesto, finche' non si dimostra cosa sono. */
+  function veicolo(r) {
     return {
       polizza_id: c(r, 2),
-      tipo: c(r, 14),
-      /* È il titolo che ha permesso di battezzare le date della polizza:
-         c11 → c13 è il periodo della rata, e su tre polizze combacia al
-         giorno con effetto → scadenza. */
-      effetto: data(c(r, 11)),
-      scadenza: data(c(r, 13)),
-      frazionamento: c(r, 18),
-      stato: c(r, 19),
-      incassato_il: data(c(r, 22)),
+      polizza_numero: c(r, 6),
+      immatricolato_il: data(c(r, 11)),
+      uso: c(r, 14),
+      targa: c(r, 20),
+      telaio: c(r, 21),
+      marca: c(r, 22),
+      modello: c(r, 23),
+      classe_merito: c(r, 25),
+      classe_interna: c(r, 26),
+      alimentazione: c(r, 27),
+      potenza_kw: c(r, 28),
+      cilindrata: c(r, 31),
+      anni_grezzi: r.slice(58, 76).map(function (x) { return String(x == null ? '' : x).trim(); }),
       grezzo: r,
     };
   }
@@ -283,6 +403,10 @@
   function incasso(r) {
     return {
       data: data(c(r, 3)),
+      /* LA CHIAVE CHE LEGA L'INCASSO ALLA SUA RATA: la c10 dell'incasso e' la
+         c20 della rata. Senza, il mezzo di pagamento si cercava per polizza e
+         data — e con due incassi lo stesso giorno si sceglieva a caso. */
+      riferimento: c(r, 10),
       polizza_numero: c(r, 12),
       tipo: c(r, 16),
       importo: euro(c(r, 17)),
@@ -304,17 +428,26 @@
     (polizzeNote || []).forEach(function (id) { note[String(id)] = true; });
 
     var anagrafiche = letto.per['10'].map(anagrafica);
+    var veicoli     = letto.per['21'].map(veicolo);
     var polizze     = letto.per['20'].map(polizza);
     var garanzie    = letto.per['30'].map(garanzia);
-    var titoli      = letto.per['40'].map(titolo);
+    var titoli      = rate(letto.per['40']);
     var sinistri    = letto.per['50'].map(sinistro);
     var incassi     = letto.per['80'].map(incasso);
 
-    var idPolizza = {}, idAnag = {};
-    polizze.forEach(function (p) { idPolizza[p.id] = p; });
+    var idPolizza = {}, idAnag = {}, numPolizza = {};
+    polizze.forEach(function (p) { idPolizza[p.id] = p; numPolizza[String(p.numero || '').trim()] = p; });
     anagrafiche.forEach(function (a) { idAnag[a.id] = a; });
 
-    var conosciuta = function (id) { return !!(idPolizza[id] || note[id]); };
+    /* UNA RATA SI COLLEGA ALLA POLIZZA PER NUMERO, non per id interno. Fino al
+       24/09/2026 qui si confrontavano due cose diverse — il progressivo della
+       rata contro l'id della polizza — e coincidevano dodici volte per puro
+       caso. `polizzeNote`, che arriva dall'archivio, e' gia' un elenco di
+       numeri: era l'unica meta' giusta del confronto. */
+    var conosciuta = function (numero) {
+      var k = String(numero == null ? '' : numero).trim();
+      return !!(numPolizza[k] || note[k]);
+    };
 
     var avvisi = [];
     var senzaAnagrafica = polizze.filter(function (p) { return !idAnag[p.anagrafica_id]; });
@@ -361,7 +494,7 @@
     if (garOrfane.length) {
       avvisi.push({ g: 'grave', t: garOrfane.length + ' garanzie non appartengono a nessuna polizza del file.' });
     }
-    var titoliFuori = titoli.filter(function (t) { return !conosciuta(t.polizza_id); });
+    var titoliFuori = titoli.filter(function (t) { return !conosciuta(t.polizza_numero); });
     if (titoliFuori.length) {
       avvisi.push({ g: 'avviso', t: titoliFuori.length + ' titoli su ' + titoli.length + ' riguardano polizze che non sono né nel file né in archivio: si lasciano fuori, altrimenti lo scadenzario si riempie di rate agganciate al nulla.' });
     }
@@ -377,14 +510,16 @@
          parte buona», perché non si sa dove finisca la parte buona. */
       caricabile: busta.ok && !avvisi.some(function (a) { return a.g === 'grave'; }),
       anagrafiche: anagrafiche,
+      veicoli: veicoli,
       polizze: polizze,
       garanzie: garanzie,
-      titoli: titoli.filter(function (t) { return conosciuta(t.polizza_id); }),
+      titoli: titoli.filter(function (t) { return conosciuta(t.polizza_numero); }),
       titoliScartati: titoliFuori,
       sinistri: sinistri,
       incassi: incassi,
       conteggi: {
         anagrafiche: anagrafiche.length, polizze: polizze.length, garanzie: garanzie.length,
+        veicoli: veicoli.length,
         titoli: titoli.length, titoliCaricabili: titoli.length - titoliFuori.length,
         sinistri: sinistri.length, incassi: incassi.length,
       },
@@ -516,6 +651,24 @@
     var polPerId = {};
     pol.forEach(function (p) { polPerId[p.id] = p; });
 
+    /* IL NOME DEL CLIENTE VA ANCHE SULLA POLIZZA (24/09/2026).
+       In archivio la polizza ha due cose: `cliente_id`, che e' il collegamento
+       vero, e `cliente`, che e' il nome copiato accanto. Sembra un doppione e
+       non lo e': l'elenco del portafoglio, le stampe e gli export leggono la
+       COPIA, perche' disegnare duemila righe andando a prendere ogni volta
+       l'anagrafica collegata sarebbe duemila letture.
+
+       Lasciandola vuota le diciotto polizze di HDI sono entrate agganciate al
+       loro cliente — `cliente_id` c'era su tutte e diciotto — e in elenco
+       comparivano con un trattino al posto del nome. Da fuori sembrava che i
+       clienti non fossero stati importati; erano importati e completi, e non
+       si vedevano. */
+    var anagPerId = {};
+    anag.forEach(function (a) { anagPerId[a.id] = a; });
+
+    var veiPerPol = {};
+    (e.veicoli || []).forEach(function (v) { if (v.polizza_id) veiPerPol[v.polizza_id] = v; });
+
     var polizze = pol.map(function (p) {
       var num = String(p.numero || '').trim();
       var gs = (garPerPol[p.id] || []).map(function (g) {
@@ -526,7 +679,7 @@
         _fonte_id: 'hdi:p:' + num,
         _cliente: 'hdi:a:' + p.anagrafica_id,
         _senzaCliente: !p.anagrafica_id,
-        cliente: null,
+        cliente: (anagPerId[p.anagrafica_id] || {}).denominazione || null,
         numero_polizza: num,
         compagnia: 'HDI',
         prodotto: p.prodotto || p.ramo || null,
@@ -542,111 +695,108 @@
         premio_annuo: p.premio_lordo != null ? p.premio_lordo : null,
         premio_rata: annuale(p.frazionamento) && p.premio_lordo != null ? p.premio_lordo : null,
         stato_pagamento: null,
-        dati: { fonte: 'hdi', ania: p.compagnia_ania, agenzia: p.agenzia,
-                stato_hdi: p.stato, premio_netto: p.premio_netto, garanzie: gs }
+        dati: {
+          fonte: 'hdi', ania: p.compagnia_ania, agenzia: p.agenzia,
+          stato_hdi: p.stato, premio_netto: p.premio_netto, garanzie: gs,
+          /* IL CODICE DI CHI L'HA FATTA, nel posto dove l'assegnazione lo va a
+             cercare. Non sotto `ssf`, che è il nome di un altro tracciato:
+             `dati.produttore` è neutro e vale per tutte le compagnie. */
+          produttore: p.produttore || null,
+          competenza: p.competenza || null,
+          sostituisce_numero: p.sostituisce_numero || null,
+          /* Il veicolo, per le polizze auto. Quindici su diciotto ce l'hanno,
+             e fino a oggi finivano nel nulla. */
+          veicolo: veiPerPol[p.id] ? {
+            targa: veiPerPol[p.id].targa || null,
+            telaio: veiPerPol[p.id].telaio || null,
+            marca: veiPerPol[p.id].marca || null,
+            modello: veiPerPol[p.id].modello || null,
+            immatricolato_il: veiPerPol[p.id].immatricolato_il || null,
+            classe_merito: veiPerPol[p.id].classe_merito || null,
+            classe_interna: veiPerPol[p.id].classe_interna || null,
+            alimentazione: veiPerPol[p.id].alimentazione || null,
+            potenza_kw: veiPerPol[p.id].potenza_kw || null,
+            cilindrata: veiPerPol[p.id].cilindrata || null,
+            uso: veiPerPol[p.id].uso || null
+          } : null
+        }
       };
     });
 
-    /* IL PUNTO DELICATO, E LA TRAPPOLA CHE C'E' DENTRO.
-       «Cercare l'incasso della polizza» non basta: nel file del 23/09 la
-       polizza 1428407270 ha SEI rate con la stessa data e UN SOLO incasso da
-       733 €. Appaiare per polizza+data dava 733 € a tutte e sei, e il totale
-       delle rate saliva a 7.985 € contro 2.735 € davvero incassati: 5.912 €
-       di soldi che non esistono, con l'aria di essere veri.
+    /* LE RATE. Da quando il lettore le legge per gruppo invece che per riga,
+       qui non c'e' piu' niente da indovinare: l'importo e la provvigione sono
+       nel file, esatti, e si prendono. Tutto quello che c'era prima — la
+       deduplicazione per progressivo, l'accoppiamento con l'incasso, il
+       ripiego sul premio annuo, il conteggio di quelle lasciate fuori —
+       serviva a rimediare a un importo che avevo buttato via io leggendo le
+       righe una per una.
 
-       Quindi: OGNI INCASSO SI CONSUMA UNA VOLTA SOLA, e si appaia solo dove
-       non c'e' ambiguita' — una rata, un incasso. Dove sono molte contro uno
-       non si sceglie a caso: nessuna prende l'importo.
-
-       Vale anche per il ripiego sul premio annuo: solo se la polizza ha una
-       rata sola. Con sei rate si moltiplicherebbe il premio per sei, che e'
-       lo stesso errore da un'altra porta. */
-    var titoli = [], scartati = [], tipiIgnoti = {};
-
-    /* PRIMA DI TUTTO, LE RIPETIZIONI. Nel file la polizza 1428407270 ha sei
-       righe di rata identiche — stesso tipo, stessa decorrenza, e soprattutto
-       STESSO PROGRESSIVO `143290000001401117`. Non sono sei rate: e' una rata
-       sola, ripetuta una volta per sezione. Il progressivo e' l'identita' vera
-       del record, ed e' li' che la ripetizione si vede. Caricarle tutte
-       moltiplicherebbe per sei una rata da 733 €. */
-    var visti = {}, ripetute = 0;
-    tit = tit.filter(function (t) {
-      var prog = t.grezzo && t.grezzo[1] ? String(t.grezzo[1]).trim() : '';
-      if (!prog) return true;
-      if (visti[prog]) { ripetute++; return false; }
-      visti[prog] = true;
-      return true;
+       Resta una cosa da cercare, ed e' il MEZZO di pagamento: quello sta
+       sull'incasso, non sulla rata. E si prende dall'incasso GIUSTO, non da
+       uno qualsiasi della stessa polizza: la rata porta in `riferimento_incasso`
+       la chiave del suo (c20 della rata = c10 dell'incasso). */
+    var tipiIgnoti = {};
+    var incPerRif = {};
+    inc.forEach(function (i2) {
+      var k = String(i2.riferimento || '').trim();
+      if (k) incPerRif[k] = i2;
     });
 
-    var perPolizza = {};
-    tit.forEach(function (t) { (perPolizza[t.polizza_id] = perPolizza[t.polizza_id] || []).push(t); });
+    var titoli = [], scartati = [];
+    tit.forEach(function (t) {
+      var num = String(t.polizza_numero || '').trim();
+      if (!num) { scartati.push({ t: t, perche: 'la rata non dice a quale polizza appartiene' }); return; }
+      if (t.importo == null) { scartati.push({ t: t, perche: 'la rata non porta l\'importo' }); return; }
 
-    Object.keys(perPolizza).forEach(function (pid) {
-      var gruppo = perPolizza[pid];
-      var p = polPerId[pid];
-      if (!p) {
-        gruppo.forEach(function (t) { scartati.push({ t: t, perche: 'la polizza non è in questo file' }); });
-        return;
-      }
-      var num = String(p.numero || '').trim();
-      var liberi = (perPol[num] || []).slice();
+      var i2 = incPerRif[String(t.riferimento_incasso || '').trim()] || null;
+      var tp = tipoRata(t.tipo);
+      if (!tp.noto && tp.originale) tipiIgnoti[tp.originale] = (tipiIgnoti[tp.originale] || 0) + 1;
 
-      var perData = {};
-      gruppo.forEach(function (t) { (perData[t.incassato_il || ''] = perData[t.incassato_il || ''] || []).push(t); });
-
-      Object.keys(perData).forEach(function (d) {
-        var rate = perData[d];
-        rate.forEach(function (t) {
-          var i = null;
-          if (rate.length === 1) {
-            var quelGiorno = d ? liberi.filter(function (x) { return x.data === d; }) : [];
-            if (quelGiorno.length === 1) i = quelGiorno[0];
-            else if (!i && gruppo.length === 1 && liberi.length === 1) i = liberi[0];
-          }
-          var importo = null, nota = null;
-          if (i) {
-            importo = i.importo;
-            /* Consumato. Con la deduplicazione per progressivo questo caso
-               oggi non si raggiunge: e' una difesa, non una regola viva. Se un
-               domani la deduplicazione si allenta, e' quello che impedisce a un
-               incasso di pagare due rate. */
-            liberi = liberi.filter(function (x) { return x !== i; });
-          } else if (gruppo.length === 1 && annuale(p.frazionamento) && p.premio_lordo != null) {
-            importo = p.premio_lordo;
-            nota = 'Importo dal premio annuo: il tracciato non porta l\'importo della rata.';
-          }
-          if (importo == null) {
-            scartati.push({ t: t, perche: rate.length > 1
-              ? rate.length + ' rate della stessa polizza nello stesso giorno: attribuire l\'importo vorrebbe dire sceglierlo a caso'
-              : 'il tracciato non porta l\'importo della rata e non c\'è un incasso che lo dica' });
-            return;
-          }
-          var tp = tipoRata(t.tipo);
-          if (!tp.noto && tp.originale) tipiIgnoti[tp.originale] = (tipiIgnoti[tp.originale] || 0) + 1;
-          var perche = [];
-          if (tp.originale) perche.push('HDI: ' + tp.originale + '.');
-          if (nota) perche.push(nota);
-          titoli.push({
-            _fonte_id: 'hdi:t:' + (t.grezzo && t.grezzo[1] ? String(t.grezzo[1]).trim() : num + ':' + (t.effetto || '')),
-            _polizza: 'hdi:p:' + num,
-            _senzaPolizza: false,
-            tipo: tp.tipo,
-            data_decorrenza: t.effetto || null,
-            data_scadenza: t.scadenza || null,
-            importo_lordo: importo,
-            /* HDI non manda la provvigione nel PASS-133. Zero sarebbe una
-               cifra; null e' la verita', e non falsa nessun rendiconto. */
-            provvigione: null,
-            stato: /incassat/i.test(String(t.stato || '')) ? 'incassato' : 'aperto',
-            mezzo_pagamento: i ? mezzoNostro(i.mezzo) : null,
-            incassato_il: t.incassato_il || (i ? i.data : null),
-            note: perche.length ? perche.join(' ') : null
-          });
-        });
+      titoli.push({
+        _fonte_id: 'hdi:t:' + t.progressivo,
+        _polizza: 'hdi:p:' + num,
+        _senzaPolizza: false,
+        tipo: tp.tipo,
+        data_decorrenza: t.effetto || null,
+        data_scadenza: t.scadenza_rata || t.scadenza || null,
+        importo_lordo: t.importo,
+        /* LA PROVVIGIONE C'E', ed e' la somma delle righe del gruppo. Si
+           verifica da sola: sommata cosi' combacia al centesimo col foglio
+           «Appunti Incassi» della compagnia. Per due giorni ho scritto il
+           contrario, e ogni rata entrava senza. */
+        provvigione: t.provvigione,
+        stato: /incassat/i.test(String(t.stato || '')) ? 'incassato' : 'aperto',
+        mezzo_pagamento: i2 ? mezzoNostro(i2.mezzo) : null,
+        incassato_il: t.incassato_il || (i2 ? i2.data : null),
+        note: tp.originale ? ('HDI: ' + tp.originale + '.') : null,
       });
     });
 
+    /* I CODICI DI CHI HA PRODOTTO, uno per riga, con quante polizze e quante
+       rate porta. La schermata dell'assegnazione li mostra a Francesco perché
+       li abbini a una persona, e da lì in poi ogni polizza e ogni rata con
+       quel codice nasce già intestata. Sono le stesse evidenze che l'SSF
+       scrive da settembre: stessa tabella, stessa schermata, stesso modo di
+       decidere. Il NOME non c'è nel tracciato — solo il codice. */
+    var perCodice = {};
+    var segna = function (cod, comp, campo) {
+      var k = String(cod || '').trim().toUpperCase();
+      if (!k) return;
+      if (!perCodice[k]) perCodice[k] = { codice: k, produttore: null, nome: null, email: null, rui: null, competenza: comp || null, polizze: 0, rate: 0 };
+      perCodice[k][campo]++;
+    };
+    (pol || []).forEach(function (p) { segna(p.produttore, p.competenza, 'polizze'); });
+    (tit || []).forEach(function (t) { segna(t.produttore, t.competenza, 'rate'); });
+    var codiciProduttore = Object.keys(perCodice).map(function (k) { return perCodice[k]; })
+      .sort(function (a, b) { return (b.polizze + b.rate) - (a.polizze + a.rate); });
+
     var note = [];
+    if (codiciProduttore.length) {
+      note.push({ g: 'avviso', t: codiciProduttore.length + ' codici produttore nel file (' +
+        codiciProduttore.map(function (x) { return x.codice; }).join(', ') +
+        '). Il tracciato porta il codice, non il nome: finché non li abbini a una persona, ' +
+        'polizze e rate entrano senza collaboratore.' });
+    }
     if (cfScartati) {
       note.push({ g: 'grave', t: cfScartati + ' anagrafiche hanno un codice fiscale di forma sbagliata: entrano SENZA, ' +
         'cioè come clienti nuovi anche se in archivio ci fossero già. Meglio un doppione, che si vede e si unisce, ' +
@@ -658,17 +808,14 @@
         ignoti.map(function (k) { return k + ' (' + tipiIgnoti[k] + ')'; }).join(', ') +
         '. La parola di HDI resta scritta sulla rata.' });
     }
-    if (ripetute) {
-      note.push({ g: 'avviso', t: ripetute + ' righe di rata erano ripetizioni della stessa rata (stesso progressivo, una riga per sezione): contate una volta sola.' });
-    }
     if (scartati.length) {
       note.push({ g: 'avviso', t: scartati.length + ' rate su ' + tit.length +
-        ' non si caricano perchè il tracciato non ne porta l\'importo e non c\'è un incasso che lo dica: ' +
-        'metterci il premio diviso per il frazionamento sarebbe un numero credibile e inventato.' });
+        ' restano fuori: non dicono a quale polizza appartengono, oppure la loro polizza non e\u0300 ne\u0301 nel file ne\u0301 in archivio.' });
     }
-    if (titoli.length) {
-      note.push({ g: 'avviso', t: 'Il PASS-133 non porta le provvigioni: le ' + titoli.length +
-        ' rate entrano senza, e i rendiconti provvigionali su queste restano da fare a parte.' });
+    var senzaMezzo = titoli.filter(function (t) { return !t.mezzo_pagamento; }).length;
+    if (senzaMezzo) {
+      note.push({ g: 'avviso', t: senzaMezzo + ' rate su ' + titoli.length +
+        ' entrano senza il mezzo di pagamento: il mezzo sta sull\'incasso, e per queste l\'incasso non e\u0300 in questo file.' });
     }
 
     return {
@@ -680,7 +827,7 @@
       offerte: [],
       titoli: titoli,
       titoliSenzaImporto: scartati,
-      collaboratori: [],
+      collaboratori: codiciProduttore,
       avvisi: note
     };
   }
@@ -689,7 +836,7 @@
     TIPI: TIPI, euro: euro, data: data, colonna: c,
     leggi: leggi, controllaBusta: controllaBusta, esamina: esamina,
     anagrafica: anagrafica, polizza: polizza, garanzia: garanzia,
-    titolo: titolo, sinistro: sinistro, incasso: incasso,
+    rate: rate, veicolo: veicolo, sinistro: sinistro, incasso: incasso,
     mezzoNostro: mezzoNostro, converti: converti,
     codiceFiscaleValido: codiceFiscaleValido,
   };

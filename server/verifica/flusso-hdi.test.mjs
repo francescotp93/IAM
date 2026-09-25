@@ -73,11 +73,24 @@ const GAR1    = col(36, { 1: '30', 2: 'POL1', 9: '100101', 10: 'RCA', 18: '7.750
                           21: 'AUTO HDI - FINTA (AA000BB)', 31: '900,00', 34: '1.100,00' });
 const GAR2    = col(36, { 1: '30', 2: 'POL1', 9: '100102', 10: 'Assistenza',
                           31: '100,00', 34: '134,56' });
-const TIT_OK  = col(64, { 1: '40', 2: 'POL1', 11: '17/11/2025', 13: '17/11/2026',
-                          14: 'Quietanza', 18: 'Annuale', 19: 'Incassato', 22: '17/11/2025' });
-const TIT_KO  = col(64, { 1: '40', 2: 'POL-CHE-NON-CE', 14: 'Quietanza', 19: 'Incassato' });
+/* LE RATE SONO UNA RIGA PER GARANZIA, e si riconoscono dal progressivo (c2).
+   La polizza la dice la c7, il NUMERO — non la c2, che è il progressivo della
+   rata. Fino al 25/09/2026 il lettore confrontava le due cose, e sul file
+   vero coincidevano dodici volte per puro caso.
+   L'importo sta in c39 e la provvigione in c40, per riga: si SOMMANO. Qui la
+   rata buona è spezzata in due garanzie apposta — 900,00 + 334,56 = 1.234,56,
+   che è il lordo della polizza — così una lettura che tenesse una riga sola
+   uscirebbe con la metà dei soldi. */
+const TIT_OK1 = col(64, { 1: '40', 2: 'RATA1', 7: '1428000001', 10: 'RCA', 11: '17/11/2025',
+                          13: '17/11/2026', 14: 'Quietanza', 18: 'Annuale', 19: 'Incassato',
+                          20: 'INC1', 22: '17/11/2025', 39: '900,00', 40: '90,00' });
+const TIT_OK2 = col(64, { 1: '40', 2: 'RATA1', 7: '1428000001', 10: 'Assistenza', 11: '17/11/2025',
+                          13: '17/11/2026', 14: 'Quietanza', 18: 'Annuale', 19: 'Incassato',
+                          20: 'INC1', 22: '17/11/2025', 39: '334,56', 40: '33,46' });
+const TIT_KO  = col(64, { 1: '40', 2: 'RATA2', 7: 'POL-CHE-NON-CE', 14: 'Quietanza',
+                          19: 'Incassato', 39: '50,00', 40: '5,00' });
 
-const FILE = [TESTATA, CLIENTE, POLIZZA, GAR1, GAR2, TIT_OK, TIT_KO, CODA].join('\r\n');
+const FILE = [TESTATA, CLIENTE, POLIZZA, GAR1, GAR2, TIT_OK1, TIT_OK2, TIT_KO, CODA].join('\r\n');
 
 /* ── 1. un file troncato non si carica ──────────────────────────────────── */
 
@@ -276,36 +289,21 @@ prova('e l\'anteprima dice, nero su bianco, che non ha scritto niente', () => {
    volta per sezione. */
 
 const INC = (o) => Object.assign({ data: '2026-09-23', polizza_numero: 'P1', importo: 0, mezzo: 'Contante' }, o);
-const TIT = (o) => Object.assign({ polizza_id: 'a1', tipo: 'Nuova Polizza', effetto: '2026-09-23',
-  scadenza: '2027-09-23', frazionamento: 'Annuale', stato: 'Incassato', incassato_il: '2026-09-23',
-  grezzo: ['40', 'PROG1'] }, o);
+/* Una RATA, nella forma che `rate()` produce: un oggetto per rata, non una
+   riga per garanzia. L'importo e la provvigione sono già sommati, perché è
+   `rate()` a sommarli leggendo il file. */
+const TIT = (o) => Object.assign({ progressivo: 'PROG1', polizza_numero: 'P1',
+  tipo: 'Nuova Polizza', ramo: 'Auto', effetto: '2026-09-23', scadenza: '2027-09-23',
+  scadenza_rata: '2027-09-23', frazionamento: 'Annuale', stato: 'Incassato',
+  incassato_il: '2026-09-23', riferimento_incasso: '', produttore: '', competenza: '',
+  importo: 100, provvigione: 10, voci: [], righe: 1, grezzo: ['40', 'PROG1'] }, o);
 const POL = (o) => Object.assign({ id: 'a1', numero: 'P1', ramo: 'Auto', prodotto: 'RCA', agenzia: '1428',
   effetto: '2026-09-23', scadenza: '2027-09-23', frazionamento: 'Annuale',
   premio_lordo: 735.54, premio_netto: 600, anagrafica_id: 'c1' }, o);
 const ANA = (o) => Object.assign({ id: 'c1', denominazione: 'ROSSI MARIO', codice_fiscale: 'RSSMRA80A01L331X',
   comune: 'Trapani', provincia: 'TP' }, o);
 
-prova('la stessa rata ripetuta per sezione si conta una volta sola', () => {
-  /* Sei righe, un progressivo. Sono una rata. */
-  const sei = [1, 2, 3, 4, 5, 6].map(() => TIT({}));
-  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
-    titoli: sei, incassi: [INC({ importo: 733, mezzo: 'Bonifico' })], busta: { tracciato: 'PASS-133' } });
-  deve(a.titoli.length === 1, 'sono entrate ' + a.titoli.length + ' rate invece di una');
-  const somma = a.titoli.reduce((t, x) => t + x.importo_lordo, 0);
-  deve(somma === 733, 'il totale delle rate fa ' + somma + ' invece di 733: la rata è stata moltiplicata');
-});
 
-prova('un incasso non può pagare due rate diverse', () => {
-  /* Due rate vere (progressivi diversi) e un incasso solo: l'importo non si
-     sa attribuire, e nessuna delle due se lo prende. Prendersi 733 € a testa
-     è il modo in cui nascono 5.912 € dal nulla. */
-  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({ premio_lordo: null })], garanzie: [], sinistri: [],
-    titoli: [TIT({ grezzo: ['40', 'PROG1'] }), TIT({ grezzo: ['40', 'PROG2'] })],
-    incassi: [INC({ importo: 733 })], busta: { tracciato: 'PASS-133' } });
-  const somma = a.titoli.reduce((t, x) => t + x.importo_lordo, 0);
-  deve(somma <= 733, 'le rate caricate valgono ' + somma + ': più di quanto è stato incassato');
-  deve(a.titoliSenzaImporto.length >= 1, 'nessuna rata è stata lasciata fuori: l\'importo è stato indovinato');
-});
 
 prova('la colonna 23 non è un importo', () => {
   /* Vale 293 su ogni riga del file: è un codice. Chi la scambiasse per soldi
@@ -317,31 +315,8 @@ prova('la colonna 23 non è un importo', () => {
   deve(!/c\(r,\s*23\)|grezzo\[22\]/.test(corpo), 'converti legge la colonna 23 come se fosse un importo');
 });
 
-prova('senza un importo scritto da qualcuno la rata non si carica', () => {
-  /* Il premio diviso per il frazionamento sarebbe aritmetica plausibile su
-     soldi veri: credibile e inventata. */
-  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({ frazionamento: 'Semestrale', premio_lordo: 600 })],
-    garanzie: [], sinistri: [], titoli: [TIT({ frazionamento: 'Semestrale' })], incassi: [],
-    busta: { tracciato: 'PASS-133' } });
-  deve(a.titoli.length === 0, 'una rata semestrale senza incasso è entrata con un importo inventato: ' +
-    (a.titoli[0] && a.titoli[0].importo_lordo));
-  deve(a.titoliSenzaImporto.length === 1, 'la rata scartata non è stata contata');
-});
 
-prova('ma una rata annuale vale il premio annuo, e lo dice', () => {
-  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
-    titoli: [TIT({})], incassi: [], busta: { tracciato: 'PASS-133' } });
-  deve(a.titoli.length === 1 && a.titoli[0].importo_lordo === 735.54, 'la rata annuale non prende il premio annuo');
-  deve(/premio annuo/i.test(a.titoli[0].note || ''), 'da dove viene l\'importo non è scritto sulla rata');
-});
 
-prova('le provvigioni restano vuote, non zero', () => {
-  /* Zero è una cifra e finisce nei rendiconti come «non ha guadagnato
-     niente». Vuoto è la verità: HDI non le manda. */
-  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
-    titoli: [TIT({})], incassi: [INC({ importo: 100 })], busta: { tracciato: 'PASS-133' } });
-  deve(a.titoli[0].provvigione === null, 'la provvigione è ' + a.titoli[0].provvigione + ' invece che vuota');
-});
 
 prova('il mezzo di pagamento arriva dall\'incasso, tradotto', () => {
   /* È il dato che serve al foglio cassa: senza, la contabilità giornaliera
@@ -377,21 +352,251 @@ prova('polizze e rate portano una chiave stabile', () => {
   deve(a.polizze[0]._cliente === a.clienti[0]._chiave, 'la polizza non si aggancia al suo cliente');
 });
 
-prova('il totale caricato non supera mai quello incassato davvero', () => {
-  /* La prova di chiusura, sul file vero di Francesco: qualunque cosa faccia
-     l\'accoppiamento, la somma delle rate che prendono l\'importo da un
-     incasso non può superare la somma degli incassi. */
-  const fs2 = require('fs');
+
+prova('il nome del cliente viene copiato anche sulla polizza', () => {
+  /* La polizza tiene due cose sul cliente: `cliente_id`, il collegamento
+     vero, e `cliente`, il nome copiato accanto. Sembra un doppione e non lo
+     è: l'elenco del portafoglio, le stampe e gli export leggono la COPIA,
+     perché disegnare duemila righe andando ogni volta a prendere l'anagrafica
+     collegata sarebbe duemila letture.
+
+     Il 24/09/2026 la copia era vuota. Le diciotto polizze di HDI erano
+     entrate agganciate al loro cliente — cliente_id c'era su tutte e diciotto
+     — e in elenco comparivano con un trattino al posto del nome. Da fuori
+     sembrava che i clienti non fossero stati importati affatto. */
+  const a = H.converti({ anagrafiche: [ANA({ id: 'c1', denominazione: 'ROSSI MARIO' })],
+    polizze: [POL({ anagrafica_id: 'c1' })], garanzie: [], sinistri: [], veicoli: [],
+    titoli: [], incassi: [], busta: {} });
+  deve(a.polizze[0].cliente === 'ROSSI MARIO',
+    'la polizza non porta il nome: in elenco uscirebbe un trattino — ' + JSON.stringify(a.polizze[0].cliente));
+  deve(a.polizze[0]._cliente === a.clienti[0]._chiave, 'e il collegamento vero non c\'è');
+});
+
+/* ═══ QUELLO CHE IL TRACCIATO PORTA E NOI BUTTAVAMO ════════════════════════
+   Il 25/09/2026 Francesco ha guardato il portafoglio importato e ha detto
+   «mancano troppi dati». Aveva ragione, e non era un problema di scrittura:
+   era il lettore che leggeva un terzo di quello che il file contiene. */
+
+prova('il codice di chi ha prodotto la polizza viene letto', () => {
+  const fs = require('fs');
   const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
-  if (!fs2.existsSync(percorso)) { deve(true, ''); return; }
-  const r = H.esamina(fs2.readFileSync(percorso, 'utf8'), []);
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const r = H.esamina(fs.readFileSync(percorso, 'utf8'), []);
+  const cod = r.polizze.map(p => p.produttore).filter(Boolean);
+  deve(cod.length === r.polizze.length,
+    'solo ' + cod.length + ' polizze su ' + r.polizze.length + ' hanno un codice produttore');
+  const distinti = new Set(cod).size;
+  deve(distinti > 1, 'un solo codice distinto su tutte: è una costante, non un produttore');
+  deve(distinti < r.polizze.length, distinti + ' codici distinti su ' + r.polizze.length + ': troppi per essere produttori');
+  deve(cod.every(c => /^[A-Z]\d{4,6}$/.test(c)), 'forma inattesa: ' + JSON.stringify([...new Set(cod)]));
+});
+
+prova('e finisce dove l\'assegnazione lo va a cercare', () => {
+  const A = require('../../tariffe/motore/assegnazione.js');
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({ produttore: 'A12556', competenza: '1428' })],
+    garanzie: [], sinistri: [], titoli: [], incassi: [], veicoli: [], busta: {} });
+  deve(a.polizze[0].dati.produttore === 'A12556', 'il codice non arriva nei dati della polizza');
+  const c = A.codiceDi({ compagnia: 'HDI', dati: a.polizze[0].dati });
+  deve(c && c.codice === 'A12556', 'l\'assegnazione non trova il codice di HDI: ' + JSON.stringify(c));
+  deve(c.chiave === 'HDI|A12556', 'la chiave non porta la compagnia');
+  deve(!a.polizze[0].dati.ssf, 'il codice di HDI è finito sotto il nome di un altro tracciato');
+});
+
+prova('i codici si presentano con quanto pesano', () => {
+  /* Il tracciato porta il codice e NON il nome: abbinarli è una decisione di
+     Francesco, e per prenderla deve sapere quale codice conta davvero. */
+  const a = H.converti({
+    anagrafiche: [ANA({})],
+    polizze: [POL({ id: 'p1', numero: 'N1', produttore: 'A1' }), POL({ id: 'p2', numero: 'N2', produttore: 'A1' }),
+              POL({ id: 'p3', numero: 'N3', produttore: 'A2' })],
+    garanzie: [], sinistri: [], veicoli: [], incassi: [],
+    titoli: [TIT({ polizza_numero: 'N1', produttore: 'A2' })], busta: {} });
+  deve(a.collaboratori.length === 2, 'i codici presentati sono ' + a.collaboratori.length + ' invece di 2');
+  const a1 = a.collaboratori.find(c => c.codice === 'A1');
+  deve(a1 && a1.polizze === 2, 'A1 porta ' + (a1 && a1.polizze) + ' polizze invece di 2');
+  const a2 = a.collaboratori.find(c => c.codice === 'A2');
+  deve(a2 && a2.polizze === 1 && a2.rate === 1, 'A2 non conta insieme polizze e rate');
+  deve(a.collaboratori[0].codice === 'A1', 'non sono ordinati per quanto pesano');
+  deve(a.avvisi.some(x => /codici produttore/i.test(x.t)), 'non viene detto che i codici vanno abbinati');
+});
+
+prova('il veicolo entra: targa, telaio, marca, modello, classe', () => {
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const a = H.converti(H.esamina(fs.readFileSync(percorso, 'utf8'), []));
+  const conV = a.polizze.filter(p => p.dati.veicolo);
+  deve(conV.length >= 15, 'solo ' + conV.length + ' polizze portano il veicolo');
+  const v = conV[0].dati.veicolo;
+  deve(/^[A-Z]{2}\d{3}[A-Z]{2}$/.test(String(v.targa || '')), 'la targa non ha la forma di una targa: ' + v.targa);
+  deve(String(v.telaio || '').length === 17, 'il telaio non ha 17 caratteri');
+  deve(v.marca && v.modello, 'marca o modello mancanti');
+  /* Targhe tutte uguali vorrebbe dire una costante letta per dato, come
+     successe col codice fiscale. */
+  deve(new Set(conV.map(p => p.dati.veicolo.targa)).size === conV.length, 'targhe ripetute');
+});
+
+prova('il veicolo si aggancia alla polizza giusta', () => {
+  /* Un veicolo sulla polizza sbagliata è peggio di nessun veicolo: è una
+     targa altrui su una scheda. */
+  const a = H.converti({
+    anagrafiche: [ANA({})], polizze: [POL({ id: 'p1', numero: 'N1' }), POL({ id: 'p2', numero: 'N2' })],
+    veicoli: [{ polizza_id: 'p2', polizza_numero: 'N2', targa: 'AA111BB', marca: 'FIAT' }],
+    garanzie: [], sinistri: [], titoli: [], incassi: [], busta: {} });
+  deve(!a.polizze.find(p => p.numero_polizza === 'N1').dati.veicolo, 'la polizza senza veicolo ne ha preso uno');
+  const p2 = a.polizze.find(p => p.numero_polizza === 'N2');
+  deve(p2.dati.veicolo && p2.dati.veicolo.targa === 'AA111BB', 'il veicolo non è finito sulla sua polizza');
+});
+
+prova('quello che non so non lo battezzo', () => {
+  /* Le colonne dalla 59 in poi del record veicolo hanno tutta l'aria
+     dell'attestato di rischio. «Tutta l'aria» non è una prova, e un attestato
+     letto male è una tariffa sbagliata. */
+  const fs = require('fs');
+  const src = fs.readFileSync(new URL('../../tariffe/motore/flusso-hdi.js', import.meta.url), 'utf8');
+  const i = src.indexOf('function veicolo(');
+  const corpo = src.slice(i, src.indexOf('function ', i + 10));
+  deve(/anni_grezzi/.test(corpo), 'le colonne non identificate hanno perso il loro nome onesto');
+  deve(!/attestato|sinistrosita/i.test(corpo.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'una colonna è stata battezzata «attestato» senza che sia dimostrato');
+});
+
+prova('la polizza che ne sostituisce un\'altra se lo porta dietro', () => {
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const a = H.converti(H.esamina(fs.readFileSync(percorso, 'utf8'), []));
+  const sost = a.polizze.filter(p => p.dati.sostituisce_numero);
+  deve(sost.length >= 3, 'solo ' + sost.length + ' polizze dichiarano di sostituirne un\'altra');
+  deve(sost.every(p => /^\d{10}$/.test(String(p.dati.sostituisce_numero))), 'forma inattesa del numero sostituito');
+  deve(sost.every(p => p.dati.sostituisce_numero !== p.numero_polizza),
+    'una polizza risulta sostituire se stessa: si sta leggendo il proprio numero');
+});
+
+/* ═══ LE RATE SONO GRUPPI DI RIGHE, NON RIGHE ══════════════════════════════
+   Il record 40 è UNA RIGA PER GARANZIA. Nel file vero ci sono 154 righe e 35
+   rate: una polizza auto con RCA, infortuni e assistenza occupa tre righe con
+   lo stesso progressivo.
+
+   Il 24/09/2026 l'avevo letto al contrario. Vedendo sei righe con lo stesso
+   progressivo le avevo chiamate «ripetizioni», ne tenevo una e buttavo le
+   altre cinque — cioè buttavo l'importo di cinque garanzie su sei. Poi, non
+   trovando più l'importo, lo andavo a cercare nell'incasso, e dove non c'era
+   lo ricavavo dal premio annuo. Ne uscivano 12 rate su 35, con l'importo
+   arrotondato dell'incasso al posto del premio esatto.
+
+   La lettura giusta è che si SOMMA. E si verifica da sola: sommate così, le
+   provvigioni combaciano al centesimo con il foglio «Appunti Incassi» che la
+   compagnia stampa ogni sera. */
+
+prova('una rata è la somma delle sue garanzie, non la prima riga', () => {
+  const r = H.esamina(FILE, []);
+  const t = r.titoli[0];
+  deve(t.righe === 2, 'la rata è fatta di ' + t.righe + ' righe invece di 2');
+  deve(t.importo === 1234.56, 'l\'importo è ' + t.importo + ' invece di 1234,56: le garanzie non sono state sommate');
+  deve(t.provvigione === 123.46, 'la provvigione è ' + t.provvigione + ' invece di 123,46');
+  deve(t.voci.length === 2 && t.voci[0].garanzia === 'RCA',
+    'la rata non dice da quali garanzie è fatta');
+});
+
+prova('e la sua polizza è quella del NUMERO, non del progressivo', () => {
+  /* La c2 è il progressivo della rata; la polizza la dice la c7. Confrontare
+     la c2 con l'id della polizza «funzionava» perché sul file vero
+     coincidevano dodici volte per puro caso. */
+  const r = H.esamina(FILE, []);
+  deve(r.titoli[0].polizza_numero === '1428000001',
+    'la rata punta a ' + r.titoli[0].polizza_numero + ' invece che al numero della polizza');
+  deve(r.titoli[0].progressivo === 'RATA1', 'il progressivo della rata non viene conservato');
+});
+
+prova('la provvigione c\'è, e non è zero', () => {
+  /* Per due giorni ho scritto a Francesco che il PASS-133 non manda le
+     provvigioni. Le manda: c40, per riga, da sommare. Zero sarebbe stato una
+     cifra in un rendiconto — «non ha guadagnato niente» — al posto di 123,46. */
+  const r = H.esamina(FILE, []);
+  deve(r.titoli[0].provvigione > 0, 'la provvigione è ' + r.titoli[0].provvigione);
   const a = H.converti(r);
-  const daIncasso = a.titoli.filter(t => !/premio annuo/i.test(t.note || ''));
-  const somma = daIncasso.reduce((t, x) => t + x.importo_lordo, 0);
-  const incassato = r.incassi.reduce((t, i) => t + (i.importo || 0), 0);
-  deve(somma <= incassato + 0.005,
-    'le rate valgono ' + somma.toFixed(2) + ' ma di incassi ce ne sono ' + incassato.toFixed(2) +
-    ': ' + (somma - incassato).toFixed(2) + ' € nati dal nulla');
+  deve(a.titoli[0].provvigione === 123.46,
+    'la provvigione non arriva in archivio: ' + a.titoli[0].provvigione);
+  const fs = require('fs');
+  const src = fs.readFileSync(new URL('../../tariffe/motore/flusso-hdi.js', import.meta.url), 'utf8');
+  deve(!/non porta le provvigioni/i.test(src),
+    'il lettore dichiara ancora che le provvigioni non ci sono');
+});
+
+prova('LA PROVA DEL NOVE: le provvigioni combaciano col foglio della compagnia', () => {
+  /* Quindici polizze del foglio «Appunti Incassi» del 22/09/2026, stampato
+     dalla compagnia. È l'unica verifica che non dipende da come ho letto io
+     il file: i numeri li ha scritti HDI. */
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const FOGLIO = {
+    '1428400123': 56.56, '1428400974': 20.71, '1428405018': 36.27, '1428405028': 18.94,
+    '1428405911': 12.57, '1428407257': 36.29, '1428407261': 29.71, '1428407262': 34.98,
+    '1428407263': 30.92, '1428407264': 117.87, '1428407265': 32.45, '1428407267': 38.92,
+    '1428407268': 36.55, '1428407269': 44.29,
+  };
+  const letto = H.leggi(fs.readFileSync(percorso, 'utf8'));
+  const rate = H.rate(letto.per['40']);
+  const fuori = [];
+  Object.keys(FOGLIO).forEach(num => {
+    /* La rata incassata, non quelle annullate della stessa polizza. */
+    const sue = rate.filter(t => t.polizza_numero === num && /incassat/i.test(t.stato));
+    const mia = sue.reduce((s, t) => s + t.provvigione, 0);
+    if (Math.abs(mia - FOGLIO[num]) > 0.005) fuori.push(num + ': foglio ' + FOGLIO[num] + ', letto ' + mia.toFixed(2));
+  });
+  deve(fuori.length === 0, 'non combaciano col foglio della compagnia: ' + JSON.stringify(fuori));
+});
+
+prova('e gli importi delle rate non superano mai il premio della polizza', () => {
+  /* La rete contro il doppio conteggio, nella forma giusta: una rata non può
+     valere più dell\'intera polizza. Sommare le righe due volte, o sommare
+     rate di polizze diverse, si vedrebbe qui. */
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const r = H.esamina(fs.readFileSync(percorso, 'utf8'), []);
+  const premi = {};
+  r.polizze.forEach(p => { premi[String(p.numero)] = p.premio_lordo; });
+  const guai = r.titoli.filter(t => {
+    const pr = premi[t.polizza_numero];
+    return pr != null && t.importo > pr + 0.01;
+  });
+  deve(guai.length === 0, guai.length + ' rate valgono più del premio della loro polizza: ' +
+    JSON.stringify(guai.slice(0, 3).map(t => t.polizza_numero + ' rata ' + t.importo + ' > premio ' + premi[t.polizza_numero])));
+});
+
+prova('il mezzo di pagamento viene dall\'incasso giusto, non da uno qualsiasi', () => {
+  /* La rata porta la chiave del suo incasso (c20 della rata = c10
+     dell\'incasso). Cercarlo per polizza e data, con due incassi lo stesso
+     giorno, vorrebbe dire sceglierlo a caso. */
+  const a = H.converti({
+    anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [], veicoli: [],
+    titoli: [TIT({ riferimento_incasso: 'INC-B' })],
+    incassi: [{ riferimento: 'INC-A', polizza_numero: 'P1', data: '2026-09-23', importo: 100, mezzo: 'Contante' },
+              { riferimento: 'INC-B', polizza_numero: 'P1', data: '2026-09-23', importo: 100, mezzo: 'Pos' }],
+    busta: {} });
+  deve(a.titoli[0].mezzo_pagamento === 'pos',
+    'ha preso il mezzo dall\'incasso sbagliato: ' + a.titoli[0].mezzo_pagamento);
+
+  /* E sul file vero: la chiave deve davvero combaciare. Con incassi finti si
+     prova solo che il codice usa `riferimento`, non che `riferimento` sia
+     letto dalla colonna giusta — e una colonna accanto darebbe stringhe che
+     non agganciano niente, in silenzio. */
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) return;
+  const r = H.esamina(fs.readFileSync(percorso, 'utf8'), []);
+  const rif = new Set(r.incassi.map(i => String(i.riferimento || '')).filter(Boolean));
+  deve(rif.size === r.incassi.length,
+    'gli incassi non hanno un riferimento distinto ciascuno: ' + rif.size + ' su ' + r.incassi.length);
+  const agganciate = r.titoli.filter(t => rif.has(String(t.riferimento_incasso || '')));
+  deve(agganciate.length > 0,
+    'nessuna rata aggancia il suo incasso: la colonna del riferimento non è quella giusta');
+  const conMezzo = H.converti(r).titoli.filter(t => t.mezzo_pagamento);
+  deve(conMezzo.length >= agganciate.length,
+    'le rate agganciate sono ' + agganciate.length + ' ma solo ' + conMezzo.length + ' hanno il mezzo');
 });
 
 /* ── il file dev'essere anche SCEGLIBILE ────────────────────────────────────

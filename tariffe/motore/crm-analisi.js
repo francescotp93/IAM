@@ -104,7 +104,7 @@
   function filtra(righe, f, extra) {
     f = f || {}; extra = extra || {};
     var perCliente = extra.polizzePerCliente || {};
-    var membriGruppo = extra.membriGruppo || null;   // Set di cliente_id
+    var membriGruppo = extra.membriGruppo || null;   // Set di anagrafica_id
     var oggi = extra.oggi || null;
 
     var comuni = (f.comuni || []).map(chiave).filter(Boolean);

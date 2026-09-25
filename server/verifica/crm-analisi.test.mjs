@@ -306,6 +306,56 @@ prova('la campagna passa dal filtro del consenso, l\'esportazione no', () => {
     'l\'esportazione passa dal filtro della campagna: il foglio per l\'ufficio perderebbe dei clienti');
 });
 
+/* ── IL FILTRO PER GRUPPO CHIEDE E LEGGE LA STESSA COLONNA ───────────────────
+   Il 25/09/2026 la pagina chiedeva `cliente_id` a una tabella che ha
+   `anagrafica_id`. PostgREST non lancia: torna un errore e `data` nullo,
+   quindi l'insieme dei membri nasceva VUOTO e la ricerca per gruppo non
+   trovava MAI nessuno. Nessun errore a schermo, solo un `console.warn`.
+
+   La prova `colonne-che-esistono` adesso copre metà del problema: che la
+   colonna chiesta esista. Resta l'altra metà, ed è quella che rifarebbe
+   nascere lo stesso difetto — chiedere la colonna giusta e poi leggere un
+   campo diverso dalla riga che torna. Qui si controlla che siano LA STESSA. */
+
+prova('la ricerca per gruppo legge lo stesso campo che ha chiesto', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = src.indexOf("db.from('quote_gruppi_membri')");
+  deve(i > 0, 'non trovo più la lettura dei membri del gruppo in index.html');
+  /* Il confine è un punto preciso del codice, non un numero di caratteri:
+     contando i caratteri o si resta corti (e la prova fallisce su codice
+     giusto, com'è appena successo) o si sfora nella funzione dopo e si legge
+     tutt'altro — è già capitato su un'altra prova di questo repo. */
+  const fine = src.indexOf('M.filtra(', i);
+  deve(fine > i, 'non trovo la chiamata al filtro dopo la lettura dei membri');
+  const blocco = src.slice(i, fine);
+  const chiesta = /\.select\('([a-z_]+)'\)/.exec(blocco);
+  deve(chiesta, 'non riesco a leggere quale colonna viene chiesta: ' + blocco.slice(0, 80));
+  const letta = new RegExp('x\\.([a-z_]+)').exec(blocco.slice(blocco.indexOf('new Set')));
+  deve(letta, 'non riesco a leggere quale campo viene usato per costruire l\'insieme');
+  deve(chiesta[1] === letta[1],
+    'chiede «' + chiesta[1] + '» e legge «' + letta[1] + '»: l\'insieme dei membri resterebbe vuoto');
+  deve(chiesta[1] === 'anagrafica_id',
+    'la colonna di quote_gruppi_membri è `anagrafica_id`, qui si chiede «' + chiesta[1] + '»');
+});
+
+prova('e se la lettura fallisce lo dice, invece di far sparire i clienti', () => {
+  /* Le due alternative erano bugie tutte e due: un insieme vuoto fa sparire
+     tutti i clienti del gruppo, un `null` fa finta che il filtro non sia stato
+     chiesto e li mostra tutti. Su una schermata che serve a scegliere chi
+     chiamare, un numero sbagliato in silenzio è la cosa peggiore. */
+  const fs = require('fs');
+  const src = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = src.indexOf("db.from('quote_gruppi_membri')");
+  const fine2 = src.indexOf('M.filtra(', i);
+  const blocco = src.slice(i, fine2 > i ? fine2 : i + 700);
+  deve(/\berror\b/.test(blocco), 'l\'errore della lettura non viene nemmeno raccolto');
+  deve(/if \(error\)/.test(blocco), 'l\'errore viene raccolto e non guardato');
+  /* E non basta scriverlo in console: deve fermarsi, o il conto esce lo stesso. */
+  deve(/return;/.test(blocco.slice(blocco.indexOf('if (error)'))),
+    'in caso di errore la ricerca prosegue e mostra un numero che non è quello vero');
+});
+
 /* ── esecuzione ─────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

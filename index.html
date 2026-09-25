@@ -77,7 +77,7 @@
 <script src="tariffe/motore/pagamento-rata.js?v=20260925"></script>
 <script src="tariffe/motore/flusso-ssf.js?v=20260925"></script>
 <script src="tariffe/motore/flusso-hdi.js?v=20260925"></script>
-<script src="tariffe/motore/crm-analisi.js?v=20260924"></script>
+<script src="tariffe/motore/crm-analisi.js?v=20260925"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260920"></script>
 <!-- Le coordinate su cui i collaboratori versano stanno sui conti, e i conti
      li conosce il motore della contabilità: il controllo dell'IBAN è già lì
@@ -11238,13 +11238,35 @@ async function caCerca() {
   const tri = v => v === 'si' ? true : v === 'no' ? false : null;
   const num = v => v === '' ? null : Number(v);
 
+  /* IL FILTRO PER GRUPPO, e i due modi in cui sbagliava.
+
+     La colonna è `anagrafica_id`, non `cliente_id`: la tabella lega un
+     gruppo a un'ANAGRAFICA, ed è con l'id dell'anagrafica che il motore
+     confronta (`membriGruppo.has(r.id)`). Chiedendo una colonna che non
+     esiste, PostgREST non lancia: torna un errore e `data` nullo, quindi
+     l'insieme nasceva VUOTO e la ricerca per gruppo non trovava mai
+     nessuno. Il `catch` non se ne accorgeva perché non c'era niente da
+     catturare, e il `console.warn` lo vedeva solo chi apriva la console.
+     Trovato dalla prova `colonne-che-esistono` il 25/09/2026.
+
+     E se la lettura fallisce davvero, adesso si dice. Le due alternative
+     erano bugie tutte e due: un insieme vuoto fa sparire tutti i clienti,
+     un `null` fa finta che il filtro non sia stato chiesto e li mostra
+     tutti. Su una schermata che serve a scegliere chi chiamare, un numero
+     sbagliato in silenzio è la cosa peggiore che possa uscire. */
   let membri = null;
   const gruppo = g('ca-gruppo');
   if (gruppo) {
-    try {
-      const { data } = await db.from('quote_gruppi_membri').select('cliente_id').eq('gruppo_id', gruppo);
-      membri = new Set((data || []).map(x => String(x.cliente_id)));
-    } catch (e) { console.warn('gruppo:', e); }
+    const { data, error } = await db.from('quote_gruppi_membri')
+      .select('anagrafica_id').eq('gruppo_id', gruppo);
+    if (error) {
+      box.innerHTML = '<div class="cnt-err">Non riesco a leggere i membri del gruppo: '
+        + esc(error.message || error)
+        + '<br><small>Il filtro per gruppo non è stato applicato, quindi il numero '
+        + 'che vedresti non sarebbe quello vero.</small></div>';
+      return;
+    }
+    membri = new Set((data || []).map(x => String(x.anagrafica_id)));
   }
 
   const righe = M.filtra(CA_ANAG || [], {

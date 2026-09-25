@@ -21,16 +21,20 @@
 
 ## Quadro d'insieme
 
-**1.111 prove superate su 68 suite; 4 suite rosse.**
+**1.123 prove superate su 70 suite; 3 suite rosse.**
 
 All'inizio dell'audit erano 961 e 16. Le dodici recuperate lo sono state
 dichiarando le dipendenze (P0), non toccando il codice: dodici suite
 sembravano a posto e non partivano affatto.
 
-Le quattro rimaste: `colonne-che-esistono` **è tornata verde** dopo la
-correzione del filtro per gruppo; restano `tracciabilita` (P1.3) e le
-due `parita-*` che confrontano contro un riferimento git che non esiste
-più (P2.4).
+`colonne-che-esistono` **è tornata verde** dopo la correzione del filtro
+per gruppo. Restano `tracciabilita` (P1.3) e le due `parita-*` che
+confrontano contro un riferimento git che non esiste più (P2.4).
+
+Due suite nuove: **`tasti-vivi`** (ognuno dei 2.108 gestori delle due
+pagine chiama qualcosa che esiste — nessun tasto morto) e
+**`visualizzazione`** (lo zoom con le dita non si blocca, e i campi sono
+a 16px dove si tocca).
 
 ---
 

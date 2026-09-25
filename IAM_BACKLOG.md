@@ -157,6 +157,13 @@ indicazioni scritte nell'intestazione del file.
 - **P3.1** Nessun router unico: ogni famiglia di pannelli ha il suo
   commutatore. Nessuna pagina ha un indirizzo proprio, quindi non si può
   mandare un collegamento a una schermata.
+- **P3.4 · 5.037 stili scritti in linea** (2.376 nel quotatore, 2.661 in IAM)
+  e 336 larghezze fisse in pixel. Sono la vera causa di come si vede
+  l'app: lo stesso riquadro è scritto in venti modi diversi, e su uno
+  schermo stretto le larghezze fisse spingono la pagina di lato.
+  **Non si toccano alla cieca**: servono prima le prove da utente vero
+  (P4.1), altrimenti si cambia l'aspetto di 60.000 righe senza poter
+  guardare che cosa si è rotto.
 - **P3.2** Due file da 33.000 e 27.000 righe. Non si riscrivono: si
   continua a estrarre le regole nei motori, come si sta già facendo.
 - **P3.3** Trenta documenti markdown nella radice, scritti in momenti
@@ -198,6 +205,8 @@ indicazioni scritte nell'intestazione del file.
 |---|---|
 | 25/09/2026 | **Stato di pagamento dai flussi**: incassato/sospeso/da incassare deciso dal movimento della compagnia e non dall'etichetta; l'importazione aggiorna le rate già in archivio ma non tocca mai una correzione a mano. Verificato sul file vero (12 rate, 3.217,39 €) |
 | 25/09/2026 | **Le polizze HDI** dicevano tutte «non pagato» con 12 rate incassate |
+| 25/09/2026 | **I tasti**: una prova controlla che tutti e 2.108 i gestori chiamino qualcosa che esiste. Nessun tasto morto |
+| 25/09/2026 | **Lo zoom con le dita** era bloccato in IAM; i campi vanno a 16px dove si tocca, così iOS non ingrandisce da solo |
 | 25/09/2026 | **P0 · le dipendenze**: da 961 a 1.111 prove superate, da 16 a 4 suite rosse |
 | 25/09/2026 | **P1 · il filtro per gruppo del CRM** restituiva sempre zero clienti, in silenzio |
 | 25/09/2026 | **I mezzi di pagamento veri** (`carta_credito`, `altro`, `pos_bianco`, `pos_nero`) non erano riconosciuti: sul 23/09 erano 2 su 5 |

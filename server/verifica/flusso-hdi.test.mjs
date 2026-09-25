@@ -711,6 +711,89 @@ prova('il premio della rata si scrive solo dove è esatto', () => {
     'un premio di rata è stato scritto su una polizza non annuale, dove il tracciato non lo dichiara');
 });
 
+/* ═══ L'IMPORTO DELLA RATA È c39 PIÙ c64 ═══════════════════════════════════
+   Il 25/09/2026 avevo già pubblicato `importo: somma(39)`. Un revisore
+   avversariale, mandato a smontare proprio quella scoperta, ha trovato che la
+   regola era incompleta: la c64 è l'arrotondamento di sezione — sempre
+   negativo o zero, presente su tutte e 154 le righe — e senza di lei
+   l'importo combacia con quello davvero incassato 5 volte su 14, e sulle
+   altre 9 è più alto da 0,71 a 5,86 €.
+
+   Non è estetica. Una rata caricata a 735,54 € quando il cliente ne ha pagati
+   733,00 lascia in archivio un insoluto di 2,54 € che non esiste — su ogni
+   rata, per sempre, e sono proprio i soldi che lo scadenzario esiste per
+   inseguire. */
+
+prova('LA PROVA DEL NOVE: l\'importo della rata è quello che il cliente ha pagato', () => {
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const letto = H.leggi(fs.readFileSync(percorso, 'utf8'));
+  const rate = H.rate(letto.per['40']);
+  const inc = {};
+  letto.per['80'].map(H.incasso).forEach(i => { if (i.riferimento) inc[i.riferimento] = i.importo; });
+  const fuori = [];
+  rate.forEach(t => {
+    const pagato = inc[t.riferimento_incasso];
+    if (pagato === undefined) return;
+    if (Math.abs(t.importo - pagato) > 0.005) fuori.push(t.polizza_numero + ': rata ' + t.importo + ' ma incassati ' + pagato);
+  });
+  deve(fuori.length === 0,
+    fuori.length + ' rate non valgono quello che è stato incassato — ognuna lascerebbe un insoluto che non esiste: ' +
+    JSON.stringify(fuori.slice(0, 4)));
+  /* E devono essercene davvero, altrimenti la prova sopra passa a vuoto. */
+  const agganciate = rate.filter(t => inc[t.riferimento_incasso] !== undefined);
+  deve(agganciate.length >= 14, 'solo ' + agganciate.length + ' rate agganciate a un incasso: la prova gira a vuoto');
+});
+
+prova('l\'arrotondamento toglie, non aggiunge', () => {
+  /* La c64 è sempre ≤ 0. Se un giorno diventasse positiva, sommarla
+     gonfierebbe le rate invece di sgonfiarle, e la prova sopra se ne
+     accorgerebbe solo sulle rate agganciate a un incasso. */
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) { deve(true, ''); return; }
+  const rate = H.rate(H.leggi(fs.readFileSync(percorso, 'utf8')).per['40']);
+  const voci = rate.flatMap(t => t.voci);
+  deve(voci.every(v => (v.arrotondamento || 0) <= 0),
+    'c\'è un arrotondamento positivo: gonfierebbe la rata invece di sgonfiarla');
+  deve(voci.every(v => Math.abs((v.premio_lordo + v.arrotondamento) - v.importo) < 0.005),
+    'la voce non torna: importo dev\'essere premio lordo più arrotondamento');
+  /* E dev'essere piccolo — ma il confronto va fatto sulla RATA, non sulla
+     singola sezione: l'arrotondamento è dell'intera rata e può cadere su una
+     sezione da 35 centesimi, superandola. Sulla rata invece non può mai
+     mangiarsela: un importo negativo vorrebbe dire una colonna letta male. */
+  const positive = rate.filter(r => r.voci.reduce((s2, v) => s2 + v.premio_lordo, 0) > 0);
+  deve(positive.every(r => r.importo >= 0),
+    'una rata di premio positivo esce negativa: l\'arrotondamento se l\'è mangiata');
+  deve(positive.every(r => {
+    const lordo = r.voci.reduce((s2, v) => s2 + v.premio_lordo, 0);
+    return Math.abs(lordo - r.importo) <= Math.max(10, lordo * 0.1);
+  }), 'un arrotondamento toglie più del 10% della rata: non è un arrotondamento, è un\'altra colonna');
+});
+
+prova('il telefono entra nudo, senza prefisso attaccato', () => {
+  /* Arrivava come «0039347…» su 11 numeri su 13: così non combacia con lo
+     stesso numero già in archivio scritto nudo — fa doppioni — e non è
+     cliccabile per chiamare o per WhatsApp. */
+  deve(H.telefonoNudo('00393471234567') === '3471234567', 'il prefisso 0039 resta attaccato');
+  deve(H.telefonoNudo('+39 347 123 45 67') === '3471234567', 'il +39 e gli spazi restano');
+  deve(H.telefonoNudo('3471234567') === '3471234567', 'un numero già nudo è stato cambiato');
+  deve(H.telefonoNudo('00390923123456') === '0923123456', 'un fisso italiano non viene ripulito');
+  /* E un numero estero NON si tocca: lì il prefisso è parte del numero, e
+     tagliarlo lo rompe. */
+  deve(H.telefonoNudo('+33123456789') === '+33123456789', 'ha tagliato il prefisso a un numero estero');
+  deve(H.telefonoNudo('') === null, 'una casella vuota diventa qualcosa');
+
+  const fs = require('fs');
+  const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
+  if (!fs.existsSync(percorso)) return;
+  const a = H.converti(H.esamina(fs.readFileSync(percorso, 'utf8'), []));
+  const tel = a.clienti.map(c => c.cellulare).filter(Boolean);
+  deve(tel.length >= 13, 'solo ' + tel.length + ' telefoni letti');
+  deve(tel.every(t => !/^(0039|\+39)/.test(t)), 'dei numeri escono ancora col prefisso italiano');
+});
+
 /* ── il file dev'essere anche SCEGLIBILE ────────────────────────────────────
    Il 24/09/2026 Francesco ha provato a caricare il suo file e «non è andato»,
    mentre il lettore qui sopra lo leggeva senza una piega: 14 clienti, 18

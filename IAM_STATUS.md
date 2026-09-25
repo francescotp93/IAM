@@ -51,7 +51,7 @@ a 16px dove si tocca).
 | 7 | **Intermediari** | 🟡 | IAM | 17 collaboratori, suite `collaboratori` e `assegnazione` (47) verdi. Ma **6 codici produttore HDI non sono ancora abbinati a una persona**: quelle polizze sono in archivio senza intestatario |
 | 8 | **Documentazione** | ❔ | QUOTO | `quote_documenti` 9 righe, `quote_pratica_documenti` 1, `quote_regole_documenti` 1. Praticamente non usata. «Documenti mancanti / scaduti» è da verificare |
 | 9 | **Contabilità** | 🟡 | IAM | Vedi la sezione dedicata |
-| 10 | **CRM / segmentazione** | 🟡 | QUOTO+IAM | `crm-analisi` 33/33. Il filtro per gruppo è stato **corretto il 25/09**. Restano vuote `iam_lead` e `quote_segmenti`: lead e segmenti salvati non sono in uso |
+| 10 | **CRM / segmentazione** | 🟢 | QUOTO+IAM | `crm-analisi` **51/51**. Il 25/09 sono entrate le ricerche che mancavano — l'**assenza** («auto senza casa»), compagnia, provincia, scadenza, fascia di premio — e si compongono fra loro. Tutte e otto le domande del mandato ora rispondono. Restano vuote `iam_lead` e `quote_segmenti`: lead e segmenti *salvati* non sono in uso |
 
 ---
 

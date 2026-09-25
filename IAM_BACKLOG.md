@@ -191,8 +191,10 @@ indicazioni scritte nell'intestazione del file.
   strategico dichiarato e oggi **non esiste**: zero polizze Prima in
   archivio. Serve decidere da dove arrivano i dati (flusso, estrazione,
   API) prima di scrivere una riga.
-- **P5.2** Segmenti salvabili e riusabili (`quote_segmenti` è pronta e
-  vuota).
+- **P5.2** Segmenti **salvabili e riusabili**: i filtri adesso ci sono
+  tutti, ma ogni ricerca va ricomposta a mano. `quote_segmenti` è pronta
+  e vuota — è il passo che trasforma una ricerca in una campagna
+  ripetibile.
 - **P5.3** Campagne commerciali a partire dai segmenti.
 - **P5.4** WhatsApp, email automatiche, scoring, suggerimenti, altre
   compagnie.
@@ -205,6 +207,7 @@ indicazioni scritte nell'intestazione del file.
 |---|---|
 | 25/09/2026 | **Stato di pagamento dai flussi**: incassato/sospeso/da incassare deciso dal movimento della compagnia e non dall'etichetta; l'importazione aggiorna le rate già in archivio ma non tocca mai una correzione a mano. Verificato sul file vero (12 rate, 3.217,39 €) |
 | 25/09/2026 | **Le polizze HDI** dicevano tutte «non pagato» con 12 rate incassate |
+| 25/09/2026 | **Le ricerche sul portafoglio**: l'assenza («auto senza casa»), compagnia, provincia, scadenza e premio. Le otto domande del mandato ora rispondono tutte |
 | 25/09/2026 | **I tasti**: una prova controlla che tutti e 2.108 i gestori chiamino qualcosa che esiste. Nessun tasto morto |
 | 25/09/2026 | **Lo zoom con le dita** era bloccato in IAM; i campi vanno a 16px dove si tocca, così iOS non ingrandisce da solo |
 | 25/09/2026 | **P0 · le dipendenze**: da 961 a 1.111 prove superate, da 16 a 4 suite rosse |

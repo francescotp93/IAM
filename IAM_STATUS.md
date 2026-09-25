@@ -21,15 +21,21 @@
 
 ## Quadro d'insieme
 
-**1.123 prove superate su 70 suite; 3 suite rosse.**
+**1.157 prove superate su 71 suite; 2 suite rosse.**
 
 All'inizio dell'audit erano 961 e 16. Le dodici recuperate lo sono state
 dichiarando le dipendenze (P0), non toccando il codice: dodici suite
 sembravano a posto e non partivano affatto.
 
-`colonne-che-esistono` **è tornata verde** dopo la correzione del filtro
-per gruppo. Restano `tracciabilita` (P1.3) e le due `parita-*` che
-confrontano contro un riferimento git che non esiste più (P2.4).
+**Non restano suite rosse per difetti dell'app.** Le due che restano sono
+le `parita-*`, che confrontano contro un riferimento git che non esiste
+più (P2.4): è la prova a essere senza ancoraggio, non il codice a essere
+rotto.
+
+`tracciabilita` è tornata verde il 26/09: era rossa **dal 17 settembre**,
+da quando è entrata la regola «ogni analisi parte da un cliente
+dell'anagrafica» senza che il campione di prova fosse aggiornato. Nove
+giorni di rosso che nessuno ha guardato.
 
 Due suite nuove: **`tasti-vivi`** (ognuno dei 2.108 gestori delle due
 pagine chiama qualcosa che esiste — nessun tasto morto) e
@@ -107,7 +113,7 @@ dall'app. È un modulo con un buon motore e senza carburante.
 | ~~1~~ | ~~P0~~ | ~~`package.json` non dichiara nessuna delle 12 dipendenze~~ — **corretto il 25/09**: +150 prove, −12 suite rosse | |
 | ~~2~~ | ~~P1~~ | ~~5 tabelle con RLS accesa e zero politiche~~ — **falso allarme mio**: tre sono chiuse al client di proposito (segreti, credenziali di posta) e una è pure dichiarata nel file di migrazione. Restano due tabelle orfane, scese a **P2.7 / P2.8** | verificato chi le usa, non solo `pg_policies` |
 | ~~3~~ | ~~P1~~ | ~~Il CRM chiede `quote_gruppi_membri.cliente_id`~~ — **corretto il 25/09**, con due prove nuove e cinque sabotaggi | |
-| 4 | **P1** | Suite `tracciabilita` rossa: «Manca il cliente dell'anagrafica», `Cannot read properties of undefined` | eseguita |
+| ~~4~~ | ~~P1~~ | ~~Suite `tracciabilita` rossa~~ — **corretta il 26/09**: due prove erano rimaste indietro rispetto a una regola del 17/09 e una terza ritagliava troppo largo. Il codice era giusto, e in un punto pure migliorato | |
 | 5 | **P1** | **85,3% del portafoglio senza intestatario**: 3.494 polizze su 4.097, per **1.113.069 € di premio annuo**. Dei 23 codici produttore ne sono stati decisi **2**. Il 26/09 ho corretto il difetto per cui i 6 codici HDI non arrivavano nemmeno alla schermata (l'importazione li scartava perché il tracciato non porta il nome): ora ci sono tutti e 21 da decidere. **Chi sia ogni codice lo può dire solo Francesco** | misurato su `quote_codici_collaboratore` e `quote_polizze.collaboratore_id` |
 | 6 | **P2** | `parita-tariffe` e `parita-catastrofali` confrontano contro un riferimento git **che non esiste più** | «nessun commit contiene più `const TL_MYDRIVE`» |
 | 7 | **P2** | Nessuna schermata per correggere a mano il pagamento di una rata | la colonna c'è, il tasto no |

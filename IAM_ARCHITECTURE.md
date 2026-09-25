@@ -98,22 +98,30 @@ Le tabelle con dati veri (righe stimate):
 
 ### Due cose da sapere sullo schema
 
-**a) Cinque tabelle hanno l'RLS accesa e ZERO politiche.** In PostgreSQL
-questo vuol dire che *nessuno* le legge e *nessuno* le scrive dal client:
-non danno errore, restituiscono zero righe.
+**a) Cinque tabelle hanno l'RLS accesa e ZERO politiche** — e tre di
+esse **è giusto che sia così**. Vale la pena raccontare come l'ho capito,
+perché è il tipo di errore che un audit fa facilmente.
 
-| tabella | righe dentro |
-|---|---:|
-| `posta_notifiche` | **161** |
-| `ponte_segreti` | 1 |
-| `posta_config` | 1 |
-| `iam_trattative_backup` | 1 |
-| `quote_progetti_previdenziali` | 0 |
+Vedendo lo schema «RLS accesa, zero politiche» le ho classificate tutte e
+cinque come difetto P1: in PostgreSQL vuol dire che nessuno le legge e
+nessuno le scrive dal client — non danno errore, restituiscono zero
+righe. Poi sono andato a vedere chi le usa, e il quadro è cambiato:
 
-Le prime tre contengono dati e non si possono leggere. È già scritto, in
-un altro contesto, che un `not exists` su una tabella così è **sempre
-vero** mentre la cascata cancella davvero — quindi non è solo un
-problema di lettura. Priorità **P1**.
+| tabella | righe | chi la usa | giudizio |
+|---|---:|---|---|
+| `ponte_segreti` | 1 | `server/chiaveCondivisa.js`, `server/index.js` | ✅ **corretto**: sono segreti, non devono essere leggibili dal client |
+| `posta_config` | 1 | `server/mail.js` | ✅ **corretto**: contiene le credenziali della posta |
+| `posta_notifiche` | 161 | solo il server | ✅ **corretto**, e **dichiarato**: `iam/sql/2026-07-30-gruppi-posta.sql` scrive «posta_config e posta_notifiche non hanno nessuna regola di accesso: sono chiuse a chiunque non sia il server» |
+| `iam_trattative_backup` | 1 | **nessun file del progetto** | ⚠️ orfana |
+| `quote_progetti_previdenziali` | 0 | solo la bozza non applicata | ⚠️ punto cieco |
+
+Quindi il difetto vero non è «cinque tabelle senza politiche»: sono due
+cose molto più piccole, e stanno in `IAM_BACKLOG.md` P2.7 e P2.8.
+
+**La lezione, che vale più del difetto**: uno schema sospetto non è una
+prova. Le tre tabelle «chiuse al client» sono la forma giusta di una
+tabella che tiene credenziali, e chiamarle difetto avrebbe portato ad
+aprirle — cioè a peggiorare la sicurezza credendo di correggerla.
 
 **b) Una trentina di tabelle sono a zero righe.** Sono funzioni
 costruite e mai entrate in uso: `iam_lead`, `iam_agenda`,

@@ -43,16 +43,17 @@ scoprirebbero in produzione. Il salto è un lavoro suo → **P4.3**.
 
 ## P1 — funzioni fondamentali che non funzionano
 
-### P1.1 · Cinque tabelle con RLS accesa e zero politiche
-`posta_notifiche` (**161 righe**), `ponte_segreti` (1), `posta_config`
-(1), `iam_trattative_backup` (1), `quote_progetti_previdenziali` (0).
+### ~~P1.1 · Cinque tabelle con RLS accesa e zero politiche~~ — **ritirato: era un falso allarme mio**
+L'avevo aperto vedendo lo schema «RLS accesa, zero politiche» su cinque
+tabelle. Andando a vedere **chi le usa**, tre sono corrette così:
+`ponte_segreti` tiene segreti, `posta_config` le credenziali della posta,
+`posta_notifiche` è scritta solo dal server — e quest'ultima è persino
+**dichiarata** nel file che l'ha creata.
 
-Nessuno le legge e nessuno le scrive dal client: non danno errore,
-restituiscono zero righe. E una guardia `not exists` su una tabella così
-è **sempre vera** mentre la cascata cancella davvero.
+Aprirle «per correggere il difetto» avrebbe peggiorato la sicurezza.
+Uno schema sospetto non è una prova: va verificata l'intenzione.
 
-**Fatto quando**: ogni tabella o ha le sue politiche, o è dichiarata
-«solo lato server» e il codice che la legge dal client è stato tolto.
+Restano due cose più piccole, scese a P2.7 e P2.8.
 
 ### ~~P1.2 · Il filtro per gruppo del CRM restituisce sempre zero~~ — **fatto 25/09/2026**
 Chiedeva `quote_gruppi_membri.cliente_id`; la colonna vera è
@@ -129,6 +130,19 @@ rosso.
 
 Per ciascuna una domanda sola: si completa o si toglie? Un gestionale
 pieno di schermate che nessuno usa è peggio di uno con meno schermate.
+
+### P2.7 · `iam_trattative_backup` è orfana
+Una riga dentro, e **nessun file del progetto la nomina**. O è il residuo
+di una migrazione delle trattative, o serviva a qualcosa che non esiste
+più. Da capire e togliere: una tabella che nessuno nomina è un posto dove
+i dati vanno a morire senza che nessuno se ne accorga.
+
+### P2.8 · `quote_progetti_previdenziali`: punto cieco per le guardie
+Zero righe, RLS accesa e nessuna politica, e la nomina solo la bozza non
+applicata dell'«annulla importazione». Lì una guardia `not exists` è
+**sempre vera** mentre la cascata cancella davvero. Non è un problema
+oggi (la funzione non è applicata), lo diventa quando si rifà: va
+risolto **insieme** a P2.6, non prima e non dopo.
 
 ### P2.6 · «Annulla importazione»
 Bozza **non applicata** in `supabase/bozze/`, con 3 blocchi e 8 gravi

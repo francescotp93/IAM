@@ -101,7 +101,7 @@ dall'app. È un modulo con un buon motore e senza carburante.
 | # | pri | difetto | prova |
 |---|:--:|---|---|
 | ~~1~~ | ~~P0~~ | ~~`package.json` non dichiara nessuna delle 12 dipendenze~~ — **corretto il 25/09**: +150 prove, −12 suite rosse | |
-| 2 | **P1** | 5 tabelle con RLS accesa e zero politiche, di cui 3 con dati dentro | misurato su `pg_policies` |
+| ~~2~~ | ~~P1~~ | ~~5 tabelle con RLS accesa e zero politiche~~ — **falso allarme mio**: tre sono chiuse al client di proposito (segreti, credenziali di posta) e una è pure dichiarata nel file di migrazione. Restano due tabelle orfane, scese a **P2.7 / P2.8** | verificato chi le usa, non solo `pg_policies` |
 | ~~3~~ | ~~P1~~ | ~~Il CRM chiede `quote_gruppi_membri.cliente_id`~~ — **corretto il 25/09**, con due prove nuove e cinque sabotaggi | |
 | 4 | **P1** | Suite `tracciabilita` rossa: «Manca il cliente dell'anagrafica», `Cannot read properties of undefined` | eseguita |
 | 5 | **P1** | 6 codici produttore HDI senza persona abbinata | A12556 (7 polizze), A12559 (5), A18544, A18545, A4346, A12558 |

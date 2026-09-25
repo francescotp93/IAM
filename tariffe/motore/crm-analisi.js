@@ -48,6 +48,56 @@
      accorperebbe nomi che non c'entrano. Si normalizza solo spazi e maiuscole. */
   function chiave(v) { return testo(v).toLowerCase().replace(/\s+/g, ' '); }
 
+  /* ── IL VOCABOLARIO ────────────────────────────────────────────────────────
+     Ogni compagnia chiama le cose a modo suo, e finché non si mettono
+     d'accordo i filtri danno risposte sbagliate senza dirlo. Misurato sul
+     portafoglio vero il 25/09/2026:
+
+         compagnia «PRIMA» ............ 4.073 polizze, rami `rca` e `beni`
+         compagnia «HDI» ................. 18 polizze, rami `auto` e `persona`
+         compagnia «HDI Assicurazioni» .... 5 polizze, rami `beni` e `persona`
+         compagnia «Allianz» .............. 1 polizza,  ramo `rca`
+
+     Tre conseguenze, tutte e tre invisibili a chi guarda il risultato:
+
+       · «clienti HDI» ne trovava 13 invece di 15, perché `HDI` e
+         `HDI Assicurazioni` per un confronto esatto sono due aziende diverse;
+       · «polizza auto» ne trovava 15 invece di 4.005, perché Prima scrive
+         `rca` e HDI scrive `auto` per la stessa cosa;
+       · «senza polizza casa» non si poteva nemmeno chiedere: il ramo `casa`
+         non esiste, quello che c'è si chiama `beni`.
+
+     Qui sotto le due tabelle che li mettono d'accordo. Si allungano a mano
+     quando entra una compagnia nuova, e va bene così: indovinare un
+     accorpamento è peggio che dichiararlo. Quello che NON si riconosce resta
+     com'è scritto, invece di finire in un mucchio «altro» dove sparisce. */
+  var COMPAGNIE = {
+    'hdi': 'HDI', 'hdi assicurazioni': 'HDI', 'hdi assicurazioni spa': 'HDI',
+    'prima': 'Prima', 'prima assicurazioni': 'Prima', 'prima.it': 'Prima',
+    'allianz': 'Allianz', 'allianz spa': 'Allianz',
+  };
+  var RAMI = {
+    'rca': 'Auto', 'auto': 'Auto', 'rc auto': 'Auto', 'autovettura': 'Auto',
+    'beni': 'Casa e beni', 'casa': 'Casa e beni', 'abitazione': 'Casa e beni',
+    'persona': 'Persona', 'infortuni': 'Persona', 'salute': 'Persona',
+    'vita': 'Vita', 'previdenza': 'Previdenza', 'fondo pensione': 'Previdenza',
+  };
+
+  function canonico(tabella, v) {
+    var k = chiave(v);
+    if (!k) return '';
+    return tabella[k] || testo(v);
+  }
+  function compagniaCanonica(v) { return canonico(COMPAGNIE, v); }
+  function ramoCanonico(v) { return canonico(RAMI, v); }
+
+  /* Per confrontare: due valori sono lo stesso se lo sono una volta
+     ricondotti al vocabolario. Così «HDI Assicurazioni» e «hdi» combaciano, e
+     una compagnia che il vocabolario non conosce si confronta con se stessa
+     invece di combaciare con tutte. */
+  function stessaCompagnia(a, b) { return chiave(compagniaCanonica(a)) === chiave(compagniaCanonica(b)); }
+  function stessoRamo(a, b) { return chiave(ramoCanonico(a)) === chiave(ramoCanonico(b)); }
+
   /* L'ETÀ SI CALCOLA, NON SI STIMA DIVIDENDO I GIORNI PER 365. Chi compie gli
      anni domani oggi ne ha uno in meno, e un filtro «fino a 30» che lo include
      manda l'offerta giovani a chi non ne ha più diritto. */
@@ -137,10 +187,18 @@
 
     var comuni = (f.comuni || []).map(chiave).filter(Boolean);
     var province = (f.province || []).map(chiave).filter(Boolean);
-    var rami = (f.rami || []).map(chiave).filter(Boolean);
-    var senzaRami = (f.senzaRami || []).map(chiave).filter(Boolean);
-    var compagnie = (f.compagnie || []).map(chiave).filter(Boolean);
-    var senzaCompagnie = (f.senzaCompagnie || []).map(chiave).filter(Boolean);
+    /* Tutto passa dal vocabolario: chi cerca «Auto» deve trovare anche le
+       polizze che la compagnia chiama `rca`, e chi cerca «HDI» anche quelle
+       scritte «HDI Assicurazioni». */
+    var rami = (f.rami || []).map(function (x) { return chiave(ramoCanonico(x)); }).filter(Boolean);
+    var senzaRami = (f.senzaRami || []).map(function (x) { return chiave(ramoCanonico(x)); }).filter(Boolean);
+    var compagnie = (f.compagnie || []).map(function (x) { return chiave(compagniaCanonica(x)); }).filter(Boolean);
+    var senzaCompagnie = (f.senzaCompagnie || []).map(function (x) { return chiave(compagniaCanonica(x)); }).filter(Boolean);
+    /* Gli elenchi di clienti che hanno (o non hanno) una garanzia: li prepara
+       il database, perché le garanzie stanno dentro un jsonb e portarsele
+       tutte nel browser sono 5 MB a ogni apertura. */
+    var conGaranzia = extra.conGaranzia || null;      // Set di cliente_id, o null
+    var senzaGaranzia = extra.senzaGaranzia || null;  // idem
     var cerca = chiave(f.testoNote);
 
     return (righe || []).filter(function (r) {
@@ -176,7 +234,7 @@
 
       if (rami.length) {
         var ha = pz.some(function (p) {
-          return rami.indexOf(chiave(p.modulo || p.prodotto)) >= 0;
+          return rami.indexOf(chiave(ramoCanonico(p.modulo || p.prodotto))) >= 0;
         });
         if (!ha) return false;
       }
@@ -192,19 +250,27 @@
          domanda che gli è stata fatta e non a un'altra che pareva sottintesa. */
       if (senzaRami.length) {
         var haVietato = pz.some(function (p) {
-          return senzaRami.indexOf(chiave(p.modulo || p.prodotto)) >= 0;
+          return senzaRami.indexOf(chiave(ramoCanonico(p.modulo || p.prodotto))) >= 0;
         });
         if (haVietato) return false;
       }
 
       if (compagnie.length) {
-        var haComp = pz.some(function (p) { return compagnie.indexOf(chiave(p.compagnia)) >= 0; });
+        var haComp = pz.some(function (p) { return compagnie.indexOf(chiave(compagniaCanonica(p.compagnia))) >= 0; });
         if (!haComp) return false;
       }
       if (senzaCompagnie.length) {
-        var haCompVietata = pz.some(function (p) { return senzaCompagnie.indexOf(chiave(p.compagnia)) >= 0; });
+        var haCompVietata = pz.some(function (p) { return senzaCompagnie.indexOf(chiave(compagniaCanonica(p.compagnia))) >= 0; });
         if (haCompVietata) return false;
       }
+
+      /* LE GARANZIE. Arrivano già risolte dal database come elenchi di
+         clienti: qui si tiene o si scarta, e basta. Il «senza» sottrae lo
+         STESSO elenco che il «con» tiene, così le due domande non possono
+         divergere — è la regola che ha evitato il guaio delle due scritture
+         di «infortuni conducente». */
+      if (conGaranzia && !conGaranzia.has(testo(r.id))) return false;
+      if (senzaGaranzia && senzaGaranzia.has(testo(r.id))) return false;
 
       /* LA SCADENZA: basta UNA polizza che scade nella finestra. Si misura da
          `oggi`, che arriva da fuori e non da `new Date()`: così la stessa
@@ -328,6 +394,9 @@
     CAMPI_COPERTURA: CAMPI_COPERTURA, COLONNE: COLONNE,
     testo: testo, chiave: chiave, eta: eta, tri: tri,
     giorno: giorno, giorniDopo: giorniDopo,
+    COMPAGNIE: COMPAGNIE, RAMI: RAMI,
+    compagniaCanonica: compagniaCanonica, ramoCanonico: ramoCanonico,
+    stessaCompagnia: stessaCompagnia, stessoRamo: stessoRamo,
     copertura: copertura, filtra: filtra, recapiti: recapiti,
     perCampagna: perCampagna, righeEsporta: righeEsporta, csv: csv,
   };

@@ -77,7 +77,7 @@
 <script src="tariffe/motore/pagamento-rata.js?v=20260925"></script>
 <script src="tariffe/motore/flusso-ssf.js?v=20260925"></script>
 <script src="tariffe/motore/flusso-hdi.js?v=20260925"></script>
-<script src="tariffe/motore/crm-analisi.js?v=20260925"></script>
+<script src="tariffe/motore/crm-analisi.js?v=20260926"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260920"></script>
 <!-- Le coordinate su cui i collaboratori versano stanno sui conti, e i conti
      li conosce il motore della contabilità: il controllo dell'IBAN è già lì
@@ -11171,7 +11171,7 @@ const TIPI_GRUPPO = { convenzione:['Convenzione','#0a7a55','#e8f6ef'], lavoro:['
    le due regole che contano (la campagna va solo a chi ha dato il consenso;
    un campo vuoto si dichiara invece di tornare zero) si provano senza aprire
    un browser. Qui si disegna e basta. */
-let CA_ANAG = null, CA_POLIZZE = {}, CA_GRUPPI = [], CA_COPERTURA = [], CA_RISULTATO = null;
+let CA_ANAG = null, CA_POLIZZE = {}, CA_GRUPPI = [], CA_COPERTURA = [], CA_RISULTATO = null, CA_GARANZIE = [];
 
 function caMotore() { return (typeof window !== 'undefined' && window.CrmAnalisi) ? window.CrmAnalisi : null; }
 
@@ -11200,6 +11200,16 @@ async function caCarica() {
       (CA_POLIZZE[k] = CA_POLIZZE[k] || []).push(x);
     });
     CA_GRUPPI = gr.data || [];
+    /* L'elenco delle garanzie del portafoglio, per il menu. Se non risponde,
+       i due campi restano usabili a mano: si perde il suggerimento, non la
+       ricerca. Un elenco mancante non deve spegnere la schermata. */
+    try {
+      const { data: gg } = await db.rpc('iam_garanzie_elenco');
+      const per = {};
+      (gg || []).forEach(x => { per[x.etichetta] = (per[x.etichetta] || 0) + Number(x.quante || 0); });
+      CA_GARANZIE = Object.keys(per).map(k => ({ etichetta: k, quante: per[k] }))
+        .sort((a, b) => b.quante - a.quante);
+    } catch (e) { CA_GARANZIE = []; }
     CA_COPERTURA = caMotore() ? caMotore().copertura(CA_ANAG) : [];
     caDisegnaFiltri();
   } catch (e) {
@@ -11231,9 +11241,20 @@ function caDisegnaFiltri() {
   if (!box) return;
   const st = 'padding:8px 10px;border:1px solid #d8d8d8;border-radius:8px;font:inherit;font-size:13px;width:100%;box-sizing:border-box';
   const comuni = [...new Set((CA_ANAG || []).map(r => (r.res_dich_comune || r.comune || '').trim()).filter(Boolean))].sort();
-  const moduli = [...new Set(Object.values(CA_POLIZZE).flat().map(p => (p.modulo || p.prodotto || '').trim()).filter(Boolean))].sort();
+  /* I MENU SI COSTRUISCONO SUI NOMI UNIFICATI, non su quelli grezzi.
+     Prima uscivano «rca» e «auto» come due voci diverse — sono la stessa cosa
+     scritta da due compagnie — e «HDI» e «HDI Assicurazioni» pure. Chi
+     sceglieva una delle due otteneva metà delle polizze senza saperlo. Il
+     vocabolario sta nel motore (`crm-analisi.js`), non qui. */
+  const M0 = caMotore();
+  const canonR = v => (M0 && M0.ramoCanonico) ? M0.ramoCanonico(v) : String(v || '').trim();
+  const canonC = v => (M0 && M0.compagniaCanonica) ? M0.compagniaCanonica(v) : String(v || '').trim();
+  const moduli = [...new Set(Object.values(CA_POLIZZE).flat().map(p => canonR(p.modulo || p.prodotto)).filter(Boolean))].sort();
   const province = [...new Set((CA_ANAG || []).map(r => (r.res_dich_provincia || r.provincia || '').trim()).filter(Boolean))].sort();
-  const compagnie = [...new Set(Object.values(CA_POLIZZE).flat().map(p => (p.compagnia || '').trim()).filter(Boolean))].sort();
+  const compagnie = [...new Set(Object.values(CA_POLIZZE).flat().map(p => canonC(p.compagnia)).filter(Boolean))].sort();
+  /* Le garanzie le elenca il database, con quante polizze le hanno: il numero
+     accanto è la differenza fra «non ne abbiamo» e «non lo sappiamo». */
+  const gar = (CA_GARANZIE || []).map(g => '<option value="' + esc(g.etichetta) + '">' + esc(g.etichetta) + ' (' + g.quante + ')</option>').join('');
 
   box.innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">'
@@ -11250,6 +11271,13 @@ function caDisegnaFiltri() {
     + caCampo('Scade entro', 'comune', '<select id="ca-scadenza" style="' + st + '"><option value="">Indifferente</option><option value="7">7 giorni</option><option value="30">30 giorni</option><option value="60">60 giorni</option><option value="90">90 giorni</option><option value="scadute">Già scadute</option></select>')
     + caCampo('Premio annuo da', 'comune', '<input id="ca-premio-da" type="number" min="0" step="10" placeholder="€ —" style="' + st + '">')
     + caCampo('Premio annuo a', 'comune', '<input id="ca-premio-a" type="number" min="0" step="10" placeholder="€ —" style="' + st + '">')
+    /* LE GARANZIE — «cliente senza una determinata garanzia nella polizza
+       auto». Si legano al campo «Ha la polizza» qui sopra: senza quel legame
+       un cliente risulterebbe «senza infortuni» solo perché non ce li ha
+       sulla polizza della casa, dove non esistono nemmeno. */
+    + caCampo('Ha la garanzia', 'comune', '<input id="ca-garanzia" list="ca-gar-lista" placeholder="es. infortuni conducente" style="' + st + '"><datalist id="ca-gar-lista">' + gar + '</datalist>')
+    + caCampo('…ma NON la garanzia', 'comune', '<input id="ca-senza-garanzia" list="ca-gar-lista" placeholder="es. tutela legale" style="' + st + '">')
+    + caCampo('Ha note in anagrafica', 'note', '<select id="ca-con-note" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì, ha note</option></select>')
     + caCampo('Professione', 'professione', '<input id="ca-prof" type="text" placeholder="contiene…" style="' + st + '">')
     + caCampo('Collaboratore', 'intermediario_id', '<input id="ca-collab" type="text" placeholder="id collaboratore" style="' + st + '">')
     + caCampo('Sposato', 'sposato', '<select id="ca-sposato" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No (dichiarato)</option></select>')
@@ -11262,7 +11290,7 @@ function caDisegnaFiltri() {
 
 function caPulisci() {
   ['ca-comune','ca-prov','ca-eta-da','ca-eta-a','ca-compagnia','ca-ramo','ca-senza-ramo',
-   'ca-scadenza','ca-premio-da','ca-premio-a','ca-prof','ca-collab','ca-sposato','ca-figli','ca-note','ca-gruppo']
+   'ca-scadenza','ca-premio-da','ca-premio-a','ca-garanzia','ca-senza-garanzia','ca-con-note','ca-prof','ca-collab','ca-sposato','ca-figli','ca-note','ca-gruppo']
     .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
   const b = document.getElementById('ca-esito'); if (b) b.innerHTML = '';
   CA_RISULTATO = null;
@@ -11306,6 +11334,31 @@ async function caCerca() {
     membri = new Set((data || []).map(x => String(x.anagrafica_id)));
   }
 
+  /* LE GARANZIE LE RISOLVE IL DATABASE, e torna un elenco di clienti.
+     Il ramo scelto viaggia con la domanda: «senza quella garanzia NELLA
+     POLIZZA AUTO» è una cosa sola, non due filtri che si incrociano male.
+     Il vocabolario traduce «Auto» nei nomi che le compagnie usano davvero
+     (`rca` per Prima, `auto` per HDI), altrimenti la domanda arriverebbe al
+     database con una parola che in archivio non c'è. */
+  const ramoScelto = g('ca-ramo');
+  const ramiVeri = ramoScelto
+    ? Object.keys(M.RAMI || {}).filter(k => M.ramoCanonico(k) === M.ramoCanonico(ramoScelto))
+    : null;
+  let conGar = null, senzaGar = null;
+  for (const [campo, quale] of [['ca-garanzia', 'con'], ['ca-senza-garanzia', 'senza']]) {
+    const t = g(campo);
+    if (!t) continue;
+    const { data, error } = await db.rpc('iam_clienti_con_garanzia', { p_testo: t, p_rami: ramiVeri });
+    if (error) {
+      box.innerHTML = '<div class="cnt-err">Non riesco a cercare la garanzia «' + esc(t) + '»: '
+        + esc(error.message || error)
+        + '<br><small>La ricerca si ferma qui: un elenco senza questo filtro non sarebbe quello che hai chiesto.</small></div>';
+      return;
+    }
+    const ids = new Set((data || []).map(x => String(x.cliente_id)));
+    if (quale === 'con') conGar = ids; else senzaGar = ids;
+  }
+
   /* «Scade entro» tiene due domande diverse in un campo solo: una finestra in
      avanti («entro 30 giorni») e una all'indietro («già scadute»). Si separano
      qui e non nel motore, dove sono due filtri distinti — mescolarli lì
@@ -11326,9 +11379,12 @@ async function caCerca() {
     collaboratoreId: g('ca-collab') || null,
     sposato: tri(g('ca-sposato')), haFigli: tri(g('ca-figli')),
     testoNote: g('ca-note') || null,
+    conNote: g('ca-con-note') === 'si' ? true : null,
     /* `oggi` arriva da qui e non da dentro al motore: la stessa domanda deve
        dare la stessa risposta in una prova, anche fra sei mesi. */
-  }, { polizzePerCliente: CA_POLIZZE, membriGruppo: membri, oggi: new Date().toISOString().slice(0, 10) });
+  }, { polizzePerCliente: CA_POLIZZE, membriGruppo: membri,
+       conGaranzia: conGar, senzaGaranzia: senzaGar,
+       oggi: new Date().toISOString().slice(0, 10) });
 
   CA_RISULTATO = righe;
   const rec = M.recapiti(righe);

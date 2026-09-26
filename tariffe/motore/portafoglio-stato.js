@@ -104,10 +104,26 @@
     return st === 'annullata' || st === 'annullato';
   }
 
+  /* La data si cerca in tre posti perché in tre posti la scrivono: la colonna
+     piatta (o l'alias che un lettore si fa con `dati->ssf->>data_annullamento`,
+     per non scaricare 5 MB di jsonb solo per una data), la radice di `dati`, e
+     il ramo `ssf`. Chi legge non deve sapere quale delle tre ha usato chi ha
+     scritto. */
   function dataAnnullamento(p) {
     var d = (p || {}).dati || {};
-    return giorno(d.data_annullamento)
+    return giorno(p && p.data_annullamento)
+        || giorno(d.data_annullamento)
         || giorno((d.ssf || {}).data_annullamento)
+        || null;
+  }
+
+  /* PERCHÉ se n'è andato: «VENDITA», «DISDETTA», «FURTO». È la differenza fra
+     un cliente da richiamare e uno che non c'è più niente da richiamare. */
+  function motivoStorno(p) {
+    var d = (p || {}).dati || {};
+    return testo(p && p.motivo_storno)
+        || testo(d.motivo_storno)
+        || testo((d.ssf || {}).motivo_storno)
         || null;
   }
 
@@ -138,7 +154,7 @@
         etichetta: 'Annullata' + (da ? ' il ' + italiana(da) : ''),
         finitaIl: finitaIl(p, og),
         dataStimata: !da,                       // non aveva la data: è un ripiego
-        motivoStorno: testo((((p.dati || {}).ssf) || {}).motivo_storno) || null,
+        motivoStorno: motivoStorno(p),
       };
     }
     var sc = giorno(p.data_scadenza);
@@ -170,9 +186,15 @@
     var og = giorno(oggi);
 
     if (!l.length) {
-      return { stato: 'mai_avuto', perso: false, attive: 0, persoIl: null,
-               etichetta: 'Non ha mai avuto una polizza',
-               spiega: 'È un contatto, non un cliente perso.' };
+      /* PROSPECT. Non «cliente a zero polizze»: uno che non ha mai comprato
+         niente. Sono 58 anagrafiche su 2.547 e fino al 26/09/2026 erano
+         indistinguibili dai clienti, così un preventivo mai chiuso sembrava un
+         cliente acquisito. Si marca in modo suo — non rosso: il rosso vuol dire
+         «l'avevamo e l'abbiamo perso», e un prospect non è un fallimento, è una
+         vendita da fare. */
+      return { stato: 'mai_avuto', perso: false, prospect: true, attive: 0, persoIl: null,
+               etichetta: 'Prospect',
+               spiega: 'Non ha mai avuto una polizza: è un contatto da lavorare, non un cliente perso.' };
     }
 
     var stati = l.map(function (p) { return { p: p, s: statoPolizza(p, og) }; });
@@ -222,6 +244,33 @@
       });
     }
 
+    /* COME L'ABBIAMO PERSO, che non è un dettaglio: sono due lavori
+       commerciali diversi. Chi non ha rinnovato alla scadenza si richiama con
+       un preventivo; chi ha disdetto a metà annualità ha avuto un motivo (ha
+       venduto l'auto, si è arrabbiato) e prima di richiamarlo lo si vuole
+       sapere. In archivio il 26/09/2026: 511 persi alla scadenza naturale,
+       54 per annullamento.
+
+       Si guarda la polizza che è finita PER ULTIMA. A pari data vince
+       «non rinnovata», perché è quella su cui c'è qualcosa da fare. */
+    var ultime = stati.filter(function (x) { return x.s.finitaIl && x.s.finitaIl === persoIl; });
+    var motivoPerdita = null;
+    if (ultime.length) {
+      motivoPerdita = ultime.some(function (x) { return x.s.motivo === 'scaduta'; })
+        ? 'non_rinnovata' : 'annullata';
+    }
+
+    /* PERSO AL RINNOVO — il criterio che Francesco chiama «QR».
+       Due strade, e la seconda serve perché la prima quasi non esiste in
+       archivio: le quietanze di rinnovo vere sono DUE su 3.218 titoli.
+       Prima Assicurazioni, che è il 99,4% del portafoglio, non manda una
+       quietanza di rinnovo: al rinnovo emette una polizza nuova. Quindi il
+       mancato rinnovo, da lei, si vede da un'annualità finita alla sua
+       scadenza e da nessuna che le è succeduta — ed è esattamente la
+       condizione qui sotto, perché un cliente che avesse la polizza
+       successiva non sarebbe in questo ramo del codice. */
+    var persoAlRinnovo = nonRinnovato === true || motivoPerdita === 'non_rinnovata';
+
     return {
       stato: 'perso', perso: true, attive: 0, persoIl: persoIl,
       etichetta: 'Perso' + (persoIl ? ' dal ' + italiana(persoIl) : ''),
@@ -229,6 +278,8 @@
          è diverso dal dire «non è un mancato rinnovo». */
       nonHaRinnovato: nonRinnovato,
       quietanzeDiRinnovoViste: qrViste,
+      motivoPerdita: motivoPerdita,
+      persoAlRinnovo: persoAlRinnovo,
       perche: stati.filter(function (x) { return !x.s.attiva; })
                    .map(function (x) { return x.s.etichetta; }),
     };
@@ -251,7 +302,8 @@
   var API = {
     TIPI: TIPI, DIZIONARIO: DIZIONARIO,
     sigla: sigla, nomeTipo: nomeTipo, giorno: giorno, italiana: italiana,
-    annullata: annullata, dataAnnullamento: dataAnnullamento, finitaIl: finitaIl,
+    annullata: annullata, dataAnnullamento: dataAnnullamento, motivoStorno: motivoStorno,
+    finitaIl: finitaIl,
     statoPolizza: statoPolizza, attiva: attiva,
     statoCliente: statoCliente, dividiPolizze: dividiPolizze,
   };

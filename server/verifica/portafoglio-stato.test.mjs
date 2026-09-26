@@ -117,11 +117,31 @@ prova('senza sapere che giorno è, non si afferma niente', () => {
 
 /* ── 2. perso vuol dire «ne aveva e non ne ha più» ────────────────────────── */
 
-prova('chi non ha mai avuto una polizza NON è perso — sono 58 in archivio', () => {
+prova('chi non ha mai avuto una polizza NON è perso: è un prospect — sono 58', () => {
   const c = S.statoCliente([], OGGI);
   deve(c.stato === 'mai_avuto', c.stato);
   deve(c.perso === false, 'un contatto è stato segnato come perso');
+  deve(c.prospect === true, 'non è marcato come prospect: ' + c.prospect);
+  deve(c.etichetta === 'Prospect', c.etichetta);
   deve(c.persoIl === null, c.persoIl);
+});
+
+prova('perso e prospect non si sovrappongono mai: sono due liste diverse', () => {
+  /* Uno si richiama per riconquistarlo, l'altro per vendergli la prima
+     polizza. Se una scheda potesse essere tutte e due, il colore in elenco
+     non vorrebbe dire niente. */
+  const casi = [[], [polizza({ data_scadenza: '2026-01-01' })], [polizza({ data_scadenza: '2027-01-01' })],
+                [polizza({ data_scadenza: null })]];
+  for (const l of casi) {
+    const c = S.statoCliente(l, OGGI);
+    deve(!(c.perso && c.prospect), 'stato ' + c.stato + ': perso e prospect insieme');
+  }
+});
+
+prova('un cliente che ha comprato una volta non torna prospect quando la perde', () => {
+  const c = S.statoCliente([polizza({ data_scadenza: '2025-12-31' })], OGGI);
+  deve(c.stato === 'perso', c.stato);
+  deve(!c.prospect, 'un cliente perso è stato riclassificato come prospect: si perderebbe fra i mai clienti');
 });
 
 prova('nemmeno con l\'elenco assente si inventa una perdita', () => {
@@ -166,10 +186,32 @@ prova('per un\'annullata conta l\'annullamento, non la scadenza — mesi di diff
   deve(c.persoIl === '2026-07-03', 'ha preso ' + c.persoIl + ': due mesi di ritardo su una telefonata');
 });
 
-prova('l\'annullamento si legge da entrambi i posti dove i flussi lo scrivono', () => {
+prova('l\'annullamento si legge da tutti i posti dove i flussi lo scrivono', () => {
+  /* Tre posti perché in tre posti lo scrivono, e il terzo è l'alias che un
+     lettore si fa (`dati->ssf->>data_annullamento`) per non scaricare 5 MB di
+     jsonb per una data sola. Se il motore non lo riconoscesse, la scheda
+     cliente direbbe «Annullata» senza il giorno — proprio dove serve. */
   deve(S.dataAnnullamento({ dati: { data_annullamento: '2026-01-02' } }) === '2026-01-02', 'radice');
   deve(S.dataAnnullamento({ dati: { ssf: { data_annullamento: '2026-01-03' } } }) === '2026-01-03', 'ssf');
+  deve(S.dataAnnullamento({ data_annullamento: '2026-01-04' }) === '2026-01-04', 'colonna piatta o alias');
   deve(S.dataAnnullamento({ dati: {} }) === null, 'ha inventato una data');
+  deve(S.dataAnnullamento({}) === null, 'ha inventato una data dal niente');
+});
+
+prova('il motivo dello storno si legge dagli stessi tre posti', () => {
+  deve(S.motivoStorno({ motivo_storno: 'VENDITA' }) === 'VENDITA', 'piatto');
+  deve(S.motivoStorno({ dati: { motivo_storno: 'DISDETTA' } }) === 'DISDETTA', 'radice');
+  deve(S.motivoStorno({ dati: { ssf: { motivo_storno: 'FURTO' } } }) === 'FURTO', 'ssf');
+  deve(S.motivoStorno({ dati: { ssf: { motivo_storno: '   ' } } }) === null, 'spazi passati per motivo');
+  deve(S.motivoStorno({}) === null, 'motivo inventato');
+});
+
+prova('la polizza annullata porta il motivo anche quando arriva come alias', () => {
+  const s = S.statoPolizza(polizza({ stato_pagamento: 'annullata',
+    data_annullamento: '2026-04-01', motivo_storno: 'VENDITA' }), OGGI);
+  deve(s.motivoStorno === 'VENDITA', s.motivoStorno);
+  deve(s.dataStimata !== true, 'ha creduto di non avere la data che aveva');
+  deve(/01\/04\/2026/.test(s.etichetta), s.etichetta);
 });
 
 prova('un\'annullata senza data non finge di averla: lo dichiara', () => {
@@ -339,6 +381,71 @@ prova('su un cliente attivo non si parla di mancato rinnovo', () => {
                            { p1: [{ sigla_tipo: 'QR', stato: 'aperto' }] });
   deve(c.stato === 'attivo', c.stato);
   deve(!('nonHaRinnovato' in c) || c.nonHaRinnovato == null, 'un cliente attivo non è un mancato rinnovo');
+});
+
+/* ── 4bis. come l'abbiamo perso: scadenza o disdetta ──────────────────────── */
+
+prova('finita alla sua scadenza: non ha rinnovato — sono 511 in archivio', () => {
+  const c = S.statoCliente([polizza({ data_scadenza: '2026-06-30' })], OGGI);
+  deve(c.motivoPerdita === 'non_rinnovata', c.motivoPerdita);
+  deve(c.persoAlRinnovo === true, 'persoAlRinnovo = ' + c.persoAlRinnovo);
+});
+
+prova('annullata a metà: è una disdetta, non un mancato rinnovo — sono 54', () => {
+  /* Sono due lavori commerciali diversi: uno si richiama con un preventivo,
+     l'altro ha avuto un motivo e prima lo si vuole sapere. */
+  const c = S.statoCliente([polizza({ data_scadenza: '2027-01-01', stato_pagamento: 'annullata',
+                                      dati: { ssf: { data_annullamento: '2026-05-10' } } })], OGGI);
+  deve(c.motivoPerdita === 'annullata', c.motivoPerdita);
+  deve(c.persoAlRinnovo === false, 'una disdetta a metà è stata contata come mancato rinnovo');
+});
+
+prova('il motivo lo dà l\'ULTIMA polizza finita, non la prima', () => {
+  const l = [polizza({ id: 'a', data_scadenza: '2027-01-01', stato_pagamento: 'annullata',
+                       dati: { ssf: { data_annullamento: '2024-01-01' } } }),
+             polizza({ id: 'b', data_scadenza: '2026-07-31' })];
+  const c = S.statoCliente(l, OGGI);
+  deve(c.persoIl === '2026-07-31', c.persoIl);
+  deve(c.motivoPerdita === 'non_rinnovata', 'ha guardato l\'annullamento di due anni prima');
+});
+
+prova('e vale anche al contrario: l\'ultima è una disdetta, la vecchia una scadenza', () => {
+  /* Questo caso serve a che la prova di sopra non passi per caso: là la
+     risposta giusta e quella sbagliata coincidevano. Qui no — se il motore
+     guardasse tutte le polizze finite invece dell'ultima, direbbe «non ha
+     rinnovato» di un cliente che ha disdetto due mesi fa. */
+  const l = [polizza({ id: 'vecchia', data_scadenza: '2025-03-31' }),
+             polizza({ id: 'ultima', data_scadenza: '2027-01-01', stato_pagamento: 'annullata',
+                       dati: { ssf: { data_annullamento: '2026-07-20' } } })];
+  const c = S.statoCliente(l, OGGI);
+  deve(c.persoIl === '2026-07-20', c.persoIl);
+  deve(c.motivoPerdita === 'annullata', 'ha guardato una scadenza di un anno prima: ' + c.motivoPerdita);
+  deve(c.persoAlRinnovo === false, 'una disdetta è finita fra i mancati rinnovi');
+});
+
+prova('a pari data vince «non rinnovata»: è quella su cui c\'è da lavorare', () => {
+  const l = [polizza({ id: 'a', data_scadenza: '2026-06-30' }),
+             polizza({ id: 'b', data_scadenza: '2026-09-01', stato_pagamento: 'annullata',
+                       dati: { ssf: { data_annullamento: '2026-06-30' } } })];
+  const c = S.statoCliente(l, OGGI);
+  deve(c.motivoPerdita === 'non_rinnovata', c.motivoPerdita);
+});
+
+prova('una QR non incassata basta da sola, anche su una disdetta', () => {
+  /* Se la compagnia ha emesso la quietanza di rinnovo e non è stata
+     incassata, quello È un mancato rinnovo detto dalla compagnia: vale più
+     di qualunque deduzione dalle date. */
+  const c = S.statoCliente([polizza({ id: 'p1', data_scadenza: '2027-01-01', stato_pagamento: 'annullata',
+                                      dati: { ssf: { data_annullamento: '2026-05-10' } } })], OGGI,
+                           { p1: [{ sigla_tipo: 'QR', stato: 'aperto' }] });
+  deve(c.motivoPerdita === 'annullata', 'il motivo resta quello che dicono le date: ' + c.motivoPerdita);
+  deve(c.persoAlRinnovo === true, 'la quietanza di rinnovo non incassata è stata ignorata');
+});
+
+prova('un cliente attivo non ha un motivo di perdita', () => {
+  const c = S.statoCliente([polizza({ data_scadenza: '2027-01-01' })], OGGI);
+  deve(c.motivoPerdita == null, 'ha dato un motivo di perdita a un cliente vivo: ' + c.motivoPerdita);
+  deve(!c.persoAlRinnovo, 'lo ha messo fra i persi al rinnovo');
 });
 
 /* ── 5. i due mucchi dell'anagrafica ─────────────────────────────────────── */

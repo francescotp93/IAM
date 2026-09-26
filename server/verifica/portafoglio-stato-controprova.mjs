@@ -64,6 +64,22 @@ const GUASTI = [
   ['la sigla della compagnia non si guarda più',
     (s) => s.replace("var s = sigla(t.sigla_tipo || t.tipo_compagnia || t.tipo);", "var s = sigla(t.sigla_tipo || t.tipo);")],
 
+  /* ── come l'abbiamo perso ────────────────────────────────────────────── */
+  ['una disdetta a metà annualità passa per mancato rinnovo',
+    (s) => s.replace("      motivoPerdita = ultime.some(function (x) { return x.s.motivo === 'scaduta'; })\n        ? 'non_rinnovata' : 'annullata';", "      motivoPerdita = 'non_rinnovata';")],
+
+  ['un mancato rinnovo passa per disdetta',
+    (s) => s.replace("      motivoPerdita = ultime.some(function (x) { return x.s.motivo === 'scaduta'; })\n        ? 'non_rinnovata' : 'annullata';", "      motivoPerdita = 'annullata';")],
+
+  ['il motivo lo dà la prima polizza finita invece dell\'ultima',
+    (s) => s.replace("var ultime = stati.filter(function (x) { return x.s.finitaIl && x.s.finitaIl === persoIl; });", "var ultime = stati.filter(function (x) { return !!x.s.finitaIl; });")],
+
+  ['la quietanza di rinnovo non incassata non conta più da sola',
+    (s) => s.replace("var persoAlRinnovo = nonRinnovato === true || motivoPerdita === 'non_rinnovata';", "var persoAlRinnovo = motivoPerdita === 'non_rinnovata';")],
+
+  ['anche un cliente vivo risulta perso al rinnovo',
+    (s) => s.replace("      etichetta: vive.length === 1 ? '1 polizza attiva' : vive.length + ' polizze attive' };", "      persoAlRinnovo: true, motivoPerdita: 'non_rinnovata',\n               etichetta: vive.length === 1 ? '1 polizza attiva' : vive.length + ' polizze attive' };")],
+
   /* ── le sigle ────────────────────────────────────────────────────────── */
   ['una sigla sconosciuta viene indovinata invece di tacere',
     (s) => s.replace("        || (TIPI[compatta.toUpperCase()] ? compatta.toUpperCase() : null);", "        || 'NP';")],

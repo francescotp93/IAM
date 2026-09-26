@@ -97,6 +97,12 @@
 <script src="tariffe/motore/sospensione.js?v=20260921"></script>
 <script src="tariffe/motore/scadenzario.js?v=20260922"></script>
 <script src="tariffe/motore/scheda-cliente.js?v=20260922"></script>
+<!-- Polizza attiva, cliente perso, sigla del titolo: tre definizioni che
+     decidono chi si richiama. Stanno in un motore solo perché prima ogni
+     schermata se le ricavava da sé, e due schermate che contano i clienti in
+     due modi diversi danno due numeri che non si possono confrontare.
+     La definizione per esteso: IAM_MASTER_SPEC.md §4ter. -->
+<script src="tariffe/motore/portafoglio-stato.js?v=20260926"></script>
 <script src="tariffe/motore/foglio-cassa.js?v=20260924"></script>
 <script src="tariffe/motore/piano-rate.js?v=20260921"></script>
 <script src="tariffe/motore/animali.js?v=20260910"></script>
@@ -1189,6 +1195,56 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
    sinistro adesso si distinguono a colpo d'occhio dal filetto di sinistra. */
 .cl-polizza{border-left:3px solid var(--w1-verde)}
 .cl-sinistro{border-left:3px solid var(--w1-ambra)}
+/* LE POLIZZE FINITE (26/09/2026). Il filetto verde a sinistra dice «questa
+   copre»: su una polizza scaduta diceva una cosa falsa a colpo d'occhio, ed è
+   l'unica cosa che si guarda a colpo d'occhio. Sulle spente diventa grigio e
+   la scheda si fa più sobria — leggibile, non cancellata: quando e perché una
+   polizza è finita è il motivo per cui si apre questa sezione. */
+.clk-p-spenta{border-left-color:var(--w1-bordo);background:var(--w1-sfondo2,var(--w1-card))}
+.clk-p-spenta .clk-p-num{color:var(--w1-testo2)}
+.clk-spente{margin-top:14px;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);
+  background:var(--w1-card)}
+.clk-spente>summary{cursor:pointer;padding:11px 13px;font-size:12.5px;font-weight:700;
+  color:var(--w1-testo2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.clk-spente>summary b{font-variant-numeric:tabular-nums;color:var(--w1-testo)}
+.clk-spente>summary .cl-sub{font-weight:500}
+.clk-spente>summary:hover{color:var(--w1-testo)}
+.clk-spente[open]>summary{border-bottom:1px solid var(--w1-bordo)}
+.clk-spente>.clk-pol{padding:13px}
+/* IL CLIENTE PERSO, IN ROSSO (26/09/2026, richiesta di Francesco: «sarebbe
+   buono che me li segnassi in rosso, proprio per evidenziarli rispetto agli
+   altri clienti»). Rosso vuol dire una cosa sola: non ha più nessuna polizza
+   attiva. Non lo si usa per «da verificare» né per chi non è mai stato
+   cliente — un rosso che vuol dire tre cose non vuol dire niente. */
+.clk-perso{color:var(--w1-rosso,#c0392b);font-weight:800}
+.anag-perso{color:var(--w1-rosso,#c0392b)}
+.anag-perso .cl-nome,.anag-perso b{color:var(--w1-rosso,#c0392b)}
+.anag-bollo-perso{display:inline-block;padding:1px 7px;margin-left:6px;border-radius:999px;
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;
+  background:#fde6e6;color:#c0392b;border:1px solid #f3c0c0}
+/* IL PROSPECT (26/09/2026, richiesta di Francesco: «i clienti che non hanno mai
+   avuto una polizza evidenziamolo con un colore specifico, e devo avere un
+   piccolo banner con scritto prospect»).
+
+   Sono 58 anagrafiche su 2.547, e fino a oggi erano indistinguibili dai
+   clienti: un preventivo mai chiuso sembrava un cliente acquisito. Il colore è
+   BLU e non rosso di proposito — il rosso vuol dire «l'avevamo e l'abbiamo
+   perso», che è un fallimento; un prospect non è un fallimento, è una vendita
+   da fare. Due colori diversi perché sono due liste di lavoro diverse. */
+.clk-prospect{color:var(--w1-blu-txt,#1565c0);font-weight:800}
+.anag-prospect{color:var(--w1-blu-txt,#1565c0)}
+.anag-prospect .cl-nome,.anag-prospect b{color:var(--w1-blu-txt,#1565c0)}
+.anag-bollo-prospect{display:inline-block;padding:1px 7px;margin-left:6px;border-radius:999px;
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;
+  background:#e8f1fc;color:#1565c0;border:1px solid #bcd9f5}
+/* La striscia in cima alla scheda: il bollino nell'elenco si vede scorrendo,
+   questa si vede aprendo — e chi apre una scheda sta per telefonare. */
+.clk-fascia{margin:0 0 12px;padding:8px 12px;border-radius:var(--w1-raggio);
+  font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.clk-fascia .cl-sub{font-weight:500}
+.clk-fascia-perso{background:#fde6e6;color:#c0392b;border:1px solid #f3c0c0}
+.clk-fascia-prospect{background:#e8f1fc;color:#1565c0;border:1px solid #bcd9f5}
+.clk-fascia-dubbio{background:#fff8ec;color:#b06a00;border:1px solid #f6dfb8}
 .gruppi-add-btn{white-space:nowrap}
 @media(max-width:860px){.clk-corpo{grid-template-columns:1fr}.clk-lato{position:static}}
 @media(max-width:640px){.clk-testa{grid-template-columns:1fr 1fr}.clk-r.clk-largo{grid-column:span 2}
@@ -28768,12 +28824,61 @@ async function cercaAnagrafica() {
     }
     ANAG_CACHE = risultati;
     renderAnagResults();
+    /* Lo stato di portafoglio (perso / prospect) è un'ALTRA lettura e non
+       trattiene la lista: se non risponde, l'elenco si vede comunque senza
+       colori — che è meglio di un elenco che non arriva, e molto meglio di
+       colori inventati (§35). */
+    anagStatiCarica(risultati.map(a => a.id));
     await conteggio;
     renderAnagResults();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Tabella anagrafiche non trovata. Esegui lo script SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
   }
 }
+/* ── IL ROSSO E IL BLU NELL'ELENCO (26/09/2026) ─────────────────────────────
+   «I clienti persi… sarebbe buono che me li segnassi in rosso, proprio per
+   evidenziarli rispetto agli altri clienti» e «i clienti che non hanno mai
+   avuto una polizza evidenziamoli con un colore specifico, e devo avere un
+   piccolo banner con scritto prospect» — Francesco.
+
+   Una lettura sola per tutto l'elenco: per ogni cliente mostrato si prendono
+   le date e lo stato delle sue polizze, e il verdetto lo dà il motore. Non una
+   query per riga (cinquanta letture per una schermata), e non un conteggio
+   `attive > 0` scritto qui: attiva vuol dire «in data E non annullata», e le 34
+   polizze annullate che scadono in futuro colorerebbero di verde 34 clienti
+   che non abbiamo più.
+
+   Vuoto = non lo so, e allora non si colora niente. */
+var ANAG_STATI = null;     // cliente_id → verdetto del motore
+var ANAG_STATI_KO = false;
+
+async function anagStatiCarica(ids) {
+  const lista = [...new Set((ids || []).filter(Boolean))];
+  if (!lista.length || !window.PortafoglioStato) { ANAG_STATI = {}; return; }
+  try {
+    const per = {};
+    /* A blocchi: un `in` con mille identificativi diventa un indirizzo troppo
+       lungo e il server lo rifiuta — e il rifiuto si vedrebbe come «nessun
+       colore», cioè come niente. */
+    for (let i = 0; i < lista.length; i += 200) {
+      const { data, error } = await db.from('quote_polizze')
+        .select('id,cliente_id,data_scadenza,stato_pagamento,data_annullamento:dati->ssf->>data_annullamento')
+        .in('cliente_id', lista.slice(i, i + 200));
+      if (error) throw error;
+      (data || []).forEach(p => { (per[p.cliente_id] = per[p.cliente_id] || []).push(p); });
+    }
+    const oggi = pnuOggi();
+    const stati = {};
+    lista.forEach(id => { stati[id] = PortafoglioStato.statoCliente(per[id] || [], oggi); });
+    ANAG_STATI = stati;
+    ANAG_STATI_KO = false;
+  } catch (e) {
+    ANAG_STATI = null; ANAG_STATI_KO = true;
+    console.warn('stato di portafoglio dei clienti non leggibile:', e.message || e);
+  }
+  renderAnagResults();
+}
+
 // Renderizza SOLO il sottoinsieme attivo (Clienti oppure Lead) da ANAG_CACHE. I Lead (privacy non
 // firmata / recuperati dal preventivatore) restano fuori dalla lista Clienti e viceversa.
 function renderAnagResults() {
@@ -28846,9 +28951,21 @@ function renderAnagResults() {
     const tipoBadge = lead
       ? `<span class="badge-collab" style="background:#fff4e6;color:#b06a00;border:1px solid #ffd8a8"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> Lead</span>`
       : `<span class="${a.tipo==='giuridica'?'badge-admin':'badge-collab'}">${a.tipo==='giuridica'?'Giuridica':'Fisica'}</span>`;
-    return `<tr${lead?' style="background:#fffaf4"':''}>
+    /* Il marchio di portafoglio NON si mette sui lead: un lead è già dichiarato
+       «non ancora cliente» dal suo distintivo arancione, e due bollini che
+       dicono la stessa cosa con due colori diversi si smette di leggerli. Il
+       rosso e il blu servono nella lista dei CLIENTI, dov'è impossibile
+       distinguerli a occhio. */
+    const st = (!lead && ANAG_STATI) ? ANAG_STATI[a.id] : null;
+    const perso = !!(st && st.perso);
+    const prospect = !!(st && st.prospect);
+    const bollo = perso
+      ? `<span class="anag-bollo-perso" title="${esc(st.etichetta)}${st.persoAlRinnovo ? ' · non ha rinnovato alla scadenza' : (st.motivoPerdita === 'annullata' ? ' · ha disdetto prima della scadenza' : '')}">Perso</span>`
+      : (prospect ? `<span class="anag-bollo-prospect" title="Non ha mai avuto una polizza">Prospect</span>` : '');
+    const tinta = perso ? ' style="color:#c0392b"' : (prospect ? ' style="color:#1565c0"' : (lead ? ' style="color:#b06a00"' : ''));
+    return `<tr${lead ? ' style="background:#fffaf4"' : (perso ? ' style="background:#fffafa"' : (prospect ? ' style="background:#fafcff"' : ''))}>
       <td>${tipoBadge}</td>
-      <td><strong${lead?' style="color:#b06a00"':''}>${esc(a.nominativo)}</strong></td>
+      <td><strong${tinta}>${esc(a.nominativo)}</strong>${bollo}</td>
       <td>${esc(a.codice_fiscale || a.partita_iva || '—')}</td>
       <td>${esc(a.comune || '—')}${a.provincia?` (${esc(a.provincia)})`:''}</td>
       <td style="font-size:13px">${esc(a.cellulare || a.telefono || a.email || '—')}</td>
@@ -29333,6 +29450,16 @@ function clkLato(a, isG) {
   return `<div class="clk-lato">
     <div class="clk-foto"><i class="ti ${isG ? 'ti-building' : 'ti-user'}"></i></div>
     <div class="clk-nome">${esc(a.nominativo || '—')}</div>
+    <!-- LA FASCIA DELLO STATO (26/09/2026). La riempie clkStato quando le
+         polizze sono arrivate: prima di allora non si sa, e uno spazio vuoto è
+         meglio di un «Prospect» scritto su un cliente con dieci polizze solo
+         perché la lettura non era ancora tornata. È lo stesso errore dello zero
+         credibile della sintesi.
+         Niente apici inversi in questo commento: sta DENTRO un template
+         literal, e due apici inversi lo chiuderebbero a metà — l'intero script
+         della pagina smetterebbe di esistere. Preso dalla suite parita-amtrust,
+         che carica la pagina in un browser vero. -->
+    <div id="clk-fascia"></div>
     <div class="clk-eta">${eta != null ? eta + ' anni' : (isG ? 'Persona giuridica' : 'Persona fisica')}</div>
     <div class="clk-dati">
       ${riga('ti-calendar', nato)}
@@ -29419,8 +29546,12 @@ async function clkCarica(a) {
   CLK_ANAG = a;
   let titoli = [], titoliKo = false;
   try {
+    /* `tipo` e `sigla_tipo` servono a distinguere una quietanza di RINNOVO da
+       una di FRAZIONAMENTO: la prima non incassata è un cliente che se n'è
+       andato, la seconda è una rata scoperta di un cliente che c'è ancora.
+       Senza queste due colonne ogni rata in ritardo diventerebbe una perdita. */
     const { data, error } = await db.from('quote_titoli')
-      .select('id,polizza_id,stato,importo_lordo,provvigione,data_decorrenza,data_scadenza,incassato_il')
+      .select('id,polizza_id,stato,importo_lordo,provvigione,data_decorrenza,data_scadenza,incassato_il,tipo,sigla_tipo')
       .in('polizza_id', (CLK_POLIZZE || []).map(p => p.id).filter(Boolean).slice(0, 200));
     if (error) throw error;
     titoli = data || [];
@@ -29438,7 +29569,76 @@ async function clkCarica(a) {
     eventi = data || [];
   } catch (e) { console.warn('registro non leggibile:', e.message || e); }
 
+  clkStato(titoli, titoliKo);
   clkRiempi(a, titoli, titoliKo, eventi);
+}
+
+/* ── PERSO, PROSPECT, O CLIENTE ─────────────────────────────────────────────
+   26/09/2026, due richieste di Francesco lette insieme:
+     «I clienti persi sono tutti quelli che non hanno più polizze attive, e
+      sarebbe buono che me li segnassi in rosso.»
+     «I clienti che non hanno mai avuto una polizza evidenziamoli con un colore
+      specifico, e devo avere un piccolo banner con scritto prospect.»
+
+   Sono TRE stati e non due, e distinguerli è tutto il punto: 1.925 clienti con
+   almeno una polizza attiva, 564 persi, 58 che non hanno mai comprato niente.
+   Rosso = l'avevamo e non ce l'abbiamo più. Blu = non l'abbiamo mai avuto.
+   Un colore solo per le due cose metterebbe nella stessa lista chi va
+   riconquistato e chi non ha ancora comprato — due telefonate diverse.
+
+   Chi decide è il motore, non questa funzione: qui si scelgono le tinte.
+   Se le polizze non si sono potute leggere non si scrive NIENTE: dire
+   «Prospect» perché una lettura è caduta è il modo più veloce di far perdere
+   fiducia a un colore. */
+function clkStato(titoli, titoliKo) {
+  const box = document.getElementById('clk-fascia');
+  if (!box) return null;
+  box.innerHTML = '';
+  const PS = window.PortafoglioStato;
+  if (!PS || CLK_POL_KO) return null;
+
+  /* Le rate per polizza: servono solo a distinguere «non ha rinnovato» da
+     «se n'è andato prima». Se non si sono potute leggere non si passa la mappa,
+     e il motore risponde `null` invece di `false` — «non lo so» non è «no». */
+  let mappa = null;
+  if (!titoliKo) {
+    mappa = {};
+    (titoli || []).forEach(t => {
+      const k = String(t.polizza_id || '');
+      if (!k) return;
+      (mappa[k] = mappa[k] || []).push(t);
+    });
+  }
+
+  const st = PS.statoCliente(CLK_POLIZZE, pnuOggi(), mappa);
+  if (st.stato === 'attivo') return st;      // un cliente a posto non ha bisogno di una fascia
+
+  if (st.stato === 'mai_avuto') {
+    box.innerHTML = `<div class="clk-fascia clk-fascia-prospect">
+      <span class="anag-bollo-prospect" style="margin-left:0">Prospect</span>
+      <span class="cl-sub">${esc(st.spiega)}</span></div>`;
+    return st;
+  }
+
+  if (st.stato === 'da_verificare') {
+    box.innerHTML = `<div class="clk-fascia clk-fascia-dubbio">
+      <i class="ti ti-alert-triangle"></i> ${esc(st.etichetta)}
+      <span class="cl-sub">manca una data di scadenza: non si può dire se copre</span></div>`;
+    return st;
+  }
+
+  /* PERSO. La fascia dice anche COME, perché sono due lavori diversi: chi non
+     ha rinnovato si richiama con un preventivo, chi ha disdetto a metà ha avuto
+     un motivo e prima lo si vuole sapere. */
+  const come = st.motivoPerdita === 'annullata'
+    ? 'ha disdetto prima della scadenza'
+    : (st.persoAlRinnovo ? 'non ha rinnovato alla scadenza' : '');
+  box.innerHTML = `<div class="clk-fascia clk-fascia-perso">
+    <span class="anag-bollo-perso" style="margin-left:0">Cliente perso</span>
+    <span>${esc(st.etichetta)}</span>
+    ${come ? `<span class="cl-sub">· ${esc(come)}</span>` : ''}
+    ${st.nonHaRinnovato === null ? '<span class="cl-sub">· le rate non si sono potute leggere</span>' : ''}</div>`;
+  return st;
 }
 
 function clkRiempi(a, titoli, titoliKo, eventiRighe) {
@@ -30839,7 +31039,13 @@ async function caricaCollegati(id, nominativo) {
        il jsonb: serve alla cronologia (M1.5), dove una scadenza «RC Auto»
        senza targa non dice quale auto. */
     const { data } = await db.from('quote_polizze')
-      .select('id,numero,numero_polizza,prodotto,compagnia,data_emissione,data_effetto,data_scadenza,premio_annuo,frazionamento,stato_pagamento,mezzo_pagamento,perfezionata,rendicontata,preventivo_id,copertura_dal,copertura_al,modulo,targa:dati->ssf->veicolo->>targa')
+      /* La data e il motivo dell'annullamento arrivano come alias, come la
+         targa: dentro `dati` ci sono anche le garanzie, che su tutto il
+         portafoglio sono 5 MB di jsonb, e per scrivere «Annullata il 3 luglio
+         per VENDITA» servono due stringhe. Senza queste due, la sezione delle
+         non attive direbbe «Annullata» e basta — cioè non direbbe la cosa per
+         cui la si guarda. */
+      .select('id,numero,numero_polizza,prodotto,compagnia,data_emissione,data_effetto,data_scadenza,premio_annuo,frazionamento,stato_pagamento,mezzo_pagamento,perfezionata,rendicontata,preventivo_id,copertura_dal,copertura_al,modulo,targa:dati->ssf->veicolo->>targa,data_annullamento:dati->ssf->>data_annullamento,motivo_storno:dati->ssf->>motivo_storno')
       .eq('cliente_id', id).order('data_effetto', { ascending: false });
     polReali = data || [];
     CLK_POL_KO = false;
@@ -30859,27 +31065,62 @@ async function caricaCollegati(id, nominativo) {
     /* Schede invece di righe (22/09/2026): su una riga sola non ci stanno
        effetto, scadenza, frazionamento e premio, e sono le quattro cose che
        si guardano aprendo il portafoglio di un cliente. */
+    /* ── DUE MUCCHI, NON UNO (26/09/2026, richiesta di Francesco) ───────────
+       «Le polizze che a noi interessano sono le polizze attive; quelle non
+       attive con tutte le specifiche del caso mettile in una sezione
+       dell'anagrafica del cliente dedicata.»
+
+       Prima stavano tutte in fila, ordinate per data di effetto, con un
+       distintivo grigio sulle spente: su un cliente con nove polizze le due
+       vive potevano finire in fondo, e per sapere quali fossero bisognava
+       leggere nove distintivi. Adesso le attive sono l'elenco, e le altre
+       stanno in una sezione che si apre — chiusa, perché la storia si guarda
+       quando si vuole guardarla, e aperta dice PERCHÉ ognuna è finita:
+       scaduta il…, annullata il… col motivo dello storno.
+
+       Chi decide chi è attiva è il motore `PortafoglioStato`, non questa
+       schermata: attiva vuol dire «in data E non annullata», e le 34 polizze
+       annullate che scadono in futuro sono la ragione per cui la seconda metà
+       della frase conta. */
     const oggiP = pnuOggi();
-    polPane.innerHTML = `<div class="clk-pol">` + polReali.map(p => {
+    const PS = window.PortafoglioStato;
+    const divisi = PS ? PS.dividiPolizze(polReali, oggiP)
+      : { attive: polReali.filter(p => !window.SchedaCliente || (!SchedaCliente.annullata(p) && SchedaCliente.attiva(p, oggiP))),
+          nonAttive: polReali.filter(p => window.SchedaCliente && (SchedaCliente.annullata(p) || !SchedaCliente.attiva(p, oggiP))) };
+
+    const scheda = (p, spenta) => {
+      const s = p._stato || null;
       const scad = p.data_scadenza ? new Date(p.data_scadenza).toLocaleDateString('it-IT') : '—';
       const mezzo = pfMezzoNome(p.mezzo_pagamento);
-      const viva = window.SchedaCliente
-        ? (!SchedaCliente.annullata(p) && SchedaCliente.attiva(p, oggiP)) : true;
-      return `<div class="clk-p cl-polizza" onclick="polDettaglio('${esc(p.id)}')" title="Apri il dettaglio di questa polizza">
+      const etichetta = s ? s.etichetta : (spenta ? 'Non attiva' : 'Attiva');
+      return `<div class="clk-p cl-polizza${spenta ? ' clk-p-spenta' : ''}" onclick="polDettaglio('${esc(p.id)}')" title="Apri il dettaglio di questa polizza">
         <div class="clk-p-num">${esc(pfNumero(p))}</div>
         <div class="clk-p-pro">${esc(p.prodotto || p.modulo || '—')}${p.compagnia ? ' · ' + esc(p.compagnia) : ''}</div>
-        <span class="clk-badge${viva ? '' : ' clk-spenta'}">${viva ? 'Attiva' : 'Non attiva'}</span>
+        <span class="clk-badge${spenta ? ' clk-spenta' : ''}">${esc(etichetta)}</span>
         <div class="clk-p-g">
           <div><span>Data effetto</span>${p.data_effetto ? esc(new Date(p.data_effetto).toLocaleDateString('it-IT')) : '—'}</div>
           <div><span>Data scadenza</span>${esc(scad)}</div>
           <div><span>Frazionamento</span>${esc(p.frazionamento || '—')}</div>
           <div><span>Come paga</span>${mezzo ? esc(mezzo) : 'da indicare'}</div>
+          ${s && s.motivo === 'annullata' ? `<div><span>Annullata il</span>${s.finitaIl ? esc(PS.italiana(s.finitaIl)) : 'data non comunicata'}${s.dataStimata ? ' <span class="cl-sub">(stimata)</span>' : ''}</div>` : ''}
+          ${s && s.motivoStorno ? `<div><span>Motivo</span>${esc(s.motivoStorno)}</div>` : ''}
           ${p.data_emissione ? `<div class="clk-largo"><span>Emissione</span>emessa il ${esc(new Date(p.data_emissione).toLocaleDateString('it-IT'))}</div>` : ''}
         </div>
         <div class="clk-p-prem">${p.premio_annuo == null ? '<span class="cl-sub">premio annuo non noto</span>' : soldi(p.premio_annuo)}</div>
       </div>`;
-    }).join('') + `</div>`;
-    if (cnt) cnt.textContent = preventivi.length + ' preventivi · ' + polReali.length + ' polizze';
+    };
+
+    const nA = divisi.attive.length, nN = divisi.nonAttive.length;
+    polPane.innerHTML =
+      (nA ? `<div class="clk-pol">${divisi.attive.map(p => scheda(p, false)).join('')}</div>`
+          : `<div class="cl-empty">Nessuna polizza attiva${nN ? ' — le ' + nN + ' polizze di questo cliente sono tutte finite, qui sotto c\'è quando e perché' : ''}.</div>`)
+      + (nN ? `<details class="clk-spente">
+          <summary><i class="ti ti-archive"></i> Polizze non attive <b>${nN}</b>
+            <span class="cl-sub">scadute, annullate — con il perché di ognuna</span></summary>
+          <div class="clk-pol">${divisi.nonAttive.map(p => scheda(p, true)).join('')}</div>
+        </details>` : '');
+    if (cnt) cnt.textContent = preventivi.length + ' preventivi · ' + nA + (nA === 1 ? ' polizza attiva' : ' polizze attive')
+      + (nN ? ' · ' + nN + ' non attive' : '');
   } else
   // ── POLIZZE (ripiego: ricavate dai preventivi emessi) ──
   polPane.innerHTML = polizze.length ? polizze.map(r => {

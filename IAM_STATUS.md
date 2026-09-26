@@ -21,7 +21,15 @@
 
 ## Quadro d'insieme
 
-**1.157 prove superate su 71 suite; 2 suite rosse.**
+**1.199 prove superate su 71 suite; 2 suite rosse.**
+
+Il conto ora lo dà un comando solo — `node server/verifica/tutte.mjs` —
+scritto il 26/09 perché a `grep` fatti a mano veniva ogni volta un numero
+diverso (403 e 885 sullo stesso codice): alcune suite stampano una riga per
+prova, altre solo il riepilogo. Il lanciatore prende il riepilogo che ogni
+suite dichiara di sé, conta i segni verdi solo dove il riepilogo manca, e
+**il verde lo decide il codice di uscita, non il testo**. Nessuna suite
+risulta muta.
 
 All'inizio dell'audit erano 961 e 16. Le dodici recuperate lo sono state
 dichiarando le dipendenze (P0), non toccando il codice: dodici suite
@@ -41,6 +49,14 @@ Due suite nuove: **`tasti-vivi`** (ognuno dei 2.108 gestori delle due
 pagine chiama qualcosa che esiste — nessun tasto morto) e
 **`visualizzazione`** (lo zoom con le dita non si blocca, e i campi sono
 a 16px dove si tocca).
+
+Il 26/09 se n'è aggiunta una terza: **`portafoglio-stato`** (42 prove, 24
+sabotaggi tutti presi), che tiene ferme le tre definizioni da cui dipende
+chi Francesco chiama — polizza attiva, cliente perso, sigla del titolo. La
+prima stesura passava con 39 prove su 41: due erano vere («q.r.» non
+veniva riconosciuta) e la terza l'ha trovata la controprova — una prova
+sulla sigla della compagnia restava verde anche col guasto dentro, perché
+il campione ci arrivava per un'altra strada.
 
 ---
 

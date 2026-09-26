@@ -31,12 +31,21 @@ valori veri, la prova lo copia da lì — non dalla memoria.
 
 ## 2. Quello che gira oggi
 
-**68 suite in `server/verifica/`, 961 prove superate, 16 suite rosse.**
+**71 suite in `server/verifica/`, 1.199 prove superate, 2 suite rosse**
+(le `parita-*`, senza ancoraggio: P2.4). All'inizio dell'audit erano 68
+suite, 961 prove e 16 rosse.
 
 ```
-node server/verifica/<nome>.test.mjs        # una suite
-for f in server/verifica/*.test.mjs; do node "$f"; done   # tutte
+node server/verifica/tutte.mjs             # tutte, col conto e le rosse in fondo
+node server/verifica/tutte.mjs crm conta   # solo quelle col nome che contiene «crm» o «conta»
+node server/verifica/<nome>.test.mjs       # una suite
 ```
+
+Il ciclo `for f in server/verifica/*.test.mjs; do node "$f"; done` funziona
+ancora, ma non conta niente e non dice quali sono rosse. Il numero va
+chiesto a `tutte.mjs`, che usa **una** regola per tutte le suite: a
+contarle a mano con `grep` venivano 403 o 885 sullo stesso codice, perché
+metà delle suite non stampa una riga per prova.
 
 Le suite trasversali, che proteggono il progetto invece di un modulo:
 

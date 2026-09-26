@@ -141,6 +141,34 @@ riancorano a una fotografia salvata nel repository, o si ritirano
 dicendolo. Lasciarle rosse è peggio di toglierle: insegna a ignorare il
 rosso.
 
+### P2.9 · `copertura_al` dice due cose diverse, e la schermata ne mostra una sbagliata
+Trovato il 26/09/2026 misurando le polizze attive. La colonna
+`quote_polizze.copertura_al` viene riempita dal flusso SSF con
+`SCADENZA_INCASSATO`, cioè **«pagata fino al»** — ed è giusto per una
+frazionata: la copertura vale fin dove è pagata.
+
+Ma sui numeri veri non torna: su **574 polizze PRIMA** è più corta della
+scadenza, e fra queste **93 sono Annuali già pagate** con una
+`copertura_al` a pochi giorni dall'effetto (un caso: effetto 05/11/2025,
+`copertura_al` 06/11/2025, scadenza 05/11/2026, rata incassata). Per un
+premio annuale pagato in una volta, «pagata fino al» dovrebbe coincidere
+con la scadenza: lì dentro c'è qualcosa che non è una copertura.
+
+Il guaio è che **si vede già**: `pfCopertura` (`index.html:16253`) e
+`copertura` (`withus-one/moduli/polizze.js:55`) leggono quella colonna
+come fine della copertura e scrivono «Copertura: terminata il …». Su
+**155 polizze** la colonna è passata mentre la polizza corre: quelle 155
+righe oggi dicono una bugia al primo sguardo.
+
+Da fare: leggere sul tracciato SSF vero cos'è `SCADENZA_INCASSATO` sulle
+righe Annuali (e chiederlo a Prima se il tracciato non basta); poi o si
+corregge il flusso, o si insegna alle due schermate che per una polizza
+non frazionata quella colonna non è la fine della copertura.
+
+**Il motore `portafoglio-stato` non la guarda** — di proposito, e con una
+prova che lo tiene fermo: se la guardasse, **45 clienti attivi
+diventerebbero «persi»** e finirebbero in rosso.
+
 ### P2.5 · Tabelle costruite e mai usate
 `iam_lead`, `iam_agenda`, `quote_segmenti`, `quote_sinistri`,
 `iam_firme`, `iam_formazione`, `quote_rinnovi`, `iam_incassi*`,

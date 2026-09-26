@@ -75,8 +75,8 @@
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
 <script src="tariffe/motore/pagamento-rata.js?v=20260925"></script>
-<script src="tariffe/motore/flusso-ssf.js?v=20260925"></script>
-<script src="tariffe/motore/flusso-hdi.js?v=20260925"></script>
+<script src="tariffe/motore/flusso-ssf.js?v=20260926"></script>
+<script src="tariffe/motore/flusso-hdi.js?v=20260926"></script>
 <script src="tariffe/motore/crm-analisi.js?v=20260926"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260920"></script>
 <!-- Le coordinate su cui i collaboratori versano stanno sui conti, e i conti
@@ -1411,6 +1411,18 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .tit-barra select,.tit-barra input{padding:6px 9px;border:1px solid var(--line);border-radius:4px;
   font-family:inherit;font-size:12.5px;background:#fff;color:var(--ink)}
 .tit-num{font-family:ui-monospace,monospace;font-size:12px}
+/* LA SIGLA DEL TITOLO (26/09/2026): NP, QR, QF, AP, SO. Sta ACCANTO al nome del
+   tipo e non al suo posto — il tipo del database e la sigla dell'agenzia non
+   dicono la stessa cosa, e sostituire l'uno con l'altra farebbe perdere per
+   strada quello che le schermate vecchie leggono. Il pallino dopo la sigla vuol
+   dire «l'abbiamo ricavata noi», e il titolo del riquadro lo spiega: una
+   deduzione mostrata come un fatto diventa un fatto in due settimane. */
+.tit-sigla{display:inline-block;min-width:26px;margin-right:6px;padding:1px 5px;border-radius:5px;
+  font-family:ui-monospace,monospace;font-size:10.5px;font-weight:800;letter-spacing:.02em;
+  text-align:center;background:var(--w1-verde-tenue,#eaf7f0);color:var(--w1-verde-scuro,#02703a);
+  border:1px solid var(--w1-bordo,#d8e5dd)}
+.tit-sigla-ded{background:#f4f4f4;color:#5b6b63;border-color:#e2e2e2}
+.tit-sigla i{font-style:normal;opacity:.6;margin-left:2px}
 
 /* ── CRM Punto 3: documentale di pratica ──────────────────────────────────── */
 .pdoc-ov{position:fixed;inset:0;z-index:600;background:rgba(10,20,30,.55);display:flex;
@@ -18286,6 +18298,30 @@ function titRateAnno(frazionamento) {
 const TIT_TIPI = {
   prima_rata: 'Prima rata', rata: 'Rata', quietanza: 'Quietanza', appendice: 'Appendice'
 };
+/* ── LA SIGLA ACCANTO AL TIPO (26/09/2026, richiesta di Francesco) ───────────
+   «Introdurre anche questo pezzo per individuare meglio i titoli di polizza,
+   ovvero QR sta quietanza di rinnovo, QF sta per quietanza di frazionamento,
+   NP Nuova polizza, AP sta per appendice, SO sta per sostituzione.»
+
+   Il tipo del database e la sigla dell'agenzia NON sono la stessa cosa, e la
+   riga le mostra entrambe perché nessuna delle due basta:
+     · `tipo` ha quattro valori e schiaccia NP con SO dentro «Prima rata»;
+     · il suo valore «Quietanza» vuol dire RINNOVO per HDI e FRAZIONAMENTO per
+       Prima — lo stesso nome per due cose diverse.
+
+   Dove la sigla è una nostra deduzione e non la parola della compagnia, si
+   vede: un pallino e il titolo lo spiega. Una deduzione mostrata come un fatto
+   diventa un fatto in due settimane. */
+function titSigla(t) {
+  const s = (t && t.sigla_tipo) ? String(t.sigla_tipo).toUpperCase() : null;
+  if (!s) return '';
+  const PS = window.PortafoglioStato;
+  const nome = (PS && PS.nomeTipo(s)) || s;
+  const dedotta = !!(t && t.sigla_dedotta);
+  return '<span class="tit-sigla' + (dedotta ? ' tit-sigla-ded' : '') + '" title="' + esc(nome)
+    + (dedotta ? ' — ricavata da noi, non dalla parola della compagnia' : '') + '">' + esc(s)
+    + (dedotta ? '<i>·</i>' : '') + '</span>';
+}
 const TIT_STATI = {
   aperto:     ['Da incassare', 'st-aperto'],
   incassato:  ['Incassato',    'st-risolto'],
@@ -18582,7 +18618,7 @@ function titRender() {
       <td><strong>${esc(t.__cliente || '—')}</strong></td>
       <td><span class="tit-num">${esc(t.__polizza || '—')}</span>
         ${t.__compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(t.__compagnia)}</div>` : ''}</td>
-      <td style="font-size:12.5px">${TIT_TIPI[t.tipo] || t.tipo}</td>
+      <td style="font-size:12.5px">${titSigla(t)}${TIT_TIPI[t.tipo] || t.tipo}</td>
       <td><strong style="color:var(--blue)">${pfEuro(t.importo_lordo)}</strong></td>
       <td style="font-size:12.5px">${t.collaboratore_id
           ? `<strong>${esc(TIT_COLLAB_NOMI[t.collaboratore_id] || 'collaboratore rimosso')}</strong>`
@@ -19137,7 +19173,7 @@ function titExportExcel() {
   const righe = TIT_VISTA.map(t => `<tr>
     <td>${pfData(t.data_scadenza || t.data_decorrenza)}</td><td>${esc(t.__cliente || '')}</td>
     <td>${esc(t.__polizza || '')}</td><td>${esc(t.__compagnia || '')}</td>
-    <td>${TIT_TIPI[t.tipo] || t.tipo}</td>
+    <td>${t.sigla_tipo ? esc(t.sigla_tipo) + ' · ' : ''}${TIT_TIPI[t.tipo] || t.tipo}</td>
     <td>${t.importo_lordo != null ? Number(t.importo_lordo).toFixed(2) : ''}</td>
     <td>${titStato(t)[0]}</td><td>${mezNome(t.mezzo_pagamento) || ''}</td>
     <td>${t.incassato_il ? pfData(t.incassato_il) : ''}</td><td>${esc(t.pagatore || '')}</td></tr>`).join('');

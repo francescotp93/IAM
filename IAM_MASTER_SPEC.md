@@ -351,6 +351,37 @@ chiamare la lista di chi va chiamato.
 | **AP** | Appendice |
 | **SO** | Sostituzione |
 
+#### Dove vive, e cosa significa «dedotta»
+
+La sigla sta in `quote_titoli.sigla_tipo` (nullable) e **si aggiunge** a `tipo`,
+non lo sostituisce: `tipo` ha quattro valori che alcune schermate leggono già.
+
+Accanto c'è `sigla_dedotta`: **falso** quando la sigla è la parola della
+compagnia, **vero** quando l'abbiamo ricavata noi. Serve perché una deduzione
+mostrata come un fatto diventa un fatto in due settimane — e sulla riga del
+titolo si vede, con un pallino e una spiegazione nel riquadro.
+
+Stato al 26/09/2026, sui 3.218 titoli in archivio:
+
+| da che cosa | righe | sigla | dedotta |
+|---|--:|---|---|
+| la parola di HDI (nota della rata) | 13 | NP · SO · QR · AP | no |
+| il codice `QZ` di Prima | 839 | QF | sì |
+| le rate dedotte dal frazionamento | 38 | QF | sì |
+| `PN` di Prima, e i titoli senza fonte | 2.328 | *vuota* | — |
+
+`PN` resta **vuota di proposito**: il tracciato di Prima dice che quel codice
+copre nuovo affare, rinnovo E sostituzione. Scriverci NP vorrebbe dire
+dichiarare «cliente nuovo» su un rinnovo, e nascondere i rinnovi — cioè
+l'informazione per cui la sigla esiste. Il rinnovo, per Prima, si riconosce
+dalla catena delle annualità, e quella deduzione avrà una migrazione sua,
+provata prima.
+
+I due lettori scrivono la sigla sui titoli nuovi, e la funzione
+`iam_importa_flusso` la porta fino in archivio. In aggiornamento la sigla **si
+riempie se manca e non si sovrascrive**: una sigla corretta a mano non deve
+essere smentita dal flusso del mese dopo, come già vale per il pagamento.
+
 **Perché serve, e che cosa si perde oggi.** La colonna `quote_titoli.tipo`
 ne ammette quattro — `prima_rata`, `rata`, `quietanza`, `appendice` — e
 i lettori ci schiacciano dentro cinque cose:

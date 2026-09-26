@@ -205,6 +205,60 @@ prova('un titolo di un tipo che non conosciamo non entra in contabilità', () =>
   return '1 saltato e dichiarato, 1 incassato con la sua data, 1 aperto';
 });
 
+prova('la sigla del titolo: QZ è un FRAZIONAMENTO, e PN non si indovina', () => {
+  /* 26/09/2026, ed è la cosa più importante di tutta la faccenda delle sigle.
+
+     Il tracciato di Prima chiama `QZ` «la quietanza, cioè la rata successiva»:
+     è un QF, non un QR. Se si traducesse in «quietanza di rinnovo», la domanda
+     «chi non ha rinnovato?» risponderebbe 841 quando la risposta è 2 — e i
+     numeri veri lo confermano: delle 841 righe in archivio, 839 decorrono
+     DENTRO l'annualità (6,1 mesi dopo l'effetto in media) e zero dalla scadenza
+     in poi. Una quietanza di rinnovo decorre dal rinnovo: queste no.
+
+     `PN` invece resta SENZA sigla, e non è una dimenticanza: il tracciato dice
+     che copre nuovo affare, rinnovo E sostituzione. Scriverci NP vorrebbe dire
+     dichiarare «cliente nuovo» su un rinnovo e — peggio — nascondere proprio i
+     rinnovi, che sono quello che serve per sapere chi non ha rinnovato. */
+  const qz = A.titoli.find(t => t._fonte_id === 'T2');
+  deve(qz.sigla_tipo === 'QF', 'QZ è diventato ' + qz.sigla_tipo + ': il frazionamento passerebbe per rinnovo');
+  deve(qz.sigla_dedotta === true, 'QF risulta detta dalla compagnia, ma è una nostra lettura del tracciato');
+
+  const pn = A.titoli.find(t => t._fonte_id === 'T1');
+  deve(pn.sigla_tipo == null, 'PN ha preso la sigla ' + pn.sigla_tipo + ', che il tracciato non autorizza');
+  deve(pn.sigla_dedotta === false, 'un titolo senza sigla non può avere una sigla dedotta');
+  return 'QZ → QF (dedotta), PN → vuoto';
+});
+
+prova('la rata dedotta dal frazionamento si dichiara per quello che è', () => {
+  /* La rata che il flusso non manda e che ricaviamo noi dal frazionamento: è un
+     QF, e la sigla dice anche che l'abbiamo ricavata noi. Un numero che nessuna
+     compagnia ha detto deve restare riconoscibile. */
+  const generata = (A.titoli || []).filter(t => t._generato);
+  for (const t of generata) {
+    deve(t.sigla_tipo === 'QF', 'una rata dedotta ha sigla ' + t.sigla_tipo);
+    deve(t.sigla_dedotta === true, 'una rata dedotta da noi non risulta dedotta');
+  }
+  return generata.length + ' rate dedotte, tutte QF e tutte dichiarate tali';
+});
+
+prova('la funzione SQL porta la sigla fino in archivio', () => {
+  /* Il difetto che questa prova chiude, trovato il 26/09/2026: i lettori
+     calcolavano la sigla e la funzione di importazione elencava le colonne una
+     per una, senza `sigla_tipo`. La sigla arrivava fino alla porta del database
+     e veniva buttata via IN SILENZIO — nessun errore, e i titoli nuovi
+     sarebbero entrati senza sigla mentre gli 890 storici ce l'hanno. Si
+     scoprirebbe fra sei mesi, quando il filtro dei mancati rinnovi smette di
+     tornare i numeri giusti. */
+  const dir = path.join(QUI, '..', '..', 'supabase', 'migrations');
+  const sql = fs.readdirSync(dir).filter(f => f.endsWith('.sql'))
+    .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
+  deve(/sigla_tipo/.test(sql), 'nessuna migrazione nomina `sigla_tipo`: il flusso scrive in un buco');
+  deve(/sigla_tipo, sigla_dedotta, data_decorrenza/.test(sql),
+    'la sigla non entra nell\'elenco delle colonne delle rate');
+  deve(/coalesce\(quote_titoli\.sigla_tipo, excluded\.sigla_tipo\)/.test(sql),
+    'in aggiornamento la sigla non si riempie, oppure sovrascrive quella corretta a mano');
+});
+
 prova('una polizza il cui contraente non è nel flusso non si importa a metà', () => {
   const p = F.piano(A, {});
   deve(p.polizze.senzaCliente.length === 1, 'polizze senza contraente: ' + p.polizze.senzaCliente.length);

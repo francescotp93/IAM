@@ -141,6 +141,57 @@ riancorano a una fotografia salvata nel repository, o si ritirano
 dicendolo. Lasciarle rosse è peggio di toglierle: insegna a ignorare il
 rosso.
 
+### P1.6 · Il piano dei conti del manuale AssiEasy — **serve una decisione di Francesco**
+Trovato il 26/09/2026 leggendo il manuale di contabilità di AssiEasy che
+Francesco ha portato come modello. `iam_conti` ha 8 conti e **nessuno con
+`e_conto_sospeso = true`**: le causali `apertura_sospeso` e
+`recupero_sospeso` esistono e non hanno un conto su cui atterrare — è come
+avere il verbo senza il soggetto. E `iam_sospesi` è vuota.
+
+Mancano, per il manuale: Assegni · POS (che il manuale consiglia di
+trattare **come sospeso**, perché l'accredito arriva giorni dopo) ·
+Sospesi di agenzia · Sospesi per collaboratore · Debito verso compagnia
+(uno per compagnia) · Abbuoni passivi (costo) · Abbuoni attivi (ricavo) ·
+Partite varie.
+
+**Non la decido io**: quanti cassetti contante, quali banche, POS come
+sospeso o no, sospesi globali o per collaboratore. Il manuale stesso dice
+che «dipende dalla struttura e dalla consuetudine aziendale». Sono scelte
+contabili dell'agenzia. L'elenco completo con le prerogative sta in
+`IAM_CONTABILITA_ASSIEASY.md` § 4A.
+
+Appena risponde: migrazione additiva, e P1.7 diventa possibile.
+
+### P1.7 · Le 14 causali non sanno su quali conti scrivere
+`conto_entrata_id` e `conto_uscita_id` sono **NULL su tutte e
+quattordici**. È l'anello che tiene ferma la catena: senza, la partita
+doppia non si genera da sé e `iam_movimenti` resta a 6 righe. Dipende da
+P1.6 (i conti devono esistere prima).
+
+### P2.11 · Le partite non tecniche non si possono inserire
+Il manuale (cap. 3) è esplicito: nei flussi di compagnia i premi ci sono
+sempre, **le partite non tecniche spesso no** — rimesse, rappel,
+contributi, spese legali, storni fatti in compagnia, adeguamenti di premi
+e provvigioni, pagamenti sinistri. Vanno inserite a mano, altrimenti il
+saldo di IAM non sarà **mai** identico a quello del foglio cassa della
+compagnia: mancherà sempre la differenza delle PNT.
+
+Oggi in IAM non c'è modo di inserirne una. L'allineamento del foglio cassa
+è impossibile per costruzione, non per un difetto.
+
+### P2.12 · Saldo Finanziario e Saldo Economico: manca la sottrazione
+Il cruscotto mostra già i tre ingredienti separati («Premi dei clienti»,
+«Soldi dell'agenzia», «Premi da rimettere») ma nessuno risponde alle due
+domande che il manuale mette in cima alla quadratura:
+
+- **Saldo Finanziario** = liquidità − debito verso le compagnie →
+  *riesco a pagare quello che devo rimettere?*
+- **Saldo Economico** = Saldo Finanziario + premi sospesi →
+  *quanto guadagno se incasso tutti i sospesi?*
+
+I numeri ci sono tutti, manca il conto. Piccolo, e va nel motore
+`contabilita.js` accanto al cruscotto — non in una schermata.
+
 ### P2.10 · I 2.289 titoli `PN` di Prima non hanno una sigla
 Dei 3.218 titoli in archivio, 890 hanno la sigla (NP/QR/QF/AP/SO) e 2.328
 no. Di quelli, 2.289 sono i `prima_rata` di Prima: il suo codice `PN`

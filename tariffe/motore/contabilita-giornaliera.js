@@ -399,6 +399,232 @@
     };
   }
 
+  /* ══ LO STATO DELL'APPUNTO ═══════════════════════════════════════════════
+     26/09/2026. Preso dal manuale di contabilità di AssiEasy (cap. 2A), che
+     Francesco ha portato come modello: là questa è la colonna che si guarda
+     ogni mattina, e la regola operativa è una riga sola —
+
+         «Verificare che in Appunti Incassi non vi siano segnalazioni in rosso
+          (devono avere tutte OK) e sanare eventuali differenze.»
+
+     Finché un incasso non ha uno STATO, quella frase non si può eseguire: le
+     righe della giornata ci sono già (`appunti` qui sopra le costruisce), ma
+     nessuna dice se la compagnia le ha viste. E un incasso che la compagnia
+     non ha visto è una copertura che il cliente crede di avere.
+
+     I quattro stati, e cosa vuol dire ciascuno:
+
+       APPUNTO  — l'abbiamo registrato noi e sul foglio cassa della compagnia
+                  non c'è (ancora). Non è un errore: al mattino è la norma, e
+                  alla chiusura serale è la cosa da sanare.
+       OK       — c'è da entrambe le parti e gli importi coincidono. È l'unico
+                  stato che non chiede niente a nessuno.
+       SCOSTA   — c'è da entrambe le parti e gli importi NON coincidono. Il
+                  manuale qui non lascia scegliere: si genera un ABBUONO per la
+                  differenza, così il movimento resta bilanciato, e la riga
+                  resta segnalata.
+       FC       — sul foglio cassa della compagnia c'è una riga che da noi non
+                  trova appunto. Le cause che il manuale nomina sono due:
+                  numero di polizza o data di effetto diversi. Può anche essere
+                  un incasso fatto in direzione, che noi non abbiamo mai visto.
+
+     L'ABBUONO ha un verso, e non è un dettaglio contabile: è la differenza fra
+     un costo e un ricavo.
+       · PASSIVO (costo)  — abbiamo incassato MENO del titolo: ci rimettiamo.
+       · ATTIVO (ricavo)  — abbiamo incassato PIÙ del titolo: è un'eccedenza.
+     Il manuale li tiene su due conti diversi proprio per questo, e aggiunge la
+     cosa che conta: gli abbuoni di piccolo importo vanno guardati ogni giorno,
+     perché è lì che si nascondono gli ammanchi.
+
+     Questo motore NON scrive niente: dice lo stato e quale abbuono servirebbe.
+     Chi scrive è la schermata, dopo che una persona ha guardato. */
+
+  var STATI_APPUNTO = {
+    OK:      { chiave: 'OK',      etichetta: 'OK',             grave: false, spiega: 'La compagnia l\'ha visto e gli importi coincidono.' },
+    APPUNTO: { chiave: 'APPUNTO', etichetta: 'Appunto',         grave: false, spiega: 'Registrato da noi, non ancora sul foglio cassa della compagnia.' },
+    SCOSTA:  { chiave: 'SCOSTA',  etichetta: 'Scostamento',     grave: true,  spiega: 'C\'è da entrambe le parti, ma gli importi non coincidono.' },
+    FC:      { chiave: 'FC',      etichetta: 'Solo foglio cassa', grave: true, spiega: 'Sul foglio cassa della compagnia, ma da noi non trova appunto.' },
+  };
+
+  /* La chiave con cui una riga nostra e una riga del foglio cassa sono «la
+     stessa cosa». Il manuale elenca i campi che identificano un titolo in
+     maniera univoca: agenzia, ramo, polizza, effetto. L'importo NON entra
+     nella chiave — se ci entrasse, una differenza di un euro non produrrebbe
+     uno scostamento da sanare ma due righe orfane, e lo scostamento è proprio
+     la cosa che si vuole vedere. */
+  function chiaveTitolo(r) {
+    var p = chiave((r || {}).polizza || (r || {}).numero_polizza);
+    if (!p) return null;                      // senza numero di polizza non si abbina niente
+    var e = giorno((r || {}).effetto || (r || {}).data_effetto) || '';
+    return p + '|' + e;
+  }
+
+  /* L'abbuono che serve a far tornare il movimento. `null` quando non serve. */
+  function abbuonoPer(titolo, incassato) {
+    var t = cent(titolo), i = cent(incassato);
+    var d = cent(i - t);
+    if (!d) return null;
+    return {
+      verso: d < 0 ? 'passivo' : 'attivo',
+      importo: Math.abs(d),
+      /* Il verso detto a parole, perché «passivo» e «attivo» si confondono: è
+         l'agenzia che ci rimette, o che ci guadagna? */
+      spiega: d < 0
+        ? 'Incassati ' + Math.abs(d).toFixed(2).replace('.', ',') + ' € in meno del titolo: ci rimettiamo noi (costo).'
+        : 'Incassati ' + Math.abs(d).toFixed(2).replace('.', ',') + ' € in più del titolo: eccedenza (ricavo).',
+    };
+  }
+
+  function statoAppunto(nostro, dalFoglio) {
+    if (!nostro && !dalFoglio) return null;
+    if (!nostro) {
+      return { stato: STATI_APPUNTO.FC, abbuono: null, scostamento: null,
+               perche: 'Il foglio cassa della compagnia porta questa riga e da noi non c\'è: '
+                     + 'o il numero di polizza o la data di effetto non combaciano, o è un incasso fatto in direzione.' };
+    }
+    if (!dalFoglio) {
+      return { stato: STATI_APPUNTO.APPUNTO, abbuono: null, scostamento: null,
+               perche: 'Da noi c\'è, sul foglio cassa della compagnia non ancora. '
+                     + 'Al mattino è normale; alla chiusura serale va sanato.' };
+    }
+    var t = cent(nostro.importo != null ? nostro.importo : nostro.importo_lordo);
+    var i = cent(dalFoglio.importo != null ? dalFoglio.importo : dalFoglio.importo_lordo);
+    var ab = abbuonoPer(t, i);
+    if (!ab) return { stato: STATI_APPUNTO.OK, abbuono: null, scostamento: null, perche: null };
+    return {
+      stato: STATI_APPUNTO.SCOSTA,
+      scostamento: cent(i - t),
+      abbuono: ab,
+      perche: 'Noi ' + t.toFixed(2).replace('.', ',') + ' €, la compagnia ' + i.toFixed(2).replace('.', ',') + ' €. ' + ab.spiega,
+    };
+  }
+
+  /* ── L'ABBINAMENTO DELLA GIORNATA ─────────────────────────────────────────
+     Le nostre righe da una parte, il foglio cassa della compagnia dall'altra,
+     e in mezzo lo stato di ognuna. È la schermata del mattino: se tutto è OK
+     non c'è niente da fare, e ogni riga che non lo è dice da sé che cosa
+     manca.
+
+     I DOPPIONI SI DICHIARANO. Se due righe nostre hanno la stessa chiave
+     (stessa polizza, stesso effetto) non si abbina «la prima e chi se ne
+     frega»: sarebbe un incasso contato una volta e uno sparito. Si abbina
+     quella con l'importo più vicino, e si avvisa. */
+  function abbinaFoglio(nostre, dalFoglio) {
+    var mie = (nostre || []).filter(Boolean);
+    var loro = (dalFoglio || []).filter(Boolean);
+
+    var perChiave = {};
+    loro.forEach(function (r, idx) {
+      var k = chiaveTitolo(r);
+      if (!k) return;
+      (perChiave[k] = perChiave[k] || []).push({ r: r, idx: idx, preso: false });
+    });
+
+    /* I DOPPIONI SI CONTANO DA TUTTE E DUE LE PARTI, e la prova me l'ha
+       ricordato: la prima stesura guardava solo il foglio cassa. Due righe
+       NOSTRE con la stessa polizza e lo stesso effetto sono il caso peggiore —
+       una si abbina, l'altra resta appunto, il totale torna, e l'incasso
+       doppio non lo vede nessuno. */
+    var doppioni = [];
+    var quanteMie = {};
+    mie.forEach(function (n) {
+      var k = chiaveTitolo(n);
+      if (k) quanteMie[k] = (quanteMie[k] || 0) + 1;
+    });
+    Object.keys(quanteMie).forEach(function (k) { if (quanteMie[k] > 1) doppioni.push(k); });
+
+    var righe = [];
+    var usate = {};
+
+    mie.forEach(function (n) {
+      var k = chiaveTitolo(n);
+      var cand = k ? (perChiave[k] || []).filter(function (x) { return !x.preso; }) : [];
+      var scelto = null;
+      if (cand.length) {
+        if (cand.length > 1) {
+          var mio = cent(n.importo != null ? n.importo : n.importo_lordo);
+          cand = cand.slice().sort(function (a, b) {
+            var da = Math.abs(cent(a.r.importo != null ? a.r.importo : a.r.importo_lordo) - mio);
+            var db = Math.abs(cent(b.r.importo != null ? b.r.importo : b.r.importo_lordo) - mio);
+            return da - db;
+          });
+          if (doppioni.indexOf(k) < 0) doppioni.push(k);
+        }
+        scelto = cand[0];
+        scelto.preso = true;
+        usate[scelto.idx] = true;
+      }
+      var s = statoAppunto(n, scelto ? scelto.r : null);
+      righe.push({ nostro: n, foglio: scelto ? scelto.r : null, chiave: k,
+                   stato: s.stato, scostamento: s.scostamento, abbuono: s.abbuono, perche: s.perche,
+                   senzaChiave: !k });
+    });
+
+    /* Quello che resta del foglio cassa: FC. */
+    loro.forEach(function (r, idx) {
+      if (usate[idx]) return;
+      var s = statoAppunto(null, r);
+      righe.push({ nostro: null, foglio: r, chiave: chiaveTitolo(r),
+                   stato: s.stato, scostamento: null, abbuono: null, perche: s.perche,
+                   senzaChiave: !chiaveTitolo(r) });
+    });
+
+    var conta = function (k) { return righe.filter(function (x) { return x.stato.chiave === k; }); };
+    var somma = function (l, quale) {
+      return cent(l.reduce(function (t, x) {
+        var r = quale === 'foglio' ? x.foglio : x.nostro;
+        if (!r) return t;
+        return t + cent(r.importo != null ? r.importo : r.importo_lordo);
+      }, 0));
+    };
+
+    var ok = conta('OK'), app = conta('APPUNTO'), sco = conta('SCOSTA'), fc = conta('FC');
+    var abbPassivo = cent(sco.filter(function (x) { return x.abbuono.verso === 'passivo'; })
+      .reduce(function (t, x) { return t + x.abbuono.importo; }, 0));
+    var abbAttivo = cent(sco.filter(function (x) { return x.abbuono.verso === 'attivo'; })
+      .reduce(function (t, x) { return t + x.abbuono.importo; }, 0));
+
+    var avvisi = [];
+    /* Il manuale mette questa frase in cima al modello operativo, e la prova
+       che conta è che la schermata la sappia dire. */
+    if (sco.length || fc.length) {
+      avvisi.push({ g: 'grave', t: 'Ci sono ' + (sco.length + fc.length) + ' righe da sanare prima della chiusura: '
+        + (sco.length ? sco.length + ' con importo diverso da quello della compagnia' : '')
+        + (sco.length && fc.length ? ' e ' : '')
+        + (fc.length ? fc.length + ' presenti solo sul foglio cassa' : '') + '.' });
+    }
+    if (app.length) {
+      avvisi.push({ g: 'avviso', t: app.length + ' incassi non risultano ancora sul foglio cassa della compagnia per '
+        + somma(app).toFixed(2).replace('.', ',') + ' €: al mattino è normale, a fine giornata no.' });
+    }
+    if (doppioni.length) {
+      avvisi.push({ g: 'grave', t: doppioni.length + ' polizze hanno più di una riga con la stessa data di effetto: '
+        + 'l\'abbinamento ha scelto quella con l\'importo più vicino, ma va guardato a mano — '
+        + 'un incasso contato due volte e uno sparito danno lo stesso totale.' });
+    }
+    var senzaNumero = righe.filter(function (x) { return x.senzaChiave; });
+    if (senzaNumero.length) {
+      avvisi.push({ g: 'grave', t: senzaNumero.length + ' righe non portano il numero di polizza: '
+        + 'non si possono abbinare, e restano fuori dal controllo invece di risultare a posto.' });
+    }
+
+    return {
+      righe: righe,
+      ok: ok.length, appunti: app.length, scostamenti: sco.length, soloFoglio: fc.length,
+      tutteOk: !sco.length && !fc.length && !app.length && !senzaNumero.length,
+      daSanare: sco.length + fc.length,
+      totaleNostro: somma(righe, 'nostro'),
+      totaleFoglio: somma(righe, 'foglio'),
+      /* La differenza fra i due totali è il numero che il manuale fa
+         confrontare con la colonna premi del report giornaliero della
+         compagnia. Se è zero e non ci sono righe da sanare, la giornata torna. */
+      differenza: cent(somma(righe, 'foglio') - somma(righe, 'nostro')),
+      abbuoni: { passivo: abbPassivo, attivo: abbAttivo, quanti: sco.length },
+      doppioni: doppioni,
+      avvisi: avvisi,
+    };
+  }
+
   /* ── I SOSPESI INCASSATI ─────────────────────────────────────────────────
      Il blocco in fondo al foglio. Righe: di chi era il sospeso, con che mezzo
      è stato saldato, quanto. Non si somma agli incassi (R2). */
@@ -524,6 +750,9 @@
     sospesiScaricati: sospesiScaricati, incassiPerMezzo: incassiPerMezzo, foglio: foglio,
     nomeConto: nomeConto, classificaMezzo: classificaMezzo,
     appunti: appunti, sospesiIncassati: sospesiIncassati,
+    /* Lo stato dell'appunto, dal manuale di contabilità di AssiEasy (cap. 2A) */
+    STATI_APPUNTO: STATI_APPUNTO, chiaveTitolo: chiaveTitolo,
+    abbuonoPer: abbuonoPer, statoAppunto: statoAppunto, abbinaFoglio: abbinaFoglio,
     speseDelGiorno: speseDelGiorno, cassaDelGiorno: cassaDelGiorno,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

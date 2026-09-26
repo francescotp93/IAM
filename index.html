@@ -28949,10 +28949,18 @@ async function cercaAnagrafica() {
    Vuoto = non lo so, e allora non si colora niente. */
 var ANAG_STATI = null;     // cliente_id → verdetto del motore
 var ANAG_STATI_KO = false;
+var ANAG_STATI_GIRO = 0;   // quale ricerca ha chiesto questi stati
 
 async function anagStatiCarica(ids) {
+  /* IL GIRO. Chi cerca scrive, cancella e riscrive: di letture in volo ce ne
+     sono tre alla volta, e finiscono in ordine sparso. Senza questo contatore
+     la risposta di una ricerca vecchia sovrascriverebbe quella nuova, e dei
+     clienti perderebbero il colore finché non si cerca di nuovo. Non è un
+     numero sbagliato — è un colore che manca a caso, che è il modo più veloce
+     di non fidarsi più del colore. */
+  const giro = ++ANAG_STATI_GIRO;
   const lista = [...new Set((ids || []).filter(Boolean))];
-  if (!lista.length || !window.PortafoglioStato) { ANAG_STATI = {}; return; }
+  if (!lista.length || !window.PortafoglioStato) { if (giro === ANAG_STATI_GIRO) ANAG_STATI = {}; return; }
   try {
     const per = {};
     /* A blocchi: un `in` con mille identificativi diventa un indirizzo troppo
@@ -28968,9 +28976,11 @@ async function anagStatiCarica(ids) {
     const oggi = pnuOggi();
     const stati = {};
     lista.forEach(id => { stati[id] = PortafoglioStato.statoCliente(per[id] || [], oggi); });
+    if (giro !== ANAG_STATI_GIRO) return;   // è arrivata dopo una ricerca più nuova: si scarta
     ANAG_STATI = stati;
     ANAG_STATI_KO = false;
   } catch (e) {
+    if (giro !== ANAG_STATI_GIRO) return;
     ANAG_STATI = null; ANAG_STATI_KO = true;
     console.warn('stato di portafoglio dei clienti non leggibile:', e.message || e);
   }
@@ -31182,9 +31192,17 @@ async function caricaCollegati(id, nominativo) {
        della frase conta. */
     const oggiP = pnuOggi();
     const PS = window.PortafoglioStato;
+    /* IL RIPIEGO NON DEVE FAR SPARIRE LE POLIZZE. Senza un motore non si sa
+       QUALI siano attive; si sa che ci sono, e mostrarle tutte è l'unico verso
+       che non perde niente. Scritto dopo aver riletto il diff: la prima
+       versione, con nessuno dei due motori caricati, avrebbe lasciato vuoti
+       tutti e due i mucchi — «nessuna polizza attiva» su un cliente che ne ha
+       nove, e senza nemmeno un avviso. */
     const divisi = PS ? PS.dividiPolizze(polReali, oggiP)
-      : { attive: polReali.filter(p => !window.SchedaCliente || (!SchedaCliente.annullata(p) && SchedaCliente.attiva(p, oggiP))),
-          nonAttive: polReali.filter(p => window.SchedaCliente && (SchedaCliente.annullata(p) || !SchedaCliente.attiva(p, oggiP))) };
+      : (window.SchedaCliente
+          ? { attive: polReali.filter(p => !SchedaCliente.annullata(p) && SchedaCliente.attiva(p, oggiP)),
+              nonAttive: polReali.filter(p => SchedaCliente.annullata(p) || !SchedaCliente.attiva(p, oggiP)) }
+          : { attive: polReali, nonAttive: [] });
 
     const scheda = (p, spenta) => {
       const s = p._stato || null;

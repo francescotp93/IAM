@@ -105,6 +105,42 @@ prova('il CRM chiede lo stato allo stesso motore, non a una sua copia', async ()
   deve(r.rinnovo.join() === '2', 'persi al rinnovo: ' + r.rinnovo.join());
 });
 
+/* ── DUE CORREZIONI NATE DALLA RILETTURA DEL DIFF ──────────────────────────
+   Nessuna delle due dava errore, e nessuna delle due si vedeva nelle prove:
+   sono venute fuori rileggendo il codice come se dovessi bocciarlo. Qui sono
+   pinzate sul testo della pagina, che è il posto dove vivono — non si possono
+   chiedere a una funzione, perché stanno dentro il corpo di due funzioni più
+   grandi che senza database non partono. */
+
+prova('senza motore le polizze si mostrano tutte, non nessuna', async () => {
+  /* La prima stesura del ripiego, se nessuno dei due motori era caricato,
+     lasciava vuoti tutti e due i mucchi: la scheda diceva «nessuna polizza
+     attiva» su un cliente che ne ha nove, senza nemmeno un avviso. Senza un
+     motore non si sa QUALI siano attive; si sa che ci sono. */
+  const fs = await import('fs');
+  const src = fs.readFileSync(path.join(RADICE, 'index.html'), 'utf8');
+  const i = src.indexOf('const divisi = PS ?');
+  deve(i > 0, 'il ripiego non c\'è più: rileggere questa prova');
+  const blocco = src.slice(i, i + 700);
+  deve(/\{ attive: polReali, nonAttive: \[\] \}/.test(blocco),
+    'senza motore la scheda non mostra le polizze: farebbe sparire il portafoglio di un cliente');
+});
+
+prova('una ricerca vecchia non sovrascrive i colori di quella nuova', async () => {
+  /* Chi cerca scrive, cancella e riscrive: di letture in volo ce ne sono tre
+     alla volta e finiscono in ordine sparso. Senza il contatore di giro, la
+     risposta vecchia arriva dopo e dei clienti perdono il colore a caso — che è
+     il modo più veloce di smettere di fidarsi di un colore. */
+  const fs = await import('fs');
+  const src = fs.readFileSync(path.join(RADICE, 'index.html'), 'utf8');
+  const i = src.indexOf('async function anagStatiCarica');
+  deve(i > 0, 'anagStatiCarica non c\'è più: rileggere questa prova');
+  const corpo = src.slice(i, src.indexOf('\n}', src.indexOf('renderAnagResults();', i)));
+  deve(/const giro = \+\+ANAG_STATI_GIRO;/.test(corpo), 'la lettura non prende un numero di giro');
+  const guardie = (corpo.match(/giro !== ANAG_STATI_GIRO/g) || []).length;
+  deve(guardie >= 2, 'le guardie sul giro sono ' + guardie + ': servono sia sul buon esito sia sull\'errore');
+});
+
 prova('aprendo la pagina non si è rotto niente', async () => {
   /* Gli errori raccolti dall'apertura in poi. Un errore qui vuol dire che una
      parte dello script non è stata eseguita, e quale parte non si sa. */

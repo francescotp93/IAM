@@ -14,7 +14,12 @@ import { fileURLToPath } from 'node:url'
 
 const QUI = dirname(fileURLToPath(import.meta.url))
 const MOT = join(QUI, '..', '..', 'tariffe', 'motore', 'portafoglio-stato.js')
-const TEST = join(QUI, 'portafoglio-stato.test.mjs')
+/* DUE suite, non una. `portafoglio-stato` prova le regole sui casi che ho
+   scelto io; `portafoglio-forme-vere` le prova sulla distribuzione vera dei
+   2.547 clienti. Un guasto può sfuggire alla prima e farsi prendere dalla
+   seconda (o il contrario), e sapere QUALE delle due lo prende dice se la
+   copertura sta nei casi limite o nei numeri veri. */
+const TEST = [join(QUI, 'portafoglio-stato.test.mjs'), join(QUI, 'portafoglio-forme-vere.test.mjs')]
 const BUONO = readFileSync(MOT, 'utf8')
 
 const GUASTI = [
@@ -123,13 +128,20 @@ try {
       continue
     }
     writeFileSync(MOT, rotto)
-    let rosso = false, uscita = ''
-    try { uscita = execFileSync('node', [TEST], { encoding: 'utf8' }) }
-    catch (e) { rosso = true; uscita = (e.stdout || '') + (e.stderr || '') }
-    const quali = (uscita.match(/❌ [^\n]+/g) || []).map((s) => s.slice(2).split('  —')[0].trim())
-    console.log(`${rosso ? '✅ preso' : '❌ NON PRESO'}: ${desc}`)
-    if (rosso) quali.slice(0, 2).forEach((q) => console.log(`        rossa: ${q}`))
-    if (!rosso) sfuggiti++
+    const preso = [], quali = []
+    for (const t of TEST) {
+      let rosso = false, uscita = ''
+      try { uscita = execFileSync('node', [t], { encoding: 'utf8' }) }
+      catch (e) { rosso = true; uscita = (e.stdout || '') + (e.stderr || '') }
+      if (rosso) {
+        preso.push(t.split('/').pop().replace('.test.mjs', ''))
+        ;(uscita.match(/❌ [^\n]+/g) || []).slice(0, 2)
+          .forEach((s) => quali.push(s.slice(2).split('  —')[0].trim()))
+      }
+    }
+    console.log(`${preso.length ? '✅ preso' : '❌ NON PRESO'}: ${desc}${preso.length ? '   [' + preso.join(' + ') + ']' : ''}`)
+    quali.slice(0, 2).forEach((q) => console.log(`        rossa: ${q}`))
+    if (!preso.length) sfuggiti++
   }
 } finally {
   writeFileSync(MOT, BUONO)

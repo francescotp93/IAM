@@ -120,6 +120,292 @@ i numeri si credono.
 
 ---
 
+## 4bis. La contabilità giornaliera — definizione ufficiale
+
+> Definita il 26/09/2026 su richiesta di Francesco. Il motore c'è ed è
+> provato (39/39); questa è la definizione di che cosa deve mostrare e
+> con quali regole, perché finora stava solo nel codice.
+
+### Che cos'è, e che cosa NON è
+
+La contabilità giornaliera risponde a **una domanda sola**: *in questa
+giornata, che cosa è passato dal cassetto dell'agenzia?*
+
+Non è il portafoglio e non è la produzione. Il **Foglio cassa**, che sta
+nel Portafoglio, guarda le RATE INCASSATE e la provvigione che ne resta
+all'agenzia: è una domanda sulla produzione. La contabilità giornaliera
+guarda i SOLDI che sono entrati e usciti oggi. Due domande diverse sugli
+stessi giorni — e per questo vivono in due motori separati
+(`contabilita-giornaliera.js` e `foglio-cassa.js`), che non si
+accorpano.
+
+### Le tre colonne della giornata
+
+**1 · Gli incassi del giorno.** Le rate di polizza incassate oggi,
+divise per mezzo di pagamento (contante, POS, bonifico, carta,
+prepagata, assegno, PayPal, domiciliazione, altro). Al netto delle
+sospese: una rata appoggiata al sospeso di un collaboratore **non è
+entrata in cassa**, è un pagamento da perfezionare, e si mostra a parte.
+
+**2 · I sospesi incassati oggi.** Soldi entrati oggi per polizze di
+prima. **Non si sommano agli incassi** (R5): si affiancano. La cassa del
+giorno è la somma delle due, non un ricalcolo.
+
+**3 · Le spese del giorno.** Con il loro mezzo di pagamento. Se oggi
+sono entrati 100 € in contanti e ne sono usciti 30 in contanti, nel
+cassetto ce ne sono 70 — ma **solo se si sa** che quei 30 sono usciti
+dal contante (R6). Una spesa senza mezzo esce a parte e si dichiara:
+non si toglie da nessuna colonna.
+
+### Che cosa deve mostrare la schermata
+
+- Il **saldo per ogni mezzo**: entrato, uscito, quel che resta.
+- Il **totale della giornata**: incassi netti + sospesi incassati −
+  spese.
+- L'elenco delle righe che compongono ciascun numero, apribile.
+- Gli **avvisi**, in evidenza e non in fondo: pagamenti che non si
+  riescono ad attribuire, spese senza mezzo, rate appoggiate a un
+  sospeso.
+
+### Le regole che valgono qui e non si negoziano
+
+- **R5, R6, R7, R8** della sezione 4 valgono tutte.
+- **Una giornata senza dati non è una giornata a zero.** Se per quel
+  giorno non c'è niente in archivio, la schermata lo dice; non mostra
+  «0,00 €», che vuol dire un'altra cosa.
+- **La finestra è il giorno registrato, non il giorno di calendario.**
+  Se fra due registrazioni ci sono tre giorni, quello che si vede
+  riguarda tre giorni, e va detto accanto al numero.
+
+### Lo stato di oggi, detto con onestà
+
+Il motore sa fare tutto questo ed è verde. **Le tabelle dove dovrebbe
+leggere sono quasi vuote**: `iam_sospesi` a zero, `iam_incassi_rate` a
+zero, `iam_movimenti` sei righe e nessuna uscita. Le spese vivono come
+numero unico in `sessioni_giornaliere` (22 giorni su 68) **senza il
+mezzo di pagamento**, quindi la regola R6 oggi non può togliere niente
+da nessuna colonna.
+
+Finché è così, la schermata mostrerà correttamente **gli incassi** (che
+hanno dati veri: 2.799 rate) e dichiarerà vuote le altre due colonne.
+Riempirle richiede registrare i movimenti dall'app — è lavoro di
+processo, non di codice.
+
+### Dove sta, nel menu
+
+Dentro **Contabilità**, accanto agli altri pannelli. E accanto le va
+una **voce «Foglio cassa» dedicata**: oggi il foglio cassa vive solo nel
+Portafoglio, e chi lavora in contabilità non lo trova. Sono due domande
+diverse ma le fa la stessa persona nella stessa mezz'ora.
+
+---
+
+## 4ter. Le polizze attive, i clienti persi, i tipi di titolo
+
+> Definito il 26/09/2026. Sono tre definizioni che si tengono per mano:
+> senza la prima non esiste la seconda, e la terza dice *quando* è
+> successo.
+
+### Una polizza è ATTIVA quando
+
+**copre il cliente adesso.** Cioè: la data di scadenza non è passata
+**e** la polizza non è annullata.
+
+Non basta la data. In archivio ci sono **34 polizze annullate che
+scadono in futuro**: contarle fra le attive vorrebbe dire credere di
+avere un cliente coperto che non lo è.
+
+> Misurato il 26/09/2026: **2.332 polizze attive** su 4.097. Le altre:
+> 1.731 scadute, 34 annullate ma ancora in data.
+
+**Le polizze che interessano sono quelle attive.** Portafoglio,
+scadenzario, produzione, ricerche: se non è detto altrimenti, si
+guardano le attive.
+
+**Quelle non attive non si buttano e non si nascondono**: vanno in una
+**sezione dedicata della scheda cliente**, con il perché e il quando —
+scaduta il…, annullata il… e con quale motivo. È la storia del cliente,
+e serve a richiamarlo.
+
+### Un cliente è PERSO quando
+
+**aveva almeno una polizza e adesso non ne ha nessuna attiva.**
+
+Le due metà contano tutte e due. Chi non ha **mai** avuto una polizza
+non è perso: è un contatto, e confonderli farebbe sembrare un fallimento
+quello che è solo un preventivo mai chiuso.
+
+> Misurato il 26/09/2026: **564 clienti persi**, il 22% di chi ha avuto
+> almeno una polizza. E **58 anagrafiche non hanno mai avuto una
+> polizza**: quelle NON sono perse.
+
+**Si vedono in rosso**, in elenco e sulla scheda. Non è un vezzo: è
+l'unica cosa che distingue a colpo d'occhio un cliente da richiamare da
+uno che è già coperto.
+
+### Un PROSPECT è chi non ha mai comprato niente
+
+Richiesta di Francesco del 26/09/2026: «i clienti che non hanno mai avuto
+una polizza evidenziamoli con un colore specifico, e devo avere un piccolo
+banner con scritto prospect».
+
+Sono **58 anagrafiche su 2.547**, e fino a quel giorno erano
+indistinguibili dai clienti: un preventivo mai chiuso sembrava un cliente
+acquisito.
+
+Il colore è **blu**, non rosso, e la scelta è deliberata: il rosso vuol
+dire «l'avevamo e l'abbiamo perso», che è un fallimento; un prospect non è
+un fallimento, è una vendita da fare. Due colori perché sono **due liste
+di lavoro diverse** — uno lo richiami per riconquistarlo, l'altro per
+vendergli la prima polizza.
+
+Sui **lead** (privacy non firmata) il bollino non si mette: il loro
+distintivo arancione dice già «non ancora cliente», e due bollini che
+dicono la stessa cosa si smette di leggerli.
+
+Quindi gli stati sono **tre**, e nessuno si sovrappone a un altro:
+
+| stato | vuol dire | quanti (26/09/2026) | colore |
+|---|---|--:|---|
+| **attivo** | ha almeno una polizza attiva | 1.925 | nessuno |
+| **perso** | ne aveva, non ne ha più | 564 | rosso |
+| **prospect** | non ne ha mai avuta | 58 | blu + bollino |
+| *da verificare* | manca una data di scadenza | 0 | ambra |
+
+L'ultimo stato esiste per non accusare nessuno per colpa di un dato
+mancante: oggi in archivio è zero, e serve a che resti zero anche domani.
+
+### Quando l'abbiamo perso — la data
+
+È **il giorno in cui l'ultima polizza attiva ha smesso di coprirlo**:
+
+- polizza **scaduta** → la sua data di scadenza;
+- polizza **annullata** → la data di annullamento (sta in
+  `dati.ssf.data_annullamento`, con il motivo dello storno), **non** la
+  scadenza: le due possono distare mesi.
+
+Serve a rispondere a «chi ho perso fra marzo e giugno», che è la domanda
+con cui si organizza una telefonata.
+
+### Perso al rinnovo — la distinzione commerciale
+
+Un cliente può sparire in due modi molto diversi:
+
+- **non ha rinnovato**: l'ultima copertura è finita alla sua scadenza
+  naturale. È il caso che si recupera con una telefonata, ed è quello che
+  Francesco chiama «QR». **511 clienti.**
+- **se n'è andato prima**: la polizza è stata annullata in corso d'anno.
+  Ha avuto un motivo — ha venduto l'auto, si è arrabbiato — e prima di
+  richiamarlo lo si vuole sapere. **53 clienti.**
+
+> Un cliente ha un'annullata e una scaduta finite lo **stesso giorno**: a
+> pari data vince «non rinnovata», perché è quella su cui c'è qualcosa da
+> fare. È il motivo per cui 511 + 53 = 564 e non 565.
+
+#### Perché «QR» da solo non basta, e cosa si guarda al suo posto
+
+Questa è la scoperta del 26/09/2026, e cambia il modo di fare il filtro.
+
+Il criterio naturale sarebbe «c'era una quietanza di rinnovo e non è stata
+incassata». Misurato: in archivio le **quietanze di rinnovo sono DUE su
+3.218 titoli**, e sono entrambe HDI.
+
+Il motivo è che **Prima Assicurazioni — il 99,4% del portafoglio — al
+rinnovo non manda una quietanza: emette una polizza nuova.** (Verificato
+anche al contrario: nessun numero di polizza compare due volte in archivio,
+mentre 977 polizze cominciano dove ne finisce un'altra sulla stessa targa.)
+
+Quindi il filtro guarda **due segni**, e basta uno dei due:
+
+1. una **QR rimasta non incassata** — quando la compagnia la manda;
+2. l'**ultima copertura finita alla sua scadenza naturale** invece che per
+   un annullamento — che per Prima *è* il mancato rinnovo.
+
+Se si guardasse solo il primo, la risposta alla domanda «chi non ha
+rinnovato?» sarebbe **2** invece di **511**: una schermata che funziona e
+che non trova niente, cioè il tipo di guasto che nessuno segnala.
+
+#### Il filtro, in pratica
+
+Nel CRM · Analisi, quattro campi che si compongono con tutti gli altri:
+
+| campo | valori |
+|---|---|
+| **Stato del cliente** | ha una polizza attiva · perso · prospect |
+| **Come l'abbiamo perso** | non ha rinnovato (QR) · ha disdetto a metà |
+| **Perso dal** / **Perso al** | un intervallo di date |
+
+Le date si chiamano «perso dal/al» e **non** «scadenza», perché per una
+polizza annullata il giorno della perdita è l'annullamento. Si applicano
+**solo a chi è perso**: «perso fra gennaio e dicembre» su un cliente attivo
+non vuol dire niente, e lasciarlo passare riempirebbe di gente da non
+chiamare la lista di chi va chiamato.
+
+### I tipi di titolo — il vocabolario dell'agenzia
+
+| sigla | che cos'è |
+|---|---|
+| **NP** | Nuova polizza |
+| **QR** | Quietanza di rinnovo |
+| **QF** | Quietanza di frazionamento |
+| **AP** | Appendice |
+| **SO** | Sostituzione |
+
+#### Dove vive, e cosa significa «dedotta»
+
+La sigla sta in `quote_titoli.sigla_tipo` (nullable) e **si aggiunge** a `tipo`,
+non lo sostituisce: `tipo` ha quattro valori che alcune schermate leggono già.
+
+Accanto c'è `sigla_dedotta`: **falso** quando la sigla è la parola della
+compagnia, **vero** quando l'abbiamo ricavata noi. Serve perché una deduzione
+mostrata come un fatto diventa un fatto in due settimane — e sulla riga del
+titolo si vede, con un pallino e una spiegazione nel riquadro.
+
+Stato al 26/09/2026, sui 3.218 titoli in archivio:
+
+| da che cosa | righe | sigla | dedotta |
+|---|--:|---|---|
+| la parola di HDI (nota della rata) | 13 | NP · SO · QR · AP | no |
+| il codice `QZ` di Prima | 839 | QF | sì |
+| le rate dedotte dal frazionamento | 38 | QF | sì |
+| `PN` di Prima, e i titoli senza fonte | 2.328 | *vuota* | — |
+
+`PN` resta **vuota di proposito**: il tracciato di Prima dice che quel codice
+copre nuovo affare, rinnovo E sostituzione. Scriverci NP vorrebbe dire
+dichiarare «cliente nuovo» su un rinnovo, e nascondere i rinnovi — cioè
+l'informazione per cui la sigla esiste. Il rinnovo, per Prima, si riconosce
+dalla catena delle annualità, e quella deduzione avrà una migrazione sua,
+provata prima.
+
+I due lettori scrivono la sigla sui titoli nuovi, e la funzione
+`iam_importa_flusso` la porta fino in archivio. In aggiornamento la sigla **si
+riempie se manca e non si sovrascrive**: una sigla corretta a mano non deve
+essere smentita dal flusso del mese dopo, come già vale per il pagamento.
+
+**Perché serve, e che cosa si perde oggi.** La colonna `quote_titoli.tipo`
+ne ammette quattro — `prima_rata`, `rata`, `quietanza`, `appendice` — e
+i lettori ci schiacciano dentro cinque cose:
+
+```
+NP  nuova polizza            → prima_rata
+SO  sostituzione             → prima_rata   ← si perde la distinzione
+QR  quietanza di rinnovo     → quietanza
+QF  quietanza di frazionamento → rata
+AP  appendice                → appendice
+```
+
+`NP` e `SO` finiscono nello stesso valore: fra sei mesi `prima_rata` non
+racconta più che era una sostituzione. E senza distinguere `QR` da `QF`
+non si può dire «non ha rinnovato»: una quietanza di frazionamento non
+incassata è una rata scoperta, non un cliente perso.
+
+**La sigla si aggiunge, non si sostituisce.** `tipo` resta com'è — ci
+sono schermate che lo leggono — e la sigla vive in una colonna nuova e
+nullable. Le righe di prima restano senza: vuoto vuol dire «nessuno
+l'ha ancora detto», non «nuova polizza».
+
+---
+
 ## 5. Le regole di casa che valgono ovunque
 
 - **Niente esce senza conferma**: email, campagne, SMS, post. Sempre

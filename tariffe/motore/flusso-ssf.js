@@ -422,7 +422,7 @@ function mezzoDa(codice) {
         });
         return;
       }
-      var t = versoTitolo(r, tipo);
+      var t = versoTitolo(r, tipo, String(r.TIPO_TITOLO_SHARE || '').toUpperCase());
       t._polizza = testo(r.ID_POLIZZA_EXP);
       t._ssf.garanzie = dettaglio[t._fonte_id] || [];
       if (!polizzePerChiave[t._polizza]) t._senzaPolizza = true;
@@ -746,7 +746,30 @@ function mezzoDa(codice) {
     };
   }
 
-  function versoTitolo(r, tipo) {
+  /* ── DAL CODICE DI PRIMA ALLA SIGLA DELL'AGENZIA (26/09/2026) ──────────────
+     Tre codici nel tracciato, e uno solo dei tre si traduce senza pensarci.
+
+       AP → AP, e basta: è un'appendice e lo dice.
+       QZ → QF, ma è una NOSTRA lettura, non la sua parola. Il tracciato chiama
+            `QZ` «la quietanza, cioè la rata successiva»; i numeri lo
+            confermano — delle 841 righe in archivio, 839 decorrono DENTRO
+            l'annualità della polizza (in media 6,1 mesi dopo l'effetto) e zero
+            decorrono dalla scadenza in poi. Una quietanza di rinnovo decorre
+            dal rinnovo: queste no. Quindi `dedotta: true`.
+       PN → NIENTE. Il tracciato dice che «nel file vero copre nuovo affare,
+            rinnovo E sostituzione»: tre cose che l'agenzia distingue con tre
+            sigle diverse. Scriverci NP vorrebbe dire dichiarare «cliente
+            nuovo» su un rinnovo, e soprattutto NASCONDERE i rinnovi — che sono
+            esattamente quello che serve per sapere chi non ha rinnovato. Resta
+            vuoto, che è un dato: «non lo sappiamo da questo flusso».
+
+     Il rinnovo, per Prima, si riconosce dalla catena delle annualità (una
+     polizza che comincia dove finisce la precedente sulla stessa targa: 977 in
+     archivio), e quella deduzione avrà una migrazione sua, provata prima. */
+  var SIGLA_DA_CODICE = { AP: { sigla: 'AP', dedotta: false }, QZ: { sigla: 'QF', dedotta: true } };
+
+  function versoTitolo(r, tipo, codice) {
+    var sg = SIGLA_DA_CODICE[String(codice || '').toUpperCase()] || null;
     var stato = String(r.STATO_SHARE || '').toUpperCase();
     var pagato = data(r.DT_PAG_CLIENTE);
     /* La stessa regola dell'HDI, scritta in un posto solo. Qui non cambia il
@@ -775,6 +798,8 @@ function mezzoDa(codice) {
     return {
       _fonte_id: testo(r.ID_TITOLO_EXP) || testo(r.ID_TITOLO_INVIO),
       tipo: tipo,
+      sigla_tipo: sg ? sg.sigla : null,
+      sigla_dedotta: sg ? sg.dedotta : false,
       data_decorrenza: data(r.EFFETTO_TITOLO),
       data_scadenza: data(r.DATA_SCADENZA_EMESSO),
       importo_lordo: numero(r.LORDO_TOTALE),
@@ -879,6 +904,11 @@ function mezzoDa(codice) {
         _fonte_id: p._fonte_id + ':RATA:' + da,
         _generato: true,
         tipo: 'rata',
+        /* È una rata di frazionamento, e l'abbiamo dedotta noi dal
+           frazionamento della polizza: la sigla lo dice, e `dedotta` dice che
+           non l'ha detta nessuna compagnia. */
+        sigla_tipo: 'QF',
+        sigla_dedotta: true,
         data_decorrenza: da,
         data_scadenza: da,
         importo_lordo: p.premio_rata,

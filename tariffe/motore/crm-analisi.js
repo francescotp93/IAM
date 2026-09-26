@@ -147,6 +147,17 @@
     return new Date(t).toISOString().slice(0, 10);
   }
 
+  /* Chi è perso, chi è un prospect, chi è attivo: la definizione sta in UN
+     motore solo (`portafoglio-stato`), e questo la chiede a lui. Si cerca a
+     ogni chiamata perché nel browser i due file possono arrivare in un ordine
+     qualunque; se non c'è, i filtri sullo stato non rispondono «tutti» — non
+     rispondono affatto, che è la sola risposta onesta. */
+  function motoreStato() {
+    if (typeof window !== 'undefined' && window.PortafoglioStato) return window.PortafoglioStato;
+    if (typeof require === 'function') { try { return require('./portafoglio-stato.js'); } catch (e) { return null; } }
+    return null;
+  }
+
   var CAMPI_COPERTURA = [
     { k: 'comune',                e: 'Comune',              pieno: function (r) { return !!testo(r.comune); } },
     { k: 'data_nascita',          e: 'Età',                 pieno: function (r) { return eta(r.data_nascita) != null; } },
@@ -307,6 +318,57 @@
         somma = Math.round(somma * 100) / 100;
         if (f.premioDa != null && somma < f.premioDa) return false;
         if (f.premioA != null && somma > f.premioA) return false;
+      }
+
+      /* ── PERSI, PROSPECT, ATTIVI ──────────────────────────────────────────
+         26/09/2026, richiesta di Francesco: «I clienti persi sarebbe sempre
+         buono che si potessero trovare con un filtro nella parte crm e
+         analisi, e che si potessero dividere per determinate date (il criterio
+         deve essere che potrei ritrovare i clienti "persi" che non hanno
+         rinnovato una polizza al rinnovo, ovvero QR)».
+
+         Chi è perso, prospect o attivo lo dice `PortafoglioStato`, non questo
+         file: le stesse tre parole devono voler dire la stessa cosa nel CRM,
+         nella scheda cliente e nell'elenco — altrimenti il filtro trova
+         cinquecento nomi e la scheda di uno di quelli dice «attivo».
+
+         SUL CRITERIO «QR». Le quietanze di rinnovo vere in archivio sono DUE
+         su 3.218 titoli, perché Prima Assicurazioni — il 99,4% del
+         portafoglio — al rinnovo non manda una quietanza: emette una polizza
+         nuova. Quindi «non ha rinnovato» si riconosce da due segni, e il
+         motore li guarda entrambi: una QR rimasta non incassata (quando la
+         compagnia la manda), oppure l'ultima copertura finita alla sua
+         scadenza naturale invece che per un annullamento. Chi ha disdetto a
+         metà annualità NON è un mancato rinnovo: sono 53 contro 511, ed è
+         un'altra telefonata. */
+      if (f.stato || f.persoDal || f.persoAl || f.persoAlRinnovo != null) {
+        var PS = motoreStato();
+        if (!PS || !oggi) return false;   // senza il motore o senza oggi non si afferma niente
+        var sc = PS.statoCliente(pz, oggi, extra.titoliPerPolizza || null);
+        if (f.stato === 'perso'    && sc.stato !== 'perso') return false;
+        if (f.stato === 'attivo'   && sc.stato !== 'attivo') return false;
+        if (f.stato === 'prospect' && sc.stato !== 'mai_avuto') return false;
+        /* Le date si applicano SOLO a chi è perso: «perso fra il 1° e il 30
+           giugno» su un cliente attivo non vuol dire niente, e lasciarlo
+           passare riempirebbe la lista di gente da non chiamare.
+
+           NOTA ONESTA. Oggi questa guardia è una cintura in più: chi non è
+           perso non ha nessuna `persoIl`, quindi il controllo sulla data lo
+           escluderebbe comunque. Resta scritta perché sta in piedi su
+           un'invariante del motore accanto — «un cliente non perso non ha una
+           data di perdita» — e quell'invariante è pinzata da una prova sua
+           (`portafoglio-stato`: «un cliente che non è perso non ha una data di
+           perdita»). Se domani qualcuno aggiungesse `persoIl` anche a un
+           cliente attivo (per dire «l'ultima copertura finita», che è una cosa
+           sensata da volere), senza questa riga il filtro per date comincerebbe
+           a pescare clienti vivi e nessuno se ne accorgerebbe: la lista esce. */
+        if (f.persoDal || f.persoAl) {
+          if (sc.stato !== 'perso' || !sc.persoIl) return false;
+          if (f.persoDal && sc.persoIl < giorno(f.persoDal)) return false;
+          if (f.persoAl  && sc.persoIl > giorno(f.persoAl))  return false;
+        }
+        if (f.persoAlRinnovo === true && !(sc.stato === 'perso' && sc.persoAlRinnovo)) return false;
+        if (f.persoAlRinnovo === false && sc.stato === 'perso' && sc.persoAlRinnovo) return false;
       }
 
       if (f.soloClienti === true && r.lead === true) return false;

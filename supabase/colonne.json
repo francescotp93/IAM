@@ -1,5 +1,5 @@
 {
-  "_fotografia": "24/09/2026",
+  "_fotografia": "26/09/2026",
   "_come_si_rifa": "select table_name, string_agg(column_name, ' ' order by column_name) from information_schema.columns where table_schema='public' group by 1 order by 1;",
   "_a_che_serve": "server/verifica/colonne-che-esistono.test.mjs confronta le select letterali dei due documenti con questo elenco. PostgREST risponde 400 su una colonna che non esiste, e il banco delle prove non se ne accorge: il suo finto database accetta qualunque nome.",
   "tabelle": {
@@ -106,7 +106,7 @@
     "quote_sinistro_controparti": "codice_fiscale compagnia contatti creato_da creato_il id nominativo note numero_polizza responsabilita sinistro_id targa tipo",
     "quote_sinistro_partite": "aggiornato_il controparte_id creato_da creato_il descrizione franchigia id importo_liquidato importo_richiesto importo_riservato note sinistro_id stato tipo",
     "quote_ticket": "aggiornato_il creato_il descrizione id priorita risolto_da risolto_il risolto_nome segnalato_da segnalato_nome sezione stato titolo",
-    "quote_titoli": "collaboratore_id creato_da creato_il data_decorrenza data_scadenza fonte fonte_id id importo_lordo incassato_il mezzo_pagamento note pagatore pagatore_collaboratore_id pagatore_tipo polizza_id provvigione punto_vendita_id rimesso_da rimesso_il stato tipo",
+    "quote_titoli": "collaboratore_id creato_da creato_il data_decorrenza data_scadenza fonte fonte_id id importo_lordo incassato_il mezzo_pagamento note pagamento pagamento_a_mano pagamento_a_mano_da pagatore pagatore_collaboratore_id pagatore_tipo polizza_id provvigione punto_vendita_id rimesso_da rimesso_il sigla_dedotta sigla_tipo stato tipo",
     "quoto_backlog": "aggiornato_il dettaglio id note_leo priorita rischio stato titolo",
     "sessioni_giornaliere": "aggiornato_il contanti data_riferimento fondo_cassa id incassi_json note pos_bianco pos_nero sospesi_json spese totale_sospesi valore_totale versamenti"
   }

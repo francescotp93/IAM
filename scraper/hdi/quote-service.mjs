@@ -25,6 +25,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { creaFreno } from '../comune/freno.mjs';
 import { ripulisciDump, ripulisciTesto, ripulisciQualsiasi } from '../comune/riservatezza.mjs';
+import { creaGiro } from '../comune/tieniSveglia.mjs';
 
 /* IL FRENO SUI TENTATIVI DI ACCESSO (02/08/2026).
    Il keep-alive gira ogni 3 minuti e, trovando la sessione caduta, rifaceva
@@ -33,7 +34,12 @@ import { ripulisciDump, ripulisciTesto, ripulisciQualsiasi } from '../comune/ris
    all'ora, per giorni. Ogni tentativo fa scattare la notifica del portale a
    Francesco, e il rischio vero e' farsi bloccare l'utenza dalla compagnia.
    Il freno sta DENTRO autoLogin, non ai richiami: cosi' copre tutti i punti
-   da cui si tenta un accesso, watchdog compresi. Vedi ../comune/freno.mjs. */
+   da cui si tenta un accesso. Vedi ../comune/freno.mjs.
+   DAL 26/09/2026 il giro periodico non rifa' piu' il login: guarda la sessione e
+   la dichiara caduta, e a rientrare e' una persona dal Pannello Fonti. Il freno
+   resta e serve ancora — copre il login all'avvio del servizio e quello che una
+   persona comanda — ma non e' piu' l'unica cosa fra un portale che rifiuta le
+   credenziali e venti tentativi all'ora. */
 const FRENO = creaFreno();
 
 
@@ -1237,38 +1243,86 @@ function locked(fn) {
   return run;
 }
 
-// ── WATCHDOG sessione HDI ────────────────────────────────────────────────────────────────────
-// La sessione HDI "deriva": dopo qualche minuto di inattività il portale scade e il preventivo
-// SUCCESSIVO fallisce ("hdi non si collega"), pur risultando il servizio attivo. Questo watchdog,
-// quando il servizio è IDLE (nessuna operazione in coda + fermo da un po'), verifica il login e
-// riautentica in automatico. Così il primo preventivo dopo una pausa trova già la sessione pronta,
-// e la navigazione periodica a APP_HOME tiene "calda" la sessione evitando il drift.
-const WATCHDOG_MS = 4 * 60 * 1000;   // controlla ogni 4 minuti
-const WATCHDOG_IDLE_MS = 3 * 60 * 1000; // solo se fermo da almeno 3 minuti (se usato di recente è già caldo)
-// BATTITO: il watchdog scrive UNA riga a ogni giro, anche quando salta il controllo.
-// Prima usciva in silenzio: il 25 luglio il servizio è rimasto due giorni senza scrivere
-// nulla nel registro e non c'era modo di sapere se il guardiano fosse vivo o fermo.
-let LAST_WD_AT = 0, WD_GIRI = 0, WD_ULTIMO_ESITO = 'mai eseguito';
-setInterval(async () => {
-  WD_GIRI++; LAST_WD_AT = Date.now();
-  if (BUSY > 0) { log('watchdog: salto (occupato, ' + BUSY + ' operazioni in coda)'); return; }
-  if (Date.now() - LAST_OP_AT < WATCHDOG_IDLE_MS) { log('watchdog: salto (usato da poco)'); return; }
-  try {
-    await locked(async () => {
-      const ok = await loggedIn().catch(() => false);
-      if (!ok) {
-        log('watchdog: sessione HDI scaduta → riautentico');
-        const dentro = await autoLogin().catch(e => (log('watchdog relogin err:', e.message), false));
-        WD_ULTIMO_ESITO = dentro ? 'rientrato' : 'rientro fallito';
-        if (dentro) { LOGIN_STATE.esito = 'ok'; setLoginState('loggato', 'Rientro automatico riuscito ✅'); }
-        else { LOGIN_STATE.esito = 'ko'; setLoginState('non_loggato', 'Rientro automatico non riuscito: serve un accesso dal Pannello Fonti.'); }
-      } else { WD_ULTIMO_ESITO = 'sessione viva'; log('watchdog: sessione HDI OK (keep-alive)'); }
-      // tengo CALDO anche il token UEFA (loggedIn ci ha già portati su APP_HOME): così la 1ª
-      // quotazione motor/casa non paga il refresh a freddo. Best-effort, non blocca il watchdog.
-      await harvestUefaToken().catch(() => {});
-    });
-  } catch (e) { WD_ULTIMO_ESITO = 'errore: ' + e.message; log('watchdog err:', e.message); }
-}, WATCHDOG_MS);
+// ── TIENI SVEGLIA la sessione HDI ────────────────────────────────────────────────────────────
+// La sessione HDI "deriva": dopo qualche minuto di inattivita' il portale scade e il preventivo
+// SUCCESSIVO fallisce ("hdi non si collega"), pur risultando il servizio attivo. Questo giro
+// periodico naviga sull'app (l'unica cosa che rinnova la sessione lato server), guarda com'e'
+// andata e lo dice a chi tiene lo stato, cosi' il Pannello Fonti sa dire perche' HDI non quota.
+//
+// QUI C'ERANO DUE GIRI, E IL PIU' VELOCE ZITTIVA L'ALTRO. Misurato il 26/09/2026 sul VPS: il
+// servizio girava da 13 ore e 24 minuti, aveva scritto 377 righe di registro di cui 359 tutte
+// uguali, e il controllo della sessione risultava «mai eseguito» dopo 200 giri. Non era sfortuna,
+// era aritmetica: un giro passava ogni 3 minuti e marcava l'istante dell'ultima operazione,
+// l'altro girava ogni 4 minuti e si tirava indietro se l'ultima operazione era di meno di 3
+// minuti prima. Quella condizione, con un giro ogni 3 minuti, e' vera SEMPRE.
+//
+// E quello che girava guardava la pagina sbagliata: apriva la RADICE NUDA dell'host del login,
+// dove non c'e' nessun campo password e nessuna landing pubblica, quindi concludeva «va tutto
+// bene» anche con la sessione caduta. Nel registro non lasciava una riga: in 13 ore, zero.
+// Percio' HDI poteva restare sloggato mezza giornata senza che il pannello dicesse niente —
+// login_step «idle» e nessun messaggio — e il primo preventivo se lo trovava rotto.
+//
+// Adesso il giro e' UNO, ed e' quello del modulo comune che quattro scraper usano gia'
+// (../comune/tieniSveglia.mjs). Qui si prende il giro e non il ciclo — `creaGiro` invece di
+// `tieniSveglia` — perche' serve fare una cosa prima e una dopo: il conto del proprio lock,
+// qualche riga piu' sotto.
+//
+// IL BATTITO RESTA, ma non come righe di registro: il meccanismo di prima ne scriveva una a ogni
+// giro anche senza niente da dire, e sono le 359 righe identiche di cui sopra. Il modulo comune
+// dice una volta sola quello che non cambia; queste tre variabili tengono il conto per /status,
+// cosi' «il giro e' vivo» e «il giro e' fermo» restano distinguibili senza leggere il registro.
+// Era l'unica cosa buona del meccanismo di prima, e resta.
+let ULTIMO_GIRO = 0, GIRI = 0, ULTIMO_ESITO = 'mai eseguito';
+
+/* QUANTI LOCK TIENE IL GIRO STESSO, e non e' un dettaglio: senza questo conto la domanda
+   «c'e' del lavoro in corso?» rispondeva SI' guardando il lock che il giro aveva appena preso da
+   solo, e il giro si tirava indietro ogni volta. Scritta cosi' la prima volta, il 26/09/2026, e
+   trovata prima di pubblicarla rifacendo lo schema a parte in venti righe: il giro rispondeva
+   «occupato» sempre. Il meno uno del conto arriva un giro di coda DOPO la fine del lavoro, quindi
+   guardarlo subito dopo non basta: il conto si tiene per tutta la durata del giro. */
+let MIEI_LOCK = 0;
+const giroHdi = creaGiro({
+  nome: 'hdi', log,
+  // Non si tocca la pagina mentre un preventivo o un login sono in corso: competere per la stessa
+  // scheda del browser e' gia' costato preventivi falliti.
+  occupato: () => (BUSY - MIEI_LOCK) > 0 || LOGIN_STATE.running,
+  // Navigare sull'APP e' l'unica cosa che rinnova la sessione lato server. Sotto lock, perche' il
+  // browser e' uno e condiviso con i preventivi. Il token UEFA si rinfresca nello stesso giro:
+  // siamo gia' sulla pagina dove vive, e la prima quotazione Casa non paga il refresh a freddo.
+  visita: () => locked(async () => {
+    await ensurePage();
+    await page.goto(appHome(), { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.mouse.move(150 + Math.random() * 500, 150 + Math.random() * 350).catch(() => {});
+    await harvestUefaToken().catch(() => {});
+  }),
+  // Si giudica la pagina su cui la visita ci ha portati, senza rinavigare: una seconda
+  // navigazione a ogni tentativo sarebbe traffico verso il portale senza un motivo.
+  dentro: async () => !isLoginUrl(page.url()) && !(await hasPasswordField()) && !(await isPublicLanding()),
+  fuori: async () => isLoginUrl(page.url()) || (await hasPasswordField()) || (await isPublicLanding()),
+  // Lo stato serve al Pannello Fonti, e si scrive SOLO quando cambia: riscriverlo ogni tre minuti
+  // sposterebbe l'orario dell'ultimo cambio e riempirebbe il registro di righe identiche.
+  segnala: (vivo) => {
+    ULTIMO_GIRO = Date.now(); GIRI++; ULTIMO_ESITO = vivo ? 'sessione viva' : 'sessione caduta';
+    if (LOGIN_STATE.running) return;   // c'e' una persona che sta entrando: non le tocco lo stato
+    if (vivo) {
+      if (LOGIN_STATE.step !== 'loggato') { LOGIN_STATE.esito = 'ok'; setLoginState('loggato', 'Sessione viva ✅'); }
+    } else if (LOGIN_STATE.step !== 'non_loggato') {
+      LOGIN_STATE.esito = 'ko';
+      setLoginState('non_loggato', 'Sessione HDI caduta: serve un accesso dal Pannello Fonti.');
+    }
+  },
+  // NIENTE rientro automatico da qui, ed e' una scelta. HDI chiede un codice a video (Duo/OTP):
+  // ribussare ogni tre minuti con credenziali che il portale rifiuta e' il modo di far arrivare
+  // codici a raffica e di farsi bloccare l'utenza — e su Groupama e' successo davvero, il
+  // 19/09/2026, settantotto messaggi in un giorno. Da quel giorno la regola e' quella che
+  // Francesco ha dettato: se si scollega, lo ricollega lui. Il rientro resta sul pulsante del
+  // Pannello Fonti, dove lo comanda una persona.
+});
+setInterval(() => {
+  if (BUSY > 0 || LOGIN_STATE.running) return;   // c'e' lavoro vero: il giro aspetta il suo turno
+  MIEI_LOCK = 1;
+  giroHdi().catch(() => {}).then(() => { MIEI_LOCK = 0; });
+}, 3 * 60 * 1000);
 
 // ── DATI VEICOLO da Plurima: pilota il wizard reale del preventivatore fino allo step 2 ──────
 // Scrive la targa (scatena i veri handler → carica la situazione), seleziona la situazione e
@@ -1864,7 +1918,7 @@ http.createServer(async (req, res) => {
         login_step: LOGIN_STATE.step, login_running: LOGIN_STATE.running, login_msg: LOGIN_STATE.msg || '',
         occupato: BUSY, ultima_operazione: new Date(LAST_OP_AT).toISOString(),
         token_uefa_scade: UEFA_TOK.exp ? new Date(UEFA_TOK.exp).toISOString() : null,
-        guardiano: { giri: WD_GIRI, ultimo_giro: LAST_WD_AT ? new Date(LAST_WD_AT).toISOString() : null, ultimo_esito: WD_ULTIMO_ESITO },
+        guardiano: { giri: GIRI, ultimo_giro: ULTIMO_GIRO ? new Date(ULTIMO_GIRO).toISOString() : null, ultimo_esito: ULTIMO_ESITO },
       }));
     }
     // ── LOGIN GUIDATO — match ESATTO del path, e PRIMA di /login: con startsWith
@@ -2947,28 +3001,9 @@ http.createServer(async (req, res) => {
   } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
 }).listen(4400, '127.0.0.1', () => log('Telecomando HTTP HDI su 127.0.0.1:4400'));
 
-async function keepAlive() {
-  await locked(async () => {
-    try {
-      await ensurePage(); // CHIAVE: se la pagina è morta/chiusa la ricrea PRIMA di navigare,
-      //                      altrimenti page.goto lanciava 'Target page closed' e il keep-alive restava rotto per sempre.
-      const c = creds();
-      await page.goto(origin(c.loginUrl), { waitUntil: 'domcontentloaded', timeout: 45000 });
-      await page.mouse.move(150 + Math.random() * 500, 150 + Math.random() * 350).catch(() => {});
-      await page.evaluate(() => { window.scrollBy(0, 120); setTimeout(() => window.scrollTo(0, 0), 300); }).catch(() => {});
-      await page.waitForTimeout(500);
-      if (isLoginUrl(page.url()) || await hasPasswordField() || await isPublicLanding()) {
-        log('[keep-alive] sessione caduta → ri-login...');
-        await autoLogin().catch(() => false);
-      }
-      // rinnovo il token UEFA ad ogni giro (3 min, incondizionato): copre anche TTL corti, così la
-      // via diretta trova sempre il token caldo. Navigo su APP_HOME dove vive il JWT, poi harvest.
-      await page.goto(appHome(), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-      await harvestUefaToken().catch(() => {});
-    } catch (e) { log('[keep-alive] err:', e.message); }
-  });
-}
-setInterval(keepAlive, 3 * 60 * 1000);
+// Il giro che tiene sveglia la sessione sta piu' su, uno solo, col pezzo comune.
+// Qui ce n'era un secondo, scritto a mano: due giri sullo stesso browser, e quello
+// piu' veloce impediva all'altro di girare per sempre.
 // Pre-warm all'avvio: dopo l'init (login browser fatto sopra), scaldo SUBITO il token UEFA così la
 // prima quotazione dopo un restart/deploy non paga il refresh a freddo. Fire-and-forget: non ritarda
 // il listen e, se il login non è pronto, ensureUefaToken fa il suo re-login interno o fallisce piano.

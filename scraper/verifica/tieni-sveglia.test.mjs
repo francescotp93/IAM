@@ -123,12 +123,23 @@ await prova('un errore non spegne il ciclo', async () => {
 });
 
 // ── E adesso gli scraper veri ──────────────────────────────────────────────
-await prova('i quattro scraper rotti ora usano il pezzo comune', async () => {
-  for (const c of ['prima', 'assieasy', 'kube', 'moto']) {
-    const src = fs.readFileSync(path.join(RADICE, c, 'quote-service.mjs'), 'utf8');
-    deve(/tieniSveglia/.test(src), c + ' non usa il keep-alive comune: se lo riscrive da capo');
+await prova('gli scraper rotti ora usano il pezzo comune', async () => {
+  /* HDI si e' aggiunto il 26/09/2026: se lo era riscritto a mano, e quello scritto a mano
+     guardava la RADICE NUDA dell'host del login invece dell'app — una pagina senza campo
+     password e senza landing pubblica, dove «va tutto bene» e' la risposta anche a sessione
+     caduta. In 13 ore di servizio non ha scritto una riga di registro. */
+  for (const c of ['prima', 'assieasy', 'kube', 'moto', 'hdi']) {
+    const src = senzaCommenti(fs.readFileSync(path.join(RADICE, c, 'quote-service.mjs'), 'utf8'));
+    /* Si cerca la CHIAMATA e l'importazione, non la parola: cercando il nome, un commento che
+       spiega perche' il pezzo comune si usa bastava a dichiarare a posto uno scraper che non lo
+       chiamava. L'ha trovata la controprova, il 26/09/2026, non la rilettura. */
+    deve(/from\s+'\.\.\/comune\/tieniSveglia\.mjs'/.test(src), c + ' non importa il keep-alive comune');
+    /* Le due porte del modulo valgono uguale: `tieniSveglia` accende il ciclo da se', `creaGiro`
+       da' il giro e lascia a chi chiama il momento in cui lanciarlo — serve a chi deve fare
+       qualcosa prima e dopo, come HDI col conto del proprio lock. */
+    deve(/\b(tieniSveglia|creaGiro)\s*\(/.test(src), c + ' importa il keep-alive comune e non lo chiama: se lo riscrive da capo');
   }
-  return 'quattro volte lo stesso errore, una volta sola la soluzione';
+  return 'cinque volte lo stesso errore, una volta sola la soluzione';
 });
 
 await prova('nessuno «naviga solo se l\'indirizzo e\' diverso»', async () => {
@@ -148,6 +159,117 @@ await prova('nessuno «naviga solo se l\'indirizzo e\' diverso»', async () => {
   deve(colpevoli.length === 0, 'navigano solo a indirizzo diverso: ' + [...new Set(colpevoli)].join(', '));
   return 'nessuno salta il giro guardandosi l\'indirizzo in mano';
 });
+
+await prova('il giro non si tira indietro per il lock che ha preso da solo', async () => {
+  /* TROVATO SCRIVENDO, il 26/09/2026, e nessuna prova sul sorgente l'avrebbe preso.
+     HDI ha un lock: ogni operazione sul browser ne prende uno, e il conto scende quando finisce.
+     Il giro periodico navigava sotto lock e alla domanda «c'e' del lavoro in corso?» rispondeva
+     guardando quel conto — cioe' vedeva IL PROPRIO lock e concludeva «occupato», ogni volta.
+     Il conto, poi, scende un giro di coda DOPO la fine del lavoro: quindi non basta nemmeno
+     guardarlo subito dopo aver finito. Qui si rifa' lo schema con pezzi finti e si chiede al giro
+     di fare il suo mestiere tre volte di fila. */
+  let BUSY = 0, CHAIN = Promise.resolve(), MIEI = 0;
+  const locked = (fn) => {           // lo stesso schema di HDI, meno uno asincrono compreso
+    BUSY++;
+    const run = CHAIN.then(() => Promise.resolve().then(fn), () => Promise.resolve().then(fn));
+    CHAIN = run.then(() => {}, () => {});
+    run.then(() => {}, () => {}).finally(() => { BUSY--; });
+    return run;
+  };
+  let preventivoDurante = false;
+  const giro = creaGiro({
+    occupato: () => (BUSY - MIEI) > 0,
+    visita: () => locked(async () => { if (preventivoDurante) locked(async () => new Promise(r => setTimeout(r, 120))); }),
+    dentro: async () => true, aspetta: subito,
+  });
+  const tick = async () => { if (BUSY > 0) return 'salto'; MIEI = 1; const e = await giro(); MIEI = 0; return e; };
+
+  const tre = [await tick(), await tick(), await tick()];
+  deve(tre.every(e => e === 'dentro'), 'tre giri a riposo danno ' + tre.join('/') + ': il giro vede il proprio lock');
+
+  // E un preventivo che arriva DURANTE il giro deve avere la precedenza: quella e' la ragione
+  // per cui la domanda esiste, e non deve essere stata spenta per far passare il caso sopra.
+  preventivoDurante = true;
+  deve(await tick() === 'occupato', 'un preventivo arrivato durante il giro non ha la precedenza');
+  return 'il giro passa quando e\' libero, e molla la pagina quando arriva un cliente';
+});
+
+await prova('in HDI la domanda «c\'e\' lavoro?» sottrae il lock del giro stesso', async () => {
+  const src = senzaCommenti(fs.readFileSync(path.join(RADICE, 'hdi', 'quote-service.mjs'), 'utf8'));
+  const riga = (src.match(/occupato:\s*\(\)\s*=>[^\n]*/) || [''])[0];
+  deve(riga, 'non trovo la domanda sul lavoro in corso');
+  deve(/-\s*[A-Z_]*LOCK/.test(riga), 'guarda il conto dei lock senza sottrarre il proprio: ' + riga.trim());
+  return 'il conto del giro non si conta addosso';
+});
+
+await prova('un solo giro periodico per sessione, altrimenti il piu\' veloce zittisce l\'altro',
+async () => {
+  /* IL DIFETTO, MISURATO SUL VPS IL 26/09/2026. HDI aveva DUE cicli periodici sullo stesso
+     browser: uno ogni 3 minuti che navigava, e uno ogni 4 minuti che controllava la sessione e
+     aggiornava lo stato per il Pannello Fonti. Il secondo si tirava indietro se l'ultima
+     operazione era di meno di 3 minuti prima — e il primo quell'istante lo rinfrescava ogni 3
+     minuti. Quella condizione, con un giro ogni 3 minuti, e' vera SEMPRE: in 13 ore e 24 minuti
+     il controllo risultava «mai eseguito» dopo 200 giri. Non era sfortuna, era aritmetica.
+     Conseguenza per chi lavora: HDI restava sloggato mezza giornata e il pannello non diceva
+     niente — nessun messaggio, stato «idle» — e il primo preventivo se lo trovava rotto.
+     Con UN giro solo il problema non si puo' ripresentare: non c'e' nessun altro che rinfreschi
+     l'istante contro cui quel giro si misura. */
+  const sospetti = [];
+  for (const c of fs.readdirSync(RADICE).filter(d => !d.startsWith('_') && !['comune', 'verifica'].includes(d))) {
+    const f = path.join(RADICE, c, 'quote-service.mjs');
+    if (!fs.existsSync(f)) continue;
+    const src = senzaCommenti(fs.readFileSync(f, 'utf8'));
+    let giri = (src.match(/\b(?:tieniSveglia|creaGiro)\s*\(/g) || []).length;
+    // Ogni setInterval scritto a mano il cui giro naviga sul portale conta come un giro in piu'.
+    let i = -1;
+    while ((i = src.indexOf('setInterval(', i + 1)) !== -1) {
+      const corpo = argomento(src, i + 'setInterval('.length);
+      if (naviga(corpo, src)) giri++;
+    }
+    if (giri > 1) sospetti.push(c + ' (' + giri + ')');
+  }
+  deve(sospetti.length === 0, 'hanno piu\' di un giro periodico che naviga: ' + sospetti.join(', '));
+  return 'nessuno ha due giri sulla stessa scheda';
+});
+
+/* Togliere i commenti serve o la prova dichiara rotto un codice giusto: le righe qui sopra
+   nominano `setInterval` e `page.goto` per spiegare il difetto. Si toglie a stati, carattere per
+   carattere, mai con una ricerca globale: fra `/*` e il suo chiudi ci sono le espressioni
+   regolari e il CSS, e una ricerca globale su un file grosso si mangia mezzo file. */
+function senzaCommenti(src) {
+  let out = '', i = 0, dentro = null;
+  while (i < src.length) {
+    const due = src.substr(i, 2);
+    if (!dentro && due === '//') { dentro = 'riga'; i += 2; continue; }
+    if (!dentro && due === '/*') { dentro = 'blocco'; i += 2; continue; }
+    if (dentro === 'riga' && src[i] === '\n') { dentro = null; out += '\n'; i++; continue; }
+    if (dentro === 'blocco' && due === '*/') { dentro = null; i += 2; continue; }
+    if (!dentro) out += src[i];
+    i++;
+  }
+  return out;
+}
+/* Il primo argomento di una chiamata, contando le parentesi: il corpo di un setInterval puo'
+   essere scritto sul posto oppure essere il NOME di una funzione definita altrove — ed era il
+   caso di HDI, dove cercare `goto` accanto al `setInterval` non avrebbe trovato niente. */
+function argomento(src, da) {
+  let liv = 0, i = da;
+  for (; i < src.length; i++) {
+    const c = src[i];
+    if (c === '(' || c === '{' || c === '[') liv++;
+    else if (c === ')' || c === '}' || c === ']') { if (liv === 0) break; liv--; }
+    else if (c === ',' && liv === 0) break;
+  }
+  return src.slice(da, i).trim();
+}
+function naviga(corpo, src) {
+  if (/\.goto\(/.test(corpo)) return true;
+  const nome = corpo.match(/^([A-Za-z_$][\w$]*)$/);
+  if (!nome) return false;
+  const def = src.match(new RegExp('(?:async\\s+)?function\\s+' + nome[1] + '\\s*\\(|(?:const|let|var)\\s+' + nome[1] + '\\s*=') );
+  if (!def) return false;
+  return /\.goto\(/.test(src.slice(def.index, def.index + 4000));
+}
 
 const ko = esiti.filter(e => !e[0]);
 console.log('\n── Tieni sveglia ────────────────────────────────────────────');

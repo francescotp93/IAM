@@ -1,5 +1,23 @@
-id: v0270b-1790053053  exit: 0  2026-09-22 04:57:52
+id: 1790452020  exit: 0  2026-09-26 19:47:07
 ----
-a22f64f Contabilità · Fase 3 — i sospesi, i premi a copertura e non ricevuti (0.27.0) (#237)
-app-versione" content="0.27.0"
-HTTP/2 200 
+=== data ===
+Sat Sep 26 19:47:06 UTC 2026
+=== servizi ===
+withus-backend           active / enabled
+groupama-scraper         active / enabled
+axa-scraper              active / enabled
+hdi-scraper              active / enabled
+italiana-scraper         active / enabled
+allianz-scraper          active / enabled
+moto-scraper             active / enabled
+=== stato login scraper (porte locali) ===
+porta 4100: {"endpoints":["/status","/quote?targa=..&nascita=..&se=20&rivalsa=si&garanzie=furto,tutela","/lookup?targa=..&nascita=..","/map","/rivalsa","/shot"]}
+porta 4200: {"endpoints":["/status","/login","/logindump","/otpdump","/lookup?targa=..","/explore?goto=&click=&wait=","/shot"]}
+porta 4300: {"endpoints":["/status","/login","/logindump","/auto?targa=..&situazione=..","/preventivo?targa=..","/sniff?targa=..&full=1","/shot"]}
+porta 4400: {"endpoints":["/status","/login","/logindump","/auto?targa=..&situazione=..","/preventivo?targa=..","/sniff?targa=..&full=1","/shot"]}
+porta 4500: {"error":"endpoint sconosciuto"}
+porta 4700: {"error":"endpoint sconosciuto"}
+=== mail groupama nelle ultime 24h (conteggio dal giornale) ===
+2
+=== righe di errore backend ultime 12h ===
+0

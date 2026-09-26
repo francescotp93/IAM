@@ -243,6 +243,38 @@ quello che è solo un preventivo mai chiuso.
 l'unica cosa che distingue a colpo d'occhio un cliente da richiamare da
 uno che è già coperto.
 
+### Un PROSPECT è chi non ha mai comprato niente
+
+Richiesta di Francesco del 26/09/2026: «i clienti che non hanno mai avuto
+una polizza evidenziamoli con un colore specifico, e devo avere un piccolo
+banner con scritto prospect».
+
+Sono **58 anagrafiche su 2.547**, e fino a quel giorno erano
+indistinguibili dai clienti: un preventivo mai chiuso sembrava un cliente
+acquisito.
+
+Il colore è **blu**, non rosso, e la scelta è deliberata: il rosso vuol
+dire «l'avevamo e l'abbiamo perso», che è un fallimento; un prospect non è
+un fallimento, è una vendita da fare. Due colori perché sono **due liste
+di lavoro diverse** — uno lo richiami per riconquistarlo, l'altro per
+vendergli la prima polizza.
+
+Sui **lead** (privacy non firmata) il bollino non si mette: il loro
+distintivo arancione dice già «non ancora cliente», e due bollini che
+dicono la stessa cosa si smette di leggerli.
+
+Quindi gli stati sono **tre**, e nessuno si sovrappone a un altro:
+
+| stato | vuol dire | quanti (26/09/2026) | colore |
+|---|---|--:|---|
+| **attivo** | ha almeno una polizza attiva | 1.925 | nessuno |
+| **perso** | ne aveva, non ne ha più | 564 | rosso |
+| **prospect** | non ne ha mai avuta | 58 | blu + bollino |
+| *da verificare* | manca una data di scadenza | 0 | ambra |
+
+L'ultimo stato esiste per non accusare nessuno per colpa di un dato
+mancante: oggi in archivio è zero, e serve a che resti zero anche domani.
+
 ### Quando l'abbiamo perso — la data
 
 È **il giorno in cui l'ultima polizza attiva ha smesso di coprirlo**:
@@ -259,14 +291,55 @@ con cui si organizza una telefonata.
 
 Un cliente può sparire in due modi molto diversi:
 
-- **non ha rinnovato**: c'era una **quietanza di rinnovo (QR)** e non è
-  stata incassata. È il caso che si recupera con una telefonata, ed è
-  quello che Francesco vuole poter filtrare.
-- **se n'è andato prima**: la polizza è stata annullata in corso
-  d'anno. È un'altra conversazione.
+- **non ha rinnovato**: l'ultima copertura è finita alla sua scadenza
+  naturale. È il caso che si recupera con una telefonata, ed è quello che
+  Francesco chiama «QR». **511 clienti.**
+- **se n'è andato prima**: la polizza è stata annullata in corso d'anno.
+  Ha avuto un motivo — ha venduto l'auto, si è arrabbiato — e prima di
+  richiamarlo lo si vuole sapere. **53 clienti.**
 
-Il filtro nel CRM deve distinguerli, e deve accettare un intervallo di
-date.
+> Un cliente ha un'annullata e una scaduta finite lo **stesso giorno**: a
+> pari data vince «non rinnovata», perché è quella su cui c'è qualcosa da
+> fare. È il motivo per cui 511 + 53 = 564 e non 565.
+
+#### Perché «QR» da solo non basta, e cosa si guarda al suo posto
+
+Questa è la scoperta del 26/09/2026, e cambia il modo di fare il filtro.
+
+Il criterio naturale sarebbe «c'era una quietanza di rinnovo e non è stata
+incassata». Misurato: in archivio le **quietanze di rinnovo sono DUE su
+3.218 titoli**, e sono entrambe HDI.
+
+Il motivo è che **Prima Assicurazioni — il 99,4% del portafoglio — al
+rinnovo non manda una quietanza: emette una polizza nuova.** (Verificato
+anche al contrario: nessun numero di polizza compare due volte in archivio,
+mentre 977 polizze cominciano dove ne finisce un'altra sulla stessa targa.)
+
+Quindi il filtro guarda **due segni**, e basta uno dei due:
+
+1. una **QR rimasta non incassata** — quando la compagnia la manda;
+2. l'**ultima copertura finita alla sua scadenza naturale** invece che per
+   un annullamento — che per Prima *è* il mancato rinnovo.
+
+Se si guardasse solo il primo, la risposta alla domanda «chi non ha
+rinnovato?» sarebbe **2** invece di **511**: una schermata che funziona e
+che non trova niente, cioè il tipo di guasto che nessuno segnala.
+
+#### Il filtro, in pratica
+
+Nel CRM · Analisi, quattro campi che si compongono con tutti gli altri:
+
+| campo | valori |
+|---|---|
+| **Stato del cliente** | ha una polizza attiva · perso · prospect |
+| **Come l'abbiamo perso** | non ha rinnovato (QR) · ha disdetto a metà |
+| **Perso dal** / **Perso al** | un intervallo di date |
+
+Le date si chiamano «perso dal/al» e **non** «scadenza», perché per una
+polizza annullata il giorno della perdita è l'annullamento. Si applicano
+**solo a chi è perso**: «perso fra gennaio e dicembre» su un cliente attivo
+non vuol dire niente, e lasciarlo passare riempirebbe di gente da non
+chiamare la lista di chi va chiamato.
 
 ### I tipi di titolo — il vocabolario dell'agenzia
 

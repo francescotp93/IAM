@@ -285,6 +285,13 @@ prova('ogni filtro che Francesco ha chiesto ha il suo campo', () => {
     'premio da': 'ca-premio-da', 'premio a': 'ca-premio-a',
     'ha la garanzia': 'ca-garanzia', 'ma NON la garanzia': 'ca-senza-garanzia',
     'ha note in anagrafica': 'ca-con-note',
+    /* Aggiunti il 26/09/2026, richiesta di Francesco: trovare i clienti persi,
+       dividerli per date, e distinguere chi non ha rinnovato (QR) da chi ha
+       disdetto a metà. E, con loro, i prospect: chi non ha mai comprato niente
+       non è un cliente perso. */
+    'stato del cliente (perso / prospect)': 'ca-stato',
+    'come l\'abbiamo perso (QR o disdetta)': 'ca-come-perso',
+    'perso dal': 'ca-perso-dal', 'perso al': 'ca-perso-al',
   };
   /* IL CAMPO DEVE ESISTERE SULLO SCHERMO, e si controlla solo la forma
      `id="ca-x"`. Prima bastava che il nome comparisse da qualche parte, anche
@@ -640,6 +647,197 @@ prova('e se la lettura fallisce lo dice, invece di far sparire i clienti', () =>
   /* E non basta scriverlo in console: deve fermarsi, o il conto esce lo stesso. */
   deve(/return;/.test(blocco.slice(blocco.indexOf('if (error)'))),
     'in caso di errore la ricerca prosegue e mostra un numero che non è quello vero');
+});
+
+/* ══ I CLIENTI PERSI, LE DATE, E IL CRITERIO «QR» ═════════════════════════════
+   26/09/2026. «I clienti persi sarebbe sempre buono che si potessero trovare
+   con un filtro nella parte crm e analisi, e che si potessero dividere per
+   determinate date (il criterio deve essere che potrei ritrovare i clienti
+   "persi" che non hanno rinnovato una polizza al rinnovo, ovvero QR)».
+
+   Cinque clienti fatti su misura per i casi che si confondono:
+     5 · attivo, una polizza in corso
+     6 · perso alla scadenza naturale, a giugno       → «non ha rinnovato»
+     7 · perso per annullamento, a marzo              → ha disdetto a metà
+     8 · perso con una QR non incassata, ad agosto    → «non ha rinnovato»,
+         detto dalla compagnia
+     9 · nessuna polizza, mai                         → prospect
+
+   L'errore che queste prove impediscono non dà nessun segnale: la lista esce,
+   ha dei nomi dentro, e sono i nomi sbagliati. */
+const PERSI = {
+  '5': [{ id: 'p5', modulo: 'auto', data_scadenza: '2027-03-01', stato_pagamento: 'pagato' }],
+  '6': [{ id: 'p6', modulo: 'auto', data_scadenza: '2026-06-15', stato_pagamento: 'pagato' }],
+  '7': [{ id: 'p7', modulo: 'auto', data_scadenza: '2026-12-31', stato_pagamento: 'annullata',
+          dati: { ssf: { data_annullamento: '2026-03-20', motivo_storno: 'VENDITA' } } }],
+  '8': [{ id: 'p8', modulo: 'auto', data_scadenza: '2026-08-10', stato_pagamento: 'pagato' }],
+};
+const TITOLI_PERSI = { p8: [{ sigla_tipo: 'QR', stato: 'aperto' }] };
+const GENTE_PERSI = [
+  P({ id: '5', nominativo: 'EPSILON ELIO' }), P({ id: '6', nominativo: 'ZETA ZORA' }),
+  P({ id: '7', nominativo: 'ETA ENZO' }),     P({ id: '8', nominativo: 'THETA TINA' }),
+  P({ id: '9', nominativo: 'IOTA IVO' }),
+];
+const CTX_PERSI = { polizzePerCliente: PERSI, titoliPerPolizza: TITOLI_PERSI, oggi: '2026-09-26' };
+const chiPerso = (f) => A.filtra(GENTE_PERSI, f, CTX_PERSI).map((x) => x.id).sort().join(',');
+
+prova('il filtro «persi» prende chi non ha più polizze attive, e solo lui', () => {
+  deve(chiPerso({ stato: 'perso' }) === '6,7,8', chiPerso({ stato: 'perso' }));
+});
+
+prova('«prospect» non è «perso»: chi non ha mai comprato sta in un\'altra lista', () => {
+  /* In archivio sono 58, e finirebbero fra i 564 persi: 58 telefonate a gente
+     che non ci ha mai comprato niente, presentate come clienti perduti. */
+  deve(chiPerso({ stato: 'prospect' }) === '9', chiPerso({ stato: 'prospect' }));
+  deve(chiPerso({ stato: 'perso' }).indexOf('9') < 0, 'il prospect è finito fra i persi');
+});
+
+prova('«attivo» prende solo chi ha una polizza che copre adesso', () => {
+  deve(chiPerso({ stato: 'attivo' }) === '5', chiPerso({ stato: 'attivo' }));
+});
+
+prova('le date dividono i persi per quando li abbiamo perduti', () => {
+  deve(chiPerso({ stato: 'perso', persoDal: '2026-06-01', persoAl: '2026-06-30' }) === '6',
+    chiPerso({ stato: 'perso', persoDal: '2026-06-01', persoAl: '2026-06-30' }));
+  deve(chiPerso({ persoDal: '2026-07-01' }) === '8', chiPerso({ persoDal: '2026-07-01' }));
+  deve(chiPerso({ persoAl: '2026-04-30' }) === '7', chiPerso({ persoAl: '2026-04-30' }));
+});
+
+prova('per un annullamento vale la data dell\'annullamento, non la scadenza', () => {
+  /* Il 7 è annullato il 20/03 e scadrebbe il 31/12: cercandolo per marzo deve
+     uscire, cercandolo per dicembre no. Prendere la scadenza vorrebbe dire
+     cercare il cliente nove mesi dopo averlo perso. */
+  deve(chiPerso({ persoDal: '2026-03-01', persoAl: '2026-03-31' }) === '7', 'per marzo non esce');
+  deve(chiPerso({ persoDal: '2026-12-01', persoAl: '2026-12-31' }) === '', 'esce anche a dicembre');
+});
+
+prova('le date non trascinano dentro chi è ancora cliente', () => {
+  /* «Perso fra gennaio e dicembre» su un cliente attivo non vuol dire niente:
+     se passasse, la lista da richiamare si riempirebbe di gente da non
+     chiamare — ed è l'errore che non si vede, perché la lista esce. */
+  const r = chiPerso({ persoDal: '2026-01-01', persoAl: '2026-12-31' });
+  deve(r.indexOf('5') < 0, 'il cliente attivo è finito fra i persi per data: ' + r);
+  deve(r.indexOf('9') < 0, 'il prospect è finito fra i persi per data: ' + r);
+  deve(r === '6,7,8', r);
+});
+
+prova('«non ha rinnovato» prende la scadenza naturale e la QR non incassata', () => {
+  deve(chiPerso({ persoAlRinnovo: true }) === '6,8', chiPerso({ persoAlRinnovo: true }));
+});
+
+prova('chi ha disdetto a metà annualità NON è un mancato rinnovo', () => {
+  /* Sono 53 contro 511 in archivio, e sono due telefonate diverse: uno lo
+     richiami con un preventivo, l'altro ha avuto un motivo e prima lo vuoi
+     sapere. Se si confondessero, il criterio che Francesco chiama «QR» non
+     servirebbe a niente. */
+  deve(chiPerso({ persoAlRinnovo: true }).indexOf('7') < 0, 'la disdetta è finita fra i mancati rinnovi');
+  deve(chiPerso({ stato: 'perso', persoAlRinnovo: false }) === '7',
+    chiPerso({ stato: 'perso', persoAlRinnovo: false }));
+});
+
+prova('una QF non incassata non fa un mancato rinnovo', () => {
+  /* Il caso che rovinerebbe tutto: se QR e QF si confondessero, ogni rata in
+     ritardo diventerebbe un cliente perso al rinnovo. Il 7 ha una QF aperta e
+     resta quello che è — una disdetta, non un mancato rinnovo. */
+  const ctx = { polizzePerCliente: PERSI, oggi: '2026-09-26',
+                titoliPerPolizza: { p7: [{ sigla_tipo: 'QF', stato: 'aperto' }] } };
+  const r = A.filtra(GENTE_PERSI, { persoAlRinnovo: true }, ctx).map(x => x.id).sort().join(',');
+  deve(r.indexOf('7') < 0, 'una rata scoperta è diventata un mancato rinnovo: ' + r);
+});
+
+prova('senza sapere che giorno è, il filtro non risponde «tutti»', () => {
+  /* Il verso prudente: una lista completa sarebbe indistinguibile da una
+     risposta giusta, e partirebbe una campagna a tutto il portafoglio. */
+  const r = A.filtra(GENTE_PERSI, { stato: 'perso' }, { polizzePerCliente: PERSI });
+  deve(r.length === 0, 'senza `oggi` ha risposto con ' + r.length + ' clienti');
+});
+
+prova('i filtri sullo stato si compongono con gli altri', () => {
+  /* Un filtro che funziona solo da solo non serve: «chi ho perso a giugno fra i
+     clienti di Trapani» è la domanda vera. */
+  const gente = [P({ id: '6', nominativo: 'ZETA ZORA', comune: 'Trapani' }),
+                 P({ id: '8', nominativo: 'THETA TINA', comune: 'Erice' })];
+  const r = A.filtra(gente, { stato: 'perso', comuni: ['trapani'] }, CTX_PERSI).map(x => x.id);
+  deve(r.join(',') === '6', 'composizione col comune: ' + r.join(','));
+});
+
+prova('il conteggio «quanti ce l\'hanno compilato» sta solo dove vuol dire qualcosa', () => {
+  /* Trovato il 26/09/2026, e c'era da prima. Accanto a «Premio annuo da»
+     compariva «1954/2536»: il conteggio del COMUNE, perché quel filtro veniva
+     disegnato passando 'comune' come campo di copertura. Quattordici filtri su
+     ventitré mostravano un numero che non li riguardava.
+
+     Non è un dettaglio grafico: quel numero esiste per distinguere «non ne
+     abbiamo» da «non lo sappiamo», ed è la cosa che si guarda quando una
+     ricerca torna zero. Un numero giusto accanto alla domanda sbagliata è
+     peggio di nessun numero.
+
+     La regola: il conteggio si passa SOLO per i campi che stanno davvero
+     nell'anagrafica — quelli di `CAMPI_COPERTURA`. I filtri che leggono le
+     polizze passano un nome che non è in quell'elenco, e il conteggio non
+     compare. */
+  const fs = require('fs');
+  const src = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const veri = A.CAMPI_COPERTURA.map(c => c.k);
+  /* Per ogni `caCampo(etichetta, campo, '<… id="ca-x"')`: se `campo` è un campo
+     vero di copertura, il filtro deve leggere QUEL campo dell'anagrafica. */
+  const LECITI = {
+    'ca-comune': 'comune', 'ca-eta-da': 'data_nascita', 'ca-eta-a': 'data_nascita',
+    'ca-prof': 'professione', 'ca-collab': 'intermediario_id',
+    'ca-sposato': 'sposato', 'ca-figli': 'sposato',
+    'ca-note': 'note', 'ca-con-note': 'note',
+  };
+  const re = /caCampo\((?:'(?:[^'\\]|\\.)*')\s*,\s*'([a-z_]+)'\s*,\s*'<(?:select|input) id="(ca-[a-z-]+)"/g;
+  const sbagliati = [];
+  let m, visti = 0;
+  while ((m = re.exec(src))) {
+    visti++;
+    const campo = m[1], id = m[2];
+    if (veri.indexOf(campo) < 0) continue;            // nome non di copertura: nessun numero, a posto
+    if (LECITI[id] !== campo) sbagliati.push(id + ' mostra il conteggio di «' + campo + '»');
+  }
+  deve(visti >= 20, 'trovati solo ' + visti + ' filtri: il modo di disegnarli è cambiato, rileggere questa prova');
+  deve(sbagliati.length === 0, sbagliati.join(' | '));
+  return visti + ' filtri, ' + Object.keys(LECITI).length + ' col conteggio giusto';
+});
+
+prova('la schermata legge le colonne che servono a dire «perso»', () => {
+  /* Il filtro più giusto del mondo non serve a niente se la lettura non porta
+     `stato_pagamento` e la data dell'annullamento: senza il primo le 34
+     polizze annullate che scadono in futuro contano come attive, e 34 clienti
+     persi risultano a posto; senza la seconda la perdita si daterebbe alla
+     scadenza, che può distare mesi. Sono due errori che non danno errore. */
+  const fs = require('fs');
+  const src = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = src.indexOf("db.from('quote_polizze').select('id,cliente_id");
+  deve(i > 0, 'la lettura del portafoglio del CRM è cambiata: rileggere questa prova');
+  const sel = src.slice(i, src.indexOf(')', src.indexOf('.limit(', i)));
+  for (const c of ['stato_pagamento', 'data_annullamento', 'id']) {
+    deve(sel.indexOf(c) >= 0, 'la lettura del CRM non chiede «' + c + '»');
+  }
+});
+
+prova('le quietanze di rinnovo si leggono soltanto quando servono, e solo loro', () => {
+  /* Due righe su 3.218: chiederle tutte per trovarne due sarebbe uno spreco a
+     ogni ricerca. E la lettura si fa solo se il filtro «come l'abbiamo perso» è
+     stato chiesto — gli altri non devono pagarla. */
+  const fs = require('fs');
+  const src = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const i = src.indexOf("let titoliQR = null;");
+  deve(i > 0, 'la lettura delle quietanze di rinnovo non c\'è più');
+  const blocco = src.slice(i, i + 900);
+  deve(/if \(g\('ca-come-perso'\)\)/.test(blocco), 'la lettura parte anche senza che il filtro sia stato chiesto');
+  deve(/\.eq\('sigla_tipo', 'QR'\)/.test(blocco), 'si leggono tutti i titoli invece delle sole quietanze di rinnovo');
+  deve(/if \(error\)/.test(blocco) && /return;/.test(blocco.slice(blocco.indexOf('if (error)'))),
+    'se la lettura cade la ricerca prosegue e mostra un numero che non è quello vero');
+});
+
+prova('senza filtri sullo stato il motore non va nemmeno a cercarlo', () => {
+  /* `statoCliente` su 2.500 clienti a ogni battuta di tasto si sente. E, più
+     importante: chi non chiede lo stato non deve vedere la lista accorciarsi
+     perché un motore non era caricato. */
+  const r = A.filtra(GENTE_PERSI, { }, { polizzePerCliente: PERSI });
+  deve(r.length === GENTE_PERSI.length, 'senza filtri sono usciti ' + r.length + ' su ' + GENTE_PERSI.length);
 });
 
 /* ── esecuzione ─────────────────────────────────────────────────────────── */

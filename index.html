@@ -11244,7 +11244,15 @@ async function caCarica() {
          arrivavano nemmeno, quindi «clienti Prima in scadenza fra 30 giorni»
          non era una domanda che si potesse porre. Sono 4.097 righe con tre
          colonne in più: si carica lo stesso in una volta sola. */
-      db.from('quote_polizze').select('cliente_id,modulo,prodotto,compagnia,data_scadenza,premio_annuo').limit(20000),
+      /* 26/09/2026: arrivano anche `id`, `stato_pagamento` e la data
+         dell'annullamento, perché senza quelle tre «cliente perso» sarebbe
+         sbagliato in due modi. Senza `stato_pagamento` le 34 polizze annullate
+         che scadono in futuro conterebbero come attive, e 34 clienti che non
+         abbiamo più risulterebbero a posto. Senza la data dell'annullamento la
+         perdita si daterebbe alla scadenza, che può distare mesi: uno cercato
+         per settembre è stato perso a luglio. `id` serve a legare la quietanza
+         di rinnovo alla sua polizza. */
+      db.from('quote_polizze').select('id,cliente_id,modulo,prodotto,compagnia,data_scadenza,premio_annuo,stato_pagamento,data_annullamento:dati->ssf->>data_annullamento').limit(20000),
       db.from('quote_gruppi').select('id,nome'),
     ]);
     if (an.error) throw an.error;
@@ -11315,38 +11323,58 @@ function caDisegnaFiltri() {
   box.innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">'
     + caCampo('Comune di residenza', 'comune', '<select id="ca-comune" style="' + st + '"><option value="">Tutti</option>' + comuni.map(c => '<option>' + esc(c) + '</option>').join('') + '</select>')
-    + caCampo('Provincia', 'comune', '<select id="ca-prov" style="' + st + '"><option value="">Tutte</option>' + province.map(p => '<option>' + esc(p) + '</option>').join('') + '</select>')
+    + caCampo('Provincia', 'portafoglio', '<select id="ca-prov" style="' + st + '"><option value="">Tutte</option>' + province.map(p => '<option>' + esc(p) + '</option>').join('') + '</select>')
     + caCampo('Età da', 'data_nascita', '<input id="ca-eta-da" type="number" min="0" max="120" placeholder="—" style="' + st + '">')
     + caCampo('Età a', 'data_nascita', '<input id="ca-eta-a" type="number" min="0" max="120" placeholder="—" style="' + st + '">')
-    + caCampo('Compagnia', 'comune', '<select id="ca-compagnia" style="' + st + '"><option value="">Tutte</option>' + compagnie.map(c => '<option>' + esc(c) + '</option>').join('') + '</select>')
-    + caCampo('Ha la polizza', 'comune', '<select id="ca-ramo" style="' + st + '"><option value="">Qualunque</option>' + moduli.map(m => '<option>' + esc(m) + '</option>').join('') + '</select>')
+    + caCampo('Compagnia', 'portafoglio', '<select id="ca-compagnia" style="' + st + '"><option value="">Tutte</option>' + compagnie.map(c => '<option>' + esc(c) + '</option>').join('') + '</select>')
+    + caCampo('Ha la polizza', 'portafoglio', '<select id="ca-ramo" style="' + st + '"><option value="">Qualunque</option>' + moduli.map(m => '<option>' + esc(m) + '</option>').join('') + '</select>')
     /* IL CAMPO CHE VALE DI PIÙ, ed è il motivo per cui questa schermata serve:
        «auto MA NON casa», «RCA senza infortuni», «clienti senza previdenza».
        È lì che sta la vendita, ed è la domanda che prima non si poteva porre. */
-    + caCampo('…ma NON ha', 'comune', '<select id="ca-senza-ramo" style="' + st + '"><option value="">—</option>' + moduli.map(m => '<option>' + esc(m) + '</option>').join('') + '</select>')
-    + caCampo('Scade entro', 'comune', '<select id="ca-scadenza" style="' + st + '"><option value="">Indifferente</option><option value="7">7 giorni</option><option value="30">30 giorni</option><option value="60">60 giorni</option><option value="90">90 giorni</option><option value="scadute">Già scadute</option></select>')
-    + caCampo('Premio annuo da', 'comune', '<input id="ca-premio-da" type="number" min="0" step="10" placeholder="€ —" style="' + st + '">')
-    + caCampo('Premio annuo a', 'comune', '<input id="ca-premio-a" type="number" min="0" step="10" placeholder="€ —" style="' + st + '">')
+    + caCampo('…ma NON ha', 'portafoglio', '<select id="ca-senza-ramo" style="' + st + '"><option value="">—</option>' + moduli.map(m => '<option>' + esc(m) + '</option>').join('') + '</select>')
+    + caCampo('Scade entro', 'portafoglio', '<select id="ca-scadenza" style="' + st + '"><option value="">Indifferente</option><option value="7">7 giorni</option><option value="30">30 giorni</option><option value="60">60 giorni</option><option value="90">90 giorni</option><option value="scadute">Già scadute</option></select>')
+    + caCampo('Premio annuo da', 'portafoglio', '<input id="ca-premio-da" type="number" min="0" step="10" placeholder="€ —" style="' + st + '">')
+    + caCampo('Premio annuo a', 'portafoglio', '<input id="ca-premio-a" type="number" min="0" step="10" placeholder="€ —" style="' + st + '">')
     /* LE GARANZIE — «cliente senza una determinata garanzia nella polizza
        auto». Si legano al campo «Ha la polizza» qui sopra: senza quel legame
        un cliente risulterebbe «senza infortuni» solo perché non ce li ha
        sulla polizza della casa, dove non esistono nemmeno. */
-    + caCampo('Ha la garanzia', 'comune', '<input id="ca-garanzia" list="ca-gar-lista" placeholder="es. infortuni conducente" style="' + st + '"><datalist id="ca-gar-lista">' + gar + '</datalist>')
-    + caCampo('…ma NON la garanzia', 'comune', '<input id="ca-senza-garanzia" list="ca-gar-lista" placeholder="es. tutela legale" style="' + st + '">')
+    + caCampo('Ha la garanzia', 'portafoglio', '<input id="ca-garanzia" list="ca-gar-lista" placeholder="es. infortuni conducente" style="' + st + '"><datalist id="ca-gar-lista">' + gar + '</datalist>')
+    + caCampo('…ma NON la garanzia', 'portafoglio', '<input id="ca-senza-garanzia" list="ca-gar-lista" placeholder="es. tutela legale" style="' + st + '">')
     + caCampo('Ha note in anagrafica', 'note', '<select id="ca-con-note" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì, ha note</option></select>')
     + caCampo('Professione', 'professione', '<input id="ca-prof" type="text" placeholder="contiene…" style="' + st + '">')
     + caCampo('Collaboratore', 'intermediario_id', '<input id="ca-collab" type="text" placeholder="id collaboratore" style="' + st + '">')
     + caCampo('Sposato', 'sposato', '<select id="ca-sposato" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No (dichiarato)</option></select>')
     + caCampo('Ha figli', 'sposato', '<select id="ca-figli" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No (dichiarato)</option></select>')
     + caCampo('Nelle note c\'è', 'note', '<input id="ca-note" type="text" placeholder="cerca nel testo…" style="' + st + '">')
-    + caCampo('Gruppo', 'comune', '<select id="ca-gruppo" style="' + st + '"><option value="">Tutti</option>' + (CA_GRUPPI || []).map(g => '<option value="' + esc(g.id) + '">' + esc(g.nome) + '</option>').join('') + '</select>')
+    + caCampo('Gruppo', 'portafoglio', '<select id="ca-gruppo" style="' + st + '"><option value="">Tutti</option>' + (CA_GRUPPI || []).map(g => '<option value="' + esc(g.id) + '">' + esc(g.nome) + '</option>').join('') + '</select>')
+    /* ── CHI ABBIAMO PERSO, E QUANDO (26/09/2026) ─────────────────────────────
+       «I clienti persi sarebbe sempre buono che si potessero trovare con un
+       filtro nella parte crm e analisi, e che si potessero dividere per
+       determinate date (il criterio deve essere che potrei ritrovare i clienti
+       "persi" che non hanno rinnovato una polizza al rinnovo, ovvero QR)»
+       — Francesco.
+
+       Tre stati e non due: 1.925 clienti con una polizza attiva, 564 persi, 58
+       che non hanno mai comprato niente. Il «come» è un campo a parte perché
+       sono due liste di lavoro diverse — 511 non hanno rinnovato alla scadenza,
+       53 hanno disdetto a metà annualità.
+
+       Le date si chiamano «perso dal / al» e non «scadenza»: per una polizza
+       annullata il giorno della perdita è l'annullamento, che può distare mesi
+       dalla scadenza. */
+    + caCampo('Stato del cliente', 'portafoglio', '<select id="ca-stato" style="' + st + '"><option value="">Indifferente</option><option value="attivo">Ha una polizza attiva</option><option value="perso">Perso (non ne ha più)</option><option value="prospect">Prospect (mai avuta)</option></select>')
+    + caCampo('Come l\'abbiamo perso', 'portafoglio', '<select id="ca-come-perso" style="' + st + '"><option value="">Indifferente</option><option value="rinnovo">Non ha rinnovato (QR)</option><option value="disdetta">Ha disdetto a metà</option></select>')
+    + caCampo('Perso dal', 'portafoglio', '<input id="ca-perso-dal" type="date" style="' + st + '">')
+    + caCampo('Perso al', 'portafoglio', '<input id="ca-perso-al" type="date" style="' + st + '">')
     + '</div>'
     + '<div style="margin-top:10px;font-size:11.5px;color:var(--muted);line-height:1.5">Il numero accanto a ogni filtro dice su quante anagrafiche quel dato è compilato. Quando è quasi vuoto, filtrarci sopra non seleziona: restituisce il poco che c\'è.</div>';
 }
 
 function caPulisci() {
   ['ca-comune','ca-prov','ca-eta-da','ca-eta-a','ca-compagnia','ca-ramo','ca-senza-ramo',
-   'ca-scadenza','ca-premio-da','ca-premio-a','ca-garanzia','ca-senza-garanzia','ca-con-note','ca-prof','ca-collab','ca-sposato','ca-figli','ca-note','ca-gruppo']
+   'ca-scadenza','ca-premio-da','ca-premio-a','ca-garanzia','ca-senza-garanzia','ca-con-note','ca-prof','ca-collab','ca-sposato','ca-figli','ca-note','ca-gruppo',
+   'ca-stato','ca-come-perso','ca-perso-dal','ca-perso-al']
     .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
   const b = document.getElementById('ca-esito'); if (b) b.innerHTML = '';
   CA_RISULTATO = null;
@@ -11421,6 +11449,33 @@ async function caCerca() {
      vorrebbe dire una regola che cambia significato a seconda del valore. */
   const sc = g('ca-scadenza');
 
+  /* ── LE QUIETANZE DI RINNOVO, E SOLO QUELLE ────────────────────────────────
+     Il criterio che Francesco chiama «QR» guarda se una quietanza di RINNOVO è
+     rimasta non incassata. Si leggono soltanto quelle: `sigla_tipo = 'QR'` sono
+     DUE righe su 3.218, perché Prima Assicurazioni al rinnovo non manda una
+     quietanza — emette una polizza nuova. Portarsi in casa tutti i titoli per
+     trovarne due sarebbe uno spreco, e la seconda strada («l'ultima copertura
+     è finita alla sua scadenza naturale») la fa il motore dalle date.
+
+     Se la lettura cade non si passa la mappa: il motore risponde «non lo so»
+     invece di «non ha rinnovato», e il conto resta onesto. */
+  let titoliQR = null;
+  if (g('ca-come-perso')) {
+    const { data, error } = await db.from('quote_titoli')
+      .select('polizza_id,stato,sigla_tipo').eq('sigla_tipo', 'QR');
+    if (error) {
+      box.innerHTML = '<div class="cnt-err">Non riesco a leggere le quietanze di rinnovo: '
+        + esc(error.message || error)
+        + '<br><small>Il filtro «come l\'abbiamo perso» si appoggia anche a quelle: '
+        + 'senza, il numero non sarebbe quello vero.</small></div>';
+      return;
+    }
+    titoliQR = {};
+    (data || []).forEach(t => { const k = String(t.polizza_id || ''); if (k) (titoliQR[k] = titoliQR[k] || []).push(t); });
+  }
+
+  const comePerso = g('ca-come-perso');
+
   const righe = M.filtra(CA_ANAG || [], {
     comuni: g('ca-comune') ? [g('ca-comune')] : [],
     province: g('ca-prov') ? [g('ca-prov')] : [],
@@ -11436,10 +11491,17 @@ async function caCerca() {
     sposato: tri(g('ca-sposato')), haFigli: tri(g('ca-figli')),
     testoNote: g('ca-note') || null,
     conNote: g('ca-con-note') === 'si' ? true : null,
+    /* Perso, attivo o prospect — e come. «Come l'abbiamo perso» implica
+       «perso»: chiederlo senza lo stato non deve tirare dentro clienti vivi. */
+    stato: g('ca-stato') || (comePerso ? 'perso' : null),
+    persoDal: g('ca-perso-dal') || null,
+    persoAl: g('ca-perso-al') || null,
+    persoAlRinnovo: comePerso === 'rinnovo' ? true : (comePerso === 'disdetta' ? false : null),
     /* `oggi` arriva da qui e non da dentro al motore: la stessa domanda deve
        dare la stessa risposta in una prova, anche fra sei mesi. */
   }, { polizzePerCliente: CA_POLIZZE, membriGruppo: membri,
        conGaranzia: conGar, senzaGaranzia: senzaGar,
+       titoliPerPolizza: titoliQR,
        oggi: new Date().toISOString().slice(0, 10) });
 
   CA_RISULTATO = righe;

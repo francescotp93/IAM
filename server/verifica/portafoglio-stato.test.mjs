@@ -442,6 +442,38 @@ prova('una QR non incassata basta da sola, anche su una disdetta', () => {
   deve(c.persoAlRinnovo === true, 'la quietanza di rinnovo non incassata è stata ignorata');
 });
 
+prova('un cliente che non è perso non ha una data di perdita', () => {
+  /* Questa è un'INVARIANTE su cui si appoggia il filtro del CRM: là il filtro
+     per date scarta chi non è perso, e se domani `persoIl` comparisse anche su
+     un cliente attivo — per dire «l'ultima copertura finita», che è una cosa
+     sensata da volere — quel filtro comincerebbe a pescare clienti vivi. Un
+     errore che non si vede: la lista esce. Se questa prova diventa rossa, va
+     riletta la guardia in `crm-analisi.js`, non aggiustata questa. */
+  const casi = [[], [polizza({ data_scadenza: '2027-01-01' })],
+                [polizza({ id: 'a', data_scadenza: '2027-01-01' }), polizza({ id: 'b', data_scadenza: '2024-01-01' })],
+                [polizza({ data_scadenza: null })]];
+  for (const l of casi) {
+    const c = S.statoCliente(l, OGGI);
+    if (c.stato === 'perso') continue;
+    deve(c.persoIl == null, 'stato «' + c.stato + '» con persoIl = ' + c.persoIl);
+  }
+});
+
+prova('un cliente perso ha SEMPRE una data di perdita', () => {
+  /* L'altra metà della stessa invariante: senza la data, un perso non si
+     potrebbe collocare nel tempo e sparirebbe da ogni filtro per periodo —
+     cioè dall'unico modo che Francesco ha di lavorarli a scaglioni. */
+  const casi = [[polizza({ data_scadenza: '2026-01-01' })],
+                [polizza({ stato_pagamento: 'annullata', data_scadenza: '2027-01-01',
+                           dati: { ssf: { data_annullamento: '2026-02-02' } } })],
+                [polizza({ stato_pagamento: 'annullata', data_scadenza: '2026-05-05' })]];
+  for (const l of casi) {
+    const c = S.statoCliente(l, OGGI);
+    deve(c.stato === 'perso', 'il campione non è perso: ' + c.stato);
+    deve(!!c.persoIl, 'perso senza data di perdita');
+  }
+});
+
 prova('un cliente attivo non ha un motivo di perdita', () => {
   const c = S.statoCliente([polizza({ data_scadenza: '2027-01-01' })], OGGI);
   deve(c.motivoPerdita == null, 'ha dato un motivo di perdita a un cliente vivo: ' + c.motivoPerdita);

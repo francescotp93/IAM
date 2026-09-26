@@ -141,6 +141,27 @@ riancorano a una fotografia salvata nel repository, o si ritirano
 dicendolo. Lasciarle rosse è peggio di toglierle: insegna a ignorare il
 rosso.
 
+### P2.10 · I 2.289 titoli `PN` di Prima non hanno una sigla
+Dei 3.218 titoli in archivio, 890 hanno la sigla (NP/QR/QF/AP/SO) e 2.328
+no. Di quelli, 2.289 sono i `prima_rata` di Prima: il suo codice `PN`
+copre **nuovo affare, rinnovo E sostituzione**, quindi scriverci NP
+vorrebbe dire dichiarare «cliente nuovo» su un rinnovo — e nascondere
+proprio i rinnovi.
+
+Il rinnovo, per Prima, si riconosce dalla **catena delle annualità**: una
+polizza che comincia dove finisce la precedente sulla stessa targa. Sono
+**977 in archivio**, e la distanza fra le due è misurata: 900 coppie
+attaccate (fra −5 e +5 giorni), 67 entro un mese, 16 più lontane, 7 che
+cominciano prima (quelle sono sostituzioni).
+
+Da fare: il motore che ricava la catena, con le sue prove e i suoi
+sabotaggi, **prima** della migrazione che scrive le sigle — marcate
+`sigla_dedotta = true`, perché una deduzione non è la parola di nessuno.
+
+Non è urgente: il filtro dei mancati rinnovi funziona già senza, perché
+guarda anche le annualità finite alla loro scadenza. Serve a rendere
+leggibile la storia di una polizza, titolo per titolo.
+
 ### P2.9 · `copertura_al` dice due cose diverse, e la schermata ne mostra una sbagliata
 Trovato il 26/09/2026 misurando le polizze attive. La colonna
 `quote_polizze.copertura_al` viene riempita dal flusso SSF con

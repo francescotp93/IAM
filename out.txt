@@ -1,78 +1,40 @@
-id: 1790452140  exit: 0  2026-09-26 19:49:27
+id: 1790452342  exit: 0  2026-09-26 19:52:45
 ----
-=== allianz 4200 stato completo ===
-{
-    "url": "https://amlogin.allianz.it/nidp/idff/sso?id=6&sid=27&option=credential&sid=27&target=https%3A%2F%2Fportaleagenzie.allianz.it%2Fmatrix%2Fsales%2F",
-    "loggato": false,
-    "sessione": "Sotto-sessione Matrix caduta (rimbalzo login) \u274c",
-    "ha_credenziali": true,
-    "ha_totp": false,
-    "totp_non_e_un_seme": false,
-    "login_step": "idle",
-    "login_running": false,
-    "login_msg": "",
-    "codice_in_attesa": false,
-    "freno": {
-        "bloccato": true,
-        "tentativi_falliti": 3,
-        "prossimo_tentativo": null,
-        "motivo": "accesso rifiutato: credenziali o codice 2FA non piu' validi"
-    }
-}
-
-=== hdi 4400 stato completo ===
-{
-    "url": "https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=d382359312aa4f8f951a05cd0afdb2b8&code_challenge=st7qPUJFwSSG1dT4l2vXNM8gj4cd_OKEvdrVwX5vXC8&code_challenge_method=S256&response_mode=query",
-    "loggato": false,
-    "ha_credenziali": true,
-    "freno": {
-        "bloccato": false,
-        "tentativi_falliti": 1,
-        "prossimo_tentativo": 1790405033563,
-        "motivo": "accesso rifiutato: credenziali o codice 2FA non piu' validi"
-    },
-    "login_step": "idle",
-    "login_running": false,
-    "login_msg": "",
-    "occupato": 0,
-    "ultima_operazione": "2026-09-26T19:46:59.340Z",
-    "token_uefa_scade": null,
-    "guardiano": {
-        "giri": 200,
-        "ultimo_giro": "2026-09-26T19:48:57.808Z",
-        "ultimo_esito": "mai eseguito"
-    }
-}
-
-=== hdi: ultime 15 righe ===
-Sep 26 18:52:57 vps-d6443a46 start-service.sh[555655]: 18:52:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 18:56:57 vps-d6443a46 start-service.sh[555655]: 18:56:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:00:57 vps-d6443a46 start-service.sh[555655]: 19:00:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:04:57 vps-d6443a46 start-service.sh[555655]: 19:04:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:08:57 vps-d6443a46 start-service.sh[555655]: 19:08:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:12:57 vps-d6443a46 start-service.sh[555655]: 19:12:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:16:57 vps-d6443a46 start-service.sh[555655]: 19:16:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:20:57 vps-d6443a46 start-service.sh[555655]: 19:20:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:24:57 vps-d6443a46 start-service.sh[555655]: 19:24:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:28:57 vps-d6443a46 start-service.sh[555655]: 19:28:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:32:57 vps-d6443a46 start-service.sh[555655]: 19:32:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:36:57 vps-d6443a46 start-service.sh[555655]: 19:36:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:40:57 vps-d6443a46 start-service.sh[555655]: 19:40:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:44:57 vps-d6443a46 start-service.sh[555655]: 19:44:57 [hdi] watchdog: salto (usato da poco)
-Sep 26 19:48:57 vps-d6443a46 start-service.sh[555655]: 19:48:57 [hdi] watchdog: salto (usato da poco)
-=== allianz: ultime 15 righe ===
-Sep 26 19:36:05 vps-d6443a46 start-service.sh[556939]: 19:36:05 [keep-alive] sessione caduta → ri-login silenzioso...
-Sep 26 19:36:05 vps-d6443a46 start-service.sh[556939]: 19:36:05 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Sep 26 19:36:05 vps-d6443a46 start-service.sh[556939]: 19:36:05 [keep-alive] ri-login non tentato: freno scattato, serve un gesto dal Pannello Fonti
-Sep 26 19:39:05 vps-d6443a46 start-service.sh[556939]: 19:39:05 [keep-alive] sessione caduta → ri-login silenzioso...
-Sep 26 19:39:05 vps-d6443a46 start-service.sh[556939]: 19:39:05 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Sep 26 19:39:05 vps-d6443a46 start-service.sh[556939]: 19:39:05 [keep-alive] ri-login non tentato: freno scattato, serve un gesto dal Pannello Fonti
-Sep 26 19:42:05 vps-d6443a46 start-service.sh[556939]: 19:42:05 [keep-alive] sessione caduta → ri-login silenzioso...
-Sep 26 19:42:05 vps-d6443a46 start-service.sh[556939]: 19:42:05 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Sep 26 19:42:05 vps-d6443a46 start-service.sh[556939]: 19:42:05 [keep-alive] ri-login non tentato: freno scattato, serve un gesto dal Pannello Fonti
-Sep 26 19:45:06 vps-d6443a46 start-service.sh[556939]: 19:45:06 [keep-alive] sessione caduta → ri-login silenzioso...
-Sep 26 19:45:06 vps-d6443a46 start-service.sh[556939]: 19:45:06 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Sep 26 19:45:06 vps-d6443a46 start-service.sh[556939]: 19:45:06 [keep-alive] ri-login non tentato: freno scattato, serve un gesto dal Pannello Fonti
-Sep 26 19:48:05 vps-d6443a46 start-service.sh[556939]: 19:48:05 [keep-alive] sessione caduta → ri-login silenzioso...
-Sep 26 19:48:05 vps-d6443a46 start-service.sh[556939]: 19:48:05 [freno] tentativo di accesso saltato — fermo dopo 3 fallimenti di fila: serve un codice nuovo dal Pannello Fonti
-Sep 26 19:48:05 vps-d6443a46 start-service.sh[556939]: 19:48:05 [keep-alive] ri-login non tentato: freno scattato, serve un gesto dal Pannello Fonti
+=== hdi: quante righe in 24h, per tipo ===
+righe totali:        377
+watchdog: salto:     359
+watchdog altro:      0
+keep-alive:          0
+UEFA token:          1
+login -> :           0
+freno/brake:         1
+--- le prime 8 righe della finestra ---
+Sep 25 19:55:02 vps-d6443a46 start-service.sh[4029575]: 19:55:02 [hdi] watchdog: salto (usato da poco)
+Sep 25 19:59:02 vps-d6443a46 start-service.sh[4029575]: 19:59:02 [hdi] watchdog: salto (usato da poco)
+Sep 25 20:03:02 vps-d6443a46 start-service.sh[4029575]: 20:03:02 [hdi] watchdog: salto (usato da poco)
+Sep 25 20:07:02 vps-d6443a46 start-service.sh[4029575]: 20:07:02 [hdi] watchdog: salto (usato da poco)
+Sep 25 20:11:02 vps-d6443a46 start-service.sh[4029575]: 20:11:02 [hdi] watchdog: salto (usato da poco)
+Sep 25 20:15:03 vps-d6443a46 start-service.sh[4029575]: 20:15:03 [hdi] watchdog: salto (usato da poco)
+Sep 25 20:19:03 vps-d6443a46 start-service.sh[4029575]: 20:19:03 [hdi] watchdog: salto (usato da poco)
+Sep 25 20:23:03 vps-d6443a46 start-service.sh[4029575]: 20:23:03 [hdi] watchdog: salto (usato da poco)
+--- ogni riga NON watchdog, ultime 30 ---
+Sep 26 06:28:15 vps-d6443a46 systemd[1]: Stopping hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400...
+Sep 26 06:28:15 vps-d6443a46 start-service.sh[4029575]: 06:28:15 [hdi] [shutdown] SIGTERM → chiudo il contesto ed esco
+Sep 26 06:28:17 vps-d6443a46 systemd[1]: hdi-scraper.service: Deactivated successfully.
+Sep 26 06:28:17 vps-d6443a46 systemd[1]: Stopped hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Sep 26 06:28:17 vps-d6443a46 systemd[1]: hdi-scraper.service: Consumed 3h 15min 30.918s CPU time over 3d 23h 38min 7.595s wall clock time, 827.6M memory peak.
+Sep 26 06:28:17 vps-d6443a46 systemd[1]: Started hdi-scraper.service - HDI scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4400.
+Sep 26 06:28:21 vps-d6443a46 start-service.sh[555471]: 🔑 VNC HDI su 127.0.0.1:5903 — tunnel SSH dal Mac per il primo login
+Sep 26 06:28:35 vps-d6443a46 start-service.sh[555655]: 06:28:35 [hdi] Non loggato: provo auto-login...
+Sep 26 06:28:38 vps-d6443a46 start-service.sh[555655]: 06:28:38 [hdi] autoLogin: campi compilati = {"ok":true}
+Sep 26 06:28:53 vps-d6443a46 start-service.sh[555655]: 06:28:53 [hdi] autoLogin: non loggato (serve codice o primo accesso via VNC)
+Sep 26 06:28:53 vps-d6443a46 start-service.sh[555655]: 06:28:53 [hdi] Auto-login non riuscito. Mappa con /logindump oppure accedi via VNC (127.0.0.1:5903).
+Sep 26 06:28:54 vps-d6443a46 start-service.sh[555655]: 06:28:54 [hdi] login non rilevato (pronto per VNC)
+Sep 26 06:28:54 vps-d6443a46 start-service.sh[555655]: 06:28:54 [hdi] === SERVIZIO ITALIANA ATTIVO (login generico) ===
+Sep 26 06:28:54 vps-d6443a46 start-service.sh[555655]: 06:28:54 [hdi] Telecomando HTTP HDI su 127.0.0.1:4400
+Sep 26 06:29:11 vps-d6443a46 start-service.sh[555655]: 06:29:11 [hdi] Non loggato: provo auto-login...
+Sep 26 06:29:11 vps-d6443a46 start-service.sh[555655]: 06:29:11 [hdi] [freno] tentativo di accesso saltato — in attesa, prossimo tentativo 06:43:53
+Sep 26 06:29:11 vps-d6443a46 start-service.sh[555655]: 06:29:11 [hdi] Auto-login non riuscito. Mappa con /logindump oppure accedi via VNC (127.0.0.1:5903).
+Sep 26 06:29:15 vps-d6443a46 start-service.sh[555655]: 06:29:15 [hdi] UEFA pre-warm: nessun token
+=== da quanto gira il servizio ===
+ActiveEnterTimestamp=Sat 2026-09-26 06:28:17 UTC

@@ -125,6 +125,73 @@ prova('una modifica di OGGI non si nasconde dietro un contrassegno di ieri', () 
   return sporchi.length + ' modificati, contrassegni al giorno';
 });
 
+prova('non solo i motori: OGNI foglio e script locale dei due documenti', () => {
+  /* IL BUCO, MISURATO IL 27/09/2026. Le tre prove qui sopra guardano
+     `tariffe/motore/*.js`, e una prova nel banco di IAM guardava TRE file della
+     scocca scritti a mano. Tutto il resto non lo guardava nessuno — e il resto
+     era pieno:
+
+       · analisi-bisogni-rating.js  contrassegno del 4 agosto, file del 16 settembre
+                                    (quarantatre giorni: nessuno se n'era accorto)
+       · withus-ticket-uno.js       contrassegno fisso «1», file del 16 settembre
+       · withus-pictograms.css      contrassegno del 4 agosto, file del 16 settembre
+       · config.js                  NESSUN contrassegno, e porta l'indirizzo e la
+                                    chiave del database: il giorno che cambiano,
+                                    chi ha il programma aperto non li riceve
+
+     Un elenco di file scritto a mano copre quello che chi l'ha scritto aveva in
+     mente. Questa prova non ha elenchi: legge i due documenti, prende ogni
+     foglio e ogni script LOCALE, e chiede a tutti la stessa cosa. Il file
+     aggiunto domani e' coperto senza che nessuno se ne ricordi.
+
+     UN CONTRASSEGNO CHE NON E' UNA DATA NON CAMBIA MAI, ed e' il caso peggiore
+     di tutti: «1» resta «1» per sempre, quindi quell'indirizzo il browser non
+     lo richiede piu'. Percio' qui si pretende una data, non una stringa
+     qualunque: la lettera in coda serve per due rilasci nello stesso giorno. */
+  if (!ultimoCommit('index.html')) return null;
+
+  const LOCALI = /(?:src|href)="([^"]+\.(?:js|css))(\?v=([^"]*))?"/g;
+  const male = [], sporchi = new Set();
+  try {
+    execSync('git status --porcelain', { cwd: RADICE, stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString().trim().split('\n').filter(Boolean).forEach(r => sporchi.add(r.slice(3).trim()));
+  } catch (e) { /* senza git si salta solo il confronto sul lavoro in corso */ }
+  const oggi = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+
+  let contati = 0;
+  for (const doc of DOCUMENTI) {
+    const s = fs.readFileSync(path.join(RADICE, doc), 'utf8');
+    const base = path.dirname(doc);
+    let m;
+    LOCALI.lastIndex = 0;
+    while ((m = LOCALI.exec(s))) {
+      const url = m[1], ver = m[3];
+      if (/^(?:https?:)?\/\//.test(url)) continue;              // da un altro sito: non e' nostro
+      /* IAM carica i motori del preventivatore da un indirizzo assoluto, che
+         sulla stessa origine e' la radice del repository (deploy/caddy). */
+      const rel = url.startsWith('/')
+        ? url.replace(/^\/nuovo-preventivo\//, '').replace(/^\//, '')
+        : path.normalize(path.join(base, url));
+      if (!fs.existsSync(path.join(RADICE, rel))) continue;      // non e' un file di questo repo
+      contati++;
+      if (!ver) { male.push(doc + '  ' + url + '  senza contrassegno: il browser non lo richiedera\' mai piu\''); continue; }
+      if (!/^\d{8}[a-z]?$/.test(ver)) { male.push(doc + '  ' + url + '  contrassegno «' + ver + '»: non e\' una data, quindi non cambia mai'); continue; }
+      const quando = ultimoCommit(rel);
+      if (quando && ver.slice(0, 8) < quando) {
+        male.push(doc + '  ' + url + '  v=' + ver + '  ma il file e\' del ' + quando);
+      } else if (sporchi.has(rel) && ver.slice(0, 8) < oggi) {
+        male.push(doc + '  ' + url + '  v=' + ver + '  ma lo stai modificando oggi (' + oggi + ')');
+      }
+    }
+  }
+  deve(contati > 40, 'ne ho letti solo ' + contati + ': la lettura non sta funzionando');
+  deve(!male.length,
+    'contrassegni da sistemare — chi ha il programma aperto continua a usare la copia vecchia:\n        '
+    + male.join('\n        ')
+    + '\n        La data si legge con:  git log -1 --format=%cd --date=format:%Y%m%d -- <file>');
+  return contati + ' fra fogli e script, tutti contrassegnati e nessuno indietro';
+});
+
 console.log('\n' + passate + ' superate, ' + fallite + ' fallite'
   + (saltate ? ', ' + saltate + ' saltate (clone superficiale)' : '') + '\n');
 process.exit(fallite ? 1 : 0);

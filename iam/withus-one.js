@@ -578,6 +578,28 @@
         { l: 'Anomalie', i: 'i-warn', go: function () { vai('anomalie'); } },
         { l: 'Sospesi', i: 'i-fold', go: function () { vai('sospesi'); } },
         { hr: true },
+        /* IL FOGLIO CASSA HA UNA VOCE SUA (26/09/2026, richiesta di Francesco:
+           «metti anche una voce foglio cassa dedicata nella sezione
+           contabilità»).
+
+           Non è la stessa cosa della Quadratura di giornata, ed è il motivo per
+           cui sono due voci e non una (la definizione per esteso sta in
+           IAM_MASTER_SPEC.md §4bis):
+
+             · FOGLIO CASSA = che cosa è ENTRATO, rata per rata: chi ha pagato,
+               con che mezzo, quanta provvigione resta all'agenzia e quanta è
+               del collaboratore. Si legge dalle rate incassate, quindi non va
+               compilato: c'è già.
+             · QUADRATURA DI GIORNATA = il confronto fra quello che Francesco
+               dichiara a mano a fine giornata e quello che risulta.
+
+           La schermata esiste già dentro il preventivatore e si apre qui nello
+           stesso riquadro di «Campagne email». Non se ne fa una copia in IAM:
+           due schermate uguali in due app danno due numeri, e quello sbagliato
+           è sempre quello che nessuno guarda. Finora si raggiungeva solo da un
+           tasto dentro il Portafoglio — cioè da nessuna parte, per chi la cassa
+           la cerca in Contabilità. */
+        { l: 'Foglio cassa', i: 'i-euro', go: function () { aprireQuoto('foglio-cassa', { menu: 'carica', titolo: ['Foglio cassa', 'Contabilità'] }); } },
         /* Il foglio di cassa a mano e il suo storico restano: sono i 68 giorni
            già scritti, l'unica contabilità che questa agenzia ha finché i
            numeri del ricostruito non saranno stati confrontati con i suoi. */

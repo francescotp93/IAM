@@ -67,11 +67,18 @@ Due prove nuove — `colonne-che-esistono` copriva solo metà del problema
 (che la colonna esista, non che sia la stessa che poi si legge).
 Cinque sabotaggi, cinque rossi; il secondo lo prende solo la prova nuova.
 
-### P1.3 · Suite `tracciabilita` rossa
-«Manca il cliente dell'anagrafica: ogni analisi…» e
-`Cannot read properties of undefined (reading 'parametri_usati')`.
-Da capire se è la prova a essere scritta su dati che non esistono più o
-il codice a essere rotto.
+### ~~P1.3 · Suite `tracciabilita` rossa~~ — **fatto 26/09/2026**
+Era la prova, non il codice. Rossa **dal 17 settembre**: quel giorno è
+entrata la regola «ogni analisi parte da un cliente dell'anagrafica» e
+il campione non è mai stato aggiornato. Nove giorni di rosso che nessuno
+ha guardato — lo stesso schema di `colonne-che-esistono`, che nel
+frattempo nascondeva un difetto vero.
+
+Tre prove rimesse in piedi, e due di loro dicevano il contrario di
+quello che il codice fa **adesso**, che è meglio: un riferimento storto
+viene rifiutato invece che azzerato in silenzio, e il foglio esce come
+PDF prima di essere archiviato. Una terza ritagliava un pezzo di file
+troppo largo e finiva dentro le funzioni di email e WhatsApp.
 
 ### P1.4 · Triare le tre suite rosse rimaste
 `esiti` (4 superate, 16 fallite), `otp-dalla-posta` (5/12),
@@ -79,13 +86,25 @@ il codice a essere rotto.
 deve **dirlo e saltare**, non fallire: una suite che fallisce per
 l'ambiente insegna a ignorare il rosso.
 
-### P1.5 · Sei codici produttore HDI senza persona
-A12556 (7 polizze), A12559 (5), A18544, A18545, A4346, A12558. Quelle
-polizze sono in archivio **senza intestatario**: non contano per nessun
-collaboratore, né in produzione né in provvigioni.
+### P1.5 · L'85% del portafoglio non ha un intestatario
+**3.494 polizze su 4.097** (85,3%), per **1.113.069 € di premio annuo**,
+non risalgono a nessun collaboratore. Su 23 codici produttore ne
+risultano decisi **due**.
 
-**Fatto quando**: ogni codice è abbinato, e le polizze risalgono alla
-persona giusta.
+Il 26/09 ho corretto il difetto che rendeva il problema più piccolo di
+quanto fosse: l'importazione registrava un codice solo se il flusso
+portava anche un nome, e il tracciato HDI il nome non ce l'ha. Sei
+codici HDI non arrivavano mai alla schermata dell'abbinamento — non era
+una dimenticanza di Francesco, l'app non gliel'ha mai chiesto. Adesso ci
+sono tutti.
+
+**Cosa resta, e non è codice**: chi sia ogni codice lo può dire solo
+Francesco. La schermata è in IAM (Abbinamento) e nel preventivatore.
+Quindici codici Prima coprono da soli 3.470 polizze: deciderne quattro
+— U25236, U25274, U25940, U29015 — ne copre 2.667.
+
+**Fatto quando**: le polizze risalgono alla persona giusta, e la
+produzione di ogni collaboratore somma quello che ha venduto davvero.
 
 ---
 
@@ -122,6 +141,106 @@ riancorano a una fotografia salvata nel repository, o si ritirano
 dicendolo. Lasciarle rosse è peggio di toglierle: insegna a ignorare il
 rosso.
 
+### P1.6 · Il piano dei conti del manuale AssiEasy — **serve una decisione di Francesco**
+Trovato il 26/09/2026 leggendo il manuale di contabilità di AssiEasy che
+Francesco ha portato come modello. `iam_conti` ha 8 conti e **nessuno con
+`e_conto_sospeso = true`**: le causali `apertura_sospeso` e
+`recupero_sospeso` esistono e non hanno un conto su cui atterrare — è come
+avere il verbo senza il soggetto. E `iam_sospesi` è vuota.
+
+Mancano, per il manuale: Assegni · POS (che il manuale consiglia di
+trattare **come sospeso**, perché l'accredito arriva giorni dopo) ·
+Sospesi di agenzia · Sospesi per collaboratore · Debito verso compagnia
+(uno per compagnia) · Abbuoni passivi (costo) · Abbuoni attivi (ricavo) ·
+Partite varie.
+
+**Non la decido io**: quanti cassetti contante, quali banche, POS come
+sospeso o no, sospesi globali o per collaboratore. Il manuale stesso dice
+che «dipende dalla struttura e dalla consuetudine aziendale». Sono scelte
+contabili dell'agenzia. L'elenco completo con le prerogative sta in
+`IAM_CONTABILITA_ASSIEASY.md` § 4A.
+
+Appena risponde: migrazione additiva, e P1.7 diventa possibile.
+
+### P1.7 · Le 14 causali non sanno su quali conti scrivere
+`conto_entrata_id` e `conto_uscita_id` sono **NULL su tutte e
+quattordici**. È l'anello che tiene ferma la catena: senza, la partita
+doppia non si genera da sé e `iam_movimenti` resta a 6 righe. Dipende da
+P1.6 (i conti devono esistere prima).
+
+### P2.11 · Le partite non tecniche non si possono inserire
+Il manuale (cap. 3) è esplicito: nei flussi di compagnia i premi ci sono
+sempre, **le partite non tecniche spesso no** — rimesse, rappel,
+contributi, spese legali, storni fatti in compagnia, adeguamenti di premi
+e provvigioni, pagamenti sinistri. Vanno inserite a mano, altrimenti il
+saldo di IAM non sarà **mai** identico a quello del foglio cassa della
+compagnia: mancherà sempre la differenza delle PNT.
+
+Oggi in IAM non c'è modo di inserirne una. L'allineamento del foglio cassa
+è impossibile per costruzione, non per un difetto.
+
+### P2.12 · Saldo Finanziario e Saldo Economico: manca la sottrazione
+Il cruscotto mostra già i tre ingredienti separati («Premi dei clienti»,
+«Soldi dell'agenzia», «Premi da rimettere») ma nessuno risponde alle due
+domande che il manuale mette in cima alla quadratura:
+
+- **Saldo Finanziario** = liquidità − debito verso le compagnie →
+  *riesco a pagare quello che devo rimettere?*
+- **Saldo Economico** = Saldo Finanziario + premi sospesi →
+  *quanto guadagno se incasso tutti i sospesi?*
+
+I numeri ci sono tutti, manca il conto. Piccolo, e va nel motore
+`contabilita.js` accanto al cruscotto — non in una schermata.
+
+### P2.10 · I 2.289 titoli `PN` di Prima non hanno una sigla
+Dei 3.218 titoli in archivio, 890 hanno la sigla (NP/QR/QF/AP/SO) e 2.328
+no. Di quelli, 2.289 sono i `prima_rata` di Prima: il suo codice `PN`
+copre **nuovo affare, rinnovo E sostituzione**, quindi scriverci NP
+vorrebbe dire dichiarare «cliente nuovo» su un rinnovo — e nascondere
+proprio i rinnovi.
+
+Il rinnovo, per Prima, si riconosce dalla **catena delle annualità**: una
+polizza che comincia dove finisce la precedente sulla stessa targa. Sono
+**977 in archivio**, e la distanza fra le due è misurata: 900 coppie
+attaccate (fra −5 e +5 giorni), 67 entro un mese, 16 più lontane, 7 che
+cominciano prima (quelle sono sostituzioni).
+
+Da fare: il motore che ricava la catena, con le sue prove e i suoi
+sabotaggi, **prima** della migrazione che scrive le sigle — marcate
+`sigla_dedotta = true`, perché una deduzione non è la parola di nessuno.
+
+Non è urgente: il filtro dei mancati rinnovi funziona già senza, perché
+guarda anche le annualità finite alla loro scadenza. Serve a rendere
+leggibile la storia di una polizza, titolo per titolo.
+
+### P2.9 · `copertura_al` dice due cose diverse, e la schermata ne mostra una sbagliata
+Trovato il 26/09/2026 misurando le polizze attive. La colonna
+`quote_polizze.copertura_al` viene riempita dal flusso SSF con
+`SCADENZA_INCASSATO`, cioè **«pagata fino al»** — ed è giusto per una
+frazionata: la copertura vale fin dove è pagata.
+
+Ma sui numeri veri non torna: su **574 polizze PRIMA** è più corta della
+scadenza, e fra queste **93 sono Annuali già pagate** con una
+`copertura_al` a pochi giorni dall'effetto (un caso: effetto 05/11/2025,
+`copertura_al` 06/11/2025, scadenza 05/11/2026, rata incassata). Per un
+premio annuale pagato in una volta, «pagata fino al» dovrebbe coincidere
+con la scadenza: lì dentro c'è qualcosa che non è una copertura.
+
+Il guaio è che **si vede già**: `pfCopertura` (`index.html:16253`) e
+`copertura` (`withus-one/moduli/polizze.js:55`) leggono quella colonna
+come fine della copertura e scrivono «Copertura: terminata il …». Su
+**155 polizze** la colonna è passata mentre la polizza corre: quelle 155
+righe oggi dicono una bugia al primo sguardo.
+
+Da fare: leggere sul tracciato SSF vero cos'è `SCADENZA_INCASSATO` sulle
+righe Annuali (e chiederlo a Prima se il tracciato non basta); poi o si
+corregge il flusso, o si insegna alle due schermate che per una polizza
+non frazionata quella colonna non è la fine della copertura.
+
+**Il motore `portafoglio-stato` non la guarda** — di proposito, e con una
+prova che lo tiene fermo: se la guardasse, **45 clienti attivi
+diventerebbero «persi»** e finirebbero in rosso.
+
 ### P2.5 · Tabelle costruite e mai usate
 `iam_lead`, `iam_agenda`, `quote_segmenti`, `quote_sinistri`,
 `iam_firme`, `iam_formazione`, `quote_rinnovi`, `iam_incassi*`,
@@ -157,6 +276,13 @@ indicazioni scritte nell'intestazione del file.
 - **P3.1** Nessun router unico: ogni famiglia di pannelli ha il suo
   commutatore. Nessuna pagina ha un indirizzo proprio, quindi non si può
   mandare un collegamento a una schermata.
+- **P3.4 · 5.037 stili scritti in linea** (2.376 nel quotatore, 2.661 in IAM)
+  e 336 larghezze fisse in pixel. Sono la vera causa di come si vede
+  l'app: lo stesso riquadro è scritto in venti modi diversi, e su uno
+  schermo stretto le larghezze fisse spingono la pagina di lato.
+  **Non si toccano alla cieca**: servono prima le prove da utente vero
+  (P4.1), altrimenti si cambia l'aspetto di 60.000 righe senza poter
+  guardare che cosa si è rotto.
 - **P3.2** Due file da 33.000 e 27.000 righe. Non si riscrivono: si
   continua a estrarre le regole nei motori, come si sta già facendo.
 - **P3.3** Trenta documenti markdown nella radice, scritti in momenti
@@ -180,12 +306,17 @@ indicazioni scritte nell'intestazione del file.
 
 ## P5 — funzioni nuove (non prima che P0 e P1 siano chiusi)
 
-- **P5.1 · Prima Assicurazioni nel portafoglio.** È un obiettivo
-  strategico dichiarato e oggi **non esiste**: zero polizze Prima in
-  archivio. Serve decidere da dove arrivano i dati (flusso, estrazione,
-  API) prima di scrivere una riga.
-- **P5.2** Segmenti salvabili e riusabili (`quote_segmenti` è pronta e
-  vuota).
+- ~~**P5.1 · Prima Assicurazioni nel portafoglio.**~~ **Era già fatto, e
+  l'avevo scritto al contrario.** Prima è il **99,4% del portafoglio**:
+  4.073 polizze su 4.097, 2.477 clienti, dal maggio 2024. Avevo guardato
+  la tabella `prima_preventivi` (vuota, serve all'estensione dei
+  preventivi) invece della colonna `compagnia` delle polizze. Una
+  tabella vuota non dimostra che una funzione non c'è: dimostra che
+  quella tabella è vuota.
+- **P5.2** Segmenti **salvabili e riusabili**: i filtri adesso ci sono
+  tutti, ma ogni ricerca va ricomposta a mano. `quote_segmenti` è pronta
+  e vuota — è il passo che trasforma una ricerca in una campagna
+  ripetibile.
 - **P5.3** Campagne commerciali a partire dai segmenti.
 - **P5.4** WhatsApp, email automatiche, scoring, suggerimenti, altre
   compagnie.
@@ -198,6 +329,13 @@ indicazioni scritte nell'intestazione del file.
 |---|---|
 | 25/09/2026 | **Stato di pagamento dai flussi**: incassato/sospeso/da incassare deciso dal movimento della compagnia e non dall'etichetta; l'importazione aggiorna le rate già in archivio ma non tocca mai una correzione a mano. Verificato sul file vero (12 rate, 3.217,39 €) |
 | 25/09/2026 | **Le polizze HDI** dicevano tutte «non pagato» con 12 rate incassate |
+| 26/09/2026 | **`tracciabilita` torna verde**: era rossa dal 17/09 per un campione mai aggiornato. Restano 2 suite rosse su 71, e nessuna per un difetto dell'app |
+| 26/09/2026 | **I codici produttore nudi**: l'importazione li scartava se il flusso non portava un nome, e il tracciato HDI il nome non ce l'ha. Sei codici non arrivavano mai alla schermata che li decide |
+| 26/09/2026 | **Il vocabolario delle compagnie e dei rami**: `rca` e `auto` erano due rami diversi, «HDI» e «HDI Assicurazioni» due compagnie. «Polizza auto» trovava 15 polizze invece di 4.005 |
+| 26/09/2026 | **La ricerca per garanzia** («auto senza infortuni del conducente») e il filtro «ha note in anagrafica» |
+| 25/09/2026 | **Le ricerche sul portafoglio**: l'assenza («auto senza casa»), compagnia, provincia, scadenza e premio. Le otto domande del mandato ora rispondono tutte |
+| 25/09/2026 | **I tasti**: una prova controlla che tutti e 2.108 i gestori chiamino qualcosa che esiste. Nessun tasto morto |
+| 25/09/2026 | **Lo zoom con le dita** era bloccato in IAM; i campi vanno a 16px dove si tocca, così iOS non ingrandisce da solo |
 | 25/09/2026 | **P0 · le dipendenze**: da 961 a 1.111 prove superate, da 16 a 4 suite rosse |
 | 25/09/2026 | **P1 · il filtro per gruppo del CRM** restituiva sempre zero clienti, in silenzio |
 | 25/09/2026 | **I mezzi di pagamento veri** (`carta_credito`, `altro`, `pos_bianco`, `pos_nero`) non erano riconosciuti: sul 23/09 erano 2 su 5 |

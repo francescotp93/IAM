@@ -73,6 +73,38 @@ prova('nessuna pagina si apre con il contenitore vuoto', () => {
   return 'tutte le pagine a contenuto scritto dal codice hanno la loro porta';
 });
 
+prova('ogni voce di menu di IAM chiede una pagina che esiste e ha la porta', () => {
+  /* 26/09/2026. Il menu di IAM apre schermate del preventivatore con
+     `aprireQuoto('<pagina>')` — «Campagne email», «Richieste», e da oggi
+     «Foglio cassa» sotto Contabilità. Se quel nome non corrisponde a nessuna
+     `page-<nome>`, la voce apre il riquadro sulla home e da fuori sembra che il
+     menu abbia ignorato il clic; se la pagina c'è ma non ha la porta si apre
+     bianca, che è il guasto per cui questa suite esiste.
+
+     Sono due difetti che si vedono solo cliccando, e nessuno clicca tutte le
+     voci del menu prima di un rilascio. */
+  const menu = fs.readFileSync(path.join(RADICE, 'iam', 'withus-one.js'), 'utf8');
+  const chieste = [...menu.matchAll(/aprireQuoto\('([a-z0-9-]+)'/g)].map(m => m[1]);
+  deve(chieste.length >= 3, 'trovate ' + chieste.length + ' voci: il modo di scrivere il menu è cambiato, rileggere');
+  deve(chieste.includes('foglio-cassa'), 'la voce «Foglio cassa» non c\'è più nel menu della Contabilità');
+  /* La porta serve solo alle pagine il cui contenuto lo scrive il codice — la
+     stessa regola della prima prova di questa suite. La home è HTML pieno e
+     non ha bisogno di nessuno che la riempia: pretendere una porta anche da
+     lei renderebbe rossa una voce che funziona, e una prova che grida al lupo
+     la si smette di guardare. */
+  const gusci = new Set(blocchiPagina()
+    .filter(p => /id="[a-z0-9-]+-(?:content|grid|view)"\s*>\s*<\/div>/.test(p.html))
+    .map(p => p.nome));
+  const guasti = [];
+  for (const p of new Set(chieste)) {
+    const base = p.split(':')[0];
+    if (!src.includes('id="page-' + base + '"')) { guasti.push(p + ': la pagina non esiste in QUOTO'); continue; }
+    if (gusci.has(base) && !haPorta(base)) guasti.push(p + ': il contenuto lo scrive il codice e non ha la porta, si aprirebbe bianca');
+  }
+  deve(guasti.length === 0, guasti.join(' | '));
+  return new Set(chieste).size + ' pagine chieste dal menu, tutte raggiungibili';
+});
+
 prova('la porta non passa da showPage, altrimenti si gira in tondo', () => {
   const i = src.indexOf('function showPage(');
   const corpo = src.slice(i, src.indexOf('\n}', i));

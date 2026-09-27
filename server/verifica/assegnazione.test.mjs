@@ -647,6 +647,35 @@ prova('quello che NON si tocca si conta, e non si sovrascrive a sorpresa', () =>
   return 'non sovrascrive, e dichiara quello che lascia fuori';
 });
 
+prova('un codice NUDO arriva lo stesso alla schermata che lo decide', () => {
+  /* IL GUASTO DEL 26/09/2026, e il modo in cui era invisibile.
+
+     L\'importazione registrava un codice produttore solo se il flusso portava
+     ANCHE un nome, una email o un RUI:
+
+         .filter(c => c.codice && (c.nome || c.email || c.rui || c.produttore))
+
+     È una condizione scritta guardando l\'SSF, che quei campi li manda. Il
+     tracciato HDI no: manda il solo codice, e il nome non c\'è da nessuna
+     parte. Risultato: sei codici HDI non entravano mai in
+     `quote_codici_collaboratore`, quindi non comparivano sulla schermata
+     dell\'abbinamento, quindi NON SI POTEVANO DECIDERE. Diciotto polizze
+     restavano senza intestatario, e non per una dimenticanza di Francesco:
+     l\'app non gliel\'ha mai chiesto.
+
+     Un codice nudo è proprio quello che ha PIÙ bisogno di finire lì: non c\'è
+     un nome da cui indovinare, e l\'unico che può dire di chi è è una persona. */
+  const quoto = fs.readFileSync(path.join(QUI, '..', '..', 'index.html'), 'utf8');
+  const i = quoto.indexOf('const evidenze = (p.collaboratori || [])');
+  deve(i > 0, 'non trovo più il punto in cui l\'importazione registra i codici');
+  const blocco = quoto.slice(i, quoto.indexOf('.map(', i));
+  deve(!/c\.nome\s*\|\|\s*c\.email/.test(blocco),
+    'un codice torna a registrarsi solo se porta anche un nome: i codici HDI spariranno di nuovo');
+  deve(/\.filter\(c => c\.codice\)/.test(blocco),
+    'la condizione non è più «basta il codice»: ' + blocco.slice(0, 160));
+  return 'basta il codice';
+});
+
 prova('le tre schermate che decidono applicano tutte, e tutte dalla stessa funzione', () => {
   /* Il guasto era qui: in IAM si poteva abbinare un codice e niente in IAM
      applicava la decisione. La conferma prometteva addirittura il contrario. */

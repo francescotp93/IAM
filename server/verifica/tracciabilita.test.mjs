@@ -73,8 +73,20 @@ const UNALTRO = '99999999-8888-7777-6666-555555555555';
 /* Il caso di riferimento, con il motore nuovo (12/09/2026). */
 const analisi = () => P.calcola({ eta: 33, lavoro: 'dipendente', redditoMensile: 1800,
   baseReddito: 'netto', versamentoMensile: 200, etaInizioLavoro: 24 });
+/* Il cliente dell'anagrafica a cui l'analisi è agganciata. MANCAVA, e questa
+   suite era rossa dal 17/09/2026 — dal giorno in cui la regola «ogni analisi
+   parte da un cliente dell'anagrafica» è entrata nel motore (PR #167) senza
+   che il campione di prova fosse aggiornato.
+
+   Nove giorni di rosso che nessuno ha guardato: è lo stesso schema di
+   `colonne-che-esistono`, che aveva trovato un difetto vero e stava lì. Una
+   suite rossa per un campione vecchio è peggio di una suite che non c'è,
+   perché insegna a non guardare il rosso. */
+const ANAGRAFICA = '33333333-4444-5555-6666-777777777777';
+
 const scheda = (extra) => P.schedaArchivio(Object.assign({
   esito: analisi(),
+  anagraficaId: ANAGRAFICA,
   cliente: { nome: 'Mario Rossi' },
   consulente: { nome: 'Francesco Oddo', ruolo: 'Consulente previdenziale', rui: 'B000123456' },
   dataRiferimento: '12/09/2026',
@@ -155,9 +167,25 @@ prova('senza un utente riconosciuto non si scrive', () => {
   deve(!A.preparaRiga({ riga: scheda().riga }, { id: 'pippo' }).ok, 'ha accettato un identificativo che non è un uuid');
 });
 
-prova('un riferimento anagrafica che non è un uuid diventa vuoto, non un errore', () => {
+prova('un riferimento anagrafica che non è un uuid viene RIFIUTATO, non azzerato', () => {
+  /* QUESTA PROVA DICEVA IL CONTRARIO, e diceva bene fino al 17/09/2026:
+     allora il cliente era facoltativo, e un riferimento storto si azzerava
+     per non far rifiutare dal database la riga intera.
+
+     Poi è entrata la regola «ogni analisi parte da un cliente
+     dell'anagrafica», e da quel momento azzerare sarebbe la cosa peggiore:
+     archivierebbe un'analisi attaccata a nessuno, che fra un anno non si sa
+     più di chi era — cioè esattamente la domanda per cui quell'archivio
+     esiste. Meglio fermarsi e dirlo.
+
+     La prova è rimasta indietro nove giorni insieme al resto della suite. */
   const p = A.preparaRiga({ riga: Object.assign(scheda().riga, { anagrafica_id: 'cliente-42' }) }, IO);
-  deve(p.ok && p.riga.anagrafica_id === null, 'il riferimento sbagliato è passato: il database rifiuterebbe la riga intera');
+  deve(!p.ok, 'un riferimento storto è passato: archivierebbe un\'analisi attaccata a nessuno');
+  deve(/anagrafica|persona|cliente/i.test(p.errore || ''),
+    'l\'errore non dice che cosa manca: ' + p.errore);
+  /* E lo stesso vale per un riferimento del tutto assente. */
+  const r2 = scheda().riga; delete r2.anagrafica_id;
+  deve(!A.preparaRiga({ riga: r2 }, IO).ok, 'senza cliente l\'analisi è stata archiviata lo stesso');
 });
 
 prova('una scheda smisurata si ferma qui, non nel database', () => {
@@ -262,10 +290,40 @@ prova('la stampa non aspetta l\'archivio', () => {
      mezzo — server lento, rete che non va — il foglio non esce. Prima si
      stampa, poi si archivia. */
   const html = fs.readFileSync(path.join(radice, 'index.html'), 'utf8');
-  const f = html.slice(html.indexOf('function pensFoglio()'), html.indexOf('async function pensArchivia'));
+  /* LA FETTA SI FERMA ALLA FUNZIONE DOPO. Prima arrivava fino a
+     `pensArchivia`, e in mezzo ci stavano anche le funzioni di email,
+     WhatsApp e link: le loro archiviazioni finivano nel conto di questa
+     prova, che le bocciava per una regola che non le riguarda. È lo stesso
+     inciampo già capitato due volte in questo repository — ritagliare a
+     occhio e finire dentro la funzione dopo. */
+  const inizio = html.indexOf('function pensFoglio()');
+  deve(inizio > 0, 'non trovo più la funzione che stampa il foglio');
+  const dopo = html.slice(inizio + 10).search(/\n(?:async )?function /);
+  deve(dopo > 0, 'non trovo dove finisce pensFoglio');
+  const f = html.slice(inizio, inizio + 10 + dopo);
   deve(f.includes('pensArchivia('), 'il foglio non viene più archiviato');
-  deve(f.indexOf('w.document.write(r.html)') < f.indexOf('pensArchivia('),
-    'l\'archiviazione precede la stampa: un archivio lento terrebbe fermo il foglio');
+
+  /* SI GUARDA OGNI STRADA, non la prima occorrenza nel file.
+     La prova confrontava `indexOf('w.document.write')` con
+     `indexOf('pensArchivia(')` in tutta la funzione. Funzionava finché c'era
+     una strada sola. Da quando il foglio esce prima come PDF e solo in
+     ripiego come HTML, la prima `pensArchivia(` sta nel ramo del PDF — prima
+     del `document.write` dell'altro ramo — e la prova diventava rossa su un
+     codice giusto. Una prova che boccia il codice corretto viene disattivata
+     dal primo che ha fretta, e da quel momento non protegge più niente.
+
+     La regola vera è: OGNI archiviazione deve venire dopo una consegna, nella
+     sua strada. Qui si prende ogni `pensArchivia(` e si guarda indietro. */
+  const CONSEGNE = ['ppScaricaBlob(', 'document.write('];
+  const punti = [...f.matchAll(/pensArchivia\(/g)].map((m) => m.index);
+  deve(punti.length > 0, 'nessuna archiviazione nella funzione del foglio');
+  const senzaConsegna = punti.filter((i) => {
+    const prima = f.slice(Math.max(0, i - 400), i);
+    return !CONSEGNE.some((c) => prima.includes(c));
+  });
+  deve(senzaConsegna.length === 0,
+    senzaConsegna.length + ' archiviazioni su ' + punti.length + ' non hanno una consegna prima: '
+    + 'un archivio lento terrebbe fermo il foglio con il cliente seduto davanti');
   deve(!/await\s+pensArchivia/.test(f), 'la stampa aspetta l\'archivio');
   deve(/NON \S+ finito in archivio|NON è finito in archivio/.test(html),
     'un archivio che fallisce in silenzio è peggio di non averlo: manca l\'avviso al consulente');

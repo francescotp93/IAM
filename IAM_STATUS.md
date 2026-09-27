@@ -21,16 +21,54 @@
 
 ## Quadro d'insieme
 
-**1.111 prove superate su 68 suite; 4 suite rosse.**
+**1.278 prove superate su 75 suite; 2 suite rosse.**
+
+Il conto ora lo dà un comando solo — `node server/verifica/tutte.mjs` —
+scritto il 26/09 perché a `grep` fatti a mano veniva ogni volta un numero
+diverso (403 e 885 sullo stesso codice): alcune suite stampano una riga per
+prova, altre solo il riepilogo. Il lanciatore prende il riepilogo che ogni
+suite dichiara di sé, conta i segni verdi solo dove il riepilogo manca, e
+**il verde lo decide il codice di uscita, non il testo**. Nessuna suite
+risulta muta.
 
 All'inizio dell'audit erano 961 e 16. Le dodici recuperate lo sono state
 dichiarando le dipendenze (P0), non toccando il codice: dodici suite
 sembravano a posto e non partivano affatto.
 
-Le quattro rimaste: `colonne-che-esistono` **è tornata verde** dopo la
-correzione del filtro per gruppo; restano `tracciabilita` (P1.3) e le
-due `parita-*` che confrontano contro un riferimento git che non esiste
-più (P2.4).
+**Non restano suite rosse per difetti dell'app.** Le due che restano sono
+le `parita-*`, che confrontano contro un riferimento git che non esiste
+più (P2.4): è la prova a essere senza ancoraggio, non il codice a essere
+rotto.
+
+`tracciabilita` è tornata verde il 26/09: era rossa **dal 17 settembre**,
+da quando è entrata la regola «ogni analisi parte da un cliente
+dell'anagrafica» senza che il campione di prova fosse aggiornato. Nove
+giorni di rosso che nessuno ha guardato.
+
+Due suite nuove: **`tasti-vivi`** (ognuno dei 2.108 gestori delle due
+pagine chiama qualcosa che esiste — nessun tasto morto) e
+**`visualizzazione`** (lo zoom con le dita non si blocca, e i campi sono
+a 16px dove si tocca).
+
+Il 26/09 se ne sono aggiunte altre tre:
+
+- **`portafoglio-stato`** (55 prove, 29 sabotaggi tutti presi): le tre
+  definizioni da cui dipende chi Francesco chiama — polizza attiva, cliente
+  perso, sigla del titolo. La prima stesura passava con 39 prove su 41: due
+  erano difetti veri («q.r.» non veniva riconosciuta) e la terza l'ha
+  trovata la controprova — una prova sulla sigla della compagnia restava
+  verde anche col guasto dentro, perché il campione arrivava alla risposta
+  giusta per un'altra strada.
+- **`portafoglio-forme-vere`** (10): il motore contro la distribuzione
+  **vera** dei 2.547 clienti, non contro casi che mi sono venuti in mente.
+  I quattro totali combaciano al numero esatto (2.332 polizze attive, 1.925
+  clienti attivi, 564 persi, 511 al rinnovo). Il campione è un censimento di
+  *forme*: dentro non c'è un nome, una targa, una data.
+- **`sintassi-pagina`** (3): due apici inversi in un commento HTML dentro un
+  template literal hanno spento l'intero script di 33.000 righe di QUOTO.
+  Se n'era accorta `parita-amtrust` caricando la pagina in un browser vero,
+  in venti secondi e senza numero di riga; questa lo dice in un decimo di
+  secondo, e si controprova da sola sul guasto che le ha dato il nome.
 
 ---
 
@@ -42,12 +80,12 @@ più (P2.4).
 | 2 | **Polizze** | 🟡 | QUOTO | 4.097 righe. Le polizze HDI dichiaravano tutte «non pagato» con 12 rate incassate: **corretto il 25/09**. `quote_rinnovi` è vuota: il rinnovo non è in uso |
 | 3 | **Portafoglio** | 🟢 | QUOTO | 4.097 polizze + 3.218 rate, suite `produzione`, `provvigioni`, `estratto-conto`, `scadenzario` verdi |
 | 4 | **HDI** | 🟢 | QUOTO | Importazione PASS-133 verificata sul file vero: 11 clienti, 18 polizze, 13 rate, 3.944,39 €, 367,40 € di provvigioni — combaciano col file e con gli «Appunti Incassi» della compagnia. Suite `flusso-hdi` 75/75 |
-| 5 | **Prima Assicurazioni** | 🔴 | — | `prima_preventivi` e `prima_scrape_runs` sono **a zero righe**. Esistono `prima-extension/` e `prima-intermediari/`, ma nel portafoglio non c'è una sola polizza Prima. È un obiettivo dichiarato, non una funzione esistente |
+| 5 | **Prima Assicurazioni** | 🟢 | QUOTO | **CORREZIONE DEL 26/09: il 25 avevo scritto «non esiste, zero polizze». Era falso.** Avevo guardato `prima_preventivi` (vuota — serve ai preventivi dell'estensione) invece della colonna `compagnia` delle polizze. **Prima è il 99,4% del portafoglio: 4.073 polizze su 4.097, 2.477 clienti, dal 14/05/2024.** Rami `rca` e `beni`, garanzie complete su tutte |
 | 6 | **Scadenze** | 🟡 | QUOTO | Suite `scadenzario` 30/30 verde. Le finestre 7/30/60/90 giorni e «rinnovate / non rinnovate» sono **da verificare** contro la schermata |
-| 7 | **Intermediari** | 🟡 | IAM | 17 collaboratori, suite `collaboratori` e `assegnazione` (47) verdi. Ma **6 codici produttore HDI non sono ancora abbinati a una persona**: quelle polizze sono in archivio senza intestatario |
+| 7 | **Intermediari** | 🔴 | IAM | 17 collaboratori, suite verdi (`assegnazione` 48). Ma **85,3% delle polizze non ha un intestatario**: 3.494 su 4.097, 1,1 M€ di premio. Su 23 codici produttore ne risultano decisi **2**. Non è un difetto di codice — è lavoro che aspetta una persona, e ora la schermata glielo permette per tutti |
 | 8 | **Documentazione** | ❔ | QUOTO | `quote_documenti` 9 righe, `quote_pratica_documenti` 1, `quote_regole_documenti` 1. Praticamente non usata. «Documenti mancanti / scaduti» è da verificare |
 | 9 | **Contabilità** | 🟡 | IAM | Vedi la sezione dedicata |
-| 10 | **CRM / segmentazione** | 🟡 | QUOTO+IAM | `crm-analisi` 33/33. Il filtro per gruppo è stato **corretto il 25/09**. Restano vuote `iam_lead` e `quote_segmenti`: lead e segmenti salvati non sono in uso |
+| 10 | **CRM / segmentazione** | 🟢 | QUOTO+IAM | `crm-analisi` **74/74**. Il 26/09 sono entrati i **clienti persi** (564, divisibili per data), i **prospect** (58, mai una polizza) e la distinzione fra chi non ha rinnovato (511) e chi ha disdetto a metà (53). Misurando è venuto fuori che le quietanze di rinnovo in archivio sono **2 su 3.218**: Prima al rinnovo emette una polizza nuova, quindi il criterio «QR» guarda anche le annualità finite alla loro scadenza — senza, la risposta sarebbe 2 invece di 511. Prima: Il 26/09 sono entrate la ricerca **per garanzia** («auto senza infortuni del conducente»: 1.006 clienti veri), il filtro «ha note», e soprattutto il **vocabolario** che mette d'accordo le compagnie — senza, «polizza auto» trovava 15 polizze invece di 4.005. Prima: Il 25/09 sono entrate le ricerche che mancavano — l'**assenza** («auto senza casa»), compagnia, provincia, scadenza, fascia di premio — e si compongono fra loro. Tutte e otto le domande del mandato ora rispondono. Restano vuote `iam_lead` e `quote_segmenti`: lead e segmenti *salvati* non sono in uso |
 
 ---
 
@@ -63,6 +101,7 @@ storico, prima nota, quadratura conti, recuperi, incassa, incassi.
 | La correzione a mano resiste al flusso | 🟡 | La colonna `pagamento_a_mano` c'è e la guardia è provata, **ma la schermata per cambiarlo non esiste ancora**. Oggi non c'è modo di usarla dall'app |
 | Motore della giornata | 🟢 | `contabilita-giornaliera` 39/39. Corretto il 25/09 un difetto per cui `carta_credito`, `altro`, `pos_bianco` e `pos_nero` non venivano riconosciuti: sul 23/09 erano 2 mezzi su 5 |
 | Schermata della giornata | ⚪ | Il motore è pronto e provato, il pannello non è mai stato scritto |
+| Foglio cassa | 🟢 | Dal 26/09 ha una **voce sua in Contabilità**, come chiesto: apre la schermata del preventivatore dentro IAM. Prima si raggiungeva solo da un tasto nel Portafoglio — cioè da nessuna parte, per chi la cassa la cerca in Contabilità. Non se n'è fatta una copia in IAM: due schermate uguali darebbero due numeri |
 | Sospesi | 🔴 | `iam_sospesi` è **vuota**. Il motore sa calcolarli, la tabella non ha acqua |
 | Prima nota / movimenti | 🔴 | `iam_movimenti` ha **6 righe e nessuna uscita**. Le spese vivono come numero unico in `sessioni_giornaliere` (22 giorni su 68) **senza il mezzo di pagamento** |
 | Incassi | 🔴 | `iam_incassi`, `iam_incassi_rate`, `iam_incassi_pagamenti`: **tutte a zero**. L'incasso vero si registra su `quote_titoli.incassato_il` (2.799 rate). Metà del codice cerca nella tabella sbagliata |
@@ -103,8 +142,8 @@ dall'app. È un modulo con un buon motore e senza carburante.
 | ~~1~~ | ~~P0~~ | ~~`package.json` non dichiara nessuna delle 12 dipendenze~~ — **corretto il 25/09**: +150 prove, −12 suite rosse | |
 | ~~2~~ | ~~P1~~ | ~~5 tabelle con RLS accesa e zero politiche~~ — **falso allarme mio**: tre sono chiuse al client di proposito (segreti, credenziali di posta) e una è pure dichiarata nel file di migrazione. Restano due tabelle orfane, scese a **P2.7 / P2.8** | verificato chi le usa, non solo `pg_policies` |
 | ~~3~~ | ~~P1~~ | ~~Il CRM chiede `quote_gruppi_membri.cliente_id`~~ — **corretto il 25/09**, con due prove nuove e cinque sabotaggi | |
-| 4 | **P1** | Suite `tracciabilita` rossa: «Manca il cliente dell'anagrafica», `Cannot read properties of undefined` | eseguita |
-| 5 | **P1** | 6 codici produttore HDI senza persona abbinata | A12556 (7 polizze), A12559 (5), A18544, A18545, A4346, A12558 |
+| ~~4~~ | ~~P1~~ | ~~Suite `tracciabilita` rossa~~ — **corretta il 26/09**: due prove erano rimaste indietro rispetto a una regola del 17/09 e una terza ritagliava troppo largo. Il codice era giusto, e in un punto pure migliorato | |
+| 5 | **P1** | **85,3% del portafoglio senza intestatario**: 3.494 polizze su 4.097, per **1.113.069 € di premio annuo**. Dei 23 codici produttore ne sono stati decisi **2**. Il 26/09 ho corretto il difetto per cui i 6 codici HDI non arrivavano nemmeno alla schermata (l'importazione li scartava perché il tracciato non porta il nome): ora ci sono tutti e 21 da decidere. **Chi sia ogni codice lo può dire solo Francesco** | misurato su `quote_codici_collaboratore` e `quote_polizze.collaboratore_id` |
 | 6 | **P2** | `parita-tariffe` e `parita-catastrofali` confrontano contro un riferimento git **che non esiste più** | «nessun commit contiene più `const TL_MYDRIVE`» |
 | 7 | **P2** | Nessuna schermata per correggere a mano il pagamento di una rata | la colonna c'è, il tasto no |
 | 8 | **P2** | Schermata contabilità giornaliera mai scritta | motore pronto, 39/39 |

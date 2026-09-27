@@ -1041,6 +1041,44 @@ prova('la parola vera di HDI non si perde nella traduzione', () => {
     'la parola di HDI non è rimasta scritta da nessuna parte: ' + a.titoli[0].note);
 });
 
+prova('la sigla dell\'agenzia arriva sulla rata, e non è dedotta', () => {
+  /* 26/09/2026. `tipo` ha quattro valori e schiaccia NP con SO dentro
+     `prima_rata`; e il suo valore `quietanza` vuol dire RINNOVO qui e
+     FRAZIONAMENTO nel flusso di Prima. La sigla serve perché lo stesso valore
+     non voglia dire due cose: senza, la domanda «chi non ha rinnovato?» non ha
+     risposta. HDI le manda per esteso, quindi è la SUA parola: `sigla_dedotta`
+     deve restare falso, altrimenti una schermata scriverebbe «(dedotta)»
+     accanto a un dato certo. */
+  const casi = [['Nuova Polizza', 'NP'], ['Sostituzione', 'SO'],
+                ['Quietanza di Rinnovo', 'QR'], ['Quietanza di Frazionamento', 'QF'],
+                ['Appendice', 'AP']];
+  for (const [parola, sigla] of casi) {
+    const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+      titoli: [TIT({ tipo: parola })], incassi: [INC({ importo: 100 })], busta: {} });
+    const t = a.titoli[0];
+    deve(t.sigla_tipo === sigla, '«' + parola + '» → ' + t.sigla_tipo + ' invece di ' + sigla);
+    deve(t.sigla_dedotta === false, '«' + parola + '» risulta dedotta, ma è la parola della compagnia');
+  }
+});
+
+prova('NP e SO restano distinte, benché finiscano nello stesso `tipo`', () => {
+  /* È il motivo per cui la sigla esiste: `prima_rata` da sola non dice se era
+     una polizza nuova o la sostituzione di una che c'era. */
+  const uno = (parola) => H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+    titoli: [TIT({ tipo: parola })], incassi: [INC({ importo: 100 })], busta: {} }).titoli[0];
+  const np = uno('Nuova Polizza'), so = uno('Sostituzione');
+  deve(np.tipo === so.tipo, 'non condividono più il `tipo`: la prova va riscritta');
+  deve(np.sigla_tipo !== so.sigla_tipo, 'le due sigle si sono confuse: ' + np.sigla_tipo);
+});
+
+prova('una parola che non conosco non prende una sigla a caso', () => {
+  /* Indovinare costa caro: una sigla sbagliata su una quietanza fa un cliente
+     «perso» che invece ha rinnovato, o il contrario. */
+  const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
+    titoli: [TIT({ tipo: 'Zibaldone' })], incassi: [INC({ importo: 100 })], busta: {} });
+  deve(a.titoli[0].sigla_tipo == null, 'ha inventato la sigla ' + a.titoli[0].sigla_tipo);
+});
+
 prova('un tipo che non conosco si dichiara, non si nasconde', () => {
   const a = H.converti({ anagrafiche: [ANA({})], polizze: [POL({})], garanzie: [], sinistri: [],
     titoli: [TIT({ tipo: 'Zibaldone' })], incassi: [INC({ importo: 100 })], busta: {} });

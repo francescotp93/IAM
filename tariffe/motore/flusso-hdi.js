@@ -69,6 +69,15 @@
     return null;
   })();
 
+  /* E il vocabolario delle sigle (NP/QR/QF/AP/SO) sta anche lui in un posto
+     solo: `portafoglio-stato.js`. Se ogni flusso si scrivesse il suo, fra due
+     compagnie «QZ» vorrebbe dire due cose e nessuno lo saprebbe. */
+  var SIGLE = (function () {
+    if (typeof window !== 'undefined' && window.PortafoglioStato) return window.PortafoglioStato;
+    if (typeof require === 'function') { try { return require('./portafoglio-stato.js'); } catch (e) { return null; } }
+    return null;
+  })();
+
   var TIPI = {
     '0':  'testata',
     '10': 'anagrafiche',
@@ -894,6 +903,19 @@
         _polizza: 'hdi:p:' + num,
         _senzaPolizza: false,
         tipo: tp.tipo,
+        /* LA SIGLA, che `tipo` non sa dire (26/09/2026). `tipo` ha quattro
+           valori e schiaccia NP con SO dentro `prima_rata`: fra sei mesi non si
+           sa più che quella era una sostituzione. E il suo valore `quietanza`
+           vuol dire RINNOVO qui e FRAZIONAMENTO nel flusso di Prima — lo stesso
+           valore per due cose diverse, ed è così che si perde la risposta a
+           «chi non ha rinnovato».
+           HDI le manda per esteso, quindi la sigla è la SUA parola e non una
+           nostra deduzione: `sigla_dedotta` resta falso. Quello che non si
+           riconosce resta vuoto ed è già contato fra i tipi ignoti qui sopra:
+           non si indovina, perché una sigla sbagliata su una quietanza fa un
+           cliente «perso» che invece ha rinnovato. */
+        sigla_tipo: SIGLE ? SIGLE.sigla(tp.originale) : null,
+        sigla_dedotta: false,
         data_decorrenza: t.effetto || null,
         data_scadenza: t.scadenza_rata || t.scadenza || null,
         importo_lordo: t.importo,

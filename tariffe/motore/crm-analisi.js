@@ -48,6 +48,56 @@
      accorperebbe nomi che non c'entrano. Si normalizza solo spazi e maiuscole. */
   function chiave(v) { return testo(v).toLowerCase().replace(/\s+/g, ' '); }
 
+  /* ── IL VOCABOLARIO ────────────────────────────────────────────────────────
+     Ogni compagnia chiama le cose a modo suo, e finché non si mettono
+     d'accordo i filtri danno risposte sbagliate senza dirlo. Misurato sul
+     portafoglio vero il 25/09/2026:
+
+         compagnia «PRIMA» ............ 4.073 polizze, rami `rca` e `beni`
+         compagnia «HDI» ................. 18 polizze, rami `auto` e `persona`
+         compagnia «HDI Assicurazioni» .... 5 polizze, rami `beni` e `persona`
+         compagnia «Allianz» .............. 1 polizza,  ramo `rca`
+
+     Tre conseguenze, tutte e tre invisibili a chi guarda il risultato:
+
+       · «clienti HDI» ne trovava 13 invece di 15, perché `HDI` e
+         `HDI Assicurazioni` per un confronto esatto sono due aziende diverse;
+       · «polizza auto» ne trovava 15 invece di 4.005, perché Prima scrive
+         `rca` e HDI scrive `auto` per la stessa cosa;
+       · «senza polizza casa» non si poteva nemmeno chiedere: il ramo `casa`
+         non esiste, quello che c'è si chiama `beni`.
+
+     Qui sotto le due tabelle che li mettono d'accordo. Si allungano a mano
+     quando entra una compagnia nuova, e va bene così: indovinare un
+     accorpamento è peggio che dichiararlo. Quello che NON si riconosce resta
+     com'è scritto, invece di finire in un mucchio «altro» dove sparisce. */
+  var COMPAGNIE = {
+    'hdi': 'HDI', 'hdi assicurazioni': 'HDI', 'hdi assicurazioni spa': 'HDI',
+    'prima': 'Prima', 'prima assicurazioni': 'Prima', 'prima.it': 'Prima',
+    'allianz': 'Allianz', 'allianz spa': 'Allianz',
+  };
+  var RAMI = {
+    'rca': 'Auto', 'auto': 'Auto', 'rc auto': 'Auto', 'autovettura': 'Auto',
+    'beni': 'Casa e beni', 'casa': 'Casa e beni', 'abitazione': 'Casa e beni',
+    'persona': 'Persona', 'infortuni': 'Persona', 'salute': 'Persona',
+    'vita': 'Vita', 'previdenza': 'Previdenza', 'fondo pensione': 'Previdenza',
+  };
+
+  function canonico(tabella, v) {
+    var k = chiave(v);
+    if (!k) return '';
+    return tabella[k] || testo(v);
+  }
+  function compagniaCanonica(v) { return canonico(COMPAGNIE, v); }
+  function ramoCanonico(v) { return canonico(RAMI, v); }
+
+  /* Per confrontare: due valori sono lo stesso se lo sono una volta
+     ricondotti al vocabolario. Così «HDI Assicurazioni» e «hdi» combaciano, e
+     una compagnia che il vocabolario non conosce si confronta con se stessa
+     invece di combaciare con tutte. */
+  function stessaCompagnia(a, b) { return chiave(compagniaCanonica(a)) === chiave(compagniaCanonica(b)); }
+  function stessoRamo(a, b) { return chiave(ramoCanonico(a)) === chiave(ramoCanonico(b)); }
+
   /* L'ETÀ SI CALCOLA, NON SI STIMA DIVIDENDO I GIORNI PER 365. Chi compie gli
      anni domani oggi ne ha uno in meno, e un filtro «fino a 30» che lo include
      manda l'offerta giovani a chi non ne ha più diritto. */
@@ -68,6 +118,45 @@
      non è mai stata toccata. Chi filtra «non sposati» si porterebbe dietro
      l'intero portafoglio. */
   function tri(v) { return v === true ? true : v === false ? false : null; }
+
+  /* Una data come aaaa-mm-gg, o niente. Le date arrivano dal database già in
+     questa forma, e confrontate come TESTO si ordinano da sole: niente fusi
+     orari, niente `new Date()` che sposta di un giorno a seconda dell'ora. */
+  function giorno(v) {
+    var m = /^(\d{4}-\d{2}-\d{2})/.exec(testo(v));
+    return m ? m[1] : null;
+  }
+
+  /* `giorniDopo('2026-09-25', 30)` → '2026-10-25'.
+
+     TUTTO IN UTC, e non è pignoleria. Facendo i conti con l'ora locale, il
+     giorno in cui cambia l'ora legale dura 23 o 25 ore, e «oggi più 30» può
+     uscire il 24 o il 26. Una finestra «entro 30 giorni» che ne prende 29
+     lascia fuori una polizza in scadenza — cioè un cliente che nessuno
+     richiama, e nessuno se ne accorge perché il numero esce lo stesso.
+
+     La prima versione si difendeva mettendo l'orario a mezzogiorno. Funziona,
+     ma protegge un calcolo fragile invece di renderlo solido — e una prova
+     lanciata in UTC (come il nostro contenitore) non può nemmeno accorgersi
+     se qualcuno toglie quel mezzogiorno. In UTC non esiste ora legale: il
+     conto è sempre lo stesso, ovunque giri. */
+  function giorniDopo(dal, n) {
+    var g = giorno(dal); if (!g) return null;
+    var p = g.split('-');
+    var t = Date.UTC(+p[0], +p[1] - 1, +p[2]) + Number(n || 0) * 86400000;
+    return new Date(t).toISOString().slice(0, 10);
+  }
+
+  /* Chi è perso, chi è un prospect, chi è attivo: la definizione sta in UN
+     motore solo (`portafoglio-stato`), e questo la chiede a lui. Si cerca a
+     ogni chiamata perché nel browser i due file possono arrivare in un ordine
+     qualunque; se non c'è, i filtri sullo stato non rispondono «tutti» — non
+     rispondono affatto, che è la sola risposta onesta. */
+  function motoreStato() {
+    if (typeof window !== 'undefined' && window.PortafoglioStato) return window.PortafoglioStato;
+    if (typeof require === 'function') { try { return require('./portafoglio-stato.js'); } catch (e) { return null; } }
+    return null;
+  }
 
   var CAMPI_COPERTURA = [
     { k: 'comune',                e: 'Comune',              pieno: function (r) { return !!testo(r.comune); } },
@@ -108,7 +197,19 @@
     var oggi = extra.oggi || null;
 
     var comuni = (f.comuni || []).map(chiave).filter(Boolean);
-    var rami = (f.rami || []).map(chiave).filter(Boolean);
+    var province = (f.province || []).map(chiave).filter(Boolean);
+    /* Tutto passa dal vocabolario: chi cerca «Auto» deve trovare anche le
+       polizze che la compagnia chiama `rca`, e chi cerca «HDI» anche quelle
+       scritte «HDI Assicurazioni». */
+    var rami = (f.rami || []).map(function (x) { return chiave(ramoCanonico(x)); }).filter(Boolean);
+    var senzaRami = (f.senzaRami || []).map(function (x) { return chiave(ramoCanonico(x)); }).filter(Boolean);
+    var compagnie = (f.compagnie || []).map(function (x) { return chiave(compagniaCanonica(x)); }).filter(Boolean);
+    var senzaCompagnie = (f.senzaCompagnie || []).map(function (x) { return chiave(compagniaCanonica(x)); }).filter(Boolean);
+    /* Gli elenchi di clienti che hanno (o non hanno) una garanzia: li prepara
+       il database, perché le garanzie stanno dentro un jsonb e portarsele
+       tutte nel browser sono 5 MB a ogni apertura. */
+    var conGaranzia = extra.conGaranzia || null;      // Set di cliente_id, o null
+    var senzaGaranzia = extra.senzaGaranzia || null;  // idem
     var cerca = chiave(f.testoNote);
 
     return (righe || []).filter(function (r) {
@@ -132,13 +233,144 @@
       if (f.conNote === true && !testo(r.note)) return false;
       if (cerca && chiave(r.note).indexOf(cerca) < 0) return false;
       if (membriGruppo && !membriGruppo.has(testo(r.id))) return false;
+      if (province.length) {
+        var pv = chiave(r.res_dich_provincia || r.provincia);
+        if (province.indexOf(pv) < 0) return false;
+      }
+
+      /* ── QUELLO CHE IL CLIENTE HA, E QUELLO CHE NON HA ─────────────────────
+         Le polizze si leggono UNA volta sola: servono a sei filtri diversi, e
+         rileggerle sei volte per 2.500 clienti si sente. */
+      var pz = perCliente[testo(r.id)] || [];
+
       if (rami.length) {
-        var pz = perCliente[testo(r.id)] || [];
         var ha = pz.some(function (p) {
-          return rami.indexOf(chiave(p.modulo || p.prodotto)) >= 0;
+          return rami.indexOf(chiave(ramoCanonico(p.modulo || p.prodotto))) >= 0;
         });
         if (!ha) return false;
       }
+
+      /* L'ASSENZA, ed è il filtro che vale di più: è lì che sta la vendita.
+         «Auto SENZA casa», «RCA senza infortuni», «clienti senza previdenza».
+         Si compone con `rami`: rami=[auto] + senzaRami=[casa] vuol dire «ha
+         l'auto e non ha la casa».
+
+         UN CASO CHE SEMBRA UGUALE E NON LO È: un cliente senza NESSUNA polizza
+         passa questo filtro, perché è vero che non ha la casa. Se non lo si
+         vuole, si mette anche `rami`. Da solo, `senzaRami` risponde alla
+         domanda che gli è stata fatta e non a un'altra che pareva sottintesa. */
+      if (senzaRami.length) {
+        var haVietato = pz.some(function (p) {
+          return senzaRami.indexOf(chiave(ramoCanonico(p.modulo || p.prodotto))) >= 0;
+        });
+        if (haVietato) return false;
+      }
+
+      if (compagnie.length) {
+        var haComp = pz.some(function (p) { return compagnie.indexOf(chiave(compagniaCanonica(p.compagnia))) >= 0; });
+        if (!haComp) return false;
+      }
+      if (senzaCompagnie.length) {
+        var haCompVietata = pz.some(function (p) { return senzaCompagnie.indexOf(chiave(compagniaCanonica(p.compagnia))) >= 0; });
+        if (haCompVietata) return false;
+      }
+
+      /* LE GARANZIE. Arrivano già risolte dal database come elenchi di
+         clienti: qui si tiene o si scarta, e basta. Il «senza» sottrae lo
+         STESSO elenco che il «con» tiene, così le due domande non possono
+         divergere — è la regola che ha evitato il guaio delle due scritture
+         di «infortuni conducente». */
+      if (conGaranzia && !conGaranzia.has(testo(r.id))) return false;
+      if (senzaGaranzia && senzaGaranzia.has(testo(r.id))) return false;
+
+      /* LA SCADENZA: basta UNA polizza che scade nella finestra. Si misura da
+         `oggi`, che arriva da fuori e non da `new Date()`: così la stessa
+         domanda dà la stessa risposta anche fra sei mesi, in una prova. */
+      if (f.scadenzaEntroGiorni != null) {
+        if (!oggi) return false;              // senza data di riferimento non si può dire
+        var limite = giorniDopo(oggi, f.scadenzaEntroGiorni);
+        var inScadenza = pz.some(function (p) {
+          var s = giorno(p.data_scadenza);
+          return s && s >= oggi && s <= limite;
+        });
+        if (!inScadenza) return false;
+      }
+      if (f.scadute === true) {
+        if (!oggi) return false;
+        var haScaduta = pz.some(function (p) {
+          var s = giorno(p.data_scadenza);
+          return s && s < oggi;
+        });
+        if (!haScaduta) return false;
+      }
+
+      /* IL PREMIO: la somma di quelli annui del cliente. Le polizze che non
+         dichiarano il premio NON valgono zero — sarebbe una fascia sbagliata —
+         restano fuori dalla somma, e un cliente di cui non si sa niente non
+         entra in nessuna fascia invece di entrare in quella più bassa. */
+      if (f.premioDa != null || f.premioA != null) {
+        var somma = 0, visti = 0;
+        pz.forEach(function (p) {
+          var v = Number(p.premio_annuo);
+          if (p.premio_annuo != null && p.premio_annuo !== '' && !isNaN(v)) { somma += v; visti++; }
+        });
+        if (!visti) return false;
+        somma = Math.round(somma * 100) / 100;
+        if (f.premioDa != null && somma < f.premioDa) return false;
+        if (f.premioA != null && somma > f.premioA) return false;
+      }
+
+      /* ── PERSI, PROSPECT, ATTIVI ──────────────────────────────────────────
+         26/09/2026, richiesta di Francesco: «I clienti persi sarebbe sempre
+         buono che si potessero trovare con un filtro nella parte crm e
+         analisi, e che si potessero dividere per determinate date (il criterio
+         deve essere che potrei ritrovare i clienti "persi" che non hanno
+         rinnovato una polizza al rinnovo, ovvero QR)».
+
+         Chi è perso, prospect o attivo lo dice `PortafoglioStato`, non questo
+         file: le stesse tre parole devono voler dire la stessa cosa nel CRM,
+         nella scheda cliente e nell'elenco — altrimenti il filtro trova
+         cinquecento nomi e la scheda di uno di quelli dice «attivo».
+
+         SUL CRITERIO «QR». Le quietanze di rinnovo vere in archivio sono DUE
+         su 3.218 titoli, perché Prima Assicurazioni — il 99,4% del
+         portafoglio — al rinnovo non manda una quietanza: emette una polizza
+         nuova. Quindi «non ha rinnovato» si riconosce da due segni, e il
+         motore li guarda entrambi: una QR rimasta non incassata (quando la
+         compagnia la manda), oppure l'ultima copertura finita alla sua
+         scadenza naturale invece che per un annullamento. Chi ha disdetto a
+         metà annualità NON è un mancato rinnovo: sono 53 contro 511, ed è
+         un'altra telefonata. */
+      if (f.stato || f.persoDal || f.persoAl || f.persoAlRinnovo != null) {
+        var PS = motoreStato();
+        if (!PS || !oggi) return false;   // senza il motore o senza oggi non si afferma niente
+        var sc = PS.statoCliente(pz, oggi, extra.titoliPerPolizza || null);
+        if (f.stato === 'perso'    && sc.stato !== 'perso') return false;
+        if (f.stato === 'attivo'   && sc.stato !== 'attivo') return false;
+        if (f.stato === 'prospect' && sc.stato !== 'mai_avuto') return false;
+        /* Le date si applicano SOLO a chi è perso: «perso fra il 1° e il 30
+           giugno» su un cliente attivo non vuol dire niente, e lasciarlo
+           passare riempirebbe la lista di gente da non chiamare.
+
+           NOTA ONESTA. Oggi questa guardia è una cintura in più: chi non è
+           perso non ha nessuna `persoIl`, quindi il controllo sulla data lo
+           escluderebbe comunque. Resta scritta perché sta in piedi su
+           un'invariante del motore accanto — «un cliente non perso non ha una
+           data di perdita» — e quell'invariante è pinzata da una prova sua
+           (`portafoglio-stato`: «un cliente che non è perso non ha una data di
+           perdita»). Se domani qualcuno aggiungesse `persoIl` anche a un
+           cliente attivo (per dire «l'ultima copertura finita», che è una cosa
+           sensata da volere), senza questa riga il filtro per date comincerebbe
+           a pescare clienti vivi e nessuno se ne accorgerebbe: la lista esce. */
+        if (f.persoDal || f.persoAl) {
+          if (sc.stato !== 'perso' || !sc.persoIl) return false;
+          if (f.persoDal && sc.persoIl < giorno(f.persoDal)) return false;
+          if (f.persoAl  && sc.persoIl > giorno(f.persoAl))  return false;
+        }
+        if (f.persoAlRinnovo === true && !(sc.stato === 'perso' && sc.persoAlRinnovo)) return false;
+        if (f.persoAlRinnovo === false && sc.stato === 'perso' && sc.persoAlRinnovo) return false;
+      }
+
       if (f.soloClienti === true && r.lead === true) return false;
       if (f.soloLead === true && r.lead !== true) return false;
       return true;
@@ -223,6 +455,10 @@
   var API = {
     CAMPI_COPERTURA: CAMPI_COPERTURA, COLONNE: COLONNE,
     testo: testo, chiave: chiave, eta: eta, tri: tri,
+    giorno: giorno, giorniDopo: giorniDopo,
+    COMPAGNIE: COMPAGNIE, RAMI: RAMI,
+    compagniaCanonica: compagniaCanonica, ramoCanonico: ramoCanonico,
+    stessaCompagnia: stessaCompagnia, stessoRamo: stessoRamo,
     copertura: copertura, filtra: filtra, recapiti: recapiti,
     perCampagna: perCampagna, righeEsporta: righeEsporta, csv: csv,
   };

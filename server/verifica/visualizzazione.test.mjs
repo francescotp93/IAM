@@ -29,6 +29,10 @@ import { dirname, join } from 'path';
 const RADICE = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PAGINE = ['index.html', 'iam/index.html'];
 
+/* Le due pagine lette una volta sola: sono 1,9 MB e 1,2 MB, e rileggerle a
+   ogni prova si sente. */
+const SORGENTI = Object.fromEntries(PAGINE.map(p => [p, readFileSync(join(RADICE, p), 'utf8')]));
+
 const esiti = [];
 function prova(nome, fn) {
   try { const d = fn(); esiti.push([true, nome, d || '']); }
@@ -79,6 +83,78 @@ for (const pagina of PAGINE) {
     return `campi a ${f[1]}px sul touch`;
   });
 }
+
+/* ── UNA CLASSE DEFINITA DUE VOLTE È UN GUASTO MUTO ────────────────────────
+   Trovato il 28/09/2026. In IAM `.sw` (l'interruttore) e `.sw input` erano
+   scritte DUE volte, a duecento righe di distanza, e vinceva la seconda:
+   l'interruttore diventava 42×24 invece di 44×26 e perdeva `cursor:pointer`,
+   mentre i 23 interruttori disegnati con `.sw-track`/`.sw-thumb` avevano il
+   pallino calcolato per 44×26 e finivano fuori centro.
+
+   Il segno che rivela questi casi è sempre lo stesso: qualcuno riscrive gli
+   stessi stili IN LINEA per rimettere a posto una riga. Nel modale del diario
+   la riga «Importante» aveva dovuto riscriversi `display:flex`,
+   `justify-content` e `padding` a mano. Quando una classe viene aggirata con
+   stili in linea, di solito è rotta e nessuno l'ha guardata.
+
+   Questa prova guarda le classi dei COMPONENTI condivisi — quelle che, se si
+   sdoppiano, cambiano faccia a schermate che nessuno stava toccando. */
+prova('i componenti condivisi non sono definiti due volte', () => {
+  const guardate = ['sw', 'sw-track', 'sw-thumb', 'sl', 'clk-badge', 'tit-sigla'];
+  const guasti = [];
+  for (const [nome, html] of Object.entries(SORGENTI)) {
+    /* Solo dentro ai `<style>`: le stesse parole compaiono anche nel markup e
+       dentro alle stringhe che costruiscono HTML. */
+    const stili = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
+    for (const c of guardate) {
+      /* La definizione, non l'uso: `.sw{` a inizio regola.
+         `.sw` e `.sw input` sono due selettori DIVERSI e legittimi, e la prima
+         stesura di questa prova li contava come la stessa regola: diventava
+         rossa su codice sano. Si contano separatamente. */
+      const base = '(^|[\\n,}])\\s*\\.' + c.replace(/-/g, '\\-');
+      for (const [che, coda] of [['', '\\s*\\{'], [' input', '\\s+input\\s*\\{']]) {
+        const quante = (stili.match(new RegExp(base + coda, 'g')) || []).length;
+        if (quante > 1) guasti.push(nome + ': «.' + c + che + '» definita ' + quante + ' volte');
+      }
+    }
+  }
+  deve(guasti.length === 0, guasti.join(' | ')
+    + ' — la seconda vince in silenzio e cambia faccia a schermate che nessuno stava toccando');
+  return guardate.length + ' componenti, una definizione ciascuno';
+});
+
+prova('nella condivisione di un appuntamento c\'è un interruttore per nome', () => {
+  /* Richiesta di Francesco del 28/09/2026: «voglio proprio un interruttore a
+     fianco al nominativo di chi sto per condividere l'appuntamento». Prima
+     erano caselle da spuntare da 16 pixel: una casella dice «scegli fra
+     questi», un interruttore dice «questa persona è dentro o è fuori», che è
+     la domanda di quella schermata. */
+  const html = SORGENTI['iam/index.html'];
+  const i = html.indexOf('wd-cond-riga');
+  deve(i > 0, 'la riga della condivisione non c\'è più: rileggere questa prova');
+  const blocco = html.slice(html.indexOf('const box = document.getElementById(\'wd-condividi-box\')'),
+                            html.indexOf('document.getElementById(\'modal-wd\').classList.add'));
+  deve(/class="sw"/.test(blocco), 'la riga non usa l\'interruttore di casa');
+  deve(/class="sl"/.test(blocco), 'l\'interruttore è senza pelle: resterebbe una casella nuda');
+  deve(!/width:16px;height:16px/.test(blocco), 'è rimasta la vecchia casella da 16 pixel');
+  /* E il nome deve stare DENTRO la label, o da telefono il bersaglio sono 44
+     pixel invece di tutta la riga. */
+  deve(/<label class="wd-cond-riga">[\s\S]{0,400}wd-cond-nome/.test(blocco),
+    'il nominativo è fuori dalla label: si accenderebbe solo toccando l\'interruttore');
+});
+
+prova('spegnere un interruttore toglie davvero la condivisione', () => {
+  /* La lettura al salvataggio deve guardare gli interruttori ACCESI. Se
+     guardasse tutte le caselle presenti, spegnerne uno non toglierebbe
+     niente — e la condivisione tolta per sbaglio resterebbe, senza che
+     nessuno se ne accorga. */
+  const html = SORGENTI['iam/index.html'];
+  const i = html.indexOf('function saveWD(');
+  deve(i > 0, 'saveWD non c\'è più: rileggere questa prova');
+  const corpo = html.slice(i, i + 900);
+  deve(/wd-cond-cb:checked/.test(corpo),
+    'il salvataggio non legge gli interruttori accesi: spegnerne uno non toglierebbe la condivisione');
+});
 
 prova('le due pagine si comportano allo stesso modo', () => {
   /* Un gestionale che si comporta in due modi diversi a seconda della pagina

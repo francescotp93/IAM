@@ -821,12 +821,41 @@ input[type=file]{display:none;}
 
 /* Gestione utenti: select ruolo + switch */
 .ruolo-sel{font-size:11px;padding:5px 8px;border:1px solid var(--bord2);border-radius:8px;background:var(--surf2);color:var(--txt);font-family:inherit;cursor:pointer;}
-.sw{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0;}
-.sw input{opacity:0;width:0;height:0;}
+/* `.sw` E `.sw input` ERANO DEFINITE DUE VOLTE (28/09/2026).
+   Stavano qui e duecento righe più su, e vinceva questa: l'interruttore
+   diventava 42×24 invece di 44×26 e PERDEVA `cursor:pointer`, mentre i 23
+   interruttori disegnati con `.sw-track`/`.sw-thumb` avevano il pallino
+   calcolato per 44×26 e finivano fuori centro di due pixel.
+
+   Non è un difetto teorico: nel modale del diario la riga «Importante» ha
+   dovuto riscriversi `display:flex`, `justify-content` e `padding` IN LINEA
+   per rimettersi a posto (riga ~3063). Quando qualcuno aggira una classe con
+   stili in linea, di solito la classe è rotta e nessuno l'ha guardata.
+
+   Qui resta solo la pelle (`.sl`), col pallino ridimensionato per 44×26:
+   20px, margine 3, corsa 44−20−3−3 = 18. La geometria sta in un posto solo,
+   duecento righe più su, insieme a `.sw-track`/`.sw-thumb`.
+   Resta un secondo doppione, `.sw-row`, che però vuol dire davvero due cose
+   diverse in due schermate diverse: è scritto nel backlog (P3.3), non
+   sistemato di nascosto qui. */
 .sw .sl{position:absolute;cursor:pointer;inset:0;background:var(--surf3);border-radius:24px;transition:.2s;}
-.sw .sl:before{content:"";position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25);}
+.sw .sl:before{content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25);}
 .sw input:checked + .sl{background:linear-gradient(135deg,var(--acc),var(--acc2));}
 .sw input:checked + .sl:before{transform:translateX(18px);}
+/* La riga di «Condividi con»: interruttore a sinistra, nome a destra, e il
+   nome fa parte del bersaglio — da telefono accendere solo i 44 pixel
+   dell'interruttore è la differenza fra un gesto e tre tentativi.
+   Una riga accesa si vede anche senza leggere: chi è dentro e chi è fuori è la
+   domanda di questa schermata. */
+/* 10px sopra e sotto, non 8: la riga viene alta 46 pixel invece di 42, e 44 e
+   la misura sotto la quale un bersaglio da telefono si sbaglia. Misurata in un
+   browser vero, non stimata. */
+.wd-cond-riga{display:flex;align-items:center;gap:11px;padding:10px 9px;border-radius:9px;
+  cursor:pointer;transition:background .15s;}
+.wd-cond-riga:hover{background:var(--surf3);}
+.wd-cond-riga:has(input:checked){background:var(--acc-bg,rgba(2,152,78,.08));}
+.wd-cond-nome{font-size:13px;color:var(--txt2);}
+.wd-cond-riga:has(input:checked) .wd-cond-nome{color:var(--txt);font-weight:600;}
 .sw-row{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;color:var(--txt2);}
 
 /* ── DA FARE OGGI (Blocco B) ─────────────────────────────────────────────────
@@ -3067,7 +3096,7 @@ input[type=file]{display:none;}
         </div>
         <div class="fld"><label>Condividi con (lascia vuoto = solo tu)</label>
           <div id="wd-condividi-box" style="width:100%;max-height:132px;overflow-y:auto;background:var(--surf2);border:1px solid var(--bord2);border-radius:10px;font-size:13px;color:var(--txt);padding:4px;"></div>
-          <div style="font-size:10px;color:var(--txt3);margin-top:4px;">Spunta i colleghi con cui condividere. Togli la spunta per non condividere più. Se non spunti nessuno, l'operazione resta privata.</div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:4px;">Accendi l'interruttore dei colleghi con cui condividere. Spegnilo per non condividere più. Se non ne accendi nessuno, l'operazione resta privata.</div>
         </div>
       </div>
       <div class="fld"><label>Descrizione / Note</label><textarea id="wd-note" rows="3" placeholder="Dettagli operazione..."></textarea></div>
@@ -24312,9 +24341,22 @@ async function openWDModal(id, dataScelta) {
   const mapLinkEl = document.getElementById('wd-luogo-map-link');
   if (mapLinkEl) mapLinkEl.style.display = 'none';
 
-  // Popola «Condividi con» come spunte (escludi se stesso). Le caselle si
-  // accendono e SPENGONO con un clic: niente più Ctrl/Cmd per togliere una
-  // condivisione scelta per sbaglio (impossibile da trackpad/telefono).
+  /* «CONDIVIDI CON»: UN INTERRUTTORE PER OGNI NOME (28/09/2026).
+     «Voglio proprio un interruttore a fianco al nominativo di chi sto per
+     condividere l'appuntamento» — Francesco, con la schermata sotto gli occhi.
+
+     Prima erano caselle da spuntare da 16 pixel. Una casella dice «scegli fra
+     questi»; un interruttore dice «questa persona è dentro o è fuori», che è
+     esattamente la domanda: con chi lo sto condividendo. E si vede da lontano
+     quali sono accesi senza doverli leggere uno per uno — che è il motivo per
+     cui su un elenco di colleghi la spunta è la forma sbagliata.
+
+     È l'interruttore di casa (`.sw` + `.sl`), lo stesso che sta due campi più
+     su su «Segna come importante»: non se ne disegna un terzo.
+
+     Il nome è dentro la `<label>`, quindi si accende cliccando anche sul
+     nominativo e non solo sui 44 pixel dell'interruttore — da telefono è la
+     differenza fra un gesto e tre tentativi. */
   const box = document.getElementById('wd-condividi-box');
   if (box) {
     try {
@@ -24324,7 +24366,9 @@ async function openWDModal(id, dataScelta) {
       box.innerHTML = colleghi.length ? colleghi.map(u => {
         const nome = esc(((u.nome||'')+' '+(u.cognome||'')).trim() || u.email);
         const on = condivisiAttuali.includes(u.id) ? 'checked' : '';
-        return `<label style="display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;cursor:pointer;"><input type="checkbox" class="wd-cond-cb" value="${esc(u.id)}" ${on} style="width:16px;height:16px;flex:none;cursor:pointer;"><span>${nome}</span></label>`;
+        return `<label class="wd-cond-riga">
+          <span class="sw"><input type="checkbox" class="wd-cond-cb" value="${esc(u.id)}" ${on}><span class="sl"></span></span>
+          <span class="wd-cond-nome">${nome}</span></label>`;
       }).join('') : '<div style="padding:8px;color:var(--txt3);font-size:12px;">Nessun collega disponibile.</div>';
     } catch(e) {
       console.warn('openWDModal utenti error:', e);

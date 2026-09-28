@@ -276,6 +276,22 @@ indicazioni scritte nell'intestazione del file.
 - **P3.1** Nessun router unico: ogni famiglia di pannelli ha il suo
   commutatore. Nessuna pagina ha un indirizzo proprio, quindi non si può
   mandare un collegamento a una schermata.
+- **P3.3 · `.sw-row` è definita due volte in IAM, e vuol dire due cose.**
+  Trovata il 28/09/2026 insieme al doppione di `.sw`, che invece ho
+  sistemato (era la stessa cosa scritta due volte; questa no). Alla riga
+  728 `.sw-row` è «etichetta a sinistra, interruttore a destra, con una
+  riga di separazione» — la usano i 23 interruttori dei modali compagnie
+  e rami. Alla riga ~830 è «etichetta piccola e grassetto accanto
+  all'interruttore» — la usa l'elenco utenti. **Vince la seconda**, e il
+  segno si vede: nel modale del diario la riga «Importante» ha dovuto
+  riscriversi `display:flex`, `justify-content` e `padding` in linea per
+  rimettersi a posto.
+  Sono 34 usi fra le due: vanno guardati uno per uno per capire quale
+  delle due intenzioni ha ciascuno, e poi separati in due nomi. **Non
+  l'ho fatto di nascosto** mentre cambiavo la condivisione, perché
+  cambierebbe faccia a schermate che nessuno stava toccando.
+  La prova `visualizzazione` sorveglia già che non nascano altri doppioni
+  di `.sw`, `.sw-track`, `.sw-thumb`, `.sl`, `.clk-badge`, `.tit-sigla`.
 - **P3.4 · 5.037 stili scritti in linea** (2.376 nel quotatore, 2.661 in IAM)
   e 336 larghezze fisse in pixel. Sono la vera causa di come si vede
   l'app: lo stesso riquadro è scritto in venti modi diversi, e su uno

@@ -573,6 +573,12 @@
          per scaricare un sospeso. */
       sub: [
         { l: 'Cruscotto', i: 'i-chart', act: 'carica', go: function () { vai('cruscotto'); } },
+        /* LA SCHERMATA DEL MATTINO (28/09/2026). Dal capitolo 2A del manuale
+           di AssiEasy: «verificare che non vi siano segnalazioni in rosso
+           (devono avere tutte OK) e sanare eventuali differenze». Sta subito
+           sotto il Cruscotto perché è la prima cosa che si apre la mattina,
+           prima di qualunque altra. */
+        { l: 'Appunti incassi', i: 'i-list', go: function () { vai('appunti'); } },
         { l: 'Prima nota', i: 'i-list', go: function () { vai('primanota'); } },
         { l: 'Quadratura conti', i: 'i-bank', go: function () { vai('quadconti'); } },
         { l: 'Anomalie', i: 'i-warn', go: function () { vai('anomalie'); } },
@@ -821,6 +827,7 @@
        precedente, e la briciola diceva un posto in cui non eri più.
        (bug del 30/07/2026) */
     cruscotto:   ['Cruscotto', 'Contabilità'],
+    appunti:     ['Appunti incassi', 'Contabilità'],
     quadratura:  ['Quadratura di giornata', 'Contabilità'],
     /* Non hanno piu' una voce di menu (22/09/2026) ma la rotta resta: senza
        il titolo, chi ci arriva da un collegamento vecchio vedrebbe la
@@ -902,7 +909,7 @@
 
   /* Da quale voce di menu dipende una scheda di IAM */
   var TAB2MENU = {
-    dashboard: 'dashboard', carica: 'carica', anomalie: 'carica', sospesi: 'carica',
+    dashboard: 'dashboard', carica: 'carica', anomalie: 'carica', sospesi: 'carica', appunti: 'carica',
     quadratura: 'carica', caricafile: 'carica', primanota: 'carica', quadconti: 'carica',
     incassi: 'carica', cruscotto: 'carica', incassa: 'carica', recuperi: 'carica',
     storico: 'carica', conto: 'carica', team: 'strumenti', operativa: 'strumenti',

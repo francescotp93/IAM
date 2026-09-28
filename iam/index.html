@@ -56,6 +56,10 @@
 <!-- I conti e le causali (brief #02 M1). Stesso file del preventivatore, per lo
      stesso motivo: il vocabolario della contabilità dev'essere uno solo. -->
 <script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260924"></script>
+<!-- Il motore della giornata: gli stati dell'appunto di incasso (APPUNTO, OK,
+     SCOSTAMENTO, FC) e il foglio della giornata. Non era caricato da IAM, e la
+     schermata «Appunti incassi» senza di lui sarebbe un elenco senza stati. -->
+<script src="/nuovo-preventivo/tariffe/motore/contabilita-giornaliera.js?v=20260928"></script>
 <!-- Le provvigioni (brief #02 M2): stesso file del preventivatore. -->
 <script src="/nuovo-preventivo/tariffe/motore/provvigioni.js?v=20260920"></script>
 <!-- Il catalogo prodotti: stesso file del preventivatore, perché l'import
@@ -856,6 +860,42 @@ input[type=file]{display:none;}
 .wd-cond-riga:has(input:checked){background:var(--acc-bg,rgba(2,152,78,.08));}
 .wd-cond-nome{font-size:13px;color:var(--txt2);}
 .wd-cond-riga:has(input:checked) .wd-cond-nome{color:var(--txt);font-weight:600;}
+
+/* ── APPUNTI INCASSI (28/09/2026) ──────────────────────────────────────────
+   Lo stato sta a SINISTRA e si legge per primo: la domanda del mattino è
+   «quali righe non sono OK», non «chi ha pagato». Il colore è sul filetto e
+   sull'etichetta, non sullo sfondo di tutta la riga: una giornata con dieci
+   righe rosse piene diventa illeggibile proprio nel giorno in cui serve. */
+.app-q{display:inline-flex;flex-direction:column;gap:2px;padding:9px 13px;margin:0 8px 8px 0;
+  background:var(--surf2);border:1px solid var(--bord2);border-radius:10px;min-width:104px;}
+.app-q span{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt3);}
+.app-q b{font-size:16px;font-variant-numeric:tabular-nums;color:var(--txt);}
+.app-q-ok b{color:#02984e;}
+.app-q-att b{color:#b06a00;}
+.app-q-no b{color:#c0392b;}
+.app-lista{display:flex;flex-direction:column;gap:7px;margin-top:10px;}
+.app-riga{display:grid;grid-template-columns:118px 1fr auto;gap:10px;align-items:center;
+  padding:10px 12px;background:var(--surf);border:1px solid var(--bord2);border-radius:10px;
+  border-left:3px solid var(--bord2);}
+.app-riga.app-ok{border-left-color:#02984e;}
+.app-riga.app-att{border-left-color:#e0a800;}
+.app-riga.app-no{border-left-color:#c0392b;}
+.app-stato{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--txt3);}
+.app-ok .app-stato{color:#02984e;}
+.app-att .app-stato{color:#b06a00;}
+.app-no .app-stato{color:#c0392b;}
+.app-chi b{font-size:13px;color:var(--txt);}
+.app-imp{text-align:right;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--txt);}
+.app-sco{font-size:11.5px;font-weight:700;color:#c0392b;}
+/* Il perché occupa tutta la riga sotto: è una frase, e spezzarla in una
+   colonna stretta vuol dire non farla leggere a nessuno. */
+.app-perche{grid-column:1/-1;font-size:11.5px;color:var(--txt2);line-height:1.5;
+  padding-top:7px;border-top:1px solid var(--bord2);}
+@media(max-width:640px){
+  .app-riga{grid-template-columns:1fr auto;}
+  .app-stato{grid-column:1/-1;}
+  .app-q{min-width:calc(50% - 8px);}
+}
 .sw-row{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;color:var(--txt2);}
 
 /* ── DA FARE OGGI (Blocco B) ─────────────────────────────────────────────────
@@ -1932,6 +1972,43 @@ input[type=file]{display:none;}
     <div id="cru-avviso"></div>
     <section class="cnt-somma" id="cru-somma"><div class="cl-sub">Leggo la contabilità…</div></section>
     <div id="cru-anomalie"></div>
+  </div>
+
+  <!-- ══ SUB: APPUNTI INCASSI (28/09/2026) ═══════════════════════════════════
+       Dal manuale di contabilità di AssiEasy, capitolo 2A, che Francesco ha
+       portato come modello. È la schermata del mattino, e la regola operativa
+       del manuale è una riga sola:
+
+           «Verificare che in Appunti Incassi non vi siano segnalazioni in
+            rosso (devono avere tutte OK) e sanare eventuali differenze.»
+
+       I quattro stati li decide il motore `ContabilitaGiornaliera`
+       (`abbinaFoglio`), provato in Node con 22 prove e 16 sabotaggi: qui si
+       disegna soltanto.
+
+       DUE LATI, E OGGI UNO È VUOTO. Il confronto è fra quello che abbiamo
+       registrato noi in giornata e quello che la compagnia dice di aver
+       incassato. Misurato il 28/09/2026: dei 2.799 incassi in archivio,
+       2.799 arrivano dal flusso e ZERO sono stati registrati a mano. Non è un
+       difetto della schermata: è che oggi l'agenzia prende per buono quello
+       che dice la compagnia, ed è esattamente il rischio per cui il manuale
+       fa fare questo controllo. La schermata lo dice in chiaro invece di
+       mostrare duemila righe rosse. -->
+  <div id="contab-panel-appunti" class="ct-off">
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>Appunti incassi</h1>
+        <div class="subtitle">Gli incassi di una giornata, e per ognuno se la compagnia l'ha visto. Nessuna riga in rosso vuol dire giornata chiusa.</div>
+      </div>
+      <div class="head-actions">
+        <input type="date" id="app-giorno" class="d-inp" onchange="appCarica()" style="padding:8px 10px;border:1px solid var(--bord2);border-radius:8px;background:var(--surf2);color:var(--txt);font:inherit;font-size:13px;">
+        <button class="d-btn" type="button" onclick="appCarica()"><i class="ti ti-refresh"></i> Aggiorna</button>
+      </div>
+    </section>
+    <div id="app-avviso"></div>
+    <section class="cnt-somma" id="app-somma"><div class="cl-sub">Scegli una giornata.</div></section>
+    <div id="app-righe"></div>
   </div>
 
   <!-- SUB: Quadratura di giornata — solo i numeri della giornata -->
@@ -9160,6 +9237,188 @@ var CRU_CREDITI = [], CRU_RECUPERI = [], CRU_SOSPESI = [];
 var CRU_TITOLI = [], CRU_QUADRATURE = [], CRU_INCASSI_RATE = [];
 var CRU_PORTAFOGLIO = null;
 var CRU_ANOM_CIECHE = [];
+/* ══ APPUNTI INCASSI (28/09/2026) ═══════════════════════════════════════════
+   La schermata del mattino, dal capitolo 2A del manuale di contabilità di
+   AssiEasy. Gli stati li decide il motore (`ContabilitaGiornaliera.abbinaFoglio`),
+   provato in Node con 22 prove e 16 sabotaggi: qui si disegna soltanto.
+
+   I DUE LATI, e perché oggi uno è vuoto. Il confronto è fra:
+     · quello che abbiamo registrato NOI in giornata — le rate senza `fonte`,
+       cioè messe a mano in IAM o in QUOTO;
+     · quello che dice la COMPAGNIA — le rate arrivate col flusso (`fonte`).
+
+   Misurato il 28/09/2026 su tutto l'archivio: 2.799 incassi, di cui 2.787 dal
+   flusso SSF, 12 dal flusso HDI e **zero registrati a mano**. Quindi oggi ogni
+   riga risulta «solo foglio cassa», ed è vero: l'agenzia prende per buono
+   quello che dice la compagnia senza aver contato niente in giornata. È
+   esattamente il rischio per cui il manuale fa fare questo controllo —
+   «evitando eventuali ammanchi o ancor più pericolose eccedenze».
+
+   La schermata lo dice in una frase invece di mostrare una giornata tutta
+   rossa: un elenco di problemi che sono tutti lo stesso problema si smette di
+   leggerlo al secondo giorno. */
+var APP_GIORNO = null;
+
+function appOggi() { return cntOggiIso(); }
+
+/* L'ultima giornata che ha incassi: aprire la schermata su oggi, che è quasi
+   sempre vuoto, farebbe credere che non funzioni. */
+async function appUltimaGiornata() {
+  try {
+    const { data, error } = await db.from('quote_titoli')
+      .select('incassato_il').not('incassato_il', 'is', null)
+      .order('incassato_il', { ascending: false }).limit(1);
+    if (error) throw error;
+    return (data && data[0] && data[0].incassato_il) || null;
+  } catch (e) { console.warn('ultima giornata di incassi non leggibile:', e.message || e); return null; }
+}
+
+async function appApri() {
+  const campo = document.getElementById('app-giorno');
+  if (!campo) return;
+  if (!campo.value) campo.value = APP_GIORNO || (await appUltimaGiornata()) || appOggi();
+  appCarica();
+}
+
+async function appCarica() {
+  const campo = document.getElementById('app-giorno');
+  const somma = document.getElementById('app-somma');
+  const righeBox = document.getElementById('app-righe');
+  const avviso = document.getElementById('app-avviso');
+  if (!campo || !somma || !db) return;
+  const g = campo.value || appOggi();
+  APP_GIORNO = g;
+  somma.innerHTML = '<div class="cl-sub">Leggo la giornata…</div>';
+  righeBox.innerHTML = '';
+  avviso.innerHTML = '';
+
+  const M = window.ContabilitaGiornaliera;
+  if (!M) {
+    somma.innerHTML = '<div class="cnt-err">Il motore della giornata non è caricato: senza, gli stati non si possono dire.</div>';
+    return;
+  }
+
+  let titoli = [];
+  try {
+    /* La giornata: le rate incassate QUEL giorno, con la loro polizza. La
+       compagnia e il numero di polizza servono all'abbinamento; il cliente e
+       il mezzo servono a leggere la riga. */
+    const { data, error } = await db.from('quote_titoli')
+      .select('id,importo_lordo,provvigione,stato,mezzo_pagamento,incassato_il,fonte,fonte_id,sigla_tipo,'
+            + 'polizza:quote_polizze(numero_polizza,compagnia,cliente,data_effetto,modulo,prodotto)')
+      .eq('incassato_il', g).limit(2000);
+    if (error) throw error;
+    titoli = data || [];
+  } catch (e) {
+    somma.innerHTML = '<div class="cnt-err">Non riesco a leggere gli incassi del giorno: ' + esc(e.message || e)
+      + '<br><small>Non vuol dire che non ce ne siano.</small></div>';
+    return;
+  }
+
+  /* Da una rata alla riga che il motore sa abbinare. */
+  const verso = (t) => ({
+    id: t.id,
+    polizza: (t.polizza && t.polizza.numero_polizza) || '',
+    effetto: (t.polizza && t.polizza.data_effetto) || '',
+    importo: t.importo_lordo,
+    compagnia: (t.polizza && t.polizza.compagnia) || '—',
+    cliente: (t.polizza && t.polizza.cliente) || '',
+    ramo: (t.polizza && (t.polizza.modulo || t.polizza.prodotto)) || '',
+    mezzo: t.mezzo_pagamento || '',
+    sigla: t.sigla_tipo || '',
+    provvigione: t.provvigione,
+  });
+
+  /* I DUE LATI. Senza `fonte` l'ha scritta una persona: è un nostro appunto.
+     Con `fonte` l'ha portata il flusso: è il foglio cassa della compagnia. */
+  const nostre = titoli.filter(t => !t.fonte).map(verso);
+  const dalFoglio = titoli.filter(t => !!t.fonte).map(verso);
+  const a = M.abbinaFoglio(nostre, dalFoglio);
+
+  appDisegna(a, g, nostre.length, dalFoglio.length);
+}
+
+function appDisegna(a, g, quanteNostre, quanteLoro) {
+  const somma = document.getElementById('app-somma');
+  const righeBox = document.getElementById('app-righe');
+  const avviso = document.getElementById('app-avviso');
+  const eur = (n) => '€ ' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  if (!a.righe.length) {
+    /* La data a parole: `cntData` non esiste in IAM, e chiamarla avrebbe fatto
+       morire il disegno proprio sulla giornata vuota — cioè sul caso in cui
+       una schermata sembra rotta senza esserlo. */
+    somma.innerHTML = '<div class="cl-sub">Il ' + esc(new Date(g + 'T12:00:00').toLocaleDateString('it-IT'))
+      + ' non risulta nessun incasso, né nostro né della compagnia.</div>';
+    righeBox.innerHTML = '';
+    return;
+  }
+
+  /* Il verdetto in cima, che è la frase del manuale. */
+  const chiuso = a.tutteOk;
+  avviso.innerHTML = chiuso
+    ? '<div class="cnt-ok"><i class="ti ti-check"></i> Giornata chiusa: nessuna riga da sanare.</div>'
+    : '<div class="cnt-err"><i class="ti ti-alert-triangle"></i> <b>' + (a.daSanare + a.appunti)
+      + (a.daSanare + a.appunti === 1 ? ' riga</b> da guardare' : ' righe</b> da guardare')
+      + ' prima di considerare chiusa la giornata.</div>';
+
+  /* QUANDO TUTTO È «SOLO FOGLIO CASSA», IL PROBLEMA È UNO SOLO e si dice una
+     volta: duemila righe rosse che dicono la stessa cosa si smettono di
+     leggere al secondo giorno. */
+  const tuttoDalFlusso = quanteNostre === 0 && quanteLoro > 0;
+  const spiegone = tuttoDalFlusso
+    ? '<div class="cnt-nota" style="margin:10px 0;padding:11px 13px;background:var(--surf2);border:1px solid var(--bord2);border-radius:10px;font-size:12.5px;line-height:1.55;">'
+      + '<b>Di questa giornata non abbiamo registrato niente noi.</b> Tutte e ' + quanteLoro
+      + ' le righe arrivano dal flusso della compagnia, quindi risultano «solo foglio cassa»: '
+      + 'stiamo prendendo per buono quello che dice lei, senza aver contato niente in giornata. '
+      + 'È il controllo per cui questa schermata esiste — contante, assegni e POS quadrati <i>prima</i> '
+      + 'della chiusura, per non scoprire dopo un ammanco o una copertura mancata.</div>'
+    : '';
+
+  const box = (t, v, cls) => '<div class="app-q' + (cls ? ' ' + cls : '') + '"><span>' + t + '</span><b>' + v + '</b></div>';
+  somma.innerHTML =
+    box('OK', a.ok, a.ok ? 'app-q-ok' : '')
+    + box('Appunti', a.appunti, a.appunti ? 'app-q-att' : '')
+    + box('Scostamenti', a.scostamenti, a.scostamenti ? 'app-q-no' : '')
+    + box('Solo foglio cassa', a.soloFoglio, a.soloFoglio ? 'app-q-no' : '')
+    + box('Nostro totale', eur(a.totaleNostro))
+    + box('Foglio cassa', eur(a.totaleFoglio))
+    + box('Differenza', eur(a.differenza), a.differenza ? 'app-q-no' : 'app-q-ok');
+
+  /* Gli abbuoni: il manuale li fa guardare ogni giorno, perché è lì che si
+     nascondono gli ammanchi. */
+  const abb = (a.abbuoni.passivo || a.abbuoni.attivo)
+    ? '<div class="cnt-nota" style="margin:10px 0;padding:11px 13px;background:#fff8ec;border:1px solid #f6dfb8;border-radius:10px;font-size:12.5px;">'
+      + '<b>Abbuoni della giornata:</b> ' + eur(a.abbuoni.passivo) + ' a nostro carico (costo)'
+      + ' · ' + eur(a.abbuoni.attivo) + ' a nostro favore (ricavo). '
+      + 'Vanno guardati ogni giorno: gli importi piccoli sono il posto dove si nascondono gli ammanchi.</div>'
+    : '';
+
+  const avvisiHtml = (a.avvisi || []).filter(x => !(tuttoDalFlusso && /solo sul foglio cassa/.test(x.t)))
+    .map(x => '<div class="' + (x.g === 'grave' ? 'cnt-err' : 'cnt-nota') + '" style="margin:8px 0;">' + esc(x.t) + '</div>').join('');
+
+  righeBox.innerHTML = spiegone + abb + avvisiHtml + '<div class="app-lista">'
+    + a.righe.map(r => appRiga(r, eur)).join('') + '</div>';
+}
+
+function appRiga(r, eur) {
+  const d = r.nostro || r.foglio || {};
+  const s = r.stato;
+  const tinta = s.chiave === 'OK' ? 'app-ok' : (s.chiave === 'APPUNTO' ? 'app-att' : 'app-no');
+  const importo = r.nostro ? r.nostro.importo : (r.foglio ? r.foglio.importo : null);
+  return '<div class="app-riga ' + tinta + '">'
+    + '<div class="app-stato">' + esc(s.etichetta) + '</div>'
+    + '<div class="app-chi"><b>' + esc(d.cliente || '(senza nominativo)') + '</b>'
+    + '<div class="cl-sub">' + esc(d.compagnia || '—')
+    + (d.polizza ? ' · ' + esc(d.polizza) : ' · <i>senza numero di polizza</i>')
+    + (d.sigla ? ' · ' + esc(d.sigla) : '') + '</div></div>'
+    + '<div class="app-imp">' + eur(importo)
+    + (r.scostamento ? '<div class="app-sco">' + (r.scostamento > 0 ? '+' : '') + eur(r.scostamento) + '</div>' : '')
+    + '</div>'
+    + (r.perche ? '<div class="app-perche">' + esc(r.perche) + '</div>' : '')
+    + '</div>';
+}
+
 var CRU_LETTO = {};
 var CRU_CARICATO = false;
 var CRU_PARZIALE = false;
@@ -12534,7 +12793,7 @@ function selContabTab(sub) {
      chi non può entrare finisce sul Cruscotto invece che su un riquadro che
      non dovrebbe vedere. */
   if (!contabPuo(sub)) sub = 'cruscotto';
-  ['cruscotto','quadratura','primanota','incassa','recuperi','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
+  ['cruscotto','appunti','quadratura','primanota','incassa','recuperi','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
     const btn = document.getElementById('ctab-'+s);
     const pnl = document.getElementById('contab-panel-'+s);
     if (btn) btn.classList.toggle('act', s===sub);
@@ -12554,6 +12813,7 @@ function selContabTab(sub) {
   if (sub==='primanota' || sub==='quadconti') pntCarica();
   if (sub==='incassi') incCarica();
   if (sub==='cruscotto') cruCarica();
+  if (sub==='appunti') appApri();
   /* La linguetta fa partire un caricamento ASINCRONO che azzera le rate
      scelte: chi arriva qui con delle rate gia' flaggate (dai Sospesi) deve
      poterlo aspettare, altrimenti se le vede cancellare a meta' strada. E' la
@@ -12720,7 +12980,7 @@ function ripristinaScheda() {
   RIPRISTINO_IN_CORSO = true;
   try {
     if (!lastTab) { goTab('dashboard'); return; }
-    const contabSub = ['cruscotto','quadratura','primanota','incassa','recuperi','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
+    const contabSub = ['cruscotto','appunti','quadratura','primanota','incassa','recuperi','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
     if (contabSub.includes(lastTab)) { goTab('carica'); selContabTab(lastTab); }
     else if (lastTab === 'quoto') goTab('dashboard');
     /* «lab» era la vecchia pagina-hub, ora rimossa (Marketing vive nel riquadro,
@@ -12792,7 +13052,7 @@ function goTab(t) {
      cose, in due elenchi diversi, e il primo vince in silenzio.
      La sotto-scheda adesso si chiama `quadconti`; `conto`, il vecchio nome
      della voce tolta, porta dove il contenuto è andato. */
-  const CONTAB_SUB = ['quadratura','primanota','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
+  const CONTAB_SUB = ['appunti','quadratura','primanota','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
   if (CONTAB_SUB.includes(t)) {
     goTab('carica');
     selContabTab(t);

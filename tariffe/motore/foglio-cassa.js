@@ -40,7 +40,9 @@
 
   var MEZZI = {
     contante: 'Contante', assegno: 'Assegno', bonifico: 'Bonifico', pos: 'POS', carta_credito: 'Carta di credito',
-    paypal: 'PayPal', prepagata: 'Carta prepagata', domiciliazione: 'Domiciliazione (SDD)', altro: 'Altro'
+    paypal: 'PayPal', prepagata: 'Carta prepagata', domiciliazione: 'Domiciliazione (SDD)',
+    /* La carta HDI è il finanziamento Agos (28/09/2026). */
+    finanziamento: 'Finanziamento Agos (carta HDI)', altro: 'Altro'
   };
   var PAGATORI = { cliente: 'Cliente', collaboratore: 'Collaboratore', agenzia: 'Agenzia' };
 

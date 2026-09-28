@@ -219,6 +219,11 @@
     { k: 'prepagata',     l: 'Prepagata',           immediato: false, i: 'ti-credit-card', giorni: 3 },
     { k: 'paypal',        l: 'PayPal',              immediato: false, i: 'ti-brand-paypal', giorni: 3 },
     { k: 'domiciliazione', l: 'Domiciliazione (SDD)', immediato: false, i: 'ti-repeat', giorni: 5 },
+    /* La carta HDI è il finanziamento Agos (28/09/2026): il premio lo anticipa
+       una finanziaria e il cliente rimborsa lei. Senza `giorni` di proposito —
+       quanto ci metta ad arrivare non l'ha detto nessuno, e un numero inventato
+       su un tempo di accredito diventa un sospeso che si crede scaduto. */
+    { k: 'finanziamento', l: 'Finanziamento Agos (carta HDI)', immediato: false, i: 'ti-building-bank' },
     { k: 'altro',         l: 'Altro',               immediato: false, i: 'ti-dots' }
   ];
 

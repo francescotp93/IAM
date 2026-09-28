@@ -489,6 +489,104 @@ Prove: `garanzie` 28/28 con 17 sabotaggi presi su 17, `polizza-nel-browser`
 
 ---
 
+## 4quinquies. Come arriva un incasso, compagnia per compagnia
+
+> **28/09/2026.** «I flussi che carico da Prima me li devi dare in automatico
+> incassati e non come sospesi, sarò io a cambiare le varie modalità di
+> pagamento. Quelli che carico io invece da HDI, come pos, bonifici, carta HDI
+> (questa modalità è finanziamento Agos), questi me li devi dare come sospesi e
+> poi sarò io ad abbinarli una volta incassati. Quello che è contanti me lo
+> devi aggiungere nella cassa contanti in automatico.» — Francesco
+
+Non è una preferenza: è la **differenza fisica fra i due canali**, e finché non
+sta scritta in un posto solo ogni schermata la deve indovinare. Sta in
+`tariffe/motore/pagamento-rata.js`.
+
+### Prima — i soldi non passano mai dall'agenzia
+
+Il cliente paga la compagnia direttamente. Lo dice l'archivio, non una teoria:
+dei 2.787 incassi Prima, **1.078 sono carta di credito, 632 prepagata, 425
+PayPal, 36 bonifico**. L'agenzia non tocca quel denaro.
+
+1. **Un titolo Prima non può essere un sospeso.** Un sospeso è un credito
+   dell'agenzia verso qualcuno; qui quel credito non esiste. Quello che il
+   tracciato chiama `SP` resta «da incassare»: si vede, si chiama, ma non entra
+   nel debito dell'agenzia.
+2. **La copertura vale come prova dell'incasso.** Prima incassa e poi copre: se
+   dichiara la polizza coperta **oltre** la decorrenza di una rata, quella rata
+   l'ha incassata lei, anche senza la data di pagamento.
+
+**Il confronto è stretto, e vale un semestre.** «Coperta fino al 16/03/2027»
+vuol dire che la copertura *finisce* quel giorno: la rata che decorre dal
+16/03/2027 è proprio quella che la prolunga, e non è pagata. Con `>=` al posto
+di `>` risultava incassata — e in archivio le polizze semestrali sono **1.034**,
+di cui **440 hanno pagato solo il primo semestre**. La prova sul campione l'ha
+preso al primo colpo.
+
+**Quanto cambia in archivio, oggi: niente, ed è la risposta giusta.** Dei 379
+titoli Prima non incassati (€ 97.788,84), la regola non ne promuove nessuno:
+tutti e 342 quelli «coperti» lo sono esattamente *fino al* giorno della loro
+decorrenza, cioè sono le rate che prolungano la copertura, e i restanti 37 la
+compagnia non li copre affatto. Presa alla lettera, l'istruzione avrebbe
+dichiarato incassati € 97.788,84 che Prima stessa dice non pagati — di cui
+**271 rate che devono ancora decorrere**. La regola serve da rete: prende una
+rata pagata di cui la compagnia ha dimenticato di mandare la data.
+
+**Una rata incassata per copertura non porta una data inventata.** Sappiamo
+*che* è stata pagata, non *quando*: scriverci la decorrenza farebbe comparire
+un incasso in una giornata di cassa in cui non è successo niente.
+
+### HDI — i soldi passano dall'agenzia, e l'agenzia li deve alla compagnia
+
+| mezzo | come arriva | perché |
+|---|---|---|
+| **POS** | sospeso | incassato dall'agenzia, ancora da rimettere |
+| **Bonifico** | sospeso | idem |
+| **Carta HDI** (finanziamento Agos) | sospeso | il premio lo anticipa una finanziaria |
+| **Contante** | incassato, **e in cassa contanti** | è già in casa |
+| assegno, domiciliazione, … | come dice il flusso | Francesco non li ha nominati, e non si estende una regola a mezzi di cui nessuno ha parlato |
+
+**L'incasso del flusso non basta a chiudere.** Dice che ha pagato il *cliente*,
+non che la compagnia abbia avuto i suoi soldi: confondere le due cose è il modo
+in cui un'agenzia si crede pari e non lo è. Restano sospesi finché Francesco non
+li abbina.
+
+**Sul file HDI vero del 23/09 la regola sposta € 1.002,00** — un bonifico da
+733,00 € e due POS per 269,00 € — da «incassato» a «sospeso». Il totale non si
+muove: 2.215,39 + 1.002,00 + 727,00 = **3.944,39 €**, che è il totale di prima.
+Nessun euro è scomparso; hanno cambiato colonna.
+
+### La carta HDI è un finanziamento, e ora ha un nome suo
+
+Il vocabolario dei mezzi ne aveva nove e la carta HDI non c'era: finiva in
+«carta di credito», che è un'altra cosa — con la carta paga il cliente e
+l'accredito arriva in tre giorni, col finanziamento Agos il premio lo anticipa
+una finanziaria e il cliente rimborsa lei. Nuova voce `finanziamento`
+(migrazione `20260928_mezzo_finanziamento.sql`), `giorni_attesi` lasciato
+**vuoto di proposito**: quanto ci metta non l'ha detto nessuno, e un numero
+inventato su un tempo di accredito diventa un sospeso che si crede scaduto.
+
+La stessa voce va tenuta allineata in **cinque posti** (`FlussoSSF.MEZZI`,
+`Contabilita.MEZZI`, `FoglioCassa.MEZZI`, `TIT_MEZZI`, la tabella
+`iam_modalita_pagamento`), e adesso una prova pretende che dicano tutti la
+stessa cosa.
+
+### Il contante andava sul conto corrente, non in cassa
+
+Misurato il 28/09: **«CONTO CORRENTE HDI» dichiarava di ricevere il contante**.
+Il fondo cassa somma solo i conti di tipologia «cassa», quindi restava a zero
+senza che si sapesse perché — e il motore della contabilità lo segnalava già da
+solo come anomalia (§4-ter, «contanti su un conto che non è una cassa»).
+Corretto: il contante va su «CASSA CONTANTI», POS e bonifico restano sul conto
+corrente HDI.
+
+**Resta da decidere (Francesco):** su quale conto arriva il **finanziamento
+Agos**. Oggi nessun conto lo dichiara, e il motore lo dice invece di sceglierne
+uno a caso: *«Nessun conto dichiara di ricevere Finanziamento Agos (carta HDI).
+Scegli il conto in Strumenti › Conti e causali.»*
+
+---
+
 ## 5. Le regole di casa che valgono ovunque
 
 - **Niente esce senza conferma**: email, campagne, SMS, post. Sempre

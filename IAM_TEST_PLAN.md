@@ -31,7 +31,7 @@ valori veri, la prova lo copia da lì — non dalla memoria.
 
 ## 2. Quello che gira oggi
 
-**79 suite in `server/verifica/`, 1.367 prove superate, 2 suite rosse**
+**79 suite in `server/verifica/`, 1.383 prove superate, 2 suite rosse**
 (le `parita-*`, senza ancoraggio: P2.4). All'inizio dell'audit erano 68
 suite, 961 prove e 16 rosse.
 

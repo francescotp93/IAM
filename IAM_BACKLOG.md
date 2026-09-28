@@ -154,6 +154,19 @@ Sospesi di agenzia · Sospesi per collaboratore · Debito verso compagnia
 (uno per compagnia) · Abbuoni passivi (costo) · Abbuoni attivi (ricavo) ·
 Partite varie.
 
+**28/09/2026 — è diventato più urgente, e si sa di quanto.** La regola di
+casa (spec §4quinquies) manda in sospeso POS, bonifico e carta HDI dei
+flussi HDI: sul file vero del 23/09 sono **€ 1.002,00** che adesso hanno
+uno stato e non hanno ancora un conto su cui atterrare. Il contante invece
+è a posto: spostato da «CONTO CORRENTE HDI» a «CASSA CONTANTI», che è di
+tipologia `cassa` e quindi entra nel fondo — prima il fondo restava a zero
+e il motore lo segnalava già da solo come anomalia.
+
+E si è aggiunta **una domanda piccola e nuova**: su quale conto arriva il
+**finanziamento Agos** (la carta HDI)? Oggi nessun conto lo dichiara, e il
+motore lo dice invece di sceglierne uno a caso. Si spunta in Strumenti ›
+Conti e causali sul conto giusto.
+
 **Non la decido io**: quanti cassetti contante, quali banche, POS come
 sospeso o no, sospesi globali o per collaboratore. Il manuale stesso dice
 che «dipende dalla struttura e dalla consuetudine aziendale». Sono scelte

@@ -74,7 +74,7 @@
 <script src="tariffe/motore/pdf-withus.js?v=20260917"></script>
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
-<script src="tariffe/motore/pagamento-rata.js?v=20260925"></script>
+<script src="tariffe/motore/pagamento-rata.js?v=20260928"></script>
 <script src="tariffe/motore/flusso-ssf.js?v=20260928"></script>
 <script src="tariffe/motore/flusso-hdi.js?v=20260928"></script>
 <script src="tariffe/motore/crm-analisi.js?v=20260926"></script>
@@ -83,7 +83,7 @@
      li conosce il motore della contabilità: il controllo dell'IBAN è già lì
      (con la tabella delle lunghezze per paese), e riscriverlo qui vorrebbe
      dire averne due — quello sbagliato sarebbe quello che nessuno guarda. -->
-<script src="tariffe/motore/contabilita.js?v=20260924"></script>
+<script src="tariffe/motore/contabilita.js?v=20260928"></script>
 <script src="tariffe/motore/collaboratori.js?v=20260921"></script>
 <script src="tariffe/motore/registro.js?v=20260923"></script>
 <script src="tariffe/motore/assegnazione.js?v=20260925"></script>
@@ -108,7 +108,7 @@
      i codici di Prima prendono un nome che si può leggere al telefono, e la
      somma delle garanzie si confronta col premio. -->
 <script src="tariffe/motore/garanzie.js?v=20260928"></script>
-<script src="tariffe/motore/foglio-cassa.js?v=20260924"></script>
+<script src="tariffe/motore/foglio-cassa.js?v=20260928"></script>
 <script src="tariffe/motore/piano-rate.js?v=20260921"></script>
 <script src="tariffe/motore/animali.js?v=20260910"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260910"></script>
@@ -18583,7 +18583,11 @@ function mezLeggi(id) { return ((document.getElementById(id) || {}).value || '')
 const TIT_MEZZI = {
   contante: 'Contante', assegno: 'Assegno', bonifico: 'Bonifico',
   pos: 'POS', carta_credito: 'Carta di credito',
-  paypal: 'PayPal', prepagata: 'Carta prepagata', domiciliazione: 'Domiciliazione (SDD)', altro: 'Altro'
+  paypal: 'PayPal', prepagata: 'Carta prepagata', domiciliazione: 'Domiciliazione (SDD)',
+  /* La carta HDI è il finanziamento Agos (28/09/2026): il premio lo anticipa
+     una finanziaria, e chiamarla «carta di credito» vorrebbe dire non
+     distinguerla da un incasso che si chiude in tre giorni. */
+  finanziamento: 'Finanziamento Agos (carta HDI)', altro: 'Altro'
 };
 
 /* Il piano delle rate di una polizza: date e importi calcolati.

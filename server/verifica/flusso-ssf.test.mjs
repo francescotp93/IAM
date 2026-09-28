@@ -23,6 +23,9 @@ import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const F = require('../../tariffe/motore/flusso-ssf.js');
+/* La regola di casa su come arriva un incasso (Prima vs HDI) sta nel motore
+   del pagamento: si chiede a lui, non se ne tiene una copia qui. */
+const P_RATA = require('../../tariffe/motore/pagamento-rata.js');
 
 const QUI = path.dirname(fileURLToPath(import.meta.url));
 const CAMPIONI = path.join(QUI, 'campioni', 'ssf');
@@ -641,7 +644,12 @@ prova('il mezzo di pagamento non resta vuoto, e quello che non si sa non si inve
   deve(cerca('NP-0007').mezzo_pagamento === 'bonifico', 'bonifico non riconosciuto');
   /* Il vocabolario e' uno solo: quello che traduce il flusso e' quello che
      riempie la tendina con cui si corregge. */
-  deve(F.MEZZI.length === 9 && F.MEZZI.every(m => m.id && m.l), 'il vocabolario dei mezzi e\' incompleto');
+  /* Dieci dal 28/09/2026: si è aggiunta la carta HDI (finanziamento Agos). Il
+     numero da solo non prova niente — quello che conta è che ogni voce abbia
+     chiave ed etichetta, e che le chiavi siano le stesse del database: lo
+     misura `contabilita` con la prova sui cinque posti. */
+  deve(F.MEZZI.length === 10 && F.MEZZI.every(m => m.id && m.l),
+    'il vocabolario dei mezzi e\' incompleto: ' + F.MEZZI.length + ' voci');
   return '9 mezzi, i codici ignoti restano vuoti';
 });
 
@@ -688,8 +696,51 @@ prova('quello che la compagnia ha gia\' mandato non si duplica', () => {
      NP-0008, e che le altre le abbia mandate la compagnia. */
   const dedotte = P.titoli.daIncassare.filter(t => /:RATA:/.test(t._fonte_id || ''));
   deve(dedotte.length === 1, 'rate dedotte da noi: ' + dedotte.length + ' (attesa 1, quella di NP-0008)');
-  deve(P.titoli.daIncassare.length === 3, 'rate da incassare: ' + P.titoli.daIncassare.length + ' (attese 3)');
+  /* Erano tre fino al 28/09/2026, e la terza era un errore: la prima
+     semestralita' di NP-0002 (T8) ha la data di pagamento del cliente e la
+     compagnia dichiara la polizza coperta fino al 16/03/2027, cioe' OLTRE la
+     sua decorrenza. Era pagata due volte su due, e risultava da incassare solo
+     perche' lo stato del tracciato diceva `I` invece di `P`. La regola di casa
+     su Prima — la copertura vale come prova dell'incasso — la rimette al suo
+     posto. */
+  deve(P.titoli.daIncassare.length === 2, 'rate da incassare: ' + P.titoli.daIncassare.length + ' (attese 2)');
   return 'su NP-0002 non deduciamo niente; una sola rata dedotta in tutto il flusso';
+});
+
+prova('con Prima la COPERTURA vale come prova dell\'incasso', () => {
+  /* La regola di casa del 28/09/2026. Prima incassa e poi copre: se dichiara
+     la polizza coperta oltre la decorrenza di una rata, quella rata l'ha
+     incassata lei, anche quando lo stato del tracciato non dice `P`. */
+  const t8 = A.titoli.find(t => t._fonte_id === 'T8');
+  deve(t8 && t8.pagamento === 'incassato',
+    'T8 (primo semestre di NP-0002, coperta fino al 16/03/2027): ' + (t8 && t8.pagamento));
+
+  /* E IL CONFRONTO È STRETTO. «Coperta fino al 16/03/2027» vuol dire che la
+     copertura finisce quel giorno: T2, che decorre proprio dal 16/03/2027, e'
+     la rata che la prolunga e NON e' pagata. Con `>=` al posto di `>` sarebbe
+     risultata incassata — e in archivio sono 1.034 polizze semestrali. */
+  const t2 = A.titoli.find(t => t._fonte_id === 'T2');
+  deve(t2 && t2.pagamento === 'da_incassare',
+    'T2 decorre dal giorno in cui la copertura finisce e risulta ' + (t2 && t2.pagamento));
+
+  /* Una rata incassata per copertura non porta una data inventata: sappiamo
+     CHE e' stata pagata, non QUANDO. T4 non ha nessuna delle due cose. */
+  const t4 = A.titoli.find(t => t._fonte_id === 'T4');
+  deve(t4 && t4.pagamento === 'da_incassare' && t4.incassato_il === null,
+    'NP-0005 non dichiara nessuna copertura e risulta ' + (t4 && t4.pagamento));
+  return 'T8 incassata dalla copertura, T2 no (il confronto e\' stretto), T4 senza copertura resta aperta';
+});
+
+prova('con Prima un sospeso del tracciato NON diventa un sospeso d\'agenzia', () => {
+  /* Con Prima il cliente paga la compagnia: l'agenzia non tocca quel denaro,
+     quindi non ha nessun credito da scaricare. Un titolo Prima nell'elenco dei
+     sospesi lo gonfierebbe di roba che nessuno deve andare a prendere. */
+  const M = P_RATA;
+  deve(M.dalFlusso({ fonte: 'ssf', dichiaratoSospeso: true }) === 'da_incassare',
+    'un SP di Prima diventa: ' + M.dalFlusso({ fonte: 'ssf', dichiaratoSospeso: true }));
+  deve(M.dalFlusso({ fonte: 'hdi', dichiaratoSospeso: true }) === 'sospeso',
+    'e su HDI il sospeso deve restare un sospeso');
+  return 'SP di Prima → da incassare; SP di HDI → sospeso';
 });
 
 prova('un pezzo scoperto piu\' corto di una rata non diventa un importo inventato', () => {

@@ -895,10 +895,20 @@
          `t.incassato_il` è la data che la rata porta addosso (c22/c24) e
          combacia con quella del record 80 su 14 rate su 14: vale come
          movimento solo se il record c'è, altrimenti è di nuovo un'etichetta. */
+      /* LA REGOLA DI CASA (28/09/2026). Con HDI i soldi passano dall'agenzia:
+         POS, bonifico e carta HDI (il finanziamento Agos) restano SOSPESI
+         finché Francesco non li abbina, perché l'incasso dice che ha pagato il
+         cliente, non che la compagnia abbia avuto i suoi soldi. Il contante no:
+         è già in casa, e va in cassa contanti. La regola sta tutta nel motore;
+         qui si passa soltanto da quale flusso arriva e con che mezzo. */
+      var mzHdi = i2 ? mezzoNostro(i2.mezzo) : null;
       var pg = pag.decide({
+        fonte: 'hdi',
+        mezzo: mzHdi,
         incassoContabile: i2 ? (i2.data || t.incassato_il) : null,
         dichiaratoPagato: /incassat|pagat/i.test(String(t.stato || '')),
         dichiaratoSospeso: /sospes/i.test(String(t.stato || '')),
+        decorrenza: t.effetto || null,
       }, null);
       if (!tp.noto && tp.originale) tipiIgnoti[tp.originale] = (tipiIgnoti[tp.originale] || 0) + 1;
 
@@ -938,7 +948,10 @@
         stato: pag.versoStato(pg.pagamento),
         pagamento: pg.pagamento,
         pagamento_dichiarato_senza_incasso: pg.dichiaratoSenzaIncasso || false,
-        mezzo_pagamento: i2 ? mezzoNostro(i2.mezzo) : null,
+        /* Il contante entra da solo nella cassa contanti: la riga se lo porta
+           dietro, così chi scrive in archivio non deve ridecidere la regola. */
+        _in_cassa_contanti: pg.inCassaContanti || false,
+        mezzo_pagamento: mzHdi,
         incassato_il: t.incassato_il || (i2 ? i2.data : null),
         note: tp.originale ? ('HDI: ' + tp.originale + '.') : null,
       });

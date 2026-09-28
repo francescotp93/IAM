@@ -28,8 +28,8 @@ const GUASTI = [
     (s) => s.replace('discorda: dalF !== attuale ? dalF : null,', 'discorda: null,')],
 
   ['una rata già in archivio non si aggiorna più (il buco di prima)',
-    (s) => s.replace("    return { pagamento: dalF, stato: versoStato(dalF), fonte: 'flusso', cambia: true,\n      dichiaratoSenzaIncasso: avviso,\n      perche: prima",
-      "    return { pagamento: prima || 'da_incassare', stato: versoStato(prima), fonte: 'flusso', cambia: false,\n      dichiaratoSenzaIncasso: avviso,\n      perche: prima")],
+    (s) => s.replace("    return { pagamento: dalF, stato: versoStato(dalF), fonte: 'flusso', cambia: true,\n      dichiaratoSenzaIncasso: avviso, inCassaContanti: cassa,\n      perche: prima",
+      "    return { pagamento: prima || 'da_incassare', stato: versoStato(prima), fonte: 'flusso', cambia: false,\n      dichiaratoSenzaIncasso: avviso, inCassaContanti: cassa,\n      perche: prima")],
 
   ['un sospeso finisce in `stato` e il database lo rifiuta',
     (s) => s.replace("return pagamento === 'incassato' ? 'incassato' : 'aperto';", 'return pagamento;')],
@@ -46,11 +46,72 @@ const GUASTI = [
       "return String(v == null ? '' : v) || null;")],
 
   ['il sospeso dichiarato copre un incasso vero',
-    (s) => s.replace("    if (giorno(p.incassoContabile)) return 'incassato';\n    if (p.dichiaratoSospeso) return 'sospeso';",
-      "    if (p.dichiaratoSospeso) return 'sospeso';\n    if (giorno(p.incassoContabile)) return 'incassato';")],
+    (s) => s.replace("    if (giorno(p.incassoContabile)) return 'incassato';\n\n    /* Prima: la copertura",
+      "    if (p.dichiaratoSospeso) return 'sospeso';\n    if (giorno(p.incassoContabile)) return 'incassato';\n\n    /* Prima: la copertura")],
 
   ['«pagato senza incasso» smette di essere marcato',
     (s) => s.replace('return !!(p.dichiaratoPagato && !giorno(p.incassoContabile) && !p.dichiaratoSospeso);', 'return false;')],
+
+  /* ── LA REGOLA DI CASA, COMPAGNIA PER COMPAGNIA (28/09/2026) ────────────
+     Nessuno di questi guasti dà errore: spostano soldi da una colonna
+     all'altra, e una colonna sbagliata piena di numeri plausibili è il modo
+     in cui un'agenzia si crede pari e non lo è. */
+
+  ['i sospesi di HDI tornano a risultare incassati',
+    (s) => s.replace("    if (fonte === 'hdi' && MEZZI_SOSPESO_HDI.indexOf(mezzo) >= 0) return 'sospeso';", '')],
+
+  ['la regola sui sospesi HDI si applica anche a Prima',
+    (s) => s.replace("    if (fonte === 'hdi' && MEZZI_SOSPESO_HDI.indexOf(mezzo) >= 0) return 'sospeso';",
+      "    if (MEZZI_SOSPESO_HDI.indexOf(mezzo) >= 0) return 'sospeso';")],
+
+  ['anche il contante di HDI diventa un sospeso',
+    (s) => s.replace("  var MEZZI_SOSPESO_HDI = ['pos', 'bonifico', 'finanziamento'];",
+      "  var MEZZI_SOSPESO_HDI = ['pos', 'bonifico', 'finanziamento', 'contante'];")],
+
+  ['la carta Agos sparisce dai mezzi che restano in sospeso',
+    (s) => s.replace("  var MEZZI_SOSPESO_HDI = ['pos', 'bonifico', 'finanziamento'];",
+      "  var MEZZI_SOSPESO_HDI = ['pos', 'bonifico'];")],
+
+  ['la regola nomina un mezzo che il vocabolario non ha: non scatta mai',
+    (s) => s.replace("  var MEZZI_SOSPESO_HDI = ['pos', 'bonifico', 'finanziamento'];",
+      "  var MEZZI_SOSPESO_HDI = ['pos', 'bonifico', 'carta_hdi'];")],
+
+  ['il contante non entra più da solo nella cassa contanti',
+    (s) => s.replace("    if (chiave(p.mezzo) !== 'contante') return false;", '    return false;')],
+
+  ['in cassa contanti finisce qualunque mezzo',
+    (s) => s.replace("    if (chiave(p.mezzo) !== 'contante') return false;", '')],
+
+  ['un contante mai pagato entra lo stesso in cassa',
+    (s) => s.replace('    return !!(giorno(p.incassoContabile) || p.dichiaratoPagato || copertaAllaData(p));', '    return true;')],
+
+  ['il confronto sulla copertura torna largo: un semestre risulta pagato',
+    /* È l'errore vero commesso scrivendo questa regola, e la prova sul
+       campione l'ha preso al primo colpo. In archivio sarebbero stati 1.034
+       semestrali da controllare uno per uno. */
+    (s) => s.replace('    return !!(fino && dec && fino > dec);', '    return !!(fino && dec && fino >= dec);')],
+
+  ['la copertura non vale più come prova dell\'incasso',
+    (s) => s.replace("    if (fonte === 'ssf' && copertaAllaData(p)) return 'incassato';", '')],
+
+  ['la copertura di HDI decide il pagamento come quella di Prima',
+    (s) => s.replace("    if (fonte === 'ssf' && copertaAllaData(p)) return 'incassato';",
+      "    if (copertaAllaData(p)) return 'incassato';")],
+
+  ['una copertura senza decorrenza vale lo stesso',
+    (s) => s.replace('    return !!(fino && dec && fino > dec);', '    return !!(fino && (!dec || fino > dec));')],
+
+  ['Prima torna ad avere i suoi sospesi',
+    (s) => s.replace("    if (p.dichiaratoSospeso) return fonte === 'ssf' ? 'da_incassare' : 'sospeso';",
+      "    if (p.dichiaratoSospeso) return 'sospeso';")],
+
+  ['e senza sapere da che flusso arriva, un sospeso non è più un sospeso',
+    (s) => s.replace("    if (p.dichiaratoSospeso) return fonte === 'ssf' ? 'da_incassare' : 'sospeso';",
+      "    if (p.dichiaratoSospeso) return fonte === 'hdi' ? 'sospeso' : 'da_incassare';")],
+
+  ['la regola di casa scavalca la mano di Francesco',
+    (s) => s.replace('    var cassa = inCassaContanti(prove);\n    var e = esistente || null;',
+      '    var cassa = inCassaContanti(prove);\n    var e = null;')],
 ]
 
 let sfuggiti = 0

@@ -229,6 +229,12 @@ var MEZZI = [
   { id: 'paypal',        l: 'PayPal' },
   { id: 'prepagata',     l: 'Carta prepagata' },
   { id: 'domiciliazione', l: 'Domiciliazione (SDD)' },
+  /* LA CARTA HDI È UN FINANZIAMENTO (28/09/2026). Francesco: «carta HDI —
+     questa modalità è finanziamento Agos». Non è una carta di credito: il
+     premio lo anticipa una finanziaria e il cliente rimborsa lei. Chiamarla
+     «carta di credito» vorrebbe dire non distinguerla dagli incassi che si
+     chiudono in tre giorni. */
+  { id: 'finanziamento', l: 'Finanziamento Agos (carta HDI)' },
   { id: 'altro',         l: 'Altro' }
 ];
 
@@ -437,7 +443,11 @@ function mezzoDa(codice) {
         });
         return;
       }
-      var t = versoTitolo(r, tipo, String(r.TIPO_TITOLO_SHARE || '').toUpperCase());
+      /* La polizza serve alla rata: con Prima la COPERTURA dichiarata dalla
+         compagnia vale come prova dell'incasso, e la data di copertura sta
+         sulla polizza, non sul titolo. */
+      var t = versoTitolo(r, tipo, String(r.TIPO_TITOLO_SHARE || '').toUpperCase(),
+        polizzePerChiave[testo(r.ID_POLIZZA_EXP)] || null);
       t._polizza = testo(r.ID_POLIZZA_EXP);
       t._ssf.garanzie = dettaglio[t._fonte_id] || [];
       if (!polizzePerChiave[t._polizza]) t._senzaPolizza = true;
@@ -783,10 +793,18 @@ function mezzoDa(codice) {
      archivio), e quella deduzione avrà una migrazione sua, provata prima. */
   var SIGLA_DA_CODICE = { AP: { sigla: 'AP', dedotta: false }, QZ: { sigla: 'QF', dedotta: true } };
 
-  function versoTitolo(r, tipo, codice) {
+  function versoTitolo(r, tipo, codice, polizza) {
     var sg = SIGLA_DA_CODICE[String(codice || '').toUpperCase()] || null;
     var stato = String(r.STATO_SHARE || '').toUpperCase();
     var pagato = data(r.DT_PAG_CLIENTE);
+    var decorrenza = data(r.EFFETTO_TITOLO);
+    /* FIN DOVE LA COMPAGNIA DICE DI AVER COPERTO. Prima incassa e poi copre:
+       se dichiara la polizza coperta fino a una data, le rate che decorrono
+       prima di quella data le ha incassate lei — anche quando non manda la
+       data di pagamento. È la prova che l'archivio ha, e non una supposizione
+       nostra. Il motore ci fa il resto. */
+    var coperta = polizza && polizza.dati && polizza.dati.ssf
+      ? polizza.dati.ssf.scadenza_incassato : null;
     /* La stessa regola dell'HDI, scritta in un posto solo. Qui non cambia il
        risultato — l'SSF guardava già la data di pagamento e non l'etichetta —
        ma aggiunge il terzo stato: `SP` diventa `sospeso` anche sulla RATA,
@@ -806,16 +824,20 @@ function mezzoDa(codice) {
        questa modifica, e resta scritta qui invece che dentro al motore
        perché è una regola del tracciato SSF, non una regola generale. */
     var pg = pag ? pag.decide({
+      fonte: 'ssf',
+      mezzo: mezzoDa(r.MEZZO_PAGAMENTO_CMP),
       incassoContabile: (stato === 'P') ? pagato : null,
       dichiaratoPagato: stato === 'P',
       dichiaratoSospeso: stato === 'SP',
+      copertaFinoAl: coperta,
+      decorrenza: decorrenza,
     }, null) : null;
     return {
       _fonte_id: testo(r.ID_TITOLO_EXP) || testo(r.ID_TITOLO_INVIO),
       tipo: tipo,
       sigla_tipo: sg ? sg.sigla : null,
       sigla_dedotta: sg ? sg.dedotta : false,
-      data_decorrenza: data(r.EFFETTO_TITOLO),
+      data_decorrenza: decorrenza,
       data_scadenza: data(r.DATA_SCADENZA_EMESSO),
       importo_lordo: numero(r.LORDO_TOTALE),
       provvigione: numero(r.PROVVIGIONI_TOTALE),
@@ -826,11 +848,19 @@ function mezzoDa(codice) {
       stato: pg ? pg.stato : ((stato === 'P' && pagato) ? 'incassato' : 'aperto'),
       pagamento: pg ? pg.pagamento : ((stato === 'P' && pagato) ? 'incassato' : 'da_incassare'),
       pagamento_dichiarato_senza_incasso: pg ? !!pg.dichiaratoSenzaIncasso : false,
+      _in_cassa_contanti: pg ? !!pg.inCassaContanti : false,
       mezzo_pagamento: mezzoDa(r.MEZZO_PAGAMENTO_CMP),
+      /* LA DATA RESTA QUELLA DELLA COMPAGNIA, E SE NON C'È NON SI INVENTA.
+         Quando è la copertura a dire che la rata è stata pagata, sappiamo CHE
+         è stata pagata e non QUANDO: scriverci la decorrenza farebbe comparire
+         un incasso in una giornata di cassa in cui non è successo niente, e
+         una cassa con dentro un movimento inventato è peggio di una cassa
+         incompleta. La rata risulta incassata, e in nessun giorno. */
       incassato_il: pagato,
       note: null,
       _ssf: {
         stato: stato, tipo_compagnia: testo(r.TIPO_TITOLO_COMPAGNIA),
+        coperta_fino_al: coperta || null,
         mezzo: testo(r.MEZZO_PAGAMENTO_CMP), competenza: data(r.DT_COMPETENZA_CONTABILE),
         collaboratore: testo(r.COLLABORATORE_1), giorni_mora: testo(r.GIORNI_MORA)
       }

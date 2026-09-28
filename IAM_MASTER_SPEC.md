@@ -587,6 +587,80 @@ Scegli il conto in Strumenti › Conti e causali.»*
 
 ---
 
+## 4sexies. Il CRM dentro IAM — liste e filtri per il marketing
+
+> **28/09/2026.** «Unifichiamo anche il marketing con IAM, così possiamo
+> [avere] la voce CRM di cui parlavamo con i vari filtri per ricercare ed
+> estrapolare liste nel portafoglio: esempio cliente di un determinato comune,
+> clienti di una determinata età, che hanno note scritte, che hanno casa di
+> proprietà, che fanno una determinata professione, che hanno una determinata
+> garanzia in polizza, che hanno una determinata polizza, ecc. Inoltre con la
+> possibilità di escludere determinati clienti di collaboratori.» — Francesco
+
+### Ci si arriva da IAM
+
+*Marketing › CRM · liste e filtri*, **prima** di «Campagne email» perché è
+l'ordine del lavoro: prima si sceglie a chi si scrive, poi si scrive. La
+schermata esisteva già nel quotatore e da IAM non si poteva raggiungere — chi
+doveva fare una lista usciva dal gestionale, e una schermata che non si trova
+vale come una schermata che non c'è.
+
+### Che cosa c'era già, e che cosa mancava
+
+| filtro | prima | adesso |
+|---|:--:|:--:|
+| comune, provincia, età, professione, note (esistenza e testo) | ✅ | ✅ |
+| ramo, compagnia, «…ma NON», scadenza, premio, gruppo | ✅ | ✅ |
+| **garanzia in polizza** (e «…ma NON la garanzia») | ✅ | ✅ |
+| perso / attivo / prospect, e come e quando l'abbiamo perso | ✅ | ✅ |
+| **casa di proprietà** | ❌ | ✅ a tre valori |
+| **prodotto preciso** (e «…ma NON il prodotto») | ❌ | ✅ |
+| **escludere i clienti di uno o più collaboratori** | ❌ | ✅ |
+
+### Le tre cose che non erano ovvie
+
+**1. La casa di proprietà: tre risposte, non due.** Chi non ha risposto non è
+un «no».
+
+**2. Una casella di spunta uguale su tutte le righe non è un dato.** Misurato:
+`casa_proprieta` vale `false` su **2.546 anagrafiche su 2.547** e `null` su
+**zero**. Non vuol dire che 2.546 clienti non hanno casa: vuol dire che a
+nessuno è stato chiesto — la colonna ha un valore predefinito e nessuno l'ha
+mai toccata. Un filtro «senza casa di proprietà» costruito su quella colonna
+produce una lista di 2.546 persone di cui non sappiamo niente, e una campagna
+mandata lì sembra mirata e non lo è.
+
+La misura di copertura da sola non lo vedeva: contando le caselle **non vuote**
+avrebbe detto «100% compilato». Adesso, per le caselle di spunta, la schermata
+scrive **«mai risposto»** al posto del conteggio. E non lo scrive sui campi che
+hanno davvero due valori: un avviso che c'è sempre si impara a saltare, e con
+lui si salta quello vero.
+
+**3. L'esclusione vince sempre sull'inclusione.** Se un collaboratore finisce
+in tutti e due gli elenchi, i suoi clienti restano fuori: nel dubbio non si
+manda. Un cliente **senza** collaboratore non è il cliente di nessuno e non
+viene escluso — sono i clienti diretti dell'agenzia. E «Azzera» svuota davvero
+il campo a scelta multipla: `value = ''` non lo svuota, le voci restano
+selezionate, e la ricerca dopo esclude ancora senza che a schermo si veda
+niente di strano.
+
+### Il prodotto preciso non è la famiglia
+
+«Ha un'auto» e «ha l'Auto HDI» sono due domande diverse. Il filtro sul ramo
+passa dal vocabolario (chi cerca «Auto» trova anche le polizze che la compagnia
+chiama `rca`); quello sul prodotto **no**, di proposito: serve quando si scrive
+a chi ha un prodotto che cambia condizioni o che si vuole sostituire.
+
+### Quello che i filtri non possono dare, oggi
+
+I flussi portano **polizze**, non dati di vita. Misurato sulle 2.547
+anagrafiche: professione **1**, email **17**, note **23**, consenso marketing
+**4**, collaboratore assegnato **2**. I filtri ci sono e funzionano; la materia
+prima per usarli in gran parte no, e la spia accanto a ogni campo lo dice prima
+che qualcuno ci costruisca sopra una campagna.
+
+---
+
 ## 5. Le regole di casa che valgono ovunque
 
 - **Niente esce senza conferma**: email, campagne, SMS, post. Sempre

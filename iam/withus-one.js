@@ -673,6 +673,14 @@
       go: function () { aprireMarketing(); },
       sub: [
         { l: 'Dashboard', i: 'i-grid', go: function () { aprireMarketing(); } },
+        /* IL CRM DENTRO IAM (28/09/2026). «Unifichiamo anche il marketing con
+           IAM, così possiamo [avere] la voce CRM di cui parlavamo, con i vari
+           filtri per ricercare ed estrapolare liste nel portafoglio» —
+           Francesco. La schermata esisteva già nel quotatore e da IAM non si
+           poteva raggiungere: chi doveva fare una lista usciva dal gestionale.
+           Sta PRIMA delle campagne perché è l'ordine del lavoro — prima si
+           sceglie a chi si scrive, poi si scrive. */
+        { l: 'CRM · liste e filtri', i: 'i-search', go: function () { aprireQuoto('crm-analisi', { menu: 'marketing', titolo: ['CRM · liste e filtri', 'Marketing'] }); } },
         { l: 'Campagne email', i: 'i-mail', go: function () { aprireQuoto('campagne', { menu: 'marketing', titolo: ['Campagne email', 'Marketing'] }); } },
         { l: 'Analisi dei bisogni', i: 'i-flask', act: 'analisi', go: function () { vai('analisi'); } }
         /* «Lead» tolta il 28/08/2026. Erano due elenchi di lead che non si

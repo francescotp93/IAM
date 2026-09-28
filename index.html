@@ -75,8 +75,8 @@
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
 <script src="tariffe/motore/pagamento-rata.js?v=20260925"></script>
-<script src="tariffe/motore/flusso-ssf.js?v=20260926"></script>
-<script src="tariffe/motore/flusso-hdi.js?v=20260926"></script>
+<script src="tariffe/motore/flusso-ssf.js?v=20260928"></script>
+<script src="tariffe/motore/flusso-hdi.js?v=20260928"></script>
 <script src="tariffe/motore/crm-analisi.js?v=20260926"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260920"></script>
 <!-- Le coordinate su cui i collaboratori versano stanno sui conti, e i conti
@@ -103,6 +103,11 @@
      due modi diversi danno due numeri che non si possono confrontare.
      La definizione per esteso: IAM_MASTER_SPEC.md §4ter. -->
 <script src="tariffe/motore/portafoglio-stato.js?v=20260926"></script>
+<!-- Che cosa copre una polizza, e quanto costa ogni pezzo. Due tracciati
+     scrivono le garanzie in due forme e in due posti; qui diventano una sola,
+     i codici di Prima prendono un nome che si può leggere al telefono, e la
+     somma delle garanzie si confronta col premio. -->
+<script src="tariffe/motore/garanzie.js?v=20260928"></script>
 <script src="tariffe/motore/foglio-cassa.js?v=20260924"></script>
 <script src="tariffe/motore/piano-rate.js?v=20260921"></script>
 <script src="tariffe/motore/animali.js?v=20260910"></script>
@@ -992,6 +997,13 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .pol-cassetto > h4 .pol-azione{text-transform:none;letter-spacing:0;font-weight:700;font-size:11.5px;
   color:var(--w1-verde-scuro);cursor:pointer;text-decoration:underline}
 .pol-cassetto .pol-vuoto{padding:11px;font-size:12px;color:var(--w1-testo2);line-height:1.5}
+/* La riga sotto le garanzie: quadrano col premio, o non quadrano e si dice di
+   quanto. Verde e rosso tenui — è un'informazione, non un allarme. */
+.pol-gar-tot td{background:var(--w1-sfondo);font-weight:700}
+.pol-gar-quadra{margin-top:7px;padding:8px 11px;border-radius:var(--w1-raggio);font-size:12px;
+  line-height:1.5;background:var(--w1-sfondo);border:1px solid var(--w1-bordo);color:var(--w1-testo2)}
+.pol-gar-quadra.ok{background:var(--w1-verde-tenue);border-color:var(--w1-bordo);color:var(--w1-verde-scuro)}
+.pol-gar-quadra.ko{background:#fdf1f0;border-color:#f3c9c4;color:#a33228}
 .pol-cassetto table{width:100%;border-collapse:collapse;font-size:12px}
 .pol-cassetto th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;
   color:var(--w1-testo2);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--w1-bordo)}
@@ -1436,6 +1448,24 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .pdoc-x{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px}
 .pdoc-x:hover{color:var(--ink)}
 .pdoc-bd{padding:14px 18px;overflow:auto}
+/* ── LA SCHEDA DELLA POLIZZA È LARGA (28/09/2026) ───────────────────────────
+   620px vanno benissimo per un modulo di tre campi. Su una polizza no: numero,
+   compagnia, prodotto, targa, effetto, scadenza, premio, rate, sinistri e
+   garanzie in una colonna stretta diventano dieci schermate da scorrere, e
+   per rispondere a «questa polizza copre i cristalli?» bisogna scendere fino
+   in fondo. Nel gestionale che Francesco usa (AssiEasy) la polizza si apre a
+   tutto schermo e si legge tutta insieme: qui si fa lo stesso.
+
+   La classe sta sulla cornice, non sulla scatola, così non serve `:has()` e
+   gli altri due pannelli — pagamento e documenti, che sono moduli — restano
+   stretti come devono. */
+.pdoc-ov.pdoc-largo{padding:14px}
+.pdoc-ov.pdoc-largo .pdoc-box{max-width:1480px;max-height:94vh}
+.pdoc-ov.pdoc-largo .pdoc-bd{padding:16px 20px}
+@media(max-width:900px){
+  .pdoc-ov.pdoc-largo{padding:0}
+  .pdoc-ov.pdoc-largo .pdoc-box{max-height:100vh;height:100vh;border-radius:0}
+}
 /* L'estratto conto che esce di casa (brief #02 · M6). Tutto col prefisso del
    blocco: nel foglio di stile i nomi sono globali, e il guardiano delle
    collisioni misura quelli che QUOTO e IAM hanno in comune.
@@ -16478,10 +16508,13 @@ function pfNumero(p) {
    quando, e — per quello che si corregge da qui — chi ha fatto l'ultima
    modifica. Non è un vezzo: «questo pagamento chi l'ha cambiato?» è una
    domanda che arriva sempre, e arriva mesi dopo. */
-function polPannello(titolo, sottotitolo, corpo) {
+/* `largo` apre il pannello quasi a tutto schermo. Lo usa solo la scheda della
+   polizza: il pagamento e i documenti sono moduli, e un modulo di tre campi
+   steso su millecinquecento pixel si legge peggio, non meglio. */
+function polPannello(titolo, sottotitolo, corpo, largo) {
   document.getElementById('pol-ov')?.remove();
   document.body.insertAdjacentHTML('beforeend',
-    `<div id="pol-ov" class="pdoc-ov" onclick="if(event.target.id==='pol-ov')this.remove()">
+    `<div id="pol-ov" class="pdoc-ov${largo ? ' pdoc-largo' : ''}" onclick="if(event.target.id==='pol-ov')this.remove()">
       <div class="pdoc-box">
         <div class="pdoc-hd">
           <div><b>${titolo}</b><div class="pdoc-sub">${sottotitolo || ''}</div></div>
@@ -16493,6 +16526,137 @@ function polPannello(titolo, sottotitolo, corpo) {
 
 const polData = (v) => v ? new Date(v).toLocaleDateString('it-IT') : '—';
 const polQuando = (v) => v ? new Date(v).toLocaleString('it-IT') : '—';
+
+/* ══ LE GARANZIE DELLA POLIZZA (28/09/2026) ════════════════════════════════
+   «La schermata delle specifiche delle garanzie deve essere completa, proprio
+   per come è presente nei file dei flussi di compagnia» — Francesco.
+
+   Prima ne mostrava quattro colonne fisse (garanzia, netto, tasse, lordo) coi
+   nomi come li scrive il computer della compagnia: a schermo c'era scritto
+   `INFORTUNI_CONDUCENTE`. Adesso:
+
+     · il nome è in italiano — i 19 codici veri di Prima hanno una traduzione,
+       le descrizioni di HDI sono già scritte bene e non si toccano;
+     · le colonne sono quelle che hanno un valore SU QUESTA POLIZZA. Massimale
+       e franchigia sono vuoti su tutte e 11.131 le garanzie di Prima: due
+       colonne di trattini si imparano a saltare, e con loro si salta la
+       tabella;
+     · sotto c'è la riga che dice se le garanzie sommano al premio. Quando non
+       torna si dice di quanto: una tabella che non quadra e non lo dice è
+       peggio di una tabella che manca.
+
+   Le REGOLE stanno nel motore, con le loro 28 prove e 17 sabotaggi. Qui c'è
+   solo il disegno. `grezze` è il ripiego per quando il motore non si è
+   caricato: meglio quattro colonne che una sezione vuota. */
+const POL_GAR_ETICHETTE = {
+  netto: 'Netto', imponibile: 'Imponibile', tasse: 'Tasse', ssn: 'SSN',
+  massimale: 'Massimale', franchigia: 'Franchigia', provvigione: 'Provvigione'
+};
+
+/* ══ IL DETTAGLIO DEL CONTRATTO (28/09/2026) ═══════════════════════════════
+   Quello che il flusso ci manda e che la scheda non faceva vedere.
+
+   `dati.ssf` porta ventitré campi e la scheda ne mostrava sei: la scomposizione
+   del premio (netto, imponibile, tasse, contributo SSN) c'era su tutte e 4.073
+   le polizze ed era invisibile — ed è la prima cosa che si guarda quando un
+   cliente chiede perché il premio è salito. Nel gestionale che Francesco usa
+   sono in cima alla scheda, e qui vanno messe.
+
+   UNA RIGA COMPARE SOLO SE HA UN VALORE. Un blocco di dodici righe con nove
+   trattini si smette di leggere, e i tre dati buoni si perdono in mezzo. */
+function polContratto(p, dati, ssf) {
+  const righe = [];
+  const metti = (et, val, sotto) => {
+    if (val == null || val === '' || val === '—') return;
+    righe.push('<div class="pol-r"><span>' + et + '</span><b>' + val
+      + (sotto ? '<div class="cl-sub" style="font-weight:400">' + esc(sotto) + '</div>' : '') + '</b></div>');
+  };
+  const eur = (n) => n == null ? null : pfEuro(n);
+
+  /* La scomposizione del premio, nell'ordine in cui si costruisce:
+     netto → imponibile → tasse → SSN → lordo. */
+  metti('Netto', eur(ssf.netto != null ? ssf.netto : dati.premio_netto));
+  metti('Imponibile', eur(ssf.imponibile));
+  metti('Tasse', eur(ssf.tasse));
+  /* Il contributo al Servizio Sanitario: sta dentro il lordo della RCA e i
+     clienti lo chiedono per il 730. */
+  metti('Contributo SSN', eur(ssf.ssn), ssf.ssn != null ? 'compreso nel premio' : '');
+
+  metti('Ramo', esc(ssf.ramo || dati.ramo || ''));
+  metti('N. proposta', esc(ssf.proposta || ''));
+  metti('Rate all\'anno', ssf.rate_anno != null ? String(ssf.rate_anno) : null);
+  /* La scadenza originale è quella del contratto; quella «effettiva» la
+     cambiano le sospensioni. Si mostra solo se dice qualcosa di diverso. */
+  metti('Scadenza originale', ssf.scadenza_originale && ssf.scadenza_originale !== p.data_scadenza
+    ? polData(ssf.scadenza_originale) : null);
+  metti('Emessa fino al', ssf.scadenza_emesso ? polData(ssf.scadenza_emesso) : null);
+  metti('Agenzia', esc(ssf.agenzia || dati.agenzia || ''));
+  metti('Codice ANIA', esc(ssf.compagnia_ania || dati.ania || ''));
+  /* La polizza che questa ha preso il posto di: è l'unico modo di ritrovare
+     la storia di un cliente che ha cambiato veicolo o garanzie. */
+  metti('Sostituisce', esc(dati.sostituisce_numero || ssf.sostituisce_numero || ''));
+  metti('Annullata il', ssf.data_annullamento ? polData(ssf.data_annullamento) : null,
+    ssf.motivo_storno ? 'motivo: ' + ssf.motivo_storno : '');
+
+  if (!righe.length) return '';
+  return '<div class="flu-sez">Dettaglio del contratto <span class="cl-sub">come lo manda la compagnia</span></div>'
+    + '<div class="pol-griglia">' + righe.join('') + '</div>';
+}
+
+function polGaranzie(sch, grezze) {
+  /* SENZA MOTORE NON SI NASCONDE NIENTE. Se `garanzie.js` non si è caricato,
+     la sezione mostra quello che sa mostrare da sé e lo dichiara — far
+     sparire le garanzie di una polizza che ce le ha è il difetto peggiore di
+     tutti, perché somiglia a un dato che non c'è. */
+  if (!sch) {
+    const g = grezze || [];
+    return `<div class="flu-sez">Garanzie — ${g.length || 'nessuna nel flusso'}</div>`
+      + (g.length ? `<table class="storico-table"><thead><tr><th>Garanzia</th><th class="soldi">Lordo</th></tr></thead><tbody>`
+          + g.map(x => `<tr><td>${esc(x.descrizione || x.codice || '—')}</td>
+              <td class="soldi"><b>${(x.lordo != null || x.premio_lordo != null) ? pfEuro(x.lordo != null ? x.lordo : x.premio_lordo) : '—'}</b></td></tr>`).join('')
+          + '</tbody></table><div class="cl-sub">Il motore delle garanzie non è caricato: qui c\'è solo l\'elenco, senza il dettaglio.</div>'
+        : '<div class="cl-sub">Le garanzie arrivano dal flusso della compagnia: su una polizza inserita a mano non ci sono.</div>');
+  }
+
+  if (!sch.lista.length) {
+    return '<div class="flu-sez">Garanzie — nessuna nel flusso</div>'
+      + '<div class="cl-sub">Le garanzie arrivano dal flusso della compagnia: su una polizza inserita a mano non ci sono.</div>';
+  }
+
+  /* Il bene assicurato non è una colonna: è una frase lunga
+     («AUTO HDI - PEUGEOT 2008 PURETECH 100 S&S ACTIVE (GV712FB)») e in una
+     colonna stretta si spezzerebbe su quattro righe. Va sotto il nome, e solo
+     quando i beni diversi sono più di uno — su una polizza con un veicolo
+     solo, ripeterlo su ogni riga è rumore. */
+  const beni = [...new Set(sch.lista.map(g => g.bene).filter(Boolean))];
+  const mostraBene = beni.length > 1;
+  const cols = sch.colonne.filter(c => c !== 'bene');
+  const soldi = { netto: 1, imponibile: 1, tasse: 1, ssn: 1, provvigione: 1, massimale: 1, franchigia: 1 };
+  const cella = (g, c) => g[c] == null ? '—' : (soldi[c] ? pfEuro(g[c]) : esc(String(g[c])));
+
+  const q = sch.quadratura;
+  const esitoCls = q.esito === 'quadra' ? 'ok' : (q.esito === 'non_quadra' ? 'ko' : '');
+  const riga = q.esito === 'non_si_puo_dire' && sch.totali.lordo == null ? ''
+    : `<div class="pol-gar-quadra ${esitoCls}"><i class="ti ti-${q.esito === 'quadra' ? 'check' : (q.esito === 'non_quadra' ? 'alert-triangle' : 'help')}"></i> ${esc(q.spiega)}</div>`;
+
+  return `<div class="flu-sez">Garanzie — ${sch.lista.length}${
+      sch.fonte ? ` <span class="cl-sub">dal flusso ${esc(sch.fonte.toUpperCase())}</span>` : ''}</div>
+    <table class="storico-table pol-gar">
+      <thead><tr><th>Garanzia</th>${cols.map(c => `<th class="soldi">${POL_GAR_ETICHETTE[c] || esc(c)}</th>`).join('')}<th class="soldi">Lordo</th></tr></thead>
+      <tbody>
+        ${sch.lista.map(g => `<tr>
+          <td>${esc(g.nome)}${g.codice && g.codice !== g.nome ? `<div class="cl-sub">${esc(g.codice)}</div>` : ''}${
+            mostraBene && g.bene ? `<div class="cl-sub">${esc(g.bene)}</div>` : ''}</td>
+          ${cols.map(c => `<td class="soldi">${cella(g, c)}</td>`).join('')}
+          <td class="soldi"><b>${g.lordo != null ? pfEuro(g.lordo) : '—'}</b></td></tr>`).join('')}
+        <tr class="pol-gar-tot"><td><b>Totale</b></td>
+          ${cols.map(c => `<td class="soldi">${sch.totali[c] != null ? pfEuro(sch.totali[c]) : ''}</td>`).join('')}
+          <td class="soldi"><b>${sch.totali.lordo != null ? pfEuro(sch.totali.lordo) : '—'}</b></td></tr>
+      </tbody>
+    </table>
+    ${riga}
+    ${!mostraBene && beni.length === 1 ? `<div class="cl-sub" style="margin-top:6px">Tutte sul bene: ${esc(beni[0])}</div>` : ''}`;
+}
 
 /* La riga «chi e quando», in fondo a ogni pannello. */
 /* 19/09/2026: la storia arriva dal REGISTRO, non più da una traccia scritta
@@ -16523,7 +16687,7 @@ async function polLeggi(id) {
 }
 
 async function polDettaglio(id) {
-  polPannello('Polizza', 'Carico…', '<div class="empty-state">Carico…</div>');
+  polPannello('Polizza', 'Carico…', '<div class="empty-state">Carico…</div>', true);
   /* Il vocabolario delle modalità serve alla scheda del pagamento: senza, la
      tendina non conosce i collaboratori. */
   await mezCarica();
@@ -16542,6 +16706,10 @@ async function polDettaglio(id) {
      in archivio, tutte e 63, e la scheda mostrava un vuoto. */
   const gar = ssf.garanzie || dati.garanzie || [];
   const v = ssf.veicolo || dati.veicolo;
+  /* Le garanzie passano dal motore (`tariffe/motore/garanzie.js`): le due
+     forme diventano una, i codici di Prima prendono un nome leggibile, e si
+     sa quali colonne hanno davvero un valore su QUESTA polizza. */
+  const garSch = window.Garanzie ? window.Garanzie.scheda(p) : null;
 
   /* M1.3 (19/09/2026): il dettaglio deve bastare da solo — pagamento, rate in
      scadenza e produttore stanno QUI, non in tre pannelli da aprire uno dopo
@@ -16619,6 +16787,8 @@ async function polDettaglio(id) {
         + (prod.da ? ' <span class="cl-sub">' + esc(prod.da) + '</span>' : ''))}
     </div>
 
+    ${polContratto(p, dati, ssf)}
+
     <!-- Le due cose che si guardano aprendo una polizza, AFFIANCATE: le rate
          e i sinistri. Su telefono una sotto l'altra. -->
     <div class="pol-due">
@@ -16630,14 +16800,7 @@ async function polDettaglio(id) {
         ${polSinistri(sin, sinKo)}</div>
     </div>
 
-    <div class="flu-sez">Garanzie — ${gar.length || 'nessuna nel flusso'}</div>
-    ${gar.length ? `<table class="storico-table"><thead><tr><th>Garanzia</th><th class="soldi">Netto</th><th class="soldi">Tasse</th><th class="soldi">Lordo</th></tr></thead><tbody>
-      ${gar.map(g => `<tr><td>${esc(g.descrizione || g.codice || '—')}</td>
-        <td class="soldi">${g.netto != null ? pfEuro(g.netto) : '—'}</td>
-        <td class="soldi">${g.tasse != null ? pfEuro(g.tasse) : '—'}</td>
-        <td class="soldi"><b>${g.lordo != null ? pfEuro(g.lordo) : '—'}</b></td></tr>`).join('')}
-      <tr><td><b>Totale</b></td><td></td><td></td><td class="soldi"><b>${pfEuro(gar.reduce((t, g) => t + (g.lordo || 0), 0))}</b></td></tr>
-      </tbody></table>` : '<div class="cl-sub">Le garanzie arrivano dal flusso della compagnia: su una polizza inserita a mano non ci sono.</div>'}
+    ${polGaranzie(garSch, gar)}
 
     ${v && (v.targa || v.classe) ? `<div class="flu-sez">Veicolo</div>
       <div class="pol-griglia">

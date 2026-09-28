@@ -406,6 +406,89 @@ l'ha ancora detto», non «nuova polizza».
 
 ---
 
+## 4quater. La scheda della polizza, e le sue garanzie
+
+> **28/09/2026.** «Quando clicco su un numero di polizza si deve vedere in
+> maniera un po' più chiara e magari a tutto schermo, proprio per come si
+> vede la schermata di AssiEasy.» — «La schermata delle specifiche delle
+> garanzie deve essere completa, proprio per come è presente nei file dei
+> flussi di compagnia.»
+
+### La scheda si apre larga
+
+Il pannello della polizza era largo 620 pixel, come i moduli da tre campi
+con cui condivide la cornice. Su una polizza vuol dire dieci schermate da
+scorrere, e per rispondere a «copre i cristalli?» bisogna arrivare in
+fondo. Adesso si apre a **1.480 px / 94vh** (su telefono a tutto schermo),
+e le tre colonne della griglia si distendono.
+
+Gli altri due pannelli che usano la stessa cornice — **pagamento** e
+**documenti** — restano stretti: sono moduli, e un modulo di tre campi
+steso su millecinquecento pixel si legge peggio, non meglio.
+
+### Che cosa il flusso manda e la scheda non mostrava
+
+Misurato sull'archivio prima di toccare niente:
+
+| dato | dov'era | si vedeva? |
+|---|---|:--:|
+| netto, imponibile, tasse, contributo SSN della polizza | `dati.ssf`, su **4.073 su 4.073** | no |
+| ramo, n. proposta, rate all'anno, agenzia, codice ANIA | `dati.ssf` | no |
+| scadenza originale, emessa fino al | `dati.ssf` | no |
+| polizza sostituita | `dati.sostituisce_numero` | no |
+| imponibile e tipo premi **della singola garanzia** | REC030, letto e buttato | no |
+| diritti, accessori, imponibile, SSN **per garanzia della rata** | REC042, letto e buttato | no |
+| netto della singola garanzia HDI | letto dalla c31 e non copiato | no |
+
+Tutti e sette sono stati recuperati. I primi quattro erano già in archivio
+e bastava mostrarli; gli ultimi tre erano buttati al momento della lettura
+del flusso e **arriveranno dalla prossima importazione** — sulle righe già
+in archivio restano vuoti, e una colonna vuota non compare.
+
+### Le garanzie: un motore solo, `tariffe/motore/garanzie.js`
+
+**Due tracciati, due forme, due posti.** Prima annida sotto
+`dati.ssf.garanzie` con `lordo/netto/tasse/ssn`; HDI scrive alla radice
+`dati.garanzie` con `premio_lordo/premio_netto/massimale/bene`. Il motore
+le riduce a una forma sola: chi disegna non deve più sapere da quale
+compagnia arrivano.
+
+**I nomi di Prima sono codici.** Su **11.131 garanzie su 11.131** la
+descrizione è identica al codice: a schermo c'era scritto
+`INFORTUNI_CONDUCENTE`. I codici diversi in tutto l'archivio sono **19**, e
+diciannove nomi si scrivono. Le descrizioni di HDI arrivano già in italiano
+(«Tutela Legale della Circolazione Basic») e non si toccano. Un codice mai
+visto si mostra com'è: meglio un codice a schermo che un nome inventato.
+
+**Le colonne sono quelle che hanno un valore su QUESTA polizza.** Massimale
+e franchigia sono vuoti su tutte e 11.131 le garanzie di Prima; HDI il
+massimale ce l'ha. Colonne fisse vorrebbe dire due colonne di trattini su
+ogni polizza Prima — e a forza di trattini si smette di guardare la tabella.
+
+**La somma delle garanzie si confronta col premio**, e la risposta è a tre
+valori: quadra, non quadra (e allora si dice **di quanto** e da che parte),
+oppure non si può dire — che è la risposta onesta quando la polizza non
+dichiara il premio. Un «quadra» detto senza avere il secondo numero è una
+rassicurazione costruita sul nulla. La tolleranza è **un centesimo**, per
+l'arrotondamento dell'ultima cifra: sui flussi veri le garanzie sommano
+esattamente al premio (18 polizze HDI su 18), quindi due centesimi sono
+già una differenza da guardare.
+
+**Il bene assicurato non è una colonna**: è una frase lunga
+(«AUTO HDI - PEUGEOT 2008 PURETECH 100 S&S ACTIVE (GV712FB)»). Sta sotto il
+nome quando i beni sono più d'uno — su una polizza con un veicolo solo si
+dice una volta sotto la tabella.
+
+**Senza motore le garanzie non spariscono.** Se `garanzie.js` non si carica,
+la sezione mostra l'elenco che sa mostrare e lo dichiara. Far sparire le
+garanzie di una polizza che ce le ha somiglia a un dato che non c'è, e
+nessuno va a cercarlo.
+
+Prove: `garanzie` 28/28 con 17 sabotaggi presi su 17, `polizza-nel-browser`
+29/29 in Chromium vero con 26 sabotaggi su 26.
+
+---
+
 ## 5. Le regole di casa che valgono ovunque
 
 - **Niente esce senza conferma**: email, campagne, SMS, post. Sempre

@@ -339,6 +339,15 @@ function mezzoDa(codice) {
       (garanzie[r.ID_POLIZZA_EXP] = garanzie[r.ID_POLIZZA_EXP] || []).push({
         codice: testo(r.COD_GARANZIA_CMP), descrizione: testo(r.DESCRIZIONE_GARANZIA_CMP),
         lordo: numero(r.LORDO), netto: numero(r.NETTO), tasse: numero(r.TASSE), ssn: numero(r.SSN),
+        /* L'IMPONIBILE SI BUTTAVA, e sul REC030 c'è (28/09/2026). Non è il
+           netto: fra i due ci sono diritti e accessori, ed è l'imponibile il
+           numero su cui la compagnia calcola le tasse. Senza, la riga della
+           garanzia non si può ricontrollare da sola. */
+        imponibile: numero(r.IMPONIBILE),
+        /* Annuo o rateale: dice se il premio della garanzia è quello
+           dell'anno o quello della rata. Due numeri diversi con lo stesso
+           nome sono il modo più rapido di dare una cifra sbagliata. */
+        tipo_premi: testo(r.TIPO_PREMI), tipo_premi_delega: testo(r.TIPO_PREMI_DELEGA),
         massimale: testo(r.MASSIMO), franchigia: testo(r.FRANCHIGIA)
       });
     });
@@ -392,6 +401,12 @@ function mezzoDa(codice) {
       (dettaglio[k] = dettaglio[k] || []).push({
         codice: testo(r.COD_GARANZIA_CMP), descrizione: testo(r.DESCRIZIONE_GARANZIA_CMP),
         lordo: numero(r.LORDO), netto: numero(r.NETTO), tasse: numero(r.TASSE),
+        /* Diritti, accessori, imponibile e SSN erano letti e buttati
+           (28/09/2026). Sono le voci che spiegano la differenza fra il netto
+           e il lordo di una rata: senza, «perché questa rata costa dodici
+           euro più dell'anno scorso» non ha una risposta da dare al cliente. */
+        diritti: numero(r.DIRITTI), accessori: numero(r.ACCESSORI),
+        imponibile: numero(r.IMPONIBILE), ssn: numero(r.SSN),
         provvigioni: numero(r.PROVVIGIONI_TOTALI)
       });
     });

@@ -182,6 +182,21 @@ prova('le garanzie sommano al premio della polizza', () => {
     'le garanzie sommano ' + somma.toFixed(2) + ' contro un premio di ' + r.polizze[0].premio_lordo);
 });
 
+prova('il netto della garanzia arriva fino all\'archivio, non solo il lordo', () => {
+  /* `garanzia()` lo leggeva dalla colonna 31 e la conversione non lo copiava
+     (28/09/2026): in archivio le sessanta garanzie di HDI avevano il lordo e
+     nessun netto, e la differenza fra i due — che è la tassa — non si poteva
+     mostrare. */
+  const c = H.converti(H.esamina(FILE, []));
+  const gs = c.polizze[0].dati.garanzie;
+  deve(gs && gs.length, 'la polizza non porta garanzie');
+  const conNetto = gs.filter(g => g.premio_netto != null);
+  deve(conNetto.length === gs.length,
+    'garanzie senza netto: ' + (gs.length - conNetto.length) + ' su ' + gs.length);
+  deve(gs[0].premio_lordo != null && gs[0].premio_netto <= gs[0].premio_lordo,
+    'il netto non è minore del lordo: ' + JSON.stringify(gs[0]));
+});
+
 /* ── 6. quello che non si sa non prende un nome ─────────────────────────── */
 
 prova('effetto e scadenza sono quelli che confermano i titoli', () => {
@@ -646,9 +661,17 @@ prova('le garanzie si cercano dove HDI le scrive, non solo dove le scrive l\'SSF
   const fs = require('fs');
   const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
   deve(/const gar = ssf\.garanzie \|\| dati\.garanzie \|\| \[\]/.test(pagina),
-    'la scheda cerca le garanzie in un posto solo');
+    'il ripiego della scheda cerca le garanzie in un posto solo');
   deve(/const v = ssf\.veicolo \|\| dati\.veicolo/.test(pagina),
     'la scheda cerca il veicolo in un posto solo');
+  /* Dal 28/09/2026 il posto giusto lo decide il motore, che guarda in
+     entrambi. La riga qui sopra resta come ripiego per quando il motore non
+     si è caricato: una polizza con le garanzie non deve mai mostrarne zero. */
+  deve(/window\.Garanzie \? window\.Garanzie\.scheda\(p\)/.test(pagina),
+    'la scheda non chiede le garanzie al motore');
+  const M = require(new URL('../../tariffe/motore/garanzie.js', import.meta.url).pathname);
+  deve(M.dallaPolizza({ dati: { garanzie: [{ codice: 'X' }] } }).fonte === 'hdi',
+    'il motore non trova le garanzie dove le scrive HDI');
 });
 
 prova('il tacito rinnovo non si afferma quando non si sa', () => {

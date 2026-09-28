@@ -331,6 +331,21 @@ prova('veicolo e garanzie restano attaccati alla polizza', () => {
   return '1 veicolo, 2 garanzie che sommano al premio';
 });
 
+prova('la garanzia porta anche l\'imponibile, non solo netto e lordo', () => {
+  /* Il REC030 ha ventun colonne e ne tenevamo otto (28/09/2026).
+     L'IMPONIBILE è il numero su cui la compagnia calcola le tasse: fra netto
+     e imponibile ci sono diritti e accessori, e senza di lui la riga della
+     garanzia non si può ricontrollare da sola. */
+  const p = cerca('NP-0001');
+  const rca = p.dati.ssf.garanzie.find(g => g.codice === 'RCA');
+  deve(rca, 'la RCA non c\'è');
+  deve(rca.imponibile === 197, 'imponibile della RCA: ' + rca.imponibile);
+  deve(rca.netto === 197 && rca.tasse === 53 && rca.lordo === 250,
+    'gli altri importi sono cambiati: ' + JSON.stringify(rca));
+  deve(rca.tipo_premi === 'A', 'annuo o rateale non arriva: ' + rca.tipo_premi);
+  return 'imponibile 197,00 e tipo premi «A» sulla RCA';
+});
+
 await (async () => {
   const zip = path.join(CAMPIONI, 'flusso-di-collaudo.zip');
   esiti.push({ nome: 'lo zip si apre senza librerie, leggendo l\'indice e non le intestazioni locali', fn: null, asincrona: async () => {
@@ -588,6 +603,23 @@ prova('il dettaglio garanzia per garanzia resta attaccato alla rata', () => {
   const rca = t._ssf.garanzie.find(g => g.codice === 'RCA');
   deve(rca && rca.provvigioni === 25, 'la provvigione della RCA: ' + (rca && rca.provvigioni));
   return '2 garanzie che sommano alla provvigione della rata';
+});
+
+prova('e porta le voci che spiegano la differenza fra netto e lordo', () => {
+  /* Diritti, accessori, imponibile e SSN erano letti e buttati. Sono le voci
+     che rispondono a «perché questa rata costa più dell'anno scorso»: senza,
+     si può solo dire al cliente che costa di più. */
+  const t = A.titoli.find(x => x._fonte_id === 'T1');
+  const rca = t._ssf.garanzie.find(g => g.codice === 'RCA');
+  deve(rca, 'la RCA non c\'è sul dettaglio della rata');
+  deve('diritti' in rca && 'accessori' in rca && 'imponibile' in rca && 'ssn' in rca,
+    'le quattro voci non ci sono: ' + Object.keys(rca).join(', '));
+  deve(rca.imponibile === 197, 'imponibile: ' + rca.imponibile);
+  /* Sul campione diritti e accessori sono vuoti, e devono restare NULLI:
+     zero euro di diritti e «non dichiarati» sono due risposte diverse. */
+  deve(rca.diritti === null && rca.accessori === null,
+    'un campo vuoto è diventato zero: ' + JSON.stringify({ d: rca.diritti, a: rca.accessori }));
+  return 'imponibile 197,00; diritti e accessori non dichiarati restano nulli';
 });
 
 prova('il mezzo di pagamento non resta vuoto, e quello che non si sa non si inventa', () => {

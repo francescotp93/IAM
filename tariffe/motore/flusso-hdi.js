@@ -766,8 +766,12 @@
     var polizze = pol.map(function (p) {
       var num = String(p.numero || '').trim();
       var gs = (garPerPol[p.id] || []).map(function (g) {
+        /* IL NETTO DELLA GARANZIA SI BUTTAVA (28/09/2026). `garanzia()` lo
+           legge dalla colonna 31 e qui non veniva copiato: in archivio le
+           sessanta garanzie di HDI avevano il lordo e nessun netto, e la
+           differenza fra i due — che è la tassa — non si poteva mostrare. */
         return { codice: g.codice, descrizione: g.descrizione, massimale: g.massimale,
-                 bene: g.bene, premio_lordo: g.premio_lordo };
+                 bene: g.bene, premio_netto: g.premio_netto, premio_lordo: g.premio_lordo };
       });
       return {
         _fonte_id: 'hdi:p:' + num,

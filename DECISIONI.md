@@ -1393,3 +1393,43 @@ dichiara invece di non fare niente.
 
 **Fuori perimetro, annotato:** due modifiche allo stesso motore nello stesso
 giorno condividono il contrassegno; la seconda arriva entro dieci minuti.
+
+## 29/09/2026 — «Il portafoglio HDI che non si caricava per 14 polizze su 252»
+
+**Chiesto:** il PASS-133 del 13/05 si fermava su *«14 polizze richiamano un
+cliente che nel file non c'è: entrerebbero senza intestatario»*, e non si
+caricava niente — 206 clienti, 252 polizze, 754 garanzie.
+
+🟡 **Ho tolto il blocco e l'ho trasformato in un avviso.** Il contraente di una
+polizza può stare in tre posti, e se ne guardava uno solo: in questo file, già
+in archivio da un'estrazione precedente, o da nessuna parte. Il secondo caso è
+la normalità — HDI manda le polizze nuove e non rimanda l'anagrafica di chi è
+già cliente — e veniva chiamato «orfano».
+*Come tornare indietro: in `flusso-hdi.js` rimettere `g: 'grave'` sull'avviso
+delle polizze scartate.*
+
+🟢 **Il terzo caso non poteva comunque entrare senza intestatario.** La
+scrittura aggancia le polizze al contraente con una `join`
+(`iam_importa_flusso`): una polizza senza cliente non viene inserita. Il blocco
+difendeva da una cosa impossibile, e per quattordici polizze ne teneva fuori
+duecentotrentotto. Adesso escono già dal lettore, contate e dichiarate — come
+si fa sui titoli da settembre.
+
+🟢 **La pagina chiede al database i clienti HDI già in archivio**, come già
+chiedeva i numeri di polizza. Porta anche il nominativo: la polizza tiene il
+nome copiato accanto al collegamento, e senza sarebbe entrata agganciata al
+cliente giusto comparendo in elenco con un trattino (era successo il 24/09).
+
+🟢 **`piano()` risolve la chiave del contraente che sta solo in archivio**,
+altrimenti si smetteva di bloccare il file e quelle polizze sparivano in
+silenzio: due modi diversi di perderle. Il codice fiscale resta l'identità che
+vince; la chiave di provenienza riempie solo i buchi.
+
+**Fuori perimetro, annotato:**
+- **L'SSF butta la chiave del contraente quando l'anagrafica non è nel flusso**
+  (`flusso-ssf.js`: `p._cliente = cli ? cli._chiave : null`). Non blocca — usa
+  già un avviso — ma quelle polizze non possono agganciarsi a un cliente che è
+  in archivio, perché la chiave per cercarlo è stata persa. Stesso rimedio di
+  HDI, un'altra volta.
+- **Non ho potuto provarlo sul file vero**: il PASS-133 del 13/05 non è fra gli
+  allegati. Le prove usano un file finto costruito con le stesse colonne.

@@ -66,9 +66,39 @@
   .vad-steps{margin:6px 0 0;padding-left:20px;} .vad-steps li{margin:7px 0;font-size:14px;line-height:1.45;}
   .vad-ok{list-style:none;margin:6px 0 0;padding:0;} .vad-ok li{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;margin:7px 0;line-height:1.4;}
   .vad-ok li i{color:#1d8a4e;font-size:17px;flex-shrink:0;margin-top:1px;}
+
+  /* ── DENTRO IAM, MARKETING NON HA UNA TESTATA SUA (29/09/2026) ────────────
+     «In marketing, Dashboard deve accedere in automatico e deve essere
+      tutt'uno con IAM» — Francesco.
+     La fascia verde con logo, titolo «Marketing», nome della persona e tasto
+     «Esci» è la testata di un'applicazione a sé. Dentro il riquadro di IAM
+     compare SOTTO la testata di IAM, che dice già le stesse quattro cose: due
+     intestazioni una sull'altra sono il modo più rapido di far capire che
+     sono due programmi diversi. Il preventivatore fa lo stesso da sempre
+     (`emb-iam` in index.html). */
+  .emb-iam .top{display:none;}
+  .emb-iam .tabs{margin-top:0;}
+  /* E la schermata di accesso a tutto schermo non deve poter comparire qui
+     dentro: il suo posto è l'apertura diretta, fuori da IAM. */
+  .emb-iam #login-screen{display:none !important;}
+  /* Quello che si dice quando dentro IAM manca qualcosa: un riquadro nel
+     corpo della pagina, con le parole di IAM, non una porta d'ingresso. */
+  .emb-msg{margin:22px;padding:16px 18px;border-radius:12px;border:1px solid var(--line);
+    background:#fff;font-size:13.5px;line-height:1.55;color:var(--ink);}
+  .emb-msg b{display:block;margin-bottom:5px;font-size:14.5px;}
+  .emb-msg .emb-sub{color:var(--muted);font-size:12.5px;margin-top:6px;}
+  .emb-msg button{margin-top:11px;padding:9px 14px;border:none;border-radius:9px;
+    background:var(--blue);color:#fff;font:inherit;font-weight:700;cursor:pointer;}
 </style>
 </head>
 <body>
+<!-- ── DENTRO IAM O NO, SUBITO (29/09/2026) ────────────────────────────────
+     Prima di disegnare qualunque cosa: se IAM ci ha aperti (`?from=iam` dentro
+     un riquadro) la pagina si veste da sezione di IAM, non da programma.
+     Va qui e non in fondo, altrimenti la fascia verde di Marketing farebbe in
+     tempo a comparire e sparire — e uno sfarfallio si vede.
+     Stessa riga del preventivatore (index.html). -->
+<script>try{var _f=new URLSearchParams(location.search).get('from')==='iam';if(_f&&window.self!==window.top)document.documentElement.classList.add('emb-iam');}catch(e){}</script>
 <!-- Login autonomo (quando si apre Marketing direttamente, non da IAM) -->
 <div id="login-screen">
   <div class="lcard">
@@ -79,7 +109,7 @@
     <input type="email" id="l-email" placeholder="Email" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
     <input type="password" id="l-pass" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="lbtn" id="l-btn" onclick="doLogin()">Accedi</button>
-    <div class="lhint">Usa le stesse credenziali di IAM / QUOTO.<br>Se entri dal menu <b>Marketing</b> dentro IAM, l'accesso è automatico.</div>
+    <div class="lhint">Usa le stesse credenziali di IAM.<br>Se entri dal menu <b>Marketing</b> dentro IAM, l'accesso è automatico.</div>
   </div>
 </div>
 
@@ -102,7 +132,7 @@
   <div id="pane-widget">
     <div class="card">
       <h2>Form "Richiedi preventivo" per il tuo sito</h2>
-      <p class="muted">Incolla questo codice nel sito (es. www.withusassicurazioni.it). Il contatto arriva in QUOTO → Richieste e l'ufficio riceve l'email.</p>
+      <p class="muted">Incolla questo codice nel sito (es. www.withusassicurazioni.it). Il contatto arriva in IAM → Richieste e l'ufficio riceve l'email.</p>
       <div class="row">
         <div><label>Prodotto preselezionato (opzionale)</label>
           <select id="w-prod" onchange="buildSnippet()">
@@ -122,7 +152,7 @@
     </div>
     <div class="card">
       <h2>Landing dedicata per prodotto</h2>
-      <p class="muted">Pagina per ogni prodotto, ideale per inserzioni (Meta/Google) o link diretto. Per i prodotti acquistabili online il cliente fa tutto da solo: <b>inserisce l'anagrafica</b> (la ritrovi in QUOTO), <b>firma la privacy a distanza</b>, <b>paga</b> e <b>firma la documentazione precontrattuale</b> a distanza.</p>
+      <p class="muted">Pagina per ogni prodotto, ideale per inserzioni (Meta/Google) o link diretto. Per i prodotti acquistabili online il cliente fa tutto da solo: <b>inserisce l'anagrafica</b> (la ritrovi in IAM), <b>firma la privacy a distanza</b>, <b>paga</b> e <b>firma la documentazione precontrattuale</b> a distanza.</p>
       <label>Prodotto</label>
       <select id="l-prod" onchange="buildLanding()">
         <optgroup label="Vita / Persona">
@@ -202,7 +232,7 @@
       <ol class="vad-steps">
         <li>Invii al cliente il <b>link di vendita a distanza</b> (email, WhatsApp o sito): nessuna chiamata necessaria.</li>
         <li>Il cliente apre la landing e legge l'<b>informativa precontrattuale</b> su supporto durevole.</li>
-        <li>Inserisce la propria <b>anagrafica</b> (la ritrovi in QUOTO).</li>
+        <li>Inserisce la propria <b>anagrafica</b> (la ritrovi in IAM).</li>
         <li>Presta i <b>consensi privacy</b> a distanza.</li>
         <li>Legge <b>Termini &amp; Condizioni</b> e l'informativa sul <b>diritto di recesso</b> (14 giorni; 30 per vita/previdenza — recesso anche online).</li>
         <li><b>Paga</b> online (pagamento tracciato).</li>
@@ -234,7 +264,7 @@
     </div>
     <div class="card">
       <h2>Lead ricevuti dal sito</h2>
-      <p class="muted">Contatti che hanno compilato il form. Li gestisci anche in QUOTO → Richieste di preventivo.</p>
+      <p class="muted">Contatti che hanno compilato il form. Li gestisci anche in IAM → Richieste di preventivo.</p>
       <div id="lead-list"><div class="empty">Carico…</div></div>
     </div>
   </div>
@@ -311,13 +341,32 @@ let TOKEN = '';            // access token corrente (usato per le chiamate al ba
 let PROFILO = null;        // riga di iam_utenti dell'utente
 let appStarted = false;
 
-/* Dentro la scocca di IAM (iframe) Marketing e' OSPITE della sessione di IAM:
-   non la salva e non la rinnova. Se la rinnovasse, il refresh token ruoterebbe e
-   IAM resterebbe con quello vecchio: Supabase lo marca "already used", sospetta
-   un abuso e revoca tutta la sessione. Aperto a pagina intera resta padrone. */
+/* ═══ UNA SESSIONE SOLA, NELLO STORAGE DELL'ORIGINE ═══════════════════════════
+   Dentro la scocca di IAM (iframe) Marketing è OSPITE della sessione di IAM:
+   non la rinnova. Se la rinnovasse, il refresh token ruoterebbe e IAM
+   resterebbe con quello vecchio: Supabase lo marca "already used", sospetta un
+   abuso e revoca tutta la sessione. Aperto a pagina intera resta padrone.
+
+   MA LA DEVE LEGGERE (corretto il 29/09/2026). Qui c'era anche
+   `persistSession: false`, ed era giusto finché Marketing stava su un'altra
+   origine (quoto.withusassicurazioni.it) e riceveva i token in un messaggio.
+   Dal 16/09/2026 IAM e Marketing stanno sulla STESSA origine
+   (iam.withusassicurazioni.it e /nuovo-preventivo/lab/): la sessione con cui
+   la persona è entrata in IAM è GIÀ in questo localStorage, e IAM infatti non
+   manda più nessun token — `sessionePerQuoto()` in withus-one.js risponde
+   vuoto proprio perché l'origine è la stessa.
+
+   Con `persistSession: false` questo client non guardava lo storage: non
+   trovava niente, non gli arrivava niente, e mostrava la sua schermata di
+   accesso DENTRO IAM. È il motivo per cui Marketing chiedeva di nuovo la
+   password a chi era già entrato.
+
+   Si toglie solo quello. `autoRefreshToken: false` resta: è la metà che
+   impediva la corsa sul rinnovo, ed è la stessa scelta del preventivatore
+   (index.html, `ospiteIam`). */
 const inIframe = (window.self !== window.top);
 let db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON,
-  inIframe ? { auth: { persistSession: false, autoRefreshToken: false } } : undefined);
+  inIframe ? { auth: { autoRefreshToken: false } } : undefined);
 function bindAuthEvents(){
   db.auth.onAuthStateChange((_ev, session) => {
     if (session) onSession(session);
@@ -411,6 +460,12 @@ function startApp(){
   if (!NOME && PROFILO) NOME = ((PROFILO.nome || '') + ' ' + (PROFILO.cognome || '')).trim();
   document.getElementById('who').textContent = NOME || EMAIL || '';
   document.getElementById('login-screen').style.display = 'none';
+  /* La sessione può arrivare in ritardo (il ponte risponde dopo il primo
+     tentativo): se nel frattempo era comparso il riquadro «non riesco a
+     leggere la sessione», va tolto — altrimenti resta un avviso smentito
+     sopra una schermata che funziona. */
+  const _em = document.getElementById('emb-msg');
+  if (_em) _em.style.display = 'none';
   document.getElementById('lab-app').style.display = '';
   // Il tasto "Esci" ha senso solo nell'accesso autonomo (non dentro la scocca di IAM)
   document.getElementById('logout-btn').style.display = inIframe ? 'none' : 'inline-flex';
@@ -420,14 +475,46 @@ function startApp(){
 
 function showLogin(msg){
   document.getElementById('lab-app').style.display = 'none';
+  /* DENTRO IAM NON SI CHIEDE UNA SECONDA PASSWORD (29/09/2026). Chi è dentro
+     IAM è già entrato: mettergli davanti la porta d'ingresso di un altro
+     programma è dirgli che sono due programmi. Qui si dice che cosa manca, in
+     un riquadro dentro la pagina, e si offre di riprovare. */
+  if (inIframe) return mostraDentroIam(msg);
   document.getElementById('login-screen').style.display = 'flex';
   const e = document.getElementById('l-err');
   if (msg) { e.textContent = msg; e.style.display = 'block'; } else { e.style.display = 'none'; }
 }
 
+/* Il messaggio dentro la scocca. `msg` c'è quando il motivo si sa (account
+   sospeso, non abilitato); quando manca, la sessione non è arrivata — e la
+   cosa utile non è una password, è ricaricare. */
+function mostraDentroIam(msg){
+  let box = document.getElementById('emb-msg');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'emb-msg'; box.className = 'emb-msg';
+    document.body.appendChild(box);
+  }
+  box.innerHTML = msg
+    ? '<b>Marketing non è disponibile per questo account</b>' + esc(msg)
+      + '<div class="emb-sub">Sei sempre dentro IAM: puoi continuare dalle altre sezioni.</div>'
+    : '<b>Non riesco a leggere la sessione</b>Marketing usa l\'accesso di IAM e qui non lo trova.'
+      + '<div class="emb-sub">Di solito basta ricaricare. Se continua, esci e rientra in IAM.</div>'
+      + '<button type="button" onclick="location.reload()">Ricarica</button>';
+  box.style.display = '';
+}
+
 function showBlocked(msg){
   PROFILO = null; TOKEN = '';
-  try { db.auth.signOut(); } catch (_) {}
+  /* NON SI ESCE DALLA SESSIONE QUANDO SI È DENTRO IAM (29/09/2026).
+     Dal 16/09 lo storage è condiviso: questo `signOut()` cancella la sessione
+     di IAM e revoca il refresh token sul server. Chi apre Marketing senza
+     essere abilitato verrebbe buttato fuori da IAM — da una schermata che
+     doveva solo dirgli «non puoi entrare qui».
+     Finché il client aveva `persistSession: false` il guasto era spento
+     (non c'era nessuna sessione da chiudere); riaccendendo la lettura dello
+     storage sarebbe diventato vivo nello stesso istante. */
+  if (!inIframe) { try { db.auth.signOut(); } catch (_) {} }
   showLogin(msg);
 }
 

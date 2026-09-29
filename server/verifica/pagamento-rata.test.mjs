@@ -177,6 +177,145 @@ prova('il vocabolario è quello che `quote_polizze` usa già', () => {
   }
 });
 
+/* ══ 6. LA REGOLA DI CASA, COMPAGNIA PER COMPAGNIA (28/09/2026) ═════════════
+   «I flussi che carico da Prima me li devi dare in automatico incassati e non
+    come sospesi. Quelli che carico da HDI, come pos, bonifici, carta HDI
+    (questa modalità è finanziamento Agos), me li devi dare come sospesi e poi
+    sarò io ad abbinarli una volta incassati. Quello che è contanti me lo devi
+    aggiungere nella cassa contanti in automatico.»          — Francesco      */
+
+prova('HDI: POS, bonifico e carta Agos restano SOSPESI anche con l\'incasso', () => {
+  /* L'incasso del flusso dice che ha pagato il CLIENTE, non che la compagnia
+     abbia avuto i suoi soldi. Confondere le due cose è il modo in cui
+     un'agenzia si crede pari e non lo è. */
+  for (const m of ['pos', 'bonifico', 'finanziamento']) {
+    const r = P.dalFlusso({ fonte: 'hdi', mezzo: m, incassoContabile: '2026-09-23', dichiaratoPagato: true });
+    deve(r === 'sospeso', 'HDI · ' + m + ' → ' + r);
+  }
+});
+
+prova('ma la stessa regola NON vale per Prima', () => {
+  /* In archivio ci sono 36 incassi Prima per bonifico: se la regola dei
+     sospesi si applicasse al mezzo invece che alla compagnia, quei 36
+     diventerebbero crediti dell'agenzia verso clienti che hanno già pagato
+     Prima — cioè telefonate per andare a prendere soldi che non ci sono. */
+  for (const m of ['pos', 'bonifico', 'finanziamento']) {
+    const r = P.dalFlusso({ fonte: 'ssf', mezzo: m, incassoContabile: '2026-09-23' });
+    deve(r === 'incassato', 'Prima · ' + m + ' → ' + r + ': la regola di HDI si è presa anche Prima');
+  }
+});
+
+prova('HDI: il contante invece è già in casa, e va in cassa contanti', () => {
+  const r = P.decide({ fonte: 'hdi', mezzo: 'contante', incassoContabile: '2026-09-23' }, null);
+  deve(r.pagamento === 'incassato', 'il contante risulta ' + r.pagamento);
+  deve(r.inCassaContanti === true, 'il contante non entra in cassa contanti');
+});
+
+prova('e un mezzo che Francesco non ha nominato resta come lo dice il flusso', () => {
+  /* Assegno e domiciliazione non sono nella sua lista. Estendere una regola a
+     mezzi di cui nessuno ha parlato vuol dire decidere al posto suo. */
+  for (const m of ['assegno', 'domiciliazione', 'carta_credito']) {
+    const r = P.dalFlusso({ fonte: 'hdi', mezzo: m, incassoContabile: '2026-09-23' });
+    deve(r === 'incassato', 'HDI · ' + m + ' → ' + r + ': la regola si è allargata da sola');
+  }
+});
+
+prova('la cassa contanti la decide il MEZZO, non il flusso da cui arriva', () => {
+  deve(P.inCassaContanti({ fonte: 'ssf', mezzo: 'contante', incassoContabile: '2026-09-23' }) === true,
+    'un contante di Prima non entra in cassa');
+  deve(P.inCassaContanti({ fonte: 'hdi', mezzo: 'pos', incassoContabile: '2026-09-23' }) === false,
+    'il POS finisce in cassa contanti');
+});
+
+prova('ma un contante non ancora pagato non è denaro che c\'è', () => {
+  /* Una rata futura in contanti è denaro che arriverà, non denaro in cassa.
+     Metterlo nel fondo cassa vuol dire contare soldi che nessuno ha portato. */
+  deve(P.inCassaContanti({ fonte: 'hdi', mezzo: 'contante' }) === false,
+    'un contante senza nessuna prova di pagamento entra in cassa');
+});
+
+prova('Prima: la copertura dichiarata vale come prova dell\'incasso', () => {
+  /* Prima incassa e poi copre: se dichiara la polizza coperta OLTRE la
+     decorrenza di una rata, quella rata l'ha incassata lei — anche quando non
+     manda la data di pagamento. */
+  const r = P.dalFlusso({ fonte: 'ssf', copertaFinoAl: '2027-03-16', decorrenza: '2026-09-16' });
+  deve(r === 'incassato', 'una rata coperta dalla compagnia risulta ' + r);
+});
+
+prova('e il confronto è STRETTO: la rata che prolunga la copertura non è pagata', () => {
+  /* «Coperta fino al 16/03/2027» vuol dire che la copertura finisce quel
+     giorno. La rata che decorre dal 16/03/2027 è quella che la prolunga, e non
+     è pagata. Con `>=` al posto di `>` sarebbe risultata incassata — e in
+     archivio le polizze semestrali sono 1.034. */
+  const r = P.dalFlusso({ fonte: 'ssf', copertaFinoAl: '2027-03-16', decorrenza: '2027-03-16' });
+  deve(r === 'da_incassare', 'la rata che prolunga la copertura risulta ' + r);
+  deve(P.copertaAllaData({ copertaFinoAl: '2027-03-16', decorrenza: '2027-03-16' }) === false,
+    'il confronto non è stretto');
+});
+
+prova('senza una delle due date non si suppone niente', () => {
+  deve(P.copertaAllaData({ copertaFinoAl: '2027-03-16' }) === false, 'senza decorrenza');
+  deve(P.copertaAllaData({ decorrenza: '2026-09-16' }) === false, 'senza copertura');
+  deve(P.copertaAllaData({}) === false, 'senza niente');
+});
+
+prova('e la copertura vale SOLO per Prima', () => {
+  /* Con HDI i soldi passano dall'agenzia: la copertura della compagnia non
+     dice niente su chi ha in mano il denaro. */
+  const r = P.dalFlusso({ fonte: 'hdi', mezzo: 'assegno', copertaFinoAl: '2027-03-16', decorrenza: '2026-09-16' });
+  deve(r === 'da_incassare', 'su HDI la copertura decide il pagamento: ' + r);
+});
+
+prova('Prima non ha sospesi: un SP del tracciato resta da incassare', () => {
+  /* Un sospeso è un credito dell'agenzia verso qualcuno. Con Prima il cliente
+     paga la compagnia e l'agenzia non tocca quel denaro: quel credito non
+     esiste, e metterlo nell'elenco dei sospesi lo gonfia di roba che nessuno
+     deve andare a prendere. */
+  deve(P.dalFlusso({ fonte: 'ssf', dichiaratoSospeso: true }) === 'da_incassare',
+    'un SP di Prima → ' + P.dalFlusso({ fonte: 'ssf', dichiaratoSospeso: true }));
+  deve(P.dalFlusso({ fonte: 'hdi', dichiaratoSospeso: true }) === 'sospeso',
+    'e su HDI un SP deve restare un sospeso');
+  /* Senza sapere da quale flusso arriva, il sospeso resta un sospeso: è il
+     verso prudente. */
+  deve(P.dalFlusso({ dichiaratoSospeso: true }) === 'sospeso', 'senza fonte');
+});
+
+prova('la regola di casa non tocca la mano di Francesco', () => {
+  /* La regola più vecchia di tutte, e quella che non si negozia: se l'ha messa
+     a mano, il flusso non la scrive — nemmeno la regola nuova. */
+  const r = P.decide({ fonte: 'hdi', mezzo: 'pos', incassoContabile: '2026-09-23' },
+    { pagamento: 'incassato', pagamento_a_mano: '2026-09-24' });
+  deve(r.pagamento === 'incassato' && r.cambia === false, JSON.stringify(r));
+  deve(r.discorda === 'sospeso', 'il disaccordo non viene riportato: ' + r.discorda);
+});
+
+prova('i tre vocabolari dei mezzi dicono le stesse cose', () => {
+  /* Il gestionale ne tiene tre: quello del flusso (la tendina con cui si
+     corregge), quello della contabilità (i conti) e quello del foglio cassa
+     (le etichette). Se uno conosce «finanziamento» e gli altri no, una rata
+     pagata con la carta HDI compare con la chiave nuda in una schermata e col
+     nome giusto in un'altra — ed è la malattia dei due vocabolari che questo
+     codice si porta dietro da sempre. */
+  const F = require('../../tariffe/motore/flusso-ssf.js');
+  const C = require('../../tariffe/motore/contabilita.js');
+  const FC = require('../../tariffe/motore/foglio-cassa.js');
+  const a = F.MEZZI.map(m => m.id).sort();
+  const b = C.MEZZI.map(m => m.k).sort();
+  const c = Object.keys(FC.MEZZI).sort();
+  deve(a.join() === b.join(), 'flusso ≠ contabilità:\n  ' + a.join(' ') + '\n  ' + b.join(' '));
+  deve(a.join() === c.join(), 'flusso ≠ foglio cassa:\n  ' + a.join(' ') + '\n  ' + c.join(' '));
+  deve(a.includes('finanziamento'), 'la carta HDI (finanziamento Agos) non è nel vocabolario');
+});
+
+prova('e i tre mezzi che HDI tiene in sospeso esistono davvero', () => {
+  /* Una regola che nomina un mezzo che il vocabolario non ha non scatta mai, e
+     non lo dice: resta scritta e inerte. */
+  const F = require('../../tariffe/motore/flusso-ssf.js');
+  const noti = F.MEZZI.map(m => m.id);
+  const fantasmi = P.MEZZI_SOSPESO_HDI.filter(m => !noti.includes(m));
+  deve(!fantasmi.length, 'mezzi che non esistono nel vocabolario: ' + fantasmi.join(', '));
+});
+
 /* ── esecuzione ─────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

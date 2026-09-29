@@ -182,6 +182,21 @@ prova('le garanzie sommano al premio della polizza', () => {
     'le garanzie sommano ' + somma.toFixed(2) + ' contro un premio di ' + r.polizze[0].premio_lordo);
 });
 
+prova('il netto della garanzia arriva fino all\'archivio, non solo il lordo', () => {
+  /* `garanzia()` lo leggeva dalla colonna 31 e la conversione non lo copiava
+     (28/09/2026): in archivio le sessanta garanzie di HDI avevano il lordo e
+     nessun netto, e la differenza fra i due — che è la tassa — non si poteva
+     mostrare. */
+  const c = H.converti(H.esamina(FILE, []));
+  const gs = c.polizze[0].dati.garanzie;
+  deve(gs && gs.length, 'la polizza non porta garanzie');
+  const conNetto = gs.filter(g => g.premio_netto != null);
+  deve(conNetto.length === gs.length,
+    'garanzie senza netto: ' + (gs.length - conNetto.length) + ' su ' + gs.length);
+  deve(gs[0].premio_lordo != null && gs[0].premio_netto <= gs[0].premio_lordo,
+    'il netto non è minore del lordo: ' + JSON.stringify(gs[0]));
+});
+
 /* ── 6. quello che non si sa non prende un nome ─────────────────────────── */
 
 prova('effetto e scadenza sono quelli che confermano i titoli', () => {
@@ -646,9 +661,17 @@ prova('le garanzie si cercano dove HDI le scrive, non solo dove le scrive l\'SSF
   const fs = require('fs');
   const pagina = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
   deve(/const gar = ssf\.garanzie \|\| dati\.garanzie \|\| \[\]/.test(pagina),
-    'la scheda cerca le garanzie in un posto solo');
+    'il ripiego della scheda cerca le garanzie in un posto solo');
   deve(/const v = ssf\.veicolo \|\| dati\.veicolo/.test(pagina),
     'la scheda cerca il veicolo in un posto solo');
+  /* Dal 28/09/2026 il posto giusto lo decide il motore, che guarda in
+     entrambi. La riga qui sopra resta come ripiego per quando il motore non
+     si è caricato: una polizza con le garanzie non deve mai mostrarne zero. */
+  deve(/window\.Garanzie \? window\.Garanzie\.scheda\(p\)/.test(pagina),
+    'la scheda non chiede le garanzie al motore');
+  const M = require(new URL('../../tariffe/motore/garanzie.js', import.meta.url).pathname);
+  deve(M.dallaPolizza({ dati: { garanzie: [{ codice: 'X' }] } }).fonte === 'hdi',
+    'il motore non trova le garanzie dove le scrive HDI');
 });
 
 prova('il tacito rinnovo non si afferma quando non si sa', () => {
@@ -1289,28 +1312,62 @@ prova('una polizza di cui l\'estratto non porta rate non viene dichiarata', () =
 });
 
 prova('e sul file vero i conti restano quelli dell\'archivio', () => {
-  /* La prova che vale più di tutte le altre: la regola nuova, applicata al
-     file che Francesco ha caricato davvero, deve dare gli stessi numeri che
-     stanno in archivio — 12 rate incassate per 3.217,39 € su 3.944,39 €. Se
-     cambiassero, avrei spostato dei soldi senza accorgermene. */
+  /* La prova che vale più di tutte le altre: la regola, applicata al file che
+     Francesco ha caricato davvero, deve dare numeri che tornano al centesimo.
+
+     ── 28/09/2026: LA REGOLA DI CASA SU HDI SPOSTA 1.002,00 € ──────────────
+     «Quelli che carico da HDI, come pos, bonifici, carta HDI (finanziamento
+     Agos), me li devi dare come sospesi e poi sarò io ad abbinarli una volta
+     incassati.» Su questo file sono tre rate: un bonifico da 733,00 € e due
+     POS per 269,00 €. Prima risultavano incassate perché il flusso portava
+     l'incasso — ma quell'incasso dice che ha pagato il CLIENTE, non che la
+     compagnia abbia avuto i suoi soldi. Sono esattamente le tre che passano
+     per l'agenzia, ed è per quelle che esiste la parola «sospeso».
+
+     Il totale non si muove: 2.215,39 incassati + 1.002,00 sospesi + 727,00 da
+     incassare = 3.944,39 €, che è il totale di prima. Nessun euro è
+     scomparso; hanno cambiato colonna. */
   const fs = require('fs');
   const percorso = '/root/.claude/uploads/69902a59-322e-5e06-8d26-1dd7126999e2/1e9ebdcf-1428_20260923.dat';
   if (!fs.existsSync(percorso)) { deve(true, ''); return; }
   const a = H.converti(H.esamina(fs.readFileSync(percorso, 'utf8'), []));
-  const inc = a.titoli.filter(t => t.pagamento === 'incassato');
   const euro = (l) => Math.round(l.reduce((s, t) => s + t.importo_lordo, 0) * 100) / 100;
+  const inc = a.titoli.filter(t => t.pagamento === 'incassato');
+  const sos = a.titoli.filter(t => t.pagamento === 'sospeso');
+  const dai = a.titoli.filter(t => t.pagamento === 'da_incassare');
+
   deve(a.titoli.length === 13, 'le rate sono ' + a.titoli.length);
-  deve(inc.length === 12, 'le rate incassate sono ' + inc.length + ' invece di 12');
-  deve(euro(inc) === 3217.39, 'incassato ' + euro(inc) + ' € invece di 3217,39');
   deve(euro(a.titoli) === 3944.39, 'totale ' + euro(a.titoli) + ' € invece di 3944,39');
+  deve(inc.length === 9, 'le rate incassate sono ' + inc.length + ' invece di 9');
+  deve(euro(inc) === 2215.39, 'incassato ' + euro(inc) + ' € invece di 2215,39');
+  deve(sos.length === 3, 'i sospesi sono ' + sos.length + ' invece di 3 (un bonifico e due POS)');
+  deve(euro(sos) === 1002, 'in sospeso ' + euro(sos) + ' € invece di 1002,00');
+  /* NIENTE SI PERDE PER STRADA: le tre colonne devono rifare il totale. È il
+     controllo che un cambio di regola sui soldi non può non avere. */
+  deve(euro(inc) + euro(sos) + euro(dai) === euro(a.titoli),
+    'le tre colonne non rifanno il totale: ' + euro(inc) + ' + ' + euro(sos) + ' + ' + euro(dai)
+    + ' ≠ ' + euro(a.titoli));
+  /* E i sospesi sono proprio quei tre mezzi, non altri. */
+  deve(sos.every(t => ['pos', 'bonifico', 'finanziamento'].includes(t.mezzo_pagamento)),
+    'un sospeso ha un mezzo che non è fra quelli di Francesco: ' + sos.map(t => t.mezzo_pagamento).join(', '));
+
+  /* IL CONTANTE VA IN CASSA DA SOLO. Sette rate per 1.643,39 €. */
+  const cassa = a.titoli.filter(t => t._in_cassa_contanti);
+  deve(cassa.length === 7, 'le rate che entrano in cassa contanti sono ' + cassa.length + ' invece di 7');
+  deve(euro(cassa) === 1643.39, 'in cassa contanti ' + euro(cassa) + ' € invece di 1643,39');
+  deve(cassa.every(t => t.mezzo_pagamento === 'contante'),
+    'in cassa contanti è finito qualcosa che non è contante');
+
   /* E nessuna rata è «dichiarata pagata senza incasso»: su questo file la
      parola e il movimento vanno d'accordo, ed è il motivo per cui il difetto
      era invisibile. */
   deve(a.titoli.filter(t => t.pagamento_dichiarato_senza_incasso).length === 0,
     'su questo file la parola e il movimento dovrebbero coincidere');
-  /* Le polizze non dicono più tutte «non pagato». */
-  deve(a.polizze.filter(p => p.stato_pagamento === 'pagato').length === 12,
+  /* Le polizze seguono le loro rate: 9 pagate, 3 sospese. */
+  deve(a.polizze.filter(p => p.stato_pagamento === 'pagato').length === 9,
     'le polizze pagate sono ' + a.polizze.filter(p => p.stato_pagamento === 'pagato').length);
+  deve(a.polizze.filter(p => p.stato_pagamento === 'sospeso').length === 3,
+    'le polizze sospese sono ' + a.polizze.filter(p => p.stato_pagamento === 'sospeso').length);
 });
 
 /* ── esecuzione ─────────────────────────────────────────────────────────── */

@@ -105,9 +105,37 @@ l'abbuono e il suo verso (passivo = ci rimettiamo, costo; attivo =
 eccedenza, ricavo — nel manuale sono due conti diversi). Suite
 `appunti-incassi` 22/22, controprova **16 sabotaggi su 16 presi**.
 
-**Resta da fare:** la schermata. Il motore dice lo stato e quale abbuono
-servirebbe; scrivere la scrittura contabile è un gesto che vuole una
-persona davanti.
+**Fatto il 28/09/2026: la schermata.** *Contabilità › Appunti incassi.*
+Si sceglie un giorno e si vedono i suoi incassi, ognuno col suo stato,
+col motivo scritto sulla riga e — sugli scostamenti — con lo scarto in
+euro accanto all'importo. In cima sette riquadri (OK, Appunti,
+Scostamenti, Solo foglio cassa, nostro totale, foglio cassa della
+compagnia, differenza) e il verdetto del mattino: *«giornata chiusa»*
+oppure *«N righe da guardare prima di considerare chiusa la giornata»*.
+Gli abbuoni della giornata sono dichiarati a parte, divisi fra costo e
+ricavo, perché è lì che si nascondono gli ammanchi.
+
+**I due lati, da dove arrivano.** Un titolo **senza** `fonte` l'ha
+scritto una persona: è un nostro appunto. Un titolo **con** `fonte`
+l'ha portato il flusso: è il foglio cassa della compagnia. La schermata
+confronta i due mucchi — non serve caricare un secondo file.
+
+**Una cosa misurata prima di costruire, e che cambia il senso della
+schermata:** oggi in archivio ci sono 2.799 incassi e sono **tutti**
+arrivati dai flussi, nessuno registrato a mano. Per costruzione, quindi,
+ogni giornata risulterebbe «solo foglio cassa» dalla prima riga
+all'ultima. Invece di 2.799 righe rosse che dicono la stessa cosa — che
+si smettono di leggere al secondo giorno — la schermata lo dice una
+volta, in una frase: *di questa giornata non abbiamo registrato niente
+noi, stiamo prendendo per buono quello che dice la compagnia.* È esatta­
+mente il controllo per cui il manuale fa esistere questa schermata.
+
+Suite `appunti-nel-browser` 19/19 in Chromium vero, controprova **13
+sabotaggi su 13 presi**.
+
+**Resta da fare:** il gesto contabile. Il motore dice lo stato e quale
+abbuono servirebbe; *scrivere* la scrittura vuole prima il piano dei
+conti (§1, decisione di Francesco).
 
 ### 2B · Registrazione movimenti (prima nota)
 
@@ -213,7 +241,7 @@ le causali si agganciano ai conti.
 |---|---|---|---|
 | 1 | **Il piano dei conti** del manuale | senza i conti, sospesi e abbuoni non hanno dove atterrare, e le causali restano senza contropartita | **Francesco** |
 | 2 | Agganciare le 14 causali ai conti | è l'anello che fa generare la partita doppia da sé | tecnico |
-| 3 | La schermata **Appunti incassi** con i quattro stati | è il gesto quotidiano che riempie tutto il resto | tecnico |
+| 3 | ~~La schermata **Appunti incassi** con i quattro stati~~ **fatta il 28/09** | è il gesto quotidiano che riempie tutto il resto | tecnico |
 | 4 | Le **partite non tecniche** sul foglio cassa | senza, il saldo con la compagnia non torna per costruzione | tecnico |
 | 5 | **Saldo Finanziario ed Economico** in quadratura | i tre ingredienti ci sono già, manca la sottrazione | tecnico |
 | 6 | Il **ciclo del sospeso** (apri, non cancellare, chiudi solo incassando) | il motore sa calcolarli, manca il gesto | tecnico |

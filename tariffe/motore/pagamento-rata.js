@@ -81,10 +81,108 @@
      parola. Una compagnia che scrive «pagato» senza mandare l'incasso sta
      dicendo che la rata è a posto sui SUOI libri, non che i soldi siano
      arrivati qui. */
+  /* ══ LA REGOLA DI CASA, COMPAGNIA PER COMPAGNIA (28/09/2026) ═══════════════
+
+     «I flussi che carico da Prima me li devi dare in automatico incassati e non
+      come sospesi, sarò io a cambiare le varie modalità di pagamento. Quelli
+      che carico da HDI, come pos, bonifici, carta HDI (questa modalità è
+      finanziamento Agos), questi me li devi dare come sospesi e poi sarò io ad
+      abbinarli una volta incassati. Quello che è contanti me lo devi aggiungere
+      nella cassa contanti in automatico.»                        — Francesco
+
+     Non è una preferenza: è la differenza fisica fra i due canali, e finché non
+     sta scritta qui ogni schermata la deve indovinare.
+
+     ┌─────────────────────────────────────────────────────────────────────────┐
+     │ PRIMA — i soldi non passano MAI dall'agenzia.                           │
+     └─────────────────────────────────────────────────────────────────────────┘
+     Il cliente paga la compagnia direttamente. Lo dice l'archivio, non una
+     teoria: dei 2.787 incassi Prima, 1.078 sono carta di credito, 632
+     prepagata, 425 PayPal, 36 bonifico. L'agenzia non tocca quel denaro.
+
+     Quindi un titolo Prima **non può essere un sospeso**: un sospeso è un
+     credito dell'agenzia verso qualcuno, e qui quel credito non esiste.
+     Metterlo nell'elenco dei sospesi vuol dire gonfiarlo di roba che nessuno
+     deve scaricare.
+
+     E la COPERTURA vale come prova dell'incasso. Prima incassa e poi copre: se
+     la compagnia dichiara la polizza coperta fino a una data, le rate che
+     decorrono prima di quella data le ha incassate lei — anche quando non
+     manda la data di pagamento.
+
+     Misurato il 28/09/2026 sui 379 titoli Prima non incassati in archivio:
+       ·  83 (22.717,18 €) la compagnia li dà coperti a quella data → incassati
+       · 271 (68.769,60 €) sono rate FUTURE
+       ·  25 ( 6.302,06 €) sono decorsi e NON coperti
+
+     Le 83 diventano incassate. Le 271 no: una rata che deve ancora decorrere
+     non può essere stata incassata, e chiamarla così metterebbe 68.769,60 € di
+     soldi immaginari nella cassa della giornata. Le 25 nemmeno: sono rate
+     decorse che la compagnia non copre, cioè clienti scoperti — il caso che le
+     schermate esistono per far vedere, non per nascondere.
+
+     ┌─────────────────────────────────────────────────────────────────────────┐
+     │ HDI — i soldi passano dall'agenzia, e l'agenzia li deve alla compagnia. │
+     └─────────────────────────────────────────────────────────────────────────┘
+     POS, bonifico e carta HDI (il finanziamento Agos) arrivano all'agenzia e
+     vanno rimessi: è la definizione di sospeso. L'incasso del flusso dice che
+     il CLIENTE ha pagato, non che la compagnia abbia avuto i suoi soldi, e
+     confondere le due cose è il modo in cui un'agenzia si crede pari e non lo
+     è. Restano sospesi finché Francesco non li abbina.
+
+     Il contante no: è già in casa. Va in cassa contanti, e la riga lo dichiara
+     (`inCassaContanti`), perché è la cassa a doverlo sapere.
+
+     Quello che Francesco non ha nominato — assegno, domiciliazione — resta come
+     lo decide il flusso. Non si estende una regola a mezzi di cui nessuno ha
+     parlato. */
+  var MEZZI_SOSPESO_HDI = ['pos', 'bonifico', 'finanziamento'];
+
+  function chiave(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
+
+  /* La copertura dichiarata dalla compagnia supera la decorrenza della rata?
+     Servono tutte e due le date: senza, non si sa, e non si suppone.
+
+     IL CONFRONTO È STRETTO, e il motivo vale un semestre. «Coperta fino al
+     16/03/2027» vuol dire che la copertura FINISCE quel giorno: la rata che
+     decorre dal 16/03/2027 è proprio quella che la prolunga, e non è pagata.
+     Con `>=` invece di `>` quella rata risultava incassata — sul campione è la
+     polizza NP-0002, semestrale, di cui Prima ha incassato il primo semestre e
+     non il secondo. La prova del campione l'ha presa al primo colpo; in
+     archivio sarebbero stati 1.034 semestrali da guardare uno per uno. */
+  function copertaAllaData(prove) {
+    var p = prove || {};
+    var fino = giorno(p.copertaFinoAl), dec = giorno(p.decorrenza);
+    return !!(fino && dec && fino > dec);
+  }
+
+  /* Il contante entra in cassa da solo, da qualunque flusso arrivi: il contante
+     è contante. Ma solo se qualcuno dice che è stato pagato — una rata futura
+     in contanti non è denaro che c'è, è denaro che arriverà. */
+  function inCassaContanti(prove) {
+    var p = prove || {};
+    if (chiave(p.mezzo) !== 'contante') return false;
+    return !!(giorno(p.incassoContabile) || p.dichiaratoPagato || copertaAllaData(p));
+  }
+
   function dalFlusso(prove) {
     var p = prove || {};
+    var fonte = chiave(p.fonte);
+    var mezzo = chiave(p.mezzo);
+
+    /* HDI, i tre mezzi che passano per l'agenzia: sospeso, e l'incasso del
+       flusso non lo cambia — anzi, è proprio quell'incasso a creare il debito
+       verso la compagnia. */
+    if (fonte === 'hdi' && MEZZI_SOSPESO_HDI.indexOf(mezzo) >= 0) return 'sospeso';
+
     if (giorno(p.incassoContabile)) return 'incassato';
-    if (p.dichiaratoSospeso) return 'sospeso';
+
+    /* Prima: la copertura dichiarata dalla compagnia vale come incasso. */
+    if (fonte === 'ssf' && copertaAllaData(p)) return 'incassato';
+
+    /* Prima non ha sospesi: quello che il flusso chiama sospeso resta da
+       incassare — si vede, si chiama, ma non entra nel debito dell'agenzia. */
+    if (p.dichiaratoSospeso) return fonte === 'ssf' ? 'da_incassare' : 'sospeso';
     /* «PAGATO» SENZA L'INCASSO, e perché non è né l'una né l'altra cosa.
 
        Non è `incassato`: quella parola, in cassa, vale soldi, e qui i soldi
@@ -116,11 +214,16 @@
   function decide(prove, esistente) {
     var dalF = dalFlusso(prove);
     var avviso = dichiaratoSenzaIncasso(prove);
+    /* La cassa contanti la decide il MEZZO, non lo stato del pagamento: il
+       contante è in casa comunque, e il giorno in cui uno dei due cambia
+       l'altro non deve seguirlo per sbaglio. Sta sulla risposta di `decide`
+       perché chi importa un flusso legge una cosa sola. */
+    var cassa = inCassaContanti(prove);
     var e = esistente || null;
 
     if (!e) {
       return { pagamento: dalF, stato: versoStato(dalF), fonte: 'flusso', cambia: true,
-        dichiaratoSenzaIncasso: avviso,
+        dichiaratoSenzaIncasso: avviso, inCassaContanti: cassa,
         perche: 'rata nuova: la decide il flusso della compagnia' };
     }
 
@@ -131,7 +234,7 @@
       var attuale = e.pagamento || 'da_incassare';
       return {
         pagamento: attuale, stato: versoStato(attuale), fonte: 'mano', cambia: false,
-        dichiaratoSenzaIncasso: avviso,
+        dichiaratoSenzaIncasso: avviso, inCassaContanti: cassa,
         discorda: dalF !== attuale ? dalF : null,
         perche: dalF !== attuale
           ? 'messa a mano: resta «' + (STATI[attuale] || attuale) + '», il flusso direbbe «' + (STATI[dalF] || dalF) + '»'
@@ -142,7 +245,7 @@
     var prima = e.pagamento || null;
     if (prima === dalF) {
       return { pagamento: prima, stato: versoStato(prima), fonte: 'flusso', cambia: false,
-        dichiaratoSenzaIncasso: avviso,
+        dichiaratoSenzaIncasso: avviso, inCassaContanti: cassa,
         perche: 'il flusso conferma quello che c\'era' };
     }
 
@@ -151,7 +254,7 @@
        portafoglio restava indietro per sempre. Adesso si aggiorna — ma solo
        quando nessuno l'ha toccata a mano. */
     return { pagamento: dalF, stato: versoStato(dalF), fonte: 'flusso', cambia: true,
-      dichiaratoSenzaIncasso: avviso,
+      dichiaratoSenzaIncasso: avviso, inCassaContanti: cassa,
       perche: prima
         ? 'il flusso la porta da «' + (STATI[prima] || prima) + '» a «' + (STATI[dalF] || dalF) + '»'
         : 'il flusso dice «' + (STATI[dalF] || dalF) + '»' };
@@ -177,8 +280,11 @@
 
   var API = {
     STATI: STATI,
+    MEZZI_SOSPESO_HDI: MEZZI_SOSPESO_HDI,
     versoStato: versoStato,
     dichiaratoSenzaIncasso: dichiaratoSenzaIncasso,
+    copertaAllaData: copertaAllaData,
+    inCassaContanti: inCassaContanti,
     dalFlusso: dalFlusso,
     decide: decide,
     statoPolizza: statoPolizza,

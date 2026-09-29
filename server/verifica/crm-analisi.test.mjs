@@ -786,8 +786,16 @@ prova('il conteggio «quanti ce l\'hanno compilato» sta solo dove vuol dire qua
     'ca-prof': 'professione', 'ca-collab': 'intermediario_id',
     'ca-sposato': 'sposato', 'ca-figli': 'sposato',
     'ca-note': 'note', 'ca-con-note': 'note',
+    /* 28/09/2026: i filtri di marketing. «Escludi i clienti di» legge la stessa
+       colonna di «Collaboratore», ed è giusto che mostri lo stesso conteggio. */
+    'ca-casa': 'casa_proprieta', 'ca-escludi-collab': 'intermediario_id',
   };
-  const re = /caCampo\((?:'(?:[^'\\]|\\.)*')\s*,\s*'([a-z_]+)'\s*,\s*'<(?:select|input) id="(ca-[a-z-]+)"/g;
+  /* Il campo non è più sempre scritto di seguito: due filtri scelgono fra un
+     menu e un messaggio a seconda che dei collaboratori ci siano o no. Si
+     cerca il PRIMO `id="ca-…"` dopo la chiamata — se si fosse lasciata la
+     versione stretta, quei due sarebbero semplicemente spariti dal controllo
+     senza che niente diventasse rosso. */
+  const re = /caCampo\((?:'(?:[^'\\]|\\.)*')\s*,\s*'([a-z_]+)'\s*,[\s\S]{0,600}?id="(ca-[a-z-]+)"/g;
   const sbagliati = [];
   let m, visti = 0;
   while ((m = re.exec(src))) {
@@ -838,6 +846,135 @@ prova('senza filtri sullo stato il motore non va nemmeno a cercarlo', () => {
      perché un motore non era caricato. */
   const r = A.filtra(GENTE_PERSI, { }, { polizzePerCliente: PERSI });
   deve(r.length === GENTE_PERSI.length, 'senza filtri sono usciti ' + r.length + ' su ' + GENTE_PERSI.length);
+});
+
+/* ══ I FILTRI DI MARKETING (28/09/2026) ═════════════════════════════════════
+   «I vari filtri per ricercare ed estrapolare liste nel portafoglio: cliente
+    di un determinato comune, clienti di una determinata età, che hanno note
+    scritte, che hanno casa di proprietà, che fanno una determinata
+    professione, che hanno una determinata garanzia in polizza, che hanno una
+    determinata polizza, ecc. Inoltre con la possibilità di escludere
+    determinati clienti di collaboratori.»                    — Francesco    */
+
+const CLIENTI_MKT = [
+  { id: 'a', casa_proprieta: true,  intermediario_id: 'c1' },
+  { id: 'b', casa_proprieta: false, intermediario_id: 'c2' },
+  { id: 'c', casa_proprieta: null,  intermediario_id: 'c1' },
+  { id: 'd', casa_proprieta: false, intermediario_id: null },
+];
+const POL_MKT = {
+  a: [{ prodotto: 'Auto HDI', modulo: 'RCA' }],
+  b: [{ prodotto: 'Casa Prima', modulo: 'Abitazione' }],
+  c: [{ prodotto: 'Auto HDI', modulo: 'RCA' }, { prodotto: 'Casa Prima', modulo: 'Abitazione' }],
+  d: [],
+  /* «Auto» secco è il nome della FAMIGLIA, non di un prodotto: serve a
+     distinguere le due domande (vedi la prova qui sotto). */
+  e: [{ prodotto: 'Auto', modulo: 'Auto' }],
+};
+const CLIENTI_PROD = CLIENTI_MKT.concat([{ id: 'e', casa_proprieta: null, intermediario_id: null }]);
+
+prova('la casa di proprietà si filtra a tre valori, non a due', () => {
+  /* Sì, no, e «non si sa»: chi non ha risposto non è un «no». */
+  const q = (v) => A.filtra(CLIENTI_MKT, { casaProprieta: v }, {}).map(r => r.id).join();
+  deve(q(true) === 'a', 'con la casa: ' + q(true));
+  deve(q(false) === 'b,d', 'senza la casa: ' + q(false));
+  deve(A.filtra(CLIENTI_MKT, {}, {}).length === 4, 'senza il filtro devono uscire tutti');
+});
+
+prova('una casella di spunta uguale su tutte le righe NON è una risposta', () => {
+  /* Misurato il 28/09/2026: `casa_proprieta` è `false` su 2.546 anagrafiche su
+     2.547 e `null` su ZERO. Non vuol dire che 2.546 clienti non hanno casa:
+     vuol dire che a nessuno è stato chiesto. Un filtro «senza casa di
+     proprietà» su quella colonna produce una lista di 2.546 persone di cui non
+     sappiamo niente, e una campagna mandata lì sembra mirata e non lo è.
+
+     `copertura()` da sola non lo vedeva: contando le caselle NON VUOTE avrebbe
+     detto «100% compilato». */
+  const tutteFalse = Array.from({ length: 50 }, (_, i) => ({ id: 'x' + i, casa_proprieta: false }));
+  const c = A.copertura(tutteFalse).find(x => x.campo === 'casa_proprieta');
+  deve(c, 'la casa di proprietà non è fra i campi misurati');
+  deve(c.maiRisposto === true, 'una colonna tutta uguale non viene dichiarata: ' + JSON.stringify(c));
+  deve(c.compilati === 0, 'i «false» vengono contati come compilati: ' + c.compilati);
+
+  /* E quando la risposta c'è davvero, non si grida al lupo. */
+  const miste = tutteFalse.concat([{ id: 'vero', casa_proprieta: true }]);
+  const c2 = A.copertura(miste).find(x => x.campo === 'casa_proprieta');
+  deve(c2.maiRisposto === false, 'con due valori diversi si dice ancora «mai risposto»');
+  deve(c2.compilati === 1, 'compilati: ' + c2.compilati);
+});
+
+prova('e lo dice per ogni casella, non solo per la casa', () => {
+  /* Le due caselle vanno in versi opposti di proposito: «sposato» ha due
+     valori e quindi è stato risposto, «ha figli» è tutto uguale e quindi no.
+     Se la voce leggesse il proprio NOME invece della propria COLONNA —
+     `sposato_solo` non è il nome di nessuna colonna — troverebbe tutto vuoto e
+     direbbe «mai risposto» su tutte e due. Con due caselle uguali la prova non
+     se ne accorgeva. */
+  const righe = [{ id: '1', sposato: true, ha_figli: false }, { id: '2', sposato: false, ha_figli: false }];
+  const cop = A.copertura(righe);
+  const sp = cop.find(x => x.campo === 'sposato_solo');
+  const fg = cop.find(x => x.campo === 'ha_figli');
+  deve(sp && sp.maiRisposto === false, 'lo «sposato» ha due valori e risulta mai risposto');
+  deve(sp.compilati === 1, 'sposati contati: ' + sp.compilati);
+  deve(fg && fg.maiRisposto === true, 'i figli sono tutti uguali e non viene detto');
+});
+
+prova('i clienti di un collaboratore si possono ESCLUDERE', () => {
+  /* Una lista di marketing non deve pescare nel portafoglio di chi non ci sta:
+     è la sua clientela, e una mail partita da lì è un problema con una
+     persona, non un record sbagliato. */
+  const r = A.filtra(CLIENTI_MKT, { senzaCollaboratori: ['c1'] }, {}).map(x => x.id);
+  deve(r.join() === 'b,d', 'esclusi i clienti di c1: ' + r.join());
+});
+
+prova('e si possono anche tenere solo i suoi, con più di un collaboratore', () => {
+  deve(A.filtra(CLIENTI_MKT, { collaboratori: ['c1'] }, {}).map(x => x.id).join() === 'a,c');
+  deve(A.filtra(CLIENTI_MKT, { collaboratori: ['c1', 'c2'] }, {}).map(x => x.id).join() === 'a,b,c');
+});
+
+prova('l\'esclusione vince sull\'inclusione: nel dubbio non si manda', () => {
+  const r = A.filtra(CLIENTI_MKT, { collaboratori: ['c1', 'c2'], senzaCollaboratori: ['c1'] }, {}).map(x => x.id);
+  deve(r.join() === 'b', 'con c1 in tutti e due gli elenchi escono: ' + r.join());
+});
+
+prova('un cliente senza collaboratore non è il cliente di nessuno', () => {
+  /* Escludere «i clienti di c1» non deve portare via anche chi non è di
+     nessuno: sono i clienti diretti dell'agenzia. */
+  const r = A.filtra(CLIENTI_MKT, { senzaCollaboratori: ['c1', 'c2'] }, {}).map(x => x.id);
+  deve(r.join() === 'd', 'restano: ' + r.join());
+});
+
+prova('il prodotto preciso è un\'altra domanda dalla famiglia di rami', () => {
+  /* «Ha un'auto» e «ha l'Auto HDI» sono due domande diverse: la seconda serve
+     quando si scrive a chi ha un prodotto che cambia condizioni. */
+  const ctx = { polizzePerCliente: POL_MKT };
+  deve(A.filtra(CLIENTI_MKT, { prodotti: ['Auto HDI'] }, ctx).map(x => x.id).join() === 'a,c');
+  deve(A.filtra(CLIENTI_MKT, { prodotti: ['Casa Prima'] }, ctx).map(x => x.id).join() === 'b,c');
+});
+
+prova('e si può chiedere chi NON ce l\'ha', () => {
+  const ctx = { polizzePerCliente: POL_MKT };
+  const r = A.filtra(CLIENTI_MKT, { prodotti: ['Auto HDI'], senzaProdotti: ['Casa Prima'] }, ctx).map(x => x.id);
+  deve(r.join() === 'a', 'ha l\'auto HDI e non la casa Prima: ' + r.join());
+});
+
+prova('il prodotto si confronta senza badare a maiuscole e spazi', () => {
+  const ctx = { polizzePerCliente: POL_MKT };
+  deve(A.filtra(CLIENTI_MKT, { prodotti: ['  auto   hdi '] }, ctx).map(x => x.id).join() === 'a,c',
+    'una maiuscola di troppo fa sparire mezza lista');
+});
+
+prova('il prodotto NON passa dal vocabolario dei rami', () => {
+  /* `ramoCanonico('RCA')` vale «Auto»: se il filtro sul prodotto ci passasse
+     attraverso, chiedere «chi ha la RCA» tirerebbe dentro anche chi ha un
+     prodotto che si chiama «Auto» e basta — cioè la famiglia al posto del
+     prodotto. Sono due domande diverse, e `rami` risponde già alla prima. */
+  const ctx = { polizzePerCliente: POL_MKT };
+  const soloRca = A.filtra(CLIENTI_PROD, { prodotti: ['RCA'] }, ctx).map(x => x.id);
+  deve(soloRca.join() === 'a,c', 'chiedendo «RCA» escono: ' + soloRca.join() + ' (atteso a,c, senza «e»)');
+  /* E la domanda sulla famiglia continua a funzionare, con `rami`. */
+  const famiglia = A.filtra(CLIENTI_PROD, { rami: ['Auto'] }, ctx).map(x => x.id);
+  deve(famiglia.join() === 'a,c,e', 'chiedendo la famiglia «Auto» escono: ' + famiglia.join());
 });
 
 /* ── esecuzione ─────────────────────────────────────────────────────────── */

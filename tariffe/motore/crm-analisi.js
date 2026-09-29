@@ -169,7 +169,40 @@
     { k: 'email',                 e: 'Email',               pieno: function (r) { return !!testo(r.email); } },
     { k: 'cellulare',             e: 'Cellulare',           pieno: function (r) { return !!testo(r.cellulare); } },
     { k: 'consenso_marketing',    e: 'Consenso marketing',  pieno: function (r) { return r.consenso_marketing === true; } },
+    /* 28/09/2026, chiesto da Francesco per le liste di marketing. Si conta chi
+       dice SÌ, non chi ha la casella riempita — vedi `vuotaMaPiena` qui
+       sotto. */
+    { k: 'casa_proprieta',        e: 'Casa di proprietà',   pieno: function (r) { return r.casa_proprieta === true; },
+      booleana: true },
+    /* `k` è il nome della voce, `col` la colonna vera: «Stato famiglia» qui
+       sopra guarda due colonne insieme, quindi questa deve dire quale legge. */
+    { k: 'sposato_solo', col: 'sposato', e: 'Sposato',      pieno: function (r) { return r.sposato === true; }, booleana: true },
+    { k: 'ha_figli',              e: 'Ha figli',            pieno: function (r) { return r.ha_figli === true; }, booleana: true },
   ];
+
+  /* Una casella di spunta che in archivio ha UN SOLO valore su tutte le righe
+     non è un dato: è il valore predefinito della colonna, che nessuno ha mai
+     risposto.
+
+     Misurato il 28/09/2026: `casa_proprieta` è `false` su 2.546 anagrafiche su
+     2.547 e `null` su ZERO. Non vuol dire che 2.546 clienti non hanno casa:
+     vuol dire che a nessuno è stato chiesto. Un filtro «senza casa di
+     proprietà» costruito su quella colonna produrrebbe una lista di 2.546
+     persone di cui non sappiamo niente — e una campagna mandata a quella lista
+     sembra mirata e non lo è.
+
+     `copertura()` da sola non lo vedeva: contando le caselle NON VUOTE avrebbe
+     detto «100% compilato». */
+  function vuotaMaPiena(righe, campo) {
+    var visti = {}, quanti = 0;
+    (righe || []).forEach(function (r) {
+      var v = r && r[campo];
+      var k = v === true ? 'si' : v === false ? 'no' : 'vuoto';
+      if (!visti[k]) { visti[k] = 0; quanti++; }
+      visti[k]++;
+    });
+    return { unicoValore: quanti === 1 && (righe || []).length > 1, valori: visti };
+  }
 
   /* Quanto è pieno ogni campo: si mostra accanto al filtro, così «0 risultati»
      non si confonde con «campo mai compilato». */
@@ -177,11 +210,16 @@
     var tot = (righe || []).length;
     return CAMPI_COPERTURA.map(function (c) {
       var n = (righe || []).filter(c.pieno).length;
+      var u = c.booleana ? vuotaMaPiena(righe, c.col || c.k) : null;
       return {
         campo: c.k, etichetta: c.e, compilati: n, totale: tot,
         quota: tot ? n / tot : 0,
         /* Sotto il 10% un filtro non discrimina: seleziona il rumore. */
         inutilizzabile: tot > 0 && n / tot < 0.10,
+        /* Solo per le caselle di spunta: l'intera colonna dice la stessa cosa,
+           quindi la risposta non è mai stata data. */
+        maiRisposto: !!(u && u.unicoValore),
+        valori: u ? u.valori : null,
       };
     });
   }
@@ -205,6 +243,10 @@
     var senzaRami = (f.senzaRami || []).map(function (x) { return chiave(ramoCanonico(x)); }).filter(Boolean);
     var compagnie = (f.compagnie || []).map(function (x) { return chiave(compagniaCanonica(x)); }).filter(Boolean);
     var senzaCompagnie = (f.senzaCompagnie || []).map(function (x) { return chiave(compagniaCanonica(x)); }).filter(Boolean);
+    /* Il prodotto preciso, com'è scritto: qui NON si passa per il vocabolario
+       dei rami — chi cerca «Auto HDI» non vuole tutte le auto. */
+    var prodotti = (f.prodotti || []).map(chiave).filter(Boolean);
+    var senzaProdotti = (f.senzaProdotti || []).map(chiave).filter(Boolean);
     /* Gli elenchi di clienti che hanno (o non hanno) una garanzia: li prepara
        il database, perché le garanzie stanno dentro un jsonb e portarsele
        tutte nel browser sono 5 MB a ogni apertura. */
@@ -227,9 +269,31 @@
       }
       if (f.sposato != null && tri(r.sposato) !== f.sposato) return false;
       if (f.haFigli != null && tri(r.ha_figli) !== f.haFigli) return false;
+      /* LA CASA DI PROPRIETÀ (28/09/2026). La colonna esiste e vale `false` su
+         2.546 anagrafiche su 2.547, `null` su nessuna: è il valore predefinito
+         che nessuno ha mai risposto. Il filtro fa quello che gli si chiede —
+         chi cerca `false` ottiene quei 2.546 — ma la schermata deve dire che
+         quella non è una risposta (`copertura().maiRisposto`), altrimenti si
+         manda una campagna a duemila persone credendo di aver mirato. */
+      if (f.casaProprieta != null && tri(r.casa_proprieta) !== f.casaProprieta) return false;
       if (f.professione && chiave(r.professione).indexOf(chiave(f.professione)) < 0) return false;
       if (f.condizioneLavorativa && chiave(r.condizione_lavorativa) !== chiave(f.condizioneLavorativa)) return false;
       if (f.collaboratoreId && testo(r.intermediario_id) !== testo(f.collaboratoreId)) return false;
+      /* DI CHI SONO I CLIENTI, E DI CHI NON DEVONO ESSERE (28/09/2026).
+         «Inoltre con la possibilità di escludere determinati clienti di
+         collaboratori» — Francesco. Una lista di marketing non deve pescare nel
+         portafoglio di chi non ci sta: è la sua clientela, e una mail partita
+         da lì è un problema con una persona, non un record sbagliato.
+
+         L'esclusione si applica DOPO l'inclusione e vince sempre: se un
+         collaboratore compare in tutti e due gli elenchi, i suoi clienti
+         restano fuori. Nel dubbio non si manda. */
+      if ((f.collaboratori || []).length) {
+        if ((f.collaboratori || []).map(testo).indexOf(testo(r.intermediario_id)) < 0) return false;
+      }
+      if ((f.senzaCollaboratori || []).length) {
+        if ((f.senzaCollaboratori || []).map(testo).indexOf(testo(r.intermediario_id)) >= 0) return false;
+      }
       if (f.conNote === true && !testo(r.note)) return false;
       if (cerca && chiave(r.note).indexOf(cerca) < 0) return false;
       if (membriGruppo && !membriGruppo.has(testo(r.id))) return false;
@@ -273,6 +337,25 @@
       if (senzaCompagnie.length) {
         var haCompVietata = pz.some(function (p) { return senzaCompagnie.indexOf(chiave(compagniaCanonica(p.compagnia))) >= 0; });
         if (haCompVietata) return false;
+      }
+
+      /* IL PRODOTTO PRECISO, non la famiglia (28/09/2026). «Che hanno una
+         determinata polizza» — Francesco. `rami` risponde «ha un'auto»;
+         questo risponde «ha l'Auto HDI», che è un'altra domanda: serve quando
+         si scrive a chi ha un prodotto che cambia condizioni, o che si vuole
+         sostituire con un altro. Il confronto è sul nome così come lo scrive
+         la compagnia, normalizzato ma non ricondotto a una famiglia. */
+      if (prodotti.length) {
+        var haProd = pz.some(function (p) {
+          return prodotti.indexOf(chiave(p.prodotto)) >= 0 || prodotti.indexOf(chiave(p.modulo)) >= 0;
+        });
+        if (!haProd) return false;
+      }
+      if (senzaProdotti.length) {
+        var haProdVietato = pz.some(function (p) {
+          return senzaProdotti.indexOf(chiave(p.prodotto)) >= 0 || senzaProdotti.indexOf(chiave(p.modulo)) >= 0;
+        });
+        if (haProdVietato) return false;
       }
 
       /* LE GARANZIE. Arrivano già risolte dal database come elenchi di
@@ -459,7 +542,7 @@
     COMPAGNIE: COMPAGNIE, RAMI: RAMI,
     compagniaCanonica: compagniaCanonica, ramoCanonico: ramoCanonico,
     stessaCompagnia: stessaCompagnia, stessoRamo: stessoRamo,
-    copertura: copertura, filtra: filtra, recapiti: recapiti,
+    copertura: copertura, vuotaMaPiena: vuotaMaPiena, filtra: filtra, recapiti: recapiti,
     perCampagna: perCampagna, righeEsporta: righeEsporta, csv: csv,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

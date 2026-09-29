@@ -1088,12 +1088,29 @@ function mezzoDa(codice) {
     var perFonte = e.polizzePerFonte || {};
     var titFonte = e.titoliPerFonte || {};
 
+    var perFonteCli = e.clientiPerFonte || {};
+
     var clientiNuovi = [], clientiGia = [];
     var idPerChiave = {};
     (analisi.clienti || []).forEach(function (c) {
-      var id = (c.codice_fiscale && perCf[c.codice_fiscale]) || (c.partita_iva && perPiva[c.partita_iva]) || null;
+      var id = (c.codice_fiscale && perCf[c.codice_fiscale]) || (c.partita_iva && perPiva[c.partita_iva])
+            || perFonteCli[c._chiave] || null;
       if (id) { idPerChiave[c._chiave] = id; clientiGia.push(c); }
       else clientiNuovi.push(c);
+    });
+
+    /* IL CONTRAENTE CHE STA SOLO IN ARCHIVIO (29/09/2026).
+       Un'estrazione successiva manda le polizze nuove e non rimanda
+       l'anagrafica di chi è già cliente: quella polizza nomina una chiave che
+       in questo file non compare, ma la scheda esiste. Qui la si risolve, così
+       la scrittura la trova — la `join` su `_cli` in `iam_importa_flusso` è
+       l'unica cosa che decide se la polizza entra o no.
+       Senza questa riga si potrebbe anche smettere di bloccare il file, e poi
+       quelle polizze sparirebbero in silenzio: due modi diversi di perderle. */
+    (analisi.polizze || []).forEach(function (p) {
+      var k = p._cliente;
+      if (!k || idPerChiave[k]) return;
+      if (perFonteCli[k]) idPerChiave[k] = perFonteCli[k];
     });
 
     /* Due righe con lo stesso codice fiscale dentro lo stesso flusso: si

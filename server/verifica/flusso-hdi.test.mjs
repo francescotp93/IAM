@@ -1370,6 +1370,155 @@ prova('e sul file vero i conti restano quelli dell\'archivio', () => {
     'le polizze sospese sono ' + a.polizze.filter(p => p.stato_pagamento === 'sospeso').length);
 });
 
+/* ══ IL CONTRAENTE CHE STA SOLO IN ARCHIVIO (29/09/2026) ═════════════════════
+   Il PASS-133 del 13/05 non si caricava: «14 polizze richiamano un cliente che
+   nel file non c'è: entrerebbero senza intestatario», e il file intero restava
+   fuori — 206 clienti, 252 polizze, 754 garanzie.
+
+   Erano tre casi trattati come uno solo. Il contraente può essere in questo
+   file, oppure già in archivio da un'estrazione precedente (HDI manda le
+   polizze nuove e non rimanda l'anagrafica di chi è già cliente), oppure da
+   nessuna parte. Solo il terzo è un problema, e nemmeno quello blocca: la
+   scrittura aggancia le polizze al contraente con una `join`, quindi una
+   polizza senza cliente NON viene inserita — «entrerebbe senza intestatario»
+   non era un rischio, era una cosa che non può succedere. */
+
+/* Un file con due polizze: una del cliente che c'è, una di un cliente che qui
+   non compare. Le colonne sono le stesse del file minimo qui sopra. */
+const POLIZZA_ALTRO = col(82, { 1: '20', 2: 'POL9', 4: '133', 5: '1428', 6: '1428000009',
+                                9: 'Auto', 12: 'Auto HDI', 16: 'Polizza attiva',
+                                19: '17/11/2025', 20: '17/11/2024', 21: '17/11/2026',
+                                24: 'Annuale', 61: 'ANA_VECCHIA', 79: 'VRDNNA85B02L331Y',
+                                70: '1.000,00', 72: '100,00', 73: '134,56', 74: '1.234,56' });
+const GAR_ALTRO = col(36, { 1: '30', 2: 'POL9', 9: '100101', 10: 'RCA', 31: '900,00', 34: '1.234,56' });
+const FILE_DUE = [TESTATA, CLIENTE, POLIZZA, GAR1, GAR2, POLIZZA_ALTRO, GAR_ALTRO, TIT_OK1, TIT_OK2, CODA].join('\r\n');
+
+prova('il contraente già in archivio NON rende orfana la polizza', () => {
+  /* Il caso 2, ed è il caso normale di ogni estrazione dopo la prima. */
+  const r = H.esamina(FILE_DUE, [], { 'hdi:a:ANA_VECCHIA': 'VERDI ANNA' });
+  deve(r.caricabile, 'il file non si carica: ' + JSON.stringify(r.avvisi));
+  deve(r.polizze.length === 2, 'polizze caricabili: ' + r.polizze.length + ' invece di 2');
+  deve(!r.polizzeScartate.length, 'ne è stata scartata una: ' + JSON.stringify(r.polizzeScartate.map(p => p.numero)));
+  deve(!r.avvisi.some(a => /contraente/.test(a.t)), 'viene segnalato un problema che non c\'è');
+});
+
+prova('e il nome del cliente arriva sulla polizza, non un trattino', () => {
+  /* Il 24/09 diciotto polizze sono entrate agganciate al loro cliente e in
+     elenco comparivano con un trattino: la polizza tiene il nome copiato
+     accanto al collegamento, e quella copia era vuota. */
+  const c = H.converti(H.esamina(FILE_DUE, [], { 'hdi:a:ANA_VECCHIA': 'VERDI ANNA' }));
+  const p = c.polizze.find(x => x.numero_polizza === '1428000009');
+  deve(p, 'la polizza del cliente in archivio non è stata convertita');
+  deve(p.cliente === 'VERDI ANNA', 'il nome copiato è ' + JSON.stringify(p.cliente));
+  deve(p._cliente === 'hdi:a:ANA_VECCHIA', 'la chiave del contraente è ' + p._cliente);
+});
+
+prova('il contraente che non c\'è da nessuna parte NON blocca il file', () => {
+  /* Il caso 3. Quattordici polizze non possono tenerne fuori duecentotrenta. */
+  const r = H.esamina(FILE_DUE, [], {});
+  deve(r.caricabile, 'il file resta bloccato: ' + JSON.stringify(r.avvisi));
+  deve(!r.avvisi.some(a => a.g === 'grave'), 'c\'è ancora un avviso grave: ' + JSON.stringify(r.avvisi));
+  const a = r.avvisi.find(x => /contraente/.test(x.t));
+  deve(a, 'non viene detto niente di quella polizza: ' + JSON.stringify(r.avvisi));
+  deve(/1 polizze su 2/.test(a.t), 'non si dice quante su quante: ' + a.t);
+  deve(/si lasciano fuori/.test(a.t), 'non si dice che fine fanno: ' + a.t);
+});
+
+prova('e quella polizza non arriva nemmeno alla scrittura', () => {
+  /* Non basta non bloccare: se passasse, la scrittura la scarterebbe in
+     silenzio con la sua `join`, e sparirebbe senza che nessuno lo sappia. */
+  const r = H.esamina(FILE_DUE, [], {});
+  deve(r.polizze.length === 1, 'polizze caricabili: ' + r.polizze.length + ' invece di 1');
+  deve(r.polizzeScartate.length === 1, 'scartate: ' + r.polizzeScartate.length);
+  deve(r.polizzeScartate[0].numero === '1428000009', 'scartata quella sbagliata: ' + r.polizzeScartate[0].numero);
+  deve(r.conteggi.polizze === 2 && r.conteggi.polizzeCaricabili === 1,
+    'i conteggi non dicono «1 su 2»: ' + JSON.stringify(r.conteggi));
+  const c = H.converti(r);
+  deve(!c.polizze.some(p => p.numero_polizza === '1428000009'),
+    'la polizza senza contraente arriva alla scrittura');
+});
+
+prova('una rata di una polizza scartata non si conta fra quelle caricabili', () => {
+  /* L'indice per numero si costruisce solo sulle polizze che entrano: se ci
+     finissero anche le scartate, l'anteprima prometterebbe rate che poi non si
+     agganciano a niente, e il conto non tornerebbe a nessuno. */
+  const TIT_ALTRO = col(45, { 1: '40', 2: 'PROG9', 7: '1428000009', 9: 'Nuova Polizza',
+                              12: 'Auto', 19: '17/11/2025', 21: '17/11/2026',
+                              39: '1.234,56', 40: '120,00' });
+  const conRata = [TESTATA, CLIENTE, POLIZZA, GAR1, GAR2, POLIZZA_ALTRO, GAR_ALTRO, TIT_ALTRO, CODA].join('\r\n');
+  const senza = H.esamina(conRata, [], {});
+  deve(!senza.titoli.some(t => t.polizza_numero === '1428000009'),
+    'la rata di una polizza scartata risulta caricabile');
+  /* E quando il contraente c'è, quella stessa rata entra. */
+  const con = H.esamina(conRata, [], { 'hdi:a:ANA_VECCHIA': 'VERDI ANNA' });
+  deve(con.titoli.some(t => t.polizza_numero === '1428000009'),
+    'col contraente in archivio la rata resta comunque fuori');
+});
+
+prova('senza l\'elenco dei clienti noti il lettore non esplode', () => {
+  /* Il terzo parametro è nuovo: una pagina vecchia, o una prova, possono non
+     passarlo. Deve comportarsi come prima — tutto quello che non ha un
+     contraente nel file resta fuori — non rompersi. */
+  const r = H.esamina(FILE_DUE);
+  deve(r.caricabile, 'senza clienti noti il file non si carica');
+  deve(r.polizze.length === 1, 'polizze: ' + r.polizze.length);
+  /* E accetta anche il vecchio elenco di sole chiavi, senza i nomi. */
+  const r2 = H.esamina(FILE_DUE, [], ['hdi:a:ANA_VECCHIA']);
+  deve(r2.polizze.length === 2, 'con un elenco di sole chiavi: ' + r2.polizze.length);
+  deve(r2.caricabile, 'con un elenco di sole chiavi il file non si carica');
+});
+
+prova('una polizza che non nomina nessun contraente resta fuori come prima', () => {
+  /* La regola che NON cambia: senza `anagrafica_id` non c'è niente da
+     agganciare, né qui né in archivio. */
+  const POL_MUTA = col(82, { 1: '20', 2: 'POL8', 4: '133', 5: '1428', 6: '1428000008',
+                             9: 'Auto', 12: 'Auto HDI', 16: 'Polizza attiva',
+                             19: '17/11/2025', 20: '17/11/2024', 21: '17/11/2026',
+                             24: 'Annuale', 70: '1.000,00', 72: '100,00', 73: '134,56', 74: '1.234,56' });
+  const GAR_MUTA = col(36, { 1: '30', 2: 'POL8', 9: '100101', 10: 'RCA', 31: '900,00', 34: '1.234,56' });
+  const f = [TESTATA, CLIENTE, POLIZZA, GAR1, GAR2, POL_MUTA, GAR_MUTA, CODA].join('\r\n');
+  const r = H.esamina(f, [], { 'hdi:a:ANA_VECCHIA': 'VERDI ANNA' });
+  deve(r.polizzeScartate.length === 1 && r.polizzeScartate[0].numero === '1428000008',
+    'la polizza senza contraente non viene tenuta fuori: ' + JSON.stringify(r.polizzeScartate.map(p => p.numero)));
+});
+
+prova('il piano risolve il contraente che sta solo in archivio', () => {
+  /* L'anello finale: la scrittura trova il cliente SOLO se il piano mette la
+     sua chiave in `idPerChiave`. Senza, si smetterebbe di bloccare il file e
+     quelle polizze sparirebbero in silenzio — due modi diversi di perderle. */
+  const S = require('../../tariffe/motore/flusso-ssf.js');
+  const analisi = H.converti(H.esamina(FILE_DUE, [], { 'hdi:a:ANA_VECCHIA': 'VERDI ANNA' }));
+  const p = S.piano(analisi, { clientiPerFonte: { 'hdi:a:ANA_VECCHIA': 'uuid-di-anna' } });
+  deve(p.clienti.idPerChiave['hdi:a:ANA_VECCHIA'] === 'uuid-di-anna',
+    'la chiave del contraente in archivio non è risolta: ' + JSON.stringify(p.clienti.idPerChiave));
+  /* E la polizza è fra quelle da scrivere, non fra le orfane. */
+  deve(!p.polizze.senzaCliente.some(x => x.numero_polizza === '1428000009'),
+    'la polizza del cliente in archivio risulta senza contraente');
+});
+
+prova('e non scavalca il contraente già riconosciuto dal codice fiscale', () => {
+  /* QUALE IDENTITÀ VINCE, quando ce ne sono due. Il codice fiscale è
+     l'identità della persona; la chiave di provenienza è l'identità della
+     RIGA che quella compagnia ci ha mandato. Se la stessa persona ha due
+     schede — succede: una inserita a mano e una arrivata dal flusso — le due
+     strade portano a due `id` diversi.
+
+     Vince il codice fiscale, e la chiave di provenienza riempie solo i buchi.
+     Al contrario, un'estrazione ripeterebbe l'aggancio su una scheda diversa
+     da quella su cui stanno già le altre polizze dello stesso cliente, e il
+     portafoglio di una persona si spaccherebbe in due schede senza che
+     nessuno se ne accorga. */
+  const S = require('../../tariffe/motore/flusso-ssf.js');
+  const analisi = H.converti(H.esamina(FILE_DUE, [], { 'hdi:a:ANA_VECCHIA': 'VERDI ANNA' }));
+  const chiaveNelFile = analisi.clienti[0]._chiave;
+  const p = S.piano(analisi, {
+    clientiPerCf: { 'RSSMRA80R01L331X': 'uuid-dal-codice-fiscale' },
+    clientiPerFonte: { [chiaveNelFile]: 'uuid-dalla-chiave' },
+  });
+  deve(p.clienti.idPerChiave[chiaveNelFile] === 'uuid-dal-codice-fiscale',
+    'ha vinto la chiave di provenienza: ' + p.clienti.idPerChiave[chiaveNelFile]);
+});
+
 /* ── esecuzione ─────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

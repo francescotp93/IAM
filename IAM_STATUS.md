@@ -21,7 +21,7 @@
 
 ## Quadro d'insieme
 
-**1.420 prove superate su 81 suite; 2 suite rosse.**
+**1.429 prove superate su 81 suite; 2 suite rosse.**
 
 Il conto ora lo dà un comando solo — `node server/verifica/tutte.mjs` —
 scritto il 26/09 perché a `grep` fatti a mano veniva ogni volta un numero

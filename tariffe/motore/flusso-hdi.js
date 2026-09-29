@@ -505,12 +505,37 @@
   /* ── IL CONTROLLO CHE DECIDE COSA SI PUÒ CARICARE ─────────────────────────
      `polizzeNote` sono gli id già in archivio: si passano da fuori, perché un
      titolo di una polizza caricata il mese scorso è buono, e uno di una polizza
-     che nessuno ha mai visto no. */
-  function esamina(testo, polizzeNote) {
+     che nessuno ha mai visto no.
+
+     `clientiNoti` sono le anagrafiche già in archivio — una mappa
+     `{ 'hdi:a:<id>': 'ROSSI MARIO' }` — e fino al 29/09/2026 NON si passavano.
+     Era un'asimmetria che bloccava i caricamenti: sui titoli si guardava «né
+     nel file né in archivio», sui clienti solo «nel file». Una polizza il cui
+     contraente era entrato con l'estrazione del mese prima veniva dichiarata
+     orfana, e non lo era.
+
+     Porta anche il NOME, non solo la chiave: in archivio la polizza tiene il
+     nome del cliente copiato accanto al collegamento, e le schermate leggono
+     quella copia. Il 24/09 era stata lasciata vuota e diciotto polizze, pur
+     agganciate al loro cliente, comparivano in elenco con un trattino al posto
+     del nome. Senza il nome qui, quelle del caso 2 farebbero la stessa fine. */
+  function esamina(testo, polizzeNote, clientiNoti) {
     var letto = leggi(testo);
     var busta = controllaBusta(letto);
     var note = {};
     (polizzeNote || []).forEach(function (id) { note[String(id)] = true; });
+    /* Si accetta anche un semplice elenco di chiavi: senza i nomi il
+       riconoscimento funziona lo stesso, e una polizza agganciata col nome
+       vuoto è comunque meglio di una tenuta fuori. */
+    var notiCli = {};
+    if (Array.isArray(clientiNoti)) {
+      clientiNoti.forEach(function (k) { var s = String(k == null ? '' : k).trim(); if (s) notiCli[s] = ''; });
+    } else if (clientiNoti && typeof clientiNoti === 'object') {
+      Object.keys(clientiNoti).forEach(function (k) {
+        var s = String(k == null ? '' : k).trim();
+        if (s) notiCli[s] = String(clientiNoti[k] == null ? '' : clientiNoti[k]);
+      });
+    }
 
     var anagrafiche = letto.per['10'].map(anagrafica);
     var veicoli     = letto.per['21'].map(veicolo);
@@ -520,9 +545,43 @@
     var sinistri    = letto.per['50'].map(sinistro);
     var incassi     = letto.per['80'].map(incasso);
 
-    var idPolizza = {}, idAnag = {}, numPolizza = {};
-    polizze.forEach(function (p) { idPolizza[p.id] = p; numPolizza[String(p.numero || '').trim()] = p; });
+    var idPolizza = {}, idAnag = {};
+    polizze.forEach(function (p) { idPolizza[p.id] = p; });
     anagrafiche.forEach(function (a) { idAnag[a.id] = a; });
+
+    /* ── IL CONTRAENTE: NEL FILE, IN ARCHIVIO, O DA NESSUNA PARTE ────────────
+       (29/09/2026, sul PASS-133 del 13/05: 14 polizze su 252 bloccavano tutto)
+
+       Tre casi, non due, e finora se ne guardava uno solo:
+
+         1. il cliente è in QUESTO file             → a posto;
+         2. non è nel file ma è GIÀ IN ARCHIVIO     → a posto lo stesso: la
+            polizza si aggancia alla scheda che c'è. È il caso normale di
+            un'estrazione successiva, dove HDI manda le polizze nuove e non
+            rimanda le anagrafiche di chi è già cliente;
+         3. non è né qui né là                      → quella polizza non può
+            entrare, e infatti NON entra.
+
+       Il caso 3 non lascia mai passare una polizza senza intestatario: la
+       scrittura le aggancia al contraente con una `join` (`iam_importa_flusso`,
+       «join _cli c on c.chiave = r->>'_cliente'»), quindi una polizza senza
+       cliente non viene inserita. Qui si esce PRIMA, come si fa dai titoli:
+       si tengono fuori e si dice quante sono. */
+    var haContraente = function (p) {
+      var k = p.anagrafica_id;
+      if (!k) return false;                                       // non nomina nessuno
+      if (idAnag[k]) return true;                                 // è nel file
+      return Object.prototype.hasOwnProperty.call(notiCli, 'hdi:a:' + k); // è in archivio
+    };
+    var polizzeBuone = [], polizzeScartate = [];
+    polizze.forEach(function (p) { (haContraente(p) ? polizzeBuone : polizzeScartate).push(p); });
+
+    /* L'indice per numero si costruisce SOLO sulle polizze che possono
+       entrare: se ci finissero anche le scartate, le loro rate risulterebbero
+       «di una polizza conosciuta», l'anteprima ne prometterebbe di più di
+       quelle che poi si agganciano, e il conto non tornerebbe a nessuno. */
+    var numPolizza = {};
+    polizzeBuone.forEach(function (p) { numPolizza[String(p.numero || '').trim()] = p; });
 
     /* UNA RATA SI COLLEGA ALLA POLIZZA PER NUMERO, non per id interno. Fino al
        24/09/2026 qui si confrontavano due cose diverse — il progressivo della
@@ -535,9 +594,15 @@
     };
 
     var avvisi = [];
-    var senzaAnagrafica = polizze.filter(function (p) { return !idAnag[p.anagrafica_id]; });
-    if (senzaAnagrafica.length) {
-      avvisi.push({ g: 'grave', t: senzaAnagrafica.length + ' polizze richiamano un cliente che nel file non c\'è: entrerebbero senza intestatario.' });
+    /* Il blocco che stava qui difendeva da una cosa che non puo' succedere: la
+       scrittura non inserisce una polizza senza contraente. Per quattordici
+       polizze ne teneva fuori duecentotrentotto. La regola «non si importa la
+       parte buona perche' non si sa dove finisce la parte buona» vale quando
+       non si sa; qui si sa quali sono, quante sono e che fine fanno. */
+    if (polizzeScartate.length) {
+      avvisi.push({ g: 'avviso', t: polizzeScartate.length + ' polizze su ' + polizze.length
+        + ' nominano un contraente che non e\' ne\' nel file ne\' in archivio: si lasciano fuori, '
+        + 'altrimenti entrerebbero senza intestatario. Il resto si carica.' });
     }
     /* ── LA CHIAVE CHE NON E' UNA CHIAVE ────────────────────────────────
        Il 24/09/2026 il lettore prendeva la colonna 20 come codice fiscale.
@@ -596,14 +661,26 @@
       caricabile: busta.ok && !avvisi.some(function (a) { return a.g === 'grave'; }),
       anagrafiche: anagrafiche,
       veicoli: veicoli,
-      polizze: polizze,
+      /* Escono SOLO le polizze che hanno un contraente: così non arrivano
+         nemmeno alla scrittura, che le scarterebbe in silenzio. Quelle tenute
+         fuori restano qui accanto, per nome e cognome, perché «14 polizze
+         escluse» senza sapere quali non si può controllare. */
+      polizze: polizzeBuone,
+      polizzeScartate: polizzeScartate,
+      /* Viaggia fino a `converti`, che ne ha bisogno per il nome del cliente
+         sulle polizze del caso 2 (contraente in archivio, non in questo file). */
+      clientiNoti: notiCli,
       garanzie: garanzie,
       titoli: titoli.filter(function (t) { return conosciuta(t.polizza_numero); }),
       titoliScartati: titoliFuori,
       sinistri: sinistri,
       incassi: incassi,
       conteggi: {
-        anagrafiche: anagrafiche.length, polizze: polizze.length, garanzie: garanzie.length,
+        anagrafiche: anagrafiche.length,
+        /* Come per i titoli: quante ce n'erano e quante ne entrano. Un numero
+           solo non distingue «il file ne ha 252» da «ne carico 252». */
+        polizze: polizze.length, polizzeCaricabili: polizzeBuone.length,
+        garanzie: garanzie.length,
         veicoli: veicoli.length,
         titoli: titoli.length, titoliCaricabili: titoli.length - titoliFuori.length,
         sinistri: sinistri.length, incassi: incassi.length,
@@ -691,6 +768,9 @@
     var e = esame || {};
     var anag = e.anagrafiche || [], pol = e.polizze || [],
         tit = e.titoli || [], gar = e.garanzie || [], inc = e.incassi || [];
+    /* I clienti che stanno in archivio e non in questo file: `esamina` li ha
+       già riconosciuti, qui servono per il nome da copiare sulla polizza. */
+    var noti = e.clientiNoti || {};
 
     var perPol = {};
     inc.forEach(function (i) {
@@ -777,7 +857,14 @@
         _fonte_id: 'hdi:p:' + num,
         _cliente: 'hdi:a:' + p.anagrafica_id,
         _senzaCliente: !p.anagrafica_id,
-        cliente: (anagPerId[p.anagrafica_id] || {}).denominazione || null,
+        /* Il nome copiato accanto al collegamento: prima dal file, poi
+           dall'archivio (il contraente che questa estrazione non rimanda).
+           Senza il secondo ramo la polizza entra agganciata al cliente giusto
+           e in elenco compare con un trattino al posto del nome — è successo
+           il 24/09 su diciotto polizze. */
+        cliente: (anagPerId[p.anagrafica_id] || {}).denominazione
+              || (noti['hdi:a:' + p.anagrafica_id] || null)
+              || null,
         numero_polizza: num,
         compagnia: 'HDI',
         prodotto: p.prodotto || p.ramo || null,

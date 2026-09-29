@@ -75,8 +75,8 @@
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
 <script src="tariffe/motore/pagamento-rata.js?v=20260928"></script>
-<script src="tariffe/motore/flusso-ssf.js?v=20260928"></script>
-<script src="tariffe/motore/flusso-hdi.js?v=20260928"></script>
+<script src="tariffe/motore/flusso-ssf.js?v=20260929"></script>
+<script src="tariffe/motore/flusso-hdi.js?v=20260929"></script>
 <script src="tariffe/motore/crm-analisi.js?v=20260928"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260920"></script>
 <!-- Le coordinate su cui i collaboratori versano stanno sui conti, e i conti
@@ -20723,11 +20723,25 @@ async function fluAnteprimaHdi(testo, box) {
     note = (data || []).map(x => x.numero_polizza).filter(Boolean);
   } catch (e) { console.warn('flusso HDI, polizze già in archivio:', e); }
 
+  /* E I CLIENTI GIÀ IN ARCHIVIO (29/09/2026). Serve per la stessa ragione delle
+     polizze qui sopra, e mancava: un'estrazione successiva manda le polizze
+     nuove e NON rimanda l'anagrafica di chi è già cliente. Senza questo elenco
+     quelle polizze risultavano «senza contraente» e bloccavano tutto il file.
+     Si prende anche il nominativo, che la polizza tiene copiato accanto al
+     collegamento: senza, entrerebbe agganciata al cliente giusto e in elenco
+     comparirebbe con un trattino al posto del nome. */
+  let clientiNoti = {};
+  try {
+    const { data } = await db.from('quote_anagrafiche')
+      .select('fonte_id,nominativo').eq('fonte', 'hdi').limit(20000);
+    (data || []).forEach(a => { if (a.fonte_id) clientiNoti[a.fonte_id] = a.nominativo || ''; });
+  } catch (e) { console.warn('flusso HDI, clienti già in archivio:', e); }
+
   /* Se il lettore inciampa, si dice. Senza questo `try`, un file storto
      lascerebbe la pagina ferma su «Leggo il portafoglio…» per sempre, e
      «non e' andato» resta l'unica cosa che si puo' raccontare. */
   let r;
-  try { r = H.esamina(testo, note); }
+  try { r = H.esamina(testo, note, clientiNoti); }
   catch (e) {
     console.error('flusso HDI:', e);
     box.innerHTML = '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> '
@@ -20744,7 +20758,14 @@ async function fluAnteprimaHdi(testo, box) {
       (r.busta.estratto_il ? ' · estratto il ' + esc(new Date(r.busta.estratto_il + 'T12:00:00').toLocaleDateString('it-IT')) : '') + '</div>' +
     (r.busta.ok ? '' : '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> ' + esc(r.busta.guai.join(' ')) + '</div>') +
     '<div style="background:var(--surf);border:.5px solid var(--bord2);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:13px">' +
-      riga(c.anagrafiche, 'Clienti') + riga(c.polizze, 'Polizze') + riga(c.garanzie, 'Garanzie') +
+      riga(c.anagrafiche, 'Clienti') +
+      /* «238 su 252» quando qualcuna resta fuori, il numero secco quando
+         entrano tutte: la stessa forma delle rate qui sotto. Un numero solo
+         non distingue «il file ne ha 252» da «ne carico 252». */
+      riga(c.polizzeCaricabili != null && c.polizzeCaricabili !== c.polizze
+        ? c.polizzeCaricabili + ' <span style="color:var(--txt3);font-weight:400">su ' + c.polizze + '</span>'
+        : c.polizze, 'Polizze') +
+      riga(c.garanzie, 'Garanzie') +
       riga(c.titoliCaricabili + ' <span style="color:var(--txt3);font-weight:400">su ' + c.titoli + '</span>', 'Rate') +
       riga(c.sinistri, 'Sinistri') + riga(c.incassi, 'Incassi') +
     '</div>' +
@@ -20938,7 +20959,14 @@ async function fluEsistenti(analisi) {
   const piva = [...new Set((analisi.clienti || []).map(c => c.partita_iva).filter(Boolean))];
   const polKey = (analisi.polizze || []).map(p => p._fonte_id).filter(Boolean);
   const titKey = (analisi.titoli || []).map(t => t._fonte_id).filter(Boolean);
-  const out = { clientiPerCf: {}, clientiPerPiva: {}, polizzePerFonte: {}, titoliPerFonte: {} };
+  /* Le chiavi di contraente che le polizze NOMINANO ma che il file non porta:
+     è il cliente entrato con un'estrazione precedente. Senza risolverle, la
+     scrittura non aggancia quelle polizze (la `join` su `_cli`) e sparirebbero
+     in silenzio. Si chiedono solo quelle che servono, non tutto l'archivio. */
+  const cliInFile = new Set((analisi.clienti || []).map(c => c._chiave).filter(Boolean));
+  const cliKey = [...new Set((analisi.polizze || [])
+    .map(p => p._cliente).filter(k => k && !cliInFile.has(k)))];
+  const out = { clientiPerCf: {}, clientiPerPiva: {}, clientiPerFonte: {}, polizzePerFonte: {}, titoliPerFonte: {} };
 
   /* A blocchi: un `in` con duemila codici dentro non passa, e il portafoglio
      completo di codici ne ha molti di più di duemila. */
@@ -20954,6 +20982,11 @@ async function fluEsistenti(analisi) {
     const { data, error } = await db.from('quote_anagrafiche').select('id,partita_iva').in('partita_iva', blocco);
     if (error) throw error;
     (data || []).forEach(a => { if (a.partita_iva) out.clientiPerPiva[String(a.partita_iva).trim()] = a.id; });
+  });
+  await aBlocchi(cliKey, async (blocco) => {
+    const { data, error } = await db.from('quote_anagrafiche').select('id,fonte_id').eq('fonte', FLU_FONTE).in('fonte_id', blocco);
+    if (error) throw error;
+    (data || []).forEach(a => { if (a.fonte_id) out.clientiPerFonte[a.fonte_id] = a.id; });
   });
   await aBlocchi(polKey, async (blocco) => {
     const { data, error } = await db.from('quote_polizze').select('id,fonte_id').eq('fonte', FLU_FONTE).in('fonte_id', blocco);

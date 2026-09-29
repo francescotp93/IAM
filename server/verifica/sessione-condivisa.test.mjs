@@ -79,6 +79,89 @@ prova('il contratto dice la stessa cosa: passo 2 senza at/rt, §2.4 decisa, §3 
   return 'contratto allineato';
 });
 
+/* ══ E MARKETING, CHE ERA RESTATO INDIETRO (29/09/2026) ═══════════════════════
+   «In marketing, Dashboard deve accedere in automatico e deve essere tutt'uno
+    con IAM» — Francesco.
+
+   Le prove qui sopra guardavano il preventivatore e la scocca, non il Lab.
+   Marketing era rimasto con `persistSession: false`: giusto finché stava su
+   un'altra origine e riceveva i token in un messaggio, sbagliato dal
+   16/09/2026. Non guardava lo storage, non gli arrivava niente (la scocca
+   risponde vuoto sulla stessa origine) e mostrava la SUA schermata di accesso
+   dentro IAM. La regola c'era; mancava la riga che la facesse valere anche
+   qui. */
+const lab = fs.readFileSync(path.join(RADICE, 'lab', 'index.html'), 'utf8');
+
+prova('anche Marketing condivide lo storage: persistSession acceso, autoRefreshToken no', () => {
+  const src = senzaCommenti(lab);
+  deve(/inIframe \? \{ auth: \{ autoRefreshToken: false \} \} : undefined/.test(src),
+    'le opzioni del client di Marketing non sono { autoRefreshToken: false } e basta');
+  deve(!/persistSession:\s*false/.test(src),
+    'persistSession è ancora spento in Marketing: senza storage la sessione di IAM non si vede, e ricompare la richiesta di password');
+  return 'ospite: legge lo storage, non rinnova';
+});
+
+prova('dentro IAM, Marketing non chiede una seconda password', () => {
+  /* Chi è dentro IAM è già entrato. Mettergli davanti la porta d'ingresso di
+     un altro programma è dirgli che sono due programmi. */
+  const f = senzaCommenti(ritaglia(lab, 'showLogin') || '');
+  deve(f, 'showLogin non si ritaglia');
+  deve(/if \(inIframe\) return mostraDentroIam\(msg\);/.test(f),
+    'dentro il riquadro compare ancora la schermata di accesso a tutto schermo');
+  const dentro = ritaglia(lab, 'mostraDentroIam');
+  deve(dentro, 'mostraDentroIam non esiste');
+  deve(!/type="password"|signInWithPassword/.test(dentro), 'il messaggio dentro IAM chiede una password');
+  deve(/location\.reload\(\)/.test(dentro), 'non c\'è modo di riprovare senza uscire');
+  return 'dentro IAM: un riquadro che spiega, non una porta';
+});
+
+prova('un account non abilitato NON viene buttato fuori anche da IAM', () => {
+  /* Il guasto che la correzione qui sopra avrebbe ACCESO. `showBlocked`
+     chiamava `db.auth.signOut()`: con lo storage condiviso quella riga
+     cancella la sessione di IAM e revoca il refresh token sul server. Chi apre
+     Marketing senza essere abilitato si ritroverebbe fuori da tutto — da una
+     schermata che doveva solo dirgli «non puoi entrare qui».
+     Finché il client non leggeva lo storage il guasto era spento: non c'era
+     nessuna sessione da chiudere. */
+  const f = senzaCommenti(ritaglia(lab, 'showBlocked') || '');
+  deve(f, 'showBlocked non si ritaglia');
+  deve(/if \(!inIframe\) \{ try \{ db\.auth\.signOut\(\); \} catch \(_\) \{\} \}/.test(f),
+    'showBlocked esce dalla sessione anche dentro IAM: butta fuori da IAM chi non è abilitato a Marketing');
+  return 'blocco dentro IAM: niente signOut';
+});
+
+prova('il cancello di Marketing resta dov\'è: non è stato toccato', () => {
+  /* Chi entra in Marketing è una questione di permessi, e i permessi non si
+     cambiano per far funzionare una schermata. La correzione riguarda COME si
+     legge la sessione, non CHI può entrare. */
+  const src = senzaCommenti(lab);
+  deve(/PROFILO\.lab_abilitato === true/.test(src), 'il controllo su lab_abilitato è sparito');
+  deve(/SUPER_ADMIN_EMAIL/.test(src), 'l\'eccezione per il super admin è sparita');
+  deve(/PROFILO\.attivo === false/.test(src), 'il controllo sull\'account sospeso è sparito');
+  return 'lab_abilitato, super admin e account sospeso: invariati';
+});
+
+prova('dentro IAM, Marketing non disegna una seconda testata', () => {
+  /* La fascia verde con logo, titolo, nome e «Esci» compare SOTTO la testata
+     di IAM, che dice già le stesse quattro cose. */
+  deve(/\.emb-iam \.top\{display:none;\}/.test(lab), 'la testata di Marketing resta visibile dentro IAM');
+  deve(/\.emb-iam #login-screen\{display:none !important;\}/.test(lab),
+    'la schermata di accesso può ancora comparire dentro il riquadro');
+  deve(/from'\)\s*===\s*'iam'[\s\S]{0,90}window\.self\s*!==\s*window\.top[\s\S]{0,90}add\('emb-iam'\)/.test(lab),
+    'la classe emb-iam non si accende da `?from=iam` dentro un riquadro');
+  return 'emb-iam: testata e porta d\'ingresso via';
+});
+
+prova('la scocca apre Marketing sulla stessa origine, sotto /nuovo-preventivo/', () => {
+  /* Se Marketing tornasse su un'altra origine, leggere lo storage non
+     funzionerebbe più e servirebbero di nuovo i token nel messaggio: questa
+     prova è la sentinella di quel presupposto. */
+  deve(/aprireQuoto\(null, \{ base: 'lab\/'/.test(scocca), 'Marketing non si apre più con base «lab/»');
+  deve(/var base = QUOTO \+ \(sotto \|\| ''\) \+ '\?from=iam';/.test(scocca),
+    'l\'indirizzo del riquadro non è più QUOTO + sotto + ?from=iam');
+  return 'lab/ sotto /nuovo-preventivo/, con ?from=iam';
+});
+
 console.log('\n══ SESSIONE CONDIVISA ══');
 let ko = 0;
 for (const { nome, fn } of esiti) {

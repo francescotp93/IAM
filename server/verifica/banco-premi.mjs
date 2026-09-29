@@ -35,7 +35,12 @@ export function servi(radice) {
        questo taglio il browser prende 404, nessun motore si carica, e la prova
        direbbe «il motore non c'e'» su un codice sano. */
     if (rel.startsWith('nuovo-preventivo/')) rel = rel.slice('nuovo-preventivo/'.length);
-    const f = path.join(radice, rel);
+    let f = path.join(radice, rel);
+    /* UNA CARTELLA SERVE IL SUO `index.html`, come fa Caddy in produzione.
+       Senza, `/lab/` (Marketing) rispondeva 404 e il riquadro restava vuoto:
+       le prove diventavano rosse tutte insieme, e non per il motivo che
+       misuravano. Un banco che non somiglia alla produzione misura il banco. */
+    if (fs.existsSync(f) && fs.statSync(f).isDirectory()) f = path.join(f, 'index.html');
     if (!f.startsWith(radice) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.statusCode = 404; return res.end('no'); }
     res.setHeader('Content-Type', tipi[path.extname(f)] || 'application/octet-stream');
     res.end(fs.readFileSync(f));

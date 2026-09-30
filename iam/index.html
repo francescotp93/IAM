@@ -94,6 +94,16 @@
   padding:7px 0;border-top:1px solid var(--line,#e6e9ef);font-size:13px}
 .reg-r:first-child{border-top:0}
 .cl-sub{font-size:12px;color:var(--muted,#6b7280)}
+/* Un caricamento che si VEDE che è un caricamento (30/09/2026). La stessa
+   riga di testo di prima, ma con la rotella accanto: senza, «Carico i
+   sospesi…» ha lo stesso aspetto di un risultato, e una schermata ferma non
+   si distingue da una schermata che sta lavorando. */
+@keyframes clCarico{to{transform:rotate(360deg)}}
+.cl-carico{display:flex;align-items:center;gap:8px;padding:10px 0;
+  font-size:12px;color:var(--muted,#6b7280)}
+.cl-carico-g{width:14px;height:14px;flex:0 0 14px;border-radius:50%;
+  border:2px solid var(--bord,#e6e9ef);border-top-color:var(--acc,#2f6df6);
+  animation:clCarico .7s linear infinite}
 /* ── CONTI E CAUSALI (brief #02 · M1, 19/09/2026) ───────────────────────────
    Le due nature del denaro hanno due colori, e non è decorazione: chi guarda
    questa schermata deve distinguere a colpo d'occhio i soldi dei clienti da
@@ -2129,9 +2139,22 @@ input[type=file]{display:none;}
       </div>
     </section>
     <section class="cnt-somma" id="spr-somma"></section>
-    <section id="spr-lista" style="padding:0 16px"><div class="cl-sub">Carico i sospesi…</div></section>
+    <section id="spr-lista" style="padding:0 16px"><div class="cl-carico"><span class="cl-carico-g"></span>Carico i sospesi…</div></section>
     <div style="height:18px"></div>
-    <!-- IL CARICAMENTO DA FILE NON C'È PIÙ (22/09/2026, richiesta di Francesco:
+    <!-- IL BLOCCO STORICO STA CHIUSO FINCHÉ NON HA DENTRO QUALCOSA
+         (30/09/2026, richiesta di Francesco: «questa parte non si deve vedere
+         queste scritte ma semplicemente un caricamento»). Il titolo, la
+         spiegazione e il «nessun sospeso da file» stavano a schermo SEMPRE —
+         anche mentre la pagina caricava, anche quando da file non c'era mai
+         stato niente. Tre righe di spiegazione sotto un caricamento fanno
+         sembrare piena una schermata che è ancora vuota, e chi legge le
+         scambia per il contenuto.
+         Adesso il blocco si apre solo se dei sospesi da file ci sono davvero
+         (`buildSospesi`): quando ci sono, la spiegazione serve e si legge —
+         un elenco fermo che non dichiara di essere fermo è peggio di un
+         elenco che non c'è. Quando non ci sono, non c'è niente da spiegare.
+
+         IL CARICAMENTO DA FILE NON C'È PIÙ (22/09/2026, richiesta di Francesco:
          «in questa parte dei sospesi leviamo la possibilità di caricare i
          file»). I sospesi adesso arrivano dal NOSTRO portafoglio — le rate
          aperte, con la voce di pagamento che dice chi le tiene — e un secondo
@@ -2141,6 +2164,7 @@ input[type=file]{display:none;}
          Quadratura di giornata e nello Storico. Non si aggiorna più, e lo
          dice: un elenco fermo che non dichiara di essere fermo è peggio di un
          elenco che non c'è. -->
+    <div id="spr-storico" style="display:none">
     <div class="slbl">Sospesi caricati da file (storico)</div>
     <div class="cl-sub" style="padding:0 16px 10px">Quello che era già stato caricato dal file della compagnia. <b>Non si aggiorna più</b>: il caricamento da file è stato tolto, e i sospesi veri sono quelli qui sopra. Resta finché i due numeri non saranno stati confrontati.</div>
     <div id="s-empty" class="cl-sub" style="padding:0 16px 24px">Nessun sospeso da file: non ne è mai stato caricato, oppure la giornata di oggi non ne porta.</div>
@@ -2164,6 +2188,7 @@ input[type=file]{display:none;}
       <div class="card"><div id="s-list"></div></div>
       <div style="height:16px;"></div>
     </div>
+    </div><!-- /spr-storico -->
   </div>
 
   <!-- SUB: Storico -->
@@ -6114,7 +6139,7 @@ async function sprCarica(forza) {
   if (!db) return;
   var mio = ++SPR_GIRO;
   var box = document.getElementById('spr-lista');
-  if (forza && box) box.innerHTML = '<div class="cl-sub">Carico i sospesi…</div>';
+  if (forza && box) box.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Carico i sospesi…</div>';
   var err = null, parziale = false, rate = [], mod = [];
   var CAMPI = 'id,polizza_id,tipo,stato,mezzo_pagamento,importo_lordo,data_decorrenza,incassato_il,'
     + 'quote_polizze(numero_polizza,cliente,cliente_id,compagnia,mezzo_pagamento)';
@@ -6218,7 +6243,7 @@ function sprRender() {
     return;
   }
   var e = SPR_ESITO;
-  if (!e) { box.innerHTML = '<div class="cl-sub">Carico i sospesi…</div>'; return; }
+  if (!e) { box.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Carico i sospesi…</div>'; return; }
 
   if (somma) {
     somma.innerHTML = ''
@@ -9812,7 +9837,7 @@ async function recApri(forza) {
   REC_GUASTI = [];
   REC_CHIAVE = recNuovaChiave();
   var l = document.getElementById('rec-lista');
-  if (l && forza !== false) l.innerHTML = '<div class="cl-sub">Carico i sospesi…</div>';
+  if (l && forza !== false) l.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Carico i sospesi…</div>';
   REC_CONTI = await recLeggi('i conti', db.from('iam_conti').select('*').eq('attivo', true).order('ordine'), []);
   REC_COMPAGNIE = await recLeggi('l\'anagrafica delle compagnie', db.from('quote_compagnie').select('id,nome,alias'), []);
   var cs = await recLeggi('le causali', db.from('iam_causali').select('*')
@@ -14600,7 +14625,12 @@ function getProdNome(codice) {
 
 function buildSospesi() {
   const sosp = APP.sospesi.filter(s=>s.importo>=0);
+  /* Niente da file: il blocco storico resta chiuso, titolo e spiegazione
+     compresi (30/09/2026). Prima restava aperto a dire che era vuoto, e
+     quelle righe erano l'unica cosa scritta sotto il caricamento. */
   if (!sosp.length) return;
+  const st = document.getElementById('spr-storico');
+  if (st) st.style.display = 'block';
   loadTeam();
 
   // Popola select produttori

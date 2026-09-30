@@ -38,6 +38,32 @@
   function testo(v) { var s = String(v == null ? '' : v).trim(); return s === '' ? null : s; }
   function giorno(v) { var m = /^(\d{4}-\d{2}-\d{2})/.exec(String(v == null ? '' : v)); return m ? m[1] : null; }
 
+  /* ── SPOSTARSI DI UN GIORNO (30/09/2026, richiesta di Francesco) ──────────
+     Le frecce accanto alle date muovono la FINESTRA intera, non un estremo
+     solo: «dal 1 al 30» spostato in avanti è «dal 2 al 31», non «dal 1 al
+     31». Chi guarda la cassa di una giornata vuole la giornata prima, non un
+     periodo che si allunga a ogni clic.
+
+     I conti si fanno in UTC di proposito: `new Date('2026-10-25')` più
+     ventiquattr'ore, in ora locale, il giorno del cambio d'ora non è il
+     giorno dopo — è lo stesso giorno a un'ora diversa, e la freccia
+     resterebbe ferma una volta l'anno senza che nessuno capisca perché.
+
+     Se non c'è nessuna data non si sposta niente e si dice (`null`): la
+     finestra è «tutto», e «tutto» non ha un giorno prima. Metterne una
+     d'ufficio restringerebbe la vista a un clic di distanza senza che
+     nessuno l'abbia chiesto. */
+  function piuGiorni(iso, n) {
+    var t = Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) + n * 86400000;
+    return new Date(t).toISOString().slice(0, 10);
+  }
+  function sposta(dal, al, giorni) {
+    var d = giorno(dal), a = giorno(al);
+    if (!d && !a) return null;
+    var n = Math.trunc(Number(giorni) || 0);
+    return { dal: d ? piuGiorni(d, n) : null, al: a ? piuGiorni(a, n) : null };
+  }
+
   var MEZZI = {
     contante: 'Contante', assegno: 'Assegno', bonifico: 'Bonifico', pos: 'POS', carta_credito: 'Carta di credito',
     paypal: 'PayPal', prepagata: 'Carta prepagata', domiciliazione: 'Domiciliazione (SDD)',
@@ -312,7 +338,8 @@
   }
 
   var API = { VERSIONE: VERSIONE, MEZZI: MEZZI, PAGATORI: PAGATORI, cent: cent,
-    movimenti: movimenti, totali: totali, quadrature: quadrature, riassunto: riassunto, documentoPdf: documentoPdf, euro: euro, dataIt: dataIt };
+    movimenti: movimenti, totali: totali, quadrature: quadrature, riassunto: riassunto, documentoPdf: documentoPdf, euro: euro, dataIt: dataIt,
+    sposta: sposta };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.FoglioCassa = API;
 })();

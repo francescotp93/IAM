@@ -108,7 +108,7 @@
      i codici di Prima prendono un nome che si può leggere al telefono, e la
      somma delle garanzie si confronta col premio. -->
 <script src="tariffe/motore/garanzie.js?v=20260928"></script>
-<script src="tariffe/motore/foglio-cassa.js?v=20260928"></script>
+<script src="tariffe/motore/foglio-cassa.js?v=20260930"></script>
 <script src="tariffe/motore/piano-rate.js?v=20260921"></script>
 <script src="tariffe/motore/animali.js?v=20260910"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260910"></script>
@@ -1064,6 +1064,14 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
   --w1-rosso:#a3352a;
   --w1-rosso-bg:#fff6f5;
   --w1-zebra:#fafbfc}
+/* Le due frecce accanto alle date: un giorno indietro, un giorno avanti.
+   Stanno nella barra dei filtri come un campo qualunque, con la stessa
+   altezza degli altri, cosi' la riga non si scompone. */
+.fc-gg{display:flex;gap:4px}
+.fc-gg-b{width:32px;height:30px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--muted);
+  font-family:inherit;font-size:15px;cursor:pointer;padding:0;line-height:1}
+.fc-gg-b:hover{background:#f5f6f7;color:var(--ink,#1f2933)}
 /* La barra dei totali: caselle affiancate, etichetta piccola sopra e cifra
    grande sotto. Le tessere di prima erano alte il doppio e stavano su due
    righe: gli stessi numeri, con meta' della pagina occupata. */
@@ -3611,6 +3619,13 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             <option value="incasso">Data di incasso</option></select></div>
           <div class="pf-f"><label>dal</label><input id="fc-da" type="date"></div>
           <div class="pf-f"><label>al</label><input id="fc-a" type="date"></div>
+          <!-- Le frecce spostano tutt'e due le date di un giorno, avanti o
+               indietro, e rifanno la ricerca da sole: la cassa di ieri senza
+               riscrivere due campi a mano. -->
+          <div class="pf-f"><label>giorno</label><div class="fc-gg">
+            <button type="button" class="fc-gg-b" onclick="fcSposta(-1)" title="Un giorno indietro" aria-label="Un giorno indietro"><i class="ti ti-chevron-left"></i></button>
+            <button type="button" class="fc-gg-b" onclick="fcSposta(1)" title="Un giorno avanti" aria-label="Un giorno avanti"><i class="ti ti-chevron-right"></i></button>
+          </div></div>
           <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="fcRender()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="fcAzzera()">Questo mese</button></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -30621,6 +30636,30 @@ function fcAzzera() {
   const m = ecpMese();
   const d = document.getElementById('fc-da'), a = document.getElementById('fc-a');
   if (d) d.value = m.dal; if (a) a.value = m.al;
+  fcRender();
+}
+
+/* ── LE FRECCE DEL GIORNO (30/09/2026, richiesta di Francesco) ─────────────
+   «Metti una freccetta che dà la possibilità di spostarsi di un giorno
+   avanti oppure di un giorno indietro.»
+
+   Due cose che sembrano dettagli e non lo sono.
+   · Si spostano TUTT'E DUE le date, non una: la finestra resta lunga
+     uguale. Muovendo solo il «dal», ogni clic allungherebbe il periodo e i
+     totali crescerebbero senza che nessuno l'abbia chiesto.
+   · Si rifà la ricerca subito. Una freccia che cambia le date e lascia a
+     schermo i numeri di prima mostrerebbe un periodo e ne dichiarerebbe un
+     altro — ed è di soldi che si parla.
+   Il conto dei giorni sta nel motore (`FoglioCassa.sposta`), non qui. */
+function fcSposta(giorni) {
+  if (!window.FoglioCassa || !FoglioCassa.sposta) return;
+  const d = document.getElementById('fc-da'), a = document.getElementById('fc-a');
+  const n = FoglioCassa.sposta(d ? d.value : null, a ? a.value : null, giorni);
+  /* Nessuna data impostata: la finestra è «tutto», e «tutto» non ha un
+     giorno prima. Non se ne inventa una. */
+  if (!n) return;
+  if (d) d.value = n.dal || '';
+  if (a) a.value = n.al || '';
   fcRender();
 }
 

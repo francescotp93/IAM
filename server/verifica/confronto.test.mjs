@@ -226,6 +226,33 @@ prova('ogni riga letta dice da quale documento viene', () => {
   deve(r.a.fonte.pagina === 3, 'manca la pagina: senza, «dove c\'è scritto?» non ha risposta');
 });
 
+prova('il documento della riga è QUELLO della garanzia, non quello del prodotto', () => {
+  /* Difetto vero, trovato dalla prova nel browser il 01/10/2026: documento ed
+     edizione si leggevano dal prodotto. Ma un prodotto ha più documenti — il
+     DIP, il DIP aggiuntivo, le condizioni — e ogni edizione è un documento
+     diverso: tutte le righe avrebbero dichiarato lo stesso foglio. Una riga
+     che indica il documento sbagliato è peggio di una che non lo indica:
+     manda a cercare una frase dove non c'è, e la si trova diversa. */
+  const c = C.confronta(
+    { compagnia: 'HDI', prodotto: 'P', ramo: 'auto', documento: 'set informativo', edizione: '2024',
+      garanzie: [
+        { id: 'rca', stato: 'presente', documento: 'dip', edizione: '07/2020', pagina: 3 },
+        { id: 'cristalli', stato: 'presente', documento: 'condizioni', edizione: '01/2026', pagina: 44 },
+        { id: 'tutela_legale', stato: 'presente', pagina: 7 },
+      ] },
+    { compagnia: 'B', prodotto: 'Q', ramo: 'auto', garanzie: [] });
+  const rca = c.righe.find(x => x.id === 'rca');
+  const cri = c.righe.find(x => x.id === 'cristalli');
+  const tut = c.righe.find(x => x.id === 'tutela_legale');
+  deve(rca.a.fonte.documento === 'dip' && rca.a.fonte.edizione === '07/2020', JSON.stringify(rca.a.fonte));
+  deve(cri.a.fonte.documento === 'condizioni' && cri.a.fonte.edizione === '01/2026',
+    'due garanzie dello stesso prodotto devono poter venire da due documenti: ' + JSON.stringify(cri.a.fonte));
+  /* Quando la garanzia non lo dice, si ripiega sul prodotto: è un ripiego
+     dichiarato, non un buco. */
+  deve(tut.a.fonte.documento === 'set informativo' && tut.a.fonte.edizione === '2024',
+    'senza documento sulla garanzia doveva valere quello del prodotto: ' + JSON.stringify(tut.a.fonte));
+});
+
 prova('due rami diversi non si confrontano', () => {
   const c = C.confronta(AUTO_A, { ...AUTO_B, ramo: 'casa' });
   deve(!c.ok, 'ha confrontato un\'auto con una casa');

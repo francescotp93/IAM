@@ -77,6 +77,7 @@
 <script src="/nuovo-preventivo/tariffe/motore/decisioni.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/produzione.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/collaboratori.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/confronto.js?v=20261001"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -94,6 +95,47 @@
   padding:7px 0;border-top:1px solid var(--line,#e6e9ef);font-size:13px}
 .reg-r:first-child{border-top:0}
 .cl-sub{font-size:12px;color:var(--muted,#6b7280)}
+/* ── CONFRONTA (01/10/2026) ────────────────────────────────────────────────
+   La regola del disegno di questa schermata: quello che non si è letto si
+   deve VEDERE che non si è letto. Per questo «non letto» ha una tinta sua e
+   non è un trattino: un trattino si scambia per uno zero. */
+.cf-scelte{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.cf-f{display:flex;flex-direction:column;gap:4px;min-width:200px;flex:1}
+.cf-f label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3)}
+.cf-f select{padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);
+  border-radius:8px;font-size:13px;color:var(--txt);font-family:inherit}
+.cf-f-az,.cf-vs{flex:0 0 auto;min-width:0}
+.cf-vs{align-self:center;padding-bottom:9px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--txt3)}
+/* Il cartello del punteggio. Porta SEMPRE due numeri: quante garanzie si sono
+   confrontate e quante no. Il primo da solo sarebbe un punteggio che finge. */
+.cf-somma{display:flex;gap:1px;background:var(--bord);border:1px solid var(--bord);
+  border-radius:10px;overflow:hidden;margin:12px 0}
+.cf-s{background:var(--surf);padding:10px 14px;flex:1;min-width:0}
+.cf-s span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--txt3);font-weight:700;margin-bottom:3px}
+.cf-s b{display:block;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+.cf-s.cf-win b{color:var(--acc,#2f6df6)}
+/* Quando non si è letto abbastanza, il cartello lo dice al posto del verdetto. */
+.cf-astenuto{background:#fff4e6;border:1px solid #f0c674;border-radius:10px;
+  padding:11px 14px;margin:12px 0;font-size:12.5px;color:#7a5618;line-height:1.5}
+.cf-tab{width:100%;border-collapse:collapse;font-size:13px}
+.cf-tab th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--txt3);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--bord)}
+.cf-tab td{padding:9px 10px;border-bottom:1px solid var(--bord);vertical-align:top}
+.cf-tab tr:last-child td{border-bottom:0}
+.cf-g{font-weight:600}
+.cf-g small{display:block;font-weight:400;font-size:11px;color:var(--txt3);margin-top:2px}
+.cf-st{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;
+  text-transform:uppercase;letter-spacing:.03em}
+.cf-si{background:#e7f6ec;color:#1b6b38}
+.cf-no{background:#fdeceb;color:#9c2b20}
+.cf-nl{background:#eef0f3;color:#6b7280}
+.cf-num{font-variant-numeric:tabular-nums;font-size:12px;color:var(--txt2);margin-top:3px}
+.cf-v{text-align:center;font-weight:800;font-size:15px;width:44px}
+.cf-v-a{color:var(--acc,#2f6df6)}.cf-v-b{color:#b7791f}.cf-v-null{color:var(--txt3);font-weight:400}
+.cf-fonte{font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.45}
+.cf-fonte q{font-style:italic}
 /* Un caricamento che si VEDE che è un caricamento (30/09/2026). La stessa
    riga di testo di prima, ma con la rotella accanto: senza, «Carico i
    sospesi…» ha lo stesso aspetto di un risultato, e una schermata ferma non
@@ -4876,6 +4918,52 @@ input[type=file]{display:none;}
   <div id="ab-vista-esito" style="display:none"></div>
 </div>
 
+<!-- ══ CONFRONTA (01/10/2026, richiesta di Francesco) ═══════════════════════
+     «Una parte dove possiamo confrontare le polizze […] se seleziono HDI auto
+     e metto polizza Italiana auto, da lì mi fa un rating per garanzia.»
+     E il perché: «per poter battere la concorrenza ci possiamo battere
+     solamente su dati reali».
+
+     STA QUI, accanto all'Analisi dei bisogni, perché è il suo seguito:
+     l'analisi dice quali aree meritano un confronto, questa lo fa.
+
+     Il conto NON sta in questa pagina: sta in `tariffe/motore/confronto.js`,
+     che ha le sue prove. Qui c'è solo il disegno — e la regola del disegno è
+     una sola: tutto quello che il motore non ha letto si VEDE che non l'ha
+     letto. Una tabella che mostra solo le righe piene convince di più ed è
+     più falsa. -->
+<div class="panel" id="panel-confronta" style="overflow-y:auto;">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow">Prodotti</div>
+      <h1>Confronta</h1>
+      <div class="subtitle">Due prodotti uno accanto all'altro, garanzia per garanzia, letti dai documenti
+        precontrattuali delle compagnie. Ogni riga dice da quale documento viene.</div>
+    </div>
+    <div class="head-actions">
+      <button class="d-btn" type="button" onclick="cfCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+    </div>
+  </section>
+
+  <div class="d-card">
+    <div class="card-head"><div class="card-title">
+      <span class="pictogram"><i class="ti ti-scale"></i></span> Quali due prodotti</div></div>
+    <div class="card-body">
+      <div class="cf-scelte">
+        <div class="cf-f"><label for="cf-ramo">Ramo</label><select id="cf-ramo" onchange="cfRamo()"></select></div>
+        <div class="cf-f"><label for="cf-a">Il nostro</label><select id="cf-a"></select></div>
+        <div class="cf-f cf-vs"><span>contro</span></div>
+        <div class="cf-f"><label for="cf-b">L'altro</label><select id="cf-b"></select></div>
+        <div class="cf-f cf-f-az"><button class="d-btn primario" type="button" onclick="cfConfronta()">
+          <i class="ti ti-scale"></i> Confronta</button></div>
+      </div>
+      <div id="cf-stato" class="cl-sub"></div>
+    </div>
+  </div>
+
+  <div id="cf-esito"></div>
+</div>
+
 <script type="module" src="analisi-bisogni-rating.js?v=20260804"></script>
 
 <script>
@@ -6124,6 +6212,218 @@ var SPR_APERTI = {};      /* quale gruppo è aperto */
 var SPR_TOCCATO = false;  /* qualcuno ha aperto o chiuso a mano */
 var SPR_GIRO = 0;         /* due caricamenti insieme non si sommano (§63-bis) */
 var SPR_DETT = null;      /* la voce aperta a tutta pagina (null = l'elenco) */
+/* ═══ CONFRONTA (01/10/2026) ════════════════════════════════════════════════
+   Il disegno della schermata. Il conto non sta qui: sta in
+   `tariffe/motore/confronto.js`, che ha le sue 20 prove e la sua controprova.
+   Qui c'è una regola sola, ed è di disegno: QUELLO CHE NON SI È LETTO SI DEVE
+   VEDERE. Una tabella che mostra solo le righe piene convince di più ed è più
+   falsa — e questa tabella la si gira verso un cliente. */
+var CF_PRODOTTI = [];     /* l'archivio, letto una volta e tenuto */
+var CF_ERRORE = null;
+
+async function cfCarica(forza) {
+  var stato = document.getElementById('cf-stato');
+  if (!window.Confronto) {
+    if (stato) stato.innerHTML = '<b>Il motore del confronto non è caricato.</b> La schermata non può lavorare.';
+    return;
+  }
+  if (CF_PRODOTTI.length && !forza) { cfRami(); return; }
+  if (stato) stato.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Carico i prodotti in archivio…</div>';
+  CF_ERRORE = null;
+  try {
+    var r = await db.from('iam_conf_prodotti')
+      .select('id,compagnia,prodotto,ramo,in_vendita')
+      .eq('in_vendita', true).order('compagnia').order('prodotto');
+    if (r.error) throw r.error;
+    CF_PRODOTTI = r.data || [];
+  } catch (e) {
+    /* «Non si è potuto leggere» non è «non ce n'è»: un archivio vuoto per un
+       guasto di rete manderebbe a cercare documenti che ci sono già. */
+    CF_ERRORE = (e && e.message) || String(e);
+    CF_PRODOTTI = [];
+  }
+  cfRami();
+}
+
+function cfRami() {
+  var sel = document.getElementById('cf-ramo'), stato = document.getElementById('cf-stato');
+  if (!sel) return;
+  if (!sel.options.length) {
+    sel.innerHTML = Confronto.RAMI.map(function (r) {
+      return '<option value="' + r.id + '">' + esc(r.nome) + '</option>';
+    }).join('');
+  }
+  if (stato) {
+    if (CF_ERRORE) {
+      stato.innerHTML = '<b>Non si è potuto leggere l\'archivio dei prodotti.</b> ' + esc(CF_ERRORE) +
+        ' — non vuol dire che sia vuoto: vuol dire che non si è potuto leggerlo.';
+    } else if (!CF_PRODOTTI.length) {
+      /* Il vuoto si spiega, perché è il vuoto di un archivio che nessuno ha
+         ancora riempito — non un guasto. */
+      stato.innerHTML = '<b>In archivio non c\'è ancora nessun prodotto.</b> Il confronto legge i documenti ' +
+        'precontrattuali delle compagnie (DIP, DIP aggiuntivo, condizioni): finché non ne entra almeno uno ' +
+        'per parte, qui non c\'è niente da mettere a confronto — e non si inventa.';
+    } else {
+      stato.innerHTML = CF_PRODOTTI.length + (CF_PRODOTTI.length === 1 ? ' prodotto' : ' prodotti') + ' in archivio.';
+    }
+  }
+  cfRamo();
+}
+
+function cfRamo() {
+  var ramo = (document.getElementById('cf-ramo') || {}).value || '';
+  var lista = CF_PRODOTTI.filter(function (p) { return p.ramo === ramo; });
+  ['cf-a', 'cf-b'].forEach(function (id) {
+    var s = document.getElementById(id); if (!s) return;
+    var prima = s.value;
+    s.innerHTML = '<option value="">—</option>' + lista.map(function (p) {
+      return '<option value="' + esc(p.id) + '">' + esc(p.compagnia) + ' · ' + esc(p.prodotto) + '</option>';
+    }).join('');
+    if (prima) s.value = prima;
+  });
+  var e = document.getElementById('cf-esito'); if (e) e.innerHTML = '';
+}
+
+/* Un prodotto con le sue garanzie, nella forma che vuole il motore. */
+async function cfProdotto(id) {
+  var p = CF_PRODOTTI.filter(function (x) { return x.id === id; })[0];
+  if (!p) return null;
+  var g = await db.from('iam_conf_garanzie')
+    .select('garanzia,nome_documento,stato,massimale,franchigia,scoperto,pagina,frase,documento_id')
+    .eq('prodotto_id', id);
+  if (g.error) throw g.error;
+  var d = await db.from('iam_conf_documenti').select('id,tipo,edizione,url').eq('prodotto_id', id);
+  var perDoc = {};
+  ((d && d.data) || []).forEach(function (x) { perDoc[x.id] = x; });
+  return {
+    compagnia: p.compagnia, prodotto: p.prodotto, ramo: p.ramo,
+    documento: null, edizione: null,
+    garanzie: (g.data || []).map(function (x) {
+      var doc = perDoc[x.documento_id] || {};
+      return {
+        id: x.garanzia, nome: x.nome_documento, stato: x.stato,
+        massimale: x.massimale == null ? null : Number(x.massimale),
+        franchigia: x.franchigia == null ? null : Number(x.franchigia),
+        scoperto: x.scoperto == null ? null : Number(x.scoperto),
+        pagina: x.pagina, frase: x.frase,
+        /* La fonte viaggia sulla garanzia e non sul prodotto: un prodotto ha
+           più documenti — il DIP, il DIP aggiuntivo, le condizioni — e la riga
+           deve dire da QUALE viene. I nomi sono quelli che legge il motore. */
+        documento: doc.tipo || null, edizione: doc.edizione || null, url: doc.url || null
+      };
+    })
+  };
+}
+
+function cfEuro(n) {
+  if (n == null) return null;
+  return window.Contabilita ? Contabilita.euro(n) : ('€ ' + Number(n).toFixed(2));
+}
+
+/* Una delle due colonne di una riga. «Non letto» non è un trattino: un
+   trattino si scambia per uno zero, e su una franchigia vuol dire dire a un
+   cliente che non ce l'ha. */
+function cfLato(l, g) {
+  if (!l || l.stato === 'non_letto') {
+    return '<span class="cf-st cf-nl">non letto</span>' +
+      '<div class="cf-fonte">Il documento non lo dice, o non si è riusciti a leggerlo.</div>';
+  }
+  var h = l.stato === 'presente'
+    ? '<span class="cf-st cf-si">c\'è</span>'
+    : '<span class="cf-st cf-no">non c\'è</span>';
+  var n = [];
+  if (l.massimale != null) n.push('massimale ' + cfEuro(l.massimale));
+  if (l.franchigia != null) n.push('franchigia ' + cfEuro(l.franchigia));
+  if (l.scoperto != null) n.push('scoperto ' + l.scoperto + '%');
+  if (n.length) h += '<div class="cf-num">' + esc(n.join(' · ')) + '</div>';
+  var f = l.fonte || {};
+  if (f.documento || f.edizione || f.pagina != null) {
+    var dove = [];
+    if (f.documento) dove.push(esc(f.documento));
+    if (f.edizione) dove.push('ed. ' + esc(f.edizione));
+    if (f.pagina != null) dove.push('pag. ' + f.pagina);
+    h += '<div class="cf-fonte">' + dove.join(' · ') +
+      (f.frase ? '<br><q>' + esc(String(f.frase).slice(0, 180)) + '</q>' : '') + '</div>';
+  }
+  return h;
+}
+
+async function cfConfronta() {
+  var box = document.getElementById('cf-esito'); if (!box || !window.Confronto) return;
+  var ia = (document.getElementById('cf-a') || {}).value || '';
+  var ib = (document.getElementById('cf-b') || {}).value || '';
+  if (!ia || !ib) {
+    box.innerHTML = '<div class="d-card"><div class="card-body"><div class="cl-sub">' +
+      'Scegli tutti e due i prodotti da mettere a confronto.</div></div></div>';
+    return;
+  }
+  if (ia === ib) {
+    box.innerHTML = '<div class="d-card"><div class="card-body"><div class="cl-sub">' +
+      'Sono lo stesso prodotto: non c\'è niente da confrontare.</div></div></div>';
+    return;
+  }
+  box.innerHTML = '<div class="d-card"><div class="card-body"><div class="cl-carico">' +
+    '<span class="cl-carico-g"></span>Leggo i due prodotti…</div></div></div>';
+  var pa, pb;
+  try { pa = await cfProdotto(ia); pb = await cfProdotto(ib); }
+  catch (e) {
+    box.innerHTML = '<div class="d-card"><div class="card-body"><div class="cl-sub"><b>' +
+      'Non si è potuto leggere le garanzie.</b> ' + esc((e && e.message) || String(e)) + '</div></div></div>';
+    return;
+  }
+  var c = Confronto.confronta(pa, pb);
+  if (!c.ok) {
+    box.innerHTML = '<div class="d-card"><div class="card-body"><div class="cl-sub"><b>' +
+      esc(c.motivo) + '</b></div></div></div>';
+    return;
+  }
+  var p = Confronto.punteggio(c);
+  var nomeA = esc(pa.compagnia + ' · ' + pa.prodotto), nomeB = esc(pb.compagnia + ' · ' + pb.prodotto);
+  var somma = '<div class="cf-somma">' +
+    '<div class="cf-s' + (p.vince === 'a' ? ' cf-win' : '') + '"><span>' + nomeA + '</span><b>' + p.a + '</b></div>' +
+    '<div class="cf-s' + (p.vince === 'b' ? ' cf-win' : '') + '"><span>' + nomeB + '</span><b>' + p.b + '</b></div>' +
+    '<div class="cf-s"><span>pari</span><b>' + p.pari + '</b></div>' +
+    /* I due numeri stanno sempre insieme. «9 a 4» da solo è un punteggio che
+       finge di aver letto documenti che non ha letto. */
+    '<div class="cf-s"><span>confrontate</span><b>' + p.su + ' <small style="font-size:12px;font-weight:600;color:var(--txt3)">su ' + p.totale + '</small></b></div>' +
+    '<div class="cf-s"><span>non lette</span><b>' + p.nonConfrontabili + '</b></div>' +
+    '</div>';
+  var avviso = p.perche ? '<div class="cf-astenuto"><b>Nessun verdetto.</b> ' + esc(p.perche) + '</div>' : '';
+  var righe = c.righe.map(function (r) {
+    var v = r.verso === 'a' ? '<span class="cf-v-a">◀</span>'
+          : r.verso === 'b' ? '<span class="cf-v-b">▶</span>'
+          : r.verso === 'pari' ? '<span class="cf-v-null">=</span>'
+          : '<span class="cf-v-null">·</span>';
+    return '<tr><td class="cf-g">' + esc(r.nome) +
+      (r.obbligatoria ? '<small>obbligatoria per legge</small>' : '') + '</td>' +
+      '<td>' + cfLato(r.a, r) + '</td>' +
+      '<td class="cf-v">' + v + '</td>' +
+      '<td>' + cfLato(r.b, r) + '</td></tr>';
+  }).join('');
+  /* Le garanzie che i documenti nominano e il vocabolario non conosce. Non si
+     nascondono: una garanzia che sparisce dal confronto fa vincere chi ce l'ha. */
+  var fuori = [].concat(
+    (c.fuoriVocabolario.a || []).map(function (g) { return { chi: nomeA, g: g }; }),
+    (c.fuoriVocabolario.b || []).map(function (g) { return { chi: nomeB, g: g }; }));
+  var blocoFuori = fuori.length
+    ? '<div class="d-card" style="margin-top:12px"><div class="card-head"><div class="card-title">' +
+      '<span class="pictogram"><i class="ti ti-help-circle"></i></span> Fuori dal confronto</div></div>' +
+      '<div class="card-body"><div class="cl-sub">Queste garanzie stanno nei documenti ma non nel nostro ' +
+      'vocabolario, quindi il punteggio non le conta. Si vedono lo stesso: una garanzia che sparisce da un ' +
+      'confronto fa vincere chi ce l\'ha.</div>' +
+      fuori.map(function (x) {
+        return '<div class="cl-r"><div><b>' + esc(x.g.nome || x.g.id || '—') + '</b>' +
+          '<div class="cl-sub">' + x.chi + '</div></div></div>';
+      }).join('') + '</div></div>'
+    : '';
+  box.innerHTML = somma + avviso +
+    '<div class="d-card"><div class="card-head"><div class="card-title">' +
+    '<span class="pictogram"><i class="ti ti-list-details"></i></span> Garanzia per garanzia</div></div>' +
+    '<div class="card-body"><div class="table-wrap"><table class="cf-tab">' +
+    '<thead><tr><th>Garanzia</th><th>' + nomeA + '</th><th></th><th>' + nomeB + '</th></tr></thead>' +
+    '<tbody>' + righe + '</tbody></table></div></div></div>' + blocoFuori;
+}
+
 var SPR_SEL = {};         /* le rate flaggate nel dettaglio */
 var SPR_COLLAB = [];      /* il registro delle persone, per abbinare e per l'email */
 var SPR_ESITO_INVIO = '';
@@ -13174,6 +13474,10 @@ function goTab(t) {
       e.innerHTML = abVuoto('ti-user-search', 'Cerca il cliente', 'Nominativo, codice fiscale, email o comune. Servono almeno due lettere.');
     }
   }
+  /* Il confronto legge l'archivio dei prodotti all'apertura: e' un elenco
+     corto e fermo, e averlo gia' pronto evita due clic prima di vedere
+     qualcosa. Se e' vuoto, la schermata lo dice e spiega perche'. */
+  if (t === 'confronta') { cfCarica(); }
   if (t === 'utenti') {
     caricaProfilo(ME?.id).then(p => {
       if (p) { PROFILO = p; applicaPermessi(p.ruolo); }

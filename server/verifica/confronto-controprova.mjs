@@ -84,6 +84,17 @@ const GUASTI = [
   ['la pagina sparisce dalla fonte',
     (s) => s.replace('      pagina: g && g.pagina != null ? g.pagina : null,', '      pagina: null,')],
 
+  ['il documento torna a venire dal prodotto: tutte le righe citano lo stesso foglio',
+    /* Il difetto vero trovato il 01/10/2026 dalla prova nel browser. */
+    (s) => s.replace(
+      "      documento: testo(g && g.documento) || testo(p.documento) || null,\n      edizione: testo(g && g.edizione) || testo(p.edizione) || null,",
+      '      documento: testo(p.documento) || null,\n      edizione: testo(p.edizione) || null,')],
+
+  ['il documento del prodotto non fa più da ripiego quando la garanzia tace',
+    (s) => s.replace(
+      "      documento: testo(g && g.documento) || testo(p.documento) || null,\n      edizione: testo(g && g.edizione) || testo(p.edizione) || null,",
+      '      documento: testo(g && g.documento) || null,\n      edizione: testo(g && g.edizione) || null,')],
+
   ['due righe sulla stessa garanzia: l\'ultima sovrascrive sempre',
     (s) => s.replace("      if (pre && statoDi(pre) === 'presente' && statoDi(g) !== 'presente') return;", '')],
 ]

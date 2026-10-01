@@ -334,12 +334,19 @@
     return { per: per, fuori: fuori };
   }
 
+  /* Da dove viene questa riga. Documento ed edizione si leggono PRIMA dalla
+     garanzia e solo dopo dal prodotto, e non è un dettaglio: un prodotto ha
+     più documenti — il DIP, il DIP aggiuntivo, le condizioni — e ogni edizione
+     è un documento diverso. Prendendoli dal prodotto, tutte le righe
+     direbbero di venire dallo stesso foglio, e una riga che indica il
+     documento sbagliato è peggio di una riga che non lo indica: manda a
+     cercare una frase dove non c'è, e la si trova diversa. */
   function fonteDi(p, g) {
     return {
       compagnia: testo(p.compagnia) || null,
       prodotto: testo(p.prodotto) || null,
-      documento: testo(p.documento) || null,
-      edizione: testo(p.edizione) || null,
+      documento: testo(g && g.documento) || testo(p.documento) || null,
+      edizione: testo(g && g.edizione) || testo(p.edizione) || null,
       pagina: g && g.pagina != null ? g.pagina : null,
       frase: testo(g && g.frase) || null
     };

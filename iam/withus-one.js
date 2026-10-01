@@ -682,7 +682,12 @@
            sceglie a chi si scrive, poi si scrive. */
         { l: 'CRM · liste e filtri', i: 'i-search', go: function () { aprireQuoto('crm-analisi', { menu: 'marketing', titolo: ['CRM · liste e filtri', 'Marketing'] }); } },
         { l: 'Campagne email', i: 'i-mail', go: function () { aprireQuoto('campagne', { menu: 'marketing', titolo: ['Campagne email', 'Marketing'] }); } },
-        { l: 'Analisi dei bisogni', i: 'i-flask', act: 'analisi', go: function () { vai('analisi'); } }
+        { l: 'Analisi dei bisogni', i: 'i-flask', act: 'analisi', go: function () { vai('analisi'); } },
+        /* CONFRONTA (01/10/2026, richiesta di Francesco). Sta SUBITO DOPO
+           l'analisi dei bisogni perché ne è il seguito: l'analisi dice quali
+           aree meritano un confronto, questa lo fa — garanzia per garanzia,
+           leggendo i documenti precontrattuali delle compagnie. */
+        { l: 'Confronta prodotti', i: 'i-flask', act: 'confronta', go: function () { vai('confronta'); } }
         /* «Lead» tolta il 28/08/2026. Erano due elenchi di lead che non si
            parlavano: questo, su iam_lead, era VUOTO; i lead veri — 28 — stanno
            in anagrafica (quote_anagrafiche.lead: un nominativo senza privacy

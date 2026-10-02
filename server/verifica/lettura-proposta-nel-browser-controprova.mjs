@@ -24,9 +24,15 @@ import { fileURLToPath } from 'node:url'
 const QUI = dirname(fileURLToPath(import.meta.url))
 const RADICE = join(QUI, '..', '..')
 const PAGINA = join(RADICE, 'index.html')
+/* La lettura del PDF e' uscita dalla pagina ed e' finita in un motore
+   (02/10/2026), perche' la usano in tre posti. I guasti che la riguardano
+   vanno rifatti su quel file: un guasto che non trova piu' il suo bersaglio
+   non misura niente, e lo dice solo se qualcuno guarda la riga «SENTINELLA
+   PERSA». */
+const PDFT = join(RADICE, 'tariffe', 'motore', 'pdf-testo.js')
 const TEST = join(QUI, 'lettura-proposta-nel-browser.test.mjs')
 
-const BUONI = { [PAGINA]: readFileSync(PAGINA, 'utf8') }
+const BUONI = { [PAGINA]: readFileSync(PAGINA, 'utf8'), [PDFT]: readFileSync(PDFT, 'utf8') }
 
 const GUASTI = [
   /* ── il motore non arriva nella pagina ──────────────────────────────────── */
@@ -116,21 +122,22 @@ const GUASTI = [
       '  scelte.forEach(s => ppDescAggiungi(s.nome));')],
 
   /* ── il lettore di PDF: le righe dalle coordinate ───────────────────────── */
-  ['le righe non si ricostruiscono piu\': i pezzi del PDF si incollano di fila', PAGINA,
-    (s) => s.replace('      const y = Math.round((it.transform && it.transform[5]) || 0);',
-      '      const y = 0;')],
+  ['le righe non si ricostruiscono piu\': i pezzi del PDF si incollano di fila', PDFT,
+    (s) => s.replace('      var y = Math.round((it.transform && it.transform[5]) || 0);', '      var y = 0;')],
 
-  ['le colonne restano nell\'ordine in cui il PDF le butta fuori', PAGINA,
-    (s) => s.replace('.map(([, pezzi]) => pezzi.sort((a, b) => a.x - b.x).map(p => p.t).join(\' \')',
-      '.map(([, pezzi]) => pezzi.map(p => p.t).join(\' \')')],
+  ['le colonne restano nell\'ordine in cui il PDF le butta fuori', PDFT,
+    (s) => s.replace('      return perAltezza[y].sort(function (a, b) { return a.x - b.x; })',
+      '      return perAltezza[y]')],
 
-  ['il foglio si legge dal basso verso l\'alto', PAGINA,
-    (s) => s.replace("    const ordinate = [...righe.entries()].sort((a, b) => b[0] - a[0])",
-      '    const ordinate = [...righe.entries()].sort((a, b) => a[0] - b[0])')],
+  ['il foglio si legge dal basso verso l\'alto', PDFT,
+    (s) => s.replace('    altezze.sort(function (a, b) { return b - a; });',
+      '    altezze.sort(function (a, b) { return a - b; });')],
 
-  ['le righe vuote del PDF restano, e sminuzzano il documento', PAGINA,
-    (s) => s.replace('      .filter(Boolean);\n    pagine.push({ n: n, testo: ordinate.join(\'\\n\') });',
-      '      ;\n    pagine.push({ n: n, testo: ordinate.join(\'\\n\') });')],
+  ['le righe vuote del PDF restano, e sminuzzano il documento', PDFT,
+    (s) => s.replace("    }).filter(Boolean);", '    });')],
+
+  ['la pagina non usa piu\' il motore: si ritrova senza lettore di PDF', PAGINA,
+    (s) => s.replace('<script src="tariffe/motore/pdf-testo.js?v=20261002"></script>\n', '')],
 
   /* ── il documento che esce dal browser ──────────────────────────────────── */
   ['il documento parte verso un servizio esterno', PAGINA,

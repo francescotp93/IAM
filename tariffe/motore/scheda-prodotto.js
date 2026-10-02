@@ -740,6 +740,22 @@
     if (!C) return { ok: false, motivo: 'Il vocabolario delle garanzie non è caricato: senza, non si riconosce niente.' };
     if (!G) return { ok: false, motivo: 'Il motore della guida non è caricato: senza, una riga con un importo non si sa leggere.' };
     if (!(pagine || []).length) return { ok: false, motivo: 'Il documento è vuoto: non c\'è niente da leggere.' };
+    /* Un documento che ha delle pagine ma nessuna PAROLA è una scansione, e
+       va detto con quelle parole: «non ho trovato garanzie» e «questo
+       documento è un'immagine» sono due diagnosi opposte, e la seconda si
+       risolve chiedendo alla compagnia il PDF vero invece di mettersi a
+       spuntare a mano.
+
+       `testo()` taglia gli spazi ai bordi, e una pagina scansionata restituisce
+       quello o niente: non serve ripulirla una seconda volta. */
+    var caratteri = 0;
+    (pagine || []).forEach(function (p) { caratteri += testo(p && p.testo).length; });
+    if (!caratteri) {
+      return { ok: false, scansione: true, pagine: (pagine || []).length,
+        motivo: 'Questo PDF ha ' + (pagine || []).length + ((pagine || []).length === 1 ? ' pagina' : ' pagine')
+          + ' ma nessuna parola leggibile: è una scansione, cioè un\'immagine. Non c\'è niente da leggere '
+          + 'e non si può indovinare — serve il PDF originale della compagnia.' };
+    }
 
     var prop = ramoProposto(pagine);
     var ramo = testo(opz.ramo).toLowerCase() || prop.ramo;

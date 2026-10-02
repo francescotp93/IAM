@@ -486,6 +486,20 @@ prova('il documento che si dichiara una sintesi lo fa sapere', () => {
     'avvertenze: ' + JSON.stringify(s.avvertenze));
 });
 
+prova('UNA SCANSIONE SI DICHIARA PER QUELLO CHE È, non per «niente da leggere»', () => {
+  /* «Non ho trovato garanzie» e «questo documento è un'immagine» sono due
+     diagnosi opposte: la seconda si risolve chiedendo alla compagnia il PDF
+     vero, la prima manda a spuntare a mano diciassette righe a vuoto. */
+  const d = S.scheda([{ n: 1, testo: '' }, { n: 2, testo: '   ' }, { n: 3, testo: '\n \n' }]);
+  deve(!d.ok, 'dice di aver letto un\'immagine');
+  deve(d.scansione === true, 'non la riconosce come scansione: ' + JSON.stringify(d));
+  deve(/scansione/i.test(d.motivo) && /immagine/i.test(d.motivo), 'motivo: ' + d.motivo);
+  deve(d.pagine === 3, 'non dice quante pagine ha: ' + d.pagine);
+  /* E NON si lamenta del ramo: con un'immagine il ramo non c'entra niente, e
+     chiederlo farebbe provare e riprovare a vuoto. */
+  deve(!/di che ramo/i.test(d.motivo), 'chiede il ramo a un\'immagine: ' + d.motivo);
+});
+
 prova('il ramo si legge dal documento, e se non si capisce si dice', () => {
   deve(s.ramo === 'auto', 'ramo: ' + s.ramo);
   const d = S.scheda([{ n: 1, testo: 'Gentile cliente, la ringraziamo per la fiducia.' }]);

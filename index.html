@@ -32739,13 +32739,44 @@ async function ppPdfBlob(d) {
   return doc.output('blob');
 }
 
+/* Quando si e' riletta l'ultima volta la scheda del collaboratore, e ogni
+   quanto si puo' rileggere. Mezzo minuto: chi compila il RUI in IAM e torna
+   qui lo trova aggiornato, e chi un RUI non ce l'ha non fa una richiesta al
+   database per ogni foglio che stampa. */
+let PP_RILETTO_IL = 0;
+const PP_RILEGGI_OGNI = 30000;
+
 /* Il contorno del documento: azienda, intermediario e cliente presi dove gia'
    vivono. Nessuna copia locale di nessuno dei tre. */
 async function ppContesto(r) {
   const azienda = await ppAzienda();
   await caricaIntermediari();
-  const intermediario = r.intermediario_id
+  let intermediario = r.intermediario_id
     ? ((INTERM_CACHE || []).find(c => c.id === r.intermediario_id) || null) : null;
+  /* ── LA COPIA VECCHIA DEL COLLABORATORE (02/10/2026) ──────────────────────
+     Francesco: «ho aggiornato la scheda anagrafica dell'intermediario ma esce
+     sempre la scritta RUI da verificare». Il dato era giusto in archivio —
+     Oddo Francesco, A000552192 — e il documento leggeva `INTERM_CACHE`, che
+     si carica all'avvio e NON si rinfresca mai (`if (INTERM_CACHE && !force)`).
+     Lui aveva il gestionale aperto, è andato a compilare il RUI in IAM, è
+     tornato qui: in memoria c'era ancora la riga di prima, senza RUI.
+
+     È lo STESSO guasto che `ppAzienda` aveva già avuto e già corretto, con la
+     regola «la copia in memoria si tiene solo se è completa». La regola era
+     stata messa sull'agenzia e non sul collaboratore, e la trappola è
+     scattata una seconda volta sull'altro record.
+
+     Qui si rilegge SOLO il collaboratore di QUESTO documento, e solo quando
+     gli manca il RUI: una regola sull'intera lista rileggerebbe a ogni foglio,
+     perché dei collaboratori senza RUI ce ne sono per davvero e resterebbero
+     senza per sempre. La pausa evita che un collaboratore che il RUI non ce
+     l'ha proprio faccia una richiesta a ogni documento. */
+  if (intermediario && !String(intermediario.rui_numero || '').trim()
+      && Date.now() - PP_RILETTO_IL > PP_RILEGGI_OGNI) {
+    PP_RILETTO_IL = Date.now();
+    await caricaIntermediari(true);
+    intermediario = (INTERM_CACHE || []).find(c => c.id === r.intermediario_id) || intermediario;
+  }
   let cliente = (ANAG_CACHE || []).find(a => a.id === r.cliente_id) || null;
   if (!cliente) {
     try { const { data } = await db.from('quote_anagrafiche').select('*').eq('id', r.cliente_id).single(); cliente = data || null; }

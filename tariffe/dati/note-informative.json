@@ -9,21 +9,44 @@
     "preso": "il documento è stato scaricato e la sua impronta è in archivio",
     "scaduto": "l'URL non risponde più o porta a un documento diverso"
   },
-
   "compagnie": [
     {
       "compagnia": "DALLBOGG",
       "nota": "Compagnia bulgara che opera in Italia. È il documento su cui è stato misurato il lettore: il set informativo sta su un solo PDF che contiene DIP, DIP aggiuntivo, condizioni, informativa privacy e allegati.",
       "a_mandato": false,
       "documenti": [
-        { "ramo": "auto", "prodotto": "Auto", "tipo": "set_informativo", "edizione": "04/25",
-          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-Info-auto-04-25.pdf", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Ciclomotori e motocicli", "tipo": "set_informativo", "edizione": "08/23",
-          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-motorcycles%E2%80%93mopeds-08-23.pdf", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Van / altri veicoli", "tipo": "set_informativo", "edizione": "03/23",
-          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-vans-03-23.pdf", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Assistenza Truck", "tipo": "set_informativo", "edizione": "08/24",
-          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-truck-assistance-08-24.pdf", "stato": "trovato" }
+        {
+          "ramo": "auto",
+          "prodotto": "Auto",
+          "tipo": "set_informativo",
+          "edizione": "04/25",
+          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-Info-auto-04-25.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Ciclomotori e motocicli",
+          "tipo": "set_informativo",
+          "edizione": "08/23",
+          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-motorcycles%E2%80%93mopeds-08-23.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Van / altri veicoli",
+          "tipo": "set_informativo",
+          "edizione": "03/23",
+          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-vans-03-23.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Assistenza Truck",
+          "tipo": "set_informativo",
+          "edizione": "08/24",
+          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-truck-assistance-08-24.pdf",
+          "stato": "trovato"
+        }
       ]
     },
     {
@@ -31,20 +54,62 @@
       "nota": "Il CDN è aperto e i PDF sono indicizzati: è la compagnia su cui la raccolta automatica funzionerà meglio. Il nome del file porta l'edizione E l'aggiornamento, che sono due date diverse.",
       "a_mandato": true,
       "documenti": [
-        { "ramo": "auto", "prodotto": "Guidamica Autovetture", "tipo": "set_informativo", "edizione": "06.2025",
-          "url": "https://cdn.groupama.it/app/uploads/2021/06/Guidamica-Autovetture-2022-Ed.-06.2025.pdf", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Autocontrollo Autovetture", "tipo": "set_informativo", "edizione": "01/2023, agg. 10/2023",
-          "url": "https://cdn.groupama.it/app/uploads/2023/10/Set-Informativo-Autocontrollo-Autovetture-2022-ed-012023-agg-10_2023.pdf", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Autocontrollo Altri Veicoli", "tipo": "set_informativo", "edizione": "01/2023, agg. 10/2023",
-          "url": "https://cdn.groupama.it/app/uploads/2023/10/Set-Informativo-Autocontrollo-AltriVeicoli_ed_01_2023-agg10_2023-1.pdf", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Guidamica Motoveicoli", "tipo": "set_informativo", "edizione": "05.2024",
-          "url": "https://cdn.groupama.it/app/uploads/2024/10/Guidamica-Motoveicoli-Ed.05.2024-1.pdf", "stato": "trovato" },
-        { "ramo": "azienda", "prodotto": "RCV merci trasportate", "tipo": "set_informativo", "edizione": "02/2026, agg. 09/2026",
-          "url": "https://cdn.groupama.it/app/uploads/2026/09/Set-Informativo-RCV-2016-Ed.-02-2026-Agg.-09_2026.pdf", "stato": "trovato" },
-        { "ramo": "salute", "prodotto": "Groupama Protezione Infortuni", "tipo": "set_informativo", "edizione": "02/2025",
-          "url": "https://cdn.groupama.it/app/uploads/2025/02/Set-Informativo-Groupama-Protezione-Infortuni-Mod.250301-Ed.022025.pdf", "stato": "trovato" },
-        { "ramo": "salute", "prodotto": "Tuttocampo infortuni", "tipo": "set_informativo", "edizione": "03/2020, agg. 12/2023",
-          "url": "https://cdn.groupama.it/app/uploads/2023/12/Set-Informativo-Tuttocampo-Ed-03-2020-Agg-12-2023.pdf", "stato": "trovato" }
+        {
+          "ramo": "auto",
+          "prodotto": "Guidamica Autovetture",
+          "tipo": "set_informativo",
+          "edizione": "06.2025",
+          "url": "https://cdn.groupama.it/app/uploads/2021/06/Guidamica-Autovetture-2022-Ed.-06.2025.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Autocontrollo Autovetture",
+          "tipo": "set_informativo",
+          "edizione": "01/2023, agg. 10/2023",
+          "url": "https://cdn.groupama.it/app/uploads/2023/10/Set-Informativo-Autocontrollo-Autovetture-2022-ed-012023-agg-10_2023.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Autocontrollo Altri Veicoli",
+          "tipo": "set_informativo",
+          "edizione": "01/2023, agg. 10/2023",
+          "url": "https://cdn.groupama.it/app/uploads/2023/10/Set-Informativo-Autocontrollo-AltriVeicoli_ed_01_2023-agg10_2023-1.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Guidamica Motoveicoli",
+          "tipo": "set_informativo",
+          "edizione": "05.2024",
+          "url": "https://cdn.groupama.it/app/uploads/2024/10/Guidamica-Motoveicoli-Ed.05.2024-1.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "azienda",
+          "prodotto": "RCV merci trasportate",
+          "tipo": "set_informativo",
+          "edizione": "02/2026, agg. 09/2026",
+          "url": "https://cdn.groupama.it/app/uploads/2026/09/Set-Informativo-RCV-2016-Ed.-02-2026-Agg.-09_2026.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Groupama Protezione Infortuni",
+          "tipo": "set_informativo",
+          "edizione": "02/2025",
+          "url": "https://cdn.groupama.it/app/uploads/2025/02/Set-Informativo-Groupama-Protezione-Infortuni-Mod.250301-Ed.022025.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Tuttocampo infortuni",
+          "tipo": "set_informativo",
+          "edizione": "03/2020, agg. 12/2023",
+          "url": "https://cdn.groupama.it/app/uploads/2023/12/Set-Informativo-Tuttocampo-Ed-03-2020-Agg-12-2023.pdf",
+          "stato": "trovato"
+        }
       ]
     },
     {
@@ -52,20 +117,62 @@
       "nota": "I PDF stanno su un percorso prevedibile (/sites/default/files/<anno>-<mese>/), che aiuta il controllo mensile: un'edizione nuova compare in una cartella nuova.",
       "a_mandato": true,
       "documenti": [
-        { "ramo": "auto", "prodotto": "RuotaLibera Contratto Base", "tipo": "set_informativo", "edizione": "12.2023",
-          "url": "https://www.sara.it/sites/default/files/2024-07/set_informativo_ruotalibera_contratto_base_ed._12.2023.pdf", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "RuotaLibera", "tipo": "set_informativo", "edizione": "3.2022",
-          "url": "https://www.sara.it/sites/default/files/2023-05/Set%20Informativo%20RuotaLibera%20ed.%203.2022.pdf", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Guido Bene", "tipo": "set_informativo", "edizione": "3.2022",
-          "url": "https://www.sara.it/sites/default/files/2023-05/Set%20Informativo%20Guido%20Bene%20ed.%203.2022.pdf", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Auto Contratto Base", "tipo": "set_informativo", "edizione": null,
-          "url": "https://www.sara.it/sites/default/files/2021-05/Set_Informativo_Auto_Contratto_Base.pdf", "stato": "trovato" },
-        { "ramo": "azienda", "prodotto": "Impresa e professioni", "tipo": "set_informativo", "edizione": "01.2022",
-          "url": "https://www.sara.it/sites/default/files/2022-01/Set%20Informativo%20Impresa%20e%20professioni%20ed.01.2022.pdf", "stato": "trovato" },
-        { "ramo": "azienda", "prodotto": "SaraProfessionista", "tipo": "set_informativo", "edizione": "01/2025",
-          "url": "https://www.sara.it/sites/default/files/2025-01/Set%20informativo%20SaraProfessionista%20ed.%2001_2025.pdf", "stato": "trovato" },
-        { "ramo": "casa", "prodotto": "SaraDefender", "tipo": "set_informativo", "edizione": "04-2025",
-          "url": "https://www.sara.it/sites/default/files/2025-05/Set%20Informativo%20SaraDefender%20150IM_ed.04-2025%20(1).pdf", "stato": "trovato" }
+        {
+          "ramo": "auto",
+          "prodotto": "RuotaLibera Contratto Base",
+          "tipo": "set_informativo",
+          "edizione": "12.2023",
+          "url": "https://www.sara.it/sites/default/files/2024-07/set_informativo_ruotalibera_contratto_base_ed._12.2023.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "RuotaLibera",
+          "tipo": "set_informativo",
+          "edizione": "3.2022",
+          "url": "https://www.sara.it/sites/default/files/2023-05/Set%20Informativo%20RuotaLibera%20ed.%203.2022.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Guido Bene",
+          "tipo": "set_informativo",
+          "edizione": "3.2022",
+          "url": "https://www.sara.it/sites/default/files/2023-05/Set%20Informativo%20Guido%20Bene%20ed.%203.2022.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Auto Contratto Base",
+          "tipo": "set_informativo",
+          "edizione": null,
+          "url": "https://www.sara.it/sites/default/files/2021-05/Set_Informativo_Auto_Contratto_Base.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "azienda",
+          "prodotto": "Impresa e professioni",
+          "tipo": "set_informativo",
+          "edizione": "01.2022",
+          "url": "https://www.sara.it/sites/default/files/2022-01/Set%20Informativo%20Impresa%20e%20professioni%20ed.01.2022.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "azienda",
+          "prodotto": "SaraProfessionista",
+          "tipo": "set_informativo",
+          "edizione": "01/2025",
+          "url": "https://www.sara.it/sites/default/files/2025-01/Set%20informativo%20SaraProfessionista%20ed.%2001_2025.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "SaraDefender",
+          "tipo": "set_informativo",
+          "edizione": "04-2025",
+          "url": "https://www.sara.it/sites/default/files/2025-05/Set%20Informativo%20SaraDefender%20150IM_ed.04-2025%20(1).pdf",
+          "stato": "trovato"
+        }
       ]
     },
     {
@@ -73,32 +180,90 @@
       "nota": "Due forme di URL: uno leggibile sotto /documents/, e uno opaco sotto /c/document_library/get_file?uuid=… — il secondo non dice di sé che documento sia, quindi l'edizione la si legge solo aprendolo. Il controllo mensile su quelli non può basarsi sul nome del file.",
       "a_mandato": true,
       "documenti": [
-        { "ramo": "auto", "prodotto": "Auto Storiche", "tipo": "dip", "edizione": "07/2025 (il nome del file dice 12-21)",
-          "url": "https://www.axa.it/documents/715551/1581088/1992-DIP-Auto+Storiche+ed+12-21PROTETTO.pdf/0269b7db-e085-65ec-986f-27d9e93385c5?t=1638541444608", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Protezione Moto", "tipo": "dip", "edizione": "12-21",
-          "url": "https://www.axa.it/documents/715551/1581094/1962-DIP-Auto+Protezione+Moto+ed+12-21PROTETTO.pdf/e1d35fc1-f269-2276-f4c0-1bbec08a5d60?t=1638541308764", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Autoprotezione", "tipo": "set_informativo", "edizione": null,
-          "url": "https://www.axa.it/documents/715551/730220/AXA+Autoprotezione+-+Scarica+il+fascicolo+informativo.pdf/f3dbf4e0-4e76-42d5-2f08-14604561fc66", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Protezione Auto — condizioni", "tipo": "condizioni", "edizione": "07/2026 (dal titolo, non dall'URL)",
-          "url": "https://www.axa.it/c/document_library/get_file?uuid=6626fe77-b285-10cc-69ba-3dc630d2a977&groupId=715551", "stato": "trovato" },
-        { "ramo": "auto", "prodotto": "Contratto Base Autovetture", "tipo": "dip", "edizione": "05/2025 (dal titolo, non dall'URL)",
-          "url": "https://www.axa.it/c/document_library/get_file?uuid=deb75306-33cf-2bf1-2121-777789905d25&groupId=715551", "stato": "trovato" },
-        { "ramo": "salute", "prodotto": "Infortuni e Malattia", "tipo": "dip_aggiuntivo", "edizione": "01/2019",
-          "url": "https://www.axa.it/documents/715551/1915702/DIPA_8E42_ed201901_stampa201901.pdf/7967c4a1-a91b-1035-d2be-50c5c6a8fdcf?t=1623414567539", "stato": "trovato" }
+        {
+          "ramo": "auto",
+          "prodotto": "Auto Storiche",
+          "tipo": "dip",
+          "edizione": "07/2025 (il nome del file dice 12-21)",
+          "url": "https://www.axa.it/documents/715551/1581088/1992-DIP-Auto+Storiche+ed+12-21PROTETTO.pdf/0269b7db-e085-65ec-986f-27d9e93385c5?t=1638541444608",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Protezione Moto",
+          "tipo": "dip",
+          "edizione": "12-21",
+          "url": "https://www.axa.it/documents/715551/1581094/1962-DIP-Auto+Protezione+Moto+ed+12-21PROTETTO.pdf/e1d35fc1-f269-2276-f4c0-1bbec08a5d60?t=1638541308764",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Autoprotezione",
+          "tipo": "set_informativo",
+          "edizione": null,
+          "url": "https://www.axa.it/documents/715551/730220/AXA+Autoprotezione+-+Scarica+il+fascicolo+informativo.pdf/f3dbf4e0-4e76-42d5-2f08-14604561fc66",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Protezione Auto — condizioni",
+          "tipo": "condizioni",
+          "edizione": "07/2026 (dal titolo, non dall'URL)",
+          "url": "https://www.axa.it/c/document_library/get_file?uuid=6626fe77-b285-10cc-69ba-3dc630d2a977&groupId=715551",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Contratto Base Autovetture",
+          "tipo": "dip",
+          "edizione": "05/2025 (dal titolo, non dall'URL)",
+          "url": "https://www.axa.it/c/document_library/get_file?uuid=deb75306-33cf-2bf1-2121-777789905d25&groupId=715551",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Infortuni e Malattia",
+          "tipo": "dip_aggiuntivo",
+          "edizione": "01/2019",
+          "url": "https://www.axa.it/documents/715551/1915702/DIPA_8E42_ed201901_stampa201901.pdf/7967c4a1-a91b-1035-d2be-50c5c6a8fdcf?t=1623414567539",
+          "stato": "trovato"
+        }
       ]
     },
     {
       "compagnia": "HDI",
-      "nota": "Il documento trovato sta su `youquote.hdia.it`, cioè sul portale di quotazione e non sul sito pubblico. Gli altri PDF di HDI sono dentro le pagine di prodotto, che da qui non si possono aprire: per trovarli serve un canale che sappia leggere una pagina HTML, non solo un motore di ricerca.",
+      "nota": "I documenti stanno su tre domini diversi: il sito pubblico (le pagine di prodotto), `areaclienti.hdiassicurazioni.it` (i PDF di Valore Auto) e `youquote.hdia.it` (il portale di quotazione). Il DIP base di Valore Auto non si è fatto trovare: sta dentro la pagina di prodotto.",
       "a_mandato": true,
       "documenti": [
-        { "ramo": "auto", "prodotto": "Circolazione Sicura", "tipo": "dip_aggiuntivo", "edizione": "04/2024 (Mod. DAS4301)",
-          "url": "https://youquote.hdia.it/documents/13553353/13559276/Dip+aggiuntivo.pdf/e7012641-8041-c924-a10d-eb914488acbc?version=1.0", "stato": "trovato" }
+        {
+          "ramo": "auto",
+          "prodotto": "Circolazione Sicura",
+          "tipo": "dip_aggiuntivo",
+          "edizione": "04/2024 (Mod. DAS4301)",
+          "url": "https://youquote.hdia.it/documents/13553353/13559276/Dip+aggiuntivo.pdf/e7012641-8041-c924-a10d-eb914488acbc?version=1.0",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Valore Auto — autovetture",
+          "tipo": "dip_aggiuntivo",
+          "edizione": "07/2022 (Mod. A3050)",
+          "url": "https://areaclienti.hdiassicurazioni.it/documents/36140/6140377/A3050+-+Valore+Auto+-+DIP+Aggiuntivo+-+Autovetture+-+Ed.+07_2022.pdf/",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Valore Auto — autovetture",
+          "tipo": "condizioni",
+          "edizione": "07/2020 (Mod. A3060)",
+          "url": "https://areaclienti.hdiassicurazioni.it/documents/36140/5377014/A3060+-+Valore+Auto+-+Condizioni+di+assicurazione+-+Autovetture+-+Ed.+07_2020.pdf/",
+          "stato": "trovato"
+        }
       ],
       "da_cercare_ancora": [
-        "Valore Auto (autovetture, camper)",
+        "Valore Auto — DIP base",
         "Natanti",
-        "Protezione Salute Globale Infortuni e IPM",
+        "Globale Infortuni e IPM",
         "RC Prodotti e CAR Costruttori (azienda)"
       ]
     },
@@ -107,51 +272,184 @@
       "nota": "La ricerca sui documenti auto non ha dato il set informativo: i PDF indicizzati sono di altri prodotti (Caparra Assicurata, 4 Bike, Tutela Express). I documenti di «In Prima Classe» stanno dentro la pagina di prodotto, che da qui non si può aprire.",
       "a_mandato": true,
       "documenti": [
-        { "ramo": "casa", "prodotto": "Italiana 4 Bike", "tipo": "dip_aggiuntivo", "edizione": "07/2024",
-          "url": "https://www.italiana.it/itashare/3/Documents/Italiana4Bike_DIPaggiuntivo_Ed.072024.pdf", "stato": "trovato" },
-        { "ramo": "azienda", "prodotto": "Tutela Express — condizioni", "tipo": "condizioni", "edizione": "04.2025 (INF54301)",
-          "url": "https://www.italiana.it/itashare/3/Documents/Landing/TutelaExpress/Cga%20Italiana%20Tutela%20Express_INF54301_Ed.%2004.2025.pdf", "stato": "trovato" }
+        {
+          "ramo": "casa",
+          "prodotto": "Italiana 4 Bike",
+          "tipo": "dip_aggiuntivo",
+          "edizione": "07/2024",
+          "url": "https://www.italiana.it/itashare/3/Documents/Italiana4Bike_DIPaggiuntivo_Ed.072024.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "azienda",
+          "prodotto": "Tutela Express — condizioni",
+          "tipo": "condizioni",
+          "edizione": "04.2025 (INF54301)",
+          "url": "https://www.italiana.it/itashare/3/Documents/Landing/TutelaExpress/Cga%20Italiana%20Tutela%20Express_INF54301_Ed.%2004.2025.pdf",
+          "stato": "trovato"
+        }
       ],
       "da_cercare_ancora": [
-        "In Prima Classe (autovetture) — il prodotto auto principale",
-        "In 1ª Classe Van"
+        "In Prima Classe (autovetture) — il prodotto auto principale: la ricerca trova la PAGINA, non il PDF",
+        "In 1ª Classe Van, Camper, Moto",
+        "NOTA: è l'unica delle nove che non si fa trovare da un motore di ricerca. Per lei serve un canale che sappia aprire una pagina HTML e seguirne i link: WebSearch indicizza il PDF, non la pagina."
       ]
     },
     {
       "compagnia": "Allianz",
       "a_mandato": true,
-      "documenti": [],
-      "da_cercare_ancora": ["tutto: la ricerca non è ancora stata fatta"]
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Bonus Malus autovetture e autotassametri",
+          "tipo": "set_informativo",
+          "edizione": "RCA 01/07/2024, ARD 01/02/2024",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/01_SI_BM_ed_RCA_01_07_2024_e_ARD_01_02_2024.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Bonus Malus autovetture (mod. 28)",
+          "tipo": "set_informativo",
+          "edizione": "RCA-ARD 01/02/2024",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/01_SI_BM_ed_RCA-ARD_01022024.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Bonus Malus taxi (mod. 32)",
+          "tipo": "set_informativo",
+          "edizione": "RCA 01/10/2024, ARD 01/11/2024",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/01_BM_ed_RCA_01_10_2024_e_ARD_01_11_2024_v2_taxi.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Nuova 4R autovetture a premio e franchigia variabili",
+          "tipo": "set_informativo",
+          "edizione": "RCA 01/04/2024, ARD 01/02/2024",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/02_SI_N4R_ed._RCA_01.04.2024_ARD_01.02.2024.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Moto e ciclomotori",
+          "tipo": "set_informativo",
+          "edizione": "RCA 01/06/2025, ARD 01/12/2024",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/03_moto_ciclo_ed_RCA_01_06_2025_e_ARD_01_12_2024.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Altri veicoli (autocarri, camper, autobus)",
+          "tipo": "set_informativo",
+          "edizione": "RCA 01/04/2024, ARD 01/02/2024",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/04_SI_altri_veicoli_ed._RCA_01.04.2024_ARD_01.02.2024.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Contratto base autovetture (DM 54)",
+          "tipo": "set_informativo",
+          "edizione": "01/02/2024",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/01_SI_autovetture_DM_54-01022024.pdf",
+          "stato": "trovato"
+        }
+      ],
+      "nota": "Il percorso è il più pulito di tutti — /content/dam/.../set_informativi/ — e il nome del file porta DUE edizioni, quella della RCA e quella delle garanzie danni (ARD), che cambiano in date diverse. Per il controllo mensile è la compagnia più facile da seguire."
     },
     {
       "compagnia": "Nobis",
       "a_mandato": true,
-      "documenti": [],
-      "da_cercare_ancora": ["tutto: la ricerca non è ancora stata fatta"]
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Nobis Car",
+          "tipo": "set_informativo",
+          "edizione": "NC.RCA.2018.002-2024.001",
+          "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/NobisRca/Nobis_Car_Set_NC.RCA.2018.002-2024.001.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Nobis Sei",
+          "tipo": "set_informativo",
+          "edizione": null,
+          "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/Automotive/NOBIS%20SEI_SET.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Carsafe",
+          "tipo": "set_informativo",
+          "edizione": null,
+          "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/Automotive/Carsafe_SET.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "CVT Premium",
+          "tipo": "set_informativo",
+          "edizione": "20.02.2025",
+          "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/Automotive/CVT%20Premium%20-%20Set%20Informativo%20-%2020.02.2025.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Guida Sereno SFS",
+          "tipo": "set_informativo",
+          "edizione": "SFSGS.2024-2025.001",
+          "url": "https://www.nobis.it/Sites/394/WebExplorer/set-mutui-finanziamenti/SFSGS.2024-2025.001_GUIDA%20SERENO%20SFS_set.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "SempreNuova",
+          "tipo": "set_informativo",
+          "edizione": "SFSSEM.2023-2025.001",
+          "url": "https://www.nobis.it/Sites/394/WebExplorer/set-mutui-finanziamenti/SFSSEM.2023-2025.001_SempreNuova_set.pdf",
+          "stato": "trovato"
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Gold Cover (infortuni, malattia, perdite pecuniarie, assistenza)",
+          "tipo": "set_informativo",
+          "edizione": null,
+          "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/Automotive/Gold_Cover_SET.pdf",
+          "stato": "trovato"
+        }
+      ],
+      "nota": "Molti prodotti e molti set, divisi fra l'area dei bisogni e quella dei mutui e finanziamenti. Il nome del file porta spesso il codice del modello e due anni (es. «SFSGS.2024-2025.001»), che non è un'edizione in forma di data: va tenuto come sta scritto."
     },
     {
       "compagnia": "Prima",
       "nota": "Compagnia diretta: i documenti stanno dentro il flusso di quotazione, non su pagine pubbliche di prodotto. Probabilmente serve il connettore del browser, non una ricerca.",
       "a_mandato": true,
       "documenti": [],
-      "da_cercare_ancora": ["tutto"]
+      "da_cercare_ancora": [
+        "tutto"
+      ]
     },
     {
       "compagnia": "24H Assistance",
       "nota": "Compagnia di assistenza, non vende rami confrontabili per garanzia come auto o casa.",
       "a_mandato": true,
       "documenti": [],
-      "da_cercare_ancora": ["da decidere se vale la pena: le sue coperture non entrano nel confronto garanzia per garanzia"]
+      "da_cercare_ancora": [
+        "da decidere se vale la pena: le sue coperture non entrano nel confronto garanzia per garanzia"
+      ]
     }
   ],
-
   "_domini_da_cui_si_prende": [
     "dallbogg.it",
     "cdn.groupama.it",
     "www.sara.it",
     "www.axa.it",
     "youquote.hdia.it",
-    "www.italiana.it"
+    "areaclienti.hdiassicurazioni.it",
+    "www.italiana.it",
+    "www.allianz.it",
+    "www.nobis.it"
   ],
   "_perche_un_elenco_di_domini": "Il raccoglitore scarica SOLO da questi domini. Senza il vincolo, una funzione che prende un URL qualunque e lo scarica è un proxy aperto sull'infrastruttura dell'agenzia: chiunque riuscisse a chiamarla potrebbe usarla per raggiungere qualsiasi indirizzo, e i log direbbero che è stata l'agenzia a farlo."
 }

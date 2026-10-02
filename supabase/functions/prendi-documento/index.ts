@@ -61,8 +61,15 @@ const DOMINI = [
   'cdn.groupama.it',
   'www.sara.it',
   'www.axa.it',
+  /* HDI tiene i documenti su tre domini diversi: il sito pubblico, l'area
+     clienti e il portale di quotazione. Vanno elencati uno per uno, perché
+     accettare «*.hdiassicurazioni.it» vorrebbe dire accettare anche un
+     sottodominio che un domani serve a qualcos'altro. */
   'youquote.hdia.it',
+  'areaclienti.hdiassicurazioni.it',
   'www.italiana.it',
+  'www.allianz.it',
+  'www.nobis.it',
 ]
 
 /* 15 MB: il set informativo vero pesa 2. Il tetto serve anche a non far

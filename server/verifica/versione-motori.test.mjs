@@ -49,6 +49,22 @@ function deve(c, m) { if (!c) throw new Error(m); }
 
 const DOCUMENTI = ['index.html', 'iam/index.html'];
 
+/* UNA FUSIONE IN CORSO FA SEMBRARE «MODIFICATO OGGI» TUTTO QUELLO CHE ARRIVA.
+   Trovato usando questa prova, il 02/10/2026: portando `main` dentro un ramo,
+   i sette motori che main aveva cambiato risultavano modificati adesso, e la
+   prova chiedeva il contrassegno di oggi per file che non aveva toccato
+   nessuno. Un rosso che non e' un guasto insegna a ignorare i rossi, e qui lo
+   avrebbe insegnato a chiunque fonda un ramo.
+   Il confronto sulla STORIA (la prova qui sopra) resta valido durante una
+   fusione ed e' quello che conta; questo guarda il lavoro in corso, e durante
+   una fusione «in corso» non vuol dire «mio». Si dichiara e si salta. */
+function fusioneInCorso() {
+  for (const f of ['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD', 'rebase-merge', 'rebase-apply']) {
+    if (fs.existsSync(path.join(RADICE, '.git', f))) return true;
+  }
+  return false;
+}
+
 function ultimoCommit(rel) {
   try {
     return execSync('git log -1 --format=%cd --date=format:%Y%m%d -- ' + JSON.stringify(rel),
@@ -103,6 +119,7 @@ prova('una modifica di OGGI non si nasconde dietro un contrassegno di ieri', () 
      detto sul file di lavoro invece che sulla storia — così vale anche
      PRIMA di committare, che è quando serve. */
   if (!ultimoCommit('tariffe/motore')) return null;
+  if (fusioneInCorso()) return null;   // vedi fusioneInCorso()
   let sporchi = [];
   try {
     sporchi = execSync('git status --porcelain -- tariffe/motore', { cwd: RADICE, stdio: ['ignore', 'pipe', 'ignore'] })
@@ -153,8 +170,10 @@ prova('non solo i motori: OGNI foglio e script locale dei due documenti', () => 
   const LOCALI = /(?:src|href)="([^"]+\.(?:js|css))(\?v=([^"]*))?"/g;
   const male = [], sporchi = new Set();
   try {
-    execSync('git status --porcelain', { cwd: RADICE, stdio: ['ignore', 'pipe', 'ignore'] })
-      .toString().trim().split('\n').filter(Boolean).forEach(r => sporchi.add(r.slice(3).trim()));
+    if (!fusioneInCorso()) {            // durante una fusione «modificato» non vuol dire «mio»
+      execSync('git status --porcelain', { cwd: RADICE, stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString().trim().split('\n').filter(Boolean).forEach(r => sporchi.add(r.slice(3).trim()));
+    }
   } catch (e) { /* senza git si salta solo il confronto sul lavoro in corso */ }
   const oggi = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 

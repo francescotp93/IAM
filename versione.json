@@ -1,18 +1,19 @@
 {
   "versione": "0.50.0",
   "nome": "La targhetta della versione torna a dire il vero",
-  "data": "2026-09-27",
+  "data": "2026-10-02",
   "storia": [
     {
       "v": "0.50.0",
-      "data": "2026-09-27",
+      "data": "2026-10-02",
       "nome": "La targhetta della versione torna a dire il vero",
       "voci": [
         "LA TARGHETTA MENTIVA DI DIECI RILASCI. In fondo al menu del tuo nome c'era scritto 0.44.1, il rilascio del 24 settembre: nel frattempo ne sono passati dieci, fino allo 0.49.2. Quindi alla domanda «quello che ho chiesto è pubblicato?» rispondeva no da tre giorni, e c'era da crederci.",
         "E LA FINESTRA DELLE NOVITÀ si fermava allo stesso punto: i dieci rilasci in mezzo non c'erano. Adesso ci sono, uno per uno, scritti prendendo le note di rilascio di chi li ha fatti — non riassunte a memoria.",
         "IAM CARICAVA IL TELAIO VECCHIO. Il file che disegna il menu e la barra è cambiato ieri alle 15:11, ma l'indirizzo con cui la pagina lo chiede era rimasto quello di quattro giorni prima: e un indirizzo che non cambia è un indirizzo che il browser non richiede. È lo stesso guasto del 14 settembre, quando una voce nuova del menu non compariva. Adesso l'indirizzo è nuovo e il telaio si ricarica.",
         "Lo stesso valeva per il foglio di stile della scocca, fermo dal 16 settembre: dieci giorni in cui chi aveva IAM aperto usava la grafica di prima.",
-        "TRE CONTROLLI AUTOMATICI LO DICEVANO GIÀ, tutti e tre rossi nel banco di prova di IAM, e nessuno li ha letti. Quello è il pezzo che resta da decidere: un controllo rosso che nessuno guarda non è un controllo."
+        "TRE CONTROLLI AUTOMATICI LO DICEVANO GIÀ, tutti e tre rossi nel banco di prova di IAM, e nessuno li ha letti. Quello è il pezzo che resta da decidere: un controllo rosso che nessuno guarda non è un controllo.",
+        "E LA DERIVA SI È RIPETUTA MENTRE QUESTA CORREZIONE ASPETTAVA: dal 27 settembre al 2 ottobre sono entrati altri quattordici rilasci, e NESSUNO ha alzato il numero di versione. Nello stesso periodo sei indirizzi sono tornati indietro — il telaio di IAM di nuovo, e cinque motori di calcolo. Sono stati tutti rimisurati e sistemati qui dentro. Ma il punto è quello scritto sopra: la disciplina si dimentica, e un controllo rosso che nessuno legge non la sostituisce."
       ]
     },
     {

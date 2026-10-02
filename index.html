@@ -108,6 +108,11 @@
      i codici di Prima prendono un nome che si può leggere al telefono, e la
      somma delle garanzie si confronta col premio. -->
 <script src="tariffe/motore/garanzie.js?v=20260928"></script>
+<!-- Il vocabolario delle garanzie e la guida che ne nasce: il confronto fra
+     prodotti e la guida al cliente parlano la stessa lingua, e la lingua
+     sta in un posto solo (02/10/2026). -->
+<script src="tariffe/motore/confronto.js?v=20261002"></script>
+<script src="tariffe/motore/guida-garanzie.js?v=20261002"></script>
 <script src="tariffe/motore/foglio-cassa.js?v=20260930"></script>
 <script src="tariffe/motore/piano-rate.js?v=20260921"></script>
 <script src="tariffe/motore/animali.js?v=20260910"></script>
@@ -1467,6 +1472,35 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
    La classe sta sulla cornice, non sulla scatola, così non serve `:has()` e
    gli altri due pannelli — pagamento e documenti, che sono moduli — restano
    stretti come devono. */
+/* ── L'ANTEPRIMA DELLA GUIDA ALLE GARANZIE (02/10/2026) ─────────────────────
+   Quello che va visto per primo e' l'elenco delle cose da confermare, non le
+   schede riuscite: li' dentro finiscono i refusi veri del prospetto, e se si
+   vedono dopo che il foglio e' partito non sono serviti a niente. Per questo
+   sta in cima e in ambra, e una scheda con qualcosa da confermare si tinge. */
+.ppg-vuoto{font-size:12.5px;color:var(--muted);padding:12px 14px;border:1px dashed var(--line);
+  border-radius:10px;line-height:1.5}
+.ppg-avv{background:#fff4e6;border:1px solid #ffd8a8;border-radius:10px;padding:10px 13px;
+  font-size:12.5px;color:#8a5200;line-height:1.5;margin-bottom:10px}
+.ppg-avv ul{margin:6px 0 0;padding-left:18px}
+.ppg-avv li{margin:3px 0}
+.ppg-ok{background:#e7f6ec;border:1px solid #b9e3cd;border-radius:10px;padding:9px 13px;
+  font-size:12.5px;color:#1b6b38;margin-bottom:10px}
+.ppg-conto{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+  font-weight:700;margin:0 0 8px}
+.ppg-sez{margin-bottom:12px}
+.ppg-sez-t{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink,#1f2933);margin-bottom:6px}
+.ppg-sez-t span{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:6px;background:var(--ink,#1f2933);color:#fff;font-size:10.5px}
+.ppg-c{border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px;background:#fff}
+.ppg-c-avv{border-color:#ffd8a8;background:#fffaf4}
+.ppg-c-h{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:13px}
+.ppg-c-h span{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.ppg-c-e{font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px}
+.ppg-c-senza{color:#8a5200}
+.ppg-c-a{font-size:11.5px;color:#8a5200;line-height:1.45;margin-top:5px}
+.ppg-piede{font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:10px;
+  padding-top:9px;border-top:1px solid var(--line)}
 .pdoc-ov.pdoc-largo{padding:14px}
 .pdoc-ov.pdoc-largo .pdoc-box{max-width:1480px;max-height:94vh}
 .pdoc-ov.pdoc-largo .pdoc-bd{padding:16px 20px}
@@ -32188,8 +32222,8 @@ function ppValoreConAltro(idSel, idTxt) {
 
 function ppDescRiga(testo) {
   return `<div class="pp-desc-riga" style="display:flex;gap:7px;margin-bottom:7px">
-    <input type="text" class="pp-desc-txt" value="${esc(testo || '')}" placeholder="Es. Massimale RC 5.000.000 € · Franchigia 250 €" style="flex:1">
-    <button type="button" class="ghost" style="padding:6px 10px" title="Togli questa riga" onclick="this.parentNode.remove()"><i class="ti ti-minus"></i></button>
+    <input type="text" class="pp-desc-txt" value="${esc(testo || '')}" placeholder="Es. Massimale RC 5.000.000 € · Franchigia 250 €" style="flex:1" oninput="ppGuidaAnteprima()">
+    <button type="button" class="ghost" style="padding:6px 10px" title="Togli questa riga" onclick="this.parentNode.remove();ppGuidaAnteprima()"><i class="ti ti-minus"></i></button>
   </div>`;
 }
 
@@ -32199,6 +32233,64 @@ function ppDescAggiungi(testo) {
   box.insertAdjacentHTML('beforeend', ppDescRiga(testo));
   const ultimo = box.querySelector('.pp-desc-riga:last-child .pp-desc-txt');
   if (ultimo && !testo) ultimo.focus();
+  ppGuidaAnteprima();
+}
+
+/* ══ LA GUIDA ALLE GARANZIE: L'ANTEPRIMA CHE CONTROLLA (02/10/2026) ═════════
+   Il conto non sta qui: sta in `tariffe/motore/guida-garanzie.js`, che ha le
+   sue 20 prove e la sua controprova. Qui c'è il disegno — e la cosa che il
+   disegno deve far vedere non sono le schede riuscite, sono quelle NO.
+
+   Il blocco «da confermare» sta in CIMA e non in fondo. Sotto le schede
+   nessuno lo leggerebbe, e lì dentro ci finiscono i refusi veri: «Laste» per
+   «Lastre», la rendita che dice «al mese» e «al giorno» nella stessa riga. Se
+   si vede dopo che il foglio è partito, non è servito a niente. */
+function ppGuidaDati() {
+  if (!window.GuidaGaranzie) return null;
+  const righe = (typeof ppDescLeggi === 'function' ? ppDescLeggi() : []).filter(Boolean);
+  if (!righe.length) return null;
+  return GuidaGaranzie.guida(righe);
+}
+
+function ppGuidaAnteprima() {
+  const box = document.getElementById('pp-guida');
+  if (!box) return;
+  if (!window.GuidaGaranzie) {
+    box.innerHTML = '<div class="ppg-vuoto">Il motore della guida non è caricato: l\'anteprima non si può fare.</div>';
+    return;
+  }
+  const g = ppGuidaDati();
+  if (!g) {
+    box.innerHTML = '<div class="ppg-vuoto">Scrivi le garanzie qui sopra e qui comparirà la guida che '
+      + 'leggerà il cliente, con un esempio concreto per ognuna.</div>';
+    return;
+  }
+  if (!g.ok) { box.innerHTML = '<div class="ppg-vuoto">' + esc(g.motivo) + '</div>'; return; }
+
+  const avvisi = g.daConfermare.length
+    ? '<div class="ppg-avv"><b>' + g.daConfermare.length +
+      (g.daConfermare.length === 1 ? ' cosa da confermare' : ' cose da confermare') + ' prima di consegnare</b><ul>' +
+      g.daConfermare.map(m => '<li>' + esc(m) + '</li>').join('') + '</ul></div>'
+    : '<div class="ppg-ok"><i class="ti ti-circle-check"></i> Tutte le garanzie sono state riconosciute e hanno il loro esempio.</div>';
+
+  const sezioni = g.sezioni.map(s =>
+    '<div class="ppg-sez"><div class="ppg-sez-t"><span>' + s.numero + '</span>' + esc(s.titolo) + '</div>' +
+    s.schede.map(c =>
+      '<div class="ppg-c' + (c.daConfermare ? ' ppg-c-avv' : '') + '">' +
+        '<div class="ppg-c-h"><b>' + esc(c.nome) + '</b><span>' + esc(c.importo || '—') + '</span></div>' +
+        (c.esempio
+          ? '<div class="ppg-c-e">' + esc(c.esempio) + '</div>'
+          : '<div class="ppg-c-e ppg-c-senza">Nessun esempio: questa garanzia non è nel vocabolario. ' +
+            'Nella guida compare con il suo importo — un esempio sbagliato sarebbe peggio di uno che manca.</div>') +
+        (c.attenzione ? '<div class="ppg-c-a"><i class="ti ti-alert-triangle"></i> ' + esc(c.attenzione) + '</div>' : '') +
+      '</div>').join('') + '</div>').join('');
+
+  box.innerHTML = avvisi +
+    '<div class="ppg-conto">' + g.schede + (g.schede === 1 ? ' garanzia' : ' garanzie') + ' · ' +
+      g.conEsempio + ' con esempio · ' + g.sezioni.length +
+      (g.sezioni.length === 1 ? ' pagina' : ' pagine') + '</div>' +
+    sezioni +
+    '<div class="ppg-piede">' + esc(g.piede) + '</div>';
 }
 
 function ppDescLeggi() {
@@ -32268,6 +32360,23 @@ async function ppApri(clienteId, id) {
         <div id="pp-desc">${desc.map(t => ppDescRiga(t)).join('')}</div>
         <button type="button" class="ghost" style="padding:6px 12px" onclick="ppDescAggiungi()"><i class="ti ti-plus"></i> Aggiungi riga</button></div>
 
+      <!-- ══ LA GUIDA ALLE GARANZIE, MENTRE SI SCRIVE (02/10/2026) ══════════
+           Richiesta di Francesco: «rendere il preventivo un po' più
+           interattivo, magari generando anche una cosa simile a questo».
+
+           Non è solo un'anteprima: è un CONTROLLO che gira mentre si digita.
+           Sul prospetto vero (preventivo n.4) c'erano «Laste» per «Lastre» e
+           una rendita che diceva «al mese» e «al giorno» nella stessa riga.
+           Fin qui quei refusi si scoprivano col foglio già dal cliente;
+           adesso si vedono mentre si scrive la riga. -->
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+          <span>Guida alle garanzie</span>
+          <button type="button" class="ghost" style="padding:5px 11px;font-size:12px"
+                  onclick="ppGuidaAnteprima()"><i class="ti ti-refresh"></i> Aggiorna</button></label>
+        <div id="pp-guida"></div>
+      </div>
+
       <div class="field"><label>Intermediario di riferimento</label>
         <select id="pp-intermediario" onchange="ppIntermToggle()"><option value="">— nessuno —</option></select>
         <div style="font-size:11.5px;color:var(--muted);margin-top:5px">Se non scegli nessuno, sul documento firma l'agenzia con la sua iscrizione.</div></div>
@@ -32287,6 +32396,7 @@ async function ppApri(clienteId, id) {
         <button class="primary" onclick="ppSalva('${esc(clienteId)}'${id ? ",'" + esc(id) + "'" : ''})">Salva</button>
         <button class="ghost" onclick="document.getElementById('pp-overlay').remove()">Annulla</button>
         ${r ? `<button class="ghost" onclick="ppScaricaPdf('${esc(r.id)}')"><i class="ti ti-file-type-pdf"></i> Scarica PDF</button>
+        <button class="ghost" onclick="ppGuidaScarica('${esc(r.id)}')"><i class="ti ti-book"></i> Guida alle garanzie</button>
         <button class="ghost" onclick="ppInviaEmail('${esc(r.id)}')"><i class="ti ti-mail"></i> Email al cliente</button>
         <button class="ghost" onclick="ppWhatsApp('${esc(r.id)}')"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>` : ''}
         ${r && currentUser.role === 'admin' ? `<button class="ghost" style="color:#c0392b" onclick="ppElimina('${esc(r.id)}')"><i class="ti ti-trash"></i> Elimina</button>` : ''}
@@ -32294,6 +32404,9 @@ async function ppApri(clienteId, id) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  /* L'anteprima si disegna subito: aprire un preventivo gia' scritto e vedere
+     un riquadro vuoto farebbe credere che la guida non ci sia. */
+  ppGuidaAnteprima();
   popolaSelectInterm('pp-intermediario', intermSel);
   /* «Altro» si aggiunge QUI e non dentro popolaSelectInterm: quella tendina la
      usa anche la scheda cliente, dove un intermediario scritto a mano non
@@ -32791,6 +32904,49 @@ function ppScaricaBlob(blob, nome) {
   a.href = url; a.download = nome;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+/* ══ IL PDF DELLA GUIDA ALLE GARANZIE (02/10/2026) ═════════════════════════
+   Il contenuto lo DESCRIVE il motore (`GuidaGaranzie.documentoPdf`), a
+   disegnarlo e' `PdfWithus.disegna` — lo stesso che fa il preventivo, il
+   foglio cassa e il foglio previdenziale.
+
+   La prima stesura disegnava qui, a mano, con le primitive. Funzionava e
+   sbagliava lo stesso: il contenuto del foglio non si poteva provare senza
+   aprire un browser e caricare jsPDF da una rete che qui non c'e'. Descritto
+   invece che disegnato, che cosa ci sara' scritto sopra si prova in Node. */
+async function ppGuidaScarica(id) {
+  const vietato = ppVietato();
+  if (vietato) { alert(vietato); return; }
+  if (!window.GuidaGaranzie) { alert('Il motore della guida non e\' caricato.'); return; }
+  const r = (PP_CACHE || []).find(x => x.id === id);
+  if (!r) { alert('Preventivo non trovato.'); return; }
+  const g = GuidaGaranzie.guida((r.descrizioni || []).filter(Boolean));
+  if (!g.ok) { alert(g.motivo); return; }
+  try {
+    const az = await ppAzienda();
+    const ctx = await ppContesto(r);
+    const documento = GuidaGaranzie.documentoPdf(g, {
+      cliente: (ctx.cliente && ctx.cliente.nominativo) || 'Cliente',
+      numero: r.numero, data: ppDataIt(r.creato_il),
+      azienda: {
+        ragioneSociale: az.rs || '', sede: az.sede || '', piva: az.piva || '',
+        rui: az.rui_numero ? ppRuiTesto(az.rui_sezione, az.rui_numero, az.rui_data) : '',
+        contatti: [az.tel, az.email, az.pec].filter(Boolean)
+      }
+    });
+    const jsPDF = await ppCaricaJsPdf();
+    const logo = await ppLogo();
+    const doc = PdfWithus.disegna(jsPDF, documento, { logo });
+    ppScaricaBlob(doc.output('blob'), documento.nomeFile);
+    try {
+      quotoToast(g.daConfermare.length
+        ? 'Guida generata, ma ' + g.daConfermare.length + ' cosa/e da confermare: guardale prima di consegnarla'
+        : 'Guida generata', !g.daConfermare.length);
+    } catch (e) {}
+  } catch (e) {
+    alert('Non riesco a generare la guida: ' + (e.message || e));
+  }
 }
 
 async function ppScaricaPdf(id) {

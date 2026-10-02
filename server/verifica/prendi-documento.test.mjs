@@ -185,7 +185,11 @@ prova('un indirizzo scaduto si dichiara per quello che è', () => {
     'un 404 non si distingue da un errore qualunque: manca il campo «scaduto» nella risposta');
   /* E la spiegazione sta nel messaggio che legge una persona, non in un
      commento che legge solo chi apre il file. */
-  const msg = SRC.match(/motivo: 'Il sito della compagnia ha risposto[\s\S]*?\}, \{ status: 200 \}\)/);
+  /* L'ancora si ferma su `status: 200` e non sull'intera parentesi: quella
+     riga cresce ogni volta che si aggiunge qualcosa alla risposta — è già
+     successo con le intestazioni CORS — e un'ancora che copia la
+     formattazione si rompe per un motivo che non c'entra niente. */
+  const msg = SRC.match(/motivo: 'Il sito della compagnia ha risposto[\s\S]*?status: 200/);
   deve(msg, 'non trovo il messaggio che si dà quando il sito risponde male');
   deve(/edizione nuova/.test(msg[0]),
     'il messaggio non spiega che a ogni edizione nuova l\'indirizzo cambia: ' + msg[0].slice(0, 120));

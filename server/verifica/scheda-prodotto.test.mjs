@@ -507,6 +507,44 @@ prova('il ramo si legge dal documento, e se non si capisce si dice', () => {
   deve(/di che ramo/.test(d.motivo), 'motivo: ' + d.motivo);
 });
 
+prova('UN NOME CHE COPRE DUE PAGINE SU OTTANTA NON È IL TIPO DEL DOCUMENTO', () => {
+  /* Misurato il 02/10/2026 su documenti veri di sei compagnie, scaricati dai
+     loro siti. Il Guidamica di Groupama ha 84 pagine e si divide in tredici
+     pezzi di cui UNO solo ha un piè di pagina riconoscibile — «allegato», due
+     pagine — e il motore dichiarava tutto il documento «allegato». Lo stesso
+     su Nobis («altro») e su AXA («informativa»).
+
+     Un tipo sbagliato finisce in archivio, e poi un confronto dice di venire
+     dal pezzo sbagliato: è peggio di non dirlo, perché manda a cercare una
+     frase dove non c'è. */
+  /* I CORPI DELLE PAGINE DEVONO ESSERE DIVERSI FRA LORO. Nella prima versione
+     di questa prova erano tutti «contenuto», e il motore — che sceglie come
+     piè di pagina il lato che si ripete di più — prendeva la TESTA invece
+     della coda: tutto il documento diventava un pezzo solo senza nome, e
+     usciva «altro» per un motivo che non c'entrava niente con la regola che
+     si voleva provare. La prova passava e i guasti non venivano presi. */
+  const tanti = [{ n: 1, testo: 'Prodotto: AUTO assicurazione\nKasko (opzionale)\nGaranzie di base\nopera.' }];
+  /* Dodici pezzi con un piè di pagina che non dice che cosa siano… */
+  for (let k = 0; k < 12; k++) {
+    tanti.push({ n: tanti.length + 1, testo: 'riga di testo ' + tanti.length + '\nSezione ' + k + ' foglio A' });
+    tanti.push({ n: tanti.length + 1, testo: 'riga di testo ' + tanti.length + '\nSezione ' + k + ' foglio A' });
+  }
+  /* …e uno solo, di due pagine, che si riconosce. */
+  tanti.push({ n: tanti.length + 1, testo: 'riga di testo ' + tanti.length + '\nAllegato A - Card Base' });
+  tanti.push({ n: tanti.length + 1, testo: 'riga di testo ' + tanti.length + '\nAllegato A - Card Base' });
+
+  const d = S.scheda(tanti);
+  deve(d.ok, d.motivo);
+  deve(d.tipo === 'altro',
+    'due pagine su ' + tanti.length + ' hanno deciso il tipo di tutto il documento: «' + d.tipo + '»');
+
+  /* E quando invece il nome copre il documento, lo si dice. */
+  const uno = S.scheda([
+    { n: 1, testo: 'Prodotto: AUTO assicurazione\nSET X - CONDIZIONI DI ASSICURAZIONE pag. 1 di 2' },
+    { n: 2, testo: 'Kasko (opzionale)\nGaranzie di base\nopera.\nSET X - CONDIZIONI DI ASSICURAZIONE pag. 2 di 2' }]);
+  deve(uno.tipo === 'condizioni', 'un documento tutto di condizioni esce come «' + uno.tipo + '»');
+});
+
 prova('il tipo di documento lo dicono i suoi fascicoli', () => {
   deve(s.tipo === 'set_informativo', 'tipo: ' + s.tipo + ' — con DIP, DIP aggiuntivo e condizioni è un set');
   const d = S.scheda([{ n: 1, testo: 'Prodotto: AUTO assicurazione\nSET X - DIP DANNI' },

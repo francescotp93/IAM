@@ -34,10 +34,21 @@
 //   · solo `https`, e i reindirizzamenti si seguono a mano controllando che
 //     ogni salto resti dentro l'elenco (un 302 verso un altro host è
 //     esattamente il modo in cui un elenco di domini si aggira);
-//   · solo PDF, e con un tetto di 25 MB;
-//   · la chiamata vuole il token di chi è dentro IAM (`verify_jwt`, che è il
-//     comportamento normale di Supabase): non c'è nessun segreto nuovo da
-//     custodire, e chi non ha accesso a IAM non ce la fa.
+//   · solo PDF, e con un tetto dichiarato più sotto.
+//
+//  E UNA COSA CHE VA DETTA COM'È, perché è facile raccontarsela: la chiamata
+//  passa dal controllo del token di Supabase (`verify_jwt`, il comportamento
+//  normale), ma la chiave pubblica di IAM è dentro il sorgente della pagina e
+//  quella chiave È un token valido. Quindi NON è vero che «solo chi è dentro
+//  IAM ce la fa»: ce la fa chiunque legga il sorgente della pagina.
+//
+//  La protezione vera è l'elenco dei domini, non il token. Quello che un
+//  estraneo potrebbe fare è far scaricare a Supabase un PDF pubblico di una
+//  compagnia — e pagarne la banda. È il motivo per cui c'è un tetto al peso.
+//  Il giorno in cui IAM sarà l'unico a chiamarla, si aggiunge il controllo che
+//  il token sia di un utente vero e non quello pubblico: sono tre righe, e
+//  fino ad allora servirebbero anche a tenere fuori chi deve riempire
+//  l'archivio.
 //
 //  ┌───────────────────────────────────────────────────────────────────────────┐
 //  │ NON ARCHIVIA NIENTE E NON DECIDE NIENTE.                                  │
@@ -57,7 +68,14 @@
    compagnia, e si rimanda in produzione: è una riga in più da scrivere ed è il
    prezzo di non avere un proxy aperto. */
 const DOMINI = [
+  /* `dallbogg.it` REINDIRIZZA a `dallbogg.com`: trovato alla prima chiamata
+     vera, il 02/10/2026. Servono tutt'e due, e la scoperta vale piu' della
+     riga che l'ha risolta — un elenco di domini scritto a tavolino non ci
+     sarebbe mai arrivato, perche' il reindirizzamento non si vede guardando
+     l'indirizzo. */
   'dallbogg.it',
+  'dallbogg.com',
+  'www.dallbogg.com',
   'cdn.groupama.it',
   'www.sara.it',
   'www.axa.it',
@@ -103,13 +121,39 @@ async function prendi(indirizzo: string): Promise<{ r: Response; finale: string 
   throw new Error('troppi reindirizzamenti')
 }
 
+/* Le origini da cui IAM e QUOTO chiamano. Sono le stesse del filtro che sta
+   in `index.js` per la porta delle catture: un elenco solo di origini
+   buone non esiste in questa casa, ma almeno queste due dicono la stessa
+   cosa. Senza le intestazioni CORS il browser blocca la chiamata prima
+   ancora di farla, e la schermata direbbe «non riesco» senza un motivo. */
+const ORIGINI = [
+  'https://iam.withusassicurazioni.it',
+  'https://quoto.withusassicurazioni.it',
+  'https://www.withusassicurazioni.it',
+]
+function intestazioni(origine: string | null): Record<string, string> {
+  const ok = origine && ORIGINI.includes(origine) ? origine : ORIGINI[0]
+  return {
+    'Access-Control-Allow-Origin': ok,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
+}
+
 Deno.serve(async (req) => {
+  const cors = intestazioni(req.headers.get('origin'))
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') {
-    return Response.json({ ok: false, motivo: 'Si chiama in POST con { url }.' }, { status: 405 })
+    return Response.json({ ok: false, motivo: 'Si chiama in POST con { url }.' },
+      { status: 405, headers: cors })
   }
   let url = ''
   try { url = String((await req.json()).url || '') } catch { /* corpo non leggibile */ }
-  if (!url) return Response.json({ ok: false, motivo: 'Manca l\'indirizzo del documento.' }, { status: 400 })
+  if (!url) {
+    return Response.json({ ok: false, motivo: 'Manca l\'indirizzo del documento.' },
+      { status: 400, headers: cors })
+  }
 
   try {
     const { r, finale } = await prendi(url)
@@ -122,18 +166,20 @@ Deno.serve(async (req) => {
         ok: false, scaduto: r.status === 404 || r.status === 410, stato: r.status,
         motivo: 'Il sito della compagnia ha risposto ' + r.status +
           (r.status === 404 ? ': l\'indirizzo non c\'è più. Succede a ogni edizione nuova: va ritrovato.' : '.'),
-      }, { status: 200 })
+      }, { status: 200, headers: cors })
     }
 
     const tipo = (r.headers.get('content-type') || '').toLowerCase()
     const lunghezza = Number(r.headers.get('content-length') || 0)
     if (lunghezza > TETTO) {
-      return Response.json({ ok: false, motivo: 'Il file pesa ' + lunghezza + ' byte, oltre il tetto di ' + TETTO + '.' })
+      return Response.json({ ok: false, motivo: 'Il file pesa ' + lunghezza + ' byte, oltre il tetto di ' + TETTO + '.' },
+        { headers: cors })
     }
 
     const byte = new Uint8Array(await r.arrayBuffer())
     if (byte.length > TETTO) {
-      return Response.json({ ok: false, motivo: 'Il file pesa ' + byte.length + ' byte, oltre il tetto.' })
+      return Response.json({ ok: false, motivo: 'Il file pesa ' + byte.length + ' byte, oltre il tetto.' },
+        { headers: cors })
     }
 
     /* Il tipo dichiarato non basta: si guardano i primi byte. Un sito che
@@ -146,7 +192,7 @@ Deno.serve(async (req) => {
         motivo: 'Quello che è arrivato non è un PDF (comincia per «' + firma.replace(/[^\x20-\x7e]/g, '·') +
           '», tipo dichiarato «' + (tipo || 'nessuno') + '»). Quasi sempre è una pagina di errore ' +
           'travestita da risposta buona, oppure un indirizzo che ora porta alla pagina del prodotto.',
-      })
+      }, { headers: cors })
     }
 
     const h = await crypto.subtle.digest('SHA-256', byte)
@@ -169,7 +215,7 @@ Deno.serve(async (req) => {
          vuol dire che la compagnia ha spostato il documento, e il catalogo va
          aggiornato anche se stavolta è andata bene. */
       reindirizzato: finale !== url,
-    })
+    }, { headers: cors })
   } catch (e) {
     const m = String((e as Error)?.message || e)
     if (m.startsWith('fuori-elenco:')) {
@@ -178,8 +224,8 @@ Deno.serve(async (req) => {
         motivo: 'Il dominio «' + m.slice('fuori-elenco:'.length) + '» non è fra quelli da cui si prende. ' +
           'Si aggiunge all\'elenco dentro la funzione e si rimanda in produzione: è di proposito che non ' +
           'si può scaricare da un indirizzo qualunque.',
-      }, { status: 403 })
+      }, { status: 403, headers: cors })
     }
-    return Response.json({ ok: false, motivo: m }, { status: 502 })
+    return Response.json({ ok: false, motivo: m }, { status: 502, headers: cors })
   }
 })

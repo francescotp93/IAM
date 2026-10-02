@@ -902,11 +902,42 @@
   /* Che cosa è il documento nel suo insieme: se porta più di un fascicolo è un
      set informativo, se ne porta uno solo è quel fascicolo. */
   function tipoDocumento(fasc) {
-    var tipi = (fasc || []).map(function (f) { return f.tipo; }).filter(Boolean);
+    var dentro = fasc || [];
+    var tipi = dentro.map(function (f) { return f.tipo; }).filter(Boolean);
     var unici = tipi.filter(function (t, i, a) { return a.indexOf(t) === i; });
     if (unici.length > 1) return 'set_informativo';
-    if (unici.length === 1) return unici[0];
-    return 'altro';
+    if (!unici.length) return 'altro';
+
+    /* UN NOME SOLO NON BASTA SE COPRE UN PEZZETTO DEL DOCUMENTO.
+       Misurato il 02/10/2026 su documenti veri di cinque compagnie: il
+       Guidamica di Groupama (84 pagine) si divide in tredici pezzi di cui UNO
+       solo ha un piè di pagina riconoscibile — «allegato», due pagine su
+       ottantaquattro — e il motore dichiarava tutto il documento «allegato».
+       Lo stesso su Nobis e su AXA, con «altro» e «informativa».
+
+       Un tipo sbagliato non è un dettaglio: finisce in archivio, e poi un
+       confronto dice di venire dal pezzo sbagliato — che è peggio di non
+       dirlo, perché manda a cercare una frase dove non c'è.
+
+       Quindi un nome vale solo se copre almeno metà delle pagine riconosciute.
+       Altrimenti si dice «altro», e la schermata lo fa scegliere a una
+       persona: non si sa, e dirlo è l'unica cosa onesta. */
+    /* Si conta l'AMPIEZZA del fascicolo (`da`–`a`), che c'è in tutt'e due le
+       forme con cui questa funzione viene chiamata: dentro il motore `pagine`
+       è un elenco, in quello che esce è un numero, e la prima versione di
+       questo conto sommava l'elenco invece di contarlo — concatenava stringhe,
+       e il correttivo sembrava applicato senza esserlo.
+       L'ampiezza è anche la misura giusta: dice quanto del documento quel
+       pezzo occupa davvero, senza contare le pagine orfane che gli sono state
+       attaccate solo per dire da dove vengono. */
+    function quante(f) { return (f.a - f.da + 1) || 0; }
+    var pagineTot = 0, pagineDelTipo = 0;
+    dentro.forEach(function (f) {
+      pagineTot += quante(f);
+      if (f.tipo === unici[0]) pagineDelTipo += quante(f);
+    });
+    if (pagineTot > 0 && pagineDelTipo * 2 < pagineTot) return 'altro';
+    return unici[0];
   }
 
   /* Le righe nella forma che vogliono le tre tabelle dell'archivio. Non scrive

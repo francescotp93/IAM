@@ -144,6 +144,22 @@ prova('il tetto al peso del file è un numero vero, non una parola', () => {
     'il tetto si controlla in un posto solo: l\'intestazione «content-length» può mentire');
 });
 
+prova('LA FUNZIONE NON SALVA NIENTE: torna il file e basta', () => {
+  /* La prima versione metteva il PDF in un archivio su Supabase, e per farlo
+     serviva creare un secchio, decidere chi può leggerlo e tenerlo pulito:
+     tre cose da approvare e da curare per un file che a chi lo chiede serve
+     subito e una volta sola. L'impronta la calcola già il browser, e il
+     documento che vale la pena tenere è quello che una persona ha confermato.
+
+     Meno cose da approvare non è una comodità: è meno superficie su cui
+     sbagliare, su un'infrastruttura che tiene i dati dei clienti. */
+  deve(!/storage\s*\./.test(SRC), 'la funzione scrive in un archivio di file');
+  deve(!/createClient|SERVICE_ROLE/.test(SRC),
+    'la funzione usa una chiave di servizio: non le serve, e una chiave in meno in giro è una chiave in meno da perdere');
+  deve(/pdf_base64/.test(SRC), 'la funzione non restituisce il file: allora chi l\'ha chiesto non ce l\'ha');
+  deve(/Non tocca nessuna tabella/.test(SRC), 'non dichiara di non toccare niente');
+});
+
 prova('la funzione non archivia e non decide', () => {
   /* Prende il file e dice che cosa ha preso. Se una garanzia è presente o
      assente lo decide la schermata, con una persona davanti. */

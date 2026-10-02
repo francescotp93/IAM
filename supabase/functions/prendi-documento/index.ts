@@ -10,8 +10,15 @@
 //
 //  Una Edge Function gira sull'infrastruttura di Supabase, che ha la sua uscita
 //  verso internet. È da là che si prendono i documenti: la funzione scarica il
-//  PDF, lo mette nell'archivio dei file e torna la sua impronta. Poi IAM lo
-//  legge col motore che ha già, e propone il prodotto da archiviare.
+//  PDF e lo RESTITUISCE, e chi l'ha chiesto lo legge col motore che ha già.
+//
+//  NON SALVA NIENTE, e è una semplificazione voluta. La prima versione metteva
+//  il file in un archivio su Supabase, e per farlo serviva creare un secchio,
+//  decidere chi può leggerlo e tenerlo pulito: tre cose da approvare e da
+//  curare per un file che a chi lo chiede serve subito e una volta sola.
+//  L'impronta la calcola già il browser, e il documento che vale la pena
+//  tenere è quello che una persona ha confermato — e quello finisce in
+//  archivio dalla schermata, come quando lo si carica a mano.
 //
 //  ┌───────────────────────────────────────────────────────────────────────────┐
 //  │ NON È UN PROXY APERTO, E IL VINCOLO È LA PARTE IMPORTANTE.                │
@@ -46,8 +53,6 @@
 //      supabase functions delete prendi-documento
 //  Non tocca nessuna tabella: si può togliere senza lasciare niente dietro.
 // ═══════════════════════════════════════════════════════════════════════════════
-import { createClient } from 'jsr:@supabase/supabase-js@2'
-
 /* I domini del catalogo. Si aggiorna questo elenco quando si aggiunge una
    compagnia, e si rimanda in produzione: è una riga in più da scrivere ed è il
    prezzo di non avere un proxy aperto. */
@@ -60,9 +65,10 @@ const DOMINI = [
   'www.italiana.it',
 ]
 
-const TETTO = 25 * 1024 * 1024        /* 25 MB: il set informativo vero pesa 2 */
+/* 15 MB: il set informativo vero pesa 2. Il tetto serve anche a non far
+   tornare una risposta enorme, perché il file torna dentro la risposta. */
+const TETTO = 15 * 1024 * 1024
 const SALTI = 5                        /* quanti reindirizzamenti si seguono */
-const SECCHIO = 'note-informative'
 
 function dentroElenco(u: URL): boolean {
   if (u.protocol !== 'https:') return false
@@ -139,23 +145,18 @@ Deno.serve(async (req) => {
     const h = await crypto.subtle.digest('SHA-256', byte)
     const impronta = Array.from(new Uint8Array(h)).map((b) => b.toString(16).padStart(2, '0')).join('')
 
-    const sb = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    )
-    const host = new URL(finale).hostname
-    const percorso = host + '/' + impronta + '.pdf'
-    /* `upsert` perché l'impronta È il nome: lo stesso file ricaricato è lo
-       stesso file, e riscriverlo identico non cambia niente. */
-    const su = await sb.storage.from(SECCHIO).upload(percorso, byte, {
-      contentType: 'application/pdf', upsert: true,
-    })
-    if (su.error) {
-      return Response.json({ ok: false, motivo: 'Preso ma non salvato: ' + su.error.message, impronta })
+    /* Il file torna dentro la risposta, in base64. Chi l'ha chiesto lo legge
+       col lettore che ha già: in IAM è `PdfTesto`, lo stesso che legge un PDF
+       caricato a mano, quindi non c'è una seconda strada da provare. */
+    let b64 = ''
+    const pezzo = 0x8000
+    for (let i = 0; i < byte.length; i += pezzo) {
+      b64 += String.fromCharCode(...byte.subarray(i, i + pezzo))
     }
 
     return Response.json({
-      ok: true, host, percorso, impronta, byte: byte.length,
+      ok: true, host: new URL(finale).hostname, impronta, byte: byte.length,
+      pdf_base64: btoa(b64),
       indirizzo_finale: finale,
       /* Si dice se c'è stato un salto: un URL del catalogo che reindirizza
          vuol dire che la compagnia ha spostato il documento, e il catalogo va

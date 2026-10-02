@@ -154,6 +154,19 @@ Sospesi di agenzia · Sospesi per collaboratore · Debito verso compagnia
 (uno per compagnia) · Abbuoni passivi (costo) · Abbuoni attivi (ricavo) ·
 Partite varie.
 
+**28/09/2026 — è diventato più urgente, e si sa di quanto.** La regola di
+casa (spec §4quinquies) manda in sospeso POS, bonifico e carta HDI dei
+flussi HDI: sul file vero del 23/09 sono **€ 1.002,00** che adesso hanno
+uno stato e non hanno ancora un conto su cui atterrare. Il contante invece
+è a posto: spostato da «CONTO CORRENTE HDI» a «CASSA CONTANTI», che è di
+tipologia `cassa` e quindi entra nel fondo — prima il fondo restava a zero
+e il motore lo segnalava già da solo come anomalia.
+
+E si è aggiunta **una domanda piccola e nuova**: su quale conto arriva il
+**finanziamento Agos** (la carta HDI)? Oggi nessun conto lo dichiara, e il
+motore lo dice invece di sceglierne uno a caso. Si spunta in Strumenti ›
+Conti e causali sul conto giusto.
+
 **Non la decido io**: quanti cassetti contante, quali banche, POS come
 sospeso o no, sospesi globali o per collaboratore. Il manuale stesso dice
 che «dipende dalla struttura e dalla consuetudine aziendale». Sono scelte
@@ -276,6 +289,22 @@ indicazioni scritte nell'intestazione del file.
 - **P3.1** Nessun router unico: ogni famiglia di pannelli ha il suo
   commutatore. Nessuna pagina ha un indirizzo proprio, quindi non si può
   mandare un collegamento a una schermata.
+- **P3.3 · `.sw-row` è definita due volte in IAM, e vuol dire due cose.**
+  Trovata il 28/09/2026 insieme al doppione di `.sw`, che invece ho
+  sistemato (era la stessa cosa scritta due volte; questa no). Alla riga
+  728 `.sw-row` è «etichetta a sinistra, interruttore a destra, con una
+  riga di separazione» — la usano i 23 interruttori dei modali compagnie
+  e rami. Alla riga ~830 è «etichetta piccola e grassetto accanto
+  all'interruttore» — la usa l'elenco utenti. **Vince la seconda**, e il
+  segno si vede: nel modale del diario la riga «Importante» ha dovuto
+  riscriversi `display:flex`, `justify-content` e `padding` in linea per
+  rimettersi a posto.
+  Sono 34 usi fra le due: vanno guardati uno per uno per capire quale
+  delle due intenzioni ha ciascuno, e poi separati in due nomi. **Non
+  l'ho fatto di nascosto** mentre cambiavo la condivisione, perché
+  cambierebbe faccia a schermate che nessuno stava toccando.
+  La prova `visualizzazione` sorveglia già che non nascano altri doppioni
+  di `.sw`, `.sw-track`, `.sw-thumb`, `.sl`, `.clk-badge`, `.tit-sigla`.
 - **P3.4 · 5.037 stili scritti in linea** (2.376 nel quotatore, 2.661 in IAM)
   e 336 larghezze fisse in pixel. Sono la vera causa di come si vede
   l'app: lo stesso riquadro è scritto in venti modi diversi, e su uno

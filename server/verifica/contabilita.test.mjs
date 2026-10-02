@@ -818,12 +818,41 @@ prova('«mai dichiarato» resta una riga vuota, non una riga verde', () => {
    §31, §33, §34, §37, §41, §42). Il solo posto che va letto come testo è la
    migrazione, e lì si tolgono le righe di commento. */
 prova('il vocabolario dei mezzi di pagamento è uno solo, e comanda il database', () => {
-  const sql = readFileSync(join(RADICE, 'supabase', 'migrations', '20260918_mezzo_pagamento_e_collaboratori.sql'), 'utf8')
-    .split('\n').filter(r => !/^\s*--/.test(r)).join('\n');
-  const blocco = sql.match(/quote_titoli_mezzo_pagamento_check[\s\S]{0,400}?\)\s*;/);
-  deve(blocco, 'non trovo il vincolo dei mezzi nella migrazione');
-  const dalDb = [...blocco[0].matchAll(/'([a-z_]+)'/g)].map(m => m[1]).sort();
-  deve(dalDb.length >= 8, 'il vincolo letto dalla migrazione ha solo ' + dalDb.length + ' voci');
+  /* DOVE STA LA VERITÀ, E PERCHÉ SI È SPOSTATA (28/09/2026).
+     Fino al 22/09 la verità era il CHECK a nove valori su `quote_titoli`, e
+     questa prova lo leggeva dalla migrazione del 18/09. Quel vincolo non
+     esiste più: la migrazione `20260922j` l'ha sostituito con una chiave
+     esterna verso `iam_modalita_pagamento`, che fa di più — garantisce che il
+     codice esista davvero e impedisce di cancellarne uno che ha righe appese.
+
+     Leggere ancora il vincolo morto voleva dire misurare il codice contro una
+     regola che il database non applica più: la prova sarebbe restata verde su
+     un vocabolario sbagliato, o rossa (com'è successo oggi) su uno giusto.
+     Adesso si leggono le RIGHE DI SISTEMA inserite in quella tabella, da
+     tutte le migrazioni, che è la verità di adesso e continua a valere quando
+     se ne aggiunge una. */
+  const dir = join(RADICE, 'supabase', 'migrations');
+  const dalDb = [];
+  for (const f of readdirSync(dir).filter(n => n.endsWith('.sql')).sort()) {
+    const sql = readFileSync(join(dir, f), 'utf8')
+      .split('\n').filter(r => !/^\s*--/.test(r)).join('\n');
+    const ins = sql.match(/insert into public\.iam_modalita_pagamento[\s\S]*?;/g) || [];
+    for (const blocco of ins) {
+      /* Riga per riga, e non con una sola espressione su tutto il blocco: i
+         nomi contengono delle parentesi — «Domiciliazione (SDD)»,
+         «Finanziamento Agos (carta HDI)» — e una `[^)]*` si ferma lì dentro.
+         La prima stesura di questa prova ne perdeva due su dieci, e diceva
+         «dalle migrazioni escono solo 8 modalità» su un elenco completo. */
+      for (const riga of blocco.split('\n')) {
+        const m = /^\s*\(\s*'([a-z_]+)'\s*,.*\btrue\s*\)/.exec(riga);
+        if (m && !dalDb.includes(m[1])) dalDb.push(m[1]);
+      }
+    }
+  }
+  dalDb.sort();
+  deve(dalDb.length >= 9, 'dalle migrazioni escono solo ' + dalDb.length + ' modalità di sistema: ' + dalDb.join(', '));
+  deve(dalDb.includes('finanziamento'),
+    'la carta HDI (finanziamento Agos) non è nel vocabolario del database: ' + dalDb.join(', '));
 
   const dalMotore = C.MEZZI.map(m => m.k).sort();
   deve(JSON.stringify(dalMotore) === JSON.stringify(dalDb),

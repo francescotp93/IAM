@@ -406,6 +406,261 @@ l'ha ancora detto», non «nuova polizza».
 
 ---
 
+## 4quater. La scheda della polizza, e le sue garanzie
+
+> **28/09/2026.** «Quando clicco su un numero di polizza si deve vedere in
+> maniera un po' più chiara e magari a tutto schermo, proprio per come si
+> vede la schermata di AssiEasy.» — «La schermata delle specifiche delle
+> garanzie deve essere completa, proprio per come è presente nei file dei
+> flussi di compagnia.»
+
+### La scheda si apre larga
+
+Il pannello della polizza era largo 620 pixel, come i moduli da tre campi
+con cui condivide la cornice. Su una polizza vuol dire dieci schermate da
+scorrere, e per rispondere a «copre i cristalli?» bisogna arrivare in
+fondo. Adesso si apre a **1.480 px / 94vh** (su telefono a tutto schermo),
+e le tre colonne della griglia si distendono.
+
+Gli altri due pannelli che usano la stessa cornice — **pagamento** e
+**documenti** — restano stretti: sono moduli, e un modulo di tre campi
+steso su millecinquecento pixel si legge peggio, non meglio.
+
+### Che cosa il flusso manda e la scheda non mostrava
+
+Misurato sull'archivio prima di toccare niente:
+
+| dato | dov'era | si vedeva? |
+|---|---|:--:|
+| netto, imponibile, tasse, contributo SSN della polizza | `dati.ssf`, su **4.073 su 4.073** | no |
+| ramo, n. proposta, rate all'anno, agenzia, codice ANIA | `dati.ssf` | no |
+| scadenza originale, emessa fino al | `dati.ssf` | no |
+| polizza sostituita | `dati.sostituisce_numero` | no |
+| imponibile e tipo premi **della singola garanzia** | REC030, letto e buttato | no |
+| diritti, accessori, imponibile, SSN **per garanzia della rata** | REC042, letto e buttato | no |
+| netto della singola garanzia HDI | letto dalla c31 e non copiato | no |
+
+Tutti e sette sono stati recuperati. I primi quattro erano già in archivio
+e bastava mostrarli; gli ultimi tre erano buttati al momento della lettura
+del flusso e **arriveranno dalla prossima importazione** — sulle righe già
+in archivio restano vuoti, e una colonna vuota non compare.
+
+### Le garanzie: un motore solo, `tariffe/motore/garanzie.js`
+
+**Due tracciati, due forme, due posti.** Prima annida sotto
+`dati.ssf.garanzie` con `lordo/netto/tasse/ssn`; HDI scrive alla radice
+`dati.garanzie` con `premio_lordo/premio_netto/massimale/bene`. Il motore
+le riduce a una forma sola: chi disegna non deve più sapere da quale
+compagnia arrivano.
+
+**I nomi di Prima sono codici.** Su **11.131 garanzie su 11.131** la
+descrizione è identica al codice: a schermo c'era scritto
+`INFORTUNI_CONDUCENTE`. I codici diversi in tutto l'archivio sono **19**, e
+diciannove nomi si scrivono. Le descrizioni di HDI arrivano già in italiano
+(«Tutela Legale della Circolazione Basic») e non si toccano. Un codice mai
+visto si mostra com'è: meglio un codice a schermo che un nome inventato.
+
+**Le colonne sono quelle che hanno un valore su QUESTA polizza.** Massimale
+e franchigia sono vuoti su tutte e 11.131 le garanzie di Prima; HDI il
+massimale ce l'ha. Colonne fisse vorrebbe dire due colonne di trattini su
+ogni polizza Prima — e a forza di trattini si smette di guardare la tabella.
+
+**La somma delle garanzie si confronta col premio**, e la risposta è a tre
+valori: quadra, non quadra (e allora si dice **di quanto** e da che parte),
+oppure non si può dire — che è la risposta onesta quando la polizza non
+dichiara il premio. Un «quadra» detto senza avere il secondo numero è una
+rassicurazione costruita sul nulla. La tolleranza è **un centesimo**, per
+l'arrotondamento dell'ultima cifra: sui flussi veri le garanzie sommano
+esattamente al premio (18 polizze HDI su 18), quindi due centesimi sono
+già una differenza da guardare.
+
+**Il bene assicurato non è una colonna**: è una frase lunga
+(«AUTO HDI - PEUGEOT 2008 PURETECH 100 S&S ACTIVE (GV712FB)»). Sta sotto il
+nome quando i beni sono più d'uno — su una polizza con un veicolo solo si
+dice una volta sotto la tabella.
+
+**Senza motore le garanzie non spariscono.** Se `garanzie.js` non si carica,
+la sezione mostra l'elenco che sa mostrare e lo dichiara. Far sparire le
+garanzie di una polizza che ce le ha somiglia a un dato che non c'è, e
+nessuno va a cercarlo.
+
+Prove: `garanzie` 28/28 con 17 sabotaggi presi su 17, `polizza-nel-browser`
+29/29 in Chromium vero con 26 sabotaggi su 26.
+
+---
+
+## 4quinquies. Come arriva un incasso, compagnia per compagnia
+
+> **28/09/2026.** «I flussi che carico da Prima me li devi dare in automatico
+> incassati e non come sospesi, sarò io a cambiare le varie modalità di
+> pagamento. Quelli che carico io invece da HDI, come pos, bonifici, carta HDI
+> (questa modalità è finanziamento Agos), questi me li devi dare come sospesi e
+> poi sarò io ad abbinarli una volta incassati. Quello che è contanti me lo
+> devi aggiungere nella cassa contanti in automatico.» — Francesco
+
+Non è una preferenza: è la **differenza fisica fra i due canali**, e finché non
+sta scritta in un posto solo ogni schermata la deve indovinare. Sta in
+`tariffe/motore/pagamento-rata.js`.
+
+### Prima — i soldi non passano mai dall'agenzia
+
+Il cliente paga la compagnia direttamente. Lo dice l'archivio, non una teoria:
+dei 2.787 incassi Prima, **1.078 sono carta di credito, 632 prepagata, 425
+PayPal, 36 bonifico**. L'agenzia non tocca quel denaro.
+
+1. **Un titolo Prima non può essere un sospeso.** Un sospeso è un credito
+   dell'agenzia verso qualcuno; qui quel credito non esiste. Quello che il
+   tracciato chiama `SP` resta «da incassare»: si vede, si chiama, ma non entra
+   nel debito dell'agenzia.
+2. **La copertura vale come prova dell'incasso.** Prima incassa e poi copre: se
+   dichiara la polizza coperta **oltre** la decorrenza di una rata, quella rata
+   l'ha incassata lei, anche senza la data di pagamento.
+
+**Il confronto è stretto, e vale un semestre.** «Coperta fino al 16/03/2027»
+vuol dire che la copertura *finisce* quel giorno: la rata che decorre dal
+16/03/2027 è proprio quella che la prolunga, e non è pagata. Con `>=` al posto
+di `>` risultava incassata — e in archivio le polizze semestrali sono **1.034**,
+di cui **440 hanno pagato solo il primo semestre**. La prova sul campione l'ha
+preso al primo colpo.
+
+**Quanto cambia in archivio, oggi: niente, ed è la risposta giusta.** Dei 379
+titoli Prima non incassati (€ 97.788,84), la regola non ne promuove nessuno:
+tutti e 342 quelli «coperti» lo sono esattamente *fino al* giorno della loro
+decorrenza, cioè sono le rate che prolungano la copertura, e i restanti 37 la
+compagnia non li copre affatto. Presa alla lettera, l'istruzione avrebbe
+dichiarato incassati € 97.788,84 che Prima stessa dice non pagati — di cui
+**271 rate che devono ancora decorrere**. La regola serve da rete: prende una
+rata pagata di cui la compagnia ha dimenticato di mandare la data.
+
+**Una rata incassata per copertura non porta una data inventata.** Sappiamo
+*che* è stata pagata, non *quando*: scriverci la decorrenza farebbe comparire
+un incasso in una giornata di cassa in cui non è successo niente.
+
+### HDI — i soldi passano dall'agenzia, e l'agenzia li deve alla compagnia
+
+| mezzo | come arriva | perché |
+|---|---|---|
+| **POS** | sospeso | incassato dall'agenzia, ancora da rimettere |
+| **Bonifico** | sospeso | idem |
+| **Carta HDI** (finanziamento Agos) | sospeso | il premio lo anticipa una finanziaria |
+| **Contante** | incassato, **e in cassa contanti** | è già in casa |
+| assegno, domiciliazione, … | come dice il flusso | Francesco non li ha nominati, e non si estende una regola a mezzi di cui nessuno ha parlato |
+
+**L'incasso del flusso non basta a chiudere.** Dice che ha pagato il *cliente*,
+non che la compagnia abbia avuto i suoi soldi: confondere le due cose è il modo
+in cui un'agenzia si crede pari e non lo è. Restano sospesi finché Francesco non
+li abbina.
+
+**Sul file HDI vero del 23/09 la regola sposta € 1.002,00** — un bonifico da
+733,00 € e due POS per 269,00 € — da «incassato» a «sospeso». Il totale non si
+muove: 2.215,39 + 1.002,00 + 727,00 = **3.944,39 €**, che è il totale di prima.
+Nessun euro è scomparso; hanno cambiato colonna.
+
+### La carta HDI è un finanziamento, e ora ha un nome suo
+
+Il vocabolario dei mezzi ne aveva nove e la carta HDI non c'era: finiva in
+«carta di credito», che è un'altra cosa — con la carta paga il cliente e
+l'accredito arriva in tre giorni, col finanziamento Agos il premio lo anticipa
+una finanziaria e il cliente rimborsa lei. Nuova voce `finanziamento`
+(migrazione `20260928_mezzo_finanziamento.sql`), `giorni_attesi` lasciato
+**vuoto di proposito**: quanto ci metta non l'ha detto nessuno, e un numero
+inventato su un tempo di accredito diventa un sospeso che si crede scaduto.
+
+La stessa voce va tenuta allineata in **cinque posti** (`FlussoSSF.MEZZI`,
+`Contabilita.MEZZI`, `FoglioCassa.MEZZI`, `TIT_MEZZI`, la tabella
+`iam_modalita_pagamento`), e adesso una prova pretende che dicano tutti la
+stessa cosa.
+
+### Il contante andava sul conto corrente, non in cassa
+
+Misurato il 28/09: **«CONTO CORRENTE HDI» dichiarava di ricevere il contante**.
+Il fondo cassa somma solo i conti di tipologia «cassa», quindi restava a zero
+senza che si sapesse perché — e il motore della contabilità lo segnalava già da
+solo come anomalia (§4-ter, «contanti su un conto che non è una cassa»).
+Corretto: il contante va su «CASSA CONTANTI», POS e bonifico restano sul conto
+corrente HDI.
+
+**Resta da decidere (Francesco):** su quale conto arriva il **finanziamento
+Agos**. Oggi nessun conto lo dichiara, e il motore lo dice invece di sceglierne
+uno a caso: *«Nessun conto dichiara di ricevere Finanziamento Agos (carta HDI).
+Scegli il conto in Strumenti › Conti e causali.»*
+
+---
+
+## 4sexies. Il CRM dentro IAM — liste e filtri per il marketing
+
+> **28/09/2026.** «Unifichiamo anche il marketing con IAM, così possiamo
+> [avere] la voce CRM di cui parlavamo con i vari filtri per ricercare ed
+> estrapolare liste nel portafoglio: esempio cliente di un determinato comune,
+> clienti di una determinata età, che hanno note scritte, che hanno casa di
+> proprietà, che fanno una determinata professione, che hanno una determinata
+> garanzia in polizza, che hanno una determinata polizza, ecc. Inoltre con la
+> possibilità di escludere determinati clienti di collaboratori.» — Francesco
+
+### Ci si arriva da IAM
+
+*Marketing › CRM · liste e filtri*, **prima** di «Campagne email» perché è
+l'ordine del lavoro: prima si sceglie a chi si scrive, poi si scrive. La
+schermata esisteva già nel quotatore e da IAM non si poteva raggiungere — chi
+doveva fare una lista usciva dal gestionale, e una schermata che non si trova
+vale come una schermata che non c'è.
+
+### Che cosa c'era già, e che cosa mancava
+
+| filtro | prima | adesso |
+|---|:--:|:--:|
+| comune, provincia, età, professione, note (esistenza e testo) | ✅ | ✅ |
+| ramo, compagnia, «…ma NON», scadenza, premio, gruppo | ✅ | ✅ |
+| **garanzia in polizza** (e «…ma NON la garanzia») | ✅ | ✅ |
+| perso / attivo / prospect, e come e quando l'abbiamo perso | ✅ | ✅ |
+| **casa di proprietà** | ❌ | ✅ a tre valori |
+| **prodotto preciso** (e «…ma NON il prodotto») | ❌ | ✅ |
+| **escludere i clienti di uno o più collaboratori** | ❌ | ✅ |
+
+### Le tre cose che non erano ovvie
+
+**1. La casa di proprietà: tre risposte, non due.** Chi non ha risposto non è
+un «no».
+
+**2. Una casella di spunta uguale su tutte le righe non è un dato.** Misurato:
+`casa_proprieta` vale `false` su **2.546 anagrafiche su 2.547** e `null` su
+**zero**. Non vuol dire che 2.546 clienti non hanno casa: vuol dire che a
+nessuno è stato chiesto — la colonna ha un valore predefinito e nessuno l'ha
+mai toccata. Un filtro «senza casa di proprietà» costruito su quella colonna
+produce una lista di 2.546 persone di cui non sappiamo niente, e una campagna
+mandata lì sembra mirata e non lo è.
+
+La misura di copertura da sola non lo vedeva: contando le caselle **non vuote**
+avrebbe detto «100% compilato». Adesso, per le caselle di spunta, la schermata
+scrive **«mai risposto»** al posto del conteggio. E non lo scrive sui campi che
+hanno davvero due valori: un avviso che c'è sempre si impara a saltare, e con
+lui si salta quello vero.
+
+**3. L'esclusione vince sempre sull'inclusione.** Se un collaboratore finisce
+in tutti e due gli elenchi, i suoi clienti restano fuori: nel dubbio non si
+manda. Un cliente **senza** collaboratore non è il cliente di nessuno e non
+viene escluso — sono i clienti diretti dell'agenzia. E «Azzera» svuota davvero
+il campo a scelta multipla: `value = ''` non lo svuota, le voci restano
+selezionate, e la ricerca dopo esclude ancora senza che a schermo si veda
+niente di strano.
+
+### Il prodotto preciso non è la famiglia
+
+«Ha un'auto» e «ha l'Auto HDI» sono due domande diverse. Il filtro sul ramo
+passa dal vocabolario (chi cerca «Auto» trova anche le polizze che la compagnia
+chiama `rca`); quello sul prodotto **no**, di proposito: serve quando si scrive
+a chi ha un prodotto che cambia condizioni o che si vuole sostituire.
+
+### Quello che i filtri non possono dare, oggi
+
+I flussi portano **polizze**, non dati di vita. Misurato sulle 2.547
+anagrafiche: professione **1**, email **17**, note **23**, consenso marketing
+**4**, collaboratore assegnato **2**. I filtri ci sono e funzionano; la materia
+prima per usarli in gran parte no, e la spia accanto a ogni campo lo dice prima
+che qualcuno ci costruisca sopra una campagna.
+
+---
+
 ## 5. Le regole di casa che valgono ovunque
 
 - **Niente esce senza conferma**: email, campagne, SMS, post. Sempre

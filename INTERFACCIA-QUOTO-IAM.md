@@ -273,17 +273,42 @@ sessione in `localStorage` sotto una chiave che dipende solo dal progetto
 (`sb-<ref>-auth-token`): la sessione di IAM è **già** quella del
 preventivatore, e nessuno la passa più (dal 17/09/2026, passo 3 moduli 4 e 5).
 
+**Vale per TUTTO quello che sta nel riquadro**, non solo per il preventivatore:
+`/nuovo-preventivo/` (QUOTO) e `/nuovo-preventivo/lab/` (**Marketing**) stanno
+sulla stessa origine di IAM e seguono le stesse due regole.
+
 Due regole:
-- **Nel riquadro il preventivatore non rinnova** (`autoRefreshToken: false`,
+- **Nel riquadro l'ospite non rinnova** (`autoRefreshToken: false`,
   `persistSession` acceso): rinnova IAM, e il riquadro rilegge lo storage a
   ogni `getSession()`. Due copie separate della sessione facevano ruotare il
   refresh token da una parte sola e Supabase revocava tutto («already used»,
   log del 29/07/2026): con una copia condivisa quella corsa non esiste.
 - **Un `signOut` da una parte vale per tutte e due**: stesso storage, stessa
-  sessione. Nel riquadro il preventivatore non offre un'uscita (la barra è
+  sessione. Nel riquadro l'ospite non offre un'uscita (la barra è
   nascosta dalla scocca); a pagina intera è il comportamento di due schede
   dello stesso sito. Non introdurre logout/redirect che invalidino la
   sessione attraversando il confine.
+
+> **29/09/2026 — Marketing era rimasto fuori da tutte e due, e si vedeva.**
+> Il Lab aveva ancora `persistSession: false`: giusto quando stava su
+> `quoto.withusassicurazioni.it` e riceveva i token in un messaggio, sbagliato
+> dal 16/09. Non guardava lo storage, non gli arrivava niente (la scocca
+> risponde `{}` sulla stessa origine, ed è corretto) e mostrava **la sua
+> schermata di accesso dentro IAM**: chiedeva di nuovo la password a chi era
+> già entrato.
+>
+> E violava la seconda regola in un punto che non si vedeva. `showBlocked()`
+> chiamava `db.auth.signOut()`: con lo storage condiviso quella riga cancella
+> la sessione di IAM e revoca il refresh token sul server — chi apriva
+> Marketing senza essere abilitato veniva buttato fuori da IAM, da una
+> schermata che doveva solo dirgli «non puoi entrare qui». Era spento solo
+> perché il client non leggeva lo storage: **correggere la prima metà avrebbe
+> acceso la seconda nello stesso istante.**
+>
+> Dentro il riquadro Marketing ora non disegna più né la sua testata né la sua
+> porta d'ingresso (`emb-iam`, come il preventivatore): quando manca qualcosa
+> lo dice in un riquadro dentro la pagina, con le parole di IAM. Il cancello
+> su chi può entrare (`lab_abilitato`) non è stato toccato.
 
 La storia: prima `francescotp93.github.io` (stessa origine, login condiviso),
 poi `iam.` e `quoto.` (origini diverse, token nell'hash e poi sul canale), ora

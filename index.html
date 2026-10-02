@@ -74,16 +74,16 @@
 <script src="tariffe/motore/pdf-withus.js?v=20260917"></script>
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
-<script src="tariffe/motore/pagamento-rata.js?v=20260925"></script>
-<script src="tariffe/motore/flusso-ssf.js?v=20260926"></script>
-<script src="tariffe/motore/flusso-hdi.js?v=20260926"></script>
-<script src="tariffe/motore/crm-analisi.js?v=20260926"></script>
+<script src="tariffe/motore/pagamento-rata.js?v=20260928"></script>
+<script src="tariffe/motore/flusso-ssf.js?v=20260929"></script>
+<script src="tariffe/motore/flusso-hdi.js?v=20260929"></script>
+<script src="tariffe/motore/crm-analisi.js?v=20260928"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260920"></script>
 <!-- Le coordinate su cui i collaboratori versano stanno sui conti, e i conti
      li conosce il motore della contabilità: il controllo dell'IBAN è già lì
      (con la tabella delle lunghezze per paese), e riscriverlo qui vorrebbe
      dire averne due — quello sbagliato sarebbe quello che nessuno guarda. -->
-<script src="tariffe/motore/contabilita.js?v=20260924"></script>
+<script src="tariffe/motore/contabilita.js?v=20260928"></script>
 <script src="tariffe/motore/collaboratori.js?v=20260921"></script>
 <script src="tariffe/motore/registro.js?v=20260923"></script>
 <script src="tariffe/motore/assegnazione.js?v=20260925"></script>
@@ -103,7 +103,24 @@
      due modi diversi danno due numeri che non si possono confrontare.
      La definizione per esteso: IAM_MASTER_SPEC.md §4ter. -->
 <script src="tariffe/motore/portafoglio-stato.js?v=20260926"></script>
-<script src="tariffe/motore/foglio-cassa.js?v=20260924"></script>
+<!-- Che cosa copre una polizza, e quanto costa ogni pezzo. Due tracciati
+     scrivono le garanzie in due forme e in due posti; qui diventano una sola,
+     i codici di Prima prendono un nome che si può leggere al telefono, e la
+     somma delle garanzie si confronta col premio. -->
+<script src="tariffe/motore/garanzie.js?v=20260928"></script>
+<!-- Il vocabolario delle garanzie e la guida che ne nasce: il confronto fra
+     prodotti e la guida al cliente parlano la stessa lingua, e la lingua
+     sta in un posto solo (02/10/2026). -->
+<script src="tariffe/motore/confronto.js?v=20261002"></script>
+<script src="tariffe/motore/guida-garanzie.js?v=20261002"></script>
+<!-- La lettura della proposta di polizza: candidati, non verità. Il motore
+     propone righe con la pagina da cui vengono; chi prepara il preventivo
+     spunta quelle giuste (02/10/2026). -->
+<!-- Il testo di un PDF, una voce per pagina: lo usano il preventivo,
+     Confronta e il caricamento di una polizza (02/10/2026). -->
+<script src="tariffe/motore/pdf-testo.js?v=20261002"></script>
+<script src="tariffe/motore/lettura-proposta.js?v=20261002"></script>
+<script src="tariffe/motore/foglio-cassa.js?v=20260930"></script>
 <script src="tariffe/motore/piano-rate.js?v=20260921"></script>
 <script src="tariffe/motore/animali.js?v=20260910"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260910"></script>
@@ -992,6 +1009,13 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .pol-cassetto > h4 .pol-azione{text-transform:none;letter-spacing:0;font-weight:700;font-size:11.5px;
   color:var(--w1-verde-scuro);cursor:pointer;text-decoration:underline}
 .pol-cassetto .pol-vuoto{padding:11px;font-size:12px;color:var(--w1-testo2);line-height:1.5}
+/* La riga sotto le garanzie: quadrano col premio, o non quadrano e si dice di
+   quanto. Verde e rosso tenui — è un'informazione, non un allarme. */
+.pol-gar-tot td{background:var(--w1-sfondo);font-weight:700}
+.pol-gar-quadra{margin-top:7px;padding:8px 11px;border-radius:var(--w1-raggio);font-size:12px;
+  line-height:1.5;background:var(--w1-sfondo);border:1px solid var(--w1-bordo);color:var(--w1-testo2)}
+.pol-gar-quadra.ok{background:var(--w1-verde-tenue);border-color:var(--w1-bordo);color:var(--w1-verde-scuro)}
+.pol-gar-quadra.ko{background:#fdf1f0;border-color:#f3c9c4;color:#a33228}
 .pol-cassetto table{width:100%;border-collapse:collapse;font-size:12px}
 .pol-cassetto th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;
   color:var(--w1-testo2);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--w1-bordo)}
@@ -1052,6 +1076,14 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
   --w1-rosso:#a3352a;
   --w1-rosso-bg:#fff6f5;
   --w1-zebra:#fafbfc}
+/* Le due frecce accanto alle date: un giorno indietro, un giorno avanti.
+   Stanno nella barra dei filtri come un campo qualunque, con la stessa
+   altezza degli altri, cosi' la riga non si scompone. */
+.fc-gg{display:flex;gap:4px}
+.fc-gg-b{width:32px;height:30px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--muted);
+  font-family:inherit;font-size:15px;cursor:pointer;padding:0;line-height:1}
+.fc-gg-b:hover{background:#f5f6f7;color:var(--ink,#1f2933)}
 /* La barra dei totali: caselle affiancate, etichetta piccola sopra e cifra
    grande sotto. Le tessere di prima erano alte il doppio e stavano su due
    righe: gli stessi numeri, con meta' della pagina occupata. */
@@ -1436,6 +1468,68 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .pdoc-x{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px}
 .pdoc-x:hover{color:var(--ink)}
 .pdoc-bd{padding:14px 18px;overflow:auto}
+/* ── LA SCHEDA DELLA POLIZZA È LARGA (28/09/2026) ───────────────────────────
+   620px vanno benissimo per un modulo di tre campi. Su una polizza no: numero,
+   compagnia, prodotto, targa, effetto, scadenza, premio, rate, sinistri e
+   garanzie in una colonna stretta diventano dieci schermate da scorrere, e
+   per rispondere a «questa polizza copre i cristalli?» bisogna scendere fino
+   in fondo. Nel gestionale che Francesco usa (AssiEasy) la polizza si apre a
+   tutto schermo e si legge tutta insieme: qui si fa lo stesso.
+
+   La classe sta sulla cornice, non sulla scatola, così non serve `:has()` e
+   gli altri due pannelli — pagamento e documenti, che sono moduli — restano
+   stretti come devono. */
+/* ── L'ANTEPRIMA DELLA GUIDA ALLE GARANZIE (02/10/2026) ─────────────────────
+   Quello che va visto per primo e' l'elenco delle cose da confermare, non le
+   schede riuscite: li' dentro finiscono i refusi veri del prospetto, e se si
+   vedono dopo che il foglio e' partito non sono serviti a niente. Per questo
+   sta in cima e in ambra, e una scheda con qualcosa da confermare si tinge. */
+.ppg-vuoto{font-size:12.5px;color:var(--muted);padding:12px 14px;border:1px dashed var(--line);
+  border-radius:10px;line-height:1.5}
+.ppg-avv{background:#fff4e6;border:1px solid #ffd8a8;border-radius:10px;padding:10px 13px;
+  font-size:12.5px;color:#8a5200;line-height:1.5;margin-bottom:10px}
+.ppg-avv ul{margin:6px 0 0;padding-left:18px}
+.ppg-avv li{margin:3px 0}
+.ppg-ok{background:#e7f6ec;border:1px solid #b9e3cd;border-radius:10px;padding:9px 13px;
+  font-size:12.5px;color:#1b6b38;margin-bottom:10px}
+.ppg-conto{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+  font-weight:700;margin:0 0 8px}
+.ppg-sez{margin-bottom:12px}
+.ppg-sez-t{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink,#1f2933);margin-bottom:6px}
+.ppg-sez-t span{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:6px;background:var(--ink,#1f2933);color:#fff;font-size:10.5px}
+.ppg-c{border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px;background:#fff}
+.ppg-c-avv{border-color:#ffd8a8;background:#fffaf4}
+.ppg-c-h{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:13px}
+.ppg-c-h span{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.ppg-c-e{font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px}
+.ppg-c-senza{color:#8a5200}
+.ppg-c-a{font-size:11.5px;color:#8a5200;line-height:1.45;margin-top:5px}
+.ppg-piede{font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:10px;
+  padding-top:9px;border-top:1px solid var(--line)}
+/* Le righe proposte dalla lettura di una proposta di polizza. Si spuntano a
+   una a una: il colore d'avviso tocca quelle che il motore stesso dice di
+   controllare, perché vengono da una tabella appiattita (02/10/2026). */
+.ppp-nota{font-size:11.5px;color:var(--muted);line-height:1.45;margin:6px 0 9px}
+.ppp-r{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);
+  border-radius:10px;padding:8px 11px;margin-bottom:6px;background:#fff;cursor:pointer}
+.ppp-r:hover{border-color:var(--brand)}
+.ppp-r-avv{border-color:#ffd8a8;background:#fffaf4}
+.ppp-r input{width:auto;margin:2px 0 0;flex:none}
+.ppp-t{display:block;font-size:13px;line-height:1.45;min-width:0}
+.ppp-t i{display:block;font-style:normal;font-size:11px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--muted);margin-top:2px}
+.ppp-t em{display:block;font-style:normal;font-size:11.5px;color:#8a5200;margin-top:3px}
+.ppp-t q{display:block;quotes:none;font-size:11.5px;color:var(--muted);margin-top:4px;
+  word-break:break-word}
+.pdoc-ov.pdoc-largo{padding:14px}
+.pdoc-ov.pdoc-largo .pdoc-box{max-width:1480px;max-height:94vh}
+.pdoc-ov.pdoc-largo .pdoc-bd{padding:16px 20px}
+@media(max-width:900px){
+  .pdoc-ov.pdoc-largo{padding:0}
+  .pdoc-ov.pdoc-largo .pdoc-box{max-height:100vh;height:100vh;border-radius:0}
+}
 /* L'estratto conto che esce di casa (brief #02 · M6). Tutto col prefisso del
    blocco: nel foglio di stile i nomi sono globali, e il guardiano delle
    collisioni misura quelli che QUOTO e IAM hanno in comune.
@@ -3581,6 +3675,13 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             <option value="incasso">Data di incasso</option></select></div>
           <div class="pf-f"><label>dal</label><input id="fc-da" type="date"></div>
           <div class="pf-f"><label>al</label><input id="fc-a" type="date"></div>
+          <!-- Le frecce spostano tutt'e due le date di un giorno, avanti o
+               indietro, e rifanno la ricerca da sole: la cassa di ieri senza
+               riscrivere due campi a mano. -->
+          <div class="pf-f"><label>giorno</label><div class="fc-gg">
+            <button type="button" class="fc-gg-b" onclick="fcSposta(-1)" title="Un giorno indietro" aria-label="Un giorno indietro"><i class="ti ti-chevron-left"></i></button>
+            <button type="button" class="fc-gg-b" onclick="fcSposta(1)" title="Un giorno avanti" aria-label="Un giorno avanti"><i class="ti ti-chevron-right"></i></button>
+          </div></div>
           <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="fcRender()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="fcAzzera()">Questo mese</button></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -11302,8 +11403,27 @@ function caCopertura(campo) {
   if (!c || !c.totale) return '';
   const perc = Math.round(c.quota * 100);
   const col = c.inutilizzabile ? '#c0392b' : (perc < 60 ? '#b8860b' : '#1c9c4c');
+  /* «MAI RISPOSTO» È UN'ALTRA COSA DA «QUASI VUOTO» (28/09/2026).
+     `casa_proprieta` è `false` su 2.546 anagrafiche su 2.547 e `null` su
+     nessuna: la colonna è piena e la domanda non è mai stata fatta. Un «1/2547
+     quasi vuoto» farebbe pensare che gli altri 2.546 abbiano risposto «no» —
+     e una campagna a «chi non ha casa» partirebbe verso duemila persone di
+     cui non sappiamo niente. */
+  if (c.maiRisposto) {
+    return '<span style="font-size:10px;font-weight:700;color:#c0392b;margin-left:6px;white-space:nowrap"'
+      + ' title="In archivio questa casella dice la stessa cosa su tutti: è il valore predefinito, non una risposta. Filtrarci sopra seleziona chi non è mai stato chiesto.">'
+      + 'mai risposto</span>';
+  }
   return '<span style="font-size:10px;font-weight:700;color:' + col + ';margin-left:6px;white-space:nowrap" title="Quante anagrafiche hanno questo dato compilato">'
     + c.compilati + '/' + c.totale + (c.inutilizzabile ? ' · quasi vuoto' : '') + '</span>';
+}
+
+/* I valori scelti in un campo a scelta multipla. Vuoto se il campo non c'è —
+   e un elenco vuoto, per il motore, vuol dire «non escludere nessuno». */
+function caScelti(id) {
+  const e = document.getElementById(id);
+  if (!e || !e.selectedOptions) return [];
+  return [...e.selectedOptions].map(o => o.value).filter(Boolean);
 }
 
 function caCampo(etichetta, campo, dentro) {
@@ -11331,6 +11451,23 @@ function caDisegnaFiltri() {
   /* Le garanzie le elenca il database, con quante polizze le hanno: il numero
      accanto è la differenza fra «non ne abbiamo» e «non lo sappiamo». */
   const gar = (CA_GARANZIE || []).map(g => '<option value="' + esc(g.etichetta) + '">' + esc(g.etichetta) + ' (' + g.quante + ')</option>').join('');
+  /* I PRODOTTI VERI, com'è scritto sulla polizza — non ricondotti alla
+     famiglia (28/09/2026). «Ha la polizza» qui sopra risponde a «ha un'auto»;
+     questo risponde a «ha l'Auto HDI», che serve quando si scrive a chi ha un
+     prodotto che cambia condizioni o che si vuole sostituire. */
+  const prodotti = [...new Set(Object.values(CA_POLIZZE).flat()
+    .map(p => String(p.prodotto || p.modulo || '').trim()).filter(Boolean))].sort();
+  const prodOpz = prodotti.map(p => '<option value="' + esc(p) + '">' + esc(p) + '</option>').join('');
+  /* I COLLABORATORI CHE HANNO DAVVERO DEI CLIENTI in questo archivio. I nomi
+     li tiene un'altra schermata (`TIT_COLLAB_NOMI`): quando non è stata aperta
+     restano gli identificativi, che è brutto ma vero — meglio di un elenco
+     vuoto che farebbe credere che collaboratori non ce ne siano. */
+  const nomiCollab = (typeof window !== 'undefined' && window.TIT_COLLAB_NOMI) || {};
+  const collabId = [...new Set((CA_ANAG || []).map(r => String(r.intermediario_id || '').trim()).filter(Boolean))];
+  const collabOpz = collabId
+    .map(id => ({ id, nome: nomiCollab[id] || id }))
+    .sort((a, b) => a.nome.localeCompare(b.nome))
+    .map(c => '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>').join('');
 
   box.innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">'
@@ -11353,9 +11490,29 @@ function caDisegnaFiltri() {
        sulla polizza della casa, dove non esistono nemmeno. */
     + caCampo('Ha la garanzia', 'portafoglio', '<input id="ca-garanzia" list="ca-gar-lista" placeholder="es. infortuni conducente" style="' + st + '"><datalist id="ca-gar-lista">' + gar + '</datalist>')
     + caCampo('…ma NON la garanzia', 'portafoglio', '<input id="ca-senza-garanzia" list="ca-gar-lista" placeholder="es. tutela legale" style="' + st + '">')
+    /* IL PRODOTTO PRECISO (28/09/2026), distinto dalla famiglia qui sopra. */
+    + caCampo('Ha il prodotto', 'portafoglio', '<select id="ca-prodotto" style="' + st + '"><option value="">Qualunque</option>' + prodOpz + '</select>')
+    + caCampo('…ma NON il prodotto', 'portafoglio', '<select id="ca-senza-prodotto" style="' + st + '"><option value="">—</option>' + prodOpz + '</select>')
     + caCampo('Ha note in anagrafica', 'note', '<select id="ca-con-note" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì, ha note</option></select>')
     + caCampo('Professione', 'professione', '<input id="ca-prof" type="text" placeholder="contiene…" style="' + st + '">')
-    + caCampo('Collaboratore', 'intermediario_id', '<input id="ca-collab" type="text" placeholder="id collaboratore" style="' + st + '">')
+    /* LA CASA DI PROPRIETÀ (28/09/2026). Tre risposte e non due: chi non ha
+       risposto non è un «no». La spia accanto all'etichetta dice se quella
+       casella in archivio è mai stata risposta davvero. */
+    + caCampo('Casa di proprietà', 'casa_proprieta', '<select id="ca-casa" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No (dichiarato)</option></select>')
+    + caCampo('Collaboratore', 'intermediario_id',
+        collabOpz
+          ? '<select id="ca-collab" style="' + st + '"><option value="">Tutti</option>' + collabOpz + '</select>'
+          : '<input id="ca-collab" type="text" placeholder="nessun collaboratore in archivio" style="' + st + '">')
+    /* ESCLUDERE I CLIENTI DI QUALCUNO (28/09/2026, richiesta di Francesco).
+       «Inoltre con la possibilità di escludere determinati clienti di
+       collaboratori.» Una lista di marketing non deve pescare nel portafoglio
+       di chi non ci sta: è la sua clientela, e una mail partita da lì è un
+       problema con una persona. Si tengono premuti Ctrl/Cmd per sceglierne
+       più d'uno, e l'esclusione vince sempre sull'inclusione. */
+    + caCampo('Escludi i clienti di', 'intermediario_id',
+        collabOpz
+          ? '<select id="ca-escludi-collab" multiple size="3" style="' + st + ';height:auto">' + collabOpz + '</select>'
+          : '<div style="font-size:11.5px;color:var(--muted);padding:6px 0">Nessun collaboratore ha clienti in archivio.</div>')
     + caCampo('Sposato', 'sposato', '<select id="ca-sposato" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No (dichiarato)</option></select>')
     + caCampo('Ha figli', 'sposato', '<select id="ca-figli" style="' + st + '"><option value="">Indifferente</option><option value="si">Sì</option><option value="no">No (dichiarato)</option></select>')
     + caCampo('Nelle note c\'è', 'note', '<input id="ca-note" type="text" placeholder="cerca nel testo…" style="' + st + '">')
@@ -11386,8 +11543,14 @@ function caDisegnaFiltri() {
 function caPulisci() {
   ['ca-comune','ca-prov','ca-eta-da','ca-eta-a','ca-compagnia','ca-ramo','ca-senza-ramo',
    'ca-scadenza','ca-premio-da','ca-premio-a','ca-garanzia','ca-senza-garanzia','ca-con-note','ca-prof','ca-collab','ca-sposato','ca-figli','ca-note','ca-gruppo',
+   'ca-prodotto','ca-senza-prodotto','ca-casa',
    'ca-stato','ca-come-perso','ca-perso-dal','ca-perso-al']
     .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  /* Un campo a scelta multipla non si svuota con `value = ''`: le voci
+     restano selezionate e il filtro successivo esclude ancora. È il modo più
+     silenzioso di mandare la lista sbagliata. */
+  const esc2 = document.getElementById('ca-escludi-collab');
+  if (esc2 && esc2.selectedOptions) [...esc2.options].forEach(o => { o.selected = false; });
   const b = document.getElementById('ca-esito'); if (b) b.innerHTML = '';
   CA_RISULTATO = null;
 }
@@ -11498,8 +11661,16 @@ async function caCerca() {
     scadenzaEntroGiorni: (sc && sc !== 'scadute') ? Number(sc) : null,
     scadute: sc === 'scadute' ? true : null,
     premioDa: num(g('ca-premio-da')), premioA: num(g('ca-premio-a')),
+    /* Il prodotto preciso, che è un'altra domanda dalla famiglia di rami. */
+    prodotti: g('ca-prodotto') ? [g('ca-prodotto')] : [],
+    senzaProdotti: g('ca-senza-prodotto') ? [g('ca-senza-prodotto')] : [],
     professione: g('ca-prof') || null,
     collaboratoreId: g('ca-collab') || null,
+    /* I clienti di chi NON deve finire in lista. Si legge il campo a scelta
+       multipla; se il campo non c'è (nessun collaboratore in archivio) esce
+       un elenco vuoto, che non esclude nessuno. */
+    senzaCollaboratori: caScelti('ca-escludi-collab'),
+    casaProprieta: tri(g('ca-casa')),
     sposato: tri(g('ca-sposato')), haFigli: tri(g('ca-figli')),
     testoNote: g('ca-note') || null,
     conNote: g('ca-con-note') === 'si' ? true : null,
@@ -16478,10 +16649,13 @@ function pfNumero(p) {
    quando, e — per quello che si corregge da qui — chi ha fatto l'ultima
    modifica. Non è un vezzo: «questo pagamento chi l'ha cambiato?» è una
    domanda che arriva sempre, e arriva mesi dopo. */
-function polPannello(titolo, sottotitolo, corpo) {
+/* `largo` apre il pannello quasi a tutto schermo. Lo usa solo la scheda della
+   polizza: il pagamento e i documenti sono moduli, e un modulo di tre campi
+   steso su millecinquecento pixel si legge peggio, non meglio. */
+function polPannello(titolo, sottotitolo, corpo, largo) {
   document.getElementById('pol-ov')?.remove();
   document.body.insertAdjacentHTML('beforeend',
-    `<div id="pol-ov" class="pdoc-ov" onclick="if(event.target.id==='pol-ov')this.remove()">
+    `<div id="pol-ov" class="pdoc-ov${largo ? ' pdoc-largo' : ''}" onclick="if(event.target.id==='pol-ov')this.remove()">
       <div class="pdoc-box">
         <div class="pdoc-hd">
           <div><b>${titolo}</b><div class="pdoc-sub">${sottotitolo || ''}</div></div>
@@ -16493,6 +16667,137 @@ function polPannello(titolo, sottotitolo, corpo) {
 
 const polData = (v) => v ? new Date(v).toLocaleDateString('it-IT') : '—';
 const polQuando = (v) => v ? new Date(v).toLocaleString('it-IT') : '—';
+
+/* ══ LE GARANZIE DELLA POLIZZA (28/09/2026) ════════════════════════════════
+   «La schermata delle specifiche delle garanzie deve essere completa, proprio
+   per come è presente nei file dei flussi di compagnia» — Francesco.
+
+   Prima ne mostrava quattro colonne fisse (garanzia, netto, tasse, lordo) coi
+   nomi come li scrive il computer della compagnia: a schermo c'era scritto
+   `INFORTUNI_CONDUCENTE`. Adesso:
+
+     · il nome è in italiano — i 19 codici veri di Prima hanno una traduzione,
+       le descrizioni di HDI sono già scritte bene e non si toccano;
+     · le colonne sono quelle che hanno un valore SU QUESTA POLIZZA. Massimale
+       e franchigia sono vuoti su tutte e 11.131 le garanzie di Prima: due
+       colonne di trattini si imparano a saltare, e con loro si salta la
+       tabella;
+     · sotto c'è la riga che dice se le garanzie sommano al premio. Quando non
+       torna si dice di quanto: una tabella che non quadra e non lo dice è
+       peggio di una tabella che manca.
+
+   Le REGOLE stanno nel motore, con le loro 28 prove e 17 sabotaggi. Qui c'è
+   solo il disegno. `grezze` è il ripiego per quando il motore non si è
+   caricato: meglio quattro colonne che una sezione vuota. */
+const POL_GAR_ETICHETTE = {
+  netto: 'Netto', imponibile: 'Imponibile', tasse: 'Tasse', ssn: 'SSN',
+  massimale: 'Massimale', franchigia: 'Franchigia', provvigione: 'Provvigione'
+};
+
+/* ══ IL DETTAGLIO DEL CONTRATTO (28/09/2026) ═══════════════════════════════
+   Quello che il flusso ci manda e che la scheda non faceva vedere.
+
+   `dati.ssf` porta ventitré campi e la scheda ne mostrava sei: la scomposizione
+   del premio (netto, imponibile, tasse, contributo SSN) c'era su tutte e 4.073
+   le polizze ed era invisibile — ed è la prima cosa che si guarda quando un
+   cliente chiede perché il premio è salito. Nel gestionale che Francesco usa
+   sono in cima alla scheda, e qui vanno messe.
+
+   UNA RIGA COMPARE SOLO SE HA UN VALORE. Un blocco di dodici righe con nove
+   trattini si smette di leggere, e i tre dati buoni si perdono in mezzo. */
+function polContratto(p, dati, ssf) {
+  const righe = [];
+  const metti = (et, val, sotto) => {
+    if (val == null || val === '' || val === '—') return;
+    righe.push('<div class="pol-r"><span>' + et + '</span><b>' + val
+      + (sotto ? '<div class="cl-sub" style="font-weight:400">' + esc(sotto) + '</div>' : '') + '</b></div>');
+  };
+  const eur = (n) => n == null ? null : pfEuro(n);
+
+  /* La scomposizione del premio, nell'ordine in cui si costruisce:
+     netto → imponibile → tasse → SSN → lordo. */
+  metti('Netto', eur(ssf.netto != null ? ssf.netto : dati.premio_netto));
+  metti('Imponibile', eur(ssf.imponibile));
+  metti('Tasse', eur(ssf.tasse));
+  /* Il contributo al Servizio Sanitario: sta dentro il lordo della RCA e i
+     clienti lo chiedono per il 730. */
+  metti('Contributo SSN', eur(ssf.ssn), ssf.ssn != null ? 'compreso nel premio' : '');
+
+  metti('Ramo', esc(ssf.ramo || dati.ramo || ''));
+  metti('N. proposta', esc(ssf.proposta || ''));
+  metti('Rate all\'anno', ssf.rate_anno != null ? String(ssf.rate_anno) : null);
+  /* La scadenza originale è quella del contratto; quella «effettiva» la
+     cambiano le sospensioni. Si mostra solo se dice qualcosa di diverso. */
+  metti('Scadenza originale', ssf.scadenza_originale && ssf.scadenza_originale !== p.data_scadenza
+    ? polData(ssf.scadenza_originale) : null);
+  metti('Emessa fino al', ssf.scadenza_emesso ? polData(ssf.scadenza_emesso) : null);
+  metti('Agenzia', esc(ssf.agenzia || dati.agenzia || ''));
+  metti('Codice ANIA', esc(ssf.compagnia_ania || dati.ania || ''));
+  /* La polizza che questa ha preso il posto di: è l'unico modo di ritrovare
+     la storia di un cliente che ha cambiato veicolo o garanzie. */
+  metti('Sostituisce', esc(dati.sostituisce_numero || ssf.sostituisce_numero || ''));
+  metti('Annullata il', ssf.data_annullamento ? polData(ssf.data_annullamento) : null,
+    ssf.motivo_storno ? 'motivo: ' + ssf.motivo_storno : '');
+
+  if (!righe.length) return '';
+  return '<div class="flu-sez">Dettaglio del contratto <span class="cl-sub">come lo manda la compagnia</span></div>'
+    + '<div class="pol-griglia">' + righe.join('') + '</div>';
+}
+
+function polGaranzie(sch, grezze) {
+  /* SENZA MOTORE NON SI NASCONDE NIENTE. Se `garanzie.js` non si è caricato,
+     la sezione mostra quello che sa mostrare da sé e lo dichiara — far
+     sparire le garanzie di una polizza che ce le ha è il difetto peggiore di
+     tutti, perché somiglia a un dato che non c'è. */
+  if (!sch) {
+    const g = grezze || [];
+    return `<div class="flu-sez">Garanzie — ${g.length || 'nessuna nel flusso'}</div>`
+      + (g.length ? `<table class="storico-table"><thead><tr><th>Garanzia</th><th class="soldi">Lordo</th></tr></thead><tbody>`
+          + g.map(x => `<tr><td>${esc(x.descrizione || x.codice || '—')}</td>
+              <td class="soldi"><b>${(x.lordo != null || x.premio_lordo != null) ? pfEuro(x.lordo != null ? x.lordo : x.premio_lordo) : '—'}</b></td></tr>`).join('')
+          + '</tbody></table><div class="cl-sub">Il motore delle garanzie non è caricato: qui c\'è solo l\'elenco, senza il dettaglio.</div>'
+        : '<div class="cl-sub">Le garanzie arrivano dal flusso della compagnia: su una polizza inserita a mano non ci sono.</div>');
+  }
+
+  if (!sch.lista.length) {
+    return '<div class="flu-sez">Garanzie — nessuna nel flusso</div>'
+      + '<div class="cl-sub">Le garanzie arrivano dal flusso della compagnia: su una polizza inserita a mano non ci sono.</div>';
+  }
+
+  /* Il bene assicurato non è una colonna: è una frase lunga
+     («AUTO HDI - PEUGEOT 2008 PURETECH 100 S&S ACTIVE (GV712FB)») e in una
+     colonna stretta si spezzerebbe su quattro righe. Va sotto il nome, e solo
+     quando i beni diversi sono più di uno — su una polizza con un veicolo
+     solo, ripeterlo su ogni riga è rumore. */
+  const beni = [...new Set(sch.lista.map(g => g.bene).filter(Boolean))];
+  const mostraBene = beni.length > 1;
+  const cols = sch.colonne.filter(c => c !== 'bene');
+  const soldi = { netto: 1, imponibile: 1, tasse: 1, ssn: 1, provvigione: 1, massimale: 1, franchigia: 1 };
+  const cella = (g, c) => g[c] == null ? '—' : (soldi[c] ? pfEuro(g[c]) : esc(String(g[c])));
+
+  const q = sch.quadratura;
+  const esitoCls = q.esito === 'quadra' ? 'ok' : (q.esito === 'non_quadra' ? 'ko' : '');
+  const riga = q.esito === 'non_si_puo_dire' && sch.totali.lordo == null ? ''
+    : `<div class="pol-gar-quadra ${esitoCls}"><i class="ti ti-${q.esito === 'quadra' ? 'check' : (q.esito === 'non_quadra' ? 'alert-triangle' : 'help')}"></i> ${esc(q.spiega)}</div>`;
+
+  return `<div class="flu-sez">Garanzie — ${sch.lista.length}${
+      sch.fonte ? ` <span class="cl-sub">dal flusso ${esc(sch.fonte.toUpperCase())}</span>` : ''}</div>
+    <table class="storico-table pol-gar">
+      <thead><tr><th>Garanzia</th>${cols.map(c => `<th class="soldi">${POL_GAR_ETICHETTE[c] || esc(c)}</th>`).join('')}<th class="soldi">Lordo</th></tr></thead>
+      <tbody>
+        ${sch.lista.map(g => `<tr>
+          <td>${esc(g.nome)}${g.codice && g.codice !== g.nome ? `<div class="cl-sub">${esc(g.codice)}</div>` : ''}${
+            mostraBene && g.bene ? `<div class="cl-sub">${esc(g.bene)}</div>` : ''}</td>
+          ${cols.map(c => `<td class="soldi">${cella(g, c)}</td>`).join('')}
+          <td class="soldi"><b>${g.lordo != null ? pfEuro(g.lordo) : '—'}</b></td></tr>`).join('')}
+        <tr class="pol-gar-tot"><td><b>Totale</b></td>
+          ${cols.map(c => `<td class="soldi">${sch.totali[c] != null ? pfEuro(sch.totali[c]) : ''}</td>`).join('')}
+          <td class="soldi"><b>${sch.totali.lordo != null ? pfEuro(sch.totali.lordo) : '—'}</b></td></tr>
+      </tbody>
+    </table>
+    ${riga}
+    ${!mostraBene && beni.length === 1 ? `<div class="cl-sub" style="margin-top:6px">Tutte sul bene: ${esc(beni[0])}</div>` : ''}`;
+}
 
 /* La riga «chi e quando», in fondo a ogni pannello. */
 /* 19/09/2026: la storia arriva dal REGISTRO, non più da una traccia scritta
@@ -16523,7 +16828,7 @@ async function polLeggi(id) {
 }
 
 async function polDettaglio(id) {
-  polPannello('Polizza', 'Carico…', '<div class="empty-state">Carico…</div>');
+  polPannello('Polizza', 'Carico…', '<div class="empty-state">Carico…</div>', true);
   /* Il vocabolario delle modalità serve alla scheda del pagamento: senza, la
      tendina non conosce i collaboratori. */
   await mezCarica();
@@ -16542,6 +16847,10 @@ async function polDettaglio(id) {
      in archivio, tutte e 63, e la scheda mostrava un vuoto. */
   const gar = ssf.garanzie || dati.garanzie || [];
   const v = ssf.veicolo || dati.veicolo;
+  /* Le garanzie passano dal motore (`tariffe/motore/garanzie.js`): le due
+     forme diventano una, i codici di Prima prendono un nome leggibile, e si
+     sa quali colonne hanno davvero un valore su QUESTA polizza. */
+  const garSch = window.Garanzie ? window.Garanzie.scheda(p) : null;
 
   /* M1.3 (19/09/2026): il dettaglio deve bastare da solo — pagamento, rate in
      scadenza e produttore stanno QUI, non in tre pannelli da aprire uno dopo
@@ -16619,6 +16928,8 @@ async function polDettaglio(id) {
         + (prod.da ? ' <span class="cl-sub">' + esc(prod.da) + '</span>' : ''))}
     </div>
 
+    ${polContratto(p, dati, ssf)}
+
     <!-- Le due cose che si guardano aprendo una polizza, AFFIANCATE: le rate
          e i sinistri. Su telefono una sotto l'altra. -->
     <div class="pol-due">
@@ -16630,14 +16941,7 @@ async function polDettaglio(id) {
         ${polSinistri(sin, sinKo)}</div>
     </div>
 
-    <div class="flu-sez">Garanzie — ${gar.length || 'nessuna nel flusso'}</div>
-    ${gar.length ? `<table class="storico-table"><thead><tr><th>Garanzia</th><th class="soldi">Netto</th><th class="soldi">Tasse</th><th class="soldi">Lordo</th></tr></thead><tbody>
-      ${gar.map(g => `<tr><td>${esc(g.descrizione || g.codice || '—')}</td>
-        <td class="soldi">${g.netto != null ? pfEuro(g.netto) : '—'}</td>
-        <td class="soldi">${g.tasse != null ? pfEuro(g.tasse) : '—'}</td>
-        <td class="soldi"><b>${g.lordo != null ? pfEuro(g.lordo) : '—'}</b></td></tr>`).join('')}
-      <tr><td><b>Totale</b></td><td></td><td></td><td class="soldi"><b>${pfEuro(gar.reduce((t, g) => t + (g.lordo || 0), 0))}</b></td></tr>
-      </tbody></table>` : '<div class="cl-sub">Le garanzie arrivano dal flusso della compagnia: su una polizza inserita a mano non ci sono.</div>'}
+    ${polGaranzie(garSch, gar)}
 
     ${v && (v.targa || v.classe) ? `<div class="flu-sez">Veicolo</div>
       <div class="pol-griglia">
@@ -18420,7 +18724,11 @@ function mezLeggi(id) { return ((document.getElementById(id) || {}).value || '')
 const TIT_MEZZI = {
   contante: 'Contante', assegno: 'Assegno', bonifico: 'Bonifico',
   pos: 'POS', carta_credito: 'Carta di credito',
-  paypal: 'PayPal', prepagata: 'Carta prepagata', domiciliazione: 'Domiciliazione (SDD)', altro: 'Altro'
+  paypal: 'PayPal', prepagata: 'Carta prepagata', domiciliazione: 'Domiciliazione (SDD)',
+  /* La carta HDI è il finanziamento Agos (28/09/2026): il premio lo anticipa
+     una finanziaria, e chiamarla «carta di credito» vorrebbe dire non
+     distinguerla da un incasso che si chiude in tre giorni. */
+  finanziamento: 'Finanziamento Agos (carta HDI)', altro: 'Altro'
 };
 
 /* Il piano delle rate di una polizza: date e importi calcolati.
@@ -20486,11 +20794,25 @@ async function fluAnteprimaHdi(testo, box) {
     note = (data || []).map(x => x.numero_polizza).filter(Boolean);
   } catch (e) { console.warn('flusso HDI, polizze già in archivio:', e); }
 
+  /* E I CLIENTI GIÀ IN ARCHIVIO (29/09/2026). Serve per la stessa ragione delle
+     polizze qui sopra, e mancava: un'estrazione successiva manda le polizze
+     nuove e NON rimanda l'anagrafica di chi è già cliente. Senza questo elenco
+     quelle polizze risultavano «senza contraente» e bloccavano tutto il file.
+     Si prende anche il nominativo, che la polizza tiene copiato accanto al
+     collegamento: senza, entrerebbe agganciata al cliente giusto e in elenco
+     comparirebbe con un trattino al posto del nome. */
+  let clientiNoti = {};
+  try {
+    const { data } = await db.from('quote_anagrafiche')
+      .select('fonte_id,nominativo').eq('fonte', 'hdi').limit(20000);
+    (data || []).forEach(a => { if (a.fonte_id) clientiNoti[a.fonte_id] = a.nominativo || ''; });
+  } catch (e) { console.warn('flusso HDI, clienti già in archivio:', e); }
+
   /* Se il lettore inciampa, si dice. Senza questo `try`, un file storto
      lascerebbe la pagina ferma su «Leggo il portafoglio…» per sempre, e
      «non e' andato» resta l'unica cosa che si puo' raccontare. */
   let r;
-  try { r = H.esamina(testo, note); }
+  try { r = H.esamina(testo, note, clientiNoti); }
   catch (e) {
     console.error('flusso HDI:', e);
     box.innerHTML = '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> '
@@ -20507,7 +20829,14 @@ async function fluAnteprimaHdi(testo, box) {
       (r.busta.estratto_il ? ' · estratto il ' + esc(new Date(r.busta.estratto_il + 'T12:00:00').toLocaleDateString('it-IT')) : '') + '</div>' +
     (r.busta.ok ? '' : '<div class="pdoc-esito ko"><i class="ti ti-alert-triangle"></i> ' + esc(r.busta.guai.join(' ')) + '</div>') +
     '<div style="background:var(--surf);border:.5px solid var(--bord2);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:13px">' +
-      riga(c.anagrafiche, 'Clienti') + riga(c.polizze, 'Polizze') + riga(c.garanzie, 'Garanzie') +
+      riga(c.anagrafiche, 'Clienti') +
+      /* «238 su 252» quando qualcuna resta fuori, il numero secco quando
+         entrano tutte: la stessa forma delle rate qui sotto. Un numero solo
+         non distingue «il file ne ha 252» da «ne carico 252». */
+      riga(c.polizzeCaricabili != null && c.polizzeCaricabili !== c.polizze
+        ? c.polizzeCaricabili + ' <span style="color:var(--txt3);font-weight:400">su ' + c.polizze + '</span>'
+        : c.polizze, 'Polizze') +
+      riga(c.garanzie, 'Garanzie') +
       riga(c.titoliCaricabili + ' <span style="color:var(--txt3);font-weight:400">su ' + c.titoli + '</span>', 'Rate') +
       riga(c.sinistri, 'Sinistri') + riga(c.incassi, 'Incassi') +
     '</div>' +
@@ -20701,7 +21030,14 @@ async function fluEsistenti(analisi) {
   const piva = [...new Set((analisi.clienti || []).map(c => c.partita_iva).filter(Boolean))];
   const polKey = (analisi.polizze || []).map(p => p._fonte_id).filter(Boolean);
   const titKey = (analisi.titoli || []).map(t => t._fonte_id).filter(Boolean);
-  const out = { clientiPerCf: {}, clientiPerPiva: {}, polizzePerFonte: {}, titoliPerFonte: {} };
+  /* Le chiavi di contraente che le polizze NOMINANO ma che il file non porta:
+     è il cliente entrato con un'estrazione precedente. Senza risolverle, la
+     scrittura non aggancia quelle polizze (la `join` su `_cli`) e sparirebbero
+     in silenzio. Si chiedono solo quelle che servono, non tutto l'archivio. */
+  const cliInFile = new Set((analisi.clienti || []).map(c => c._chiave).filter(Boolean));
+  const cliKey = [...new Set((analisi.polizze || [])
+    .map(p => p._cliente).filter(k => k && !cliInFile.has(k)))];
+  const out = { clientiPerCf: {}, clientiPerPiva: {}, clientiPerFonte: {}, polizzePerFonte: {}, titoliPerFonte: {} };
 
   /* A blocchi: un `in` con duemila codici dentro non passa, e il portafoglio
      completo di codici ne ha molti di più di duemila. */
@@ -20717,6 +21053,11 @@ async function fluEsistenti(analisi) {
     const { data, error } = await db.from('quote_anagrafiche').select('id,partita_iva').in('partita_iva', blocco);
     if (error) throw error;
     (data || []).forEach(a => { if (a.partita_iva) out.clientiPerPiva[String(a.partita_iva).trim()] = a.id; });
+  });
+  await aBlocchi(cliKey, async (blocco) => {
+    const { data, error } = await db.from('quote_anagrafiche').select('id,fonte_id').eq('fonte', FLU_FONTE).in('fonte_id', blocco);
+    if (error) throw error;
+    (data || []).forEach(a => { if (a.fonte_id) out.clientiPerFonte[a.fonte_id] = a.id; });
   });
   await aBlocchi(polKey, async (blocco) => {
     const { data, error } = await db.from('quote_polizze').select('id,fonte_id').eq('fonte', FLU_FONTE).in('fonte_id', blocco);
@@ -30354,6 +30695,30 @@ function fcAzzera() {
   fcRender();
 }
 
+/* ── LE FRECCE DEL GIORNO (30/09/2026, richiesta di Francesco) ─────────────
+   «Metti una freccetta che dà la possibilità di spostarsi di un giorno
+   avanti oppure di un giorno indietro.»
+
+   Due cose che sembrano dettagli e non lo sono.
+   · Si spostano TUTT'E DUE le date, non una: la finestra resta lunga
+     uguale. Muovendo solo il «dal», ogni clic allungherebbe il periodo e i
+     totali crescerebbero senza che nessuno l'abbia chiesto.
+   · Si rifà la ricerca subito. Una freccia che cambia le date e lascia a
+     schermo i numeri di prima mostrerebbe un periodo e ne dichiarerebbe un
+     altro — ed è di soldi che si parla.
+   Il conto dei giorni sta nel motore (`FoglioCassa.sposta`), non qui. */
+function fcSposta(giorni) {
+  if (!window.FoglioCassa || !FoglioCassa.sposta) return;
+  const d = document.getElementById('fc-da'), a = document.getElementById('fc-a');
+  const n = FoglioCassa.sposta(d ? d.value : null, a ? a.value : null, giorni);
+  /* Nessuna data impostata: la finestra è «tutto», e «tutto» non ha un
+     giorno prima. Non se ne inventa una. */
+  if (!n) return;
+  if (d) d.value = n.dal || '';
+  if (a) a.value = n.al || '';
+  fcRender();
+}
+
 /* ── UNA TABELLA VUOTA DEVE DIRE PERCHÉ (24/09/2026) ───────────────────────
    Francesco ha importato il portafoglio di HDI — undici clienti, diciotto
    polizze, dodici rate, tutto scritto in archivio — e ha trovato il foglio
@@ -31879,8 +32244,8 @@ function ppValoreConAltro(idSel, idTxt) {
 
 function ppDescRiga(testo) {
   return `<div class="pp-desc-riga" style="display:flex;gap:7px;margin-bottom:7px">
-    <input type="text" class="pp-desc-txt" value="${esc(testo || '')}" placeholder="Es. Massimale RC 5.000.000 € · Franchigia 250 €" style="flex:1">
-    <button type="button" class="ghost" style="padding:6px 10px" title="Togli questa riga" onclick="this.parentNode.remove()"><i class="ti ti-minus"></i></button>
+    <input type="text" class="pp-desc-txt" value="${esc(testo || '')}" placeholder="Es. Massimale RC 5.000.000 € · Franchigia 250 €" style="flex:1" oninput="ppGuidaAnteprima()">
+    <button type="button" class="ghost" style="padding:6px 10px" title="Togli questa riga" onclick="this.parentNode.remove();ppGuidaAnteprima()"><i class="ti ti-minus"></i></button>
   </div>`;
 }
 
@@ -31890,6 +32255,64 @@ function ppDescAggiungi(testo) {
   box.insertAdjacentHTML('beforeend', ppDescRiga(testo));
   const ultimo = box.querySelector('.pp-desc-riga:last-child .pp-desc-txt');
   if (ultimo && !testo) ultimo.focus();
+  ppGuidaAnteprima();
+}
+
+/* ══ LA GUIDA ALLE GARANZIE: L'ANTEPRIMA CHE CONTROLLA (02/10/2026) ═════════
+   Il conto non sta qui: sta in `tariffe/motore/guida-garanzie.js`, che ha le
+   sue 20 prove e la sua controprova. Qui c'è il disegno — e la cosa che il
+   disegno deve far vedere non sono le schede riuscite, sono quelle NO.
+
+   Il blocco «da confermare» sta in CIMA e non in fondo. Sotto le schede
+   nessuno lo leggerebbe, e lì dentro ci finiscono i refusi veri: «Laste» per
+   «Lastre», la rendita che dice «al mese» e «al giorno» nella stessa riga. Se
+   si vede dopo che il foglio è partito, non è servito a niente. */
+function ppGuidaDati() {
+  if (!window.GuidaGaranzie) return null;
+  const righe = (typeof ppDescLeggi === 'function' ? ppDescLeggi() : []).filter(Boolean);
+  if (!righe.length) return null;
+  return GuidaGaranzie.guida(righe);
+}
+
+function ppGuidaAnteprima() {
+  const box = document.getElementById('pp-guida');
+  if (!box) return;
+  if (!window.GuidaGaranzie) {
+    box.innerHTML = '<div class="ppg-vuoto">Il motore della guida non è caricato: l\'anteprima non si può fare.</div>';
+    return;
+  }
+  const g = ppGuidaDati();
+  if (!g) {
+    box.innerHTML = '<div class="ppg-vuoto">Scrivi le garanzie qui sopra e qui comparirà la guida che '
+      + 'leggerà il cliente, con un esempio concreto per ognuna.</div>';
+    return;
+  }
+  if (!g.ok) { box.innerHTML = '<div class="ppg-vuoto">' + esc(g.motivo) + '</div>'; return; }
+
+  const avvisi = g.daConfermare.length
+    ? '<div class="ppg-avv"><b>' + g.daConfermare.length +
+      (g.daConfermare.length === 1 ? ' cosa da confermare' : ' cose da confermare') + ' prima di consegnare</b><ul>' +
+      g.daConfermare.map(m => '<li>' + esc(m) + '</li>').join('') + '</ul></div>'
+    : '<div class="ppg-ok"><i class="ti ti-circle-check"></i> Tutte le garanzie sono state riconosciute e hanno il loro esempio.</div>';
+
+  const sezioni = g.sezioni.map(s =>
+    '<div class="ppg-sez"><div class="ppg-sez-t"><span>' + s.numero + '</span>' + esc(s.titolo) + '</div>' +
+    s.schede.map(c =>
+      '<div class="ppg-c' + (c.daConfermare ? ' ppg-c-avv' : '') + '">' +
+        '<div class="ppg-c-h"><b>' + esc(c.nome) + '</b><span>' + esc(c.importo || '—') + '</span></div>' +
+        (c.esempio
+          ? '<div class="ppg-c-e">' + esc(c.esempio) + '</div>'
+          : '<div class="ppg-c-e ppg-c-senza">Nessun esempio: questa garanzia non è nel vocabolario. ' +
+            'Nella guida compare con il suo importo — un esempio sbagliato sarebbe peggio di uno che manca.</div>') +
+        (c.attenzione ? '<div class="ppg-c-a"><i class="ti ti-alert-triangle"></i> ' + esc(c.attenzione) + '</div>' : '') +
+      '</div>').join('') + '</div>').join('');
+
+  box.innerHTML = avvisi +
+    '<div class="ppg-conto">' + g.schede + (g.schede === 1 ? ' garanzia' : ' garanzie') + ' · ' +
+      g.conEsempio + ' con esempio · ' + g.sezioni.length +
+      (g.sezioni.length === 1 ? ' pagina' : ' pagine') + '</div>' +
+    sezioni +
+    '<div class="ppg-piede">' + esc(g.piede) + '</div>';
 }
 
 function ppDescLeggi() {
@@ -31955,9 +32378,52 @@ async function ppApri(clienteId, id) {
           <input type="checkbox" id="pp-autorizzare" ${r && r.da_autorizzare ? 'checked' : ''} style="width:auto;margin:0">
           Da autorizzare dalla Direzione</label></div>
 
+      <!-- ══ LA PROPOSTA DI POLIZZA SI CARICA E SI LEGGE (02/10/2026) ═══════
+           Richiesta di Francesco: «sarebbe utile poter integrare
+           l'intelligenza artificiale per la creazione di un preventivo
+           personalizzato caricando le proposte di polizza».
+
+           Due scelte che vale la pena scrivere, perché non si vedono:
+
+           1. Il documento NON esce dal browser. Una proposta di polizza
+              porta nome, indirizzo, codice fiscale e targa del cliente:
+              mandarla a un servizio esterno per farsela riassumere sarebbe
+              un trattamento che nessuno ha autorizzato. Il PDF si legge qui
+              dentro, col lettore del browser, e il motore gira qui.
+           2. Quello che esce sono PROPOSTE da spuntare, non una lettura.
+              Sul set informativo vero di 61 pagine le righe con un importo
+              sono 38 e le garanzie vere una manciata: un elenco che si
+              spacciasse per lettura automatica farebbe passare il resto
+              su un documento che va al cliente. Ogni riga dice la pagina. -->
+      <div class="field">
+        <label>Proposta di polizza da leggere</label>
+        <input type="file" accept="application/pdf,.pdf" id="pp-proposta-file"
+               onchange="ppProponiDaFile(this)">
+        <div style="font-size:11.5px;color:var(--muted);margin-top:5px">Il PDF resta sul tuo
+          computer: viene letto qui dentro e non parte da nessuna parte.</div>
+        <div id="pp-proposte" style="margin-top:9px"></div>
+      </div>
+
       <div class="field"><label>Descrizioni</label>
         <div id="pp-desc">${desc.map(t => ppDescRiga(t)).join('')}</div>
         <button type="button" class="ghost" style="padding:6px 12px" onclick="ppDescAggiungi()"><i class="ti ti-plus"></i> Aggiungi riga</button></div>
+
+      <!-- ══ LA GUIDA ALLE GARANZIE, MENTRE SI SCRIVE (02/10/2026) ══════════
+           Richiesta di Francesco: «rendere il preventivo un po' più
+           interattivo, magari generando anche una cosa simile a questo».
+
+           Non è solo un'anteprima: è un CONTROLLO che gira mentre si digita.
+           Sul prospetto vero (preventivo n.4) c'erano «Laste» per «Lastre» e
+           una rendita che diceva «al mese» e «al giorno» nella stessa riga.
+           Fin qui quei refusi si scoprivano col foglio già dal cliente;
+           adesso si vedono mentre si scrive la riga. -->
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+          <span>Guida alle garanzie</span>
+          <button type="button" class="ghost" style="padding:5px 11px;font-size:12px"
+                  onclick="ppGuidaAnteprima()"><i class="ti ti-refresh"></i> Aggiorna</button></label>
+        <div id="pp-guida"></div>
+      </div>
 
       <div class="field"><label>Intermediario di riferimento</label>
         <select id="pp-intermediario" onchange="ppIntermToggle()"><option value="">— nessuno —</option></select>
@@ -31978,6 +32444,7 @@ async function ppApri(clienteId, id) {
         <button class="primary" onclick="ppSalva('${esc(clienteId)}'${id ? ",'" + esc(id) + "'" : ''})">Salva</button>
         <button class="ghost" onclick="document.getElementById('pp-overlay').remove()">Annulla</button>
         ${r ? `<button class="ghost" onclick="ppScaricaPdf('${esc(r.id)}')"><i class="ti ti-file-type-pdf"></i> Scarica PDF</button>
+        <button class="ghost" onclick="ppGuidaScarica('${esc(r.id)}')"><i class="ti ti-book"></i> Guida alle garanzie</button>
         <button class="ghost" onclick="ppInviaEmail('${esc(r.id)}')"><i class="ti ti-mail"></i> Email al cliente</button>
         <button class="ghost" onclick="ppWhatsApp('${esc(r.id)}')"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>` : ''}
         ${r && currentUser.role === 'admin' ? `<button class="ghost" style="color:#c0392b" onclick="ppElimina('${esc(r.id)}')"><i class="ti ti-trash"></i> Elimina</button>` : ''}
@@ -31985,6 +32452,12 @@ async function ppApri(clienteId, id) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  /* Le righe lette dalla proposta precedente si buttano: appartenevano a un
+     altro preventivo, e quindi a un altro cliente. */
+  PP_PROPOSTE = null;
+  /* L'anteprima si disegna subito: aprire un preventivo gia' scritto e vedere
+     un riquadro vuoto farebbe credere che la guida non ci sia. */
+  ppGuidaAnteprima();
   popolaSelectInterm('pp-intermediario', intermSel);
   /* «Altro» si aggiunge QUI e non dentro popolaSelectInterm: quella tendina la
      usa anche la scheda cliente, dove un intermediario scritto a mano non
@@ -32282,6 +32755,86 @@ function ppDocumento(r, ctx) {
   };
 }
 
+/* ══ CARICARE UNA PROPOSTA DI POLIZZA (02/10/2026) ═════════════════════════
+   Richiesta di Francesco: «integrare l'intelligenza artificiale per la
+   creazione di un preventivo personalizzato caricando le proposte di polizza».
+
+   IL DOCUMENTO NON ESCE DAL BROWSER. Una proposta porta nome, indirizzo,
+   codice fiscale e targa del cliente: mandarla a un servizio esterno per
+   farsela leggere è quello che le regole di casa vietano. Il testo si estrae
+   qui e si legge qui, col vocabolario delle garanzie che è scritto e provato.
+
+   E non si dice «ho letto la polizza»: si PROPONGONO delle righe, ognuna con
+   la pagina da cui viene, e chi prepara il preventivo spunta quelle giuste.
+   Non è un ripiego: misurato su un documento vero di 61 pagine, le righe
+   candidate sono 38 e le garanzie vere una manciata. Un elenco che si
+   spacciasse per lettura automatica farebbe passare il resto. */
+/* Il lettore di PDF e la ricostruzione delle righe stanno in
+   `tariffe/motore/pdf-testo.js`: la stessa cosa serve al preventivo, a
+   Confronta e al caricamento di una polizza, e tre copie si separerebbero al
+   primo documento strano. Qui restano due involucri col nome di prima, perche'
+   e' con quel nome che il resto della pagina li chiama. */
+function ppCaricaPdfJs() {
+  if (!window.PdfTesto) return Promise.reject(new Error('Il motore di lettura dei PDF non e\' caricato.'));
+  return PdfTesto.caricaPdfJs();
+}
+
+async function ppPdfTesto(file) {
+  if (!window.PdfTesto) throw new Error('Il motore di lettura dei PDF non e\' caricato.');
+  return PdfTesto.testoPagine(file);
+}
+
+let PP_PROPOSTE = null;
+
+async function ppProponiDaFile(input) {
+  const box = document.getElementById('pp-proposte');
+  const file = input && input.files && input.files[0];
+  if (!box || !file) return;
+  if (!window.LetturaProposta) {
+    box.innerHTML = '<div class="ppg-vuoto">Il motore di lettura non è caricato.</div>'; return;
+  }
+  box.innerHTML = '<div class="ppg-vuoto">Leggo «' + esc(file.name) + '»…</div>';
+  try {
+    const pagine = await ppPdfTesto(file);
+    const r = LetturaProposta.candidati(pagine);
+    PP_PROPOSTE = r;
+    if (!r.ok) { box.innerHTML = '<div class="ppg-vuoto">' + esc(r.motivo) + '</div>'; return; }
+    box.innerHTML =
+      '<div class="ppg-conto">' + r.righe.length + ' righe trovate in ' + r.pagine +
+        ' pagine · ' + r.riconosciute + ' riconosciute' +
+        (r.scartate.length ? ' · ' + r.scartate.length + ' lasciate fuori' : '') + '</div>' +
+      '<div class="ppp-nota">Queste sono <b>proposte</b>, non una lettura: spunta quelle giuste e ' +
+        'controlla gli importi sul documento. Ogni riga dice da che pagina viene.</div>' +
+      r.righe.map((x, i) =>
+        '<label class="ppp-r' + (x.daGuardare ? ' ppp-r-avv' : '') + '">' +
+          '<input type="checkbox" class="ppp-c" data-i="' + i + '"' + (x.id && !x.daGuardare ? ' checked' : '') + '>' +
+          '<span class="ppp-t"><b>' + esc(x.nome) + '</b>' +
+            '<i>' + esc(GuidaGaranzie.importoScritto(x.voci)) +
+              (x.natura ? ' · ' + esc(x.natura) : '') + ' · pag. ' + x.pagina + '</i>' +
+            (x.daGuardare ? '<em>' + esc(x.daGuardare) + '</em>' : '') +
+            '<q>' + esc(x.riga.slice(0, 150)) + '</q>' +
+          '</span></label>').join('') +
+      '<button type="button" class="ghost" style="margin-top:8px;padding:6px 12px" ' +
+        'onclick="ppProposteAggiungi()"><i class="ti ti-arrow-down"></i> Metti le righe spuntate fra le descrizioni</button>';
+  } catch (e) {
+    box.innerHTML = '<div class="ppg-vuoto"><b>Non riesco a leggere il documento.</b> ' +
+      esc((e && e.message) || String(e)) + '</div>';
+  }
+}
+
+function ppProposteAggiungi() {
+  if (!PP_PROPOSTE || !window.LetturaProposta) return;
+  const scelte = [...document.querySelectorAll('#pp-proposte .ppp-c')]
+    .filter(c => c.checked).map(c => PP_PROPOSTE.righe[Number(c.dataset.i)]).filter(Boolean);
+  if (!scelte.length) { try { quotoToast('Non hai spuntato nessuna riga', false); } catch (e) {} return; }
+  LetturaProposta.versoDescrizioni(scelte).forEach(t => ppDescAggiungi(t));
+  ppGuidaAnteprima();
+  try {
+    quotoToast(scelte.length === 1 ? 'Una riga aggiunta: controllala prima di salvare'
+      : scelte.length + ' righe aggiunte: controllale prima di salvare');
+  } catch (e) {}
+}
+
 /* ── jsPDF, caricato solo quando serve ────────────────────────────────────────
    Stessa strada del riquadro PayPal (loadPayPalSDK): niente peso in piu' su
    ogni apertura dell'app per una cosa che si usa quando si stampa. */
@@ -32430,13 +32983,44 @@ async function ppPdfBlob(d) {
   return doc.output('blob');
 }
 
+/* Quando si e' riletta l'ultima volta la scheda del collaboratore, e ogni
+   quanto si puo' rileggere. Mezzo minuto: chi compila il RUI in IAM e torna
+   qui lo trova aggiornato, e chi un RUI non ce l'ha non fa una richiesta al
+   database per ogni foglio che stampa. */
+let PP_RILETTO_IL = 0;
+const PP_RILEGGI_OGNI = 30000;
+
 /* Il contorno del documento: azienda, intermediario e cliente presi dove gia'
    vivono. Nessuna copia locale di nessuno dei tre. */
 async function ppContesto(r) {
   const azienda = await ppAzienda();
   await caricaIntermediari();
-  const intermediario = r.intermediario_id
+  let intermediario = r.intermediario_id
     ? ((INTERM_CACHE || []).find(c => c.id === r.intermediario_id) || null) : null;
+  /* ── LA COPIA VECCHIA DEL COLLABORATORE (02/10/2026) ──────────────────────
+     Francesco: «ho aggiornato la scheda anagrafica dell'intermediario ma esce
+     sempre la scritta RUI da verificare». Il dato era giusto in archivio —
+     Oddo Francesco, A000552192 — e il documento leggeva `INTERM_CACHE`, che
+     si carica all'avvio e NON si rinfresca mai (`if (INTERM_CACHE && !force)`).
+     Lui aveva il gestionale aperto, è andato a compilare il RUI in IAM, è
+     tornato qui: in memoria c'era ancora la riga di prima, senza RUI.
+
+     È lo STESSO guasto che `ppAzienda` aveva già avuto e già corretto, con la
+     regola «la copia in memoria si tiene solo se è completa». La regola era
+     stata messa sull'agenzia e non sul collaboratore, e la trappola è
+     scattata una seconda volta sull'altro record.
+
+     Qui si rilegge SOLO il collaboratore di QUESTO documento, e solo quando
+     gli manca il RUI: una regola sull'intera lista rileggerebbe a ogni foglio,
+     perché dei collaboratori senza RUI ce ne sono per davvero e resterebbero
+     senza per sempre. La pausa evita che un collaboratore che il RUI non ce
+     l'ha proprio faccia una richiesta a ogni documento. */
+  if (intermediario && !String(intermediario.rui_numero || '').trim()
+      && Date.now() - PP_RILETTO_IL > PP_RILEGGI_OGNI) {
+    PP_RILETTO_IL = Date.now();
+    await caricaIntermediari(true);
+    intermediario = (INTERM_CACHE || []).find(c => c.id === r.intermediario_id) || intermediario;
+  }
   let cliente = (ANAG_CACHE || []).find(a => a.id === r.cliente_id) || null;
   if (!cliente) {
     try { const { data } = await db.from('quote_anagrafiche').select('*').eq('id', r.cliente_id).single(); cliente = data || null; }
@@ -32451,6 +33035,49 @@ function ppScaricaBlob(blob, nome) {
   a.href = url; a.download = nome;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+/* ══ IL PDF DELLA GUIDA ALLE GARANZIE (02/10/2026) ═════════════════════════
+   Il contenuto lo DESCRIVE il motore (`GuidaGaranzie.documentoPdf`), a
+   disegnarlo e' `PdfWithus.disegna` — lo stesso che fa il preventivo, il
+   foglio cassa e il foglio previdenziale.
+
+   La prima stesura disegnava qui, a mano, con le primitive. Funzionava e
+   sbagliava lo stesso: il contenuto del foglio non si poteva provare senza
+   aprire un browser e caricare jsPDF da una rete che qui non c'e'. Descritto
+   invece che disegnato, che cosa ci sara' scritto sopra si prova in Node. */
+async function ppGuidaScarica(id) {
+  const vietato = ppVietato();
+  if (vietato) { alert(vietato); return; }
+  if (!window.GuidaGaranzie) { alert('Il motore della guida non e\' caricato.'); return; }
+  const r = (PP_CACHE || []).find(x => x.id === id);
+  if (!r) { alert('Preventivo non trovato.'); return; }
+  const g = GuidaGaranzie.guida((r.descrizioni || []).filter(Boolean));
+  if (!g.ok) { alert(g.motivo); return; }
+  try {
+    const az = await ppAzienda();
+    const ctx = await ppContesto(r);
+    const documento = GuidaGaranzie.documentoPdf(g, {
+      cliente: (ctx.cliente && ctx.cliente.nominativo) || 'Cliente',
+      numero: r.numero, data: ppDataIt(r.creato_il),
+      azienda: {
+        ragioneSociale: az.rs || '', sede: az.sede || '', piva: az.piva || '',
+        rui: az.rui_numero ? ppRuiTesto(az.rui_sezione, az.rui_numero, az.rui_data) : '',
+        contatti: [az.tel, az.email, az.pec].filter(Boolean)
+      }
+    });
+    const jsPDF = await ppCaricaJsPdf();
+    const logo = await ppLogo();
+    const doc = PdfWithus.disegna(jsPDF, documento, { logo });
+    ppScaricaBlob(doc.output('blob'), documento.nomeFile);
+    try {
+      quotoToast(g.daConfermare.length
+        ? 'Guida generata, ma ' + g.daConfermare.length + ' cosa/e da confermare: guardale prima di consegnarla'
+        : 'Guida generata', !g.daConfermare.length);
+    } catch (e) {}
+  } catch (e) {
+    alert('Non riesco a generare la guida: ' + (e.message || e));
+  }
 }
 
 async function ppScaricaPdf(id) {

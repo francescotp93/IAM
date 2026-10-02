@@ -55,7 +55,11 @@
 <script src="/nuovo-preventivo/tariffe/motore/anagrafica.js?v=20260921"></script>
 <!-- I conti e le causali (brief #02 M1). Stesso file del preventivatore, per lo
      stesso motivo: il vocabolario della contabilità dev'essere uno solo. -->
-<script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260924"></script>
+<script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260928"></script>
+<!-- Il motore della giornata: gli stati dell'appunto di incasso (APPUNTO, OK,
+     SCOSTAMENTO, FC) e il foglio della giornata. Non era caricato da IAM, e la
+     schermata «Appunti incassi» senza di lui sarebbe un elenco senza stati. -->
+<script src="/nuovo-preventivo/tariffe/motore/contabilita-giornaliera.js?v=20260928"></script>
 <!-- Le provvigioni (brief #02 M2): stesso file del preventivatore. -->
 <script src="/nuovo-preventivo/tariffe/motore/provvigioni.js?v=20260920"></script>
 <!-- Il catalogo prodotti: stesso file del preventivatore, perché l'import
@@ -73,6 +77,16 @@
 <script src="/nuovo-preventivo/tariffe/motore/decisioni.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/produzione.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/collaboratori.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/confronto.js?v=20261002"></script>
+<!-- Mettere un prodotto in archivio leggendo il suo PDF (02/10/2026).
+     `guida-garanzie.js` serve perché è là che sta la lettura di una riga con
+     un importo, e `lettura-proposta.js` perché è là che sta la ricucitura di
+     un nome spezzato su più righe: sono già scritte e già provate, e
+     riscriverle qui vorrebbe dire averne due versioni che si separano. -->
+<script src="/nuovo-preventivo/tariffe/motore/guida-garanzie.js?v=20261002"></script>
+<script src="/nuovo-preventivo/tariffe/motore/lettura-proposta.js?v=20261002"></script>
+<script src="/nuovo-preventivo/tariffe/motore/pdf-testo.js?v=20261002"></script>
+<script src="/nuovo-preventivo/tariffe/motore/scheda-prodotto.js?v=20261002"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -90,6 +104,102 @@
   padding:7px 0;border-top:1px solid var(--line,#e6e9ef);font-size:13px}
 .reg-r:first-child{border-top:0}
 .cl-sub{font-size:12px;color:var(--muted,#6b7280)}
+/* ── CONFRONTA (01/10/2026) ────────────────────────────────────────────────
+   La regola del disegno di questa schermata: quello che non si è letto si
+   deve VEDERE che non si è letto. Per questo «non letto» ha una tinta sua e
+   non è un trattino: un trattino si scambia per uno zero. */
+.cf-scelte{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.cf-f{display:flex;flex-direction:column;gap:4px;min-width:200px;flex:1}
+.cf-f label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3)}
+.cf-f select{padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);
+  border-radius:8px;font-size:13px;color:var(--txt);font-family:inherit}
+.cf-f-az,.cf-vs{flex:0 0 auto;min-width:0}
+.cf-vs{align-self:center;padding-bottom:9px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--txt3)}
+/* Il cartello del punteggio. Porta SEMPRE due numeri: quante garanzie si sono
+   confrontate e quante no. Il primo da solo sarebbe un punteggio che finge. */
+.cf-somma{display:flex;gap:1px;background:var(--bord);border:1px solid var(--bord);
+  border-radius:10px;overflow:hidden;margin:12px 0}
+.cf-s{background:var(--surf);padding:10px 14px;flex:1;min-width:0}
+.cf-s span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--txt3);font-weight:700;margin-bottom:3px}
+.cf-s b{display:block;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+.cf-s.cf-win b{color:var(--acc,#2f6df6)}
+/* Quando non si è letto abbastanza, il cartello lo dice al posto del verdetto. */
+.cf-astenuto{background:#fff4e6;border:1px solid #f0c674;border-radius:10px;
+  padding:11px 14px;margin:12px 0;font-size:12.5px;color:#7a5618;line-height:1.5}
+.cf-tab{width:100%;border-collapse:collapse;font-size:13px}
+.cf-tab th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--txt3);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--bord)}
+.cf-tab td{padding:9px 10px;border-bottom:1px solid var(--bord);vertical-align:top}
+.cf-tab tr:last-child td{border-bottom:0}
+.cf-g{font-weight:600}
+.cf-g small{display:block;font-weight:400;font-size:11px;color:var(--txt3);margin-top:2px}
+.cf-st{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;
+  text-transform:uppercase;letter-spacing:.03em}
+.cf-si{background:#e7f6ec;color:#1b6b38}
+.cf-no{background:#fdeceb;color:#9c2b20}
+.cf-nl{background:#eef0f3;color:#6b7280}
+.cf-num{font-variant-numeric:tabular-nums;font-size:12px;color:var(--txt2);margin-top:3px}
+.cf-v{text-align:center;font-weight:800;font-size:15px;width:44px}
+.cf-v-a{color:var(--acc,#2f6df6)}.cf-v-b{color:#b7791f}.cf-v-null{color:var(--txt3);font-weight:400}
+.cf-fonte{font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.45}
+.cf-fonte q{font-style:italic}
+/* ══ METTERE UN PRODOTTO IN ARCHIVIO (02/10/2026) ═══════════════════════════
+   L'archivio di Confronta era vuoto perché l'unico modo previsto per
+   riempirlo era scaricare le note informative dalla rete. Questa è la strada
+   che non ha bisogno di rete: si carica il PDF e lui propone le righe.
+
+   Le tre spunte di stato sono la cosa più importante del disegno. «Assente»
+   si può scegliere solo scrivendo la frase del documento che lo dice, e il
+   salvataggio si rifiuta senza quella: è la stessa regola del motore, che
+   «assente» non lo scrive mai da solo. */
+.cfn-car{border:1.5px dashed var(--bord2);border-radius:12px;padding:18px;text-align:center;
+  background:var(--surf2)}
+.cfn-car input[type=file]{font-size:13px}
+.cfn-nota{font-size:11.5px;color:var(--txt3);line-height:1.5;margin-top:8px}
+.cfn-conto{display:flex;gap:1px;background:var(--bord);border:1px solid var(--bord);
+  border-radius:10px;overflow:hidden;margin:12px 0}
+.cfn-c{background:var(--surf);padding:9px 12px;flex:1;min-width:0;text-align:center}
+.cfn-c span{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--txt3);font-weight:700}
+.cfn-c b{display:block;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.cfn-avv{background:#fff4e6;border:1px solid #f0c674;border-radius:10px;padding:10px 13px;
+  font-size:12px;line-height:1.5;margin-bottom:12px}
+.cfn-avv ul{margin:6px 0 0;padding-left:18px}
+.cfn-avv li{margin:3px 0}
+.cfn-r{border:1px solid var(--bord);border-radius:10px;padding:9px 12px;margin-bottom:7px;
+  background:var(--surf)}
+.cfn-r-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.cfn-r-h b{font-size:13px}
+.cfn-r-h small{font-size:11px;color:var(--txt3)}
+.cfn-sc{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+.cfn-sc button{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
+  padding:3px 9px;border-radius:20px;border:1px solid var(--bord2);background:var(--surf2);
+  color:var(--txt3);cursor:pointer}
+.cfn-sc button.on.cfn-b-si{background:#e7f6ec;color:#1b6b38;border-color:#1b6b38}
+.cfn-sc button.on.cfn-b-no{background:#fdeceb;color:#9c2b20;border-color:#9c2b20}
+.cfn-sc button.on.cfn-b-nl{background:#eef0f3;color:#374151;border-color:#6b7280}
+.cfn-cit{margin-top:7px;display:none}
+.cfn-cit.on{display:block}
+.cfn-cit input{width:100%;box-sizing:border-box;font-size:12px;padding:7px 9px;
+  border:1px solid #9c2b20;border-radius:8px;background:var(--surf)}
+.cfn-cit-l{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  color:#9c2b20;margin-bottom:3px}
+.cfn-g{font-size:11.5px;color:#8a5200;line-height:1.45;margin-top:5px}
+.cfn-frase{font-size:11px;color:var(--txt3);margin-top:4px;font-style:italic;word-break:break-word}
+.cfn-fuori{font-size:12px;line-height:1.55}
+.cfn-fuori li{margin:2px 0}
+/* Un caricamento che si VEDE che è un caricamento (30/09/2026). La stessa
+   riga di testo di prima, ma con la rotella accanto: senza, «Carico i
+   sospesi…» ha lo stesso aspetto di un risultato, e una schermata ferma non
+   si distingue da una schermata che sta lavorando. */
+@keyframes clCarico{to{transform:rotate(360deg)}}
+.cl-carico{display:flex;align-items:center;gap:8px;padding:10px 0;
+  font-size:12px;color:var(--muted,#6b7280)}
+.cl-carico-g{width:14px;height:14px;flex:0 0 14px;border-radius:50%;
+  border:2px solid var(--bord,#e6e9ef);border-top-color:var(--acc,#2f6df6);
+  animation:clCarico .7s linear infinite}
 /* ── CONTI E CAUSALI (brief #02 · M1, 19/09/2026) ───────────────────────────
    Le due nature del denaro hanno due colori, e non è decorazione: chi guarda
    questa schermata deve distinguere a colpo d'occhio i soldi dei clienti da
@@ -821,12 +931,77 @@ input[type=file]{display:none;}
 
 /* Gestione utenti: select ruolo + switch */
 .ruolo-sel{font-size:11px;padding:5px 8px;border:1px solid var(--bord2);border-radius:8px;background:var(--surf2);color:var(--txt);font-family:inherit;cursor:pointer;}
-.sw{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0;}
-.sw input{opacity:0;width:0;height:0;}
+/* `.sw` E `.sw input` ERANO DEFINITE DUE VOLTE (28/09/2026).
+   Stavano qui e duecento righe più su, e vinceva questa: l'interruttore
+   diventava 42×24 invece di 44×26 e PERDEVA `cursor:pointer`, mentre i 23
+   interruttori disegnati con `.sw-track`/`.sw-thumb` avevano il pallino
+   calcolato per 44×26 e finivano fuori centro di due pixel.
+
+   Non è un difetto teorico: nel modale del diario la riga «Importante» ha
+   dovuto riscriversi `display:flex`, `justify-content` e `padding` IN LINEA
+   per rimettersi a posto (riga ~3063). Quando qualcuno aggira una classe con
+   stili in linea, di solito la classe è rotta e nessuno l'ha guardata.
+
+   Qui resta solo la pelle (`.sl`), col pallino ridimensionato per 44×26:
+   20px, margine 3, corsa 44−20−3−3 = 18. La geometria sta in un posto solo,
+   duecento righe più su, insieme a `.sw-track`/`.sw-thumb`.
+   Resta un secondo doppione, `.sw-row`, che però vuol dire davvero due cose
+   diverse in due schermate diverse: è scritto nel backlog (P3.3), non
+   sistemato di nascosto qui. */
 .sw .sl{position:absolute;cursor:pointer;inset:0;background:var(--surf3);border-radius:24px;transition:.2s;}
-.sw .sl:before{content:"";position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25);}
+.sw .sl:before{content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25);}
 .sw input:checked + .sl{background:linear-gradient(135deg,var(--acc),var(--acc2));}
 .sw input:checked + .sl:before{transform:translateX(18px);}
+/* La riga di «Condividi con»: interruttore a sinistra, nome a destra, e il
+   nome fa parte del bersaglio — da telefono accendere solo i 44 pixel
+   dell'interruttore è la differenza fra un gesto e tre tentativi.
+   Una riga accesa si vede anche senza leggere: chi è dentro e chi è fuori è la
+   domanda di questa schermata. */
+/* 10px sopra e sotto, non 8: la riga viene alta 46 pixel invece di 42, e 44 e
+   la misura sotto la quale un bersaglio da telefono si sbaglia. Misurata in un
+   browser vero, non stimata. */
+.wd-cond-riga{display:flex;align-items:center;gap:11px;padding:10px 9px;border-radius:9px;
+  cursor:pointer;transition:background .15s;}
+.wd-cond-riga:hover{background:var(--surf3);}
+.wd-cond-riga:has(input:checked){background:var(--acc-bg,rgba(2,152,78,.08));}
+.wd-cond-nome{font-size:13px;color:var(--txt2);}
+.wd-cond-riga:has(input:checked) .wd-cond-nome{color:var(--txt);font-weight:600;}
+
+/* ── APPUNTI INCASSI (28/09/2026) ──────────────────────────────────────────
+   Lo stato sta a SINISTRA e si legge per primo: la domanda del mattino è
+   «quali righe non sono OK», non «chi ha pagato». Il colore è sul filetto e
+   sull'etichetta, non sullo sfondo di tutta la riga: una giornata con dieci
+   righe rosse piene diventa illeggibile proprio nel giorno in cui serve. */
+.app-q{display:inline-flex;flex-direction:column;gap:2px;padding:9px 13px;margin:0 8px 8px 0;
+  background:var(--surf2);border:1px solid var(--bord2);border-radius:10px;min-width:104px;}
+.app-q span{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt3);}
+.app-q b{font-size:16px;font-variant-numeric:tabular-nums;color:var(--txt);}
+.app-q-ok b{color:#02984e;}
+.app-q-att b{color:#b06a00;}
+.app-q-no b{color:#c0392b;}
+.app-lista{display:flex;flex-direction:column;gap:7px;margin-top:10px;}
+.app-riga{display:grid;grid-template-columns:118px 1fr auto;gap:10px;align-items:center;
+  padding:10px 12px;background:var(--surf);border:1px solid var(--bord2);border-radius:10px;
+  border-left:3px solid var(--bord2);}
+.app-riga.app-ok{border-left-color:#02984e;}
+.app-riga.app-att{border-left-color:#e0a800;}
+.app-riga.app-no{border-left-color:#c0392b;}
+.app-stato{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--txt3);}
+.app-ok .app-stato{color:#02984e;}
+.app-att .app-stato{color:#b06a00;}
+.app-no .app-stato{color:#c0392b;}
+.app-chi b{font-size:13px;color:var(--txt);}
+.app-imp{text-align:right;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--txt);}
+.app-sco{font-size:11.5px;font-weight:700;color:#c0392b;}
+/* Il perché occupa tutta la riga sotto: è una frase, e spezzarla in una
+   colonna stretta vuol dire non farla leggere a nessuno. */
+.app-perche{grid-column:1/-1;font-size:11.5px;color:var(--txt2);line-height:1.5;
+  padding-top:7px;border-top:1px solid var(--bord2);}
+@media(max-width:640px){
+  .app-riga{grid-template-columns:1fr auto;}
+  .app-stato{grid-column:1/-1;}
+  .app-q{min-width:calc(50% - 8px);}
+}
 .sw-row{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;color:var(--txt2);}
 
 /* ── DA FARE OGGI (Blocco B) ─────────────────────────────────────────────────
@@ -1905,6 +2080,43 @@ input[type=file]{display:none;}
     <div id="cru-anomalie"></div>
   </div>
 
+  <!-- ══ SUB: APPUNTI INCASSI (28/09/2026) ═══════════════════════════════════
+       Dal manuale di contabilità di AssiEasy, capitolo 2A, che Francesco ha
+       portato come modello. È la schermata del mattino, e la regola operativa
+       del manuale è una riga sola:
+
+           «Verificare che in Appunti Incassi non vi siano segnalazioni in
+            rosso (devono avere tutte OK) e sanare eventuali differenze.»
+
+       I quattro stati li decide il motore `ContabilitaGiornaliera`
+       (`abbinaFoglio`), provato in Node con 22 prove e 16 sabotaggi: qui si
+       disegna soltanto.
+
+       DUE LATI, E OGGI UNO È VUOTO. Il confronto è fra quello che abbiamo
+       registrato noi in giornata e quello che la compagnia dice di aver
+       incassato. Misurato il 28/09/2026: dei 2.799 incassi in archivio,
+       2.799 arrivano dal flusso e ZERO sono stati registrati a mano. Non è un
+       difetto della schermata: è che oggi l'agenzia prende per buono quello
+       che dice la compagnia, ed è esattamente il rischio per cui il manuale
+       fa fare questo controllo. La schermata lo dice in chiaro invece di
+       mostrare duemila righe rosse. -->
+  <div id="contab-panel-appunti" class="ct-off">
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">Contabilità</div>
+        <h1>Appunti incassi</h1>
+        <div class="subtitle">Gli incassi di una giornata, e per ognuno se la compagnia l'ha visto. Nessuna riga in rosso vuol dire giornata chiusa.</div>
+      </div>
+      <div class="head-actions">
+        <input type="date" id="app-giorno" class="d-inp" onchange="appCarica()" style="padding:8px 10px;border:1px solid var(--bord2);border-radius:8px;background:var(--surf2);color:var(--txt);font:inherit;font-size:13px;">
+        <button class="d-btn" type="button" onclick="appCarica()"><i class="ti ti-refresh"></i> Aggiorna</button>
+      </div>
+    </section>
+    <div id="app-avviso"></div>
+    <section class="cnt-somma" id="app-somma"><div class="cl-sub">Scegli una giornata.</div></section>
+    <div id="app-righe"></div>
+  </div>
+
   <!-- SUB: Quadratura di giornata — solo i numeri della giornata -->
   <div id="contab-panel-quadratura" class="ct-off">
     <section class="page-head">
@@ -2023,9 +2235,22 @@ input[type=file]{display:none;}
       </div>
     </section>
     <section class="cnt-somma" id="spr-somma"></section>
-    <section id="spr-lista" style="padding:0 16px"><div class="cl-sub">Carico i sospesi…</div></section>
+    <section id="spr-lista" style="padding:0 16px"><div class="cl-carico"><span class="cl-carico-g"></span>Carico i sospesi…</div></section>
     <div style="height:18px"></div>
-    <!-- IL CARICAMENTO DA FILE NON C'È PIÙ (22/09/2026, richiesta di Francesco:
+    <!-- IL BLOCCO STORICO STA CHIUSO FINCHÉ NON HA DENTRO QUALCOSA
+         (30/09/2026, richiesta di Francesco: «questa parte non si deve vedere
+         queste scritte ma semplicemente un caricamento»). Il titolo, la
+         spiegazione e il «nessun sospeso da file» stavano a schermo SEMPRE —
+         anche mentre la pagina caricava, anche quando da file non c'era mai
+         stato niente. Tre righe di spiegazione sotto un caricamento fanno
+         sembrare piena una schermata che è ancora vuota, e chi legge le
+         scambia per il contenuto.
+         Adesso il blocco si apre solo se dei sospesi da file ci sono davvero
+         (`buildSospesi`): quando ci sono, la spiegazione serve e si legge —
+         un elenco fermo che non dichiara di essere fermo è peggio di un
+         elenco che non c'è. Quando non ci sono, non c'è niente da spiegare.
+
+         IL CARICAMENTO DA FILE NON C'È PIÙ (22/09/2026, richiesta di Francesco:
          «in questa parte dei sospesi leviamo la possibilità di caricare i
          file»). I sospesi adesso arrivano dal NOSTRO portafoglio — le rate
          aperte, con la voce di pagamento che dice chi le tiene — e un secondo
@@ -2035,6 +2260,7 @@ input[type=file]{display:none;}
          Quadratura di giornata e nello Storico. Non si aggiorna più, e lo
          dice: un elenco fermo che non dichiara di essere fermo è peggio di un
          elenco che non c'è. -->
+    <div id="spr-storico" style="display:none">
     <div class="slbl">Sospesi caricati da file (storico)</div>
     <div class="cl-sub" style="padding:0 16px 10px">Quello che era già stato caricato dal file della compagnia. <b>Non si aggiorna più</b>: il caricamento da file è stato tolto, e i sospesi veri sono quelli qui sopra. Resta finché i due numeri non saranno stati confrontati.</div>
     <div id="s-empty" class="cl-sub" style="padding:0 16px 24px">Nessun sospeso da file: non ne è mai stato caricato, oppure la giornata di oggi non ne porta.</div>
@@ -2058,6 +2284,7 @@ input[type=file]{display:none;}
       <div class="card"><div id="s-list"></div></div>
       <div style="height:16px;"></div>
     </div>
+    </div><!-- /spr-storico -->
   </div>
 
   <!-- SUB: Storico -->
@@ -3067,7 +3294,7 @@ input[type=file]{display:none;}
         </div>
         <div class="fld"><label>Condividi con (lascia vuoto = solo tu)</label>
           <div id="wd-condividi-box" style="width:100%;max-height:132px;overflow-y:auto;background:var(--surf2);border:1px solid var(--bord2);border-radius:10px;font-size:13px;color:var(--txt);padding:4px;"></div>
-          <div style="font-size:10px;color:var(--txt3);margin-top:4px;">Spunta i colleghi con cui condividere. Togli la spunta per non condividere più. Se non spunti nessuno, l'operazione resta privata.</div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:4px;">Accendi l'interruttore dei colleghi con cui condividere. Spegnilo per non condividere più. Se non ne accendi nessuno, l'operazione resta privata.</div>
         </div>
       </div>
       <div class="fld"><label>Descrizione / Note</label><textarea id="wd-note" rows="3" placeholder="Dettagli operazione..."></textarea></div>
@@ -4745,7 +4972,89 @@ input[type=file]{display:none;}
   <div id="ab-vista-esito" style="display:none"></div>
 </div>
 
-<script type="module" src="analisi-bisogni-rating.js?v=20260927a"></script>
+<!-- ══ CONFRONTA (01/10/2026, richiesta di Francesco) ═══════════════════════
+     «Una parte dove possiamo confrontare le polizze […] se seleziono HDI auto
+     e metto polizza Italiana auto, da lì mi fa un rating per garanzia.»
+     E il perché: «per poter battere la concorrenza ci possiamo battere
+     solamente su dati reali».
+
+     STA QUI, accanto all'Analisi dei bisogni, perché è il suo seguito:
+     l'analisi dice quali aree meritano un confronto, questa lo fa.
+
+     Il conto NON sta in questa pagina: sta in `tariffe/motore/confronto.js`,
+     che ha le sue prove. Qui c'è solo il disegno — e la regola del disegno è
+     una sola: tutto quello che il motore non ha letto si VEDE che non l'ha
+     letto. Una tabella che mostra solo le righe piene convince di più ed è
+     più falsa. -->
+<div class="panel" id="panel-confronta" style="overflow-y:auto;">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow">Prodotti</div>
+      <h1>Confronta</h1>
+      <div class="subtitle">Due prodotti uno accanto all'altro, garanzia per garanzia, letti dai documenti
+        precontrattuali delle compagnie. Ogni riga dice da quale documento viene.</div>
+    </div>
+    <div class="head-actions">
+      <button class="d-btn primario" type="button" onclick="cfnApri()">
+        <i class="ti ti-file-plus"></i> Metti un prodotto in archivio</button>
+      <button class="d-btn" type="button" onclick="cfCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
+    </div>
+  </section>
+
+  <div class="d-card">
+    <div class="card-head"><div class="card-title">
+      <span class="pictogram"><i class="ti ti-scale"></i></span> Quali due prodotti</div></div>
+    <div class="card-body">
+      <div class="cf-scelte">
+        <div class="cf-f"><label for="cf-ramo">Ramo</label><select id="cf-ramo" onchange="cfRamo()"></select></div>
+        <div class="cf-f"><label for="cf-a">Il nostro</label><select id="cf-a"></select></div>
+        <div class="cf-f cf-vs"><span>contro</span></div>
+        <div class="cf-f"><label for="cf-b">L'altro</label><select id="cf-b"></select></div>
+        <div class="cf-f cf-f-az"><button class="d-btn primario" type="button" onclick="cfConfronta()">
+          <i class="ti ti-scale"></i> Confronta</button></div>
+      </div>
+      <div id="cf-stato" class="cl-sub"></div>
+    </div>
+  </div>
+
+  <div id="cf-esito"></div>
+</div>
+
+<!-- ══ METTERE UN PRODOTTO IN ARCHIVIO LEGGENDO IL SUO PDF (02/10/2026) ══════
+     Il PDF si legge QUI DENTRO, nel browser: non parte da nessuna parte.
+     Per le note informative non sarebbe un problema di privacy — sono
+     documenti pubblici di prodotto — ma la stessa macchina legge anche le
+     proposte e le polizze, e quelle portano nome, codice fiscale e targa del
+     cliente. Una macchina sola, una regola sola.
+
+     Quello che esce sono PROPOSTE da confermare. «Assente» non si può
+     spuntare senza scrivere la frase del documento che lo dice, e il
+     salvataggio si rifiuta: il confronto lo si mostra a un cliente, e dire
+     che un concorrente non copre una cosa che invece copre è adeguatezza
+     (Reg. IVASS 40 e 41), non una casella storta. -->
+<div class="modal" id="modal-cf-nuovo">
+  <div class="modal-box" style="max-width:860px">
+    <div class="modal-hdr">
+      <div class="modal-title">Metti un prodotto in archivio</div>
+      <div style="display:flex;gap:8px;">
+        <button class="mbtn prim" id="cfn-salva" onclick="cfnSalva()" disabled>Salva in archivio</button>
+        <button class="mbtn sec" onclick="closeModal('modal-cf-nuovo')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="cfn-car">
+        <label for="cfn-file" style="display:block;font-size:12.5px;font-weight:700;margin-bottom:8px">
+          Il documento del prodotto — set informativo, DIP, DIP aggiuntivo o condizioni</label>
+        <input type="file" id="cfn-file" accept="application/pdf,.pdf" onchange="cfnDaFile(this)">
+        <div class="cfn-nota">Il PDF viene letto qui, dentro il browser, e non parte da nessuna parte.
+          Di lui si tiene l'impronta, per accorgersi quando la compagnia cambia edizione.</div>
+      </div>
+      <div id="cfn-esito" style="margin-top:14px"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="analisi-bisogni-rating.js?v=20261002a"></script>
 
 <script>
 'use strict';
@@ -5993,6 +6302,570 @@ var SPR_APERTI = {};      /* quale gruppo è aperto */
 var SPR_TOCCATO = false;  /* qualcuno ha aperto o chiuso a mano */
 var SPR_GIRO = 0;         /* due caricamenti insieme non si sommano (§63-bis) */
 var SPR_DETT = null;      /* la voce aperta a tutta pagina (null = l'elenco) */
+/* ═══ CONFRONTA (01/10/2026) ════════════════════════════════════════════════
+   Il disegno della schermata. Il conto non sta qui: sta in
+   `tariffe/motore/confronto.js`, che ha le sue 20 prove e la sua controprova.
+   Qui c'è una regola sola, ed è di disegno: QUELLO CHE NON SI È LETTO SI DEVE
+   VEDERE. Una tabella che mostra solo le righe piene convince di più ed è più
+   falsa — e questa tabella la si gira verso un cliente. */
+var CF_PRODOTTI = [];     /* l'archivio, letto una volta e tenuto */
+var CF_ERRORE = null;
+
+async function cfCarica(forza) {
+  var stato = document.getElementById('cf-stato');
+  if (!window.Confronto) {
+    if (stato) stato.innerHTML = '<b>Il motore del confronto non è caricato.</b> La schermata non può lavorare.';
+    return;
+  }
+  if (CF_PRODOTTI.length && !forza) { cfRami(); return; }
+  if (stato) stato.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Carico i prodotti in archivio…</div>';
+  CF_ERRORE = null;
+  try {
+    var r = await db.from('iam_conf_prodotti')
+      .select('id,compagnia,prodotto,ramo,in_vendita')
+      .eq('in_vendita', true).order('compagnia').order('prodotto');
+    if (r.error) throw r.error;
+    CF_PRODOTTI = r.data || [];
+  } catch (e) {
+    /* «Non si è potuto leggere» non è «non ce n'è»: un archivio vuoto per un
+       guasto di rete manderebbe a cercare documenti che ci sono già. */
+    CF_ERRORE = (e && e.message) || String(e);
+    CF_PRODOTTI = [];
+  }
+  cfRami();
+}
+
+function cfRami() {
+  var sel = document.getElementById('cf-ramo'), stato = document.getElementById('cf-stato');
+  if (!sel) return;
+  if (!sel.options.length) {
+    sel.innerHTML = Confronto.RAMI.map(function (r) {
+      return '<option value="' + r.id + '">' + esc(r.nome) + '</option>';
+    }).join('');
+  }
+  if (stato) {
+    if (CF_ERRORE) {
+      stato.innerHTML = '<b>Non si è potuto leggere l\'archivio dei prodotti.</b> ' + esc(CF_ERRORE) +
+        ' — non vuol dire che sia vuoto: vuol dire che non si è potuto leggerlo.';
+    } else if (!CF_PRODOTTI.length) {
+      /* Il vuoto si spiega, perché è il vuoto di un archivio che nessuno ha
+         ancora riempito — non un guasto. */
+      stato.innerHTML = '<b>In archivio non c\'è ancora nessun prodotto.</b> Il confronto legge i documenti ' +
+        'precontrattuali delle compagnie (DIP, DIP aggiuntivo, condizioni): finché non ne entra almeno uno ' +
+        'per parte, qui non c\'è niente da mettere a confronto — e non si inventa.';
+    } else {
+      stato.innerHTML = CF_PRODOTTI.length + (CF_PRODOTTI.length === 1 ? ' prodotto' : ' prodotti') + ' in archivio.';
+    }
+  }
+  cfRamo();
+}
+
+function cfRamo() {
+  var ramo = (document.getElementById('cf-ramo') || {}).value || '';
+  var lista = CF_PRODOTTI.filter(function (p) { return p.ramo === ramo; });
+  ['cf-a', 'cf-b'].forEach(function (id) {
+    var s = document.getElementById(id); if (!s) return;
+    var prima = s.value;
+    s.innerHTML = '<option value="">—</option>' + lista.map(function (p) {
+      return '<option value="' + esc(p.id) + '">' + esc(p.compagnia) + ' · ' + esc(p.prodotto) + '</option>';
+    }).join('');
+    if (prima) s.value = prima;
+  });
+  var e = document.getElementById('cf-esito'); if (e) e.innerHTML = '';
+}
+
+/* Un prodotto con le sue garanzie, nella forma che vuole il motore. */
+async function cfProdotto(id) {
+  var p = CF_PRODOTTI.filter(function (x) { return x.id === id; })[0];
+  if (!p) return null;
+  var g = await db.from('iam_conf_garanzie')
+    .select('garanzia,nome_documento,stato,massimale,franchigia,scoperto,pagina,frase,documento_id')
+    .eq('prodotto_id', id);
+  if (g.error) throw g.error;
+  var d = await db.from('iam_conf_documenti').select('id,tipo,edizione,url').eq('prodotto_id', id);
+  var perDoc = {};
+  ((d && d.data) || []).forEach(function (x) { perDoc[x.id] = x; });
+  return {
+    compagnia: p.compagnia, prodotto: p.prodotto, ramo: p.ramo,
+    documento: null, edizione: null,
+    garanzie: (g.data || []).map(function (x) {
+      var doc = perDoc[x.documento_id] || {};
+      return {
+        id: x.garanzia, nome: x.nome_documento, stato: x.stato,
+        massimale: x.massimale == null ? null : Number(x.massimale),
+        franchigia: x.franchigia == null ? null : Number(x.franchigia),
+        scoperto: x.scoperto == null ? null : Number(x.scoperto),
+        pagina: x.pagina, frase: x.frase,
+        /* La fonte viaggia sulla garanzia e non sul prodotto: un prodotto ha
+           più documenti — il DIP, il DIP aggiuntivo, le condizioni — e la riga
+           deve dire da QUALE viene. I nomi sono quelli che legge il motore. */
+        documento: doc.tipo || null, edizione: doc.edizione || null, url: doc.url || null
+      };
+    })
+  };
+}
+
+function cfEuro(n) {
+  if (n == null) return null;
+  return window.Contabilita ? Contabilita.euro(n) : ('€ ' + Number(n).toFixed(2));
+}
+
+/* Una delle due colonne di una riga. «Non letto» non è un trattino: un
+   trattino si scambia per uno zero, e su una franchigia vuol dire dire a un
+   cliente che non ce l'ha. */
+function cfLato(l, g) {
+  if (!l || l.stato === 'non_letto') {
+    return '<span class="cf-st cf-nl">non letto</span>' +
+      '<div class="cf-fonte">Il documento non lo dice, o non si è riusciti a leggerlo.</div>';
+  }
+  var h = l.stato === 'presente'
+    ? '<span class="cf-st cf-si">c\'è</span>'
+    : '<span class="cf-st cf-no">non c\'è</span>';
+  var n = [];
+  if (l.massimale != null) n.push('massimale ' + cfEuro(l.massimale));
+  if (l.franchigia != null) n.push('franchigia ' + cfEuro(l.franchigia));
+  if (l.scoperto != null) n.push('scoperto ' + l.scoperto + '%');
+  if (n.length) h += '<div class="cf-num">' + esc(n.join(' · ')) + '</div>';
+  var f = l.fonte || {};
+  if (f.documento || f.edizione || f.pagina != null) {
+    var dove = [];
+    if (f.documento) dove.push(esc(f.documento));
+    if (f.edizione) dove.push('ed. ' + esc(f.edizione));
+    if (f.pagina != null) dove.push('pag. ' + f.pagina);
+    h += '<div class="cf-fonte">' + dove.join(' · ') +
+      (f.frase ? '<br><q>' + esc(String(f.frase).slice(0, 180)) + '</q>' : '') + '</div>';
+  }
+  return h;
+}
+
+async function cfConfronta() {
+  var box = document.getElementById('cf-esito'); if (!box || !window.Confronto) return;
+  var ia = (document.getElementById('cf-a') || {}).value || '';
+  var ib = (document.getElementById('cf-b') || {}).value || '';
+  if (!ia || !ib) {
+    box.innerHTML = '<div class="d-card"><div class="card-body"><div class="cl-sub">' +
+      'Scegli tutti e due i prodotti da mettere a confronto.</div></div></div>';
+    return;
+  }
+  if (ia === ib) {
+    box.innerHTML = '<div class="d-card"><div class="card-body"><div class="cl-sub">' +
+      'Sono lo stesso prodotto: non c\'è niente da confrontare.</div></div></div>';
+    return;
+  }
+  box.innerHTML = '<div class="d-card"><div class="card-body"><div class="cl-carico">' +
+    '<span class="cl-carico-g"></span>Leggo i due prodotti…</div></div></div>';
+  var pa, pb;
+  try { pa = await cfProdotto(ia); pb = await cfProdotto(ib); }
+  catch (e) {
+    box.innerHTML = '<div class="d-card"><div class="card-body"><div class="cl-sub"><b>' +
+      'Non si è potuto leggere le garanzie.</b> ' + esc((e && e.message) || String(e)) + '</div></div></div>';
+    return;
+  }
+  var c = Confronto.confronta(pa, pb);
+  if (!c.ok) {
+    box.innerHTML = '<div class="d-card"><div class="card-body"><div class="cl-sub"><b>' +
+      esc(c.motivo) + '</b></div></div></div>';
+    return;
+  }
+  var p = Confronto.punteggio(c);
+  var nomeA = esc(pa.compagnia + ' · ' + pa.prodotto), nomeB = esc(pb.compagnia + ' · ' + pb.prodotto);
+  var somma = '<div class="cf-somma">' +
+    '<div class="cf-s' + (p.vince === 'a' ? ' cf-win' : '') + '"><span>' + nomeA + '</span><b>' + p.a + '</b></div>' +
+    '<div class="cf-s' + (p.vince === 'b' ? ' cf-win' : '') + '"><span>' + nomeB + '</span><b>' + p.b + '</b></div>' +
+    '<div class="cf-s"><span>pari</span><b>' + p.pari + '</b></div>' +
+    /* I due numeri stanno sempre insieme. «9 a 4» da solo è un punteggio che
+       finge di aver letto documenti che non ha letto. */
+    '<div class="cf-s"><span>confrontate</span><b>' + p.su + ' <small style="font-size:12px;font-weight:600;color:var(--txt3)">su ' + p.totale + '</small></b></div>' +
+    '<div class="cf-s"><span>non lette</span><b>' + p.nonConfrontabili + '</b></div>' +
+    '</div>';
+  var avviso = p.perche ? '<div class="cf-astenuto"><b>Nessun verdetto.</b> ' + esc(p.perche) + '</div>' : '';
+  var righe = c.righe.map(function (r) {
+    var v = r.verso === 'a' ? '<span class="cf-v-a">◀</span>'
+          : r.verso === 'b' ? '<span class="cf-v-b">▶</span>'
+          : r.verso === 'pari' ? '<span class="cf-v-null">=</span>'
+          : '<span class="cf-v-null">·</span>';
+    return '<tr><td class="cf-g">' + esc(r.nome) +
+      (r.obbligatoria ? '<small>obbligatoria per legge</small>' : '') + '</td>' +
+      '<td>' + cfLato(r.a, r) + '</td>' +
+      '<td class="cf-v">' + v + '</td>' +
+      '<td>' + cfLato(r.b, r) + '</td></tr>';
+  }).join('');
+  /* Le garanzie che i documenti nominano e il vocabolario non conosce. Non si
+     nascondono: una garanzia che sparisce dal confronto fa vincere chi ce l'ha. */
+  var fuori = [].concat(
+    (c.fuoriVocabolario.a || []).map(function (g) { return { chi: nomeA, g: g }; }),
+    (c.fuoriVocabolario.b || []).map(function (g) { return { chi: nomeB, g: g }; }));
+  var blocoFuori = fuori.length
+    ? '<div class="d-card" style="margin-top:12px"><div class="card-head"><div class="card-title">' +
+      '<span class="pictogram"><i class="ti ti-help-circle"></i></span> Fuori dal confronto</div></div>' +
+      '<div class="card-body"><div class="cl-sub">Queste garanzie stanno nei documenti ma non nel nostro ' +
+      'vocabolario, quindi il punteggio non le conta. Si vedono lo stesso: una garanzia che sparisce da un ' +
+      'confronto fa vincere chi ce l\'ha.</div>' +
+      fuori.map(function (x) {
+        return '<div class="cl-r"><div><b>' + esc(x.g.nome || x.g.id || '—') + '</b>' +
+          '<div class="cl-sub">' + x.chi + '</div></div></div>';
+      }).join('') + '</div></div>'
+    : '';
+  box.innerHTML = somma + avviso +
+    '<div class="d-card"><div class="card-head"><div class="card-title">' +
+    '<span class="pictogram"><i class="ti ti-list-details"></i></span> Garanzia per garanzia</div></div>' +
+    '<div class="card-body"><div class="table-wrap"><table class="cf-tab">' +
+    '<thead><tr><th>Garanzia</th><th>' + nomeA + '</th><th></th><th>' + nomeB + '</th></tr></thead>' +
+    '<tbody>' + righe + '</tbody></table></div></div></div>' + blocoFuori;
+}
+
+/* ══ METTERE UN PRODOTTO IN ARCHIVIO LEGGENDO IL SUO PDF (02/10/2026) ════════
+   Richiesta di Francesco: «dobbiamo scaricare tutte le note informative di
+   tutte le compagnie assicurative e banche presenti in Italia, perché per
+   battere la concorrenza ci possiamo battere solamente su dati reali».
+
+   La raccolta automatica ha bisogno che la rete dell'ambiente sia aperta.
+   Questa schermata non ne ha bisogno: si carica il PDF e lui propone le
+   righe. Non è un ripiego in attesa dell'interruttore — i prodotti che
+   servono per vendere sono quelli che si collocano e i due o tre dei
+   concorrenti che si trovano sul tavolo del cliente, e quei PDF ci sono già.
+
+   LA REGOLA CHE REGGE TUTTA LA SCHERMATA: «assente» non si spunta senza
+   scrivere la frase del documento che lo dice, e il salvataggio si rifiuta
+   senza quella. È la stessa regola del motore, che «assente» non lo scrive
+   mai da solo: misurato su un set informativo vero, cinque tentativi
+   indipendenti di dedurre un'assenza hanno prodotto tutti un dato falso. */
+var CFN = null;           /* la scheda letta, più le scelte della persona */
+
+function cfnApri() {
+  if (!window.SchedaProdotto || !window.PdfTesto) {
+    alert('Il motore di lettura dei documenti non è caricato: la schermata non può lavorare.');
+    return;
+  }
+  CFN = null;
+  var f = document.getElementById('cfn-file');
+  if (f) f.value = '';
+  var e = document.getElementById('cfn-esito');
+  if (e) e.innerHTML = '';
+  cfnBottone(false);
+  /* L'anagrafica delle compagnie si carica mentre la persona sceglie il file:
+     se non arriva, il nome si scrive a mano e non è un guasto. */
+  cfnCompagnie();
+  document.getElementById('modal-cf-nuovo').classList.add('show');
+}
+
+function cfnBottone(acceso) {
+  var b = document.getElementById('cfn-salva');
+  if (b) b.disabled = !acceso;
+}
+
+async function cfnDaFile(input) {
+  var box = document.getElementById('cfn-esito');
+  var file = input && input.files && input.files[0];
+  if (!box || !file) return;
+  cfnBottone(false);
+  box.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Leggo «' + esc(file.name) + '»…</div>';
+  try {
+    var pagine = await PdfTesto.testoPagine(file, {
+      avanzamento: function (q, su) {
+        box.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Leggo «' + esc(file.name)
+          + '» — pagina ' + q + ' di ' + su + '…</div>';
+      }
+    });
+    var impronta = await PdfTesto.impronta(file);
+    var s = SchedaProdotto.scheda(pagine);
+    CFN = { pagine: pagine, scheda: s, impronta: impronta, nomeFile: file.name, scelte: {}, citazioni: {} };
+    cfnDisegna();
+  } catch (e) {
+    box.innerHTML = '<div class="cfn-avv"><b>Non riesco a leggere il documento.</b> ' +
+      esc((e && e.message) || String(e)) + '</div>';
+  }
+}
+
+/* Il ramo lo propone il documento, ma lo decide una persona: a parità di spie
+   il motore dice che non lo sa invece di scegliere, e allora qui si chiede. */
+function cfnRamo(valore) {
+  if (!CFN) return;
+  CFN.scheda = SchedaProdotto.scheda(CFN.pagine, { ramo: valore });
+  CFN.scelte = {}; CFN.citazioni = {};
+  cfnDisegna();
+}
+
+function cfnDisegna() {
+  var box = document.getElementById('cfn-esito');
+  if (!box || !CFN) return;
+  var s = CFN.scheda;
+  var rami = (window.Confronto && Confronto.RAMI) || [];
+
+  if (!s.ok) {
+    /* Una SCANSIONE non si risolve scegliendo il ramo: non c'è niente da
+       leggere, qualunque ramo si scelga. Offrire la tendina farebbe provare
+       e riprovare a vuoto. */
+    box.innerHTML = '<div class="cfn-avv"><b>' + (s.scansione ? 'Questo PDF non contiene testo.' : 'Non si riesce a leggere.') +
+      '</b> ' + esc(s.motivo) + '</div>' +
+      (s.scansione ? '' :
+        '<div class="cf-f" style="max-width:280px"><label for="cfn-ramo">Scegli il ramo</label>' +
+        '<select id="cfn-ramo" onchange="cfnRamo(this.value)"><option value="">—</option>' +
+        rami.map(function (r) { return '<option value="' + r.id + '">' + esc(r.nome) + '</option>'; }).join('') +
+        '</select></div>');
+    cfnBottone(false);
+    return;
+  }
+
+  var ed = s.edizioni || [];
+  var fasc = (s.fascicoli || []).map(function (f) {
+    return (f.tipo || 'pezzo non riconosciuto') + ' · pag. ' + f.da + '–' + f.a;
+  });
+
+  box.innerHTML =
+    '<div class="cfn-conto">' +
+      '<div class="cfn-c"><span>presenti</span><b>' + s.conta.presente + '</b></div>' +
+      '<div class="cfn-c"><span>non lette</span><b>' + s.conta.non_letto + '</b></div>' +
+      '<div class="cfn-c"><span>assenti</span><b>' + s.conta.assente + '</b></div>' +
+      '<div class="cfn-c"><span>pagine</span><b>' + s.pagine + '</b></div>' +
+    '</div>' +
+
+    (s.avvertenze && s.avvertenze.length
+      ? '<div class="cfn-avv"><b>Quello che va saputo prima di archiviare</b><ul>' +
+        s.avvertenze.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>'
+      : '') +
+
+    '<div class="d-card"><div class="card-head"><div class="card-title">' +
+    '<span class="pictogram"><i class="ti ti-id"></i></span> Di che prodotto si tratta</div></div>' +
+    '<div class="card-body"><div class="cf-scelte">' +
+      '<div class="cf-f"><label for="cfn-compagnia">Compagnia</label>' +
+        '<input id="cfn-compagnia" type="text" list="cfn-compagnie" placeholder="Come sta scritta sul documento" ' +
+        'style="padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:9px;font:inherit">' +
+        '<datalist id="cfn-compagnie">' + (CF_COMPAGNIE || []).map(function (c) {
+          return '<option value="' + esc(c) + '">'; }).join('') + '</datalist></div>' +
+      '<div class="cf-f"><label for="cfn-prodotto">Prodotto</label>' +
+        '<input id="cfn-prodotto" type="text" placeholder="Il nome commerciale" ' +
+        'style="padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:9px;font:inherit"></div>' +
+      '<div class="cf-f"><label for="cfn-ramo">Ramo</label>' +
+        '<select id="cfn-ramo" onchange="cfnRamo(this.value)">' +
+        rami.map(function (r) {
+          return '<option value="' + r.id + '"' + (r.id === s.ramo ? ' selected' : '') + '>' + esc(r.nome) + '</option>';
+        }).join('') + '</select></div>' +
+      '<div class="cf-f"><label for="cfn-tipo">Che documento è</label>' +
+        '<select id="cfn-tipo">' +
+        [['set_informativo', 'Set informativo'], ['dip', 'DIP'], ['dip_aggiuntivo', 'DIP aggiuntivo'],
+         ['condizioni', 'Condizioni di assicurazione'], ['altro', 'Altro']].map(function (t) {
+          return '<option value="' + t[0] + '"' + (t[0] === s.tipo ? ' selected' : '') + '>' + t[1] + '</option>';
+        }).join('') + '</select></div>' +
+      '<div class="cf-f"><label for="cfn-edizione">Edizione, come sta scritta</label>' +
+        '<input id="cfn-edizione" type="text" list="cfn-edizioni" value="' + esc(ed.length ? ed[0].valore : '') + '" ' +
+        'placeholder="Es. 06/2020" ' +
+        'style="padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:9px;font:inherit">' +
+        '<datalist id="cfn-edizioni">' + ed.map(function (e) {
+          return '<option value="' + esc(e.valore) + '">' + esc(e.etichetta + ', pag. ' + e.pagina) + '</option>';
+        }).join('') + '</datalist></div>' +
+    '</div>' +
+    '<div class="cfn-nota">Il documento si divide in: ' + esc(fasc.join(' · ') || 'un pezzo solo') +
+      (s.orfane && s.orfane.length ? ' — fuori restano le pagine ' + s.orfane.join(', ') : '') + '.' +
+      (CFN.impronta ? ' Impronta del file: ' + esc(CFN.impronta.slice(0, 16)) + '…' : '') + '</div>' +
+    '</div></div>' +
+
+    '<div class="d-card"><div class="card-head"><div class="card-title">' +
+    '<span class="pictogram"><i class="ti ti-list-check"></i></span> Garanzia per garanzia</div></div>' +
+    '<div class="card-body">' +
+      '<div class="cfn-nota" style="margin:0 0 10px"><b>Queste sono proposte, non una lettura.</b> ' +
+      'Ogni riga dice da che pagina viene e porta la frase del documento. «Assente» si può scegliere ' +
+      'solo scrivendo la frase che lo dice: il motore non lo scrive mai da solo, perché su un documento ' +
+      'vero cinque tentativi di dedurlo hanno prodotto cinque dati falsi.</div>' +
+      s.garanzie.map(function (g, i) { return cfnRiga(g, i); }).join('') +
+    '</div></div>' +
+
+    ((s.fuoriVocabolario || []).length
+      ? '<div class="d-card"><div class="card-head"><div class="card-title">' +
+        '<span class="pictogram"><i class="ti ti-help-circle"></i></span> Coperture che il vocabolario non conosce' +
+        '</div></div><div class="card-body"><div class="cfn-nota" style="margin:0 0 8px">' +
+        'Il documento le vende ma non hanno un posto nel confronto: dimmelo e le aggiungo al vocabolario, ' +
+        'altrimenti questo prodotto risulterà più povero di quello che è.</div>' +
+        '<ul class="cfn-fuori">' + s.fuoriVocabolario.map(function (x) {
+          return '<li><b>' + esc(x.nome) + '</b> — pag. ' + x.pagina + '</li>'; }).join('') +
+        '</ul></div></div>'
+      : '') +
+
+    (s.quantiNonAttribuiti
+      ? '<div class="d-card"><div class="card-head"><div class="card-title">' +
+        '<span class="pictogram"><i class="ti ti-currency-euro"></i></span> ' + s.quantiNonAttribuiti +
+        ' importi che non si attribuiscono</div></div><div class="card-body">' +
+        '<div class="cfn-nota" style="margin:0 0 8px">Quasi sempre sono numeri di un sottocaso — il massimale ' +
+        'di legge, uno scoperto, una rivalsa limitata, una franchigia per area. Non sono stati messi addosso ' +
+        'a nessuna garanzia, perché indovinare un massimale è peggio che lasciarlo in bianco. ' +
+        'Eccoli con la loro pagina:</div><ul class="cfn-fuori">' +
+        s.importiNonAttribuiti.map(function (x) {
+          return '<li>pag. ' + x.pagina + ' — <i>' + esc(x.riga.slice(0, 110)) + '</i></li>'; }).join('') +
+        '</ul></div></div>'
+      : '');
+
+  cfnBottone(true);
+}
+
+function cfnStatoDi(g) {
+  return (CFN && CFN.scelte[g.garanzia]) || g.stato;
+}
+
+function cfnRiga(g, i) {
+  var stato = cfnStatoDi(g);
+  var b = function (val, cls, testo) {
+    return '<button type="button" class="' + cls + (stato === val ? ' on' : '') +
+      '" onclick="cfnScegli(\'' + g.garanzia + '\',\'' + val + '\')">' + testo + '</button>';
+  };
+  return '<div class="cfn-r" id="cfn-r-' + i + '">' +
+    '<div class="cfn-r-h"><b>' + esc(g.nome) + '</b><small>' +
+      (g.pagina != null ? 'pag. ' + g.pagina : 'non trovata nel documento') +
+      (g.forma ? ' · ' + esc(g.forma) : '') + '</small></div>' +
+    (g.nome_documento && g.nome_documento !== g.nome
+      ? '<div class="cfn-nota" style="margin-top:3px">Sul documento: «' + esc(g.nome_documento) + '»</div>' : '') +
+    (g.massimale != null || g.franchigia != null || g.franchigie_per_area
+      ? '<div class="cf-num">' +
+        (g.massimale != null ? 'massimale ' + cfEuro(g.massimale) + ' ' : '') +
+        (g.franchigia != null ? 'franchigia ' + cfEuro(g.franchigia) + ' ' : '') +
+        (g.franchigie_per_area ? 'franchigie per area: ' +
+          g.franchigie_per_area.map(function (v) { return cfEuro(v); }).join(' · ') : '') +
+        '</div>' : '') +
+    (g.daGuardare ? '<div class="cfn-g"><i class="ti ti-alert-triangle"></i> ' + esc(g.daGuardare) + '</div>' : '') +
+    (g.frase ? '<div class="cfn-frase">«' + esc(g.frase.slice(0, 170)) + '»</div>' : '') +
+    (g.perche ? '<div class="cfn-nota" style="margin-top:4px">' + esc(g.perche) + '</div>' : '') +
+    '<div class="cfn-sc">' +
+      b('presente', 'cfn-b-si', 'presente') +
+      b('assente', 'cfn-b-no', 'assente') +
+      b('non_letto', 'cfn-b-nl', 'non letta') +
+    '</div>' +
+    '<div class="cfn-cit' + (stato === 'assente' ? ' on' : '') + '" id="cfn-cit-' + g.garanzia + '">' +
+      '<div class="cfn-cit-l">Dove c\'è scritto che non c\'è — senza questo non si salva</div>' +
+      '<input type="text" value="' + esc((CFN && CFN.citazioni[g.garanzia]) || '') + '" ' +
+      'placeholder="Es. pag. 11: «Rischi esclusi: la garanzia non è prevista per questo prodotto»" ' +
+      'oninput="cfnCitazione(\'' + g.garanzia + '\', this.value)"></div>' +
+    '</div>';
+}
+
+function cfnScegli(id, stato) {
+  if (!CFN) return;
+  CFN.scelte[id] = stato;
+  /* Si ridisegna solo la riga: rifare tutta la schermata farebbe perdere
+     quello che la persona ha già scritto negli altri campi. */
+  var i = -1;
+  CFN.scheda.garanzie.forEach(function (g, k) { if (g.garanzia === id) i = k; });
+  if (i < 0) return;
+  var el = document.getElementById('cfn-r-' + i);
+  if (el) el.outerHTML = cfnRiga(CFN.scheda.garanzie[i], i);
+  if (stato === 'assente') {
+    var c = document.getElementById('cfn-cit-' + id);
+    if (c) { var inp = c.querySelector('input'); if (inp) inp.focus(); }
+  }
+}
+
+function cfnCitazione(id, val) {
+  if (CFN) CFN.citazioni[id] = val;
+}
+
+/* Le compagnie in anagrafica, per non far riscrivere a mano un nome che c'è
+   già. Non è un vincolo: un CONCORRENTE non è in anagrafica, e pretenderlo
+   vorrebbe dire non poter archiviare proprio i prodotti contro cui ci si
+   confronta. */
+var CF_COMPAGNIE = [];
+async function cfnCompagnie() {
+  if (CF_COMPAGNIE.length || !db) return;
+  try {
+    var r = await db.from('quote_compagnie').select('nome').order('nome');
+    if (!r.error) CF_COMPAGNIE = (r.data || []).map(function (x) { return x.nome; }).filter(Boolean);
+  } catch (e) { /* senza anagrafica si scrive a mano: non è un guasto */ }
+}
+
+async function cfnSalva() {
+  if (!CFN || !CFN.scheda.ok) return;
+  var gv = function (id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
+  var compagnia = gv('cfn-compagnia'), prodotto = gv('cfn-prodotto');
+  var ramo = gv('cfn-ramo') || CFN.scheda.ramo, tipo = gv('cfn-tipo'), edizione = gv('cfn-edizione');
+  if (!compagnia) { alert('Scrivi la compagnia, come sta sul documento.'); return; }
+  if (!prodotto) { alert('Scrivi il nome del prodotto.'); return; }
+
+  /* IL CONTROLLO CHE DÀ SENSO A TUTTA LA SCHERMATA. Un «assente» senza la
+     frase del documento è un'opinione, e finisce su un foglio che va a un
+     cliente come se fosse un dato. */
+  var senzaProva = [];
+  CFN.scheda.garanzie.forEach(function (g) {
+    if (cfnStatoDi(g) !== 'assente') return;
+    if (!String(CFN.citazioni[g.garanzia] || '').trim()) senzaProva.push(g.nome);
+  });
+  if (senzaProva.length) {
+    alert('Queste garanzie sono segnate «assente» senza la frase del documento che lo dice:\n\n· ' +
+      senzaProva.join('\n· ') +
+      '\n\nScrivi dove c\'è scritto, oppure mettile su «non letta». Dire a un cliente che un prodotto ' +
+      'non copre una cosa che invece copre non è un errore di battitura.');
+    return;
+  }
+
+  cfnBottone(false);
+  var box = document.getElementById('cfn-esito');
+  try {
+    /* Lo stesso prodotto non si archivia due volte: se c'è già, il documento
+       nuovo si attacca a quello. L'archivio ha un indice unico che lo impone,
+       e scoprirlo da un errore di Postgres vorrebbe dire far perdere alla
+       persona tutto quello che ha spuntato. */
+    var trovato = await db.from('iam_conf_prodotti').select('id')
+      .ilike('compagnia', compagnia).ilike('prodotto', prodotto).eq('ramo', ramo).limit(1);
+    if (trovato.error) throw trovato.error;
+    var prodottoId = (trovato.data && trovato.data[0] && trovato.data[0].id) || null;
+
+    if (!prodottoId) {
+      var ins = await db.from('iam_conf_prodotti')
+        .insert({ compagnia: compagnia, prodotto: prodotto, ramo: ramo }).select('id');
+      if (ins.error) throw ins.error;
+      prodottoId = ins.data[0].id;
+    }
+
+    /* Lo stesso file, caricato due volte, è lo stesso documento. */
+    if (CFN.impronta) {
+      var gia = await db.from('iam_conf_documenti').select('id')
+        .eq('prodotto_id', prodottoId).eq('impronta', CFN.impronta).limit(1);
+      if (!gia.error && gia.data && gia.data.length) {
+        box.insertAdjacentHTML('afterbegin',
+          '<div class="cfn-avv"><b>Questo documento è già in archivio.</b> Stesso file, stessa impronta: ' +
+          'non si archivia due volte. Se la compagnia ha cambiato edizione, il file è diverso e ' +
+          'l\'impronta lo dice.</div>');
+        cfnBottone(true);
+        return;
+      }
+    }
+
+    var doc = await db.from('iam_conf_documenti').insert({
+      prodotto_id: prodottoId, tipo: tipo || 'altro', edizione: edizione || null,
+      stato: 'preso', preso_il: new Date().toISOString(),
+      impronta: CFN.impronta || null, pagine: CFN.scheda.pagine
+    }).select('id');
+    if (doc.error) throw doc.error;
+    var documentoId = doc.data[0].id;
+
+    var righe = SchedaProdotto.daArchiviare(CFN.scheda).garanzie.map(function (r) {
+      var stato = CFN.scelte[r.garanzia] || r.stato;
+      var nonLetto = stato === 'non_letto';
+      return {
+        prodotto_id: prodottoId, documento_id: documentoId,
+        garanzia: r.garanzia, nome_documento: r.nome_documento,
+        stato: stato,
+        /* Il vincolo dell'archivio: una garanzia «non letta» non porta
+           numeri. Se una persona la sposta su «non letta» dopo che il motore
+           le aveva trovato un massimale, il massimale se ne va con lei. */
+        massimale: nonLetto ? null : r.massimale,
+        franchigia: nonLetto ? null : r.franchigia,
+        scoperto: nonLetto ? null : r.scoperto,
+        pagina: r.pagina,
+        frase: stato === 'assente' ? String(CFN.citazioni[r.garanzia] || '').trim() : r.frase
+      };
+    });
+    var gar = await db.from('iam_conf_garanzie').insert(righe);
+    if (gar.error) throw gar.error;
+
+    closeModal('modal-cf-nuovo');
+    CF_PRODOTTI = [];
+    await cfCarica(true);
+    alert('«' + compagnia + ' · ' + prodotto + '» è in archivio, con ' + righe.length +
+      ' garanzie lette dal documento. Adesso lo puoi mettere a confronto.');
+  } catch (e) {
+    box.insertAdjacentHTML('afterbegin', '<div class="cfn-avv"><b>Non si è potuto archiviare.</b> ' +
+      esc((e && e.message) || String(e)) + ' — niente è andato perso: le spunte sono ancora qui.</div>');
+    cfnBottone(true);
+  }
+}
+
 var SPR_SEL = {};         /* le rate flaggate nel dettaglio */
 var SPR_COLLAB = [];      /* il registro delle persone, per abbinare e per l'email */
 var SPR_ESITO_INVIO = '';
@@ -6008,7 +6881,7 @@ async function sprCarica(forza) {
   if (!db) return;
   var mio = ++SPR_GIRO;
   var box = document.getElementById('spr-lista');
-  if (forza && box) box.innerHTML = '<div class="cl-sub">Carico i sospesi…</div>';
+  if (forza && box) box.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Carico i sospesi…</div>';
   var err = null, parziale = false, rate = [], mod = [];
   var CAMPI = 'id,polizza_id,tipo,stato,mezzo_pagamento,importo_lordo,data_decorrenza,incassato_il,'
     + 'quote_polizze(numero_polizza,cliente,cliente_id,compagnia,mezzo_pagamento)';
@@ -6112,7 +6985,7 @@ function sprRender() {
     return;
   }
   var e = SPR_ESITO;
-  if (!e) { box.innerHTML = '<div class="cl-sub">Carico i sospesi…</div>'; return; }
+  if (!e) { box.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Carico i sospesi…</div>'; return; }
 
   if (somma) {
     somma.innerHTML = ''
@@ -9131,6 +10004,188 @@ var CRU_CREDITI = [], CRU_RECUPERI = [], CRU_SOSPESI = [];
 var CRU_TITOLI = [], CRU_QUADRATURE = [], CRU_INCASSI_RATE = [];
 var CRU_PORTAFOGLIO = null;
 var CRU_ANOM_CIECHE = [];
+/* ══ APPUNTI INCASSI (28/09/2026) ═══════════════════════════════════════════
+   La schermata del mattino, dal capitolo 2A del manuale di contabilità di
+   AssiEasy. Gli stati li decide il motore (`ContabilitaGiornaliera.abbinaFoglio`),
+   provato in Node con 22 prove e 16 sabotaggi: qui si disegna soltanto.
+
+   I DUE LATI, e perché oggi uno è vuoto. Il confronto è fra:
+     · quello che abbiamo registrato NOI in giornata — le rate senza `fonte`,
+       cioè messe a mano in IAM o in QUOTO;
+     · quello che dice la COMPAGNIA — le rate arrivate col flusso (`fonte`).
+
+   Misurato il 28/09/2026 su tutto l'archivio: 2.799 incassi, di cui 2.787 dal
+   flusso SSF, 12 dal flusso HDI e **zero registrati a mano**. Quindi oggi ogni
+   riga risulta «solo foglio cassa», ed è vero: l'agenzia prende per buono
+   quello che dice la compagnia senza aver contato niente in giornata. È
+   esattamente il rischio per cui il manuale fa fare questo controllo —
+   «evitando eventuali ammanchi o ancor più pericolose eccedenze».
+
+   La schermata lo dice in una frase invece di mostrare una giornata tutta
+   rossa: un elenco di problemi che sono tutti lo stesso problema si smette di
+   leggerlo al secondo giorno. */
+var APP_GIORNO = null;
+
+function appOggi() { return cntOggiIso(); }
+
+/* L'ultima giornata che ha incassi: aprire la schermata su oggi, che è quasi
+   sempre vuoto, farebbe credere che non funzioni. */
+async function appUltimaGiornata() {
+  try {
+    const { data, error } = await db.from('quote_titoli')
+      .select('incassato_il').not('incassato_il', 'is', null)
+      .order('incassato_il', { ascending: false }).limit(1);
+    if (error) throw error;
+    return (data && data[0] && data[0].incassato_il) || null;
+  } catch (e) { console.warn('ultima giornata di incassi non leggibile:', e.message || e); return null; }
+}
+
+async function appApri() {
+  const campo = document.getElementById('app-giorno');
+  if (!campo) return;
+  if (!campo.value) campo.value = APP_GIORNO || (await appUltimaGiornata()) || appOggi();
+  appCarica();
+}
+
+async function appCarica() {
+  const campo = document.getElementById('app-giorno');
+  const somma = document.getElementById('app-somma');
+  const righeBox = document.getElementById('app-righe');
+  const avviso = document.getElementById('app-avviso');
+  if (!campo || !somma || !db) return;
+  const g = campo.value || appOggi();
+  APP_GIORNO = g;
+  somma.innerHTML = '<div class="cl-sub">Leggo la giornata…</div>';
+  righeBox.innerHTML = '';
+  avviso.innerHTML = '';
+
+  const M = window.ContabilitaGiornaliera;
+  if (!M) {
+    somma.innerHTML = '<div class="cnt-err">Il motore della giornata non è caricato: senza, gli stati non si possono dire.</div>';
+    return;
+  }
+
+  let titoli = [];
+  try {
+    /* La giornata: le rate incassate QUEL giorno, con la loro polizza. La
+       compagnia e il numero di polizza servono all'abbinamento; il cliente e
+       il mezzo servono a leggere la riga. */
+    const { data, error } = await db.from('quote_titoli')
+      .select('id,importo_lordo,provvigione,stato,mezzo_pagamento,incassato_il,fonte,fonte_id,sigla_tipo,'
+            + 'polizza:quote_polizze(numero_polizza,compagnia,cliente,data_effetto,modulo,prodotto)')
+      .eq('incassato_il', g).limit(2000);
+    if (error) throw error;
+    titoli = data || [];
+  } catch (e) {
+    somma.innerHTML = '<div class="cnt-err">Non riesco a leggere gli incassi del giorno: ' + esc(e.message || e)
+      + '<br><small>Non vuol dire che non ce ne siano.</small></div>';
+    return;
+  }
+
+  /* Da una rata alla riga che il motore sa abbinare. */
+  const verso = (t) => ({
+    id: t.id,
+    polizza: (t.polizza && t.polizza.numero_polizza) || '',
+    effetto: (t.polizza && t.polizza.data_effetto) || '',
+    importo: t.importo_lordo,
+    compagnia: (t.polizza && t.polizza.compagnia) || '—',
+    cliente: (t.polizza && t.polizza.cliente) || '',
+    ramo: (t.polizza && (t.polizza.modulo || t.polizza.prodotto)) || '',
+    mezzo: t.mezzo_pagamento || '',
+    sigla: t.sigla_tipo || '',
+    provvigione: t.provvigione,
+  });
+
+  /* I DUE LATI. Senza `fonte` l'ha scritta una persona: è un nostro appunto.
+     Con `fonte` l'ha portata il flusso: è il foglio cassa della compagnia. */
+  const nostre = titoli.filter(t => !t.fonte).map(verso);
+  const dalFoglio = titoli.filter(t => !!t.fonte).map(verso);
+  const a = M.abbinaFoglio(nostre, dalFoglio);
+
+  appDisegna(a, g, nostre.length, dalFoglio.length);
+}
+
+function appDisegna(a, g, quanteNostre, quanteLoro) {
+  const somma = document.getElementById('app-somma');
+  const righeBox = document.getElementById('app-righe');
+  const avviso = document.getElementById('app-avviso');
+  const eur = (n) => '€ ' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  if (!a.righe.length) {
+    /* La data a parole: `cntData` non esiste in IAM, e chiamarla avrebbe fatto
+       morire il disegno proprio sulla giornata vuota — cioè sul caso in cui
+       una schermata sembra rotta senza esserlo. */
+    somma.innerHTML = '<div class="cl-sub">Il ' + esc(new Date(g + 'T12:00:00').toLocaleDateString('it-IT'))
+      + ' non risulta nessun incasso, né nostro né della compagnia.</div>';
+    righeBox.innerHTML = '';
+    return;
+  }
+
+  /* Il verdetto in cima, che è la frase del manuale. */
+  const chiuso = a.tutteOk;
+  avviso.innerHTML = chiuso
+    ? '<div class="cnt-ok"><i class="ti ti-check"></i> Giornata chiusa: nessuna riga da sanare.</div>'
+    : '<div class="cnt-err"><i class="ti ti-alert-triangle"></i> <b>' + (a.daSanare + a.appunti)
+      + (a.daSanare + a.appunti === 1 ? ' riga</b> da guardare' : ' righe</b> da guardare')
+      + ' prima di considerare chiusa la giornata.</div>';
+
+  /* QUANDO TUTTO È «SOLO FOGLIO CASSA», IL PROBLEMA È UNO SOLO e si dice una
+     volta: duemila righe rosse che dicono la stessa cosa si smettono di
+     leggere al secondo giorno. */
+  const tuttoDalFlusso = quanteNostre === 0 && quanteLoro > 0;
+  const spiegone = tuttoDalFlusso
+    ? '<div class="cnt-nota" style="margin:10px 0;padding:11px 13px;background:var(--surf2);border:1px solid var(--bord2);border-radius:10px;font-size:12.5px;line-height:1.55;">'
+      + '<b>Di questa giornata non abbiamo registrato niente noi.</b> Tutte e ' + quanteLoro
+      + ' le righe arrivano dal flusso della compagnia, quindi risultano «solo foglio cassa»: '
+      + 'stiamo prendendo per buono quello che dice lei, senza aver contato niente in giornata. '
+      + 'È il controllo per cui questa schermata esiste — contante, assegni e POS quadrati <i>prima</i> '
+      + 'della chiusura, per non scoprire dopo un ammanco o una copertura mancata.</div>'
+    : '';
+
+  const box = (t, v, cls) => '<div class="app-q' + (cls ? ' ' + cls : '') + '"><span>' + t + '</span><b>' + v + '</b></div>';
+  somma.innerHTML =
+    box('OK', a.ok, a.ok ? 'app-q-ok' : '')
+    + box('Appunti', a.appunti, a.appunti ? 'app-q-att' : '')
+    + box('Scostamenti', a.scostamenti, a.scostamenti ? 'app-q-no' : '')
+    + box('Solo foglio cassa', a.soloFoglio, a.soloFoglio ? 'app-q-no' : '')
+    + box('Nostro totale', eur(a.totaleNostro))
+    + box('Foglio cassa', eur(a.totaleFoglio))
+    + box('Differenza', eur(a.differenza), a.differenza ? 'app-q-no' : 'app-q-ok');
+
+  /* Gli abbuoni: il manuale li fa guardare ogni giorno, perché è lì che si
+     nascondono gli ammanchi. */
+  const abb = (a.abbuoni.passivo || a.abbuoni.attivo)
+    ? '<div class="cnt-nota" style="margin:10px 0;padding:11px 13px;background:#fff8ec;border:1px solid #f6dfb8;border-radius:10px;font-size:12.5px;">'
+      + '<b>Abbuoni della giornata:</b> ' + eur(a.abbuoni.passivo) + ' a nostro carico (costo)'
+      + ' · ' + eur(a.abbuoni.attivo) + ' a nostro favore (ricavo). '
+      + 'Vanno guardati ogni giorno: gli importi piccoli sono il posto dove si nascondono gli ammanchi.</div>'
+    : '';
+
+  const avvisiHtml = (a.avvisi || []).filter(x => !(tuttoDalFlusso && /solo sul foglio cassa/.test(x.t)))
+    .map(x => '<div class="' + (x.g === 'grave' ? 'cnt-err' : 'cnt-nota') + '" style="margin:8px 0;">' + esc(x.t) + '</div>').join('');
+
+  righeBox.innerHTML = spiegone + abb + avvisiHtml + '<div class="app-lista">'
+    + a.righe.map(r => appRiga(r, eur)).join('') + '</div>';
+}
+
+function appRiga(r, eur) {
+  const d = r.nostro || r.foglio || {};
+  const s = r.stato;
+  const tinta = s.chiave === 'OK' ? 'app-ok' : (s.chiave === 'APPUNTO' ? 'app-att' : 'app-no');
+  const importo = r.nostro ? r.nostro.importo : (r.foglio ? r.foglio.importo : null);
+  return '<div class="app-riga ' + tinta + '">'
+    + '<div class="app-stato">' + esc(s.etichetta) + '</div>'
+    + '<div class="app-chi"><b>' + esc(d.cliente || '(senza nominativo)') + '</b>'
+    + '<div class="cl-sub">' + esc(d.compagnia || '—')
+    + (d.polizza ? ' · ' + esc(d.polizza) : ' · <i>senza numero di polizza</i>')
+    + (d.sigla ? ' · ' + esc(d.sigla) : '') + '</div></div>'
+    + '<div class="app-imp">' + eur(importo)
+    + (r.scostamento ? '<div class="app-sco">' + (r.scostamento > 0 ? '+' : '') + eur(r.scostamento) + '</div>' : '')
+    + '</div>'
+    + (r.perche ? '<div class="app-perche">' + esc(r.perche) + '</div>' : '')
+    + '</div>';
+}
+
 var CRU_LETTO = {};
 var CRU_CARICATO = false;
 var CRU_PARZIALE = false;
@@ -9524,7 +10579,7 @@ async function recApri(forza) {
   REC_GUASTI = [];
   REC_CHIAVE = recNuovaChiave();
   var l = document.getElementById('rec-lista');
-  if (l && forza !== false) l.innerHTML = '<div class="cl-sub">Carico i sospesi…</div>';
+  if (l && forza !== false) l.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Carico i sospesi…</div>';
   REC_CONTI = await recLeggi('i conti', db.from('iam_conti').select('*').eq('attivo', true).order('ordine'), []);
   REC_COMPAGNIE = await recLeggi('l\'anagrafica delle compagnie', db.from('quote_compagnie').select('id,nome,alias'), []);
   var cs = await recLeggi('le causali', db.from('iam_causali').select('*')
@@ -12505,7 +13560,7 @@ function selContabTab(sub) {
      chi non può entrare finisce sul Cruscotto invece che su un riquadro che
      non dovrebbe vedere. */
   if (!contabPuo(sub)) sub = 'cruscotto';
-  ['cruscotto','quadratura','primanota','incassa','recuperi','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
+  ['cruscotto','appunti','quadratura','primanota','incassa','recuperi','quadconti','incassi','anomalie','sospesi','storico'].forEach(s => {
     const btn = document.getElementById('ctab-'+s);
     const pnl = document.getElementById('contab-panel-'+s);
     if (btn) btn.classList.toggle('act', s===sub);
@@ -12525,6 +13580,7 @@ function selContabTab(sub) {
   if (sub==='primanota' || sub==='quadconti') pntCarica();
   if (sub==='incassi') incCarica();
   if (sub==='cruscotto') cruCarica();
+  if (sub==='appunti') appApri();
   /* La linguetta fa partire un caricamento ASINCRONO che azzera le rate
      scelte: chi arriva qui con delle rate gia' flaggate (dai Sospesi) deve
      poterlo aspettare, altrimenti se le vede cancellare a meta' strada. E' la
@@ -12691,7 +13747,7 @@ function ripristinaScheda() {
   RIPRISTINO_IN_CORSO = true;
   try {
     if (!lastTab) { goTab('dashboard'); return; }
-    const contabSub = ['cruscotto','quadratura','primanota','incassa','recuperi','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
+    const contabSub = ['cruscotto','appunti','quadratura','primanota','incassa','recuperi','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
     if (contabSub.includes(lastTab)) { goTab('carica'); selContabTab(lastTab); }
     else if (lastTab === 'quoto') goTab('dashboard');
     /* «lab» era la vecchia pagina-hub, ora rimossa (Marketing vive nel riquadro,
@@ -12763,7 +13819,7 @@ function goTab(t) {
      cose, in due elenchi diversi, e il primo vince in silenzio.
      La sotto-scheda adesso si chiama `quadconti`; `conto`, il vecchio nome
      della voce tolta, porta dove il contenuto è andato. */
-  const CONTAB_SUB = ['quadratura','primanota','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
+  const CONTAB_SUB = ['appunti','quadratura','primanota','quadconti','incassi','caricafile','anomalie','sospesi','storico','conto'];
   if (CONTAB_SUB.includes(t)) {
     goTab('carica');
     selContabTab(t);
@@ -12860,6 +13916,10 @@ function goTab(t) {
       e.innerHTML = abVuoto('ti-user-search', 'Cerca il cliente', 'Nominativo, codice fiscale, email o comune. Servono almeno due lettere.');
     }
   }
+  /* Il confronto legge l'archivio dei prodotti all'apertura: e' un elenco
+     corto e fermo, e averlo gia' pronto evita due clic prima di vedere
+     qualcosa. Se e' vuoto, la schermata lo dice e spiega perche'. */
+  if (t === 'confronta') { cfCarica(); }
   if (t === 'utenti') {
     caricaProfilo(ME?.id).then(p => {
       if (p) { PROFILO = p; applicaPermessi(p.ruolo); }
@@ -14311,7 +15371,12 @@ function getProdNome(codice) {
 
 function buildSospesi() {
   const sosp = APP.sospesi.filter(s=>s.importo>=0);
+  /* Niente da file: il blocco storico resta chiuso, titolo e spiegazione
+     compresi (30/09/2026). Prima restava aperto a dire che era vuoto, e
+     quelle righe erano l'unica cosa scritta sotto il caricamento. */
   if (!sosp.length) return;
+  const st = document.getElementById('spr-storico');
+  if (st) st.style.display = 'block';
   loadTeam();
 
   // Popola select produttori
@@ -24312,9 +25377,22 @@ async function openWDModal(id, dataScelta) {
   const mapLinkEl = document.getElementById('wd-luogo-map-link');
   if (mapLinkEl) mapLinkEl.style.display = 'none';
 
-  // Popola «Condividi con» come spunte (escludi se stesso). Le caselle si
-  // accendono e SPENGONO con un clic: niente più Ctrl/Cmd per togliere una
-  // condivisione scelta per sbaglio (impossibile da trackpad/telefono).
+  /* «CONDIVIDI CON»: UN INTERRUTTORE PER OGNI NOME (28/09/2026).
+     «Voglio proprio un interruttore a fianco al nominativo di chi sto per
+     condividere l'appuntamento» — Francesco, con la schermata sotto gli occhi.
+
+     Prima erano caselle da spuntare da 16 pixel. Una casella dice «scegli fra
+     questi»; un interruttore dice «questa persona è dentro o è fuori», che è
+     esattamente la domanda: con chi lo sto condividendo. E si vede da lontano
+     quali sono accesi senza doverli leggere uno per uno — che è il motivo per
+     cui su un elenco di colleghi la spunta è la forma sbagliata.
+
+     È l'interruttore di casa (`.sw` + `.sl`), lo stesso che sta due campi più
+     su su «Segna come importante»: non se ne disegna un terzo.
+
+     Il nome è dentro la `<label>`, quindi si accende cliccando anche sul
+     nominativo e non solo sui 44 pixel dell'interruttore — da telefono è la
+     differenza fra un gesto e tre tentativi. */
   const box = document.getElementById('wd-condividi-box');
   if (box) {
     try {
@@ -24324,7 +25402,9 @@ async function openWDModal(id, dataScelta) {
       box.innerHTML = colleghi.length ? colleghi.map(u => {
         const nome = esc(((u.nome||'')+' '+(u.cognome||'')).trim() || u.email);
         const on = condivisiAttuali.includes(u.id) ? 'checked' : '';
-        return `<label style="display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;cursor:pointer;"><input type="checkbox" class="wd-cond-cb" value="${esc(u.id)}" ${on} style="width:16px;height:16px;flex:none;cursor:pointer;"><span>${nome}</span></label>`;
+        return `<label class="wd-cond-riga">
+          <span class="sw"><input type="checkbox" class="wd-cond-cb" value="${esc(u.id)}" ${on}><span class="sl"></span></span>
+          <span class="wd-cond-nome">${nome}</span></label>`;
       }).join('') : '<div style="padding:8px;color:var(--txt3);font-size:12px;">Nessun collega disponibile.</div>';
     } catch(e) {
       console.warn('openWDModal utenti error:', e);

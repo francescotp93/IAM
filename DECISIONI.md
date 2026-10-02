@@ -1393,3 +1393,106 @@ dichiara invece di non fare niente.
 
 **Fuori perimetro, annotato:** due modifiche allo stesso motore nello stesso
 giorno condividono il contrassegno; la seconda arriva entro dieci minuti.
+
+## 29/09/2026 — «Il portafoglio HDI che non si caricava per 14 polizze su 252»
+
+**Chiesto:** il PASS-133 del 13/05 si fermava su *«14 polizze richiamano un
+cliente che nel file non c'è: entrerebbero senza intestatario»*, e non si
+caricava niente — 206 clienti, 252 polizze, 754 garanzie.
+
+🟡 **Ho tolto il blocco e l'ho trasformato in un avviso.** Il contraente di una
+polizza può stare in tre posti, e se ne guardava uno solo: in questo file, già
+in archivio da un'estrazione precedente, o da nessuna parte. Il secondo caso è
+la normalità — HDI manda le polizze nuove e non rimanda l'anagrafica di chi è
+già cliente — e veniva chiamato «orfano».
+*Come tornare indietro: in `flusso-hdi.js` rimettere `g: 'grave'` sull'avviso
+delle polizze scartate.*
+
+🟢 **Il terzo caso non poteva comunque entrare senza intestatario.** La
+scrittura aggancia le polizze al contraente con una `join`
+(`iam_importa_flusso`): una polizza senza cliente non viene inserita. Il blocco
+difendeva da una cosa impossibile, e per quattordici polizze ne teneva fuori
+duecentotrentotto. Adesso escono già dal lettore, contate e dichiarate — come
+si fa sui titoli da settembre.
+
+🟢 **La pagina chiede al database i clienti HDI già in archivio**, come già
+chiedeva i numeri di polizza. Porta anche il nominativo: la polizza tiene il
+nome copiato accanto al collegamento, e senza sarebbe entrata agganciata al
+cliente giusto comparendo in elenco con un trattino (era successo il 24/09).
+
+🟢 **`piano()` risolve la chiave del contraente che sta solo in archivio**,
+altrimenti si smetteva di bloccare il file e quelle polizze sparivano in
+silenzio: due modi diversi di perderle. Il codice fiscale resta l'identità che
+vince; la chiave di provenienza riempie solo i buchi.
+
+**Fuori perimetro, annotato:**
+- **L'SSF butta la chiave del contraente quando l'anagrafica non è nel flusso**
+  (`flusso-ssf.js`: `p._cliente = cli ? cli._chiave : null`). Non blocca — usa
+  già un avviso — ma quelle polizze non possono agganciarsi a un cliente che è
+  in archivio, perché la chiave per cercarlo è stata persa. Stesso rimedio di
+  HDI, un'altra volta.
+- **Non ho potuto provarlo sul file vero**: il PASS-133 del 13/05 non è fra gli
+  allegati. Le prove usano un file finto costruito con le stesse colonne.
+
+## 02/10/2026 — Recuperare le note informative delle compagnie
+
+**Perimetro:** Francesco: «per le note informative le devi recuperare tu».
+Trovare dove stanno i documenti precontrattuali delle compagnie e portarli
+dentro l'archivio di Confronta, senza farglieli caricare a mano.
+
+🟡 **La rete degli agenti è chiusa, ma non tutti i canali lo sono.** Misurato
+il 02/10: `curl` e `WebFetch` prendono 403 sul CONNECT verso ivass.it, verso
+tutte le compagnie provate e verso i CDN. **`WebSearch` invece funziona**,
+perché gira sui server di Anthropic e non passa dal proxy del container. E
+**Supabase è raggiungibile** (`<progetto>.supabase.co` risponde), mentre
+`api.supabase.com` no. Da qui nasce tutto il resto.
+*Come tornare indietro: niente da annullare, è una misura.*
+
+🟡 **Il catalogo sta in un file del repo, non nel database.**
+`tariffe/dati/note-informative.json` raccoglie compagnia → ramo → prodotto →
+URL → edizione per 25 documenti di 6 compagnie, trovati con WebSearch. In
+archivio non è entrato niente: vale la regola dei dodici conti minimi (§8.1),
+un archivio con dentro dati che nessuno ha deciso dopo due settimane è un
+archivio di dati veri agli occhi di chi lo legge. Un file è anche diffabile e
+provabile, il database no.
+*Come tornare indietro: cancellare il file.*
+
+🟡 **Ogni voce del catalogo è dichiarata NON VERIFICATA.** Dall'ambiente non si
+è potuto nemmeno chiedere se un indirizzo risponde, quindi `stato` vale
+«trovato» e non «buono». Una prova lo impone: se un documento si dichiarasse
+già «preso» senza che nessuno l'abbia aperto, la suite va rossa.
+
+🟢 **La funzione che scarica accetta solo i domini del catalogo, e i due
+elenchi sono tenuti insieme da una prova.** Una funzione che scarica un URL
+qualunque è un proxy aperto sull'infrastruttura dell'agenzia: nei log del
+servizio raggiunto comparirebbe l'agenzia. Il controllo è sull'host intero
+(`DOMINI.includes`), non su «finisce con»: `www.sara.it.male.com` finisce per
+`www.sara.it`. I reindirizzamenti si seguono a mano ricontrollando ogni salto,
+perché un 302 è il modo in cui un elenco di domini si aggira.
+
+🟢 **La funzione non archivia e non decide.** Prende il file, controlla che
+cominci per `%PDF-` e torna l'impronta. Gli stati delle garanzie restano della
+schermata, con una persona davanti: il motore non scrive mai «assente» da
+solo, e questo vale anche quando il documento arriva dalla rete invece che da
+un caricamento a mano. Due prove lo impongono.
+
+🔴 **NON INSTALLATA.** `supabase/functions/prendi-documento/index.ts` è scritta
+e provata nella parte che si può provare senza rete (12 prove, 17/17 guasti
+presi), ma un deploy in produzione è rosso: serve il via di Francesco.
+
+**Trovato misurando, da sapere:** il set informativo DALLBOGG su cui è tarato
+il lettore è l'edizione **06/2020**; quella pubblicata oggi è la **04/25**. Un
+confronto mostrato a un cliente nel 2026 su un documento del 2020 è un rischio
+di adeguatezza a sé, indipendente da quanto bene lo si legge. È la ragione per
+cui serve il controllo mensile, e per cui il catalogo porta l'edizione.
+
+**Fuori perimetro, annotato:**
+- **Quattro compagnie su nove sono ancora da cercare** (Allianz, Nobis, Prima,
+  24H) e per HDI e Italiana manca il prodotto auto principale: i loro PDF
+  stanno dentro le pagine di prodotto, e per trovarli serve un canale che
+  sappia leggere una pagina HTML — WebSearch indicizza il PDF, non la pagina.
+- **Prima è una compagnia diretta**: i documenti stanno dentro il flusso di
+  quotazione. Probabilmente serve il connettore del browser, che per i portali
+  compagnia esiste già, non una ricerca.
+- **L'agenda mensile** (ricontrollare le impronte) non è stata scritta: senza
+  un canale per scaricare non avrebbe niente da ricontrollare.

@@ -125,6 +125,18 @@
       { id: 'kasko', nome: 'Kasko / collisione',
         sin: ['kasko', 'collisione', 'guasti accidentali', 'guasti accidentali kasko/collisione',
               'danni accidentali', 'mini kasko', 'kasko collisione'] },
+      /* NON È LA KASKO, e tenerle insieme falsa il confronto. La kasko paga il
+         danno al tuo veicolo anche quando sei solo; questa paga solo se
+         l'altro veicolo c'è ed è identificato. Si vendono a prezzi diversi, e
+         il cliente che crede di aver comprato la kasko scopre la differenza
+         al primo sinistro senza controparte.
+         Trovata il 02/10/2026 su un set informativo vero, dove «Collisione
+         con veicoli identificati (opzionale)» e «Kasko (opzionale)» sono due
+         blocchi distinti: col solo sinonimo «collisione» della kasko, il
+         primo si prendeva il posto del secondo e la kasko vera spariva. */
+      { id: 'collisione_identificati', nome: 'Collisione con veicoli identificati',
+        sin: ['collisione con veicoli identificati', 'collisione con veicolo identificato',
+              'collisione con altri veicoli identificati', 'urto con veicolo identificato'] },
       { id: 'cristalli', nome: 'Cristalli',
         sin: ['cristalli', 'rottura cristalli', 'rottura dei cristalli'] },
       { id: 'eventi_naturali', nome: 'Eventi naturali',

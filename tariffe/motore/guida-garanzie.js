@@ -361,6 +361,14 @@
       sezione: 'auto',
       esempio: 'Esci di strada da solo e danneggi la tua auto: può essere indennizzato il danno al tuo '
         + 'veicolo, al netto della franchigia.' },
+    /* L'esempio dice la differenza con la kasko, perché è quella differenza
+       che il cliente scopre al primo sinistro: qui serve l'altro veicolo, e
+       serve che si sappia chi è. */
+    collisione_identificati: {
+      sezione: 'auto',
+      esempio: 'Ti scontri con un\'altra auto e l\'altro conducente si ferma e dà le sue generalità: il '
+        + 'danno alla tua auto può essere indennizzato. Se esci di strada da solo, o se l\'altro scappa '
+        + 'senza farsi identificare, questa garanzia non interviene.' },
     guasti_ladri: {
       sezione: 'auto',
       esempio: 'Tentano di rubare l\'auto e rompono il bloccasterzo e la portiera senza riuscirci: '

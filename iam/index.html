@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.44.1">
-<meta name="app-versione-nome" content="Il tasto Conferma, e i motori che restavano indietro">
+<meta name="app-versione" content="0.50.0">
+<meta name="app-versione-nome" content="La targhetta della versione torna a dire il vero">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -35,7 +35,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
+<script src="config.js?v=20260927a"></script>
 <!-- IL REGISTRO DEI MOVIMENTI (19/09/2026) — è lo STESSO file che carica QUOTO,
      non una copia. IAM e il preventivatore sono la stessa origine dal 16/09
      (iam.withusassicurazioni.it serve IAM alla radice e QUOTO sotto
@@ -55,7 +55,7 @@
 <script src="/nuovo-preventivo/tariffe/motore/anagrafica.js?v=20260921"></script>
 <!-- I conti e le causali (brief #02 M1). Stesso file del preventivatore, per lo
      stesso motivo: il vocabolario della contabilità dev'essere uno solo. -->
-<script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260928"></script>
+<script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260929"></script>
 <!-- Il motore della giornata: gli stati dell'appunto di incasso (APPUNTO, OK,
      SCOSTAMENTO, FC) e il foglio della giornata. Non era caricato da IAM, e la
      schermata «Appunti incassi» senza di lui sarebbe un elenco senza stati. -->
@@ -1835,9 +1835,9 @@ input[type=file]{display:none;}
   textarea { font-size: 16px; }
 }
 </style>
-<link rel="stylesheet" href="withus-pictograms.css?v=20260804">
+<link rel="stylesheet" href="withus-pictograms.css?v=20260927a">
 <!-- impronta withus-one.css: 9d3672a1 — se cambia, cambia anche il ?v= qui sotto -->
-<link rel="stylesheet" href="withus-one.css?v=20260915a">
+<link rel="stylesheet" href="withus-one.css?v=20260927a">
 </head>
 <body>
 
@@ -5054,7 +5054,7 @@ input[type=file]{display:none;}
   </div>
 </div>
 
-<script type="module" src="analisi-bisogni-rating.js?v=20260804"></script>
+<script type="module" src="analisi-bisogni-rating.js?v=20261002a"></script>
 
 <script>
 'use strict';
@@ -28141,8 +28141,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: 77d19d87 — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260923a"></script>
-  <script src="withus-ticket-uno.js?v=1"></script>
+<!-- impronta withus-one.js: b47e8ec2 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20261002a"></script>
+  <script src="withus-ticket-uno.js?v=20260927a"></script>
 </body>
 </html>

@@ -1,8 +1,111 @@
 {
-  "versione": "0.44.1",
-  "nome": "Il tasto Conferma, e i motori che restavano indietro",
-  "data": "2026-09-24",
+  "versione": "0.50.0",
+  "nome": "La targhetta della versione torna a dire il vero",
+  "data": "2026-10-02",
   "storia": [
+    {
+      "v": "0.50.0",
+      "data": "2026-10-02",
+      "nome": "La targhetta della versione torna a dire il vero",
+      "voci": [
+        "LA TARGHETTA MENTIVA DI DIECI RILASCI. In fondo al menu del tuo nome c'era scritto 0.44.1, il rilascio del 24 settembre: nel frattempo ne sono passati dieci, fino allo 0.49.2. Quindi alla domanda «quello che ho chiesto è pubblicato?» rispondeva no da tre giorni, e c'era da crederci.",
+        "E LA FINESTRA DELLE NOVITÀ si fermava allo stesso punto: i dieci rilasci in mezzo non c'erano. Adesso ci sono, uno per uno, scritti prendendo le note di rilascio di chi li ha fatti — non riassunte a memoria.",
+        "IAM CARICAVA IL TELAIO VECCHIO. Il file che disegna il menu e la barra è cambiato ieri alle 15:11, ma l'indirizzo con cui la pagina lo chiede era rimasto quello di quattro giorni prima: e un indirizzo che non cambia è un indirizzo che il browser non richiede. È lo stesso guasto del 14 settembre, quando una voce nuova del menu non compariva. Adesso l'indirizzo è nuovo e il telaio si ricarica.",
+        "Lo stesso valeva per il foglio di stile della scocca, fermo dal 16 settembre: dieci giorni in cui chi aveva IAM aperto usava la grafica di prima.",
+        "TRE CONTROLLI AUTOMATICI LO DICEVANO GIÀ, tutti e tre rossi nel banco di prova di IAM, e nessuno li ha letti. Quello è il pezzo che resta da decidere: un controllo rosso che nessuno guarda non è un controllo.",
+        "E LA DERIVA SI È RIPETUTA MENTRE QUESTA CORREZIONE ASPETTAVA: dal 27 settembre al 2 ottobre sono entrati altri quattordici rilasci, e NESSUNO ha alzato il numero di versione. Nello stesso periodo sei indirizzi sono tornati indietro — il telaio di IAM di nuovo, e cinque motori di calcolo. Sono stati tutti rimisurati e sistemati qui dentro. Ma il punto è quello scritto sopra: la disciplina si dimentica, e un controllo rosso che nessuno legge non la sostituisce."
+      ]
+    },
+    {
+      "v": "0.49.2",
+      "data": "2026-09-25",
+      "nome": "Il tacito rinnovo non si afferma quando non si sa",
+      "voci": [
+        "La scheda scriveva «senza tacito rinnovo» su tutte e diciotto le polizze di HDI. Ma HDI quel dato non lo manda: adesso i casi sono tre — sì, no, non dichiarato — e il terzo si vede.",
+        "«Non dichiarato» non è «no»: dire no su una polizza di cui non si sa vuol dire scrivere in archivio una cosa che nessuno ha deciso."
+      ]
+    },
+    {
+      "v": "0.49.1",
+      "data": "2026-09-25",
+      "nome": "L'importo della rata è quello che il cliente ha pagato",
+      "voci": [
+        "L'importo delle rate di HDI era più alto del vero da 0,71 a 5,86 € su nove rate su quattordici: mancava l'arrotondamento di sezione, una colonna sempre negativa o zero che il tracciato porta su tutte le righe.",
+        "Con tutte e due le colonne l'importo combacia con quello davvero incassato su quattordici rate su quattordici."
+      ]
+    },
+    {
+      "v": "0.49.0",
+      "data": "2026-09-25",
+      "nome": "La data di emissione, le garanzie, cognome e nome",
+      "voci": [
+        "«Manca la parte della data di emissione che risulta sempre da indicare.» Nel tracciato di HDI quella data NON C'È — censite tutte le 396 colonne dei nove tipi di record, nessuna si comporta come una data di emissione.",
+        "Ma «da indicare» era la risposta sbagliata: voleva dire riempire a mano diciotto caselle con un dato che la compagnia non manda, e intanto il foglio cassa — che filtra per emissione — restava vuoto. Si usa la decorrenza, e il file dice che si può."
+      ]
+    },
+    {
+      "v": "0.48.0",
+      "data": "2026-09-25",
+      "nome": "HDI: il tracciato porta il triplo di quello che leggevamo",
+      "voci": [
+        "Hai guardato il portafoglio importato e hai detto «mancano troppi dati». Avevi ragione, e non era la scrittura: era il lettore, che leggeva un terzo del file.",
+        "Il nome del cliente, per esempio, in elenco era un trattino e sembrava che i clienti non fossero entrati. Erano entrati e completi: mancava il collegamento a come l'elenco li cerca."
+      ]
+    },
+    {
+      "v": "0.47.0",
+      "data": "2026-09-24",
+      "nome": "Il foglio cassa guarda anche per data di effetto",
+      "voci": [
+        "L'importazione di HDI era riuscita — 11 clienti, 18 polizze, 12 rate — e il foglio cassa era vuoto. Il motivo era preciso: il foglio guardava per data di emissione, e il tracciato di HDI non la manda. Quelle diciotto polizze non sarebbero comparse mai, in nessun periodo.",
+        "Adesso il foglio sa leggere anche per data di effetto, e dice sempre a quale delle due domande sta rispondendo."
+      ]
+    },
+    {
+      "v": "0.46.3",
+      "data": "2026-09-24",
+      "nome": "L'anteprima dice che cosa conta",
+      "voci": [
+        "Il riquadro diceva «11 clienti» su un file che ne contiene 14, e per due volte ti sei fermato a chiedere se fosse un errore. La prima volta lo era; la seconda no — tre erano già in archivio dal 21/09 e i nomi combaciavano.",
+        "Un numero che costringe a chiedere «e gli altri?» è scritto male anche quando è giusto. Adesso l'anteprima dice quanti sono nuovi, quanti già c'erano e perché."
+      ]
+    },
+    {
+      "v": "0.46.2",
+      "data": "2026-09-24",
+      "nome": "Il codice fiscale era «IT» per tutti",
+      "voci": [
+        "Hai guardato l'anteprima — «1 cliente, 18 polizze» — e hai chiesto se non fosse strano. Lo era: il lettore prendeva come codice fiscale una colonna che vale «IT» su ogni riga, cioè la nazione di nascita.",
+        "Quel codice è LA CHIAVE con cui si decide «questa persona ce l'ho già»: uguale per tutti vuol dire quattordici persone fuse in una. Nessun controllo protestava, perché il file era formalmente a posto."
+      ]
+    },
+    {
+      "v": "0.46.1",
+      "data": "2026-09-24",
+      "nome": "HDI: quattro cose che lo tenevano fermo",
+      "voci": [
+        "Il tasto per importare il portafoglio HDI c'era e non avrebbe caricato niente. Quattro ostacoli, tutti trovati guardando che cosa accettano davvero le tabelle invece di fidarsi del fatto che il codice fosse provato.",
+        "Il primo: i tipi di rata che HDI scrive («Nuova Polizza», «Quietanza di Rinnovo», «Sostituzione», «Appendice») non erano nessuno dei quattro che il database ammette — e con una scrittura sola, non entrava niente."
+      ]
+    },
+    {
+      "v": "0.46.0",
+      "data": "2026-09-24",
+      "nome": "Portafoglio HDI in scrittura, e le spese nel foglio cassa",
+      "voci": [
+        "Il portafoglio di HDI si carica davvero: il lettore diventa scrittore, ma passando dalla porta che c'era già — la stessa che ha importato i portafogli veri, con il piano da guardare prima e la scrittura tutto-o-niente.",
+        "Nel foglio cassa entrano anche le spese. Tradurre dei soldi è il punto dove un errore non si vede: il numero esce, è plausibile, e finisce in archivio."
+      ]
+    },
+    {
+      "v": "0.45.0",
+      "data": "2026-09-24",
+      "nome": "CRM · Analisi, e la porta del portafoglio HDI",
+      "voci": [
+        "CRM · Analisi: una voce nuova nel menu. Si scelgono dei filtri (comune, età, tipo di polizza, collaboratore, professione, stato di famiglia, note, gruppo) ed esce una lista, con tre strade: Excel, PDF o una campagna.",
+        "La lista che esporti NON è la lista della campagna: l'export è uso interno e ci sono tutti, la campagna va solo a chi ha dato il consenso."
+      ]
+    },
     {
       "v": "0.44.1",
       "data": "2026-09-24",

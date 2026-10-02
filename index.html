@@ -113,6 +113,10 @@
      sta in un posto solo (02/10/2026). -->
 <script src="tariffe/motore/confronto.js?v=20261002"></script>
 <script src="tariffe/motore/guida-garanzie.js?v=20261002"></script>
+<!-- La lettura della proposta di polizza: candidati, non verità. Il motore
+     propone righe con la pagina da cui vengono; chi prepara il preventivo
+     spunta quelle giuste (02/10/2026). -->
+<script src="tariffe/motore/lettura-proposta.js?v=20261002"></script>
 <script src="tariffe/motore/foglio-cassa.js?v=20260930"></script>
 <script src="tariffe/motore/piano-rate.js?v=20260921"></script>
 <script src="tariffe/motore/animali.js?v=20260910"></script>
@@ -1501,6 +1505,21 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .ppg-c-a{font-size:11.5px;color:#8a5200;line-height:1.45;margin-top:5px}
 .ppg-piede{font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:10px;
   padding-top:9px;border-top:1px solid var(--line)}
+/* Le righe proposte dalla lettura di una proposta di polizza. Si spuntano a
+   una a una: il colore d'avviso tocca quelle che il motore stesso dice di
+   controllare, perché vengono da una tabella appiattita (02/10/2026). */
+.ppp-nota{font-size:11.5px;color:var(--muted);line-height:1.45;margin:6px 0 9px}
+.ppp-r{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);
+  border-radius:10px;padding:8px 11px;margin-bottom:6px;background:#fff;cursor:pointer}
+.ppp-r:hover{border-color:var(--brand)}
+.ppp-r-avv{border-color:#ffd8a8;background:#fffaf4}
+.ppp-r input{width:auto;margin:2px 0 0;flex:none}
+.ppp-t{display:block;font-size:13px;line-height:1.45;min-width:0}
+.ppp-t i{display:block;font-style:normal;font-size:11px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--muted);margin-top:2px}
+.ppp-t em{display:block;font-style:normal;font-size:11.5px;color:#8a5200;margin-top:3px}
+.ppp-t q{display:block;quotes:none;font-size:11.5px;color:var(--muted);margin-top:4px;
+  word-break:break-word}
 .pdoc-ov.pdoc-largo{padding:14px}
 .pdoc-ov.pdoc-largo .pdoc-box{max-width:1480px;max-height:94vh}
 .pdoc-ov.pdoc-largo .pdoc-bd{padding:16px 20px}
@@ -32356,6 +32375,32 @@ async function ppApri(clienteId, id) {
           <input type="checkbox" id="pp-autorizzare" ${r && r.da_autorizzare ? 'checked' : ''} style="width:auto;margin:0">
           Da autorizzare dalla Direzione</label></div>
 
+      <!-- ══ LA PROPOSTA DI POLIZZA SI CARICA E SI LEGGE (02/10/2026) ═══════
+           Richiesta di Francesco: «sarebbe utile poter integrare
+           l'intelligenza artificiale per la creazione di un preventivo
+           personalizzato caricando le proposte di polizza».
+
+           Due scelte che vale la pena scrivere, perché non si vedono:
+
+           1. Il documento NON esce dal browser. Una proposta di polizza
+              porta nome, indirizzo, codice fiscale e targa del cliente:
+              mandarla a un servizio esterno per farsela riassumere sarebbe
+              un trattamento che nessuno ha autorizzato. Il PDF si legge qui
+              dentro, col lettore del browser, e il motore gira qui.
+           2. Quello che esce sono PROPOSTE da spuntare, non una lettura.
+              Sul set informativo vero di 61 pagine le righe con un importo
+              sono 38 e le garanzie vere una manciata: un elenco che si
+              spacciasse per lettura automatica farebbe passare il resto
+              su un documento che va al cliente. Ogni riga dice la pagina. -->
+      <div class="field">
+        <label>Proposta di polizza da leggere</label>
+        <input type="file" accept="application/pdf,.pdf" id="pp-proposta-file"
+               onchange="ppProponiDaFile(this)">
+        <div style="font-size:11.5px;color:var(--muted);margin-top:5px">Il PDF resta sul tuo
+          computer: viene letto qui dentro e non parte da nessuna parte.</div>
+        <div id="pp-proposte" style="margin-top:9px"></div>
+      </div>
+
       <div class="field"><label>Descrizioni</label>
         <div id="pp-desc">${desc.map(t => ppDescRiga(t)).join('')}</div>
         <button type="button" class="ghost" style="padding:6px 12px" onclick="ppDescAggiungi()"><i class="ti ti-plus"></i> Aggiungi riga</button></div>
@@ -32404,6 +32449,9 @@ async function ppApri(clienteId, id) {
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+  /* Le righe lette dalla proposta precedente si buttano: appartenevano a un
+     altro preventivo, e quindi a un altro cliente. */
+  PP_PROPOSTE = null;
   /* L'anteprima si disegna subito: aprire un preventivo gia' scritto e vedere
      un riquadro vuoto farebbe credere che la guida non ci sia. */
   ppGuidaAnteprima();
@@ -32702,6 +32750,120 @@ function ppDocumento(r, ctx) {
     nomeFile: 'Preventivo-' + ppNumero(r) + '-' +
       String((cl && cl.nominativo) || '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.pdf'
   };
+}
+
+/* ══ CARICARE UNA PROPOSTA DI POLIZZA (02/10/2026) ═════════════════════════
+   Richiesta di Francesco: «integrare l'intelligenza artificiale per la
+   creazione di un preventivo personalizzato caricando le proposte di polizza».
+
+   IL DOCUMENTO NON ESCE DAL BROWSER. Una proposta porta nome, indirizzo,
+   codice fiscale e targa del cliente: mandarla a un servizio esterno per
+   farsela leggere è quello che le regole di casa vietano. Il testo si estrae
+   qui e si legge qui, col vocabolario delle garanzie che è scritto e provato.
+
+   E non si dice «ho letto la polizza»: si PROPONGONO delle righe, ognuna con
+   la pagina da cui viene, e chi prepara il preventivo spunta quelle giuste.
+   Non è un ripiego: misurato su un documento vero di 61 pagine, le righe
+   candidate sono 38 e le garanzie vere una manciata. Un elenco che si
+   spacciasse per lettura automatica farebbe passare il resto. */
+let _ppPdfJsPromise = null;
+function ppCaricaPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (!_ppPdfJsPromise) {
+    _ppPdfJsPromise = new Promise((ok, ko) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+      s.onload = () => {
+        if (!window.pdfjsLib) return ko(new Error('Lettore di PDF caricato ma non disponibile.'));
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        ok(window.pdfjsLib);
+      };
+      s.onerror = () => ko(new Error('Non riesco a caricare il lettore di PDF: serve la rete.'));
+      document.head.appendChild(s);
+    }).catch(e => { _ppPdfJsPromise = null; throw e; });
+  }
+  return _ppPdfJsPromise;
+}
+
+/* Il testo del PDF, una voce per pagina. Le righe si ricostruiscono dalle
+   coordinate: `pdf.js` restituisce pezzi sparsi, e concatenarli di fila
+   impasterebbe colonne diverse della stessa riga in una frase sola. */
+async function ppPdfTesto(file) {
+  const pdfjs = await ppCaricaPdfJs();
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjs.getDocument({ data: buf }).promise;
+  const pagine = [];
+  for (let n = 1; n <= doc.numPages; n++) {
+    const p = await doc.getPage(n);
+    const c = await p.getTextContent();
+    const righe = new Map();
+    c.items.forEach(it => {
+      if (!it.str) return;
+      /* Si raggruppa per altezza (arrotondata): quello che sta sulla stessa
+         riga del foglio finisce sulla stessa riga di testo. */
+      const y = Math.round((it.transform && it.transform[5]) || 0);
+      if (!righe.has(y)) righe.set(y, []);
+      righe.get(y).push({ x: (it.transform && it.transform[4]) || 0, t: it.str });
+    });
+    const ordinate = [...righe.entries()].sort((a, b) => b[0] - a[0])
+      .map(([, pezzi]) => pezzi.sort((a, b) => a.x - b.x).map(p => p.t).join(' ')
+        .replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+    pagine.push({ n: n, testo: ordinate.join('\n') });
+  }
+  return pagine;
+}
+
+let PP_PROPOSTE = null;
+
+async function ppProponiDaFile(input) {
+  const box = document.getElementById('pp-proposte');
+  const file = input && input.files && input.files[0];
+  if (!box || !file) return;
+  if (!window.LetturaProposta) {
+    box.innerHTML = '<div class="ppg-vuoto">Il motore di lettura non è caricato.</div>'; return;
+  }
+  box.innerHTML = '<div class="ppg-vuoto">Leggo «' + esc(file.name) + '»…</div>';
+  try {
+    const pagine = await ppPdfTesto(file);
+    const r = LetturaProposta.candidati(pagine);
+    PP_PROPOSTE = r;
+    if (!r.ok) { box.innerHTML = '<div class="ppg-vuoto">' + esc(r.motivo) + '</div>'; return; }
+    box.innerHTML =
+      '<div class="ppg-conto">' + r.righe.length + ' righe trovate in ' + r.pagine +
+        ' pagine · ' + r.riconosciute + ' riconosciute' +
+        (r.scartate.length ? ' · ' + r.scartate.length + ' lasciate fuori' : '') + '</div>' +
+      '<div class="ppp-nota">Queste sono <b>proposte</b>, non una lettura: spunta quelle giuste e ' +
+        'controlla gli importi sul documento. Ogni riga dice da che pagina viene.</div>' +
+      r.righe.map((x, i) =>
+        '<label class="ppp-r' + (x.daGuardare ? ' ppp-r-avv' : '') + '">' +
+          '<input type="checkbox" class="ppp-c" data-i="' + i + '"' + (x.id && !x.daGuardare ? ' checked' : '') + '>' +
+          '<span class="ppp-t"><b>' + esc(x.nome) + '</b>' +
+            '<i>' + esc(GuidaGaranzie.importoScritto(x.voci)) +
+              (x.natura ? ' · ' + esc(x.natura) : '') + ' · pag. ' + x.pagina + '</i>' +
+            (x.daGuardare ? '<em>' + esc(x.daGuardare) + '</em>' : '') +
+            '<q>' + esc(x.riga.slice(0, 150)) + '</q>' +
+          '</span></label>').join('') +
+      '<button type="button" class="ghost" style="margin-top:8px;padding:6px 12px" ' +
+        'onclick="ppProposteAggiungi()"><i class="ti ti-arrow-down"></i> Metti le righe spuntate fra le descrizioni</button>';
+  } catch (e) {
+    box.innerHTML = '<div class="ppg-vuoto"><b>Non riesco a leggere il documento.</b> ' +
+      esc((e && e.message) || String(e)) + '</div>';
+  }
+}
+
+function ppProposteAggiungi() {
+  if (!PP_PROPOSTE || !window.LetturaProposta) return;
+  const scelte = [...document.querySelectorAll('#pp-proposte .ppp-c')]
+    .filter(c => c.checked).map(c => PP_PROPOSTE.righe[Number(c.dataset.i)]).filter(Boolean);
+  if (!scelte.length) { try { quotoToast('Non hai spuntato nessuna riga', false); } catch (e) {} return; }
+  LetturaProposta.versoDescrizioni(scelte).forEach(t => ppDescAggiungi(t));
+  ppGuidaAnteprima();
+  try {
+    quotoToast(scelte.length === 1 ? 'Una riga aggiunta: controllala prima di salvare'
+      : scelte.length + ' righe aggiunte: controllale prima di salvare');
+  } catch (e) {}
 }
 
 /* ── jsPDF, caricato solo quando serve ────────────────────────────────────────

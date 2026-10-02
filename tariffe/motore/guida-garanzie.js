@@ -74,21 +74,37 @@
      «1.000.000 €», «130.000 €», «1000€», «50 € al giorno». Il punto è il
      separatore delle migliaia e la virgola quella dei decimali: letti
      all'inglese, 1.000.000 diventerebbe uno. */
-  function importo(s) {
-    var m = /(\d[\d.\s]*(?:,\d+)?)\s*(?:€|eur\b|euro\b)/i.exec(testo(s));
-    if (!m) return null;
-    var n = m[1].replace(/[.\s]/g, '').replace(',', '.');
-    var v = Number(n);
+  /* L'EURO STA PRIMA O DOPO IL NUMERO, e bisogna leggerle tutt'e due.
+     Misurato il 02/10/2026 su un set informativo auto vero: «€ 1.000,00» (euro
+     davanti) compare 79 volte, «1.000,00 €» due. Leggendo solo la seconda
+     forma si perdevano i massimali della RCA — € 7.290.000, € 6.070.000,
+     € 1.220.000 — cioe' i numeri piu' importanti del documento. */
+  var R_SOLDI = /(?:(\d[\d.\s]*(?:,\d+)?)\s*(?:€|eur\b|euro\b)|(?:€|eur\b|euro\b)\s*(\d[\d.\s]*(?:,\d+)?))/gi;
+
+  function numeroDa(m) {
+    var grezzo = m[1] != null ? m[1] : m[2];
+    if (grezzo == null) return null;
+    var v = Number(String(grezzo).replace(/[.\s]/g, '').replace(',', '.'));
     return isFinite(v) ? v : null;
+  }
+
+  function importo(s) {
+    R_SOLDI.lastIndex = 0;
+    var m = R_SOLDI.exec(testo(s));
+    return m ? numeroDa(m) : null;
   }
 
   /* Tutti gli importi di una riga, nell'ordine in cui compaiono: una riga sola
      può portarne due («50 € al giorno (marito+moglie), 20 € al giorno (figlio)»). */
   function importi(s) {
-    var fuori = [], r = /(\d[\d.\s]*(?:,\d+)?)\s*(?:€|eur\b|euro\b)/gi, m;
-    while ((m = r.exec(testo(s)))) {
-      var n = Number(m[1].replace(/[.\s]/g, '').replace(',', '.'));
-      if (isFinite(n)) fuori.push({ valore: n, da: m.index, lung: m[0].length });
+    var fuori = [], m;
+    R_SOLDI.lastIndex = 0;
+    while ((m = R_SOLDI.exec(testo(s)))) {
+      var n = numeroDa(m);
+      /* `da` e' l'inizio dell'INTERO importo, simbolo compreso: il nome della
+         garanzia e' quello che sta prima, e con l'euro davanti il nome
+         finirebbe per portarsi dentro il simbolo. */
+      if (n != null) fuori.push({ valore: n, da: m.index, lung: m[0].length });
     }
     return fuori;
   }
@@ -241,6 +257,10 @@
       sezione: 'casa',
       esempio: 'Rientri e trovi la porta forzata e i gioielli spariti: la garanzia può indennizzare i beni '
         + 'sottratti, nei limiti previsti per i preziosi e per i mezzi di chiusura.' },
+    guasti_ladri_casa: {
+      sezione: 'casa',
+      esempio: 'I ladri forzano la porta e rovinano serratura e infisso, anche senza portare via niente: '
+        + 'possono essere coperti i danni fatti per entrare.' },
     eventi_atmosferici: {
       sezione: 'casa',
       esempio: 'Una grandinata rompe le tegole e l\'acqua entra in casa: possono essere coperti i danni '
@@ -341,6 +361,10 @@
       sezione: 'auto',
       esempio: 'Esci di strada da solo e danneggi la tua auto: può essere indennizzato il danno al tuo '
         + 'veicolo, al netto della franchigia.' },
+    guasti_ladri: {
+      sezione: 'auto',
+      esempio: 'Tentano di rubare l\'auto e rompono il bloccasterzo e la portiera senza riuscirci: '
+        + 'i danni fatti nel tentativo possono essere indennizzati, al netto della franchigia.' },
     cristalli: {
       sezione: 'auto',
       esempio: 'Un sasso scheggia il parabrezza: riparazione o sostituzione possono essere coperte.' },

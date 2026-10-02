@@ -110,6 +110,14 @@
         sin: ['tutela legale', 'tutela legale della circolazione', 'difesa legale'] },
       { id: 'furto', nome: 'Furto',
         sin: ['furto', 'furto e rapina', 'furto totale', 'furto parziale'] },
+      /* Riga a se' nei documenti veri, con una franchigia sua: sono i danni
+         che i ladri fanno al veicolo nel tentativo, anche quando il furto non
+         riesce. Trovata il 02/10/2026 su un set informativo vero, dove stava
+         spezzata su tre righe. Tenerla dentro «Furto» vorrebbe dire contare
+         una riga sola dove la compagnia ne dichiara due. */
+      { id: 'guasti_ladri', nome: 'Guasti cagionati dai ladri',
+        sin: ['guasti cagionati dai ladri', 'guasti da ladri', 'danni da tentato furto',
+              'danni cagionati dai ladri'] },
       { id: 'incendio', nome: 'Incendio',
         sin: ['incendio', 'incendio e scoppio'] },
       { id: 'furto_incendio', nome: 'Furto e incendio',
@@ -141,6 +149,8 @@
         sin: ['incendio contenuto', 'incendio del contenuto', 'contenuto'] },
       { id: 'furto_casa', nome: 'Furto e rapina',
         sin: ['furto', 'furto e rapina', 'furto in abitazione', 'scippo'] },
+      { id: 'guasti_ladri_casa', nome: 'Guasti cagionati dai ladri',
+        sin: ['guasti cagionati dai ladri', 'guasti da ladri', 'danni da tentato furto'] },
       { id: 'danni_acqua', nome: 'Danni da acqua',
         sin: ['danni da acqua', 'acqua condotta', 'spargimento d\'acqua', 'ricerca del guasto',
               'ricerca e riparazione del danno d\'acqua', 'ricerca e riparazione',

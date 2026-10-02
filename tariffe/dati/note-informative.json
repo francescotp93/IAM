@@ -1,0 +1,157 @@
+{
+  "_cos_e": "Il catalogo dei documenti precontrattuali delle compagnie: dove stanno, non che cosa dicono. È la lista di lavoro del raccoglitore e della schermata «Metti un prodotto in archivio» di Confronta.",
+  "_misurato_il": "2026-10-02",
+  "_come_e_stato_costruito": "Con WebSearch, che gira sui server di Anthropic e non passa dal proxy di rete dell'ambiente. Ogni voce riporta un URL che il motore di ricerca ha indicizzato sul dominio della compagnia stessa.",
+  "_IL_LIMITE_DA_SAPERE": "NESSUNO DI QUESTI URL È STATO VERIFICATO. Dall'ambiente in cui girano gli agenti la rete verso i siti delle compagnie è chiusa (403 sul CONNECT), quindi non si è potuto nemmeno chiedere se l'indirizzo risponde. `stato` vale «trovato» e non «buono»: il primo che li apre scoprirà quali sono ancora validi. Un URL scaduto non è un guasto del catalogo, è il mestiere: le compagnie spostano i PDF a ogni edizione nuova.",
+  "_perche_l_edizione_conta": "Misurato: il set informativo DALLBOGG su cui è stato tarato il lettore è l'edizione 06/2020, ma quella pubblicata oggi è la 04/25. Un confronto mostrato a un cliente nel 2026 su un documento del 2020 è un rischio di adeguatezza a sé, indipendente da quanto bene lo si legge. Per questo ogni voce porta l'edizione come sta scritta nel nome del file o nel titolo, e per questo serve il controllo mensile.",
+  "_stati": {
+    "trovato": "l'URL è stato trovato da una ricerca ma non è stato aperto da nessuno",
+    "preso": "il documento è stato scaricato e la sua impronta è in archivio",
+    "scaduto": "l'URL non risponde più o porta a un documento diverso"
+  },
+
+  "compagnie": [
+    {
+      "compagnia": "DALLBOGG",
+      "nota": "Compagnia bulgara che opera in Italia. È il documento su cui è stato misurato il lettore: il set informativo sta su un solo PDF che contiene DIP, DIP aggiuntivo, condizioni, informativa privacy e allegati.",
+      "a_mandato": false,
+      "documenti": [
+        { "ramo": "auto", "prodotto": "Auto", "tipo": "set_informativo", "edizione": "04/25",
+          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-Info-auto-04-25.pdf", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Ciclomotori e motocicli", "tipo": "set_informativo", "edizione": "08/23",
+          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-motorcycles%E2%80%93mopeds-08-23.pdf", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Van / altri veicoli", "tipo": "set_informativo", "edizione": "03/23",
+          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-vans-03-23.pdf", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Assistenza Truck", "tipo": "set_informativo", "edizione": "08/24",
+          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-truck-assistance-08-24.pdf", "stato": "trovato" }
+      ]
+    },
+    {
+      "compagnia": "Groupama",
+      "nota": "Il CDN è aperto e i PDF sono indicizzati: è la compagnia su cui la raccolta automatica funzionerà meglio. Il nome del file porta l'edizione E l'aggiornamento, che sono due date diverse.",
+      "a_mandato": true,
+      "documenti": [
+        { "ramo": "auto", "prodotto": "Guidamica Autovetture", "tipo": "set_informativo", "edizione": "06.2025",
+          "url": "https://cdn.groupama.it/app/uploads/2021/06/Guidamica-Autovetture-2022-Ed.-06.2025.pdf", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Autocontrollo Autovetture", "tipo": "set_informativo", "edizione": "01/2023, agg. 10/2023",
+          "url": "https://cdn.groupama.it/app/uploads/2023/10/Set-Informativo-Autocontrollo-Autovetture-2022-ed-012023-agg-10_2023.pdf", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Autocontrollo Altri Veicoli", "tipo": "set_informativo", "edizione": "01/2023, agg. 10/2023",
+          "url": "https://cdn.groupama.it/app/uploads/2023/10/Set-Informativo-Autocontrollo-AltriVeicoli_ed_01_2023-agg10_2023-1.pdf", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Guidamica Motoveicoli", "tipo": "set_informativo", "edizione": "05.2024",
+          "url": "https://cdn.groupama.it/app/uploads/2024/10/Guidamica-Motoveicoli-Ed.05.2024-1.pdf", "stato": "trovato" },
+        { "ramo": "azienda", "prodotto": "RCV merci trasportate", "tipo": "set_informativo", "edizione": "02/2026, agg. 09/2026",
+          "url": "https://cdn.groupama.it/app/uploads/2026/09/Set-Informativo-RCV-2016-Ed.-02-2026-Agg.-09_2026.pdf", "stato": "trovato" },
+        { "ramo": "salute", "prodotto": "Groupama Protezione Infortuni", "tipo": "set_informativo", "edizione": "02/2025",
+          "url": "https://cdn.groupama.it/app/uploads/2025/02/Set-Informativo-Groupama-Protezione-Infortuni-Mod.250301-Ed.022025.pdf", "stato": "trovato" },
+        { "ramo": "salute", "prodotto": "Tuttocampo infortuni", "tipo": "set_informativo", "edizione": "03/2020, agg. 12/2023",
+          "url": "https://cdn.groupama.it/app/uploads/2023/12/Set-Informativo-Tuttocampo-Ed-03-2020-Agg-12-2023.pdf", "stato": "trovato" }
+      ]
+    },
+    {
+      "compagnia": "Sara",
+      "nota": "I PDF stanno su un percorso prevedibile (/sites/default/files/<anno>-<mese>/), che aiuta il controllo mensile: un'edizione nuova compare in una cartella nuova.",
+      "a_mandato": true,
+      "documenti": [
+        { "ramo": "auto", "prodotto": "RuotaLibera Contratto Base", "tipo": "set_informativo", "edizione": "12.2023",
+          "url": "https://www.sara.it/sites/default/files/2024-07/set_informativo_ruotalibera_contratto_base_ed._12.2023.pdf", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "RuotaLibera", "tipo": "set_informativo", "edizione": "3.2022",
+          "url": "https://www.sara.it/sites/default/files/2023-05/Set%20Informativo%20RuotaLibera%20ed.%203.2022.pdf", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Guido Bene", "tipo": "set_informativo", "edizione": "3.2022",
+          "url": "https://www.sara.it/sites/default/files/2023-05/Set%20Informativo%20Guido%20Bene%20ed.%203.2022.pdf", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Auto Contratto Base", "tipo": "set_informativo", "edizione": null,
+          "url": "https://www.sara.it/sites/default/files/2021-05/Set_Informativo_Auto_Contratto_Base.pdf", "stato": "trovato" },
+        { "ramo": "azienda", "prodotto": "Impresa e professioni", "tipo": "set_informativo", "edizione": "01.2022",
+          "url": "https://www.sara.it/sites/default/files/2022-01/Set%20Informativo%20Impresa%20e%20professioni%20ed.01.2022.pdf", "stato": "trovato" },
+        { "ramo": "azienda", "prodotto": "SaraProfessionista", "tipo": "set_informativo", "edizione": "01/2025",
+          "url": "https://www.sara.it/sites/default/files/2025-01/Set%20informativo%20SaraProfessionista%20ed.%2001_2025.pdf", "stato": "trovato" },
+        { "ramo": "casa", "prodotto": "SaraDefender", "tipo": "set_informativo", "edizione": "04-2025",
+          "url": "https://www.sara.it/sites/default/files/2025-05/Set%20Informativo%20SaraDefender%20150IM_ed.04-2025%20(1).pdf", "stato": "trovato" }
+      ]
+    },
+    {
+      "compagnia": "AXA",
+      "nota": "Due forme di URL: uno leggibile sotto /documents/, e uno opaco sotto /c/document_library/get_file?uuid=… — il secondo non dice di sé che documento sia, quindi l'edizione la si legge solo aprendolo. Il controllo mensile su quelli non può basarsi sul nome del file.",
+      "a_mandato": true,
+      "documenti": [
+        { "ramo": "auto", "prodotto": "Auto Storiche", "tipo": "dip", "edizione": "07/2025 (il nome del file dice 12-21)",
+          "url": "https://www.axa.it/documents/715551/1581088/1992-DIP-Auto+Storiche+ed+12-21PROTETTO.pdf/0269b7db-e085-65ec-986f-27d9e93385c5?t=1638541444608", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Protezione Moto", "tipo": "dip", "edizione": "12-21",
+          "url": "https://www.axa.it/documents/715551/1581094/1962-DIP-Auto+Protezione+Moto+ed+12-21PROTETTO.pdf/e1d35fc1-f269-2276-f4c0-1bbec08a5d60?t=1638541308764", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Autoprotezione", "tipo": "set_informativo", "edizione": null,
+          "url": "https://www.axa.it/documents/715551/730220/AXA+Autoprotezione+-+Scarica+il+fascicolo+informativo.pdf/f3dbf4e0-4e76-42d5-2f08-14604561fc66", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Protezione Auto — condizioni", "tipo": "condizioni", "edizione": "07/2026 (dal titolo, non dall'URL)",
+          "url": "https://www.axa.it/c/document_library/get_file?uuid=6626fe77-b285-10cc-69ba-3dc630d2a977&groupId=715551", "stato": "trovato" },
+        { "ramo": "auto", "prodotto": "Contratto Base Autovetture", "tipo": "dip", "edizione": "05/2025 (dal titolo, non dall'URL)",
+          "url": "https://www.axa.it/c/document_library/get_file?uuid=deb75306-33cf-2bf1-2121-777789905d25&groupId=715551", "stato": "trovato" },
+        { "ramo": "salute", "prodotto": "Infortuni e Malattia", "tipo": "dip_aggiuntivo", "edizione": "01/2019",
+          "url": "https://www.axa.it/documents/715551/1915702/DIPA_8E42_ed201901_stampa201901.pdf/7967c4a1-a91b-1035-d2be-50c5c6a8fdcf?t=1623414567539", "stato": "trovato" }
+      ]
+    },
+    {
+      "compagnia": "HDI",
+      "nota": "Il documento trovato sta su `youquote.hdia.it`, cioè sul portale di quotazione e non sul sito pubblico. Gli altri PDF di HDI sono dentro le pagine di prodotto, che da qui non si possono aprire: per trovarli serve un canale che sappia leggere una pagina HTML, non solo un motore di ricerca.",
+      "a_mandato": true,
+      "documenti": [
+        { "ramo": "auto", "prodotto": "Circolazione Sicura", "tipo": "dip_aggiuntivo", "edizione": "04/2024 (Mod. DAS4301)",
+          "url": "https://youquote.hdia.it/documents/13553353/13559276/Dip+aggiuntivo.pdf/e7012641-8041-c924-a10d-eb914488acbc?version=1.0", "stato": "trovato" }
+      ],
+      "da_cercare_ancora": [
+        "Valore Auto (autovetture, camper)",
+        "Natanti",
+        "Protezione Salute Globale Infortuni e IPM",
+        "RC Prodotti e CAR Costruttori (azienda)"
+      ]
+    },
+    {
+      "compagnia": "Italiana",
+      "nota": "La ricerca sui documenti auto non ha dato il set informativo: i PDF indicizzati sono di altri prodotti (Caparra Assicurata, 4 Bike, Tutela Express). I documenti di «In Prima Classe» stanno dentro la pagina di prodotto, che da qui non si può aprire.",
+      "a_mandato": true,
+      "documenti": [
+        { "ramo": "casa", "prodotto": "Italiana 4 Bike", "tipo": "dip_aggiuntivo", "edizione": "07/2024",
+          "url": "https://www.italiana.it/itashare/3/Documents/Italiana4Bike_DIPaggiuntivo_Ed.072024.pdf", "stato": "trovato" },
+        { "ramo": "azienda", "prodotto": "Tutela Express — condizioni", "tipo": "condizioni", "edizione": "04.2025 (INF54301)",
+          "url": "https://www.italiana.it/itashare/3/Documents/Landing/TutelaExpress/Cga%20Italiana%20Tutela%20Express_INF54301_Ed.%2004.2025.pdf", "stato": "trovato" }
+      ],
+      "da_cercare_ancora": [
+        "In Prima Classe (autovetture) — il prodotto auto principale",
+        "In 1ª Classe Van"
+      ]
+    },
+    {
+      "compagnia": "Allianz",
+      "a_mandato": true,
+      "documenti": [],
+      "da_cercare_ancora": ["tutto: la ricerca non è ancora stata fatta"]
+    },
+    {
+      "compagnia": "Nobis",
+      "a_mandato": true,
+      "documenti": [],
+      "da_cercare_ancora": ["tutto: la ricerca non è ancora stata fatta"]
+    },
+    {
+      "compagnia": "Prima",
+      "nota": "Compagnia diretta: i documenti stanno dentro il flusso di quotazione, non su pagine pubbliche di prodotto. Probabilmente serve il connettore del browser, non una ricerca.",
+      "a_mandato": true,
+      "documenti": [],
+      "da_cercare_ancora": ["tutto"]
+    },
+    {
+      "compagnia": "24H Assistance",
+      "nota": "Compagnia di assistenza, non vende rami confrontabili per garanzia come auto o casa.",
+      "a_mandato": true,
+      "documenti": [],
+      "da_cercare_ancora": ["da decidere se vale la pena: le sue coperture non entrano nel confronto garanzia per garanzia"]
+    }
+  ],
+
+  "_domini_da_cui_si_prende": [
+    "dallbogg.it",
+    "cdn.groupama.it",
+    "www.sara.it",
+    "www.axa.it",
+    "youquote.hdia.it",
+    "www.italiana.it"
+  ],
+  "_perche_un_elenco_di_domini": "Il raccoglitore scarica SOLO da questi domini. Senza il vincolo, una funzione che prende un URL qualunque e lo scarica è un proxy aperto sull'infrastruttura dell'agenzia: chiunque riuscisse a chiamarla potrebbe usarla per raggiungere qualsiasi indirizzo, e i log direbbero che è stata l'agenzia a farlo."
+}

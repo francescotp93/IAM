@@ -78,16 +78,34 @@ const GUASTI = [
     (s) => s.replace('      reindirizzato: finale !== url,', "      reindirizzato: finale !== url, stato_garanzie: 'assente',")],
 
   /* ── il catalogo ────────────────────────────────────────────────────────── */
-  ['il catalogo non dichiara piu\' che i suoi indirizzi non sono verificati', CAT,
-    (s) => s.replace('NESSUNO DI QUESTI URL È STATO VERIFICATO.', 'Gli indirizzi sono quelli pubblicati.')],
-
-  /* Il guasto cambia il PRIMO «trovato» che incontra, e non una riga scritta
-     in un modo preciso: il catalogo si riscrive ogni volta che si aggiunge una
-     compagnia, e un guasto ancorato alla formattazione diventa cieco al primo
+  /* I guasti sul catalogo cambiano il PRIMO stato che incontrano, o il valore
+     di un campo preso con un'espressione, e non una riga scritta in un modo
+     preciso: il catalogo si riscrive a ogni raccolta e a ogni compagnia
+     aggiunta, e un guasto ancorato alla formattazione diventa cieco al primo
      riordino — lo dice solo nella riga «SENTINELLA PERSA», che è facile non
-     guardare. È già successo aggiungendo Allianz e Nobis. */
-  ['il catalogo dichiara già preso un documento che nessuno ha aperto', CAT,
-    (s) => s.replace('"stato": "trovato"', '"stato": "preso"')],
+     guardare. È già successo due volte: aggiungendo Allianz e Nobis, e dopo la
+     raccolta del 02/10/2026, quando il limite dichiarato è stato riscritto e il
+     guasto che lo bersagliava ha smesso di misurare qualcosa. */
+  ['il catalogo non dice piu\' che una verifica invecchia', CAT,
+    (s) => s.replace(/"_IL_LIMITE_DA_SAPERE": "[^"]*"/,
+      '"_IL_LIMITE_DA_SAPERE": "Gli indirizzi sono quelli pubblicati dalle compagnie."')],
+
+  ['il catalogo torna a dire che nessun indirizzo e\' verificato, e invece 32 lo sono', CAT,
+    (s) => s.replace(/("_IL_LIMITE_DA_SAPERE": ")/,
+      '$1NESSUNO DI QUESTI URL È STATO VERIFICATO. ')],
+
+  ['la verifica perde la data: un controllo senza data non invecchia mai', CAT,
+    (s) => s.replace(/\s*"_verificato_il":\s*"[^"]*",/, '')],
+
+  ['un documento si dichiara «verificato» senza portare la prova', CAT,
+    (s) => s.replace('"stato": "non_pdf"', '"stato": "verificato"')],
+
+  ['un documento non preso si tiene l\'impronta di quando era andata bene', CAT,
+    (s) => s.replace('"stato": "non_preso"',
+      '"stato": "non_preso",\n          "impronta": "0000000000000000000000000000000000000000000000000000000000000000"')],
+
+  ['uno stato nuovo si usa senza spiegarlo nel vocabolario del catalogo', CAT,
+    (s) => s.replace('"stato": "verificato"', '"stato": "quasi_preso"')],
 
   ['il catalogo nomina un dominio che la funzione non accetta', CAT,
     (s) => s.replace('    "www.italiana.it"', '    "www.italiana.it",\n    "www.unipolsai.it"')],

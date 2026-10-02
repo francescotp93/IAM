@@ -187,7 +187,17 @@ const GUASTI = [
       "        var gia = fuori.some(function (x) { return x.valore === val && x.etichetta === m[1].toLowerCase(); });")],
 
   ['il tipo di documento non lo dicono più i fascicoli', SP,
-    (s) => s.replace('      tipo: tipoDocumento(f.fascicoli),', "      tipo: 'altro',")],
+    (s) => s.replace('      tipo: tipoDocumento(f.fascicoli),', "      tipo: 'set_informativo',")],
+
+  ['due pagine su ottanta tornano a decidere il tipo di tutto il documento', SP,
+    (s) => s.replace("    if (pagineTot > 0 && pagineDelTipo * 2 < pagineTot) return 'altro'",
+      "    if (false) return 'altro'")],
+
+  /* C'era un guasto in più qui: «le pagine di un fascicolo si sommano invece
+     di contarsi», che toglieva il ramo per `pagine` come elenco. Non veniva
+     preso, e aveva ragione: l'ampiezza del fascicolo (`da`–`a`) dà lo stesso
+     numero, quindi quel ramo era ridondante. Togliere il peso morto è meglio
+     che tenere un guasto che non misura niente. */
 ]
 
 let sfuggiti = 0

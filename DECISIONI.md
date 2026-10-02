@@ -1523,3 +1523,66 @@ qualcos'altro non deve entrare da solo.
   stanno nel flusso di quotazione (serve il connettore del browser, che per i
   portali compagnia esiste già); 24H vende assistenza, che non entra nel
   confronto garanzia per garanzia.
+
+### 02/10/2026 (seguito) — La funzione è installata e la raccolta è girata
+
+🔴→✅ **Francesco ha detto «vai con opzione 2»**: `prendi-documento` è
+installata sul progetto Supabase, versione 2, `verify_jwt` come le altre
+quattro funzioni già presenti. Non tocca nessuna tabella; si disinstalla con
+`supabase functions delete prendi-documento`.
+
+**32 documenti su 43 scaricati davvero**, con la loro impronta sha256. Il
+catalogo ora dice per ognuno `verificato`, `non_pdf` o `non_preso` invece di
+`trovato`.
+
+🟡 **I due controlli di sicurezza hanno beccato cose vere alla PRIMA chiamata,
+non in una prova:**
+- `dallbogg.it` REINDIRIZZA a `dallbogg.com`, e il ricontrollo del dominio a
+  ogni salto ha rifiutato. Nessun elenco scritto a tavolino ci sarebbe
+  arrivato: un reindirizzamento non si vede guardando l'indirizzo.
+- tutti e quattro gli indirizzi DALLBOGG oggi restituiscono **HTML, non PDF**:
+  la compagnia ha spostato i documenti e al loro posto c'è la pagina del
+  prodotto. Il controllo sui primi byte (`%PDF-`) l'ha preso. È il caso più
+  insidioso: fidandosi dell'etichetta si sarebbe archiviato quell'HTML come un
+  set informativo.
+
+🟡 **Allianz risponde 403 a Supabase**: blocca il traffico dei datacenter.
+Dal Chrome di Francesco si scarica senza problemi, e il connettore
+«With Us · Connettore» ha già i permessi per `allianz.it`. Per lei la strada è
+quella, non questa.
+
+🟢 **Corretto un difetto che solo i documenti veri potevano mostrare**: il
+motore dichiarava il tipo di documento sbagliato su tre documenti su cinque
+(«allegato» per un set informativo di 84 pagine, perché due pagine su
+ottantaquattro avevano un piè di pagina riconoscibile). Ora un nome vale solo
+se copre almeno metà delle pagine; altrimenti dice «altro» e lo fa scegliere a
+una persona. Nel correggerlo avevo sommato un elenco di pagine invece di
+contarlo, e il correttivo sembrava applicato senza esserlo: visto solo
+rimisurando sui documenti veri.
+
+**MISURATO, e è il dato che conta per il progetto.** Letti sei documenti veri
+di sei compagnie col motore:
+
+| documento | pagine | garanzie trovate su 17 |
+|---|---|---|
+| DALLBOGG (quello su cui è tarato) | 61 | 12 |
+| Groupama Guidamica | 84 | 12 |
+| Nobis Car | 76 | 10 |
+| Sara Guido Bene | 88 | 9 |
+| **AXA Autoprotezione** | 108 | **3** |
+| **HDI Valore Auto (condizioni)** | 54 | **0** |
+
+Su Groupama, Nobis e Sara il motore generalizza, e trova differenze vere fra
+prodotti: Groupama ha tutela legale, infortuni del conducente e bonus protetto
+che DALLBOGG non ha. Su AXA e HDI no, e il motivo è identificabile: le regole
+di costituzione vengono dal layout di UNA compagnia. Non è un mistero da
+indagare, è lo stesso lavoro di prima — misurare e allargare — ma su sei
+documenti invece di uno.
+
+**Fuori perimetro, annotato:**
+- **Allargare le forme di costituzione su AXA e HDI**: è il prossimo pezzo di
+  Confronta, e adesso c'è il materiale per misurarlo.
+- **Ritrovare i quattro indirizzi di DALLBOGG**, spostati.
+- **Allianz passa dal connettore Chrome**, non dalla funzione.
+- **L'agenda mensile**: ora ha senso, perché c'è un canale che scarica e un
+  catalogo con le impronte da confrontare.

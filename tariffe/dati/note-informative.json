@@ -2,17 +2,20 @@
   "_cos_e": "Il catalogo dei documenti precontrattuali delle compagnie: dove stanno, non che cosa dicono. È la lista di lavoro del raccoglitore e della schermata «Metti un prodotto in archivio» di Confronta.",
   "_misurato_il": "2026-10-02",
   "_come_e_stato_costruito": "Con WebSearch, che gira sui server di Anthropic e non passa dal proxy di rete dell'ambiente. Ogni voce riporta un URL che il motore di ricerca ha indicizzato sul dominio della compagnia stessa.",
-  "_IL_LIMITE_DA_SAPERE": "NESSUNO DI QUESTI URL È STATO VERIFICATO. Dall'ambiente in cui girano gli agenti la rete verso i siti delle compagnie è chiusa (403 sul CONNECT), quindi non si è potuto nemmeno chiedere se l'indirizzo risponde. `stato` vale «trovato» e non «buono»: il primo che li apre scoprirà quali sono ancora validi. Un URL scaduto non è un guasto del catalogo, è il mestiere: le compagnie spostano i PDF a ogni edizione nuova.",
+  "_IL_LIMITE_DA_SAPERE": "UNA VERIFICA HA UNA DATA, E QUELLA DATA INVECCHIA. Il 02/10/2026 la funzione `prendi-documento` ha provato tutti e 43 gli indirizzi: 32 hanno consegnato un PDF vero (e ne portano l'impronta), 11 no. Ma «verificato» vuol dire «quel giorno ha risposto», non «risponde»: le compagnie spostano i PDF a ogni edizione nuova, e lo si e' visto sul campo — i quattro indirizzi DALLBOGG, trovati da un motore di ricerca, oggi consegnano una pagina HTML al posto del documento. Prima di mostrare un confronto a un cliente, il documento va ripreso: e' per questo che serve il controllo mensile, non per pignoleria.",
   "_perche_l_edizione_conta": "Misurato: il set informativo DALLBOGG su cui è stato tarato il lettore è l'edizione 06/2020, ma quella pubblicata oggi è la 04/25. Un confronto mostrato a un cliente nel 2026 su un documento del 2020 è un rischio di adeguatezza a sé, indipendente da quanto bene lo si legge. Per questo ogni voce porta l'edizione come sta scritta nel nome del file o nel titolo, e per questo serve il controllo mensile.",
   "_stati": {
     "trovato": "l'URL è stato trovato da una ricerca ma non è stato aperto da nessuno",
-    "preso": "il documento è stato scaricato e la sua impronta è in archivio",
-    "scaduto": "l'URL non risponde più o porta a un documento diverso"
+    "verificato": "da quell'indirizzo è arrivato un PDF vero: si tiene la sua impronta e il suo peso",
+    "scaduto": "il sito ha risposto 404: succede a ogni edizione nuova, l'indirizzo va ritrovato",
+    "non_pdf": "il sito ha risposto bene ma con una pagina HTML — la compagnia ha spostato il documento e al suo posto c'è la pagina del prodotto. È il caso più insidioso: un raccoglitore che non guardasse i byte archivierebbe quell'HTML come se fosse un documento di prodotto",
+    "dominio_non_ammesso": "l'indirizzo porta fuori dall'elenco dei domini: va aggiunto nella funzione",
+    "non_preso": "il sito ha risposto in un modo che non si è saputo interpretare"
   },
   "compagnie": [
     {
       "compagnia": "DALLBOGG",
-      "nota": "Compagnia bulgara che opera in Italia. È il documento su cui è stato misurato il lettore: il set informativo sta su un solo PDF che contiene DIP, DIP aggiuntivo, condizioni, informativa privacy e allegati.",
+      "nota": "Compagnia bulgara che opera in Italia. È il documento su cui è stato misurato il lettore: il set informativo sta su un solo PDF che contiene DIP, DIP aggiuntivo, condizioni, informativa privacy e allegati. MISURATO alla prima chiamata vera: dallbogg.it reindirizza a dallbogg.com, quindi nell'elenco dei domini servono tutt'e due. Un reindirizzamento non si vede guardando l'indirizzo: si scopre solo provando.",
       "a_mandato": false,
       "documenti": [
         {
@@ -21,7 +24,9 @@
           "tipo": "set_informativo",
           "edizione": "04/25",
           "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-Info-auto-04-25.pdf",
-          "stato": "trovato"
+          "stato": "non_pdf",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Quello che e' arrivato non e' un PDF (comincia per «.<!DO», tipo dichiarato «text/html; charset=utf-8»). Quasi sempre e' una pagina di errore travestita da risposta buona, oppure un indirizzo che ora porta alla pagina del prodotto."
         },
         {
           "ramo": "auto",
@@ -29,7 +34,9 @@
           "tipo": "set_informativo",
           "edizione": "08/23",
           "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-motorcycles%E2%80%93mopeds-08-23.pdf",
-          "stato": "trovato"
+          "stato": "non_pdf",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Quello che e' arrivato non e' un PDF (comincia per «.<!DO», tipo dichiarato «text/html; charset=utf-8»). Quasi sempre e' una pagina di errore travestita da risposta buona, oppure un indirizzo che ora porta alla pagina del prodotto."
         },
         {
           "ramo": "auto",
@@ -37,7 +44,9 @@
           "tipo": "set_informativo",
           "edizione": "03/23",
           "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-vans-03-23.pdf",
-          "stato": "trovato"
+          "stato": "non_pdf",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Quello che e' arrivato non e' un PDF (comincia per «.<!DO», tipo dichiarato «text/html; charset=utf-8»). Quasi sempre e' una pagina di errore travestita da risposta buona, oppure un indirizzo che ora porta alla pagina del prodotto."
         },
         {
           "ramo": "auto",
@@ -45,7 +54,9 @@
           "tipo": "set_informativo",
           "edizione": "08/24",
           "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-truck-assistance-08-24.pdf",
-          "stato": "trovato"
+          "stato": "non_pdf",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Quello che e' arrivato non e' un PDF (comincia per «.<!DO», tipo dichiarato «text/html; charset=utf-8»). Quasi sempre e' una pagina di errore travestita da risposta buona, oppure un indirizzo che ora porta alla pagina del prodotto."
         }
       ]
     },
@@ -60,7 +71,10 @@
           "tipo": "set_informativo",
           "edizione": "06.2025",
           "url": "https://cdn.groupama.it/app/uploads/2021/06/Guidamica-Autovetture-2022-Ed.-06.2025.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "768cfb7bb3b2ea81d9807e1c73093e48cceca80afd2d5afc4c527c261d8a49bb",
+          "byte": 1399295
         },
         {
           "ramo": "auto",
@@ -68,7 +82,10 @@
           "tipo": "set_informativo",
           "edizione": "01/2023, agg. 10/2023",
           "url": "https://cdn.groupama.it/app/uploads/2023/10/Set-Informativo-Autocontrollo-Autovetture-2022-ed-012023-agg-10_2023.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "332e1e28b93d9b6ae7eebb8ff1a47a30f6478f947b1a0bb669cac583f62cfdf0",
+          "byte": 1633013
         },
         {
           "ramo": "auto",
@@ -76,7 +93,10 @@
           "tipo": "set_informativo",
           "edizione": "01/2023, agg. 10/2023",
           "url": "https://cdn.groupama.it/app/uploads/2023/10/Set-Informativo-Autocontrollo-AltriVeicoli_ed_01_2023-agg10_2023-1.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "ce75e023dd331e1e551489b25585fe2f28a4b11a86dff3f03f74304c015c9176",
+          "byte": 1404218
         },
         {
           "ramo": "auto",
@@ -84,7 +104,10 @@
           "tipo": "set_informativo",
           "edizione": "05.2024",
           "url": "https://cdn.groupama.it/app/uploads/2024/10/Guidamica-Motoveicoli-Ed.05.2024-1.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "822fe185e094ea7d0939d258120a108f31a5cf4ad4e512506297b524b0dc2d27",
+          "byte": 1482981
         },
         {
           "ramo": "azienda",
@@ -92,7 +115,10 @@
           "tipo": "set_informativo",
           "edizione": "02/2026, agg. 09/2026",
           "url": "https://cdn.groupama.it/app/uploads/2026/09/Set-Informativo-RCV-2016-Ed.-02-2026-Agg.-09_2026.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "83d535be97e8f538721fa9d7e43797ca565081cc0f73604bfdc177d277232053",
+          "byte": 698347
         },
         {
           "ramo": "salute",
@@ -100,7 +126,10 @@
           "tipo": "set_informativo",
           "edizione": "02/2025",
           "url": "https://cdn.groupama.it/app/uploads/2025/02/Set-Informativo-Groupama-Protezione-Infortuni-Mod.250301-Ed.022025.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "8332325e4e6c0cf6ccb1436edddd789a6f4c62a9f2014cdac979d350fd58e178",
+          "byte": 1975529
         },
         {
           "ramo": "salute",
@@ -108,7 +137,10 @@
           "tipo": "set_informativo",
           "edizione": "03/2020, agg. 12/2023",
           "url": "https://cdn.groupama.it/app/uploads/2023/12/Set-Informativo-Tuttocampo-Ed-03-2020-Agg-12-2023.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "0a3a84dc23e3453e64a8735add8e7aab4d6b956b636019e0dd5f3b4baafeba3c",
+          "byte": 736177
         }
       ]
     },
@@ -123,7 +155,11 @@
           "tipo": "set_informativo",
           "edizione": "12.2023",
           "url": "https://www.sara.it/sites/default/files/2024-07/set_informativo_ruotalibera_contratto_base_ed._12.2023.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "error reading a body from connection",
+          "impronta": "99ca1f5d2178595027be16cab406f9fadc3d4ba5eda3219ea11007e2babb4d1a",
+          "byte": 876402
         },
         {
           "ramo": "auto",
@@ -131,7 +167,11 @@
           "tipo": "set_informativo",
           "edizione": "3.2022",
           "url": "https://www.sara.it/sites/default/files/2023-05/Set%20Informativo%20RuotaLibera%20ed.%203.2022.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "error reading a body from connection",
+          "impronta": "ea97d8bce3a5fda5a7e3dbb13f520dcaa191a67f84834464eb627f2c95c1ac29",
+          "byte": 1486719
         },
         {
           "ramo": "auto",
@@ -139,7 +179,10 @@
           "tipo": "set_informativo",
           "edizione": "3.2022",
           "url": "https://www.sara.it/sites/default/files/2023-05/Set%20Informativo%20Guido%20Bene%20ed.%203.2022.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "a95a074e48e3419951290e4821a0a2df035129c8bd82d3a4a4dd67fde0c2ee47",
+          "byte": 1473280
         },
         {
           "ramo": "auto",
@@ -147,7 +190,10 @@
           "tipo": "set_informativo",
           "edizione": null,
           "url": "https://www.sara.it/sites/default/files/2021-05/Set_Informativo_Auto_Contratto_Base.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "0e26aa91673d3cbedd4513b3f64264e08cbd61422c07ac99977f4e538e722713",
+          "byte": 757639
         },
         {
           "ramo": "azienda",
@@ -155,7 +201,10 @@
           "tipo": "set_informativo",
           "edizione": "01.2022",
           "url": "https://www.sara.it/sites/default/files/2022-01/Set%20Informativo%20Impresa%20e%20professioni%20ed.01.2022.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "9a05063ac21cc9decd8ef0b659021cbec578d1b297a494830813e067768c9590",
+          "byte": 640313
         },
         {
           "ramo": "azienda",
@@ -163,7 +212,10 @@
           "tipo": "set_informativo",
           "edizione": "01/2025",
           "url": "https://www.sara.it/sites/default/files/2025-01/Set%20informativo%20SaraProfessionista%20ed.%2001_2025.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "12aa3b2af2660e02d609bb30ce7cac5eda7a707dd5630f2bad141441a91165b6",
+          "byte": 994482
         },
         {
           "ramo": "casa",
@@ -171,7 +223,10 @@
           "tipo": "set_informativo",
           "edizione": "04-2025",
           "url": "https://www.sara.it/sites/default/files/2025-05/Set%20Informativo%20SaraDefender%20150IM_ed.04-2025%20(1).pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "7244621d4a77156f88c6a72deae118dccb438e01980730006677209ec85c3586",
+          "byte": 666168
         }
       ]
     },
@@ -186,7 +241,10 @@
           "tipo": "dip",
           "edizione": "07/2025 (il nome del file dice 12-21)",
           "url": "https://www.axa.it/documents/715551/1581088/1992-DIP-Auto+Storiche+ed+12-21PROTETTO.pdf/0269b7db-e085-65ec-986f-27d9e93385c5?t=1638541444608",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "f83c18fde1b934b6e3a387b9510acd5403027ce32628471ef29c38342d9fd633",
+          "byte": 112193
         },
         {
           "ramo": "auto",
@@ -194,7 +252,10 @@
           "tipo": "dip",
           "edizione": "12-21",
           "url": "https://www.axa.it/documents/715551/1581094/1962-DIP-Auto+Protezione+Moto+ed+12-21PROTETTO.pdf/e1d35fc1-f269-2276-f4c0-1bbec08a5d60?t=1638541308764",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "b151ecf569789a41d2974b5e4a24453dbe5a422f8de1e60110edfcc0591c2122",
+          "byte": 238054
         },
         {
           "ramo": "auto",
@@ -202,7 +263,10 @@
           "tipo": "set_informativo",
           "edizione": null,
           "url": "https://www.axa.it/documents/715551/730220/AXA+Autoprotezione+-+Scarica+il+fascicolo+informativo.pdf/f3dbf4e0-4e76-42d5-2f08-14604561fc66",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "3adad68df1868fa03c3244a052c038e30ef0fdb3b2198377041eb9dd3d3ffb5d",
+          "byte": 1829266
         },
         {
           "ramo": "auto",
@@ -210,7 +274,10 @@
           "tipo": "condizioni",
           "edizione": "07/2026 (dal titolo, non dall'URL)",
           "url": "https://www.axa.it/c/document_library/get_file?uuid=6626fe77-b285-10cc-69ba-3dc630d2a977&groupId=715551",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "b7817972cab5403bea1c77769f92f9d1c30867a635de20c18e74e27cf7d14ddf",
+          "byte": 1088940
         },
         {
           "ramo": "auto",
@@ -218,7 +285,10 @@
           "tipo": "dip",
           "edizione": "05/2025 (dal titolo, non dall'URL)",
           "url": "https://www.axa.it/c/document_library/get_file?uuid=deb75306-33cf-2bf1-2121-777789905d25&groupId=715551",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "b0ae8d6a2c0ff255bf9445fe242a86cf4ac41be7d6d61ded6700022fdeb327f7",
+          "byte": 238752
         },
         {
           "ramo": "salute",
@@ -226,7 +296,10 @@
           "tipo": "dip_aggiuntivo",
           "edizione": "01/2019",
           "url": "https://www.axa.it/documents/715551/1915702/DIPA_8E42_ed201901_stampa201901.pdf/7967c4a1-a91b-1035-d2be-50c5c6a8fdcf?t=1623414567539",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "d7aa0a568705f8725c3845118049f6b0906d1342b19457d9c9e8e41543fecede",
+          "byte": 346100
         }
       ]
     },
@@ -241,7 +314,10 @@
           "tipo": "dip_aggiuntivo",
           "edizione": "04/2024 (Mod. DAS4301)",
           "url": "https://youquote.hdia.it/documents/13553353/13559276/Dip+aggiuntivo.pdf/e7012641-8041-c924-a10d-eb914488acbc?version=1.0",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "a9825a6662e5ba4602fe5acf9217d105e0e8cbed04c9cf2eb3460e954b920427",
+          "byte": 253691
         },
         {
           "ramo": "auto",
@@ -249,7 +325,10 @@
           "tipo": "dip_aggiuntivo",
           "edizione": "07/2022 (Mod. A3050)",
           "url": "https://areaclienti.hdiassicurazioni.it/documents/36140/6140377/A3050+-+Valore+Auto+-+DIP+Aggiuntivo+-+Autovetture+-+Ed.+07_2022.pdf/",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "485df6466687e84b2ba6590be781fbc36630232c9c57a3b146286e697d10458e",
+          "byte": 203457
         },
         {
           "ramo": "auto",
@@ -257,7 +336,10 @@
           "tipo": "condizioni",
           "edizione": "07/2020 (Mod. A3060)",
           "url": "https://areaclienti.hdiassicurazioni.it/documents/36140/5377014/A3060+-+Valore+Auto+-+Condizioni+di+assicurazione+-+Autovetture+-+Ed.+07_2020.pdf/",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "9c8d08caa68841b17ffdf1273d8b1621cd8c8ef460f5a6e65a916da087311142",
+          "byte": 956950
         }
       ],
       "da_cercare_ancora": [
@@ -278,7 +360,10 @@
           "tipo": "dip_aggiuntivo",
           "edizione": "07/2024",
           "url": "https://www.italiana.it/itashare/3/Documents/Italiana4Bike_DIPaggiuntivo_Ed.072024.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "7496920fabeaefbe0cc5e933d6a969f421a42cceb7dd56384ff5be98b054af3e",
+          "byte": 228662
         },
         {
           "ramo": "azienda",
@@ -286,7 +371,10 @@
           "tipo": "condizioni",
           "edizione": "04.2025 (INF54301)",
           "url": "https://www.italiana.it/itashare/3/Documents/Landing/TutelaExpress/Cga%20Italiana%20Tutela%20Express_INF54301_Ed.%2004.2025.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "4e433398b9d90380f764d5a6c990c648b67f003a308ff902bdee7270e17d7375",
+          "byte": 3738942
         }
       ],
       "da_cercare_ancora": [
@@ -305,7 +393,9 @@
           "tipo": "set_informativo",
           "edizione": "RCA 01/07/2024, ARD 01/02/2024",
           "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/01_SI_BM_ed_RCA_01_07_2024_e_ARD_01_02_2024.pdf",
-          "stato": "trovato"
+          "stato": "non_preso",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Il sito della compagnia ha risposto 403."
         },
         {
           "ramo": "auto",
@@ -313,7 +403,9 @@
           "tipo": "set_informativo",
           "edizione": "RCA-ARD 01/02/2024",
           "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/01_SI_BM_ed_RCA-ARD_01022024.pdf",
-          "stato": "trovato"
+          "stato": "non_preso",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Il sito della compagnia ha risposto 403."
         },
         {
           "ramo": "auto",
@@ -321,7 +413,9 @@
           "tipo": "set_informativo",
           "edizione": "RCA 01/10/2024, ARD 01/11/2024",
           "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/01_BM_ed_RCA_01_10_2024_e_ARD_01_11_2024_v2_taxi.pdf",
-          "stato": "trovato"
+          "stato": "non_preso",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Il sito della compagnia ha risposto 403."
         },
         {
           "ramo": "auto",
@@ -329,7 +423,9 @@
           "tipo": "set_informativo",
           "edizione": "RCA 01/04/2024, ARD 01/02/2024",
           "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/02_SI_N4R_ed._RCA_01.04.2024_ARD_01.02.2024.pdf",
-          "stato": "trovato"
+          "stato": "non_preso",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Il sito della compagnia ha risposto 403."
         },
         {
           "ramo": "auto",
@@ -337,7 +433,9 @@
           "tipo": "set_informativo",
           "edizione": "RCA 01/06/2025, ARD 01/12/2024",
           "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/03_moto_ciclo_ed_RCA_01_06_2025_e_ARD_01_12_2024.pdf",
-          "stato": "trovato"
+          "stato": "non_preso",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Il sito della compagnia ha risposto 403."
         },
         {
           "ramo": "auto",
@@ -345,7 +443,9 @@
           "tipo": "set_informativo",
           "edizione": "RCA 01/04/2024, ARD 01/02/2024",
           "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/04_SI_altri_veicoli_ed._RCA_01.04.2024_ARD_01.02.2024.pdf",
-          "stato": "trovato"
+          "stato": "non_preso",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Il sito della compagnia ha risposto 403."
         },
         {
           "ramo": "auto",
@@ -353,7 +453,9 @@
           "tipo": "set_informativo",
           "edizione": "01/02/2024",
           "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set_informativi/01_SI_autovetture_DM_54-01022024.pdf",
-          "stato": "trovato"
+          "stato": "non_preso",
+          "provato_il": "2026-10-02",
+          "motivo_non_preso": "Il sito della compagnia ha risposto 403."
         }
       ],
       "nota": "Il percorso è il più pulito di tutti — /content/dam/.../set_informativi/ — e il nome del file porta DUE edizioni, quella della RCA e quella delle garanzie danni (ARD), che cambiano in date diverse. Per il controllo mensile è la compagnia più facile da seguire."
@@ -368,7 +470,10 @@
           "tipo": "set_informativo",
           "edizione": "NC.RCA.2018.002-2024.001",
           "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/NobisRca/Nobis_Car_Set_NC.RCA.2018.002-2024.001.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "c59afbb8103d60523cf3c8d209c39bbc3245c097f00edb8b627d18587c6e36c7",
+          "byte": 1694573
         },
         {
           "ramo": "auto",
@@ -376,7 +481,10 @@
           "tipo": "set_informativo",
           "edizione": null,
           "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/Automotive/NOBIS%20SEI_SET.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "e0a040220a11a51752827c614022e06c2efcd3ea554e9b8db76e3bf32d628530",
+          "byte": 421453
         },
         {
           "ramo": "auto",
@@ -384,7 +492,10 @@
           "tipo": "set_informativo",
           "edizione": null,
           "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/Automotive/Carsafe_SET.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "ecd9643d022fab3a32a3f6def5f3ac989313a544a7b37e160e2a1f8dbdb14e68",
+          "byte": 829826
         },
         {
           "ramo": "auto",
@@ -392,7 +503,10 @@
           "tipo": "set_informativo",
           "edizione": "20.02.2025",
           "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/Automotive/CVT%20Premium%20-%20Set%20Informativo%20-%2020.02.2025.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "caebc267caf2407df3e347ed871b1f7a5133a462249bd0f6bc4b8b3007d0f678",
+          "byte": 1180981
         },
         {
           "ramo": "auto",
@@ -400,7 +514,10 @@
           "tipo": "set_informativo",
           "edizione": "SFSGS.2024-2025.001",
           "url": "https://www.nobis.it/Sites/394/WebExplorer/set-mutui-finanziamenti/SFSGS.2024-2025.001_GUIDA%20SERENO%20SFS_set.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "02e6700efedda82cb20a9387b76da774c5e79d1ed9fb1f01d3760bf076e3e4ec",
+          "byte": 700146
         },
         {
           "ramo": "auto",
@@ -408,7 +525,10 @@
           "tipo": "set_informativo",
           "edizione": "SFSSEM.2023-2025.001",
           "url": "https://www.nobis.it/Sites/394/WebExplorer/set-mutui-finanziamenti/SFSSEM.2023-2025.001_SempreNuova_set.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "b20fb5dc05e7dcafc47b2d9ea32a9feb972763fe295d42621cfdd4969b70421b",
+          "byte": 426722
         },
         {
           "ramo": "salute",
@@ -416,7 +536,10 @@
           "tipo": "set_informativo",
           "edizione": null,
           "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/Automotive/Gold_Cover_SET.pdf",
-          "stato": "trovato"
+          "stato": "verificato",
+          "provato_il": "2026-10-02",
+          "impronta": "f6491d7c92c178629216e5cc10a2330824b8834aad99ad16fbbebb258f63cde9",
+          "byte": 711212
         }
       ],
       "nota": "Molti prodotti e molti set, divisi fra l'area dei bisogni e quella dei mutui e finanziamenti. Il nome del file porta spesso il codice del modello e due anni (es. «SFSGS.2024-2025.001»), che non è un'edizione in forma di data: va tenuto come sta scritto."
@@ -442,6 +565,8 @@
   ],
   "_domini_da_cui_si_prende": [
     "dallbogg.it",
+    "dallbogg.com",
+    "www.dallbogg.com",
     "cdn.groupama.it",
     "www.sara.it",
     "www.axa.it",
@@ -451,5 +576,14 @@
     "www.allianz.it",
     "www.nobis.it"
   ],
-  "_perche_un_elenco_di_domini": "Il raccoglitore scarica SOLO da questi domini. Senza il vincolo, una funzione che prende un URL qualunque e lo scarica è un proxy aperto sull'infrastruttura dell'agenzia: chiunque riuscisse a chiamarla potrebbe usarla per raggiungere qualsiasi indirizzo, e i log direbbero che è stata l'agenzia a farlo."
+  "_perche_un_elenco_di_domini": "Il raccoglitore scarica SOLO da questi domini. Senza il vincolo, una funzione che prende un URL qualunque e lo scarica è un proxy aperto sull'infrastruttura dell'agenzia: chiunque riuscisse a chiamarla potrebbe usarla per raggiungere qualsiasi indirizzo, e i log direbbero che è stata l'agenzia a farlo.",
+  "_verificato_il": "2026-10-02",
+  "_come_e_andata_il_02_10_2026": {
+    "verificato": 32,
+    "non_pdf": 4,
+    "non_preso": 7,
+    "per_compagnia": "Groupama 7/7, Sara 7/7, AXA 6/6, Nobis 7/7, HDI 3/3, Italiana 2/2, Allianz 0/7, DALLBOGG 0/4",
+    "allianz": "risponde 403 a Supabase: blocca il traffico dei datacenter. Dal browser dell'agenzia si scarica, e il connettore Chrome ha gia' i permessi per allianz.it. Per lei la strada e' quella, non la funzione.",
+    "dallbogg": "tutti e quattro gli indirizzi consegnano HTML invece del PDF: la compagnia ha spostato i documenti e al loro posto c'e' la pagina del prodotto. Gli indirizzi vanno ritrovati."
+  }
 }

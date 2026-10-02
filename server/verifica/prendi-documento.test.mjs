@@ -185,23 +185,81 @@ prova('un indirizzo scaduto si dichiara per quello che è', () => {
     'un 404 non si distingue da un errore qualunque: manca il campo «scaduto» nella risposta');
   /* E la spiegazione sta nel messaggio che legge una persona, non in un
      commento che legge solo chi apre il file. */
-  const msg = SRC.match(/motivo: 'Il sito della compagnia ha risposto[\s\S]*?\}, \{ status: 200 \}\)/);
+  /* L'ancora si ferma su `status: 200` e non sull'intera parentesi: quella
+     riga cresce ogni volta che si aggiunge qualcosa alla risposta — è già
+     successo con le intestazioni CORS — e un'ancora che copia la
+     formattazione si rompe per un motivo che non c'entra niente. */
+  const msg = SRC.match(/motivo: 'Il sito della compagnia ha risposto[\s\S]*?status: 200/);
   deve(msg, 'non trovo il messaggio che si dà quando il sito risponde male');
   deve(/edizione nuova/.test(msg[0]),
     'il messaggio non spiega che a ogni edizione nuova l\'indirizzo cambia: ' + msg[0].slice(0, 120));
 });
 
-prova('il catalogo dichiara di non essere verificato', () => {
-  /* Dall'ambiente degli agenti non si è potuto nemmeno chiedere se un
-     indirizzo risponde. Un catalogo che non lo dicesse farebbe credere che
-     quei venticinque indirizzi siano buoni. */
+prova('UN DOCUMENTO SI DICHIARA «verificato» SOLO SE PORTA LA PROVA', () => {
+  /* Questa prova prima diceva un'altra cosa: che nessuna voce poteva
+     dichiararsi presa, perché dall'ambiente degli agenti non si riusciva
+     nemmeno a chiedere se un indirizzo rispondesse. Poi la funzione su
+     Supabase è stata installata, la raccolta è girata, e 32 documenti su 43
+     sono stati presi per davvero: la vecchia regola non era sbagliata, era
+     superata dai fatti.
+
+     La regola nuova è più forte, non più debole: «verificato» si può scrivere
+     soltanto portando la prova — l'impronta del file e il suo peso. Un catalogo
+     che si dichiarasse verificato senza impronte sarebbe un catalogo che dice
+     di aver visto quello che non ha visto. */
+  const tutti = [];
+  (CATALOGO.compagnie || []).forEach((c) => (c.documenti || []).forEach((d) => tutti.push([c.compagnia, d])));
+  deve(tutti.length >= 20, 'il catalogo ha solo ' + tutti.length + ' documenti');
+
+  const ammessi = ['trovato', 'verificato', 'scaduto', 'non_pdf', 'dominio_non_ammesso', 'non_preso'];
+  tutti.forEach(([chi, d]) => {
+    deve(ammessi.indexOf(d.stato) >= 0, chi + ': stato «' + d.stato + '» che il catalogo non dichiara');
+    if (d.stato === 'verificato') {
+      deve(typeof d.impronta === 'string' && d.impronta.length === 64,
+        chi + ' · ' + d.prodotto + ': si dichiara verificato senza l\'impronta del file — ' + d.impronta);
+      deve(typeof d.byte === 'number' && d.byte > 1000,
+        chi + ' · ' + d.prodotto + ': si dichiara verificato senza il peso del file — ' + d.byte);
+      deve(d.provato_il, chi + ' · ' + d.prodotto + ': si dichiara verificato senza dire quando');
+    } else {
+      /* E al contrario: un documento che NON è stato preso non può portarsi
+         dietro l'impronta di una volta in cui era andata bene, perché quella
+         impronta direbbe che il documento c'è quando non c'è più. */
+      deve(d.impronta == null, chi + ' · ' + d.prodotto + ': è «' + d.stato +
+        '» e si tiene l\'impronta di prima — direbbe che il documento c\'è quando non c\'è più');
+    }
+  });
+
+  /* E ogni stato che compare va spiegato nel vocabolario del catalogo. */
+  const usati = [...new Set(tutti.map(([, d]) => d.stato))];
+  usati.forEach((s) => deve(CATALOGO._stati && CATALOGO._stati[s],
+    'lo stato «' + s + '» si usa ma il catalogo non dice che cosa vuol dire'));
+});
+
+prova('IL CATALOGO DICE CHE UNA VERIFICA INVECCHIA', () => {
+  /* La prima versione di questo campo diceva «nessuno di questi URL è stato
+     verificato», e dopo la raccolta era diventato FALSO: 32 lo erano. Un
+     limite dichiarato male è peggio di un limite non dichiarato, perché chi
+     legge si fida della frase e non dei fatti.
+
+     Il limite vero adesso è un altro, e vale per sempre: «verificato» vuol
+     dire «quel giorno ha risposto», non «risponde». Le compagnie spostano i
+     PDF a ogni edizione, e lo si è visto sul campo — i quattro indirizzi
+     DALLBOGG, trovati da un motore di ricerca, oggi consegnano una pagina
+     HTML al posto del documento. */
   deve(CATALOGO._IL_LIMITE_DA_SAPERE, 'il catalogo non dichiara il suo limite');
-  deve(/NESSUNO DI QUESTI URL È STATO VERIFICATO/.test(CATALOGO._IL_LIMITE_DA_SAPERE),
-    'il limite non è dichiarato in modo che si veda: ' + CATALOGO._IL_LIMITE_DA_SAPERE.slice(0, 80));
-  const stati = [];
-  (CATALOGO.compagnie || []).forEach((c) => (c.documenti || []).forEach((d) => stati.push(d.stato)));
-  deve(stati.every((s) => s === 'trovato'),
-    'un documento si dichiara già preso senza che nessuno l\'abbia aperto: ' + JSON.stringify([...new Set(stati)]));
+  const L = CATALOGO._IL_LIMITE_DA_SAPERE;
+  deve(/invecchia|quel giorno ha risposto/i.test(L),
+    'non dice che una verifica invecchia: ' + L.slice(0, 120));
+  /* E non deve dire una cosa che i fatti smentiscono. */
+  const verificati = [];
+  (CATALOGO.compagnie || []).forEach((c) => (c.documenti || []).forEach((d) => {
+    if (d.stato === 'verificato') verificati.push(d);
+  }));
+  if (verificati.length) {
+    deve(!/NESSUNO DI QUESTI URL È STATO VERIFICATO/.test(L),
+      'il catalogo dichiara che nessun indirizzo è verificato, e invece ne ha ' + verificati.length);
+  }
+  deve(CATALOGO._verificato_il, 'non dice QUANDO è stato verificato: una verifica senza data non invecchia mai');
 });
 
 // ── esecuzione ───────────────────────────────────────────────────────────────

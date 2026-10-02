@@ -359,7 +359,13 @@ prova('IL DOCUMENTO NON ESCE DAL BROWSER', async () => {
      esterni, e questa è la prova che nessuno ce li manda per sbaglio — per
      esempio «facendosi riassumere il PDF» da qualcosa che sta fuori. */
   const c = await p.evaluate(() => {
-    const src = [ppProponiDaFile, ppPdfTesto, ppProposteAggiungi].map(String).join('\n');
+    /* Anche il MOTORE, non solo gli involucri nella pagina: da quando la
+       lettura del PDF e' uscita da qui, guardare solo `ppPdfTesto` vorrebbe
+       dire guardare tre righe di involucro e dichiarare sicuro quello che sta
+       dall'altra parte. */
+    const m = window.PdfTesto || {};
+    const src = [ppProponiDaFile, ppPdfTesto, ppProposteAggiungi,
+      m.testoPagine, m.righeDaPezzi, m.impronta].filter(Boolean).map(String).join('\n');
     return {
       src,
       rete: /\bfetch\s*\(|XMLHttpRequest|navigator\.sendBeacon|new\s+WebSocket/.test(src),

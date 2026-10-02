@@ -78,6 +78,15 @@
 <script src="/nuovo-preventivo/tariffe/motore/produzione.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/collaboratori.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/confronto.js?v=20261002"></script>
+<!-- Mettere un prodotto in archivio leggendo il suo PDF (02/10/2026).
+     `guida-garanzie.js` serve perché è là che sta la lettura di una riga con
+     un importo, e `lettura-proposta.js` perché è là che sta la ricucitura di
+     un nome spezzato su più righe: sono già scritte e già provate, e
+     riscriverle qui vorrebbe dire averne due versioni che si separano. -->
+<script src="/nuovo-preventivo/tariffe/motore/guida-garanzie.js?v=20261002"></script>
+<script src="/nuovo-preventivo/tariffe/motore/lettura-proposta.js?v=20261002"></script>
+<script src="/nuovo-preventivo/tariffe/motore/pdf-testo.js?v=20261002"></script>
+<script src="/nuovo-preventivo/tariffe/motore/scheda-prodotto.js?v=20261002"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -136,6 +145,51 @@
 .cf-v-a{color:var(--acc,#2f6df6)}.cf-v-b{color:#b7791f}.cf-v-null{color:var(--txt3);font-weight:400}
 .cf-fonte{font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.45}
 .cf-fonte q{font-style:italic}
+/* ══ METTERE UN PRODOTTO IN ARCHIVIO (02/10/2026) ═══════════════════════════
+   L'archivio di Confronta era vuoto perché l'unico modo previsto per
+   riempirlo era scaricare le note informative dalla rete. Questa è la strada
+   che non ha bisogno di rete: si carica il PDF e lui propone le righe.
+
+   Le tre spunte di stato sono la cosa più importante del disegno. «Assente»
+   si può scegliere solo scrivendo la frase del documento che lo dice, e il
+   salvataggio si rifiuta senza quella: è la stessa regola del motore, che
+   «assente» non lo scrive mai da solo. */
+.cfn-car{border:1.5px dashed var(--bord2);border-radius:12px;padding:18px;text-align:center;
+  background:var(--surf2)}
+.cfn-car input[type=file]{font-size:13px}
+.cfn-nota{font-size:11.5px;color:var(--txt3);line-height:1.5;margin-top:8px}
+.cfn-conto{display:flex;gap:1px;background:var(--bord);border:1px solid var(--bord);
+  border-radius:10px;overflow:hidden;margin:12px 0}
+.cfn-c{background:var(--surf);padding:9px 12px;flex:1;min-width:0;text-align:center}
+.cfn-c span{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--txt3);font-weight:700}
+.cfn-c b{display:block;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.cfn-avv{background:#fff4e6;border:1px solid #f0c674;border-radius:10px;padding:10px 13px;
+  font-size:12px;line-height:1.5;margin-bottom:12px}
+.cfn-avv ul{margin:6px 0 0;padding-left:18px}
+.cfn-avv li{margin:3px 0}
+.cfn-r{border:1px solid var(--bord);border-radius:10px;padding:9px 12px;margin-bottom:7px;
+  background:var(--surf)}
+.cfn-r-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.cfn-r-h b{font-size:13px}
+.cfn-r-h small{font-size:11px;color:var(--txt3)}
+.cfn-sc{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+.cfn-sc button{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
+  padding:3px 9px;border-radius:20px;border:1px solid var(--bord2);background:var(--surf2);
+  color:var(--txt3);cursor:pointer}
+.cfn-sc button.on.cfn-b-si{background:#e7f6ec;color:#1b6b38;border-color:#1b6b38}
+.cfn-sc button.on.cfn-b-no{background:#fdeceb;color:#9c2b20;border-color:#9c2b20}
+.cfn-sc button.on.cfn-b-nl{background:#eef0f3;color:#374151;border-color:#6b7280}
+.cfn-cit{margin-top:7px;display:none}
+.cfn-cit.on{display:block}
+.cfn-cit input{width:100%;box-sizing:border-box;font-size:12px;padding:7px 9px;
+  border:1px solid #9c2b20;border-radius:8px;background:var(--surf)}
+.cfn-cit-l{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  color:#9c2b20;margin-bottom:3px}
+.cfn-g{font-size:11.5px;color:#8a5200;line-height:1.45;margin-top:5px}
+.cfn-frase{font-size:11px;color:var(--txt3);margin-top:4px;font-style:italic;word-break:break-word}
+.cfn-fuori{font-size:12px;line-height:1.55}
+.cfn-fuori li{margin:2px 0}
 /* Un caricamento che si VEDE che è un caricamento (30/09/2026). La stessa
    riga di testo di prima, ma con la rotella accanto: senza, «Carico i
    sospesi…» ha lo stesso aspetto di un risultato, e una schermata ferma non
@@ -4941,6 +4995,8 @@ input[type=file]{display:none;}
         precontrattuali delle compagnie. Ogni riga dice da quale documento viene.</div>
     </div>
     <div class="head-actions">
+      <button class="d-btn primario" type="button" onclick="cfnApri()">
+        <i class="ti ti-file-plus"></i> Metti un prodotto in archivio</button>
       <button class="d-btn" type="button" onclick="cfCarica(true)"><i class="ti ti-refresh"></i> Aggiorna</button>
     </div>
   </section>
@@ -4962,6 +5018,40 @@ input[type=file]{display:none;}
   </div>
 
   <div id="cf-esito"></div>
+</div>
+
+<!-- ══ METTERE UN PRODOTTO IN ARCHIVIO LEGGENDO IL SUO PDF (02/10/2026) ══════
+     Il PDF si legge QUI DENTRO, nel browser: non parte da nessuna parte.
+     Per le note informative non sarebbe un problema di privacy — sono
+     documenti pubblici di prodotto — ma la stessa macchina legge anche le
+     proposte e le polizze, e quelle portano nome, codice fiscale e targa del
+     cliente. Una macchina sola, una regola sola.
+
+     Quello che esce sono PROPOSTE da confermare. «Assente» non si può
+     spuntare senza scrivere la frase del documento che lo dice, e il
+     salvataggio si rifiuta: il confronto lo si mostra a un cliente, e dire
+     che un concorrente non copre una cosa che invece copre è adeguatezza
+     (Reg. IVASS 40 e 41), non una casella storta. -->
+<div class="modal" id="modal-cf-nuovo">
+  <div class="modal-box" style="max-width:860px">
+    <div class="modal-hdr">
+      <div class="modal-title">Metti un prodotto in archivio</div>
+      <div style="display:flex;gap:8px;">
+        <button class="mbtn prim" id="cfn-salva" onclick="cfnSalva()" disabled>Salva in archivio</button>
+        <button class="mbtn sec" onclick="closeModal('modal-cf-nuovo')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="cfn-car">
+        <label for="cfn-file" style="display:block;font-size:12.5px;font-weight:700;margin-bottom:8px">
+          Il documento del prodotto — set informativo, DIP, DIP aggiuntivo o condizioni</label>
+        <input type="file" id="cfn-file" accept="application/pdf,.pdf" onchange="cfnDaFile(this)">
+        <div class="cfn-nota">Il PDF viene letto qui, dentro il browser, e non parte da nessuna parte.
+          Di lui si tiene l'impronta, per accorgersi quando la compagnia cambia edizione.</div>
+      </div>
+      <div id="cfn-esito" style="margin-top:14px"></div>
+    </div>
+  </div>
 </div>
 
 <script type="module" src="analisi-bisogni-rating.js?v=20260804"></script>
@@ -6422,6 +6512,358 @@ async function cfConfronta() {
     '<div class="card-body"><div class="table-wrap"><table class="cf-tab">' +
     '<thead><tr><th>Garanzia</th><th>' + nomeA + '</th><th></th><th>' + nomeB + '</th></tr></thead>' +
     '<tbody>' + righe + '</tbody></table></div></div></div>' + blocoFuori;
+}
+
+/* ══ METTERE UN PRODOTTO IN ARCHIVIO LEGGENDO IL SUO PDF (02/10/2026) ════════
+   Richiesta di Francesco: «dobbiamo scaricare tutte le note informative di
+   tutte le compagnie assicurative e banche presenti in Italia, perché per
+   battere la concorrenza ci possiamo battere solamente su dati reali».
+
+   La raccolta automatica ha bisogno che la rete dell'ambiente sia aperta.
+   Questa schermata non ne ha bisogno: si carica il PDF e lui propone le
+   righe. Non è un ripiego in attesa dell'interruttore — i prodotti che
+   servono per vendere sono quelli che si collocano e i due o tre dei
+   concorrenti che si trovano sul tavolo del cliente, e quei PDF ci sono già.
+
+   LA REGOLA CHE REGGE TUTTA LA SCHERMATA: «assente» non si spunta senza
+   scrivere la frase del documento che lo dice, e il salvataggio si rifiuta
+   senza quella. È la stessa regola del motore, che «assente» non lo scrive
+   mai da solo: misurato su un set informativo vero, cinque tentativi
+   indipendenti di dedurre un'assenza hanno prodotto tutti un dato falso. */
+var CFN = null;           /* la scheda letta, più le scelte della persona */
+
+function cfnApri() {
+  if (!window.SchedaProdotto || !window.PdfTesto) {
+    alert('Il motore di lettura dei documenti non è caricato: la schermata non può lavorare.');
+    return;
+  }
+  CFN = null;
+  var f = document.getElementById('cfn-file');
+  if (f) f.value = '';
+  var e = document.getElementById('cfn-esito');
+  if (e) e.innerHTML = '';
+  cfnBottone(false);
+  /* L'anagrafica delle compagnie si carica mentre la persona sceglie il file:
+     se non arriva, il nome si scrive a mano e non è un guasto. */
+  cfnCompagnie();
+  document.getElementById('modal-cf-nuovo').classList.add('show');
+}
+
+function cfnBottone(acceso) {
+  var b = document.getElementById('cfn-salva');
+  if (b) b.disabled = !acceso;
+}
+
+async function cfnDaFile(input) {
+  var box = document.getElementById('cfn-esito');
+  var file = input && input.files && input.files[0];
+  if (!box || !file) return;
+  cfnBottone(false);
+  box.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Leggo «' + esc(file.name) + '»…</div>';
+  try {
+    var pagine = await PdfTesto.testoPagine(file, {
+      avanzamento: function (q, su) {
+        box.innerHTML = '<div class="cl-carico"><span class="cl-carico-g"></span>Leggo «' + esc(file.name)
+          + '» — pagina ' + q + ' di ' + su + '…</div>';
+      }
+    });
+    var impronta = await PdfTesto.impronta(file);
+    var s = SchedaProdotto.scheda(pagine);
+    CFN = { pagine: pagine, scheda: s, impronta: impronta, nomeFile: file.name, scelte: {}, citazioni: {} };
+    cfnDisegna();
+  } catch (e) {
+    box.innerHTML = '<div class="cfn-avv"><b>Non riesco a leggere il documento.</b> ' +
+      esc((e && e.message) || String(e)) + '</div>';
+  }
+}
+
+/* Il ramo lo propone il documento, ma lo decide una persona: a parità di spie
+   il motore dice che non lo sa invece di scegliere, e allora qui si chiede. */
+function cfnRamo(valore) {
+  if (!CFN) return;
+  CFN.scheda = SchedaProdotto.scheda(CFN.pagine, { ramo: valore });
+  CFN.scelte = {}; CFN.citazioni = {};
+  cfnDisegna();
+}
+
+function cfnDisegna() {
+  var box = document.getElementById('cfn-esito');
+  if (!box || !CFN) return;
+  var s = CFN.scheda;
+  var rami = (window.Confronto && Confronto.RAMI) || [];
+
+  if (!s.ok) {
+    /* Una SCANSIONE non si risolve scegliendo il ramo: non c'è niente da
+       leggere, qualunque ramo si scelga. Offrire la tendina farebbe provare
+       e riprovare a vuoto. */
+    box.innerHTML = '<div class="cfn-avv"><b>' + (s.scansione ? 'Questo PDF non contiene testo.' : 'Non si riesce a leggere.') +
+      '</b> ' + esc(s.motivo) + '</div>' +
+      (s.scansione ? '' :
+        '<div class="cf-f" style="max-width:280px"><label for="cfn-ramo">Scegli il ramo</label>' +
+        '<select id="cfn-ramo" onchange="cfnRamo(this.value)"><option value="">—</option>' +
+        rami.map(function (r) { return '<option value="' + r.id + '">' + esc(r.nome) + '</option>'; }).join('') +
+        '</select></div>');
+    cfnBottone(false);
+    return;
+  }
+
+  var ed = s.edizioni || [];
+  var fasc = (s.fascicoli || []).map(function (f) {
+    return (f.tipo || 'pezzo non riconosciuto') + ' · pag. ' + f.da + '–' + f.a;
+  });
+
+  box.innerHTML =
+    '<div class="cfn-conto">' +
+      '<div class="cfn-c"><span>presenti</span><b>' + s.conta.presente + '</b></div>' +
+      '<div class="cfn-c"><span>non lette</span><b>' + s.conta.non_letto + '</b></div>' +
+      '<div class="cfn-c"><span>assenti</span><b>' + s.conta.assente + '</b></div>' +
+      '<div class="cfn-c"><span>pagine</span><b>' + s.pagine + '</b></div>' +
+    '</div>' +
+
+    (s.avvertenze && s.avvertenze.length
+      ? '<div class="cfn-avv"><b>Quello che va saputo prima di archiviare</b><ul>' +
+        s.avvertenze.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>'
+      : '') +
+
+    '<div class="d-card"><div class="card-head"><div class="card-title">' +
+    '<span class="pictogram"><i class="ti ti-id"></i></span> Di che prodotto si tratta</div></div>' +
+    '<div class="card-body"><div class="cf-scelte">' +
+      '<div class="cf-f"><label for="cfn-compagnia">Compagnia</label>' +
+        '<input id="cfn-compagnia" type="text" list="cfn-compagnie" placeholder="Come sta scritta sul documento" ' +
+        'style="padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:9px;font:inherit">' +
+        '<datalist id="cfn-compagnie">' + (CF_COMPAGNIE || []).map(function (c) {
+          return '<option value="' + esc(c) + '">'; }).join('') + '</datalist></div>' +
+      '<div class="cf-f"><label for="cfn-prodotto">Prodotto</label>' +
+        '<input id="cfn-prodotto" type="text" placeholder="Il nome commerciale" ' +
+        'style="padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:9px;font:inherit"></div>' +
+      '<div class="cf-f"><label for="cfn-ramo">Ramo</label>' +
+        '<select id="cfn-ramo" onchange="cfnRamo(this.value)">' +
+        rami.map(function (r) {
+          return '<option value="' + r.id + '"' + (r.id === s.ramo ? ' selected' : '') + '>' + esc(r.nome) + '</option>';
+        }).join('') + '</select></div>' +
+      '<div class="cf-f"><label for="cfn-tipo">Che documento è</label>' +
+        '<select id="cfn-tipo">' +
+        [['set_informativo', 'Set informativo'], ['dip', 'DIP'], ['dip_aggiuntivo', 'DIP aggiuntivo'],
+         ['condizioni', 'Condizioni di assicurazione'], ['altro', 'Altro']].map(function (t) {
+          return '<option value="' + t[0] + '"' + (t[0] === s.tipo ? ' selected' : '') + '>' + t[1] + '</option>';
+        }).join('') + '</select></div>' +
+      '<div class="cf-f"><label for="cfn-edizione">Edizione, come sta scritta</label>' +
+        '<input id="cfn-edizione" type="text" list="cfn-edizioni" value="' + esc(ed.length ? ed[0].valore : '') + '" ' +
+        'placeholder="Es. 06/2020" ' +
+        'style="padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:9px;font:inherit">' +
+        '<datalist id="cfn-edizioni">' + ed.map(function (e) {
+          return '<option value="' + esc(e.valore) + '">' + esc(e.etichetta + ', pag. ' + e.pagina) + '</option>';
+        }).join('') + '</datalist></div>' +
+    '</div>' +
+    '<div class="cfn-nota">Il documento si divide in: ' + esc(fasc.join(' · ') || 'un pezzo solo') +
+      (s.orfane && s.orfane.length ? ' — fuori restano le pagine ' + s.orfane.join(', ') : '') + '.' +
+      (CFN.impronta ? ' Impronta del file: ' + esc(CFN.impronta.slice(0, 16)) + '…' : '') + '</div>' +
+    '</div></div>' +
+
+    '<div class="d-card"><div class="card-head"><div class="card-title">' +
+    '<span class="pictogram"><i class="ti ti-list-check"></i></span> Garanzia per garanzia</div></div>' +
+    '<div class="card-body">' +
+      '<div class="cfn-nota" style="margin:0 0 10px"><b>Queste sono proposte, non una lettura.</b> ' +
+      'Ogni riga dice da che pagina viene e porta la frase del documento. «Assente» si può scegliere ' +
+      'solo scrivendo la frase che lo dice: il motore non lo scrive mai da solo, perché su un documento ' +
+      'vero cinque tentativi di dedurlo hanno prodotto cinque dati falsi.</div>' +
+      s.garanzie.map(function (g, i) { return cfnRiga(g, i); }).join('') +
+    '</div></div>' +
+
+    ((s.fuoriVocabolario || []).length
+      ? '<div class="d-card"><div class="card-head"><div class="card-title">' +
+        '<span class="pictogram"><i class="ti ti-help-circle"></i></span> Coperture che il vocabolario non conosce' +
+        '</div></div><div class="card-body"><div class="cfn-nota" style="margin:0 0 8px">' +
+        'Il documento le vende ma non hanno un posto nel confronto: dimmelo e le aggiungo al vocabolario, ' +
+        'altrimenti questo prodotto risulterà più povero di quello che è.</div>' +
+        '<ul class="cfn-fuori">' + s.fuoriVocabolario.map(function (x) {
+          return '<li><b>' + esc(x.nome) + '</b> — pag. ' + x.pagina + '</li>'; }).join('') +
+        '</ul></div></div>'
+      : '') +
+
+    (s.quantiNonAttribuiti
+      ? '<div class="d-card"><div class="card-head"><div class="card-title">' +
+        '<span class="pictogram"><i class="ti ti-currency-euro"></i></span> ' + s.quantiNonAttribuiti +
+        ' importi che non si attribuiscono</div></div><div class="card-body">' +
+        '<div class="cfn-nota" style="margin:0 0 8px">Quasi sempre sono numeri di un sottocaso — il massimale ' +
+        'di legge, uno scoperto, una rivalsa limitata, una franchigia per area. Non sono stati messi addosso ' +
+        'a nessuna garanzia, perché indovinare un massimale è peggio che lasciarlo in bianco. ' +
+        'Eccoli con la loro pagina:</div><ul class="cfn-fuori">' +
+        s.importiNonAttribuiti.map(function (x) {
+          return '<li>pag. ' + x.pagina + ' — <i>' + esc(x.riga.slice(0, 110)) + '</i></li>'; }).join('') +
+        '</ul></div></div>'
+      : '');
+
+  cfnBottone(true);
+}
+
+function cfnStatoDi(g) {
+  return (CFN && CFN.scelte[g.garanzia]) || g.stato;
+}
+
+function cfnRiga(g, i) {
+  var stato = cfnStatoDi(g);
+  var b = function (val, cls, testo) {
+    return '<button type="button" class="' + cls + (stato === val ? ' on' : '') +
+      '" onclick="cfnScegli(\'' + g.garanzia + '\',\'' + val + '\')">' + testo + '</button>';
+  };
+  return '<div class="cfn-r" id="cfn-r-' + i + '">' +
+    '<div class="cfn-r-h"><b>' + esc(g.nome) + '</b><small>' +
+      (g.pagina != null ? 'pag. ' + g.pagina : 'non trovata nel documento') +
+      (g.forma ? ' · ' + esc(g.forma) : '') + '</small></div>' +
+    (g.nome_documento && g.nome_documento !== g.nome
+      ? '<div class="cfn-nota" style="margin-top:3px">Sul documento: «' + esc(g.nome_documento) + '»</div>' : '') +
+    (g.massimale != null || g.franchigia != null || g.franchigie_per_area
+      ? '<div class="cf-num">' +
+        (g.massimale != null ? 'massimale ' + cfEuro(g.massimale) + ' ' : '') +
+        (g.franchigia != null ? 'franchigia ' + cfEuro(g.franchigia) + ' ' : '') +
+        (g.franchigie_per_area ? 'franchigie per area: ' +
+          g.franchigie_per_area.map(function (v) { return cfEuro(v); }).join(' · ') : '') +
+        '</div>' : '') +
+    (g.daGuardare ? '<div class="cfn-g"><i class="ti ti-alert-triangle"></i> ' + esc(g.daGuardare) + '</div>' : '') +
+    (g.frase ? '<div class="cfn-frase">«' + esc(g.frase.slice(0, 170)) + '»</div>' : '') +
+    (g.perche ? '<div class="cfn-nota" style="margin-top:4px">' + esc(g.perche) + '</div>' : '') +
+    '<div class="cfn-sc">' +
+      b('presente', 'cfn-b-si', 'presente') +
+      b('assente', 'cfn-b-no', 'assente') +
+      b('non_letto', 'cfn-b-nl', 'non letta') +
+    '</div>' +
+    '<div class="cfn-cit' + (stato === 'assente' ? ' on' : '') + '" id="cfn-cit-' + g.garanzia + '">' +
+      '<div class="cfn-cit-l">Dove c\'è scritto che non c\'è — senza questo non si salva</div>' +
+      '<input type="text" value="' + esc((CFN && CFN.citazioni[g.garanzia]) || '') + '" ' +
+      'placeholder="Es. pag. 11: «Rischi esclusi: la garanzia non è prevista per questo prodotto»" ' +
+      'oninput="cfnCitazione(\'' + g.garanzia + '\', this.value)"></div>' +
+    '</div>';
+}
+
+function cfnScegli(id, stato) {
+  if (!CFN) return;
+  CFN.scelte[id] = stato;
+  /* Si ridisegna solo la riga: rifare tutta la schermata farebbe perdere
+     quello che la persona ha già scritto negli altri campi. */
+  var i = -1;
+  CFN.scheda.garanzie.forEach(function (g, k) { if (g.garanzia === id) i = k; });
+  if (i < 0) return;
+  var el = document.getElementById('cfn-r-' + i);
+  if (el) el.outerHTML = cfnRiga(CFN.scheda.garanzie[i], i);
+  if (stato === 'assente') {
+    var c = document.getElementById('cfn-cit-' + id);
+    if (c) { var inp = c.querySelector('input'); if (inp) inp.focus(); }
+  }
+}
+
+function cfnCitazione(id, val) {
+  if (CFN) CFN.citazioni[id] = val;
+}
+
+/* Le compagnie in anagrafica, per non far riscrivere a mano un nome che c'è
+   già. Non è un vincolo: un CONCORRENTE non è in anagrafica, e pretenderlo
+   vorrebbe dire non poter archiviare proprio i prodotti contro cui ci si
+   confronta. */
+var CF_COMPAGNIE = [];
+async function cfnCompagnie() {
+  if (CF_COMPAGNIE.length || !db) return;
+  try {
+    var r = await db.from('quote_compagnie').select('nome').order('nome');
+    if (!r.error) CF_COMPAGNIE = (r.data || []).map(function (x) { return x.nome; }).filter(Boolean);
+  } catch (e) { /* senza anagrafica si scrive a mano: non è un guasto */ }
+}
+
+async function cfnSalva() {
+  if (!CFN || !CFN.scheda.ok) return;
+  var gv = function (id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
+  var compagnia = gv('cfn-compagnia'), prodotto = gv('cfn-prodotto');
+  var ramo = gv('cfn-ramo') || CFN.scheda.ramo, tipo = gv('cfn-tipo'), edizione = gv('cfn-edizione');
+  if (!compagnia) { alert('Scrivi la compagnia, come sta sul documento.'); return; }
+  if (!prodotto) { alert('Scrivi il nome del prodotto.'); return; }
+
+  /* IL CONTROLLO CHE DÀ SENSO A TUTTA LA SCHERMATA. Un «assente» senza la
+     frase del documento è un'opinione, e finisce su un foglio che va a un
+     cliente come se fosse un dato. */
+  var senzaProva = [];
+  CFN.scheda.garanzie.forEach(function (g) {
+    if (cfnStatoDi(g) !== 'assente') return;
+    if (!String(CFN.citazioni[g.garanzia] || '').trim()) senzaProva.push(g.nome);
+  });
+  if (senzaProva.length) {
+    alert('Queste garanzie sono segnate «assente» senza la frase del documento che lo dice:\n\n· ' +
+      senzaProva.join('\n· ') +
+      '\n\nScrivi dove c\'è scritto, oppure mettile su «non letta». Dire a un cliente che un prodotto ' +
+      'non copre una cosa che invece copre non è un errore di battitura.');
+    return;
+  }
+
+  cfnBottone(false);
+  var box = document.getElementById('cfn-esito');
+  try {
+    /* Lo stesso prodotto non si archivia due volte: se c'è già, il documento
+       nuovo si attacca a quello. L'archivio ha un indice unico che lo impone,
+       e scoprirlo da un errore di Postgres vorrebbe dire far perdere alla
+       persona tutto quello che ha spuntato. */
+    var trovato = await db.from('iam_conf_prodotti').select('id')
+      .ilike('compagnia', compagnia).ilike('prodotto', prodotto).eq('ramo', ramo).limit(1);
+    if (trovato.error) throw trovato.error;
+    var prodottoId = (trovato.data && trovato.data[0] && trovato.data[0].id) || null;
+
+    if (!prodottoId) {
+      var ins = await db.from('iam_conf_prodotti')
+        .insert({ compagnia: compagnia, prodotto: prodotto, ramo: ramo }).select('id');
+      if (ins.error) throw ins.error;
+      prodottoId = ins.data[0].id;
+    }
+
+    /* Lo stesso file, caricato due volte, è lo stesso documento. */
+    if (CFN.impronta) {
+      var gia = await db.from('iam_conf_documenti').select('id')
+        .eq('prodotto_id', prodottoId).eq('impronta', CFN.impronta).limit(1);
+      if (!gia.error && gia.data && gia.data.length) {
+        box.insertAdjacentHTML('afterbegin',
+          '<div class="cfn-avv"><b>Questo documento è già in archivio.</b> Stesso file, stessa impronta: ' +
+          'non si archivia due volte. Se la compagnia ha cambiato edizione, il file è diverso e ' +
+          'l\'impronta lo dice.</div>');
+        cfnBottone(true);
+        return;
+      }
+    }
+
+    var doc = await db.from('iam_conf_documenti').insert({
+      prodotto_id: prodottoId, tipo: tipo || 'altro', edizione: edizione || null,
+      stato: 'preso', preso_il: new Date().toISOString(),
+      impronta: CFN.impronta || null, pagine: CFN.scheda.pagine
+    }).select('id');
+    if (doc.error) throw doc.error;
+    var documentoId = doc.data[0].id;
+
+    var righe = SchedaProdotto.daArchiviare(CFN.scheda).garanzie.map(function (r) {
+      var stato = CFN.scelte[r.garanzia] || r.stato;
+      var nonLetto = stato === 'non_letto';
+      return {
+        prodotto_id: prodottoId, documento_id: documentoId,
+        garanzia: r.garanzia, nome_documento: r.nome_documento,
+        stato: stato,
+        /* Il vincolo dell'archivio: una garanzia «non letta» non porta
+           numeri. Se una persona la sposta su «non letta» dopo che il motore
+           le aveva trovato un massimale, il massimale se ne va con lei. */
+        massimale: nonLetto ? null : r.massimale,
+        franchigia: nonLetto ? null : r.franchigia,
+        scoperto: nonLetto ? null : r.scoperto,
+        pagina: r.pagina,
+        frase: stato === 'assente' ? String(CFN.citazioni[r.garanzia] || '').trim() : r.frase
+      };
+    });
+    var gar = await db.from('iam_conf_garanzie').insert(righe);
+    if (gar.error) throw gar.error;
+
+    closeModal('modal-cf-nuovo');
+    CF_PRODOTTI = [];
+    await cfCarica(true);
+    alert('«' + compagnia + ' · ' + prodotto + '» è in archivio, con ' + righe.length +
+      ' garanzie lette dal documento. Adesso lo puoi mettere a confronto.');
+  } catch (e) {
+    box.insertAdjacentHTML('afterbegin', '<div class="cfn-avv"><b>Non si è potuto archiviare.</b> ' +
+      esc((e && e.message) || String(e)) + ' — niente è andato perso: le spunte sono ancora qui.</div>');
+    cfnBottone(true);
+  }
 }
 
 var SPR_SEL = {};         /* le rate flaggate nel dettaglio */

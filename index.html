@@ -116,6 +116,9 @@
 <!-- La lettura della proposta di polizza: candidati, non verità. Il motore
      propone righe con la pagina da cui vengono; chi prepara il preventivo
      spunta quelle giuste (02/10/2026). -->
+<!-- Il testo di un PDF, una voce per pagina: lo usano il preventivo,
+     Confronta e il caricamento di una polizza (02/10/2026). -->
+<script src="tariffe/motore/pdf-testo.js?v=20261002"></script>
 <script src="tariffe/motore/lettura-proposta.js?v=20261002"></script>
 <script src="tariffe/motore/foglio-cassa.js?v=20260930"></script>
 <script src="tariffe/motore/piano-rate.js?v=20260921"></script>
@@ -32766,53 +32769,19 @@ function ppDocumento(r, ctx) {
    Non è un ripiego: misurato su un documento vero di 61 pagine, le righe
    candidate sono 38 e le garanzie vere una manciata. Un elenco che si
    spacciasse per lettura automatica farebbe passare il resto. */
-let _ppPdfJsPromise = null;
+/* Il lettore di PDF e la ricostruzione delle righe stanno in
+   `tariffe/motore/pdf-testo.js`: la stessa cosa serve al preventivo, a
+   Confronta e al caricamento di una polizza, e tre copie si separerebbero al
+   primo documento strano. Qui restano due involucri col nome di prima, perche'
+   e' con quel nome che il resto della pagina li chiama. */
 function ppCaricaPdfJs() {
-  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-  if (!_ppPdfJsPromise) {
-    _ppPdfJsPromise = new Promise((ok, ko) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
-      s.onload = () => {
-        if (!window.pdfjsLib) return ko(new Error('Lettore di PDF caricato ma non disponibile.'));
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-        ok(window.pdfjsLib);
-      };
-      s.onerror = () => ko(new Error('Non riesco a caricare il lettore di PDF: serve la rete.'));
-      document.head.appendChild(s);
-    }).catch(e => { _ppPdfJsPromise = null; throw e; });
-  }
-  return _ppPdfJsPromise;
+  if (!window.PdfTesto) return Promise.reject(new Error('Il motore di lettura dei PDF non e\' caricato.'));
+  return PdfTesto.caricaPdfJs();
 }
 
-/* Il testo del PDF, una voce per pagina. Le righe si ricostruiscono dalle
-   coordinate: `pdf.js` restituisce pezzi sparsi, e concatenarli di fila
-   impasterebbe colonne diverse della stessa riga in una frase sola. */
 async function ppPdfTesto(file) {
-  const pdfjs = await ppCaricaPdfJs();
-  const buf = await file.arrayBuffer();
-  const doc = await pdfjs.getDocument({ data: buf }).promise;
-  const pagine = [];
-  for (let n = 1; n <= doc.numPages; n++) {
-    const p = await doc.getPage(n);
-    const c = await p.getTextContent();
-    const righe = new Map();
-    c.items.forEach(it => {
-      if (!it.str) return;
-      /* Si raggruppa per altezza (arrotondata): quello che sta sulla stessa
-         riga del foglio finisce sulla stessa riga di testo. */
-      const y = Math.round((it.transform && it.transform[5]) || 0);
-      if (!righe.has(y)) righe.set(y, []);
-      righe.get(y).push({ x: (it.transform && it.transform[4]) || 0, t: it.str });
-    });
-    const ordinate = [...righe.entries()].sort((a, b) => b[0] - a[0])
-      .map(([, pezzi]) => pezzi.sort((a, b) => a.x - b.x).map(p => p.t).join(' ')
-        .replace(/\s+/g, ' ').trim())
-      .filter(Boolean);
-    pagine.push({ n: n, testo: ordinate.join('\n') });
-  }
-  return pagine;
+  if (!window.PdfTesto) throw new Error('Il motore di lettura dei PDF non e\' caricato.');
+  return PdfTesto.testoPagine(file);
 }
 
 let PP_PROPOSTE = null;

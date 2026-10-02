@@ -154,6 +154,20 @@ const GUASTI = [
     (s) => s.replace("    ['auto', /\\b(?:r\\.?c\\.?\\s*auto|r\\.?c\\.?a\\.?\\b|auto\\b|autovettur|autocarr|motociclo|veicol|targa|circolazione dei veicoli)/i],",
       "    ['auto', /\\b(?:r\\.?c\\.?\\s*auto|autovettur|autocarr|motociclo|veicol)\\b/i],")],
 
+  ['una scansione passa per un documento senza garanzie', SP,
+    (s) => s.replace('    if (!caratteri) {', '    if (false) {')],
+
+  ['una scansione non dice quante pagine ha, cioe\' non si sa che e\' un documento vero', SP,
+    (s) => s.replace("      return { ok: false, scansione: true, pagine: (pagine || []).length,",
+      '      return { ok: false, scansione: true, pagine: 0,')],
+
+  /* C'era un guasto in piu' qui: «gli spazi di una pagina scansionata passano
+     per parole», che toglieva una ripulitura degli spazi dal conteggio dei
+     caratteri. Non veniva preso, e aveva ragione lui: `testo()` taglia gia'
+     gli spazi ai bordi, quindi quella ripulitura era peso morto e la riga
+     che difendeva non esisteva. Togliere il peso morto e' meglio che tenere
+     un guasto che non misura niente. */
+
   ['un ramo si indovina anche quando il documento non lo dice', SP,
     (s) => s.replace("    if (!chiavi.length) return { ramo: null, perche: 'nelle prime pagine non si trova nessuna spia del ramo' };",
       "    if (!chiavi.length) return { ramo: 'auto', perche: null };")],

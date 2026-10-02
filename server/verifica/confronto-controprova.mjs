@@ -62,8 +62,8 @@ const GUASTI = [
     (s) => s.replace('    if (!cand.length) return null;', '    if (!cand.length) return lista[0].id;')],
 
   ['fra due sinonimi vince il più corto: «furto e incendio» diventa «furto»',
-    (s) => s.replace('    cand.sort(function (a, b) { return b.lung - a.lung; });',
-      '    cand.sort(function (a, b) { return a.lung - b.lung; });')],
+    (s) => s.replace('    cand.sort(function (a, b) { return a.da - b.da || b.lung - a.lung || a.ramo - b.ramo; });',
+      '    cand.sort(function (a, b) { return a.da - b.da || a.lung - b.lung || a.ramo - b.ramo; });')],
 
   ['un documento vuoto torna un DIP vuoto invece di un errore',
     (s) => s.replace(

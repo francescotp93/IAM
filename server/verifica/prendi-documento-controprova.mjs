@@ -49,7 +49,10 @@ const GUASTI = [
     (s) => s.replace("    if (firma !== '%PDF-') {", '    if (false) {')],
 
   ['non c\'e\' piu\' un tetto al peso del file', FN,
-    (s) => s.replace('const TETTO = 25 * 1024 * 1024', 'const TETT0 = 25 * 1024 * 1024\nconst TETTO = Infinity')],
+    (s) => s.replace('const TETTO = 15 * 1024 * 1024', 'const TETT0 = 15 * 1024 * 1024\nconst TETTO = Infinity')],
+
+  ['il tetto si controlla solo sull\'intestazione, che puo\' mentire', FN,
+    (s) => s.replace('    if (byte.length > TETTO) {', '    if (false) {')],
 
   ['un indirizzo scaduto passa per un errore qualunque', FN,
     (s) => s.replace('        ok: false, scaduto: r.status === 404 || r.status === 410, stato: r.status,',
@@ -58,13 +61,21 @@ const GUASTI = [
   ['e non si spiega piu\' che un indirizzo scade a ogni edizione', FN,
     (s) => s.replace("': l\\'indirizzo non c\\'è più. Succede a ogni edizione nuova: va ritrovato.'", "': errore.'")],
 
+  ['la funzione ricomincia a salvare il file su Supabase', FN,
+    (s) => s.replace("    let b64 = ''",
+      "    const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');\n"
+      + "    await sb.storage.from('note-informative').upload(impronta + '.pdf', byte);\n    let b64 = ''")],
+
+  ['la funzione non restituisce piu\' il file: chi l\'ha chiesto resta a mani vuote', FN,
+    (s) => s.replace('      pdf_base64: btoa(b64),', '')],
+
   ['la funzione comincia a scrivere in archivio da sola', FN,
-    (s) => s.replace('    return Response.json({\n      ok: true, host, percorso, impronta, byte: byte.length,',
+    (s) => s.replace('    return Response.json({\n      ok: true, host: new URL(finale).hostname,',
       "    await sb.from('iam_conf_documenti').insert({ impronta });\n"
-      + '    return Response.json({\n      ok: true, host, percorso, impronta, byte: byte.length,')],
+      + '    return Response.json({\n      ok: true, host: new URL(finale).hostname,')],
 
   ['la funzione comincia a decidere gli stati delle garanzie', FN,
-    (s) => s.replace("      reindirizzato: finale !== url,", "      reindirizzato: finale !== url, stato_garanzie: 'assente',")],
+    (s) => s.replace('      reindirizzato: finale !== url,', "      reindirizzato: finale !== url, stato_garanzie: 'assente',")],
 
   /* ── il catalogo ────────────────────────────────────────────────────────── */
   ['il catalogo non dichiara piu\' che i suoi indirizzi non sono verificati', CAT,

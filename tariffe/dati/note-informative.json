@@ -2,7 +2,7 @@
   "_cos_e": "Il catalogo dei documenti precontrattuali delle compagnie: dove stanno, non che cosa dicono. È la lista di lavoro del raccoglitore e della schermata «Metti un prodotto in archivio» di Confronta.",
   "_misurato_il": "2026-10-02",
   "_come_e_stato_costruito": "Con WebSearch, che gira sui server di Anthropic e non passa dal proxy di rete dell'ambiente. Ogni voce riporta un URL che il motore di ricerca ha indicizzato sul dominio della compagnia stessa.",
-  "_IL_LIMITE_DA_SAPERE": "NESSUNO DI QUESTI URL È STATO VERIFICATO. Dall'ambiente in cui girano gli agenti la rete verso i siti delle compagnie è chiusa (403 sul CONNECT), quindi non si è potuto nemmeno chiedere se l'indirizzo risponde. `stato` vale «trovato» e non «buono»: il primo che li apre scoprirà quali sono ancora validi. Un URL scaduto non è un guasto del catalogo, è il mestiere: le compagnie spostano i PDF a ogni edizione nuova.",
+  "_IL_LIMITE_DA_SAPERE": "UNA VERIFICA HA UNA DATA, E QUELLA DATA INVECCHIA. Il 02/10/2026 la funzione `prendi-documento` ha provato tutti e 43 gli indirizzi: 32 hanno consegnato un PDF vero (e ne portano l'impronta), 11 no. Ma «verificato» vuol dire «quel giorno ha risposto», non «risponde»: le compagnie spostano i PDF a ogni edizione nuova, e lo si e' visto sul campo — i quattro indirizzi DALLBOGG, trovati da un motore di ricerca, oggi consegnano una pagina HTML al posto del documento. Prima di mostrare un confronto a un cliente, il documento va ripreso: e' per questo che serve il controllo mensile, non per pignoleria.",
   "_perche_l_edizione_conta": "Misurato: il set informativo DALLBOGG su cui è stato tarato il lettore è l'edizione 06/2020, ma quella pubblicata oggi è la 04/25. Un confronto mostrato a un cliente nel 2026 su un documento del 2020 è un rischio di adeguatezza a sé, indipendente da quanto bene lo si legge. Per questo ogni voce porta l'edizione come sta scritta nel nome del file o nel titolo, e per questo serve il controllo mensile.",
   "_stati": {
     "trovato": "l'URL è stato trovato da una ricerca ma non è stato aperto da nessuno",
@@ -577,5 +577,13 @@
     "www.nobis.it"
   ],
   "_perche_un_elenco_di_domini": "Il raccoglitore scarica SOLO da questi domini. Senza il vincolo, una funzione che prende un URL qualunque e lo scarica è un proxy aperto sull'infrastruttura dell'agenzia: chiunque riuscisse a chiamarla potrebbe usarla per raggiungere qualsiasi indirizzo, e i log direbbero che è stata l'agenzia a farlo.",
-  "_verificato_il": "2026-10-02"
+  "_verificato_il": "2026-10-02",
+  "_come_e_andata_il_02_10_2026": {
+    "verificato": 32,
+    "non_pdf": 4,
+    "non_preso": 7,
+    "per_compagnia": "Groupama 7/7, Sara 7/7, AXA 6/6, Nobis 7/7, HDI 3/3, Italiana 2/2, Allianz 0/7, DALLBOGG 0/4",
+    "allianz": "risponde 403 a Supabase: blocca il traffico dei datacenter. Dal browser dell'agenzia si scarica, e il connettore Chrome ha gia' i permessi per allianz.it. Per lei la strada e' quella, non la funzione.",
+    "dallbogg": "tutti e quattro gli indirizzi consegnano HTML invece del PDF: la compagnia ha spostato i documenti e al loro posto c'e' la pagina del prodotto. Gli indirizzi vanno ritrovati."
+  }
 }

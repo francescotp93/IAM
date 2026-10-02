@@ -31,10 +31,10 @@ const BUONI = { [PAGINA]: readFileSync(PAGINA, 'utf8'), [MENU]: readFileSync(MEN
 
 const GUASTI = [
   ['il motore del confronto non viene più caricato', PAGINA,
-    (s) => s.replace('tariffe/motore/confronto.js?v=20261001', 'tariffe/motore/confronto-che-non-esiste.js')],
+    (s) => s.replace('tariffe/motore/confronto.js?v=20261002', 'tariffe/motore/confronto-che-non-esiste.js')],
 
   ['il contrassegno del motore torna indietro', PAGINA,
-    (s) => s.replace('confronto.js?v=20261001', 'confronto.js?v=20260930')],
+    (s) => s.replace('confronto.js?v=20261002', 'confronto.js?v=20261001')],
 
   ['aprendo la pagina nessuno carica l\'archivio', PAGINA,
     (s) => s.replace("  if (t === 'confronta') { cfCarica(); }\n", '')],

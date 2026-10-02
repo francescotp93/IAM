@@ -60,7 +60,7 @@
 (function () {
   'use strict';
 
-  var VERSIONE = 'confronto-2026-10-01';
+  var VERSIONE = 'confronto-2026-10-02';
 
   function testo(v) { return v == null ? '' : String(v).trim(); }
   function chiave(v) {
@@ -142,12 +142,22 @@
       { id: 'furto_casa', nome: 'Furto e rapina',
         sin: ['furto', 'furto e rapina', 'furto in abitazione', 'scippo'] },
       { id: 'danni_acqua', nome: 'Danni da acqua',
-        sin: ['danni da acqua', 'acqua condotta', 'spargimento d\'acqua', 'ricerca del guasto'] },
+        sin: ['danni da acqua', 'acqua condotta', 'spargimento d\'acqua', 'ricerca del guasto',
+              'ricerca e riparazione del danno d\'acqua', 'ricerca e riparazione',
+              'danno d\'acqua', 'rottura tubazioni'] },
       { id: 'eventi_atmosferici', nome: 'Eventi atmosferici',
         sin: ['eventi atmosferici', 'eventi naturali', 'grandine', 'vento'] },
       { id: 'rc_capofamiglia', nome: 'RC del capofamiglia',
-        sin: ['rc capofamiglia', 'responsabilita civile del capofamiglia',
+        sin: ['rc capofamiglia', 'rc capo famiglia', 'responsabilita civile del capofamiglia',
               'rc della vita privata', 'responsabilita civile vita privata'] },
+      /* La RC dell'ABITAZIONE è un'altra cosa dalla RC del capofamiglia: la
+         prima risponde del fabbricato (l'intonaco che cade), la seconda della
+         vita privata di chi ci abita (il figlio in bicicletta). I prospetti le
+         portano tutt'e due, con due massimali, e confonderle vorrebbe dire
+         contarne una sola. (02/10/2026, dal preventivo n.4 vero.) */
+      { id: 'rc_abitazione', nome: 'RC dell\'abitazione',
+        sin: ['rc abitazione', 'responsabilita civile abitazione',
+              'responsabilita civile del fabbricato', 'rc fabbricato', 'rc proprieta'] },
       { id: 'tutela_legale_casa', nome: 'Tutela legale',
         sin: ['tutela legale', 'difesa legale'] },
       { id: 'assistenza_casa', nome: 'Assistenza domestica',
@@ -185,7 +195,14 @@
       { id: 'ricovero', nome: 'Ricovero e intervento chirurgico',
         sin: ['ricovero', 'intervento chirurgico', 'grandi interventi chirurgici'] },
       { id: 'diaria', nome: 'Diaria da ricovero',
-        sin: ['diaria', 'diaria da ricovero', 'indennita giornaliera'] },
+        sin: ['diaria', 'diaria da ricovero', 'diaria giornaliera da ricovero',
+              'diaria giornaliera da ricovero e post ricovero', 'indennita giornaliera'] },
+      { id: 'diaria_gessatura', nome: 'Diaria da gessatura',
+        sin: ['diaria da gessatura', 'diaria giornaliera da gessatura', 'gessatura',
+              'indennita da gessatura'] },
+      { id: 'spese_mediche', nome: 'Rimborso spese mediche da infortunio',
+        sin: ['spese mediche', 'rimborso spese mediche', 'rimborso spese mediche da infortunio',
+              'spese mediche da infortunio', 'spese di cura'] },
       { id: 'visite_specialistiche', nome: 'Visite specialistiche e accertamenti',
         sin: ['visite specialistiche', 'accertamenti diagnostici', 'alta diagnostica'] },
       { id: 'gravi_malattie', nome: 'Gravi malattie',
@@ -194,6 +211,14 @@
     vita: [
       { id: 'caso_morte', nome: 'Caso morte',
         sin: ['caso morte', 'temporanea caso morte', 'tcm'] },
+      /* «Copertura vita» da sola NON dice che tipo di contratto sia: puo'
+         essere una temporanea caso morte, una mista, un capitale rivalutabile.
+         Ha un identificativo suo apposta — scriverla come `caso_morte`
+         vorrebbe dire stampare a un cliente l'esempio di una TCM sopra un
+         contratto che magari e' un'altra cosa. (02/10/2026, dal preventivo
+         n.4: «Copertura Vita - TAMMARO VINCENZO 250.000 € (durata 20 anni)».) */
+      { id: 'vita_generica', nome: 'Copertura vita',
+        sin: ['copertura vita', 'protezione vita', 'assicurazione vita', 'polizza vita'] },
       { id: 'invalidita', nome: 'Invalidità permanente',
         sin: ['invalidita permanente', 'invalidita totale permanente'] },
       { id: 'rendita', nome: 'Rendita',
@@ -224,33 +249,83 @@
      non si riconosce: e `null` NON vuol dire «non c'è», vuol dire «non so come
      si chiama da noi». Chi lo tratta come assenza fa sparire dal confronto
      proprio le garanzie scritte in modo strano. */
-  function normalizza(ramo, nome) {
+  /* Il sinonimo si cerca A PAROLE INTERE, non come pezzo di stringa.
+
+     Costato caro, e trovato sul prospetto vero il 02/10/2026: «Ricerca e
+     riparazione del danno d'acqua» finiva su `rca`, perché in «ri-ce-RCA» le
+     tre lettere ci sono. Sulla guida del cliente una garanzia della casa
+     compariva sotto «Veicoli». Le sigle corte — rca, rct, rco, tcm — dentro
+     una parola qualunque ci cascano tutte. */
+  function dentro(testoNorm, ago) {
+    var r = new RegExp('(^|\\s)' + ago.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|\\s)');
+    var m = r.exec(testoNorm);
+    return m ? m.index + m[1].length : -1;
+  }
+
+  /* I candidati di UN ramo: ogni sinonimo che combacia, con dove comincia e
+     quanto è lungo. Il combaciamento esatto prende `da = -1`, così vince
+     sempre: è l'unico che non può sbagliare. */
+  function candidati(ramo, nome) {
     var lista = VOCABOLARIO[testo(ramo).toLowerCase()];
-    if (!lista) return null;
+    if (!lista) return [];
     var k = chiave(senzaAccenti(nome));
-    if (!k) return null;
-    var i, j, g;
-    /* Prima il combaciamento esatto su un sinonimo: è l'unico che non può
-       sbagliare. */
+    if (!k) return [];
+    var fuori = [], i, j, g, s;
     for (i = 0; i < lista.length; i++) {
       g = lista[i];
-      if (chiave(senzaAccenti(g.nome)) === k) return g.id;
-      for (j = 0; j < g.sin.length; j++) if (chiave(senzaAccenti(g.sin[j])) === k) return g.id;
-    }
-    /* Poi il sinonimo CONTENUTO nel nome, dal più lungo al più corto: «furto e
-       incendio» deve vincere su «furto», altrimenti una garanzia che ne
-       contiene due si conta per una. */
-    var cand = [];
-    for (i = 0; i < lista.length; i++) {
-      g = lista[i];
+      if (chiave(senzaAccenti(g.nome)) === k) { fuori.push({ id: g.id, da: -1, lung: k.length }); continue; }
       for (j = 0; j < g.sin.length; j++) {
-        var s = chiave(senzaAccenti(g.sin[j]));
-        if (s && k.indexOf(s) >= 0) cand.push({ id: g.id, lung: s.length });
+        s = chiave(senzaAccenti(g.sin[j]));
+        if (!s) continue;
+        if (s === k) { fuori.push({ id: g.id, da: -1, lung: s.length }); continue; }
+        var dove = dentro(k, s);
+        if (dove >= 0) fuori.push({ id: g.id, da: dove, lung: s.length });
       }
     }
+    return fuori;
+  }
+
+  /* Le due regole con cui si sceglie fra i candidati, in quest'ordine:
+
+     1. VINCE CHI COMINCIA PRIMA. Il nome di una garanzia sta in testa; quello
+        che viene dopo la qualifica. «Rendita vitalizia DA INFORTUNI» è una
+        rendita, non un infortunio — e con la sola regola della lunghezza
+        finiva su `infortuni`, perché è la parola più lunga. Misurato sul
+        preventivo n.4 vero il 02/10/2026.
+
+     2. A parità di inizio, vince il più lungo. «Furto e incendio» deve battere
+        «furto», altrimenti una garanzia che ne copre due si conta per una e il
+        prodotto che le vende separate sembra più ricco. */
+  function scegli(cand) {
     if (!cand.length) return null;
-    cand.sort(function (a, b) { return b.lung - a.lung; });
+    cand.sort(function (a, b) { return a.da - b.da || b.lung - a.lung || a.ramo - b.ramo; });
     return cand[0].id;
+  }
+
+  function normalizza(ramo, nome) {
+    return scegli(candidati(ramo, nome).map(function (c) { c.ramo = 0; return c; }));
+  }
+
+  /* ── CERCARE IN PIÙ RAMI ──────────────────────────────────────────────────
+     Un prospetto «casa e famiglia» vero porta dentro casa, infortuni e vita
+     nello stesso foglio: cercando in un ramo solo, l'invalidità permanente non
+     si trova.
+
+     E NON SI PUÒ PRENDERE IL PRIMO RAMO CHE RISPONDE. «Rendita vitalizia da
+     infortuni» fa scattare `salute` (per via di «infortuni») prima ancora che
+     si arrivi a `vita`, e la rendita finisce fra gli infortuni: la regola del
+     nome-in-testa, applicata dentro un ramo alla volta, non serve a niente.
+     Quindi si raccolgono i candidati di TUTTI i rami e si sceglie una volta
+     sola. L'ordine dei rami resta, ma solo come ultimo spareggio — serve a
+     dire che «cristalli», su un prospetto casa, sono le lastre e non il
+     parabrezza. */
+  function normalizzaFra(rami, nome) {
+    if (typeof rami === 'string') rami = [rami];
+    var tutti = [];
+    (rami || []).forEach(function (r, i) {
+      candidati(r, nome).forEach(function (c) { c.ramo = i; tutti.push(c); });
+    });
+    return scegli(tutti);
   }
 
   function garanziaDi(ramo, id) {
@@ -450,7 +525,8 @@
   }
 
   var API = { VERSIONE: VERSIONE, RAMI: RAMI, VOCABOLARIO: VOCABOLARIO, SEZIONI: SEZIONI, STATI: STATI,
-    normalizza: normalizza, garanziaDi: garanziaDi, leggiDip: leggiDip,
+    normalizza: normalizza, normalizzaFra: normalizzaFra, candidati: candidati,
+    garanziaDi: garanziaDi, leggiDip: leggiDip,
     confronta: confronta, punteggio: punteggio };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.Confronto = API;

@@ -157,7 +157,16 @@ prova('il contrassegno del motore non è rimasto indietro', () => {
   const src = fs.readFileSync(path.join(RADICE, 'iam', 'index.html'), 'utf8');
   const m = /confronto\.js\?v=(\d{8})/.exec(src);
   deve(m, 'il tag <script> del confronto non porta un contrassegno');
-  deve(m[1] >= '20261001', 'contrassegno ' + m[1] + ': più vecchio del giorno in cui il motore è nato');
+  /* La soglia si legge dal MOTORE, non si scrive qui: una data a mano in una
+     prova invecchia il giorno dopo, e da quel momento la prova passa anche con
+     il contrassegno riportato indietro. `VERSIONE` cambia quando cambia il
+     motore, ed è l'unica cosa che sa quando è successo. */
+  const mot = fs.readFileSync(path.join(RADICE, 'tariffe', 'motore', 'confronto.js'), 'utf8');
+  const v = /VERSIONE\s*=\s*'confronto-(\d{4})-(\d{2})-(\d{2})'/.exec(mot);
+  deve(v, 'il motore non dichiara la sua versione');
+  const soglia = v[1] + v[2] + v[3];
+  deve(m[1] >= soglia, 'contrassegno ' + m[1] + ', ma il motore è del ' + soglia +
+    ': il browser servirebbe la versione di prima');
 });
 
 prova('la mappatura dal database ai nomi del motore regge', async () => {

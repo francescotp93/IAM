@@ -103,6 +103,15 @@ const GUASTI = [
 
   ['una guida su niente esce lo stesso, vuota', GUIDA,
     (s) => s.replace('      ok: sezioni.length > 0,', '      ok: true,')],
+
+  ['vince la prima unità dell\'elenco invece della più vicina all\'importo', GUIDA,
+    /* Trovato il 02/10/2026. Con l\'unità presa nell\'ordine in cui le ho
+       scritte, «1000€ al mese, 500 € al giorno» leggeva due volte «al giorno»
+       e l\'incoerenza spariva — cioè proprio la cosa che il motore esiste per
+       trovare. Sulle righe vere non si vedeva per caso: «( marito + moglie ),»
+       spinge il secondo «al giorno» oltre la finestra di quaranta caratteri. */
+    (s) => s.replace('    var vinta = null, dove = -1;\n    for (var i = 0; i < UNITA.length; i++) {\n      var m = UNITA[i].r.exec(coda);\n      if (m && (dove < 0 || m.index < dove)) { dove = m.index; vinta = UNITA[i]; }\n    }\n    return vinta;',
+      '    for (var i = 0; i < UNITA.length; i++) if (UNITA[i].r.test(coda)) return UNITA[i];\n    return null;')],
 ]
 
 let sfuggiti = 0

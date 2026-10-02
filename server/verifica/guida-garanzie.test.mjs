@@ -104,6 +104,22 @@ prova('due importi sulla stessa riga si leggono tutt\'e due, con chi e con l\'un
   deve(/50 € al giorno/.test(d.importo) && /20 € al giorno/.test(d.importo), d.importo);
 });
 
+prova('fra due unità vince la PIÙ VICINA all\'importo, non la prima dell\'elenco', () => {
+  /* Il difetto del 02/10/2026. Sulle righe vere non si vedeva per caso:
+     «( marito + moglie ),» spinge il secondo «al giorno» oltre la finestra di
+     quaranta caratteri, e il primo importo leggeva «al mese» per fortuna.
+     Qui la riga è compatta — e senza la regola della vicinanza il motore legge
+     due volte «al giorno», cioè smette di vedere l'incoerenza che è il motivo
+     per cui esiste. */
+  const x = G.leggiRiga('Rendita vitaliza 1000€ al mese, 500 € al giorno', ['vita']);
+  deve(x.voci.length === 2, 'importi letti: ' + x.voci.length);
+  deve(x.voci[0].unita === 'mese', 'il primo importo legge «' + x.voci[0].unita + '» invece di «mese»');
+  deve(x.voci[1].unita === 'giorno', 'il secondo legge «' + x.voci[1].unita + '»');
+  const v = G.guida(['Rendita vitaliza 1000€ al mese, 500 € al giorno']);
+  deve(v.daConfermare.some(m => /due unità diverse/i.test(m)),
+    'con le due unità lette uguali l\'incoerenza sparisce: ' + JSON.stringify(v.daConfermare));
+});
+
 prova('la franchigia dichiarata si legge', () => {
   const x = G.leggiRiga('Fenomeno Elettrico : 15.000 € - Franchigia 500 €', ['casa']);
   deve(x.franchigia === 500, 'franchigia: ' + x.franchigia);

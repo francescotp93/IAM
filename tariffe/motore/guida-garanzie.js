@@ -102,10 +102,21 @@
     { id: 'anno',    r: /all'anno|\/\s*anno|annu[oa]/i,         l: 'all\'anno' },
     { id: 'persona', r: /a\s+persona|per\s+persona|cadaun/i,    l: 'a persona' }
   ];
+  /* Vince l'unità PIÙ VICINA all'importo, non la prima del mio elenco.
+     «1000€ al mese, 500 € al giorno»: cercando nell'ordine in cui le ho
+     scritte, «giorno» vinceva anche sul primo importo — e con tutt'e due le
+     cifre lette «al giorno» l'incoerenza spariva, cioè proprio la cosa che
+     questo motore esiste per trovare. Sul prospetto vero non si vedeva per
+     caso, perché «( marito + moglie ),» spinge il «al giorno» oltre la
+     finestra. (02/10/2026.) */
   function unitaDopo(riga, da, lung) {
     var coda = testo(riga).slice(da + lung, da + lung + 40);
-    for (var i = 0; i < UNITA.length; i++) if (UNITA[i].r.test(coda)) return UNITA[i];
-    return null;
+    var vinta = null, dove = -1;
+    for (var i = 0; i < UNITA.length; i++) {
+      var m = UNITA[i].r.exec(coda);
+      if (m && (dove < 0 || m.index < dove)) { dove = m.index; vinta = UNITA[i]; }
+    }
+    return vinta;
   }
 
   /* A chi si riferisce un importo, quando la riga lo dice fra parentesi. */
@@ -493,7 +504,55 @@
     };
   }
 
-  var API = { VERSIONE: VERSIONE, ESEMPI: ESEMPI, SEZIONI: SEZIONI, PIEDE: PIEDE,
+  /* ── IL DOCUMENTO DA STAMPARE ─────────────────────────────────────────────
+     Non si disegna qui. Si DESCRIVE, e a disegnarlo e' `pdf-withus.js`, lo
+     stesso che fa il preventivo, il foglio cassa e il foglio previdenziale.
+     «Stessa interfaccia grafica» vuol dire lo stesso codice, non lo stesso
+     aspetto rifatto una seconda volta — ed e' anche l'unico modo di provare
+     che cosa ci sara' scritto sopra senza aprire un browser.
+
+     LE COSE DA CONFERMARE VANNO SUL FOGLIO, in fondo, non solo a schermo. Un
+     documento che le tace e' quello che fa arrivare un refuso in mano al
+     cliente senza che nessuno se ne accorga. */
+  function documentoPdf(g, opz) {
+    opz = opz || {};
+    if (!g || !g.ok) return null;
+    var blocchi = [];
+    g.sezioni.forEach(function (s) {
+      blocchi.push({ tipo: 'titolo', testo: s.numero + ' / ' + s.titolo.toUpperCase() + ' — ' + s.claim });
+      s.schede.forEach(function (c) {
+        var par = [];
+        par.push(c.esempio || 'Garanzia riportata dal prospetto. Per questa copertura non c\'e\' ancora una '
+          + 'scheda illustrata: le condizioni di polizza restano l\'unico riferimento.');
+        if (c.attenzione) par.push(c.attenzione);
+        if (c.franchigia != null) par.push('Franchigia dichiarata: ' + euro(c.franchigia) + '.');
+        blocchi.push({ tipo: 'testo',
+          /* Solo il NOME in maiuscolo: «1.000 € AL GIORNO» si legge male, e un
+             importo gridato su un foglio al cliente non aiuta nessuno. */
+          titolo: c.nome.toUpperCase() + (c.importo ? '  ·  ' + c.importo : ''),
+          paragrafi: par, tono: c.daConfermare ? 'ambra' : null, size: 8.5, leading: 4.2 });
+      });
+    });
+    if (g.daConfermare.length) {
+      blocchi.push({ tipo: 'titolo', testo: 'DA CONFERMARE SUI DOCUMENTI CONTRATTUALI' });
+      blocchi.push({ tipo: 'testo', titolo: null, paragrafi: g.daConfermare, punti: true,
+        tono: 'ambra', size: 8, leading: 4 });
+    }
+    var chi = testo(opz.cliente) || 'Cliente';
+    return {
+      tipo: 'GUIDA ALLE GARANZIE', numero: chi,
+      sotto: opz.numero ? 'Preventivo ' + opz.numero + (opz.data ? ' del ' + opz.data : '') : '',
+      azienda: opz.azienda || {}, banda: null, filigrana: null, colonne: [], blocchi: blocchi,
+      firma: opz.firma || null,
+      avvertenze: PIEDE + (opz.avvertenzeInPiu ? ' ' + testo(opz.avvertenzeInPiu) : ''),
+      piedeSinistra: (opz.azienda && opz.azienda.ragioneSociale) || '',
+      piedeDestra: 'Guida alle garanzie',
+      titoloPdf: 'Guida alle garanzie — ' + chi,
+      nomeFile: 'guida-garanzie_' + chi.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.pdf'
+    };
+  }
+
+  var API = { VERSIONE: VERSIONE, ESEMPI: ESEMPI, SEZIONI: SEZIONI, PIEDE: PIEDE, documentoPdf: documentoPdf,
     importo: importo, importi: importi, leggiRiga: leggiRiga, guida: guida, euro: euro,
     importoScritto: importoScritto };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

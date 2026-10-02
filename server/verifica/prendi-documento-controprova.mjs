@@ -81,9 +81,13 @@ const GUASTI = [
   ['il catalogo non dichiara piu\' che i suoi indirizzi non sono verificati', CAT,
     (s) => s.replace('NESSUNO DI QUESTI URL È STATO VERIFICATO.', 'Gli indirizzi sono quelli pubblicati.')],
 
+  /* Il guasto cambia il PRIMO «trovato» che incontra, e non una riga scritta
+     in un modo preciso: il catalogo si riscrive ogni volta che si aggiunge una
+     compagnia, e un guasto ancorato alla formattazione diventa cieco al primo
+     riordino — lo dice solo nella riga «SENTINELLA PERSA», che è facile non
+     guardare. È già successo aggiungendo Allianz e Nobis. */
   ['il catalogo dichiara già preso un documento che nessuno ha aperto', CAT,
-    (s) => s.replace('"url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-Info-auto-04-25.pdf", "stato": "trovato"',
-      '"url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-Info-auto-04-25.pdf", "stato": "preso"')],
+    (s) => s.replace('"stato": "trovato"', '"stato": "preso"')],
 
   ['il catalogo nomina un dominio che la funzione non accetta', CAT,
     (s) => s.replace('    "www.italiana.it"', '    "www.italiana.it",\n    "www.unipolsai.it"')],

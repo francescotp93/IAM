@@ -39,8 +39,15 @@ function estrai() {
   const mD = SRC.match(/const DOMINI = \[([\s\S]*?)\]/);
   const mF = SRC.match(/function dentroElenco\(u: URL\): boolean \{([\s\S]*?)\n\}/);
   deve(mD && mF, 'non trovo l\'elenco dei domini o il controllo nel sorgente della funzione');
-  const domini = mD[1].split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
-    .filter((s) => s && !s.startsWith('/*') && !s.startsWith('//'));
+  /* I COMMENTI SI TOLGONO PRIMA DI TAGLIARE SULLE VIRGOLE. In questa casa i
+     commenti stanno dappertutto, anche dentro un elenco, e un commento
+     contiene virgole: tagliando prima, un dominio si attacca alla coda del
+     commento che lo precede e sparisce dall'elenco letto. È successo
+     aggiungendo HDI, e la prova è andata rossa invece di perdere un dominio
+     in silenzio — ma meglio che non succeda. */
+  const domini = mD[1].replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+    .split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
+    .filter(Boolean);
   /* Il corpo è TypeScript solo nella firma: dentro è JavaScript. Si toglie
      l'annotazione e si esegue quello che c'è scritto davvero. */
   const corpo = mF[1].replace(/:\s*boolean/g, '');

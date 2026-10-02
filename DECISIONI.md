@@ -1496,3 +1496,30 @@ cui serve il controllo mensile, e per cui il catalogo porta l'edizione.
   compagnia esiste già, non una ricerca.
 - **L'agenda mensile** (ricontrollare le impronte) non è stata scritta: senza
   un canale per scaricare non avrebbe niente da ricontrollare.
+
+### 02/10/2026 (seguito) — Il catalogo passa da 27 a 43 documenti
+
+🟡 **Aggiunte Allianz (7), Nobis (7) e i due documenti di Valore Auto di HDI.**
+Otto compagnie su nove hanno almeno un documento. I domini della funzione sono
+saliti a nove e combaciano col catalogo: una prova lo impone, perché due
+elenchi della stessa cosa si separano e la raccolta si fermerebbe su una
+compagnia senza che nessuno capisca perché.
+
+🟢 **Allianz è la compagnia più facile da seguire**: il percorso è prevedibile
+e il nome del file porta DUE edizioni, quella della RCA e quella delle
+garanzie danni, che cambiano in date diverse.
+
+🟢 **HDI tiene i documenti su tre domini diversi** — sito pubblico, area
+clienti, portale di quotazione — e sono elencati uno per uno invece di
+accettare `*.hdiassicurazioni.it`: un sottodominio che un domani serve a
+qualcos'altro non deve entrare da solo.
+
+**Fuori perimetro, annotato:**
+- **Italiana è l'unica delle nove che un motore di ricerca non trova.** I suoi
+  PDF stanno dentro le pagine di prodotto: WebSearch indicizza il PDF, non la
+  pagina. Per lei serve un canale che sappia aprire una pagina HTML e seguirne
+  i link — cioè la stessa cosa che serve per i DIP base di HDI.
+- **Prima e 24H restano fuori**: Prima è una compagnia diretta e i documenti
+  stanno nel flusso di quotazione (serve il connettore del browser, che per i
+  portali compagnia esiste già); 24H vende assistenza, che non entra nel
+  confronto garanzia per garanzia.

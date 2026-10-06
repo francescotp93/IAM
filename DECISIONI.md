@@ -1586,3 +1586,74 @@ documenti invece di uno.
 - **Allianz passa dal connettore Chrome**, non dalla funzione.
 - **L'agenda mensile**: ora ha senso, perché c'è un canale che scarica e un
   catalogo con le impronte da confrontare.
+
+---
+
+## 06/10/2026 — L'importo di un link di pagamento non si indovina
+
+**Perimetro:** la schermata «Link di pagamento» in Contabilità, il motore
+nuovo `tariffe/motore/importo.js`, e il codice della funzione `stripe` portato
+in casa. Nato da una domanda di Francesco: «funziona ed è veritiero? posso
+inviarlo a un cliente?».
+
+**La risposta era no, per tre motivi diversi, e due erano gravi.**
+
+🔴 **MISURATO: un punto al posto della virgola moltiplicava per cento.** Il
+lato server leggeva l'importo in euro togliendo TUTTI i punti (separatore
+delle migliaia) e poi cambiando la virgola in punto. Quindi `170.00`
+diventava 17.000,00 € e `150.50` diventava 15.050,00 €. Il campo ha il
+tastierino decimale, e sul telefono il tasto che esce è il punto. Nessuno se
+ne accorgeva perché l'elenco mostrava la stessa cifra mandata a Stripe: il
+solo a vedere l'importo sbagliato era il cliente.
+
+🟢 **La regola adesso sta in un motore, e rifiuta invece di interpretare.**
+`170.00` ha due letture legittime e nessuna è abbastanza più probabile
+dell'altra da giocarsi i soldi di un cliente: il motore le fa vedere entrambe
+e dice come si scrive. È la stessa regola del lettore dei documenti di
+prodotto — quello che non si è capito si dichiara. *Come tornare indietro:*
+si toglie lo `<script>` di `importo.js` da `iam/index.html`; la schermata
+torna a mandare la stringa grezza, cioè torna al guasto.
+
+🟢 **La conferma non fa rileggere il campo, fa leggere l'importo in euro**,
+col nome di chi lo riceverà. Sopra diecimila euro la domanda si fa due volte,
+e la seconda è scritta con parole diverse di proposito: due volte la stessa
+frase si clicca due volte senza leggerla.
+
+🟢 **Togliata una frase falsa dalla schermata.** Diceva «quando paga, qui il
+pagamento passa a pagato». Non succede e non può succedere: non esiste nessun
+webhook, la funzione conosce due rotte sole ed è protetta da `verify_jwt`,
+quindi Stripe non potrebbe nemmeno chiamarla. Al suo posto c'è un avviso che
+dice la verità — lo stato resta «In attesa» anche dopo un pagamento vero, e
+l'incasso va verificato su Stripe.
+
+🟢 **Un link di prova si dichiara.** La chiave Stripe installata è quella di
+test: i link uscivano `buy.stripe.com/test_…`. Mandarne uno a un cliente non
+è un pagamento mancato, è l'agenzia che chiede soldi con una pagina marcata
+«TEST MODE». Ora la schermata lo scrive, appena creato e in elenco.
+
+🟡 **Il codice della funzione `stripe` non esisteva nel repository**: girava
+su Supabase e nessuno lo rivedeva. È stato portato in casa in due commit —
+prima com'è installato, poi irrobustito — così il diff fra i due È il piano di
+rilascio. La versione irrobustita pretende `importo_cents` intero e non
+interpreta più niente, limita le origini CORS e non scrive mai uno stato
+«pagato».
+
+🔴 **La funzione irrobustita NON è installata, e la correzione vale già
+oggi.** Installare è una decisione di Francesco (sono soldi su un conto suo).
+Finché non si installa non si rompe niente, perché la pagina manda entrambi i
+campi: `importo_cents` per la versione nuova e `importo` in forma canonica
+senza punti per quella installata — e su una stringa senza punti la lettura
+vecchia è esatta. La parte che conta sta nel browser.
+
+**Fuori perimetro, annotato:**
+- **La chiave live di Stripe**: la mette Francesco nei secret della funzione.
+  Finché c'è quella di test, nessun link è pagabile.
+- **Lo stato vero del pagamento**: serve un canale che lo senta da Stripe.
+  Un webhook (endpoint pubblico, firma da verificare) oppure una **lettura su
+  richiesta** quando si apre la schermata — la seconda è più semplice e non
+  espone niente. Da decidere con Francesco.
+- **Il collegamento con la contabilità**: `iam_pagamenti` non è legata a
+  `quote_titoli`, quindi un incasso riscosso non entra in prima nota.
+- **Dove finiscono i soldi**: il payout Stripe deve arrivare sul conto
+  separato (art. 117 CAP, Reg. IVASS 40/2018), e le commissioni Stripe sono un
+  costo dell'agenzia — il cliente deve pagare il premio intero.

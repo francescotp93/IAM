@@ -87,6 +87,12 @@
 <script src="/nuovo-preventivo/tariffe/motore/lettura-proposta.js?v=20261002"></script>
 <script src="/nuovo-preventivo/tariffe/motore/pdf-testo.js?v=20261002"></script>
 <script src="/nuovo-preventivo/tariffe/motore/scheda-prodotto.js?v=20261002"></script>
+<!-- L'importo di una richiesta di pagamento. La regola sta nel motore perché è
+     una regola sui soldi, e una regola sui soldi scritta dentro una pagina non
+     si prova senza aprire un browser. Il guasto da cui è nato il file — un
+     punto letto come separatore delle migliaia, «170.00» diventato 17.000,00 €
+     — sta nella sua intestazione. -->
+<script src="/nuovo-preventivo/tariffe/motore/importo.js?v=20261006"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -2013,12 +2019,27 @@ input[type=file]{display:none;}
 
 <!-- Pagamenti: link Stripe da inviare al cliente per un importo libero.
      DEVE stare DENTRO .panels (come gli altri pannelli): fuori di qui il pannello
-     si posiziona rispetto all'intera finestra e copre le barre / si sovrappone. -->
+     si posiziona rispetto all'intera finestra e copre le barre / si sovrappone.
+
+     LA FRASE CHE C'ERA QUI DICEVA UNA COSA FALSA (togliata il 06/10/2026):
+     «quando paga, qui il pagamento passa a pagato». Non succede e non può
+     succedere: non esiste nessun webhook, la funzione `stripe` conosce due
+     rotte sole (/link e /elimina) ed è protetta da verify_jwt, quindi Stripe
+     non potrebbe nemmeno chiamarla — non ha una sessione IAM. Le colonne
+     `pagato_il` e `stripe_checkout_id` di `iam_pagamenti` stanno lì pronte e
+     nessuno le riempie mai.
+     Una schermata che promette una conferma che non arriverà è peggio di una
+     che non promette niente: chi legge smette di controllare su Stripe. -->
 <div class="panel" id="panel-pagamenti" style="overflow-y:auto;">
   <div style="max-width:760px;margin:0 auto;padding:22px 6px 40px;">
     <div style="margin-bottom:18px;">
       <h1 style="font-size:24px;letter-spacing:-.03em;margin:0 0 5px;">Link di pagamento</h1>
-      <p style="margin:0;color:var(--txt2,#5a6b7c);font-size:12.5px;line-height:1.5;">Genera un link Stripe da inviare al cliente per un importo a piacere. Il cliente paga con carta; quando paga, qui il pagamento passa a «pagato».</p>
+      <p style="margin:0;color:var(--txt2,#5a6b7c);font-size:12.5px;line-height:1.5;">Genera un link Stripe da inviare al cliente per un importo a piacere. Il cliente paga con carta.</p>
+      <div id="pg-avviso" style="margin-top:12px;border:1px solid var(--amb-bd,#f2d9a8);background:var(--amb-bg,#fdf6e7);color:var(--amb-txt,#a76008);border-radius:9px;padding:10px 12px;font-size:12px;line-height:1.55;">
+        <b>Lo stato qui non si aggiorna da solo.</b> La conferma del pagamento non arriva ancora da Stripe:
+        anche dopo che il cliente ha pagato, qui resta «In attesa». L'incasso va verificato sul pannello Stripe,
+        e non è ancora collegato alla contabilità.
+      </div>
     </div>
     <div style="background:var(--surf,#fff);border:1px solid var(--bord2,#e4e9ee);border-radius:12px;padding:18px;">
       <div style="display:grid;grid-template-columns:150px 1fr;gap:12px 14px;align-items:center;">
@@ -22130,19 +22151,65 @@ async function pagElimina(id) {
   } catch (e) { alert('Non eliminato: ' + (e.message || e)); }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   GENERARE UN LINK DI PAGAMENTO                               (06/10/2026)
+
+   Tre difese, nell'ordine in cui scattano. Prima non c'era nessuna delle tre:
+   il testo del campo partiva così com'era, e il lato server lo interpretava.
+
+   1. L'IMPORTO SI LEGGE PRIMA DI TOCCARE LA RETE. La regola sta nel motore
+      (`Importo.leggi`), e quello che ha due significati lo RIFIUTA invece di
+      scegliere: «170.00» col punto può voler dire 170,00 € oppure 17.000,00 €,
+      e il lato server scegliava la seconda. Il campo ha il tastierino
+      decimale, e sul telefono il tasto che esce è il punto.
+
+   2. AL SERVER SI MANDANO I CENTESIMI. `importo_cents` è un intero: non c'è
+      niente da interpretare. Si manda ANCHE `importo` nella forma canonica
+      (cifre, virgola, due decimali, nessun punto) perché la funzione
+      INSTALLATA legge ancora quella — e su una stringa senza punti la sua
+      lettura è esatta. Così la correzione vale da subito, senza aspettare un
+      rilascio della funzione.
+
+   3. SI CONFERMA LEGGENDO L'IMPORTO IN EURO, non le cifre appena scritte: uno
+      rilegge il proprio campo come crede di averlo scritto. Sopra diecimila
+      euro la domanda si fa due volte, e la seconda è scritta con parole
+      diverse — due volte la stessa frase si clicca due volte senza leggerla.
+   ═══════════════════════════════════════════════════════════════════════════════ */
 async function pagCreaLink() {
   const g = id => (document.getElementById(id)?.value || '').trim();
   const importo = g('pg-importo'), causale = g('pg-causale'), cliente = g('pg-cliente');
   const esito = document.getElementById('pg-esito'), btn = document.getElementById('pg-crea');
   const dì = (t, c) => { if (esito) { esito.style.color = c || 'var(--txt2,#5a6b7c)'; esito.textContent = t; } };
-  if (!importo) { dì('Metti un importo.', 'var(--amb-txt,#a76008)'); return; }
+
+  /* Senza il motore non si tira a indovinare l'importo: si dice che manca. */
+  if (!window.Importo) { dì('Il motore degli importi non è caricato: ricarica la pagina.', 'var(--red-txt,#ad3a32)'); return; }
+  const letto = Importo.leggi(importo);
+  if (!letto.ok) { dì(letto.motivo, 'var(--amb-txt,#a76008)'); return; }
+
+  if (!confirm(Importo.frase({ cents: letto.cents, cliente: cliente, causale: causale }))) { dì('Non ho generato niente.'); return; }
+  if (letto.sopraSoglia && !confirm(Importo.fraseSoglia(letto.cents))) { dì('Non ho generato niente.'); return; }
+
   if (btn) btn.disabled = true;
   dì('Genero il link…');
   try {
-    const r = await stripeFetch('/link', { importo: importo, descrizione: causale, cliente: cliente });
+    const r = await stripeFetch('/link', {
+      importo_cents: letto.cents,   /* quello che conta: un intero */
+      importo: letto.scritto,       /* per la funzione installata, in forma non interpretabile */
+      descrizione: causale, cliente: cliente,
+    });
     if (esito) {
-      esito.style.color = 'var(--grn-txt,#087747)';
-      esito.innerHTML = 'Link pronto — <a href="' + esc(r.url) + '" target="_blank" rel="noopener" style="color:var(--blu-txt,#2563eb);">apri</a> ' +
+      /* UN LINK DI PROVA SI DICE. La chiave Stripe installata il 06/10/2026
+         era quella di test: il link usciva `buy.stripe.com/test_…`, la pagina
+         si apre con la fascia «TEST MODE» e una carta vera viene rifiutata.
+         Mandarlo a un cliente non è un pagamento mancato: è l'agenzia che
+         sembra chiedere soldi con una pagina marcata «prova». */
+      const diProva = /\/test_/.test(String(r.url || ''));
+      esito.style.color = diProva ? 'var(--amb-txt,#a76008)' : 'var(--grn-txt,#087747)';
+      esito.innerHTML = (diProva
+        ? '<b>LINK DI PROVA — non inviarlo a un cliente.</b> La chiave Stripe installata è quella di test: '
+          + 'la pagina si apre con la fascia «TEST MODE» e una carta vera viene rifiutata.<br>'
+        : '')
+        + Importo.euro(letto.cents) + ' — <a href="' + esc(r.url) + '" target="_blank" rel="noopener" style="color:var(--blu-txt,#2563eb);">apri</a> ' +
         '<button type="button" data-url="' + esc(r.url) + '" onclick="pagCopia(this)" style="font-size:11px;padding:3px 9px;border:1px solid var(--bord2,#dfe6e2);border-radius:6px;background:var(--surf2,#fff);cursor:pointer;">Copia</button>';
     }
     const imp = document.getElementById('pg-importo'); if (imp) imp.value = '';
@@ -22152,7 +22219,13 @@ async function pagCreaLink() {
 }
 
 const PG_STATO = { creato: ['In attesa', 'var(--amb-txt,#a76008)'], pagato: ['Pagato', 'var(--grn-txt,#087747)'], annullato: ['Annullato', 'var(--red-txt,#ad3a32)'], scaduto: ['Scaduto', 'var(--txt3,#8a9a92)'] };
-function pagEuro(cents) { return (Number(cents || 0) / 100).toLocaleString('it-IT', { minimumFractionDigits: 2 }) + ' €'; }
+/* Una formattazione sola per i due posti dove l'importo si fa vedere — la
+   conferma e l'elenco. Se divergessero, l'operatore confermerebbe una cifra e
+   ne rileggerebbe un'altra. */
+function pagEuro(cents) {
+  return window.Importo ? Importo.euro(cents)
+    : (Number(cents || 0) / 100).toLocaleString('it-IT', { minimumFractionDigits: 2 }) + ' €';
+}
 
 async function renderPagamentiLista() {
   const box = document.getElementById('pg-lista'); if (!box) return;
@@ -22166,6 +22239,10 @@ async function renderPagamentiLista() {
       return '<div style="display:flex;align-items:center;gap:12px;background:var(--surf,#fff);border:1px solid var(--bord2,#e4e9ee);border-radius:10px;padding:11px 13px;flex-wrap:wrap;">' +
         '<div style="flex:1;min-width:180px;"><div style="font-weight:700;font-size:13px;">' + pagEuro(p.importo_cents) + ' <span style="font-weight:500;color:var(--txt2,#5a6b7c);">· ' + esc(p.descrizione || '') + '</span></div>' +
         '<div style="font-size:11px;color:var(--txt3,#8a9a92);margin-top:2px;">' + esc(quando) + (p.cliente ? ' · ' + esc(p.cliente) : '') + '</div></div>' +
+        /* Un link di prova si dice anche in elenco, e non solo appena creato:
+           è lì che si va a ripescare il link da mandare al cliente. */
+        (/\/test_/.test(String(p.stripe_url || ''))
+          ? '<span title="Chiave Stripe di test: nessuno può pagarci" style="font-size:10px;font-weight:800;letter-spacing:.04em;padding:2px 6px;border-radius:5px;background:var(--amb-bg,#fdf6e7);color:var(--amb-txt,#a76008);">PROVA</span>' : '') +
         '<span style="font-size:11px;font-weight:700;color:' + st[1] + ';">' + esc(st[0]) + '</span>' +
         (p.stripe_url && p.stato === 'creato' ? ' <button type="button" data-url="' + esc(p.stripe_url) + '" onclick="pagCopia(this)" style="font-size:11px;padding:3px 9px;border:1px solid var(--bord2,#dfe6e2);border-radius:6px;background:var(--surf2,#fff);cursor:pointer;">Copia link</button>' : '') +
         (p.stato !== 'pagato' ? ' <button type="button" onclick="pagElimina(\'' + esc(p.id) + '\')" title="Elimina" style="font-size:11px;padding:3px 9px;border:1px solid var(--red-bg,#fdecea);border-radius:6px;background:var(--red-bg,#fdecea);color:var(--red-txt,#ad3a32);cursor:pointer;">Elimina</button>' : '') +

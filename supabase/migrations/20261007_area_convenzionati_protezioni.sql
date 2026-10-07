@@ -1,6 +1,6 @@
 -- ╔═════════════════════════════════════════════════════════════════════════╗
 -- ║  AREA RISERVATA CONVENZIONATI — due chiusure e un nome      07/10/2026   ║
--- ║  BOZZA PRONTA, NON ANCORA APPLICATA: serve l'ok di Francesco.           ║
+-- ║  APPLICATA il 07/10/2026 su richiesta di Francesco (verificata).     ║
 -- ╚═════════════════════════════════════════════════════════════════════════╝
 --
 --  Trovato verificando l'area riservata sul database vero (pg_policies e

@@ -1815,3 +1815,12 @@ gialla dice sempre che è una demo. Senza `?demo` il file non fa niente.
 🟢 **Trovato provando la demo:** dopo «Salva i miei dati» il messaggio
 «Salvato» non compariva mai, perché veniva scritto nel modulo di prima del
 ridisegno. Corretto: anche nell'area vera.
+
+### 07/10/2026 (seguito) — Protezioni dell'area applicate
+
+🔴→✅ Su richiesta di Francesco applicata `supabase/migrations/20261007_area_convenzionati_protezioni.sql`
+(prima in `bozze/`). Verificato sul database: la politica `assoc_update_proprio`
+non c'è più (resta solo `assoc_update` dello staff), `mia_convenzione()` esiste,
+è eseguibile dagli utenti autenticati e non da `anon`. Da adesso il nome della
+convenzione compare nella scheda dell'associato.
+Resta aperto (fuori perimetro): la lettura di `otp_hash` da parte dell'associato.

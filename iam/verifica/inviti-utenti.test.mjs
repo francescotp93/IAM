@@ -145,7 +145,13 @@ function batteria(sorgente, etichetta) {
   });
 
   // ── 6. la scheda nasce col ruolo piu' basso ────────────────────────────────
-  e.provaAsync("al primo ingresso la scheda nasce come collaboratore, non come amministratore", async () => {
+  /* Fino al 07/10/2026 la scheda nasceva qui, dal browser, come collaboratore.
+     Il controllo GDPR (CLAUDE.md §75) ha chiuso quella porta nel database: un
+     account esterno si dava una riga con caselle e rete scelte da lui. Le
+     schede nascono solo dall'attivazione sul server (server/utenti.js). La
+     regola che questa prova difendeva — mai una scheda da amministratore
+     creata dal browser — vale ancora, ed è più forte: nessuna scheda. */
+  e.provaAsync("al primo ingresso il browser NON crea la scheda: la crea solo l'attivazione", async () => {
     const s = stanza(sorgente, NOMI, {
       ME: { id: 'nuovo-1', email: 'anna@withus.it' },
       PROFILO: null,
@@ -154,11 +160,8 @@ function batteria(sorgente, etichetta) {
       altro: { ...CONTORNO },
     });
     const prof = await s.ctx.caricaProfilo('nuovo-1');
-    deve(s.archivio.stato.insert.length === 1, `tentativi di creare la scheda: ${s.archivio.stato.insert.length} invece di 1`);
-    const chiesto = s.archivio.stato.insert[0].riga.ruolo;
-    deve(!RUOLI_VIETATI_IN_CREAZIONE.includes(chiesto),
-      `la scheda viene chiesta con ruolo "${chiesto}": l'archivio la rifiuta e la persona entra senza scheda e senza permessi applicati`);
-    deve(prof && prof.ruolo === 'collaboratore', 'la scheda non e stata creata, oppure non e nata come collaboratore');
+    deve(s.archivio.stato.insert.length === 0, `il browser prova ancora a creare la scheda (${s.archivio.stato.insert.length} tentativi)`);
+    deve(prof === null, 'senza scheda il profilo deve restare nullo');
   });
 
   e.prova("il ruolo non dipende piu' da un conteggio letto male", () => {

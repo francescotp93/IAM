@@ -14929,6 +14929,9 @@ async function caricaDaFareOggi(forza) {
   //    questa voce leggeva il file caricato a mano, che non si carica più.
   await conta(async () => {
     if (typeof sprCarica !== 'function' || !window.Contabilita) return;
+    /* Lo stesso cancello della Contabilità: chi non può aprire i Sospesi non
+       ne vede nemmeno il numero e l'importo sulla Scrivania. */
+    if (typeof contabPuo === 'function' && !contabPuo('sospesi')) return;
     await sprCarica();
     if (SPR_ERR) throw new Error(SPR_ERR);
     if (SPR_PARZIALE) parziale = true;

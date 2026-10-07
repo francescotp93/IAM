@@ -183,6 +183,11 @@ prova('rinnovi e scadute sono quelli dello Scadenzario, non una copia', () => {
 prova('i sospesi sono quelli della schermata Sospesi, non il file caricato a mano', () => {
   deve(!/APP\.sospesi/.test(corpo), 'la voce legge ancora il file caricato a mano');
   deve(/await sprCarica\(\)/.test(corpo) && /SPR_ESITO/.test(corpo), 'la voce non usa il conto della schermata Sospesi');
+  /* E vale il cancello della Contabilità: chi non può aprire i Sospesi non ne
+     vede il numero e l'importo dalla Scrivania. Il cancello va CHIAMATO prima
+     della lettura, non solo esistere (§1). */
+  const iCanc = corpo.indexOf("contabPuo('sospesi')"), iLett = corpo.indexOf('await sprCarica()');
+  deve(iCanc > 0 && iCanc < iLett, 'i sospesi si leggono senza guardare il permesso sulla Contabilità');
   /* Si guarda la SOTTRAZIONE, non la parola: la prima stesura cercava
      «da_dichiarare» nel blocco intero e restava verde anche togliendola dal
      conteggio, perché la stessa parola resta nel totale in euro. */

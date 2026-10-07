@@ -118,7 +118,10 @@ prova('si controlla la variabile del database giusta', () => {
 prova('ogni voce porta da qualche parte', () => {
   /* le voci del lavoro di oggi e quelle «da sistemare con calma»: tutte
      devono portare da qualche parte (critique 07/10/2026). */
-  const voci = (corpo.match(/(?:voci|calma)\.push\(\{/g) || []).length;
+  /* Le NOTE senza numero (es. «il perfezionamento non è tenuto, quindi non si
+     conta») non sono voci da aprire: dicono perché un numero manca. Tutte le
+     altre devono portare da qualche parte. */
+  const voci = (corpo.match(/(?:voci|calma)\.push\(\{(?! n: null)/g) || []).length;
   const destinazioni = (corpo.match(/va: \(\) =>/g) || []).length;
   deve(voci >= 6, 'voci previste: ' + voci);
   deve(destinazioni === voci, voci + ' voci ma ' + destinazioni + ' destinazioni');
@@ -170,6 +173,16 @@ prova('nessun conteggio si ferma al tetto delle mille righe', () => {
   deve(paginate >= 4, 'letture paginate e ordinate: ' + paginate);
   deve(/if \(r\.parziale\) parziale = true/.test(corpo), 'una lettura fermata non si dichiara');
   return paginate + ' letture paginate';
+});
+
+/* IL PERFEZIONAMENTO SI CONTA SOLO SE È TENUTO (07/10/2026). Misurato: 7.154
+   polizze e nessuna mai segnata come perfezionata. «7.077 da perfezionare»
+   era tutto il portafoglio meno le annullate: un numero vero che non dice
+   niente, e il più grande della lista. */
+prova('le polizze da perfezionare si contano solo se qualcuno le segna come perfezionate', () => {
+  deve(/eq\('perfezionata', true\)/.test(corpo), 'non si guarda se il campo è mai stato compilato');
+  deve(/if \(!fatte\.count\) \{/.test(corpo), 'con il campo mai compilato la voce conta lo stesso tutto il portafoglio');
+  deve(/nessuna polizza risulta mai segnata come perfezionata/.test(corpo), 'il motivo per cui il numero manca non si dice');
 });
 
 prova('rinnovi e scadute sono quelli dello Scadenzario, non una copia', () => {

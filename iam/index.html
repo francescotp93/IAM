@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.50.0">
-<meta name="app-versione-nome" content="La Scrivania mette prima il lavoro, e i suoi numeri sono veri">
+<meta name="app-versione" content="0.51.0">
+<meta name="app-versione-nome" content="La Scrivania si legge come un registro, e un account esterno non vede più niente">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1238,47 +1238,66 @@ input[type=file]{display:none;}
 /* Sotto i 1100px le due colonne si impilano. */
 @media(max-width:1100px){.dashboard-grid{grid-template-columns:1fr}}
 @media(max-width:720px){.page-head{flex-direction:column}.head-actions{width:100%}.head-actions .d-btn{flex:1}}
-/* minmax(min(100%,258px),…): la colonna minima non supera mai la larghezza
-   disponibile, così la griglia di «Da fare oggi» non sborda oltre la sua
-   colonna e non finisce sotto/sopra «Azioni rapide» accanto (§13.3). */
-.oggi-corpo{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,258px),1fr));background:var(--surf);}
-.oggi-attesa,.oggi-vuoto{grid-column:1/-1;padding:20px 16px;font-size:13px;color:var(--txt3);background:var(--surf);}
-.oggi-vuoto{color:var(--w1-testo,var(--txt));font-weight:600;}
-/* una voce = un'azione: conteggio grande, cosa fare, e dove porta */
-.oggi-v{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--surf);
-  border:none;border-right:1px solid var(--bord2);border-bottom:1px solid var(--bord2);
-  cursor:pointer;text-align:left;font-family:inherit;color:var(--txt);width:100%;}
-.oggi-v:hover{background:rgba(2,152,78,.06);}
-.oggi-n{flex:0 0 auto;min-width:4.2ch;text-align:right;font-family:var(--t-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;font-size:22px;font-weight:800;line-height:1;color:var(--w1-testo,var(--txt));}
-.oggi-v.urg .oggi-n{color:var(--w1-rosso);}
-.oggi-v.avv .oggi-n{color:var(--w1-ambra);}
-/* ══ SCRIVANIA · critique del 07/10/2026 ═════════════════════════════════════
-   I tre gruppi, la riga «con calma», gli avvisi di lettura, il fuoco visibile
-   e i contrasti misurati. I colori vengono dai gettoni del pannello. */
-.oggi-grp{grid-column:1/-1;border-bottom:1px solid var(--bord2)}
+/* ══ DA FARE OGGI · LA TABELLA (07/10/2026, «fallo un po' più tech») ════════
+   Una tabella incolonnata invece di schede sparse: chi apre la Scrivania
+   scorre una colonna di numeri, una di cose da fare, una di importi. Le cifre
+   in monospaziato si allineano, e uno zero di troppo si vede (DESIGN.md, «The
+   Data Wears Mono»). La gravità è una barra sottile a sinistra, non il colore
+   del numero: un numero rosso grande grida, una barra si legge. Il ciano
+   compare solo al passaggio, perché è il colore della macchina che risponde
+   («The Cyan Is The Machine»). Tutti i colori vengono dai gettoni. */
+.oggi-corpo{display:block;background:var(--surf)}
+.oggi-attesa,.oggi-vuoto{padding:20px 16px;font-size:13px;color:var(--w1-testo2,var(--txt2));background:var(--surf)}
+.oggi-vuoto{color:var(--w1-testo,var(--txt));font-weight:600}
+.oggi-grp{border-bottom:1px solid var(--bord2)}
 .oggi-grp:last-of-type{border-bottom:none}
-.oggi-gh{margin:0;padding:10px 16px 2px;color:var(--w1-testo2,var(--txt2))}
-.oggi-gl{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,258px),1fr))}
+.oggi-gh{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:8px 16px 7px 19px;
+  background:var(--surf2);border-bottom:1px solid var(--bord);font-family:var(--t-mono,ui-monospace,monospace);
+  font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--w1-testo2,var(--txt2))}
+.oggi-gh-n{font-weight:500;letter-spacing:.04em;color:var(--w1-testo2,var(--txt2))}
+.oggi-gl{display:block}
+.oggi-v{display:grid;grid-template-columns:3px 72px minmax(0,1fr) minmax(9ch,auto) 18px;align-items:center;column-gap:14px;
+  width:100%;min-height:50px;padding:0 14px 0 0;border:0;border-bottom:1px solid var(--bord);background:var(--surf);
+  color:var(--w1-testo,var(--txt));text-align:left;font-family:inherit;cursor:pointer;transition:background .12s ease}
+.oggi-gl .oggi-v:last-child{border-bottom:0}
+.oggi-v::before{content:'';grid-column:1;align-self:stretch;background:var(--w1-bordo,var(--bord2))}
+.oggi-v.urg::before{background:var(--w1-rosso)}
+.oggi-v.avv::before{background:var(--w1-ambra)}
+.oggi-v:hover{background:var(--surf2)}
+.oggi-n{grid-column:2;text-align:right;font-family:var(--t-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;
+  font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1;color:var(--w1-testo,var(--txt))}
+.oggi-txt{grid-column:3;min-width:0;padding:8px 0}
+.oggi-l{display:block;font-size:13px;font-weight:600;line-height:1.3}
+.oggi-s{display:block;margin-top:3px;font-family:var(--t-mono,ui-monospace,monospace);font-size:11px;line-height:1.4;color:var(--w1-testo2,var(--txt2))}
+.oggi-e{grid-column:4;text-align:right;white-space:nowrap;font-family:var(--t-mono,ui-monospace,monospace);
+  font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;letter-spacing:-.01em;color:var(--w1-testo,var(--txt))}
+.oggi-fr{grid-column:5;color:var(--w1-testo2,var(--txt2));font-size:15px;transition:color .12s ease,transform .12s ease}
+.oggi-v:hover .oggi-fr{color:var(--t-dati-scuro,#0e7490);transform:translateX(2px)}
 .oggi-v:focus-visible,.dash-list-row:focus-visible,.oggi-calma-b:focus-visible,.oggi-ric:focus-visible{outline:2px solid var(--t-dati,#06b6d4);outline-offset:-2px}
-.oggi-guasto{grid-column:1/-1;margin:10px 16px 0;padding:9px 12px;font-size:12.5px;line-height:1.45;color:var(--w1-ambra);background:var(--w1-ambra-bg);border:1px solid currentColor;border-radius:var(--w1-raggio)}
-.oggi-calma{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 16px;border-top:1px solid var(--bord2);font-size:12px;color:var(--w1-testo2,var(--txt2))}
-.oggi-calma-t{font-weight:600}
-.oggi-calma-b{border:none;background:none;padding:2px 0;font:inherit;font-size:12px;color:var(--w1-verde-scuro);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
-.dash-largo{margin:0 16px 12px}
-.dash-rimando{margin:4px 16px 20px;font-size:12.5px;color:var(--w1-testo2,var(--txt2))}
-.vol-azioni{display:flex;gap:8px}
+.oggi-guasto{margin:10px 16px;padding:9px 12px;font-size:12.5px;line-height:1.45;color:var(--w1-ambra);background:var(--w1-ambra-bg);border:1px solid currentColor;border-radius:var(--w1-raggio)}
+.oggi-calma{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:10px 16px 10px 19px;border-top:1px solid var(--bord2);
+  background:var(--surf2);font-family:var(--t-mono,ui-monospace,monospace);font-size:11px;color:var(--w1-testo2,var(--txt2))}
+.oggi-calma-t{font-weight:700;letter-spacing:.09em;text-transform:uppercase;font-size:10.5px}
+.oggi-calma-b{border:none;background:none;padding:2px 0;font:inherit;color:var(--w1-testo,var(--txt));cursor:pointer;
+  text-decoration:underline dotted;text-underline-offset:3px}
+.oggi-calma-b:hover{color:var(--t-dati-scuro,#0e7490)}
+.oggi-calma-i{color:var(--w1-testo2,var(--txt2))}
+@media(max-width:600px){
+  .oggi-v{grid-template-columns:3px 52px minmax(0,1fr) 14px;column-gap:10px;padding-right:10px}
+  .oggi-n{font-size:16px}
+  .oggi-e{grid-column:3;grid-row:2;text-align:left;font-size:12px;padding-bottom:8px;margin-top:-4px}
+  .oggi-fr{grid-column:4;grid-row:1 / span 2}
+}
 /* Il grafico è compatto: sta sotto il lavoro, non sopra (non più 232px). */
-#vol-card .vol-graf{height:160px}
 /* CONTRASTI (soglia AA 4,5:1). Il grigio nebbia #97a3b2 su #f3f5f7 fa 2,3:1:
    va bene per un bordo, non per un'etichetta da leggere. La micro-etichetta
    sopra il titolo vale per tutte le testate di IAM: la pelle tech arriva dopo
    questo foglio, e una regola di pari peso perderebbe. */
+.dash-largo{margin:0 16px 12px}
+.dash-rimando{margin:4px 16px 20px;font-size:12.5px;color:var(--w1-testo2,var(--txt2))}
+.vol-azioni{display:flex;gap:8px}
+#vol-card .vol-graf{height:160px}
 .page-head .eyebrow{color:var(--w1-testo2,var(--txt2))}
-.oggi-txt{flex:1 1 auto;min-width:0;}
-.oggi-l{display:block;font-size:13px;font-weight:600;line-height:1.25;}
-.oggi-s{display:block;font-size:11.5px;color:var(--w1-testo2,var(--txt2));margin-top:2px;}
-.oggi-fr{flex:0 0 auto;color:var(--txt3);font-size:15px;}
-.oggi-v:hover .oggi-fr{color:#02984e;}
 /* == DIARIO . VISTA SETTIMANA ==============================================
    Tre colonne: che cosa c'e' da fare oggi, la settimana ora per ora, il
    dettaglio di quello che si sta guardando. Sotto i 1100 px le colonne
@@ -14287,6 +14306,7 @@ function oggiDisegna(voci, info) {
     `<button class="oggi-v ${v.cls || ''}" onclick="__OGGI[${i}].va && __OGGI[${i}].va()">
        <span class="oggi-n t-dato">${v.n}</span>
        <span class="oggi-txt"><span class="oggi-l">${v.l}</span><span class="oggi-s">${v.s}</span></span>
+       <span class="oggi-e">${v.e != null ? oggiEuro(v.e) : ''}</span>
        <span class="oggi-fr" aria-hidden="true"><i class="ti ti-chevron-right"></i></span>
      </button>`;
 
@@ -14294,7 +14314,7 @@ function oggiDisegna(voci, info) {
     const mie = window.__OGGI.map((v, i) => [v, i]).filter(([v]) => (v.g || 'clienti') === g.k);
     if (!mie.length) return '';
     return `<section class="oggi-grp" aria-label="${g.l}">
-        <h3 class="oggi-gh eyebrow">${g.l}</h3>
+        <h3 class="oggi-gh"><span>${g.l}</span><span class="oggi-gh-n">${mie.length === 1 ? '1 voce' : mie.length + ' voci'}</span></h3>
         <div class="oggi-gl">${mie.map(([v, i]) => riga(v, i)).join('')}</div>
       </section>`;
   }).join('') + oggiCalmaHTML(calma);
@@ -14308,7 +14328,9 @@ function oggiCalmaHTML(calma) {
   if (!calma || !calma.length) return '';
   window.__OGGI_CALMA = calma;
   return '<div class="oggi-calma"><span class="oggi-calma-t">Da sistemare con calma:</span> '
-    + calma.map((c, i) => `<button class="oggi-calma-b" onclick="__OGGI_CALMA[${i}].va && __OGGI_CALMA[${i}].va()"><span class="t-dato">${c.n}</span> ${c.l}</button>`).join('')
+    + calma.map((c, i) => c.va
+      ? `<button class="oggi-calma-b" onclick="__OGGI_CALMA[${i}].va && __OGGI_CALMA[${i}].va()"><span class="t-dato">${c.n}</span> ${c.l}</button>`
+      : `<span class="oggi-calma-i">${c.l}</span>`).join('')
     + '</div>';
 }
 
@@ -14922,7 +14944,7 @@ async function caricaDaFareOggi(forza) {
     if (!ins.length) return;
     const somma = ins.reduce((s, r) => s + (Number(r.importo) || 0), 0);
     voci.push({ g: 'soldi', n: ins.length, cls: 'urg', l: ins.length === 1 ? 'rata scaduta da incassare' : 'rate scadute da incassare',
-                s: oggiEuro(somma) + ' da recuperare', va: () => oggiApri('titoli') });
+                s: 'scadute e non pagate · da recuperare', e: somma, va: () => oggiApri('titoli') });
   }, 'le rate');
 
   // 2. Sospesi: lo stesso conto della schermata Sospesi, non una copia. Prima
@@ -14944,7 +14966,7 @@ async function caricaDaFareOggi(forza) {
     const tot = (Number(e.totale) || 0) - (Number(e.totale_da_dichiarare) || 0);
     if (!n) return;
     voci.push({ g: 'soldi', n, cls: e.in_ritardo ? 'urg' : 'avv', l: n === 1 ? 'premio sospeso' : 'premi sospesi',
-                s: oggiEuro(tot) + (e.in_ritardo ? ' · ' + e.in_ritardo + (e.in_ritardo === 1 ? ' fermo' : ' fermi') + ' da troppo' : ' in arrivo'),
+                s: e.in_ritardo ? e.in_ritardo + (e.in_ritardo === 1 ? ' fermo' : ' fermi') + ' da troppo' : 'in arrivo in agenzia', e: tot,
                 va: () => goTab('sospesi') });
   }, 'i sospesi');
 
@@ -14957,7 +14979,7 @@ async function caricaDaFareOggi(forza) {
     if (!daFare.length) return;
     const somma = daFare.reduce((s, r) => s + (Number(r.importo) || 0), 0);
     voci.push({ g: 'contratti', n: daFare.length, cls: 'avv', l: daFare.length === 1 ? 'rinnovo da lavorare' : 'rinnovi da lavorare',
-                s: 'entro i 15 giorni o in proroga · ' + oggiEuro(somma) + ' di premi', va: () => oggiApri('scadenzario') });
+                s: 'entro i 15 giorni o in proroga · premi', e: somma, va: () => oggiApri('scadenzario') });
   }, 'lo scadenzario');
 
   // 4. Polizze scoperte e non rinnovate: proroga finita, nessun successore.
@@ -14975,11 +14997,22 @@ async function caricaDaFareOggi(forza) {
   }, 'lo scadenzario');
 
   // 5. Polizze da perfezionare: documenti mancanti. Il numero lo conta il server.
+  /* MA SOLO SE IL DATO È TENUTO (07/10/2026). Misurato: 7.154 polizze, e
+     NESSUNA segnata come perfezionata — il campo non lo compila né
+     l'importazione né la scheda. «7.077 da perfezionare» era tutto il
+     portafoglio meno le annullate: un numero vero che non dice niente. Finché
+     nessuna polizza risulta mai perfezionata la voce non conta, e lo dice. */
   await conta(async () => {
     const { count, error } = await db.from('quote_polizze')
       .select('id', { count: 'exact', head: true }).eq('perfezionata', false).neq('stato_pagamento', 'annullata');
     if (error) throw error;
     if (!count) return;
+    const fatte = await db.from('quote_polizze').select('id', { count: 'exact', head: true }).eq('perfezionata', true);
+    if (fatte.error) throw fatte.error;
+    if (!fatte.count) {
+      calma.push({ n: null, l: 'perfezionamento: nessuna polizza risulta mai segnata come perfezionata, quindi non si conta' });
+      return;
+    }
     voci.push({ g: 'contratti', n: count, cls: 'avv', l: count === 1 ? 'polizza da perfezionare' : 'polizze da perfezionare',
                 s: 'documenti da completare', va: () => oggiApri('portafoglio') });
   }, 'le polizze da perfezionare');
@@ -19368,29 +19401,14 @@ async function caricaProfilo(userId) {
   try {
     const { data, error } = await db.from('iam_utenti').select('*').eq('id', userId).single();
     if (error || !data) {
-      // PRIMO ACCESSO — la scheda di questa persona non esiste ancora.
-      // Chi invita non puo' crearla al posto suo: l'archivio accetta la nuova
-      // scheda solo da chi sta entrando, e solo con il ruolo piu' basso. Quindi
-      // la scheda nasce qui, al primo ingresso, come collaboratore; ruolo,
-      // accessi e permessi li assegna poi l'amministratore dal pannello Utenti
-      // (o si applicano da soli, se l'invito li aveva gia' indicati).
-      //
-      // Cosa c'era prima, e perche' andava tolto: qui si chiedeva all'archivio
-      // "quante schede ci sono gia'?" per capire se questo fosse il primissimo
-      // utente e quindi l'amministratore. La domanda era posta male — la
-      // risposta arrivava sempre vuota — e la condizione risultava vera per
-      // TUTTI. Ogni nuovo utente veniva percio' creato come amministratore.
-      // Non e' mai accaduto per davvero solo perche' l'archivio rifiuta quella
-      // scrittura; l'effetto visibile era pero' che la scheda non nasceva
-      // affatto e la persona entrava senza che i permessi venissero applicati.
-      const { data: nuovo, error: errNuovo } = await db.from('iam_utenti').insert({
-        id: userId, email: ME.email,
-        nome: ME.user_metadata?.full_name?.split(' ')[0] || '',
-        cognome: ME.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-        ruolo: dbRuolo('collaboratore')
-      }).select().single();
-      if (errNuovo || !nuovo) { console.warn('Scheda utente non creata:', errNuovo?.message || 'nessuna riga'); return null; }
-      return applicaSuperAdmin(normalizzaRuolo(nuovo));
+      /* Nessuna scheda in iam_utenti: questo account non è dell'agenzia
+         (un convenzionato, per esempio). Fino al 07/10/2026 la scheda si
+         creava da sola qui, e il database lo permetteva: un account esterno
+         poteva darsi una riga con caselle email e rete scelte da lui
+         (controllo GDPR, CLAUDE.md §75). Adesso le schede nascono solo
+         dall'attivazione (server/utenti.js), e il database rifiuta le altre. */
+      console.warn('Nessuna scheda IAM per questo account: va attivato da Utenti e permessi.');
+      return null;
     }
     return applicaSuperAdmin(normalizzaRuolo(data));
   } catch(e) { console.warn('Errore carica profilo:', e); return null; }

@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-07T12:00:00Z",
+  "title": "Design System: IAM",
+  "extensions": {
+    "colorMeta": {
+      "verde": {
+        "role": "primary",
+        "displayName": "Verde With Us",
+        "canonical": "#02984e",
+        "tonalRamp": [
+          "#013d20",
+          "#016b38",
+          "#02984e",
+          "#2fb56f",
+          "#01c061",
+          "#7fd6a8",
+          "#d9f0e3",
+          "#e8f6ee"
+        ]
+      },
+      "segnale": {
+        "role": "secondary",
+        "displayName": "Ciano di sistema",
+        "canonical": "#06b6d4",
+        "tonalRamp": [
+          "#083344",
+          "#0e7490",
+          "#0891b2",
+          "#06b6d4",
+          "#22d3ee",
+          "#67e8f9",
+          "#cffafe",
+          "#ecfeff"
+        ]
+      },
+      "barra": {
+        "role": "neutral",
+        "displayName": "Notte d'officina",
+        "canonical": "#0d131c",
+        "tonalRamp": [
+          "#0b0f16",
+          "#141a23",
+          "#202833",
+          "#37414f",
+          "#4f5b6b",
+          "#6e7b8b",
+          "#97a3b2",
+          "#c9d1dc"
+        ]
+      },
+      "sfondo": {
+        "role": "neutral",
+        "displayName": "Grigio acciaio chiaro",
+        "canonical": "#e9edf2",
+        "tonalRamp": [
+          "#141a23",
+          "#37414f",
+          "#6e7b8b",
+          "#97a3b2",
+          "#c9d1dc",
+          "#dfe5ec",
+          "#e9edf2",
+          "#f8fafc"
+        ]
+      },
+      "testo": {
+        "role": "neutral",
+        "displayName": "Inchiostro",
+        "canonical": "#141a23"
+      },
+      "testo-secondario": {
+        "role": "neutral",
+        "displayName": "Ardesia",
+        "canonical": "#6e7b8b"
+      },
+      "testo-attenuato": {
+        "role": "neutral",
+        "displayName": "Grigio nebbia",
+        "canonical": "#97a3b2"
+      },
+      "bordo": {
+        "role": "neutral",
+        "displayName": "Bordo freddo",
+        "canonical": "#dfe5ec"
+      },
+      "attenzione": {
+        "role": "semantic",
+        "displayName": "Ambra da fare",
+        "canonical": "#c77a14"
+      },
+      "errore": {
+        "role": "semantic",
+        "displayName": "Rosso perso",
+        "canonical": "#d6342c"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Titolo di pagina",
+        "purpose": "Il titolo nella testata, uno per schermata."
+      },
+      "title": {
+        "displayName": "Titolo di scheda",
+        "purpose": "Accanto al pittogramma, nell'intestazione delle schede."
+      },
+      "body": {
+        "displayName": "Corpo",
+        "purpose": "Testo corrente, righe di elenco e campi; cifre tabulari."
+      },
+      "figure": {
+        "displayName": "Cifra",
+        "purpose": "Il numero di una tessera di riepilogo."
+      },
+      "label": {
+        "displayName": "Micro-etichetta",
+        "purpose": "Maiuscolo spaziato in monospaziato sopra titoli e valori."
+      },
+      "data": {
+        "displayName": "Dato",
+        "purpose": "Importi, codici, targhe e date: si incolonnano e si verificano."
+      }
+    },
+    "shadows": [
+      {
+        "name": "appoggio",
+        "value": "0 1px 2px rgba(16,24,40,.06), 0 1px 1px rgba(16,24,40,.04)",
+        "purpose": "Schede e superfici a riposo, sempre insieme al bordo."
+      },
+      {
+        "name": "sospeso",
+        "value": "0 10px 30px rgba(11,15,22,.13)",
+        "purpose": "Finestre modali, tendine e mega-menu."
+      }
+    ],
+    "motion": [
+      {
+        "name": "barra-corre",
+        "value": "1.15s cubic-bezier(.45,0,.25,1) infinite",
+        "purpose": "Barra di caricamento indeterminata da 2px."
+      },
+      {
+        "name": "scheletro-scia",
+        "value": "1.5s ease-in-out infinite",
+        "purpose": "Scia che passa sugli scheletri."
+      },
+      {
+        "name": "spia-pulsa",
+        "value": "1.5s ease-out infinite",
+        "purpose": "Spia ciano della riga di stato."
+      },
+      {
+        "name": "anello-gira",
+        "value": ".7s linear infinite",
+        "purpose": "Anello da 14px dentro un bottone premuto."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "telefono",
+        "value": "720px"
+      },
+      {
+        "name": "colonne-impilate",
+        "value": "1100px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Bottone principale",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "L'azione principale della testata: una per schermata.",
+      "html": "<button class=\"ds-btn-primario\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 5v14M5 12h14\"/></svg>Nuova polizza</button>",
+      "css": ".ds-btn-primario{height:34px;border-radius:3px;border:1px solid #02984e;background:#02984e;color:#fff;padding:0 12px;display:inline-flex;align-items:center;gap:7px;font:600 12px Inter,-apple-system,'Segoe UI',sans-serif;cursor:pointer;transition:background .15s}.ds-btn-primario:hover{background:#016b38}.ds-btn-primario:focus-visible{outline:2px solid #06b6d4;outline-offset:1px}"
+    },
+    {
+      "name": "Bottone secondario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Azioni secondarie accanto al principale.",
+      "html": "<button class=\"ds-btn\">Esporta</button>",
+      "css": ".ds-btn{height:34px;border-radius:3px;border:1px solid #dfe5ec;background:#fff;color:#141a23;padding:0 12px;display:inline-flex;align-items:center;gap:7px;font:600 12px Inter,-apple-system,'Segoe UI',sans-serif;cursor:pointer;transition:background .15s}.ds-btn:hover{background:#f8fafc}.ds-btn:focus-visible{outline:2px solid #06b6d4;outline-offset:1px}"
+    },
+    {
+      "name": "Scheda",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Il contenitore di ogni schermata: intestazione con pittogramma e corpo.",
+      "html": "<div class=\"ds-scheda\"><div class=\"ds-scheda-testa\"><span class=\"ds-picto\">€</span>Da fare oggi</div><div class=\"ds-scheda-corpo\">12 rate da incassare</div></div>",
+      "css": ".ds-scheda{background:#fff;border:1px solid #dfe5ec;border-radius:10px;box-shadow:0 1px 2px rgba(16,24,40,.06),0 1px 1px rgba(16,24,40,.04);font:13px Inter,-apple-system,'Segoe UI',sans-serif;color:#141a23;max-width:360px}.ds-scheda-testa{display:flex;align-items:center;gap:9px;padding:13px 15px;border-bottom:1px solid #dfe5ec;font-weight:700}.ds-picto{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:#e8f6ee;color:#016b38}.ds-scheda-corpo{padding:14px 15px}"
+    },
+    {
+      "name": "Tessera di riepilogo",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Un numero, la sua micro-etichetta e il contesto.",
+      "html": "<div class=\"ds-tessera\"><div class=\"ds-tessera-k\">Premi incassati</div><div class=\"ds-tessera-v\">€ 12.480,00</div><div class=\"ds-tessera-s\">43 rate · settembre</div></div>",
+      "css": ".ds-tessera{background:#f8fafc;border:1px solid #dfe5ec;border-radius:3px;padding:12px 14px;max-width:220px;font-family:Inter,-apple-system,'Segoe UI',sans-serif}.ds-tessera-k{font:700 10.5px ui-monospace,Menlo,Consolas,monospace;letter-spacing:.09em;text-transform:uppercase;color:#97a3b2}.ds-tessera-v{font:800 20px ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em;margin-top:4px;color:#141a23}.ds-tessera-s{font-size:12px;color:#6e7b8b;margin-top:2px}"
+    },
+    {
+      "name": "Campo",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo di testo; i campi numerici e di data in monospaziato.",
+      "html": "<input class=\"ds-campo\" inputmode=\"decimal\" value=\"1.250,00\">",
+      "css": ".ds-campo{height:34px;border:1px solid #dfe5ec;border-radius:3px;background:#fff;color:#141a23;padding:0 10px;font:13px ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}.ds-campo:focus-visible{outline:2px solid #06b6d4;outline-offset:1px}"
+    },
+    {
+      "name": "Pastiglia di stato",
+      "kind": "chip",
+      "refersTo": "tag-attenzione",
+      "description": "Lo stato detto a parole, in una capsula contornata del suo colore.",
+      "html": "<span class=\"ds-tag\">In proroga</span> <span class=\"ds-tag ds-tag-err\">Scoperta</span>",
+      "css": ".ds-tag{display:inline-block;border-radius:999px;padding:2px 7px;font:700 10.5px Inter,-apple-system,'Segoe UI',sans-serif;border:1px solid #c77a14;color:#c77a14;background:transparent}.ds-tag-err{border-color:#d6342c;color:#d6342c}"
+    },
+    {
+      "name": "Riga di stato (attesa)",
+      "kind": "custom",
+      "refersTo": "label",
+      "description": "L'attesa che dice che cosa sta facendo, con la spia ciano.",
+      "html": "<span class=\"ds-stato\">Lettura del portafoglio</span>",
+      "css": ".ds-stato{display:inline-flex;align-items:center;gap:9px;font:11px ui-monospace,Menlo,Consolas,monospace;letter-spacing:.07em;text-transform:uppercase;color:#6e7b8b}.ds-stato::before{content:'';width:6px;height:6px;border-radius:50%;background:#06b6d4;animation:ds-pulsa 1.5s ease-out infinite}@keyframes ds-pulsa{0%{box-shadow:0 0 0 0 rgba(6,182,212,.55)}70%{box-shadow:0 0 0 7px rgba(6,182,212,0)}100%{box-shadow:0 0 0 0 rgba(6,182,212,0)}}@media (prefers-reduced-motion:reduce){.ds-stato::before{animation:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Lo strumento dell'agenzia",
+    "overview": "IAM è l'attrezzo con cui un'agenzia assicurativa lavora tutto il giorno: sobrio, affidabile, riconoscibile come With Us senza farlo pesare. La maggior parte del tempo lo usa l'ufficio, al computer, su schermate dense di righe, scadenze e importi; il design serve a leggere molto, in fretta, senza sbagliare. Il carattere viene da tre scelte già in produzione: neutri freddi e profondi, il verde With Us riservato al marchio e alle azioni, un ciano di sistema per i segnali della macchina. I dati veri sono in monospaziato con cifre a larghezza fissa. Gli angoli sono stretti: è uno strumento, non un'app di consumo.",
+    "keyCharacteristics": [
+      "Neutri freddi, una scala sola; verde solo per marchio e azioni; ciano solo per i segnali di sistema.",
+      "Numeri e codici in monospaziato di sistema, cifre tabulari ovunque.",
+      "Angoli stretti (2–3px sui pezzi, 10px sulle schede), bordi sottili, ombre asciutte.",
+      "Scocca a barra laterale scura, contenuto chiaro a destra.",
+      "Quattro primitive di attesa, ognuna con la sua domanda."
+    ],
+    "rules": [
+      {
+        "name": "The Two Greens Rule",
+        "body": "Il verde ha un solo significato: marchio o azione. Non si usa per decorare, e un dato positivo in verde non deve sembrare un bottone.",
+        "section": "colors"
+      },
+      {
+        "name": "The Cyan Is The Machine Rule",
+        "body": "Il ciano compare solo quando parla il sistema (attese, spie, fuoco). Un bottone ciano, un titolo ciano o un grafico tutto ciano sono un errore.",
+        "section": "colors"
+      },
+      {
+        "name": "The Data Wears Mono Rule",
+        "body": "Ogni importo, codice, targa o data che si confronta con un altro va in monospaziato con cifre tabulari. Il testo descrittivo no.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Sans Rule",
+        "body": "Inter vale per tutto il sistema: oggi il preventivatore usa ancora il sans di sistema, e va portato su Inter quando si tocca il suo foglio di stile.",
+        "section": "typography"
+      },
+      {
+        "name": "The Border Before Shadow Rule",
+        "body": "Una scheda si separa dal fondo con il bordo da 1px; l'ombra di appoggio è un rinforzo, mai l'unico confine.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do usare i gettoni (--t-*, --w1-*, --txt*, --surf*, --bord*): ogni colore viene da withus-tech.css o withus-one-tokens.css.",
+      "Do scrivere importi, codici, targhe e date in monospaziato con cifre tabulari.",
+      "Do aprire ogni schermata con la testata del kit (micro-etichetta, titolo, sottotitolo, azioni) e organizzarla in schede.",
+      "Do far dire a ogni attesa che cosa sta aspettando, con una delle quattro primitive.",
+      "Do mostrare un vuoto con il suo motivo («non si è potuto leggere», «da confermare») invece di uno zero o di uno spazio bianco."
+    ],
+    "donts": [
+      "Don't scrivere colori a mano: 262 valori in IAM e 374 nel preventivatore sono già debito da riportare sui token.",
+      "Don't usare il ciano per azioni o decorazione, né il verde per decorare.",
+      "Don't reintrodurre animazioni di attesa proprie o un «Caricamento…» senza soggetto.",
+      "Don't tornare ad angoli da 16px o a ombre morbide e ampie: è uno strumento, non un'app di consumo.",
+      "Don't scaricare un monospaziato: quello dei dati è di sistema.",
+      "Don't toccare la grafica della schermata di transizione IAM → area preventivi senza richiesta esplicita."
+    ]
+  }
+}

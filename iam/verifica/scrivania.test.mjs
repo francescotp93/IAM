@@ -59,7 +59,7 @@ prova('la striscia di indicatori in cima non c\'è più', () => {
 
 // ── 3. I numeri stanno una volta sola, dentro «Da fare oggi» ─────────────
 prova('«Da fare oggi» disegna i numeri dai dati veri, cliccabili', () => {
-  const d = corpoDi('function oggiDisegna(voci)');
+  const d = corpoDi('function oggiDisegna(voci');
   deve(d, 'manca oggiDisegna');
   deve(/<button/.test(d), 'le voci non sono pulsanti: da tastiera non si raggiungono');
   deve(/oggi-v/.test(d), 'le voci non usano la scheda «da fare oggi»');
@@ -68,9 +68,22 @@ prova('«Da fare oggi» disegna i numeri dai dati veri, cliccabili', () => {
 });
 
 prova('senza niente da fare la scrivania lo dice, e non mostra un vuoto', () => {
-  const d = corpoDi('function oggiDisegna(voci)');
+  const d = corpoDi('function oggiDisegna(voci');
   deve(d && /!window\.__OGGI\.length/.test(d), 'con zero voci non c\'è il caso «niente da fare»');
   deve(/in pari/.test(d), 'non viene detto che il lavoro è in pari');
+});
+
+/* «IN PARI» SOLO SE OGNI LETTURA È RIUSCITA (critique 07/10/2026). Prima una
+   lettura caduta faceva sparire la sua voce in silenzio, e con la rete giù la
+   scrivania scriveva in verde «il lavoro è in pari»: diceva di non fare niente
+   proprio quando non si sapeva niente. */
+prova('con una lettura caduta la scrivania non dice «in pari»', () => {
+  const d = corpoDi('function oggiDisegna(voci') || '';
+  deve(/guasti\.length\s*\?/.test(d), 'il caso vuoto non distingue «niente da fare» da «non si è potuto leggere»');
+  deve(/Non si è potuto controllare/.test(d), 'una lettura caduta non si dichiara');
+  const c = corpoDi('async function caricaDaFareOggi(') || '';
+  deve(/guasti\.push\(nome\)/.test(c), 'chi raccoglie i conteggi non segna le letture cadute');
+  deve(/oggiDisegna\(voci, \{ guasti/.test(c), 'le letture cadute non arrivano al disegno');
 });
 
 // ── 4. La struttura del disegno (senza la striscia) ──────────────────────
@@ -100,23 +113,18 @@ prova('la tavolozza chiara non esce dalla scrivania', () => {
   deve(/--w1-/.test(blocco), 'i token non sono dichiarati dentro il confine');
 });
 
-// ── 5. Veste unica: anche la metà bassa (§13.3) ──────────────────────────
-prova('la metà bassa porta la stessa veste sobria della parte alta', () => {
-  /* I titoloni centrati bicolori erano la firma della vecchia veste: ora sono
-     allineati a sinistra e di un colore solo, come «Da fare oggi». */
-  deve(/\.dash-section-title\{[^}]*text-align:left/.test(html),
-    'i titoli di sezione sono ancora centrati');
-  deve(/\.dash-section-title span\{color:inherit/.test(html),
-    'i titoli di sezione sono ancora bicolori');
-  /* Le schede di sotto usano la scheda bianca a bordo sottile (--w1-bordo),
-     non più il bordo verde spesso. */
-  deve(/\.dash-card\{[^}]*--w1-bordo/.test(html),
-    'le schede di #d-content non hanno la veste a bordo sottile della parte alta');
-  /* La lista di scorciatoie doppia è stata tolta: ne resta una, «Azioni rapide». */
+// ── 5. La metà bassa non c'è più (07/10/2026) ───────────────────────────
+/* La veste unica della metà bassa (§13.3) non si sorveglia più: il blocco è
+   stato ridotto a un collegamento al Cruscotto (scelta di Francesco). Resta
+   la regola che conta: una sola lista di scorciatoie, «Azioni rapide», e
+   fatta di pulsanti veri, che da tastiera si raggiungono. */
+prova('una sola lista di scorciatoie, e fatta di pulsanti', () => {
   deve(!/dash-card-title">\s*Funzioni/.test(html),
     'è tornata «Funzioni più utilizzate», doppione di «Azioni rapide»');
+  deve(!/<div class="dash-list-row"/.test(html), 'una scorciatoia è un div con un clic: da tastiera non si raggiunge');
+  const n = (html.match(/<button type="button" class="dash-list-row"/g) || []).length;
+  deve(n >= 5, 'scorciatoie come pulsanti: ' + n);
 });
-
 // ── 6. Il saluto non deve dire il falso ──────────────────────────────────
 prova('il saluto segue l\'ora e non inventa un nome', () => {
   const f = corpoDi('function oggiSaluto()');
@@ -136,7 +144,7 @@ prova('la scrivania non usa emoji di sistema', () => {
   /* La stessa faccina è gialla su un telefono, piatta su Windows e diversa
      su un Mac: in un gestionale non è un simbolo. */
   const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
-  const zona = corpoDi('function oggiDisegna(voci)') || '';
+  const zona = corpoDi('function oggiDisegna(voci') || '';
   deve(!emoji.test(zona), 'c\'è ancora un\'emoji di sistema nella scrivania');
 });
 

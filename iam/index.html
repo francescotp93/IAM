@@ -1796,9 +1796,9 @@ input[type=file]{display:none;}
   textarea { font-size: 16px; }
 }
 </style>
-<link rel="stylesheet" href="withus-pictograms.css?v=20260804">
+<link rel="stylesheet" href="withus-pictograms.css?v=20261007">
 <!-- impronta withus-one.css: 9d3672a1 — se cambia, cambia anche il ?v= qui sotto -->
-<link rel="stylesheet" href="withus-one.css?v=20260915a">
+<link rel="stylesheet" href="withus-one.css?v=20261007">
 <!-- LA PELLE TECH — per ultima, e non è un dettaglio: ridefinisce i token che
      il resto della pagina usa 3.103 volte negli stili in linea, e a parità di
      specificità vince chi arriva dopo. Spostarla più in alto la disattiva
@@ -14941,7 +14941,7 @@ async function caricaDaFareOggi(forza) {
     const tot = (Number(e.totale) || 0) - (Number(e.totale_da_dichiarare) || 0);
     if (!n) return;
     voci.push({ g: 'soldi', n, cls: e.in_ritardo ? 'urg' : 'avv', l: n === 1 ? 'premio sospeso' : 'premi sospesi',
-                s: oggiEuro(tot) + (e.in_ritardo ? ' · ' + e.in_ritardo + ' fermi da troppo' : ' in arrivo'),
+                s: oggiEuro(tot) + (e.in_ritardo ? ' · ' + e.in_ritardo + (e.in_ritardo === 1 ? ' fermo' : ' fermi') + ' da troppo' : ' in arrivo'),
                 va: () => goTab('sospesi') });
   }, 'i sospesi');
 
@@ -14967,7 +14967,7 @@ async function caricaDaFareOggi(forza) {
     if (!recenti.length) return;
     const vecchie = perse.length - recenti.length;
     voci.push({ g: 'contratti', n: recenti.length, cls: 'urg', l: recenti.length === 1 ? 'polizza scoperta senza rinnovo' : 'polizze scoperte senza rinnovo',
-                s: 'scadute da 16 a 60 giorni' + (vecchie ? ' · altre ' + vecchie + ' più vecchie nello Scadenzario' : ''),
+                s: 'scadute da 16 a 60 giorni' + (vecchie ? (vecchie === 1 ? ' · un\'altra più vecchia' : ' · altre ' + vecchie + ' più vecchie') + ' nello Scadenzario' : ''),
                 va: () => oggiApri('scadenzario') });
   }, 'lo scadenzario');
 

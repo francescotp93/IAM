@@ -16,7 +16,10 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));   // .../server
 const ROOT = path.join(__dir, '..');
 const STORE = process.env.FONTI_STORE || path.join(__dir, 'fonti.store.json');
 const BACKUPS = process.env.BACKUP_DIR || '/var/lib/withus/backups';
-const KEY = process.env.RESTORE_KEY || 'leo-restore-fonti-9Zt4Qp2mVx';
+/* Nessun valore di riserva (audit GDPR, 07/10/2026): una chiave scritta in un
+   repository pubblico non protegge niente. Senza la variabile d'ambiente la
+   porta resta chiusa. */
+const KEY = process.env.RESTORE_KEY || '';
 
 function untar(archive, dir, file) {
   return new Promise((res, rej) => execFile('tar', ['-xzf', archive, '-C', dir, file], e => e ? rej(e) : res()));
@@ -24,7 +27,7 @@ function untar(archive, dir, file) {
 function loadJson(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } }
 
 restorePortaliRouter.get('/', async (req, res) => {
-  if ((req.query.key || '') !== KEY) return res.status(403).json({ error: 'chiave non valida' });
+  if (!KEY || (req.query.key || '') !== KEY) return res.status(403).json({ error: 'chiave non valida' });
   try {
     if (!fs.existsSync(BACKUPS)) return res.json({ ok: false, msg: 'Cartella backup non trovata: ' + BACKUPS });
     const archives = fs.readdirSync(BACKUPS).filter(f => /^withus-.*\.tar\.gz$/.test(f))

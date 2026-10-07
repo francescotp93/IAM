@@ -18,6 +18,7 @@ const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni
 import { MITTENTE_NOME } from './mittente.js';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
 const OTP_TTL_MIN = Number(process.env.OTP_TTL_MIN || 5);
+const OTP_MAX_TENTATIVI = 5;
 const SMS_ENABLED = String(process.env.BREVO_SMS_ENABLED || '').toLowerCase() === 'true';
 const SMS_SENDER = (process.env.BREVO_SMS_SENDER || 'WithUs').slice(0, 11);
 
@@ -239,6 +240,10 @@ publicSign.post('/verify', async (req, res) => {
     if (new Date(f.scadenza).getTime() < Date.now()) return res.status(410).json({ error: 'Codice scaduto. Richiedi un nuovo invio.' });
     if (!(consensi && consensi.privacy && consensi.precontrattuale))
       return res.status(400).json({ error: 'Devi accettare l\'informativa privacy e i documenti precontrattuali.' });
+    /* Cinque tentativi, poi il codice non vale più: senza tetto un OTP di sei
+       cifre si indovina provando (audit GDPR, 07/10/2026). Un nuovo invio
+       riparte da zero. */
+    if ((f.tentativi || 0) >= OTP_MAX_TENTATIVI) return res.status(429).json({ error: 'Troppi tentativi sbagliati: richiedi un nuovo codice.' });
     if (sha(String(otp) + ':' + t) !== f.otp_hash) {
       const tentativi = (f.tentativi || 0) + 1;
       await setFirma(id, { ...f, tentativi }, dati);
@@ -574,6 +579,7 @@ publicSign.post('/privacy/verify', async (req, res) => {
     if (!f || !t || f.token !== t) return res.status(403).json({ error: 'link non valido' });
     if (f.stato === 'firmata') return res.json({ ok: true, gia_firmata: true });
     if (new Date(f.scadenza).getTime() < Date.now()) return res.status(410).json({ error: 'Codice scaduto. Richiedi un nuovo invio.' });
+    if ((f.tentativi || 0) >= OTP_MAX_TENTATIVI) return res.status(429).json({ error: 'Troppi tentativi sbagliati: richiedi un nuovo codice.' });
     if (sha(String(otp) + ':' + t) !== f.otp_hash) {
       await setAnagPrivacy(id, { ...f, tentativi: (f.tentativi || 0) + 1 });
       return res.status(401).json({ error: 'Codice OTP errato.' });

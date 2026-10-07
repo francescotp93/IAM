@@ -5,7 +5,8 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 import express from 'express';
 import cors from 'cors';
-import { requireAuth } from './auth.js';
+import { requireAuth, requireInterno } from './auth.js';
+import { limitaPerIndirizzo } from './limitatore.js';
 import { publicMail, secureMail } from './mail.js';
 import { publicPay, securePay } from './pay.js';
 import { notifyRouter } from './notify.js';
@@ -95,42 +96,49 @@ app.get('/diag', (req, res) => {
   });
 });
 
+// ── Tetto alle rotte pubbliche (audit GDPR, 07/10/2026) ─────────────────────
+// Qui arriva chi non ha un account: firme, area convenzionati, lead,
+// candidature. Il tetto è largo (una persona vera non ci arriva mai) e serve a
+// fermare chi prova i codici a ripetizione o chiede codici nuovi all'infinito.
+const tettoPubblico = limitaPerIndirizzo({ max: 600, finestraMs: 10 * 60 * 1000 });
+app.use(['/sign', '/firma-collab', '/convenzionati', '/candidature', '/lead'], tettoPubblico);
+
 // ── Mail ──────────────────────────────────────────────────────────────────────
 app.use('/mail', publicMail);
-app.use('/mail', requireAuth, secureMail);
+app.use('/mail', requireAuth, requireInterno, secureMail);
 
 // ── Pagamenti ───────────────────────────────────────────────────────────────
 app.use('/pay', publicPay);
-app.use('/pay', requireAuth, securePay);
+app.use('/pay', requireAuth, requireInterno, securePay);
 
 // ── Notifiche ─────────────────────────────────────────────────────
-app.use('/notify', requireAuth, notifyRouter);
+app.use('/notify', requireAuth, requireInterno, notifyRouter);
 
 // ── Lead ────────────────────────────────────────────────────────
 app.use('/lead', leadRouter);
 
 // ── CRM · Anagrafiche clienti (solo utenti autenticati) ──────────────
-app.use('/crm', requireAuth, crmRouter);
-app.use('/catalogo', requireAuth, catalogoRouter);
+app.use('/crm', requireAuth, requireInterno, crmRouter);
+app.use('/catalogo', requireAuth, requireInterno, catalogoRouter);
 /* HDI Partner API. Finche' le credenziali non sono nel .env risponde «non
    configurato» invece di rompersi: sta in produzione spento e si accende
    quando HDI rilascia client id e secret. */
-app.use('/hdi-api', requireAuth, hdiApiRouter);
-app.use('/preventivi', requireAuth, preventiviRouter);
-app.use('/parametri-previdenziali', requireAuth, parametriPrevRouter);
-app.use('/analisi-previdenziali', requireAuth, analisiPrevRouter);
+app.use('/hdi-api', requireAuth, requireInterno, hdiApiRouter);
+app.use('/preventivi', requireAuth, requireInterno, preventiviRouter);
+app.use('/parametri-previdenziali', requireAuth, requireInterno, parametriPrevRouter);
+app.use('/analisi-previdenziali', requireAuth, requireInterno, analisiPrevRouter);
 // IAM → Utenti: l'attivazione dell'accesso di una persona del registro (chiave di servizio, mai nel browser)
-app.use('/utenti', requireAuth, utentiRouter);
+app.use('/utenti', requireAuth, requireInterno, utentiRouter);
 
 /* L'archivio dei documenti sul VPS, cifrato a riposo (18/09/2026). Dietro il
    login come tutto il resto: `requireAuth` dice CHI e', e la rotta di apertura
    rilegge i metadati col token di chi chiede, cosi' il permesso lo decide il
    database e non una seconda regola scritta qui. */
-app.use('/archivio', requireAuth, archivioVpsRouter());
+app.use('/archivio', requireAuth, requireInterno, archivioVpsRouter());
 /* Il registro degli esiti di quotazione (tabella quote_quotazioni_esiti): le
    righe le scrivono le rotte di quotazione da sole; qui c'e' solo la
    segnalazione dell'operatore — «il premio non torna» — dietro il login. */
-app.use('/esiti', requireAuth, esitiRouter);
+app.use('/esiti', requireAuth, requireInterno, esitiRouter);
 
 // ── Shop ──────────────────────────────────────────────────────
 app.use('/shop', shopRouter);
@@ -138,9 +146,9 @@ app.use('/l', ogRouter);
 
 // ── Firma ────────────────────────────────────────────────────
 app.use('/sign', publicSign);
-app.use('/sign', requireAuth, signRouter);
+app.use('/sign', requireAuth, requireInterno, signRouter);
 app.use('/firma-collab', publicFirmaCollab);
-app.use('/firma-collab', requireAuth, firmaCollabRouter);
+app.use('/firma-collab', requireAuth, requireInterno, firmaCollabRouter);
 /* Convenzionati: la rotta dell'ISCRIZIONE e' pubblica (ci arriva chi non ha
    nessun accesso, e' il punto), tutto il resto vuole lo staff. La pubblica va
    montata PRIMA, altrimenti il cancello la fermerebbe. */
@@ -151,7 +159,7 @@ app.use('/candidature', candidaturePubblico);
 /* Le rotte dell'associato: fuori dal cancello dello staff, ma non aperte —
    ognuna verifica il suo accesso Supabase e quale riga puo' toccare. */
 app.use('/convenzionati', convenzionatiRouter_pubblicoAssociati);
-app.use('/convenzionati', requireAuth, convenzionatiRouter);
+app.use('/convenzionati', requireAuth, requireInterno, convenzionatiRouter);
 
 // ── La chiave del ponte IAM<->QUOTO ───────────────────────────
 // Non sta in un file: nasce dentro Supabase e i due lati la leggono da li'
@@ -197,21 +205,21 @@ app.use('/api/v1', creaApiQuotazione({
 }));
 
 // ── Comparatore moto ─────────────────────────────────────────
-app.use('/moto', requireAuth, motoRouter);
+app.use('/moto', requireAuth, requireInterno, motoRouter);
 
 // ── Pannello Fonti (solo Super Admin) ──────────────────────────────
 app.use('/fonti', publicFontiRouter);
 // Vigilanza automatica delle sessioni compagnia: va montata PRIMA del router fonti,
 // altrimenti /fonti/vigilanza finirebbe intercettata dalle rotte generiche /fonti/:id.
-app.use('/fonti/vigilanza', requireAuth, vigilanzaRouter);
-app.use('/fonti', requireAuth, fontiRouter);
+app.use('/fonti/vigilanza', requireAuth, requireInterno, vigilanzaRouter);
+app.use('/fonti', requireAuth, requireInterno, fontiRouter);
 
 // ── Backup giornaliero (solo Super Admin) ─────────────────────────
-app.use('/backup', requireAuth, backupRouter);
+app.use('/backup', requireAuth, requireInterno, backupRouter);
 
 // ── Marketing: il ponte con Brevo (Blocco D) ──────────────────────────────────
 // La chiave di Brevo resta qui: non deve mai finire nel browser.
-app.use('/marketing', requireAuth, marketingRouter); // /liste, /mittenti, /campagne, /campagna…
+app.use('/marketing', requireAuth, requireInterno, marketingRouter); // /liste, /mittenti, /campagne, /campagna…
 
 // ── EXPLORER TEMPORANEO Plurima (sola lettura, protetto da chiave) — RIMUOVERE dopo l'uso ──
 app.use('/plurima-explore', plurimaExploreRouter);

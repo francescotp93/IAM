@@ -1,8 +1,8 @@
 // ── CRM · Anagrafiche clienti ────────────────────────────────────────────────
 // Espone la tabella `quote_anagrafiche` (definita in supabase/quote_schema.sql) come
 // registro clienti lato gestore, sul modello del Portafoglio di Plurima.
-// Montato in server/index.js sotto requireAuth (come /notify, /moto): tutte le rotte
-// qui sono quindi gia protette dal login Supabase.
+// Montato in server/index.js sotto requireAuth + requireInterno: solo account
+// dell'agenzia, e ogni richiesta porta il token di chi chiama (vale la RLS).
 //
 // Rotte:
 //   GET    /crm/anagrafiche            lista + ricerca (q) + filtro lead + paginazione
@@ -32,10 +32,16 @@ const CAMPI = [
   'fatt_partita_iva', 'fatt_codice_fiscale', 'fatt_ragione_sociale',
 ];
 
-function sbHeaders(extra) {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY non configurata');
-  return { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json', ...(extra || {}) };
+/* Le richieste partono col token di CHI CHIAMA, non con la chiave di servizio
+   (audit GDPR, 07/10/2026). Con la chiave di servizio la RLS non valeva: un
+   collaboratore elencava le anagrafiche di tutta l'agenzia, e un account
+   esterno poteva anche cancellarle. Così decide quote_vede, come per ogni
+   altra lettura del gestionale: una regola sola, nel database. */
+function sbHeaders(req, extra) {
+  const anon = process.env.SUPABASE_ANON_KEY;
+  if (!anon) throw new Error('SUPABASE_ANON_KEY non configurata');
+  if (!req || !req.token) throw new Error('token mancante');
+  return { apikey: anon, Authorization: 'Bearer ' + req.token, 'Content-Type': 'application/json', ...(extra || {}) };
 }
 
 // PostgREST: escape del valore dentro un filtro or=() — le virgole e parentesi romperebbero la query.
@@ -77,7 +83,7 @@ crmRouter.get('/anagrafiche', async (req, res) => {
       params.set('or', `(nominativo.ilike.${t},codice_fiscale.ilike.${t},partita_iva.ilike.${t},email.ilike.${t},comune.ilike.${t})`);
     }
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?${params.toString()}`, {
-      headers: sbHeaders({ Prefer: 'count=exact', Range: `${offset}-${offset + limit - 1}` }),
+      headers: sbHeaders(req, { Prefer: 'count=exact', Range: `${offset}-${offset + limit - 1}` }),
     });
     if (!r.ok) throw new Error('Supabase select: ' + (await r.text()).slice(0, 200));
     const rows = await r.json();
@@ -89,7 +95,7 @@ crmRouter.get('/anagrafiche', async (req, res) => {
 // ── Dettaglio ────────────────────────────────────────────────────────────────
 crmRouter.get('/anagrafiche/:id', async (req, res) => {
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(req.params.id)}&select=*`, { headers: sbHeaders() });
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(req.params.id)}&select=*`, { headers: sbHeaders(req) });
     if (!r.ok) throw new Error('Supabase select: ' + (await r.text()).slice(0, 200));
     const rows = await r.json();
     if (!rows.length) return res.status(404).json({ error: 'Anagrafica non trovata.' });
@@ -103,9 +109,9 @@ crmRouter.post('/anagrafiche', async (req, res) => {
     const row = pickCampi(req.body || {});
     const err = validaRow(row, { parziale: false });
     if (err) return res.status(400).json({ error: err });
-    if (req.user && req.user.sub) row.creato_da = req.user.sub;
+    if (req.user && req.user.id) row.creato_da = req.user.id;
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
-      method: 'POST', headers: sbHeaders({ Prefer: 'return=representation' }), body: JSON.stringify([row]),
+      method: 'POST', headers: sbHeaders(req, { Prefer: 'return=representation' }), body: JSON.stringify([row]),
     });
     if (!r.ok) throw new Error('Supabase insert: ' + (await r.text()).slice(0, 200));
     const rows = await r.json();
@@ -121,7 +127,7 @@ crmRouter.put('/anagrafiche/:id', async (req, res) => {
     const err = validaRow(row, { parziale: true });
     if (err) return res.status(400).json({ error: err });
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(req.params.id)}`, {
-      method: 'PATCH', headers: sbHeaders({ Prefer: 'return=representation' }), body: JSON.stringify(row),
+      method: 'PATCH', headers: sbHeaders(req, { Prefer: 'return=representation' }), body: JSON.stringify(row),
     });
     if (!r.ok) throw new Error('Supabase update: ' + (await r.text()).slice(0, 200));
     const rows = await r.json();
@@ -132,9 +138,12 @@ crmRouter.put('/anagrafiche/:id', async (req, res) => {
 
 // ── Elimina ──────────────────────────────────────────────────────────────────
 crmRouter.delete('/anagrafiche/:id', async (req, res) => {
+  /* Cancellare un cliente lo decide l'amministrazione: ci sono appese polizze,
+     documenti e consensi. */
+  if (req.ruolo !== 'admin') return res.status(403).json({ error: 'Solo l\'amministrazione può eliminare un\'anagrafica.' });
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(req.params.id)}`, {
-      method: 'DELETE', headers: sbHeaders({ Prefer: 'return=representation' }),
+      method: 'DELETE', headers: sbHeaders(req, { Prefer: 'return=representation' }),
     });
     if (!r.ok) throw new Error('Supabase delete: ' + (await r.text()).slice(0, 200));
     const rows = await r.json();

@@ -174,7 +174,8 @@
       "Bash(yarn *)",
       "Bash(yarn:*)",
       "Bash(zip *)",
-      "Bash(zip:*)"
+      "Bash(zip:*)",
+      "mcp__playwright"
     ],
     "deny": [
       "mcp__Brevo__email_campaign_management_create_email_campaign",
@@ -247,5 +248,8 @@
         ]
       }
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "playwright"
+  ]
 }

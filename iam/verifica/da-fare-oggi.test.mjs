@@ -30,31 +30,41 @@ const html = leggi('index.html');
 const corpo = (html.match(/async function caricaDaFareOggi\([^)]*\)[\s\S]*?\n\}/) || [''])[0];
 if (!corpo) { console.log('DA FARE OGGI\n  X   la funzione caricaDaFareOggi non si trova'); process.exit(1); }
 
+/* LA SCRIVANIA METTE PRIMA IL LAVORO (critique del 07/10/2026). La testata
+   promette «le cose che richiedono attenzione, prima di tutto il resto», e
+   la prima cosa sotto era un grafico alto 540 pixel: «Da fare oggi»
+   cominciava a metà schermo. Adesso viene subito dopo la testata, prima del
+   grafico e degli indicatori. */
 prova('la fascia esiste ed è la prima cosa nella scrivania', () => {
   const pannello = html.slice(html.indexOf('<div class="panel" id="panel-dashboard">'));
-  const iOggi = pannello.indexOf('id="oggi"');
-  const iVuoto = pannello.indexOf('id="d-empty"');
-  const iContenuto = pannello.indexOf('id="d-content"');
+  const fine = pannello.indexOf('<div class="panel" id="panel-', 10);
+  const p = fine > 0 ? pannello.slice(0, fine) : pannello;
+  const iTesta = p.indexOf('class="page-head"');
+  const iOggi = p.indexOf('id="oggi"');
+  const iGrafico = p.indexOf('id="vol-card"');
+  const iKpi = p.indexOf('id="kpi-riga"');
   deve(iOggi > 0, 'la fascia "Da fare oggi" non c\'è');
-  deve(iOggi < iVuoto && iOggi < iContenuto, 'la fascia non è la prima cosa che si vede');
-  return 'prima di tutto il resto';
+  deve(iTesta < iOggi, 'la testata non viene prima');
+  deve(iOggi < iGrafico && iOggi < iKpi, 'la fascia non è la prima cosa dopo la testata: il lavoro sta sotto il grafico');
+  deve(!/display:\s*none/.test(p.slice(iOggi, iGrafico)), 'la fascia nasce nascosta');
+  return 'testata → da fare oggi → grafico → indicatori';
 });
 
-prova('la fascia sta FUORI dal blocco che richiede i file di contabilita', () => {
-  // #d-content parte con display:none e si apre solo dopo il caricamento dei
-  // file: se la fascia stesse dentro, un agente che non fa contabilita non
-  // vedrebbe mai il proprio lavoro.
-  const iOggi = html.indexOf('id="oggi"');
-  const iContenuto = html.indexOf('id="d-content"');
-  deve(iOggi < iContenuto, 'la fascia e dentro #d-content: resterebbe nascosta');
-  const dopoOggi = html.slice(iOggi, iContenuto);
-  deve(!/display:\s*none/.test(dopoOggi), 'la fascia nasce nascosta');
-  return 'sempre visibile';
-});
-
-prova('il messaggio della scrivania vuota non promette piu tutto', () => {
-  const riga = (html.match(/id="d-empty"[^\n]*/) || [''])[0];
-  deve(/contabilit/i.test(riga), 'il messaggio dice ancora che senza file non c\'e nulla da vedere');
+/* IL VECCHIO BLOCCO IN FONDO È UN RIMANDO (scelta di Francesco, 07/10/2026).
+   Prima c'erano un secondo titolo «Scrivania», novità ferme all'11/06, un
+   modulo ticket e un messaggio che chiedeva di caricare file che non si
+   caricano più: la pagina finiva in un vicolo cieco. */
+prova('il vecchio blocco in fondo è un collegamento al Cruscotto, non un vicolo cieco', () => {
+  deve(!/id="d-content"/.test(html) && !/id="d-empty"/.test(html), 'il vecchio blocco è ancora nella pagina');
+  deve(!/Carica i file per vedere/.test(html), 'la scrivania chiede ancora di caricare file che non si caricano più');
+  const pannello = html.slice(html.indexOf('<div class="panel" id="panel-dashboard">'));
+  const p = pannello.slice(0, pannello.indexOf('<div class="panel" id="panel-', 10));
+  deve(/goTab\('cruscotto'\)/.test(p), 'la contabilità del giorno non si raggiunge dalla scrivania');
+  deve(/apriGiacenza\(\)/.test(p), 'la giacenza contanti non ha più una porta: si raggiungeva solo dal blocco tolto');
+  deve(!/goTab\('conto'\)/.test(p), 'una scorciatoia punta ancora alla schermata «conto», che non esiste più');
+  const build = (html.match(/function buildDashboard\(\)[\s\S]*?\n\}/) || [''])[0];
+  deve(!/getElementById\('d-(metrics|tipo|anz|mov|empty|content)'\)/.test(build),
+    'buildDashboard scrive ancora negli elementi tolti: il primo che manca ferma tutto quello che viene dopo');
 });
 
 prova('il calcolo si avvia da tutti i percorsi, non da uno solo', () => {

@@ -52,7 +52,7 @@ function conScrivania(risposte = {}) {
       return q;
     }
   };
-  const s = stanza(html, ['kpiRiquadro', 'kpiEuro', 'caricaKpiScrivania', 'cntTutte'], {
+  const s = stanza(html, ['kpiRiquadro', 'kpiEuro', 'kpiMese', 'caricaKpiScrivania', 'cntTutte'], {
     db,
     altro: {
       KPI_ULTIMO: 0, CNT_PASSO: 1000, CNT_GIRI: 50,

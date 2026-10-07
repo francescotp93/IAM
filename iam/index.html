@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.44.1">
-<meta name="app-versione-nome" content="Il tasto Conferma, e i motori che restavano indietro">
+<meta name="app-versione" content="0.50.0">
+<meta name="app-versione-nome" content="La Scrivania mette prima il lavoro, e i suoi numeri sono veri">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -327,8 +327,8 @@
 .kpi-riga{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
 .kpi-c{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:13px 15px;min-width:0}
 .kpi-c.kpi-ko{border-left:3px solid #f59e0b}
-.kpi-c .kpi-k{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
-.kpi-c .kpi-v{font-size:22px;font-weight:800;margin-top:4px;line-height:1.1}
+.kpi-c .kpi-k{font-size:11px;color:var(--txt2);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
+.kpi-c .kpi-v{font-size:22px;font-weight:800;margin-top:4px;line-height:1.1;font-family:var(--t-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .kpi-c .kpi-v .kpi-u{font-size:13px;font-weight:600;color:var(--txt2)}
 .kpi-c .kpi-s{font-size:11px;color:var(--txt2);margin-top:5px;line-height:1.5}
 @media(max-width:900px){.kpi-riga{grid-template-columns:1fr}}
@@ -360,8 +360,8 @@
    dentro un discendente (§26), e le classi in comune coi due documenti sono a
    scarto zero (§10). */
 .vol-sintesi{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:14px}
-.vol-k{font-size:11px;color:var(--w1-testo3);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
-.vol-big{font-size:27px;font-weight:800;line-height:1.05;letter-spacing:-.015em}
+.vol-k{font-size:11px;color:var(--w1-testo2);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
+.vol-big{font-size:27px;font-weight:800;line-height:1.05;letter-spacing:-.02em;font-family:var(--t-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums}
 .vol-pol{font-size:12.5px;color:var(--w1-testo2);font-weight:600}
 .vol-vs{font-size:12.5px;color:var(--w1-testo2);flex-basis:100%}
 .vol-delta{font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:999px;display:inline-block}
@@ -378,17 +378,19 @@
 .vol-banda{fill:rgba(15,23,42,.07)}
 .vol-griglia{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
 .vol-g{height:0;border-top:1px dashed var(--w1-bordo);position:relative}
-.vol-gv{position:absolute;right:0;top:-8px;font-size:10px;font-weight:700;color:var(--w1-testo3);background:var(--w1-card);padding:0 4px;border-radius:3px}
+.vol-gv{position:absolute;right:0;top:-8px;font-size:10px;font-weight:700;color:var(--w1-testo2);background:var(--w1-card);padding:0 4px;border-radius:3px}
 .vol-tocchi{position:absolute;inset:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr))}
 .vol-tocco{border:0;background:transparent;padding:0;margin:0;cursor:pointer;font:inherit;color:inherit}
 .vol-tocco:hover{background:rgba(15,23,42,.04)}
 .vol-mesi{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px;margin-top:7px}
-.vol-m{font-size:10px;color:var(--w1-testo3);text-align:center;text-transform:uppercase;letter-spacing:.02em}
+.vol-m{font-size:10px;color:var(--w1-testo2);text-align:center;text-transform:uppercase;letter-spacing:.02em}
 .vol-m.vol-parz{color:var(--w1-ambra);font-weight:800}
-.vol-m.vol-nonarr{color:var(--w1-bordo2,#e9edf1)}
+/* «non ancora arrivato» si dice con il corsivo, non sparendo: a 1,1:1 i mesi
+   di novembre e dicembre non si leggevano proprio. */
+.vol-m.vol-nonarr{color:var(--w1-testo2);font-style:italic;opacity:.75}
 .vol-m.vol-msel{color:var(--w1-testo);font-weight:800}
 .vol-dett{margin-top:12px;font-size:12.5px;line-height:1.6;padding:10px 12px;border-radius:var(--w1-raggio);background:var(--w1-sfondo);border:1px solid var(--w1-bordo)}
-.vol-dett.vol-invito{color:var(--w1-testo3);background:transparent;border-style:dashed}
+.vol-dett.vol-invito{color:var(--w1-testo2);background:transparent;border-style:dashed}
 .vol-dm{font-weight:800;text-transform:capitalize}
 .vol-dr{display:block}
 .vol-legenda{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--w1-testo2);margin-top:12px}
@@ -675,91 +677,12 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .mcard:nth-child(3){animation-delay:.15s}.mcard:nth-child(4){animation-delay:.2s}
 .mcard:nth-child(5){animation-delay:.25s}.mcard:nth-child(6){animation-delay:.3s}
 
-/* ── PROFESSIONAL DASHBOARD ──
-   Veste unificata (§13.3): tutto #d-content usa la stessa scheda bianca a
-   bordo sottile 1px, angoli poco arrotondati e testo sobrio della parte alta
-   (.d-card). Via i titoli verdi bicolori e le schede dal bordo colorato. I
-   token --w1-* sono quelli fissi-chiari dichiarati su #panel-dashboard: così
-   anche la metà bassa resta chiara in tema scuro, come quella in cima. */
-.dash-pro{padding:18px 18px 24px;background:transparent;min-height:100%;}
-.dash-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;}
-.dash-title{font-size:16px;font-weight:700;color:var(--w1-testo);letter-spacing:-.01em;}
-.dash-action{display:flex;align-items:center;gap:8px;padding:0 14px;height:34px;background:var(--w1-verde);color:#fff;border:none;border-radius:var(--w1-raggio);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}
-.dash-action:hover{background:var(--w1-verde-scuro);}
-/* Titolo di sezione: sobrio e allineato a sinistra, come «Da fare oggi».
-   Prima era centrato, grande e bicolore: la firma della vecchia veste. */
-.dash-section-title{text-align:left;font-size:13px;font-weight:700;color:var(--w1-testo);margin:22px 0 11px;letter-spacing:.01em;}
-.dash-section-title span{color:inherit;}
-.dash-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:20px;}
-.dash-card{background:#fff;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);padding:15px 16px;box-shadow:var(--w1-ombra);position:relative;overflow:hidden;}
-.dash-card-title{font-size:13px;font-weight:700;color:var(--w1-testo);margin-bottom:12px;letter-spacing:0;}
-.dash-card-title span{color:inherit;}
-/* «Novità»: da fascia verde piena a pastiglia tenue, in linea con la veste. */
-.dash-ribbon{position:absolute;top:14px;right:14px;background:var(--w1-verde-tenue);color:var(--w1-verde-scuro);font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.02em;}
-.dash-news{font-size:13px;line-height:1.55;color:var(--w1-testo2);font-weight:500;max-width:92%;}
-.dash-updates{display:grid;gap:9px;max-width:100%;}
-.dash-update{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--w1-bordo);}
-.dash-update:first-child{border-top:none;padding-top:0;}
-.dash-update-date{font-size:10px;font-weight:700;color:var(--w1-verde-scuro);background:var(--w1-verde-tenue);border-radius:999px;padding:3px 8px;white-space:nowrap;line-height:1.2;}
-.dash-update-text{font-size:12px;line-height:1.45;color:var(--w1-testo2);font-weight:500;}
-.dash-update-text b{color:var(--w1-testo);}
+/* ── AZIONI RAPIDE DELLA SCRIVANIA ── */
 .dash-list{border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);overflow:hidden;background:#fff;}
-.dash-list-row{display:flex;align-items:center;gap:12px;padding:12px 13px;border-top:1px solid var(--w1-bordo);font-size:13px;color:var(--w1-testo2);cursor:pointer;transition:background .15s,color .15s;}
+.dash-list-row{display:flex;align-items:center;gap:12px;width:100%;padding:12px 13px;border:0;border-top:1px solid var(--w1-bordo);background:transparent;font-family:inherit;text-align:left;font-size:13px;color:var(--w1-testo2);cursor:pointer;transition:background .15s,color .15s;}
 .dash-list-row:first-child{border-top:none;}
 .dash-list-row:hover{background:var(--w1-verde-tenue);color:var(--w1-testo);}
 .dash-list-row i{font-size:17px;color:var(--w1-testo3);}
-.dash-pill{margin-left:auto;min-width:32px;text-align:center;border-radius:999px;background:var(--w1-verde);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;}
-.dash-metrics{display:grid;grid-template-columns:1fr;gap:12px;}
-.dash-metric-card{background:#fff;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);padding:15px 16px;box-shadow:var(--w1-ombra);}
-.dash-metric-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px;}
-.dash-metric-title{font-size:13px;font-weight:700;color:var(--w1-testo);}
-.dash-metric-title span{color:inherit;}
-.dash-metric-icon{color:var(--w1-testo3);font-size:18px;}
-.dash-help{position:relative;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border:0;background:transparent;color:var(--w1-testo3);cursor:help;padding:0;border-radius:var(--w1-raggio);}
-.dash-help i{font-size:18px;}
-.dash-help:focus-visible{outline:2px solid rgba(2,152,78,.35);outline-offset:2px;}
-.dash-help:after{content:attr(data-tip);position:absolute;right:0;top:calc(100% + 8px);width:min(300px,72vw);padding:10px 12px;background:var(--w1-testo);color:#fff;border-radius:var(--w1-raggio);font-size:11px;font-weight:500;line-height:1.4;text-align:left;box-shadow:var(--w1-ombra);opacity:0;transform:translateY(-4px);pointer-events:none;transition:opacity .15s,transform .15s;z-index:20;}
-.dash-help:hover:after,.dash-help:focus:after{opacity:1;transform:translateY(0);}
-#d-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;background:transparent;}
-.dash-stat-list{border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);overflow:hidden;background:#fff;}
-.dash-stat{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:7px;min-height:80px;padding:11px 12px;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);background:#fff;transition:background .15s,border-color .15s;}
-.dash-stat[onclick]{cursor:pointer;}
-.dash-stat[onclick]:hover{background:var(--w1-verde-tenue);border-color:#c9d3da;}
-.dash-stat-left{display:flex;align-items:center;gap:8px;min-width:0;width:100%;}
-/* Pallino di stato fermo, non lampeggiante: la veste sobria non ha animazioni
-   decorative (§13.3). */
-.dash-dot{width:9px;height:9px;border-radius:50%;background:var(--w1-verde);flex-shrink:0;}
-.dash-stat-label{font-size:11px;font-weight:600;color:var(--w1-testo3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.02em;}
-.dash-stat-value{font-size:19px;font-weight:700;color:var(--w1-testo);white-space:nowrap;letter-spacing:-.02em;}
-.dash-stat-sub{font-size:11px;color:var(--w1-testo3);line-height:1.25;min-height:14px;}
-.dash-data-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px;}
-.dash-ticket-form{display:grid;gap:8px;margin-bottom:12px;}
-.dash-ticket-field{width:100%;padding:9px 11px;background:#fff;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);color:var(--w1-testo);font-size:13px;font-family:inherit;outline:none;}
-.dash-ticket-field:focus{border-color:var(--w1-verde);box-shadow:0 0 0 3px rgba(2,152,78,.12);}
-.dash-ticket-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.dash-ticket-actions{display:flex;gap:8px;align-items:center;}
-.dash-ticket-submit{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 14px;background:var(--w1-verde);color:#fff;border:none;border-radius:var(--w1-raggio);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;}
-.dash-ticket-submit:hover{background:var(--w1-verde-scuro);}
-.dash-ticket-link{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;background:#fff;color:var(--w1-testo2);border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;}
-.dash-ticket-link:hover{background:var(--w1-sfondo);}
-.dash-ticket-list{border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);overflow:hidden;background:#fff;max-height:220px;overflow-y:auto;}
-.dash-ticket-item{padding:10px 12px;border-top:1px solid var(--w1-bordo);cursor:pointer;transition:background .15s;}
-.dash-ticket-item:first-child{border-top:none;}
-.dash-ticket-item:hover{background:var(--w1-verde-tenue);}
-.dash-ticket-title{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;color:var(--w1-testo);}
-.dash-ticket-meta{font-size:10px;color:var(--w1-testo3);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;}
-.dash-alerts{display:grid;gap:10px;}
-.dash-alert-tile{display:flex;align-items:center;gap:12px;width:100%;padding:12px 13px;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);background:#fff;color:var(--w1-testo);text-align:left;cursor:pointer;font-family:inherit;position:relative;overflow:hidden;}
-.dash-alert-tile:before{content:'';width:9px;height:9px;border-radius:50%;background:var(--w1-ambra);flex-shrink:0;}
-.dash-alert-tile.crit:before{background:var(--w1-rosso);}
-.dash-alert-tile.ok{cursor:default;}
-.dash-alert-tile.ok:before{background:var(--w1-verde);}
-.dash-alert-main{flex:1;min-width:0;}
-.dash-alert-title{font-size:13px;font-weight:700;color:var(--w1-testo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dash-alert-sub{font-size:11px;color:var(--w1-testo3);margin-top:2px;}
-.dash-alert-count{min-width:30px;text-align:center;border-radius:999px;background:var(--w1-verde);color:#fff;font-size:12px;font-weight:700;padding:4px 8px;}
-@media(min-width:860px){.dash-grid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.dash-metrics{grid-template-columns:1fr 1.45fr}.dash-data-grid{grid-template-columns:1fr 1fr 1fr}.dash-pro{padding:22px 24px 28px}}
-@media(max-width:520px){.dash-top{align-items:flex-start;flex-direction:column}.dash-card,.dash-metric-card{padding:14px}.dash-ribbon{position:static;margin:0 0 10px;width:max-content}.dash-news{max-width:100%}#d-metrics{grid-template-columns:1fr}}
 
 /* ── ALERTS ── */
 .alert{display:flex;gap:10px;padding:13px 16px;border-left:3px solid transparent;cursor:default;}
@@ -1019,7 +942,7 @@ input[type=file]{display:none;}
 /* ── DA FARE OGGI (Blocco B) ─────────────────────────────────────────────────
    La prima cosa che si vede aprendo il programma. Verde With Us, squadrato,
    denso: coerente con la pelle IAM. Le righe sono azioni, non numeri. */
-.oggi{margin:14px;background:var(--surf);border:1px solid var(--bord2);border-radius:4px;overflow:hidden;}
+.oggi{margin:0;background:var(--surf);border:1px solid var(--bord2);border-radius:4px;overflow:hidden;}
 .oggi-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding:11px 16px;background:rgba(0,0,0,.03);border-bottom:1px solid var(--bord2);}
 .oggi-t{font-size:14px;font-weight:700;color:var(--txt);}
@@ -1215,8 +1138,8 @@ input[type=file]{display:none;}
   --w1-testo:#1f2a37; --w1-testo2:#5a6b7c; --w1-testo3:#8b9aa9;
   --w1-ambra:#b06a00; --w1-ambra-bg:#fff4e6;
   --w1-rosso:#a3352a; --w1-rosso-bg:#fff6f5;
-  --w1-raggio:4px;
-  --w1-focus:0 0 0 3px rgba(2,152,78,.14);
+  --w1-raggio:3px;
+  --w1-focus:0 0 0 3px rgba(6,182,212,.22);
   --w1-ombra:0 1px 2px rgba(16,36,54,.04),0 12px 34px rgba(16,36,54,.055);
   background:var(--w1-sfondo); color:var(--w1-testo);
 }
@@ -1243,8 +1166,8 @@ input[type=file]{display:none;}
   --w1-testo:#1f2a37; --w1-testo2:#5a6b7c; --w1-testo3:#8b9aa9;
   --w1-ambra:#b06a00; --w1-ambra-bg:#fff4e6;
   --w1-rosso:#a3352a; --w1-rosso-bg:#fff6f5;
-  --w1-raggio:4px;
-  --w1-focus:0 0 0 3px rgba(2,152,78,.14);
+  --w1-raggio:3px;
+  --w1-focus:0 0 0 3px rgba(6,182,212,.22);
   --w1-ombra:0 1px 2px rgba(16,36,54,.04),0 12px 34px rgba(16,36,54,.055);
   background:var(--w1-sfondo); color:var(--w1-testo);
 }
@@ -1291,12 +1214,16 @@ input[type=file]{display:none;}
 .head-actions{display:flex;gap:8px;flex-wrap:wrap}
 .d-btn{height:34px;border-radius:var(--w1-raggio);border:1px solid var(--w1-bordo);background:var(--w1-card);color:var(--w1-testo);padding:0 12px;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer}
 .d-btn:hover{background:#f7f9fa}
-.d-btn:focus-visible{outline:none;box-shadow:var(--w1-focus)}
-.d-btn.primario{border-color:var(--w1-verde);background:var(--w1-verde);color:#fff}
-.d-btn.primario:hover{background:var(--w1-verde-scuro)}
+.d-btn:focus-visible{outline:2px solid var(--t-dati,#06b6d4);outline-offset:1px}
+/* Il bianco sul verde di marchio a 12px fa 3,7:1, sotto la soglia di lettura
+   (AA 4,5:1): il pieno usa il verde profondo, 6,6:1, e il verde di marchio
+   resta nel bordo. Misurato nella critique del 07/10/2026. */
+.d-btn.primario{border-color:var(--w1-verde);background:var(--w1-verde-scuro);color:#fff}
+.d-btn.primario:hover{background:#015a2f}
+/* I bottoni non ereditano il carattere della pagina: senza questa riga
+   uscivano in Arial. */
+.d-btn,.oggi-ric{font-family:inherit}
 .d-card{background:var(--w1-card);border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);box-shadow:var(--w1-ombra)}
-/* Le classi .kpi* (striscia di indicatori in cima) sono state tolte con la
-   striscia stessa (§13.3): i numeri restano solo dentro «Da fare oggi». */
 .pictogram{width:32px;height:32px;border-radius:7px;display:grid;place-items:center;background:var(--w1-verde-tenue);color:var(--w1-verde-scuro);flex:none}
 .pictogram i{font-size:18px}
 .pictogram.amber{background:var(--w1-ambra-bg);color:var(--w1-ambra)}
@@ -1305,7 +1232,7 @@ input[type=file]{display:none;}
 .dashboard-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(310px,.8fr);gap:12px;align-items:start;padding:0 16px 16px}
 .stack{display:grid;gap:12px;min-width:0}
 .card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--w1-bordo)}
-.card-title{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700}
+.card-title{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;margin:0}
 .card-title .pictogram{width:28px;height:28px}
 .card-body{padding:14px 15px}
 /* Sotto i 1100px le due colonne si impilano. */
@@ -1316,18 +1243,40 @@ input[type=file]{display:none;}
    colonna e non finisce sotto/sopra «Azioni rapide» accanto (§13.3). */
 .oggi-corpo{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,258px),1fr));background:var(--surf);}
 .oggi-attesa,.oggi-vuoto{grid-column:1/-1;padding:20px 16px;font-size:13px;color:var(--txt3);background:var(--surf);}
-.oggi-vuoto{color:#02984e;font-weight:600;}
+.oggi-vuoto{color:var(--w1-testo,var(--txt));font-weight:600;}
 /* una voce = un'azione: conteggio grande, cosa fare, e dove porta */
 .oggi-v{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--surf);
   border:none;border-right:1px solid var(--bord2);border-bottom:1px solid var(--bord2);
   cursor:pointer;text-align:left;font-family:inherit;color:var(--txt);width:100%;}
 .oggi-v:hover{background:rgba(2,152,78,.06);}
-.oggi-n{flex:0 0 auto;min-width:38px;font-size:22px;font-weight:800;line-height:1;color:#02984e;}
-.oggi-v.urg .oggi-n{color:#c0392b;}
-.oggi-v.avv .oggi-n{color:#c25a00;}
+.oggi-n{flex:0 0 auto;min-width:4.2ch;text-align:right;font-family:var(--t-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;font-size:22px;font-weight:800;line-height:1;color:var(--w1-testo,var(--txt));}
+.oggi-v.urg .oggi-n{color:var(--w1-rosso);}
+.oggi-v.avv .oggi-n{color:var(--w1-ambra);}
+/* ══ SCRIVANIA · critique del 07/10/2026 ═════════════════════════════════════
+   I tre gruppi, la riga «con calma», gli avvisi di lettura, il fuoco visibile
+   e i contrasti misurati. I colori vengono dai gettoni del pannello. */
+.oggi-grp{grid-column:1/-1;border-bottom:1px solid var(--bord2)}
+.oggi-grp:last-of-type{border-bottom:none}
+.oggi-gh{margin:0;padding:10px 16px 2px;color:var(--w1-testo2,var(--txt2))}
+.oggi-gl{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,258px),1fr))}
+.oggi-v:focus-visible,.dash-list-row:focus-visible,.oggi-calma-b:focus-visible,.oggi-ric:focus-visible{outline:2px solid var(--t-dati,#06b6d4);outline-offset:-2px}
+.oggi-guasto{grid-column:1/-1;margin:10px 16px 0;padding:9px 12px;font-size:12.5px;line-height:1.45;color:var(--w1-ambra);background:var(--w1-ambra-bg);border:1px solid currentColor;border-radius:var(--w1-raggio)}
+.oggi-calma{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 16px;border-top:1px solid var(--bord2);font-size:12px;color:var(--w1-testo2,var(--txt2))}
+.oggi-calma-t{font-weight:600}
+.oggi-calma-b{border:none;background:none;padding:2px 0;font:inherit;font-size:12px;color:var(--w1-verde-scuro);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.dash-largo{margin:0 16px 12px}
+.dash-rimando{margin:4px 16px 20px;font-size:12.5px;color:var(--w1-testo2,var(--txt2))}
+.vol-azioni{display:flex;gap:8px}
+/* Il grafico è compatto: sta sotto il lavoro, non sopra (non più 232px). */
+#vol-card .vol-graf{height:160px}
+/* CONTRASTI (soglia AA 4,5:1). Il grigio nebbia #97a3b2 su #f3f5f7 fa 2,3:1:
+   va bene per un bordo, non per un'etichetta da leggere. La micro-etichetta
+   sopra il titolo vale per tutte le testate di IAM: la pelle tech arriva dopo
+   questo foglio, e una regola di pari peso perderebbe. */
+.page-head .eyebrow{color:var(--w1-testo2,var(--txt2))}
 .oggi-txt{flex:1 1 auto;min-width:0;}
 .oggi-l{display:block;font-size:13px;font-weight:600;line-height:1.25;}
-.oggi-s{display:block;font-size:11.5px;color:var(--txt3);margin-top:2px;}
+.oggi-s{display:block;font-size:11.5px;color:var(--w1-testo2,var(--txt2));margin-top:2px;}
 .oggi-fr{flex:0 0 auto;color:var(--txt3);font-size:15px;}
 .oggi-v:hover .oggi-fr{color:#02984e;}
 /* == DIARIO . VISTA SETTIMANA ==============================================
@@ -2673,6 +2622,48 @@ input[type=file]{display:none;}
     </div>
   </section>
 
+  <!-- ── L'ORDINE DELLA SCRIVANIA (critique del 07/10/2026) ───────────────────
+       Prima il LAVORO, poi l'andamento. La testata promette «le cose che
+       richiedono attenzione, prima di tutto il resto», e la prima cosa sotto
+       era un grafico alto 540 pixel: su uno schermo d'ufficio «Da fare oggi»
+       cominciava a metà pagina. Adesso viene subito sotto la testata, con le
+       azioni rapide accanto; il grafico (più basso) e i tre indicatori
+       seguono, nello stesso ordine fra loro deciso il 21/09/2026 («volevo un
+       grafico, non un indicatore»). -->
+  <section class="dashboard-grid">
+    <div class="stack">
+      <div class="d-card oggi" id="oggi">
+        <div class="card-head">
+          <h2 class="card-title"><span class="pictogram" aria-hidden="true"><i class="ti ti-checkbox"></i></span> Da fare oggi</h2>
+          <button class="oggi-ric" type="button" onclick="caricaDaFareOggi(true)" title="Ricalcola" aria-label="Ricalcola il lavoro di oggi"><i class="ti ti-refresh" aria-hidden="true"></i></button>
+        </div>
+        <div class="oggi-corpo" id="oggi-corpo" aria-live="polite">
+          <div class="oggi-attesa">Calcolo il lavoro del giorno…</div>
+        </div>
+      </div>
+    </div>
+    <div class="stack" id="d-lato">
+      <div class="d-card">
+        <div class="card-head">
+          <h2 class="card-title"><span class="pictogram gray" aria-hidden="true"><i class="ti ti-bolt"></i></span> Azioni rapide</h2>
+        </div>
+        <!-- Pulsanti veri, non div con un clic: da tastiera si raggiungono, e il
+             lettore di schermo li annuncia come azioni (critique 07/10/2026).
+             «Chiudi estratto conto» puntava a una schermata che non esiste più;
+             la contabilità del giorno sta nel Cruscotto, che è dove il vecchio
+             blocco in fondo alla pagina mandava a cercarla. -->
+        <div class="card-body dash-list">
+          <button type="button" class="dash-list-row" onclick="goTab('sospesi')"><i class="ti ti-file-invoice" aria-hidden="true"></i><span>Controlla sospesi</span></button>
+          <button type="button" class="dash-list-row" onclick="goTab('scadenzario')"><i class="ti ti-calendar-due" aria-hidden="true"></i><span>Scadenzario e rinnovi</span></button>
+          <button type="button" class="dash-list-row" onclick="goTab('pipeline')"><i class="ti ti-chart-arrows-vertical" aria-hidden="true"></i><span>Apri trattative</span></button>
+          <button type="button" class="dash-list-row" onclick="goTab('cruscotto')"><i class="ti ti-building-bank" aria-hidden="true"></i><span>Contabilità del giorno</span></button>
+          <button type="button" class="dash-list-row" onclick="apriGiacenza()"><i class="ti ti-wallet" aria-hidden="true"></i><span>Giacenza contanti</span></button>
+          <button type="button" class="dash-list-row" onclick="goTab('decisioni')"><i class="ti ti-help-circle" aria-hidden="true"></i><span>Decisioni aperte</span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ── VOLUMI DI PORTAFOGLIO (21/09/2026) ──────────────────────────────────
        Il confronto anno su anno, letto dal portafoglio vero e aggregato dal
        DATABASE (`iam_produzione_confronto`): qui non arriva una polizza alla
@@ -2683,12 +2674,12 @@ input[type=file]{display:none;}
        che non è successo, e succede undici mesi su dodici: è la cosa che, in
        un grafico di andamento, si rompe senza che nessuno se ne accorga —
        perché il numero sbagliato ha esattamente l'aria di quello giusto. -->
-  <div class="d-card" id="vol-card">
+  <div class="d-card dash-largo" id="vol-card">
     <div class="card-head">
-      <div class="card-title"><span class="pictogram"><i class="ti ti-chart-bar"></i></span> Volumi di portafoglio</div>
-      <div class="head-actions">
-        <button class="d-btn" type="button" onclick="volCarica(true)" title="Rileggi"><i class="ti ti-refresh"></i></button>
-        <button class="d-btn primario" type="button" onclick="goTab('produzione')">Vedi il dettaglio</button>
+      <h2 class="card-title"><span class="pictogram" aria-hidden="true"><i class="ti ti-chart-bar"></i></span> Volumi di portafoglio</h2>
+      <div class="vol-azioni">
+        <button class="d-btn" type="button" onclick="volCarica(true)" title="Rileggi" aria-label="Rileggi la produzione"><i class="ti ti-refresh" aria-hidden="true"></i></button>
+        <button class="d-btn" type="button" onclick="goTab('produzione')">Vedi il dettaglio</button>
       </div>
     </div>
     <div class="card-body" id="vol-corpo">
@@ -2697,134 +2688,21 @@ input[type=file]{display:none;}
   </div>
 
   <!-- ── COME STA ANDANDO (Blocco 3 · punto 10, 21/09/2026) ──────────────────
-       Sta SOPRA «Da fare oggi» e non ripete i suoi numeri, che è la ragione
-       per cui il 4/8/2026 una striscia di indicatori era stata tolta da qui
-       (§13.3): quella ripeteva gli stessi conteggi a cento pixel di distanza.
-       Questi rispondono a un'altra domanda — «Da fare oggi» elenca il LAVORO
-       ARRETRATO, questi dicono COME STA ANDANDO. Un rinnovo da lavorare è un
-       compito di qualcuno; il portafoglio in gestione non è un compito.
+       Non ripete i numeri di «Da fare oggi»: quello elenca il LAVORO
+       ARRETRATO, questi dicono COME STA ANDANDO. Ogni riquadro è una LETTURA
+       A SÉ (§35): quello che non si può leggere lo dice col suo nome invece di
+       mostrare uno zero rassicurante (§12, §18). -->
+  <section class="kpi-riga dash-largo" id="kpi-riga"></section>
 
-       Ogni riquadro è una LETTURA A SÉ (§35): quello che si può leggere si
-       mostra, e quello che non si può leggere lo dice col suo nome invece di
-       mostrare uno zero rassicurante (§12, §18).
-
-       STA SOTTO IL GRAFICO dal 21/09/2026: «volevo un grafico, non un
-       indicatore». Tre numeri in cima alla Scrivania sono la prima cosa che
-       si vede, e facevano sembrare la pagina un cruscotto di cifre; il
-       grafico dice la stessa cosa e in più dice QUANDO. I tre riquadri
-       restano perché rispondono a domande che il grafico non fa (quanto
-       portafoglio ho in gestione, quanto converto), ma vengono dopo. -->
-  <section class="kpi-riga" id="kpi-riga"></section>
-
-  <section class="dashboard-grid">
-    <div class="stack">
-      <div class="d-card oggi" id="oggi">
-        <div class="card-head">
-          <div class="card-title"><span class="pictogram"><i class="ti ti-checkbox"></i></span> Da fare oggi</div>
-          <button class="oggi-ric" onclick="caricaDaFareOggi(true)" title="Ricalcola"><i class="ti ti-refresh"></i></button>
-        </div>
-        <div class="oggi-corpo" id="oggi-corpo">
-          <div class="oggi-attesa">Calcolo il lavoro del giorno…</div>
-        </div>
-      </div>
-    </div>
-    <div class="stack" id="d-lato">
-      <div class="d-card">
-        <div class="card-head">
-          <div class="card-title"><span class="pictogram gray"><i class="ti ti-bolt"></i></span> Azioni rapide</div>
-        </div>
-        <div class="card-body dash-list">
-          <div class="dash-list-row" onclick="goTab('sospesi')"><i class="ti ti-file-invoice"></i><span>Controlla sospesi</span></div>
-          <div class="dash-list-row" onclick="goTab('pipeline')"><i class="ti ti-chart-arrows-vertical"></i><span>Apri trattative</span></div>
-          <div class="dash-list-row" onclick="goTab('conto')"><i class="ti ti-building-bank"></i><span>Chiudi estratto conto</span></div>
-          <div class="dash-list-row" onclick="goTab('scadenzario')"><i class="ti ti-calendar-due"></i><span>Scadenzario e rinnovi</span></div>
-          <div class="dash-list-row" onclick="goTab('decisioni')"><i class="ti ti-help-circle"></i><span>Decisioni aperte</span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div id="d-empty" class="empty" style="margin-top:50px;"><i class="ti ti-chart-bar"></i><p>Carica i file per vedere il resto della scrivania (contabilità)</p></div>
-  <div id="d-content" style="display:none;">
-    <div class="dash-pro">
-      <div class="dash-top">
-        <div class="dash-title">Scrivania</div>
-        <button class="dash-action" onclick="apriGiacenza()"><i class="ti ti-wallet"></i> Giacenza contanti</button>
-      </div>
-
-      <div class="dash-section-title">I nostri <span>consigli</span></div>
-      <div class="dash-grid">
-        <div class="dash-card">
-          <div class="dash-ribbon">Novità</div>
-          <div class="dash-card-title">In <span>evidenza</span></div>
-          <div id="d-evidenza" class="dash-news"></div>
-        </div>
-        <!-- «Funzioni più utilizzate» tolta (§13.3): era un elenco fisso identico
-             ad «Azioni rapide» in cima alla Scrivania. Una lista di scorciatoie
-             sola, quella che sta sempre visibile. -->
-        <div class="dash-card">
-          <div class="dash-card-title">Alert</div>
-          <div id="d-suggerimenti" class="dash-list"></div>
-        </div>
-      </div>
-
-      <div class="dash-section-title">Tu al centro del <span>nostro lavoro</span></div>
-      <div class="dash-metrics">
-        <div class="dash-metric-card">
-          <div class="dash-metric-head"><div class="dash-metric-title">I tuoi <span>numeri</span></div><button type="button" class="dash-help" title="Attiva o Disattiva il widget che non sono di tuo interesse dalle impostazioni del tuo account" data-tip="Attiva o Disattiva il widget che non sono di tuo interesse dalle impostazioni del tuo account" aria-label="Informazioni widget"><i class="ti ti-help-square-rounded"></i></button></div>
-          <div id="d-metrics"></div>
-        </div>
-        <div class="dash-metric-card">
-          <div class="dash-metric-head"><div class="dash-metric-title">Apri un <span>ticket</span></div><i class="ti ti-ticket dash-metric-icon"></i></div>
-          <div class="dash-ticket-form">
-            <div class="dash-ticket-row">
-              <select id="dtk-sezione" class="dash-ticket-field">
-                <option value="Dashboard">Dashboard</option>
-                <option value="Contabilità">Contabilità</option>
-                <option value="Conto">Conto</option>
-                <option value="Team">Team</option>
-                <option value="Pipeline">Pipeline</option>
-                <option value="Diary">Diary</option>
-                <option value="KPI">KPI</option>
-                <option value="AI">AI</option>
-                <option value="Utenti">Utenti</option>
-                <option value="Impostazioni">Impostazioni</option>
-                <option value="Generale">Generale</option>
-              </select>
-              <select id="dtk-priorita" class="dash-ticket-field">
-                <option value="normale" selected>Priorità normale</option>
-                <option value="bassa">Priorità bassa</option>
-                <option value="alta">Priorità alta</option>
-                <option value="critica">Critica</option>
-              </select>
-            </div>
-            <input id="dtk-titolo" class="dash-ticket-field" type="text" placeholder="Titolo del problema">
-            <textarea id="dtk-descr" class="dash-ticket-field" rows="3" placeholder="Scrivi qui i dettagli del ticket"></textarea>
-            <div class="dash-ticket-actions">
-              <button id="dtk-submit" class="dash-ticket-submit" onclick="inviaDashboardTicket()"><i class="ti ti-send"></i> Invia ticket</button>
-              <button class="dash-ticket-link" onclick="toggleDashboardTickets()"><i class="ti ti-list-details"></i> Vedi ticket</button>
-            </div>
-          </div>
-          <div id="dtk-feedback" style="font-size:12px;min-height:16px;color:var(--txt3);margin-bottom:8px;"></div>
-          <div id="dtk-list-wrap" style="display:none;">
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-              <button id="dtk-f-aperti" onclick="setTKFilter('aperto')" style="font-size:11px;padding:4px 9px;border-radius:8px;border:1px solid var(--bord2);background:var(--acc);color:#fff;cursor:pointer;font-family:inherit;">Aperti</button>
-              <button id="dtk-f-lavoraz" onclick="setTKFilter('in_lavorazione')" style="font-size:11px;padding:4px 9px;border-radius:8px;border:1px solid var(--bord2);background:var(--surf2);color:var(--txt2);cursor:pointer;font-family:inherit;">In lavorazione</button>
-              <button id="dtk-f-risolti" onclick="setTKFilter('risolto')" style="font-size:11px;padding:4px 9px;border-radius:8px;border:1px solid var(--bord2);background:var(--surf2);color:var(--txt2);cursor:pointer;font-family:inherit;">Risolti</button>
-              <button id="dtk-f-tutti" onclick="setTKFilter('tutti')" style="font-size:11px;padding:4px 9px;border-radius:8px;border:1px solid var(--bord2);background:var(--surf2);color:var(--txt2);cursor:pointer;font-family:inherit;">Tutti</button>
-            </div>
-            <div id="dtk-list" class="dash-ticket-list"><div style="color:var(--txt3);font-size:13px;padding:16px;text-align:center;">Caricamento...</div></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="dash-data-grid">
-        <div class="dash-metric-card"><div class="dash-metric-head"><div class="dash-metric-title">Per <span>produttore</span></div></div><div class="plist" id="d-tipo"></div></div>
-        <div class="dash-metric-card"><div class="dash-metric-head"><div class="dash-metric-title">Per <span>anzianità</span></div></div><div class="plist" id="d-anz"></div></div>
-        <div class="dash-metric-card"><div class="dash-metric-head"><div class="dash-metric-title">Movimenti <span>cassa</span></div></div><div id="d-mov"></div></div>
-      </div>
-    </div>
-  </div>
+  <!-- ── IL VECCHIO BLOCCO IN FONDO (tolto il 07/10/2026) ────────────────────
+       Un secondo titolo «Scrivania», novità ferme all'11/06, un modulo ticket,
+       avvisi che puntavano a schermate tolte, e un messaggio che chiedeva di
+       caricare file che non si caricano più: finiva la pagina in un vicolo
+       cieco. Scelta di Francesco: ridurlo a un collegamento. La contabilità del
+       giorno sta nel Cruscotto, i ticket nella coda delle Richieste, la
+       giacenza contanti fra le azioni rapide. -->
+  <p class="dash-rimando dash-largo">I numeri della cassa e dei conti di oggi stanno nel
+    <button type="button" class="oggi-calma-b" onclick="goTab('cruscotto')">Cruscotto della contabilità</button>.</p>
 </div>
 
 <!-- ANOMALIE -->
@@ -14304,24 +14182,7 @@ function updatePill() {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function getBonificiNonFlaggati() {
-  return ['hdi','pluri'].flatMap(tipo => {
-    const c = APP.conto?.[tipo] || {};
-    const bonif = c.bonif || {};
-    return (c.movimenti || [])
-      .filter(m => isBonificoInEntrata(m) && !(bonif[m.id] === true || bonif[m.id]?.checked))
-      .map(m => ({ ...m, conto: tipo }));
-  });
-}
 
-function getFattureCollaboratoriAperte() {
-  try { loadTeam(); } catch(e) {}
-  return (TEAM || []).flatMap(c =>
-    (c.fatture || [])
-      .filter(f => !f.pagata)
-      .map(f => ({ ...f, collaboratore: `${c.nome||''} ${c.cogn||''}`.trim() || 'Collaboratore' }))
-  );
-}
 
 /* ═══ BLOCCO B — DA FARE OGGI ════════════════════════════════════════════════
    La scrivania non mostra numeri: mostra il lavoro. Ogni voce è un'azione con
@@ -14335,8 +14196,10 @@ function getFattureCollaboratoriAperte() {
    e chi lo legge impara a non guardarlo.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Un formato solo per l'euro su tutta la Scrivania (critique 07/10/2026):
+   c'erano «€ 98.488,84», «574.264,61 €» e «€1.234» sulla stessa pagina. */
 function oggiEuro(n) {
-  return '€ ' + (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
 /* Apre una pagina del preventivatore. Dentro la scocca IAM si apre nel
@@ -14481,6 +14344,13 @@ function kpiRiquadro(titolo, valore, sotto, extra) {
 function kpiEuro(n) {
   return (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
+/* «a settembre», non «a 2026-09»: il mese si legge in italiano. Dalle cifre
+   della stringa, senza passare da un oggetto Data (§44). */
+function kpiMese(m) {
+  const NOMI = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+  const k = Number(String(m || '').slice(5, 7));
+  return NOMI[k - 1] || String(m || '');
+}
 
 async function caricaKpiScrivania(forza) {
   const box = document.getElementById('kpi-riga');
@@ -14554,7 +14424,7 @@ async function caricaKpiScrivania(forza) {
       '<b>' + a.preventivi + '</b> preventivi'
       + (a.conversione != null ? ' · conversione <b>' + a.conversione + '%</b>'
          : ' · conversione: nessun preventivo, non si calcola')
-      + '<br>' + esc(c.testo) + ' (' + b.polizze + ' a ' + esc(mPrima) + ')'
+      + '<br>' + esc(c.testo) + ' (' + b.polizze + ' a ' + esc(kpiMese(mPrima)) + ')'
       + (a.emissione_stimata ? '<br>' + a.emissione_stimata + ' senza data di emissione: contate nel mese del preventivo.' : '')));
   }
 
@@ -15179,74 +15049,17 @@ async function caricaDaFareOggi(forza) {
   oggiDisegna(voci, { guasti, calma, parziale });
 }
 
-function renderDashboardAlerts() {
-  const el = document.getElementById('d-suggerimenti');
-  if (!el) return;
-  const bonifici = getBonificiNonFlaggati();
-  const fatture = getFattureCollaboratoriAperte();
-  const totBonifici = bonifici.reduce((a,m)=>a+m.avere,0);
-  const totFatture = fatture.reduce((a,f)=>a+parseNum(f.importo),0);
-  const alerts = [];
-  if (bonifici.length) alerts.push({
-    cls: 'crit',
-    title: 'Bonifici non abbinati',
-    sub: `${bonifici.length} movimenti · €${fmt(totBonifici)}`,
-    count: bonifici.length,
-    click: "goTab('carica');selContabTab('conto')"
-  });
-  if (fatture.length) alerts.push({
-    cls: 'warn',
-    title: 'Fatture collaboratori non pagate',
-    sub: `${fatture.length} fatture · €${fmt(totFatture)}`,
-    count: fatture.length,
-    click: "goTab('team')"
-  });
-  el.className = 'dash-alerts';
-  el.innerHTML = alerts.length ? alerts.map(a => `
-    <button class="dash-alert-tile ${a.cls}" onclick="${a.click}">
-      <div class="dash-alert-main">
-        <div class="dash-alert-title">${a.title}</div>
-        <div class="dash-alert-sub">${a.sub}</div>
-      </div>
-      <div class="dash-alert-count">${a.count}</div>
-    </button>`).join('') : `
-    <div class="dash-alert-tile ok">
-      <div class="dash-alert-main">
-        <div class="dash-alert-title">Nessun alert attivo</div>
-        <div class="dash-alert-sub">Bonifici e fatture risultano in ordine.</div>
-      </div>
-    </div>`;
-}
 
-function renderPlatformUpdates() {
-  const el = document.getElementById('d-evidenza');
-  if (!el) return;
-  const updates = [
-    { data:'11/06', testo:'Nuova sezione <b>Alert</b> in dashboard per bonifici non abbinati e fatture collaboratori non pagate.' },
-    { data:'11/06', testo:'Area <b>Conto</b> aggiornata: visualizzazione dei soli bonifici ricevuti con flag di conferma.' },
-    { data:'11/06', testo:'Schede <b>Collaboratori</b> aggiornate con gestione fatture, importi, allegati e stato pagamento.' },
-    { data:'11/06', testo:'Gestione widget spostata in <b>Il mio profilo</b> e ingranaggio rimosso dall header.' }
-  ];
-  el.className = 'dash-updates';
-  el.innerHTML = updates.map(u => `
-    <div class="dash-update">
-      <div class="dash-update-date">${u.data}</div>
-      <div class="dash-update-text">${u.testo}</div>
-    </div>`).join('');
-}
 
+/* La Scrivania non disegna più il vecchio blocco in fondo (07/10/2026): restano
+   lo scostamento della quadratura di giornata, che vive in un'altra schermata,
+   e i tre caricamenti della pagina. */
 function buildDashboard() {
-  const sosp  = APP.sospesi.filter(s => s.importo >= 0);
-  const valTot = sosp.reduce((a,s)=>a+s.importo,0);
   const cassa = parseNum(g('i-cassa'));
   const vers  = parseNum(g('i-vers'));
   const spese = parseNum(g('i-spese'));
   const fondo = parseNum(g('i-fondo')) || APP.fondoCassa || 0;
   const fondoIeri = APP.fondoIeri || fondo;
-  const varFondo = fondo - fondoIeri;
-  const posBianco = parseNum(g('i-pos-bianco')) || 0;
-  const posNero   = parseNum(g('i-pos-nero'))   || 0;
-  const valInc = APP.incassi.reduce((a,i)=>a+i.importo,0);
   const saldoOggi = cassa - vers - spese;
   const saldoCumulativo = APP.saldoCumulativo !== undefined ? APP.saldoCumulativo : saldoOggi;
 
@@ -15254,7 +15067,6 @@ function buildDashboard() {
   // Misura se la cassa fisica quadra con i movimenti dichiarati
   const scostamento = (cassa + fondo) - (vers + spese);
   const scostamentoIeri = (saldoCumulativo - (cassa + vers - spese)) - fondoIeri;
-  const deltaScost = scostamento - scostamentoIeri;
   const scostEl = document.getElementById('i-scostamento');
   const scostBadge = document.getElementById('i-scostamento-badge');
   if (scostEl) {
@@ -15269,92 +15081,11 @@ function buildDashboard() {
       scostBadge.style.color = scostamento >= 0 ? 'var(--grn-txt)' : 'var(--red-txt)';
     } else { scostBadge.textContent = ''; }
   }
-  const oltre60 = sosp.filter(s=>s.gg>60).length;
-  const W = getW();
-  const metrics = [];
-  if (W.sospesi_n)    metrics.push({lbl:'Sospesi aperti', val:sosp.length, sub:'polizze in attesa', onclick:"goTab('sospesi')"});
-  if (W.valore)       metrics.push({lbl:'Valore sospesi', val:'€'+fmt(valTot), sub:'importo totale', onclick:"goTab('sospesi')"});
-  if (W.oltre60)      metrics.push({lbl:'Oltre 60 giorni', val:oltre60, sub:'priorità urgente', color:'var(--red)', onclick:"goTab('anomalie')"});
-  if (W.cassa)        metrics.push({lbl:'Contanti oggi', val:'€'+fmt(cassa), sub:'inseriti nella sessione'});
-  if (W.vers)         metrics.push({lbl:'Versato compagnie', val:'-€'+fmt(vers), sub:'uscite giornata', color:'var(--red)', onclick:"goTab('quadratura')"});
-  if (W.saldo)        metrics.push({lbl:'Cassa progressiva', val:'€'+fmt(saldoCumulativo), sub:'totale accumulato', color: saldoCumulativo>=0?'var(--grn)':'var(--red)', onclick:"goTab('storico')"});
-  if (W.fondo) {
-    const varSub = varFondo === 0 ? 'invariato rispetto a ieri' :
-      (varFondo > 0 ? `↑ +€${fmt(varFondo)} rispetto a ieri` : `↓ -€${fmt(Math.abs(varFondo))} rispetto a ieri`);
-    const varColor = varFondo > 0 ? 'var(--amb)' : varFondo < 0 ? 'var(--red)' : 'var(--blu)';
-    metrics.push({lbl:'Fondo cassa', val:'€'+fmt(fondo), sub: varSub, color: varColor, onclick:"goTab('quadratura')"});
-  }
-  if (W.scostamento)  metrics.push({lbl:'Scostamento', val:(scostamento>=0?'+':'')+'€'+fmt(scostamento), sub: `${scostamento>=0?'surplus':'ammanco'} · ieri: ${deltaScost>=0?'+':''}€${fmt(Math.abs(deltaScost))}`, color: scostamento>=0?'var(--grn)':'var(--red)', onclick:"goTab('quadratura')"});
-  if (W.pos_bianco)   metrics.push({lbl:'POS Bianco', val:'€'+fmt(posBianco), sub:'pagamenti elettronici', color:'var(--blu)', onclick:"goTab('quadratura')"});
-  if (W.pos_nero)     metrics.push({lbl:'POS Nero', val:'€'+fmt(posNero), sub:'pagamenti contanti POS', color:'var(--txt)', onclick:"goTab('quadratura')"});
-  if (W.incassato)    metrics.push({lbl:'Incassato oggi', val:'€'+fmt(valInc), sub:APP.incassi.length+' polizze', color:'var(--grn)', onclick:"goTab('sospesi')"});
-  if (W.spese)        metrics.push({lbl:'Spese agenzia', val:'€'+fmt(spese), sub:'uscite varie', color:'var(--amb)', onclick:"goTab('quadratura')"});
-
-  document.getElementById('d-metrics').innerHTML = metrics.map((m,i) => `
-    <div class="dash-stat" style="animation-delay:${i*.05+.05}s;" ${m.onclick?`onclick="${m.onclick}" role="button" tabindex="0"`:''}>
-      <div class="dash-stat-left">
-        <span class="dash-dot" ${m.color?`style="background:${m.color};box-shadow:0 0 0 4px color-mix(in srgb, ${m.color} 18%, transparent);"`:''}></span>
-        <span class="dash-stat-label">${m.lbl}</span>
-      </div>
-      <div class="dash-stat-value" ${m.color?`style="color:${m.color}"`:''}>${m.val}</div>
-      <div class="dash-stat-sub">${m.sub}</div>
-    </div>`).join('') || '<div class="dash-stat" style="grid-column:1/-1;"><div class="dash-stat-left"><span class="dash-dot"></span><span class="dash-stat-label">Nessun widget attivo</span></div><div class="dash-stat-sub">Puoi riattivarli da Il mio profilo.</div></div>';
-
-  // Distribuzione per produttore (ex Tipo Sospeso nel file)
-  const byProd = {};
-  sosp.forEach(s => {
-    const p = s.produttore || 'Non assegnato';
-    if (!byProd[p]) byProd[p] = { n: 0, val: 0 };
-    byProd[p].n++; byProd[p].val += s.importo;
-  });
-  const COLORS = ['#E8500A','#2c7abf','#1a8a5a','#9a6010','#7b5ea7','#2a7a6a','#c0392b','#16a085'];
-  const maxP = Math.max(...Object.values(byProd).map(v=>v.val), 1);
-  document.getElementById('d-tipo').innerHTML = Object.entries(byProd)
-    .sort((a,b)=>b[1].val-a[1].val).slice(0,8).map(([k,v],i)=>`
-    <div class="prow"><div class="phd"><span>${k}</span><span>${v.n} · €${fmt(v.val)}</span></div>
-    <div class="pbar"><div class="pfill" style="width:${Math.round(v.val/maxP*100)}%;background:${COLORS[i%COLORS.length]};"></div></div></div>`).join('') ||
-    '<div style="color:var(--txt3);font-size:13px;padding:4px 0;">Nessun dato produttore disponibile</div>';
-
-  // Distribuzione per anzianità
-  const anzFasce = [
-    { lbl:'Oltre 60 giorni', val: sosp.filter(s=>s.gg>60).reduce((a,s)=>a+s.importo,0), color:'var(--red)' },
-    { lbl:'30–60 giorni',    val: sosp.filter(s=>s.gg>=30&&s.gg<=60).reduce((a,s)=>a+s.importo,0), color:'var(--amb)' },
-    { lbl:'15–29 giorni',    val: sosp.filter(s=>s.gg>=15&&s.gg<30).reduce((a,s)=>a+s.importo,0), color:'var(--acc)' },
-    { lbl:'Meno di 15 gg',   val: sosp.filter(s=>s.gg<15).reduce((a,s)=>a+s.importo,0), color:'var(--grn)' },
-  ];
-  const maxA = Math.max(...anzFasce.map(a=>a.val), 1);
-  document.getElementById('d-anz').innerHTML = anzFasce.map(a=>`
-    <div class="prow"><div class="phd"><span>${a.lbl}</span><span>€ ${fmt(a.val)}</span></div>
-    <div class="pbar"><div class="pfill" style="width:${Math.round(a.val/maxA*100)}%;background:${a.color};"></div></div></div>`).join('');
-
-  const movs = [];
-  if (valInc>0) movs.push({ico:'ti-arrow-down-circle',color:'grn',desc:`Incassi (${APP.incassi.length} polizze)`,amt:'+€'+fmt(valInc)});
-  if (vers>0)   movs.push({ico:'ti-building-bank',color:'red',desc:'Versamento compagnie',amt:'-€'+fmt(vers)});
-  if (spese>0)  movs.push({ico:'ti-receipt',color:'amb',desc:'Spese agenzia',amt:'-€'+fmt(spese)});
-  const nota = g('i-note');
-  if (nota) movs.push({ico:'ti-notes',color:'blu',desc:nota,amt:''});
-  document.getElementById('d-mov').innerHTML = movs.length ? movs.map(m=>`
-    <div class="row"><div class="rico ${m.color}"><i class="ti ${m.ico}"></i></div>
-    <div class="rmain"><div class="rname">${m.desc}</div></div>
-    <div class="rright"><div class="ramt" style="color:var(--${m.color==='grn'?'grn':'red'})">${m.amt}</div></div></div>`).join('')
-    : '<div class="row" style="color:var(--txt3);font-size:13px;">Nessun movimento inserito</div>';
-  renderPlatformUpdates();
-  renderDashboardAlerts();
   caricaDaFareOggi();   // Blocco B — un solo aggancio copre tutti i percorsi
   caricaKpiScrivania();  // Blocco 3 · punto 10 — i numeri, accanto al lavoro
   volCarica();           // i volumi di portafoglio, anno su anno (21/09/2026)
 
-  document.getElementById('d-empty').style.display = 'none';
-  document.getElementById('d-content').style.display = 'block';
   APP.loaded = true;
-}
-
-// Fix: assicura che il contenuto dashboard sia sempre visibile dopo caricamento
-function showDashContent() {
-  const e = document.getElementById('d-empty');
-  const c = document.getElementById('d-content');
-  if (e) e.style.display = 'none';
-  if (c) c.style.display = 'block';
 }
 
 // ─── ANOMALIE ─────────────────────────────────────────────────────────────────
@@ -27705,7 +27436,6 @@ async function loadTickets() {
     TK_LIST = data || [];
     await updateTicketBadge();
     renderTickets();
-    renderDashboardTickets();
   } catch(e) { console.error('loadTickets:', e); }
 }
 
@@ -27812,29 +27542,6 @@ function renderTickets() {
   }).join('');
 }
 
-function renderDashboardTickets() {
-  const el = document.getElementById('dtk-list');
-  if (!el) return;
-  if (!TK_LIST.length) {
-    el.innerHTML = '<div style="color:var(--txt3);font-size:13px;padding:16px;text-align:center;">Nessun ticket da mostrare</div>';
-    return;
-  }
-  el.innerHTML = TK_LIST.slice(0, 12).map(t => {
-    const pr = TK_PRIORITA[t.priorita] || TK_PRIORITA.normale;
-    const st = TK_STATO[t.stato] || TK_STATO.aperto;
-    const titolo = escHTML(t.titolo || 'Ticket senza titolo');
-    const sezione = escHTML(ticketSezione(t));
-    const dt = t.creato_il ? new Date(t.creato_il).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}) : '';
-    return `<div class="dash-ticket-item" onclick="openEditTicket(${t.id})">
-      <div class="dash-ticket-title"><span>${titolo}</span><span style="font-size:10px;color:${st.color};background:${st.bg};border-radius:8px;padding:2px 7px;">${st.label}</span></div>
-      <div class="dash-ticket-meta">
-        <span>${iconHtml('ti-layout-grid', 'font-size:11px;vertical-align:-2px;')} ${sezione}</span>
-        <span style="color:${pr.color};">${pr.label}</span>
-        ${dt?`<span>${dt}</span>`:''}
-      </div>
-    </div>`;
-  }).join('');
-}
 
 async function createTicketFromForm({ titoloId, descrId, prioritaId, sezioneId, feedbackId, buttonId }) {
   const titolo = document.getElementById(titoloId)?.value?.trim();
@@ -27873,24 +27580,7 @@ async function createTicketFromForm({ titoloId, descrId, prioritaId, sezioneId, 
   }
 }
 
-async function inviaDashboardTicket() {
-  await createTicketFromForm({
-    titoloId:'dtk-titolo',
-    descrId:'dtk-descr',
-    prioritaId:'dtk-priorita',
-    sezioneId:'dtk-sezione',
-    feedbackId:'dtk-feedback',
-    buttonId:'dtk-submit'
-  });
-}
 
-function toggleDashboardTickets() {
-  const wrap = document.getElementById('dtk-list-wrap');
-  if (!wrap) return;
-  const show = wrap.style.display === 'none';
-  wrap.style.display = show ? 'block' : 'none';
-  if (show) loadTickets();
-}
 
 async function inviaTicket() {
   await createTicketFromForm({
@@ -28336,8 +28026,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- impronta withus-one.js: 77d19d87 — se cambia, cambia anche il ?v= qui sotto -->
-<script src="withus-one.js?v=20260923a"></script>
+<!-- impronta withus-one.js: b47e8ec2 — se cambia, cambia anche il ?v= qui sotto -->
+<script src="withus-one.js?v=20261007"></script>
   <script src="withus-ticket-uno.js?v=1"></script>
 </body>
 </html>

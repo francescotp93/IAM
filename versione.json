@@ -1,8 +1,21 @@
 {
-  "versione": "0.44.1",
-  "nome": "Il tasto Conferma, e i motori che restavano indietro",
-  "data": "2026-09-24",
+  "versione": "0.50.0",
+  "nome": "La Scrivania mette prima il lavoro, e i suoi numeri sono veri",
+  "data": "2026-10-07",
   "storia": [
+    {
+      "v": "0.50.0",
+      "data": "2026-10-07",
+      "nome": "La Scrivania mette prima il lavoro, e i suoi numeri sono veri",
+      "voci": [
+        "SCRIVANIA · «Da fare oggi» viene subito sotto il titolo, prima del grafico: aprendo IAM si vede il lavoro, non l'andamento dell'anno. Le voci sono divise in Soldi, Contratti e Clienti.",
+        "I numeri sono veri: prima alcuni conteggi si fermavano a 1000 senza dirlo (scadute, polizze da perfezionare, compleanni, il portafoglio nei riquadri). Adesso li conta il database, o si leggono per intero.",
+        "Rinnovi, polizze scadute e rate scadute sono contati con le stesse regole dello Scadenzario, e i sospesi sono quelli della schermata Sospesi: la Scrivania e quelle pagine dicono lo stesso numero.",
+        "Se una lettura non riesce la Scrivania lo dice, e non scrive più «il lavoro è in pari» quando non ha potuto controllare.",
+        "Il vecchio blocco in fondo (novità di giugno, ticket, «carica i file») è diventato un collegamento al Cruscotto della contabilità. La giacenza contanti è fra le azioni rapide.",
+        "Più leggibile: etichette e numeri piccoli con più contrasto, numeri in carattere a larghezza fissa, un solo formato dell'euro, e le azioni rapide si usano anche da tastiera."
+      ]
+    },
     {
       "v": "0.44.1",
       "data": "2026-09-24",

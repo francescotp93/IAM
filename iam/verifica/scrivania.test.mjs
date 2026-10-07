@@ -113,23 +113,18 @@ prova('la tavolozza chiara non esce dalla scrivania', () => {
   deve(/--w1-/.test(blocco), 'i token non sono dichiarati dentro il confine');
 });
 
-// ── 5. Veste unica: anche la metà bassa (§13.3) ──────────────────────────
-prova('la metà bassa porta la stessa veste sobria della parte alta', () => {
-  /* I titoloni centrati bicolori erano la firma della vecchia veste: ora sono
-     allineati a sinistra e di un colore solo, come «Da fare oggi». */
-  deve(/\.dash-section-title\{[^}]*text-align:left/.test(html),
-    'i titoli di sezione sono ancora centrati');
-  deve(/\.dash-section-title span\{color:inherit/.test(html),
-    'i titoli di sezione sono ancora bicolori');
-  /* Le schede di sotto usano la scheda bianca a bordo sottile (--w1-bordo),
-     non più il bordo verde spesso. */
-  deve(/\.dash-card\{[^}]*--w1-bordo/.test(html),
-    'le schede di #d-content non hanno la veste a bordo sottile della parte alta');
-  /* La lista di scorciatoie doppia è stata tolta: ne resta una, «Azioni rapide». */
+// ── 5. La metà bassa non c'è più (07/10/2026) ───────────────────────────
+/* La veste unica della metà bassa (§13.3) non si sorveglia più: il blocco è
+   stato ridotto a un collegamento al Cruscotto (scelta di Francesco). Resta
+   la regola che conta: una sola lista di scorciatoie, «Azioni rapide», e
+   fatta di pulsanti veri, che da tastiera si raggiungono. */
+prova('una sola lista di scorciatoie, e fatta di pulsanti', () => {
   deve(!/dash-card-title">\s*Funzioni/.test(html),
     'è tornata «Funzioni più utilizzate», doppione di «Azioni rapide»');
+  deve(!/<div class="dash-list-row"/.test(html), 'una scorciatoia è un div con un clic: da tastiera non si raggiunge');
+  const n = (html.match(/<button type="button" class="dash-list-row"/g) || []).length;
+  deve(n >= 5, 'scorciatoie come pulsanti: ' + n);
 });
-
 // ── 6. Il saluto non deve dire il falso ──────────────────────────────────
 prova('il saluto segue l\'ora e non inventa un nome', () => {
   const f = corpoDi('function oggiSaluto()');

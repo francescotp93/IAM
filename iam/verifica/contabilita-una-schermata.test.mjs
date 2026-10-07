@@ -198,9 +198,13 @@ e.prova('le due schermate hanno il loro titolo in alto', () => {
 e.prova('i numeri della scrivania portano alla quadratura', () => {
   deve(!/selContabTab\('carica'\)/.test(src),
     'una scorciatoia punta ancora alla vecchia scheda «carica», che non esiste più');
-  const n = (src.match(/goTab\('quadratura'\)/g) || []).length;
-  deve(n >= 6, 'solo ' + n + ' scorciatoie portano alla quadratura');
-  return n + ' scorciatoie';
+  /* Le sei scorciatoie verso la quadratura stavano nei numeri del vecchio
+     blocco in fondo alla Scrivania, tolto il 07/10/2026 (critique): adesso
+     la Scrivania porta alla contabilità del giorno con un collegamento solo,
+     al Cruscotto, che è la porta di tutte le voci di Contabilità. */
+  deve(/goTab\('cruscotto'\)/.test(src.slice(src.indexOf('id="panel-dashboard"'), src.indexOf('id="panel-operativa"'))),
+    'la scrivania non porta più alla contabilità del giorno');
+  return 'la scrivania porta al Cruscotto';
 });
 
 // ── 5. La striscia non c'è più, e il cancello si è spostato sulla porta ─────

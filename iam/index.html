@@ -55,7 +55,7 @@
 <script src="/nuovo-preventivo/tariffe/motore/anagrafica.js?v=20260921"></script>
 <!-- I conti e le causali (brief #02 M1). Stesso file del preventivatore, per lo
      stesso motivo: il vocabolario della contabilità dev'essere uno solo. -->
-<script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260928"></script>
+<script src="/nuovo-preventivo/tariffe/motore/contabilita.js?v=20260929"></script>
 <!-- Il motore della giornata: gli stati dell'appunto di incasso (APPUNTO, OK,
      SCOSTAMENTO, FC) e il foglio della giornata. Non era caricato da IAM, e la
      schermata «Appunti incassi» senza di lui sarebbe un elenco senza stati. -->
@@ -93,6 +93,9 @@
      punto letto come separatore delle migliaia, «170.00» diventato 17.000,00 €
      — sta nella sua intestazione. -->
 <script src="/nuovo-preventivo/tariffe/motore/importo.js?v=20261006"></script>
+<!-- Le fasi di caricamento: un posto solo invece di tredici animazioni e una
+     sessantina di «Caricamento…». Il vestito sta in withus-tech.css. -->
+<script src="/nuovo-preventivo/tariffe/motore/caricamento.js?v=20261007"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -1844,6 +1847,13 @@ input[type=file]{display:none;}
 <link rel="stylesheet" href="withus-pictograms.css?v=20260804">
 <!-- impronta withus-one.css: 9d3672a1 — se cambia, cambia anche il ?v= qui sotto -->
 <link rel="stylesheet" href="withus-one.css?v=20260915a">
+<!-- LA PELLE TECH — per ultima, e non è un dettaglio: ridefinisce i token che
+     il resto della pagina usa 3.103 volte negli stili in linea, e a parità di
+     specificità vince chi arriva dopo. Spostarla più in alto la disattiva
+     senza dare nessun errore. Sta nella radice del quotatore (montato su
+     /nuovo-preventivo/ in produzione) perché è la stessa per le due app: due
+     copie si separerebbero al primo ritocco. -->
+<link rel="stylesheet" href="/nuovo-preventivo/withus-tech.css?v=20261007">
 </head>
 <body>
 
@@ -10221,7 +10231,15 @@ async function cruCarica(forza) {
   if (CRU_CARICATO && !forza) { cruRender(); return; }
   CRU_LETTO = {}; CRU_PARZIALE = false;
   const box = document.getElementById('cru-somma');
-  if (box && forza !== false) box.innerHTML = '<div class="cl-sub">Leggo la contabilità…</div>';
+  /* L'attesa dice che cosa sta aspettando E che forma avrà: il cruscotto è
+     fatto di riquadri, quindi mentre arriva si vedono i riquadri. Prima qui
+     c'era una riga di testo grigio, e la pagina saltava quando i dati
+     arrivavano. */
+  if (box && forza !== false) {
+    box.innerHTML = window.Caricamento
+      ? Caricamento.blocco('Leggo la contabilità', { riquadri: 3, righe: 2 })
+      : '<div class="cl-sub">Leggo la contabilità…</div>';
+  }
 
   const co = await cntMorbida((a, b) => db.from('iam_conti').select('*').order('ordine').order('id').range(a, b));
   CRU_CONTI = co.righe; CRU_LETTO.conti = !co.ko;
@@ -22229,6 +22247,8 @@ function pagEuro(cents) {
 
 async function renderPagamentiLista() {
   const box = document.getElementById('pg-lista'); if (!box) return;
+  /* Mentre l'elenco arriva si vede la forma dell'elenco, non un trattino. */
+  if (window.Caricamento) box.innerHTML = Caricamento.blocco('Leggo i link di pagamento', { riquadri: 2, righe: 1 });
   try {
     const { data, error } = await db.from('iam_pagamenti').select('*').order('creato_il', { ascending: false }).limit(30);
     if (error) throw error;

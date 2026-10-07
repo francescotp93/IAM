@@ -1657,3 +1657,76 @@ vecchia è esatta. La parte che conta sta nel browser.
 - **Dove finiscono i soldi**: il payout Stripe deve arrivare sul conto
   separato (art. 117 CAP, Reg. IVASS 40/2018), e le commissioni Stripe sono un
   costo dell'agenzia — il cliente deve pagare il premio intero.
+
+---
+
+## 07/10/2026 — La revisione grafica si fa dai token, non da sessantamila righe
+
+**Perimetro:** l'aspetto delle due applicazioni (IAM e QUOTO) e le fasi di
+caricamento. Richiesta di Francesco: «fai una revisione grafica di tutto il
+sistema, rendilo più tech» e «cura anche nel dettaglio le fasi di caricamento,
+in maniera più minimale ma tech possibile».
+
+**CENSITO PRIMA DI TOCCARE NIENTE**, perché da questo dipendeva se era un
+lavoro da quaranta righe o da quattromila:
+
+| | IAM | QUOTO |
+|---|---|---|
+| colori scritti a mano, distinti | 262 | 374 |
+| usi di `var(--…)` negli stili in linea | 3.103 | 1.815 |
+| stili in linea | 2.682 | 2.410 |
+| animazioni di attesa dichiarate | 6 | 7 |
+
+E due sistemi grafici sovrapposti: la scocca `--w1-*` a raggio 4px e il tema
+dell'app `--bg/--surf/--txt` a raggio 16px, che si contraddicono.
+
+🟢 **Una pelle, non una riscrittura.** `withus-tech.css` ridefinisce i token
+che le due pagine usano già migliaia di volte negli stili in linea: il colore
+di quasi tutta l'applicazione si decide da un punto solo. *Come tornare
+indietro:* si toglie un `<link>` e torna tutto com'era.
+
+🟡 **Quattro scelte, non un restyling a sensazione.** Neutri freddi al posto
+del grigio-violetto; un secondo accento ciano per i segnali di sistema (è lo
+stesso linguaggio della schermata di rientro IAM, che era già l'unico pezzo con
+un'aria tecnica); i dati in monospaziato **di sistema** — importi, codici,
+targhe — perché le cifre si incolonnano e uno zero di troppo si vede; angoli a
+3px.
+
+🟡 **`!important` sui campi, e il perché.** I raggi dei campi sono scritti negli
+stili in linea e nessun foglio li batte. L'alternativa era correggerli a mano
+in qualche centinaio di punti su due documenti da trentamila righe: più
+occasioni di rompere qualcosa che angoli guadagnati. È ristretto ai campi di
+testo e di scelta — i bottoni tondi restano tondi.
+
+🟢 **Le fasi di caricamento: quattro primitive al posto di tredici animazioni.**
+La barra, lo scheletro, lo stato, l'anello. La regola che le tiene insieme:
+**un'attesa dice sempre che cosa si sta aspettando** — per questo
+`Caricamento.stato()` senza testo si rifiuta invece di tornare un
+«Caricamento…» generico. Le undici attese che c'erano già (`.cl-carico`) sono
+passate al linguaggio nuovo con una regola di stile, senza toccare gli undici
+punti.
+
+🟢 **L'avvio dice che cosa sta facendo.** Prima: il marchio che respira e una
+riga nascosta ai soli lettori di schermo. Adesso: marchio fermo, griglia che
+scorre, barra di due pixel, e quella riga scritta in chiaro in monospaziato. Su
+un gestionale che si apre venti volte al giorno, «è partito o è bloccato?» è
+una domanda più cara di due centimetri di schermo.
+
+🟢 **Allineati cinque contrassegni di versione dei motori** che erano rimasti
+indietro (`pagamento-rata`, `crm-analisi`, `contabilita`, `garanzie`): non
+erano miei, li ha trovati il cancello. Un contrassegno indietro vuol dire che
+il browser può servire il motore vecchio con la pagina nuova, in silenzio.
+
+**Fuori perimetro, annotato — e scritto anche in fondo alla pelle:**
+- **I colori scritti a mano non seguono**: 262 in IAM, 374 in QUOTO. Non li ho
+  sostituiti in blocco di proposito — una sostituzione cieca su sessantamila
+  righe cambia anche i colori dentro ai PDF generati, ai fogli esportati e alle
+  finestre che si aprono a parte, e lì un errore non lo vede nessuno. Vanno
+  portati sui token una schermata per volta, guardandola.
+- **I raggi delle schede** restano quelli scritti in linea (12px): si vedono
+  ancora tondi dove la pelle non arriva.
+- **Le altre ~50 attese** scrivono ancora «Caricamento…» con il loro stile:
+  convertite le due più visibili (cruscotto contabilità, elenco dei link di
+  pagamento) e tutte quelle che usavano `.cl-carico`.
+- **QUOTO ha ancora un accesso blu con scritto «IAM»**, che non è il marchio
+  dell'agenzia: è una schermata da rifare, non da ritonare.

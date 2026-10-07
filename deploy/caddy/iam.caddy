@@ -28,6 +28,23 @@
 iam.withusassicurazioni.it {
 	encode gzip zstd
 
+	# ── Header di sicurezza per tutto il sito (07/10/2026, controllo GDPR) ──
+	# Prima c'erano solo sul riquadro del preventivatore: IAM, che è dove
+	# stanno anagrafiche, polizze e contabilità, non ne aveva nessuno.
+	#   HSTS          il browser non torna mai in chiaro su http
+	#   nosniff       un file si esegue solo se è del tipo che dichiara
+	#   Referrer      un indirizzo interno non esce verso siti di altri
+	#   frame         IAM non si incornicia in una pagina di qualcun altro
+	#                 (stessa regola già scritta per /nuovo-preventivo/)
+	# Niente includeSubDomains: gli altri sottodomini hanno i loro server.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options SAMEORIGIN
+		Content-Security-Policy "frame-ancestors 'self'"
+	}
+
 	# ── 1. QUOTO sotto /nuovo-preventivo/ ──────────────────────────────────
 	# /nuovo-preventivo senza barra: si aggiunge, altrimenti i percorsi
 	# relativi della pagina (tariffe/motore/…) cercherebbero alla radice.

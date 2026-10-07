@@ -10,7 +10,10 @@ import { Router } from 'express';
 export const plurimaMapRouter = Router();
 
 const SCR = process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300';
-const KEY = process.env.PLURIMA_MAP_KEY || 'leo-plurima-7Kx9Qw2mZ';
+/* Nessun valore di riserva (audit GDPR, 07/10/2026): una chiave scritta in un
+   repository pubblico non protegge niente. Senza la variabile d'ambiente la
+   porta resta chiusa. */
+const KEY = process.env.PLURIMA_MAP_KEY || '';
 
 async function call(path, ms) {
   const ctl = new AbortController();
@@ -32,7 +35,7 @@ async function call(path, ms) {
 // GET /plurima-map?key=...  → esegue in SERIE una manciata di chiamate leggere e
 // in sola lettura, e restituisce tutto insieme. Se una fallisce, le altre proseguono.
 plurimaMapRouter.get('/', async (req, res) => {
-  if ((req.query.key || '') !== KEY) return res.status(403).json({ error: 'chiave non valida' });
+  if (!KEY || (req.query.key || '') !== KEY) return res.status(403).json({ error: 'chiave non valida' });
   const steps = [];
   steps.push(await call('/status', 15000));
   steps.push(await call('/explore?goto=/', 60000));

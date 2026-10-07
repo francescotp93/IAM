@@ -20,6 +20,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { getBonificoCfg } from './shop.js';
 import { MITTENTE_NOME } from './mittente.js';
+import { creaLimitatore } from './limitatore.js';
 /* LE EMAIL HANNO LA STESSA PELLE DELLA PAGINA IN CUI ATTERRANO. Fino al 9
    settembre 2026 arrivava un'email blu notte e si atterrava su una pagina blu:
    un altro marchio rispetto a IAM. Adesso testa scura #1b2733 e pulsante verde
@@ -563,11 +564,15 @@ convenzionatiRouter_pubblicoAssociati.post('/mia-password', async (req, res) => 
    legge il database non trova niente da riusare. */
 const OTP_MIN = Number(process.env.OTP_TTL_MIN || 10);
 const impronta = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+/* Cinque tentativi per codice, poi se ne chiede uno nuovo (audit GDPR,
+   07/10/2026): un codice di sei cifre senza tetto si indovina provando. */
+const tentativiCodice = creaLimitatore({ max: 5, finestraMs: 60 * 60 * 1000 });
 
 convenzionatiRouter_pubblicoAssociati.post('/mio-codice', async (req, res) => {
   try {
     const { assoc } = await chiEntra(req);
     const codice = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    tentativiCodice.azzera(assoc.id);
     await sb(`/rest/v1/quote_convenzione_associati?id=eq.${encodeURIComponent(assoc.id)}`, {
       method: 'PATCH', headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({
@@ -705,7 +710,8 @@ convenzionatiRouter_pubblicoAssociati.post('/miei-dati', async (req, res) => {
     if (!codice) return res.status(400).json({ error: 'Serve il codice che ti abbiamo mandato per email.' });
     if (!assoc.otp_hash || !assoc.otp_scade_il) return res.status(400).json({ error: 'Nessun codice in attesa: premi «Mandami il codice».' });
     if (new Date(assoc.otp_scade_il).getTime() < Date.now()) return res.status(400).json({ error: 'Il codice è scaduto: chiedine uno nuovo.' });
-    if (impronta(codice + ':' + assoc.id) !== assoc.otp_hash) return res.status(400).json({ error: 'Codice non corretto. Controlla l\'email e riprova.' });
+    if (tentativiCodice.bloccato(assoc.id)) return res.status(429).json({ error: 'Troppi tentativi sbagliati: chiedi un nuovo codice.' });
+    if (impronta(codice + ':' + assoc.id) !== assoc.otp_hash) { tentativiCodice.colpo(assoc.id); return res.status(400).json({ error: 'Codice non corretto. Controlla l\'email e riprova.' }); }
     if (!b.privacy) return res.status(400).json({ error: 'Senza il consenso al trattamento dei dati non possiamo procedere.' });
 
     /* Il consenso si salva CON LA DATA E LA VERSIONE del testo su cui e' stato

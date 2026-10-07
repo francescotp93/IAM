@@ -1657,3 +1657,170 @@ vecchia è esatta. La parte che conta sta nel browser.
 - **Dove finiscono i soldi**: il payout Stripe deve arrivare sul conto
   separato (art. 117 CAP, Reg. IVASS 40/2018), e le commissioni Stripe sono un
   costo dell'agenzia — il cliente deve pagare il premio intero.
+
+---
+
+## 07/10/2026 — La revisione grafica si fa dai token, non da sessantamila righe
+
+**Perimetro:** l'aspetto delle due applicazioni (IAM e QUOTO) e le fasi di
+caricamento. Richiesta di Francesco: «fai una revisione grafica di tutto il
+sistema, rendilo più tech» e «cura anche nel dettaglio le fasi di caricamento,
+in maniera più minimale ma tech possibile».
+
+**CENSITO PRIMA DI TOCCARE NIENTE**, perché da questo dipendeva se era un
+lavoro da quaranta righe o da quattromila:
+
+| | IAM | QUOTO |
+|---|---|---|
+| colori scritti a mano, distinti | 262 | 374 |
+| usi di `var(--…)` negli stili in linea | 3.103 | 1.815 |
+| stili in linea | 2.682 | 2.410 |
+| animazioni di attesa dichiarate | 6 | 7 |
+
+E due sistemi grafici sovrapposti: la scocca `--w1-*` a raggio 4px e il tema
+dell'app `--bg/--surf/--txt` a raggio 16px, che si contraddicono.
+
+🟢 **Una pelle, non una riscrittura.** `withus-tech.css` ridefinisce i token
+che le due pagine usano già migliaia di volte negli stili in linea: il colore
+di quasi tutta l'applicazione si decide da un punto solo. *Come tornare
+indietro:* si toglie un `<link>` e torna tutto com'era.
+
+🟡 **Quattro scelte, non un restyling a sensazione.** Neutri freddi al posto
+del grigio-violetto; un secondo accento ciano per i segnali di sistema (è lo
+stesso linguaggio della schermata di rientro IAM, che era già l'unico pezzo con
+un'aria tecnica); i dati in monospaziato **di sistema** — importi, codici,
+targhe — perché le cifre si incolonnano e uno zero di troppo si vede; angoli a
+3px.
+
+🟡 **`!important` sui campi, e il perché.** I raggi dei campi sono scritti negli
+stili in linea e nessun foglio li batte. L'alternativa era correggerli a mano
+in qualche centinaio di punti su due documenti da trentamila righe: più
+occasioni di rompere qualcosa che angoli guadagnati. È ristretto ai campi di
+testo e di scelta — i bottoni tondi restano tondi.
+
+🟢 **Le fasi di caricamento: quattro primitive al posto di tredici animazioni.**
+La barra, lo scheletro, lo stato, l'anello. La regola che le tiene insieme:
+**un'attesa dice sempre che cosa si sta aspettando** — per questo
+`Caricamento.stato()` senza testo si rifiuta invece di tornare un
+«Caricamento…» generico. Le undici attese che c'erano già (`.cl-carico`) sono
+passate al linguaggio nuovo con una regola di stile, senza toccare gli undici
+punti.
+
+🟢 **L'avvio dice che cosa sta facendo.** Prima: il marchio che respira e una
+riga nascosta ai soli lettori di schermo. Adesso: marchio fermo, griglia che
+scorre, barra di due pixel, e quella riga scritta in chiaro in monospaziato. Su
+un gestionale che si apre venti volte al giorno, «è partito o è bloccato?» è
+una domanda più cara di due centimetri di schermo.
+
+🟢 **Allineati cinque contrassegni di versione dei motori** che erano rimasti
+indietro (`pagamento-rata`, `crm-analisi`, `contabilita`, `garanzie`): non
+erano miei, li ha trovati il cancello. Un contrassegno indietro vuol dire che
+il browser può servire il motore vecchio con la pagina nuova, in silenzio.
+
+**Fuori perimetro, annotato — e scritto anche in fondo alla pelle:**
+- **I colori scritti a mano non seguono**: 262 in IAM, 374 in QUOTO. Non li ho
+  sostituiti in blocco di proposito — una sostituzione cieca su sessantamila
+  righe cambia anche i colori dentro ai PDF generati, ai fogli esportati e alle
+  finestre che si aprono a parte, e lì un errore non lo vede nessuno. Vanno
+  portati sui token una schermata per volta, guardandola.
+- **I raggi delle schede** restano quelli scritti in linea (12px): si vedono
+  ancora tondi dove la pelle non arriva.
+- **Le altre ~50 attese** scrivono ancora «Caricamento…» con il loro stile:
+  convertite le due più visibili (cruscotto contabilità, elenco dei link di
+  pagamento) e tutte quelle che usavano `.cl-carico`.
+- **QUOTO ha ancora un accesso blu con scritto «IAM»**, che non è il marchio
+  dell'agenzia: è una schermata da rifare, non da ritonare.
+
+---
+
+## 07/10/2026 — L'area riservata dei convenzionati diventa una scheda cliente
+
+**Perimetro:** `area.html` (la pagina dell'associato). Bozzetto di Francesco:
+la «Sintesi cliente» dei gestionali di compagnia — scheda a sinistra,
+linguette a destra, prodotti divisi in famiglie — ma con la pelle di IAM.
+
+🟡 **La forma cambia, i percorsi no.** A sinistra la scheda (iniziali, nome,
+nascita ed età, convenzione, Contatti e Avvisi richiudibili, barra
+WhatsApp/Email/Chiama in fondo); a destra le linguette Sintesi · Anagrafica ·
+Polizze · Richieste · Offerte. Le cinque sezioni sono le stesse di prima, con
+nomi più corti. Sul telefono la scheda sta sopra e i Contatti partono chiusi.
+*Come tornare indietro:* `git revert` del commit, nessun dato coinvolto.
+
+🟡 **Tre famiglie di prodotti (Auto, Rami vari, Vita) dedotte dal nome e
+dall'icona**, perché la tabella prodotti non ha una colonna «famiglia». Nel
+dubbio un prodotto va in Rami vari; «RC vita privata» è RC, non vita. Se un
+giorno la deduzione sbaglia troppo, la cosa giusta è una colonna `famiglia`
+scelta dal pannello (🔴 database, non fatta).
+
+🟡 **«Richiesta veloce»** al posto del «Fast Quote» del bozzetto: un elenco
+unico dei prodotti che porta dritto al modulo. Non calcola premi.
+
+🟢 **Avvisi nella scheda e puntini sulle linguette:** dati mancanti (triangolo,
+come prima), rinnovi entro 30 giorni, preventivi pronti. Ognuno porta alla
+sua sezione.
+
+🟢 **Il modulo e le conversazioni si aprono dentro la pagina**, con la scheda
+ferma a sinistra: «Torna indietro» non ricarica più tutto.
+
+🟢 **Guasti corretti, trovati verificando:**
+- *Recupero password:* il link «ho dimenticato la password» apriva la
+  schermata giusta e un attimo dopo `dove()` la copriva con l'area — si
+  entrava senza aver scelto la password nuova. Adesso il recupero si ricorda.
+- *Uscita:* il segnale di presenza continuava a bussare ogni minuto dopo
+  «Esci». Si ferma.
+- *Rete instabile:* qualunque errore di lettura buttava fuori con «accesso non
+  abilitato». Adesso dice che non riesce a collegarsi e offre «Riprova».
+- *Errori invisibili:* dentro l'area non c'era il riquadro dei messaggi, e una
+  richiesta che non si apriva non diceva niente. C'è (`#msg-area`).
+- *«Manca ancora: targa»* compariva in cima al modulo, lontano dal pulsante:
+  sul telefono sembrava un pulsante rotto. Ora sta sopra il pulsante.
+- *Convenzione vuota:* si leggeva «Convenzione» seguito dal niente (vedi 🔴 2).
+  Ora la riga compare solo se il nome c'è, e il messaggio WhatsApp non dice
+  più «della convenzione .».
+- *Link delle offerte e dei rinnovi:* solo `http(s)://`.
+- La riga dell'associato si legge per colonne, non con `*`.
+- Due colori blu fuori palette (offerte, pulsante email) portati sui token.
+
+🔴 **Preparato, NON applicato** — `supabase/bozze/area-convenzionati-protezioni.sql`:
+1. **Un associato può riscriversi la propria riga dal browser** (politica
+   `assoc_update_proprio`): cambiare convenzione, segnarsi un consenso privacy
+   senza OTP, scriversi l'impronta del codice. Nessuno la usa: la bozza la
+   toglie.
+2. **Il nome della convenzione non arriva all'associato** (quote_convenzioni è
+   leggibile solo dallo staff): la bozza aggiunge `mia_convenzione()`, che dà
+   solo nome ed ente della sua. La pagina la chiama già e tace finché manca.
+
+**Fuori perimetro, annotato:**
+- 🔴 L'associato può **leggere** `otp_hash` della propria riga: sha256 di sei
+  cifre, si indovina in un attimo. Chiuderlo vuol dire cambiare `chiEntra()`
+  nel server (oggi legge la riga col token dell'associato) e spostare
+  l'impronta: è un rilascio del server.
+- Le prove automatiche (`node ui-test.mjs`) non sono state lanciate: sul PC di
+  questa sessione Node non c'è. Verificati a mano nel browser, con un finto
+  database, i percorsi principali su computer e telefono, e ricontrollati con
+  uno script tutti i vincoli testuali delle prove esistenti sull'area.
+
+### 07/10/2026 (seguito) — La demo dell'area riservata
+
+🟡 **`area.html?demo`** (e il pulsante «Area riservata (demo)» nella pagina
+Convenzioni di IAM) mostra l'area di un associato inventato, Mario Rossi.
+Tutto passa da `area-demo.js`, che in demo sostituisce sul client ogni
+lettura, l'accesso e le chiamate al server: verificato nel browser che non
+parte nessuna richiesta né verso Supabase né verso api.withusassicurazioni.it.
+Quello che si scrive in demo vive finché la scheda resta aperta. Una striscia
+gialla dice sempre che è una demo. Senza `?demo` il file non fa niente.
+*Come tornare indietro:* togliere il pulsante da index.html e il tag
+`area-demo.js` da area.html (o `git revert`).
+
+🟢 **Trovato provando la demo:** dopo «Salva i miei dati» il messaggio
+«Salvato» non compariva mai, perché veniva scritto nel modulo di prima del
+ridisegno. Corretto: anche nell'area vera.
+
+### 07/10/2026 (seguito) — Protezioni dell'area applicate
+
+🔴→✅ Su richiesta di Francesco applicata `supabase/migrations/20261007_area_convenzionati_protezioni.sql`
+(prima in `bozze/`). Verificato sul database: la politica `assoc_update_proprio`
+non c'è più (resta solo `assoc_update` dello staff), `mia_convenzione()` esiste,
+è eseguibile dagli utenti autenticati e non da `anon`. Da adesso il nome della
+convenzione compare nella scheda dell'associato.
+Resta aperto (fuori perimetro): la lettura di `otp_hash` da parte dell'associato.

@@ -66,11 +66,15 @@
   /* ── LE LINGUETTE ──────────────────────────────────────────────────────────
      Una riga sola, che va a capo sul telefono invece di scorrere di lato: una
      linguetta che sta fuori dallo schermo e' una sezione che non esiste. */
-  .linguette{display:flex;gap:7px;flex-wrap:wrap;margin:18px 0 18px;border-bottom:1px solid var(--line);padding-bottom:12px}
-  .lin{display:inline-flex;align-items:center;gap:6px;background:#fff;color:var(--muted);border:1px solid var(--line);border-radius:999px;min-height:40px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
-  .lin:hover{background:var(--tenue);color:var(--ink)}
-  .lin.viva{background:var(--scuro);color:#fff;border-color:var(--scuro)}
-  .lin i{font-size:15px}
+  .linguette{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));background:#fff;border-radius:8px;box-shadow:0 2px 10px rgba(20,32,45,.09);overflow:hidden;margin:0 0 22px}
+  .lin{position:relative;display:flex;align-items:center;justify-content:center;gap:7px;background:#fff;color:var(--ink);border:none;min-height:46px;padding:10px 14px;font-size:13px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;cursor:pointer;font-family:inherit}
+  .lin:hover{background:var(--tenue)}
+  .lin.viva{background:var(--primario);color:#fff;font-weight:800}
+  .lin.viva .avviso{color:#ffd58a}
+  /* IL PUNTO ROSSO sulla linguetta: «qui dentro c'e' qualcosa da guardare»
+     (un rinnovo vicino, un preventivo pronto). Come il triangolo, sta fuori
+     dalla sezione: un avviso che si vede solo entrando non avvisa. */
+  .lin .punto{width:8px;height:8px;border-radius:50%;background:#d6334a;flex:0 0 auto}
   /* IL TRIANGOLO. Non e' rosso: rosso vuol dire «e' andato storto qualcosa»,
      e qui non e' andato storto niente — manca solo qualcosa da scrivere. */
   .avviso{color:#a76008;font-size:14px;vertical-align:-1px}
@@ -153,18 +157,96 @@
   @media (prefers-reduced-motion: reduce){
     .banner .pista{animation:none;white-space:normal;flex-wrap:wrap;gap:14px}
   }
-  .off{display:flex;gap:13px;align-items:flex-start;background:#f7f9ff;border:1px solid #e4eaff;border-radius:13px;padding:13px 15px;margin-bottom:10px}
+  .off{display:flex;gap:13px;align-items:flex-start;background:var(--tenue);border:1px solid var(--tenue2);border-radius:13px;padding:13px 15px;margin-bottom:10px}
   .off .em{font-size:26px;line-height:1;flex:0 0 auto}
   .off .ti{font-weight:800;font-size:14.5px}
   .off .tx{font-size:13.5px;color:var(--muted);margin-top:2px;line-height:1.55}
   .off .fino{font-size:12px;color:#a76008;margin-top:4px}
-  /* PARLARE CON UNA PERSONA. In fondo, sempre allo stesso posto: chi ha un
-     dubbio su una polizza non deve cercare come si fa a chiedere. */
-  .aiuto{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-  .aiuto a{flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border-radius:12px;padding:13px 14px;font-weight:800;font-size:14px;border:1.5px solid var(--line);color:var(--ink);background:#fff}
-  .aiuto a i{font-size:19px}
-  .aiuto a.wa{background:#25d366;border-color:#25d366;color:#fff}
-  .aiuto a.ml{background:var(--tenue);border-color:#dbe3ff;color:var(--primario2)}
+  [hidden]{display:none!important}
+
+  /* ══ LA SCHEDA DEL CLIENTE ════════════════════════════════════════════════
+     Stessa forma della scheda cliente dei gestionali di compagnia che
+     l'agenzia usa tutti i giorni (bozzetto di Francesco, 07/10/2026): a
+     sinistra CHI SEI — nome, nascita, recapiti, avvisi — e a destra, a
+     linguette, COSA HAI. Ma coi colori di IAM, e da cliente: niente sigle
+     da ufficio, e sul telefono la scheda sta sopra e le linguette sotto. */
+  .wrap.largo{max-width:1200px}
+  .briciole{background:#fff;border-bottom:3px solid var(--primario);padding:0 20px;min-height:46px;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--w1-testo3)}
+  .briciole b{color:var(--ink);text-transform:uppercase;letter-spacing:.2px}
+  .area{display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
+  .scheda{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 10px rgba(20,32,45,.09);overflow:hidden}
+  .scheda .testa{padding:18px 18px 16px;text-align:center;position:relative}
+  .scheda .avatar{width:56px;height:56px;border-radius:50%;background:var(--tenue);border:2px solid var(--tenue2);color:var(--primario2);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:19px;text-transform:uppercase}
+  .scheda .bollino{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#f2b632;color:#fff;font-size:12px;font-weight:800;vertical-align:top;margin-left:-10px;border:2px solid #fff}
+  .scheda .strum{position:absolute;top:8px;right:8px;display:flex;gap:2px}
+  .icobtn{background:none;border:none;color:var(--primario2);width:38px;height:38px;border-radius:8px;cursor:pointer;font-size:20px;display:inline-flex;align-items:center;justify-content:center;font-family:inherit}
+  .icobtn:hover{background:var(--tenue)}
+  .menu{position:absolute;right:8px;top:46px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--w1-ombra-lg);min-width:200px;z-index:20;text-align:left;overflow:hidden}
+  .menu button{display:flex;gap:9px;align-items:center;width:100%;background:none;border:none;padding:13px 15px;font-family:inherit;font-size:14px;cursor:pointer;color:var(--ink);min-height:44px}
+  .menu button:hover{background:var(--tenue)}
+  .scheda .nome{font-weight:800;font-size:17px;text-transform:uppercase;margin-top:10px;line-height:1.25;word-break:break-word}
+  .scheda .nato{font-size:14px;color:var(--muted)}
+  .scheda .conv{margin-top:9px;display:inline-block;background:var(--tenue);color:var(--primario2);border-radius:999px;padding:3px 12px;font-size:12.5px;font-weight:700;line-height:1.5}
+  .blocco-t{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;padding:15px 18px;font-family:inherit;font-weight:800;font-size:15px;color:var(--primario2);cursor:pointer;min-height:54px;text-align:left}
+  .blocco-t > .ti:first-child{font-size:24px}
+  .blocco-t .freccia{margin-left:auto;font-size:20px;transition:transform .2s}
+  .blocco-t[aria-expanded="true"] .freccia{transform:rotate(180deg)}
+  .contatti{background:#f6faf8;border-top:1px solid var(--line)}
+  .contatti .righe{padding:0 18px 6px}
+  .riga-c{display:flex;gap:14px;align-items:flex-start;width:100%;background:none;border:none;border-bottom:1px solid var(--line);padding:12px 0;font-family:inherit;font-size:13.5px;font-weight:700;color:var(--primario2);letter-spacing:.3px;text-transform:uppercase;text-align:left;cursor:pointer;word-break:break-word;line-height:1.45}
+  .riga-c:last-child{border-bottom:none}
+  .riga-c.min{text-transform:none;letter-spacing:0}
+  .riga-c.vuota{color:var(--w1-testo3);font-weight:400;text-transform:none;letter-spacing:0;font-style:italic}
+  .riga-c > .ti{color:var(--muted);font-size:20px;flex:0 0 auto}
+  .allarmi-t{background:#fbe1e0}
+  .allarmi-t.calmo{background:var(--tenue)}
+  .conta{background:#d6334a;color:#fff;border-radius:999px;min-width:26px;height:26px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+  .allarmi-t.calmo .conta{background:var(--primario)}
+  .voce-a{display:flex;align-items:center;gap:14px;width:100%;background:#fff;border:none;border-top:1px solid var(--line);padding:13px 18px;font-family:inherit;font-size:14px;cursor:pointer;text-align:left;color:var(--ink);min-height:52px}
+  .voce-a:hover{background:#fdf6f6}
+  .voce-a .ic-a{position:relative;color:var(--primario2);font-size:24px;line-height:1;flex:0 0 auto}
+  .voce-a .ic-a b{position:absolute;top:-7px;right:-9px;background:#d6334a;color:#fff;border-radius:999px;font-size:10.5px;min-width:17px;height:17px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+  .voce-a .ti-chevron-right{margin-left:auto;color:var(--w1-testo3)}
+  .voce-a.nulla{cursor:default;color:var(--muted)}
+  .voce-a.nulla:hover{background:#fff}
+  .aiuto-nota{border-top:1px solid var(--line);padding:11px 18px;font-size:13px;color:var(--muted);line-height:1.5}
+  /* PARLARE CON UNA PERSONA. In fondo alla scheda, sempre allo stesso posto:
+     chi ha un dubbio su una polizza non deve cercare come si fa a chiedere. */
+  .barra{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--scuro)}
+  .barra a{color:#fff;text-decoration:none;font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:12px 6px;display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px}
+  .barra a + a{border-left:1px solid rgba(255,255,255,.12)}
+  .barra a:hover{background:rgba(255,255,255,.09)}
+  .barra a i{font-size:17px}
+  .principale{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+  .sez-titolo{font-size:19px;font-weight:600;margin:6px 0 14px}
+  /* ── LE TRE FAMIGLIE ──────────────────────────────────────────────────────
+     Auto, rami vari, vita: e' come un assicurato pensa ai propri bisogni
+     («la macchina», «la casa», «la famiglia»), e un elenco di dodici
+     prodotti si legge meglio in tre mucchi da quattro. */
+  .cat-griglia{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+  .cat{display:flex;align-items:center;gap:16px;background:#fff;border:1.5px solid transparent;border-radius:8px;box-shadow:0 2px 10px rgba(20,32,45,.10);padding:10px 14px;min-height:70px;cursor:pointer;font-family:inherit;text-align:left;width:100%;color:var(--ink)}
+  .cat:hover{border-color:var(--tenue2)}
+  .cat[aria-expanded="true"]{border-color:var(--primario)}
+  .cat:disabled{opacity:.55;cursor:default;box-shadow:none;border-color:var(--line)}
+  .cat .cerchio{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;background:var(--cb);color:var(--c);flex:0 0 auto}
+  .cat .nm{display:block;font-weight:600;font-size:15.5px}
+  .cat .n{display:block;font-size:12.5px;color:var(--muted)}
+  .cat .ti-chevron-down{margin-left:auto;font-size:20px;transition:transform .2s}
+  .cat[aria-expanded="true"] .ti-chevron-down{transform:rotate(180deg)}
+  .cat-auto{--c:#e5577f;--cb:#fdecf1} .cat-vari{--c:#1c9fb0;--cb:#e2f5f7} .cat-vita{--c:#d29a12;--cb:#fdf4da}
+  .cat-pannello{border:1px solid var(--line);border-radius:8px;margin-top:12px;padding:2px 16px}
+  .fisarmonica{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:24px}
+  .fisarmonica > button{display:flex;align-items:center;width:100%;background:none;border:none;padding:20px 16px;font-family:inherit;font-size:18px;font-weight:600;color:var(--ink);cursor:pointer;min-height:60px;text-align:left}
+  .fisarmonica > button .ti{margin-left:auto;color:var(--primario2);font-size:22px;transition:transform .2s}
+  .fisarmonica > button[aria-expanded="true"] .ti{transform:rotate(180deg)}
+  .fisarmonica .dentro{padding:0 16px 20px}
+  .f select{width:100%;min-height:48px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:16px;font-family:inherit;color:var(--ink);background:#fff}
+  .ic-grande{color:var(--primario2);background:var(--tenue);border-radius:10px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:27px;flex:0 0 auto}
+  @media (min-width:900px){
+    .area{grid-template-columns:290px minmax(0,1fr)}
+    .scheda{position:sticky;top:16px}
+    .principale{padding:20px 22px}
+  }
 </style>
 </head>
 <body>
@@ -173,9 +255,12 @@
        onerror="this.outerHTML='<b style=\'letter-spacing:2px;font-size:13px\'>WITH US ASSICURAZIONI</b>'">
   <div class="chi" id="chi" style="display:none"><span id="chi-nome"></span><button class="esci" onclick="esci()">Esci</button></div>
 </div>
+<div class="briciole" id="briciole" hidden><span>Area riservata</span><i class="ti ti-chevron-right"></i><b id="bric-nome"></b></div>
 <div class="wrap" id="wrap"><div class="card stretta" id="bd"><div class="muted" style="text-align:center">Caricamento…</div></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- La demo (area.html?demo): senza ?demo nell'indirizzo non fa niente. -->
+<script src="area-demo.js"></script>
 <script>
 /* ══ AREA RISERVATA CONVENZIONATI ═════════════════════════════════════════════
    Chi entra qui non fa parte dell'agenzia: e' un associato di una convenzione,
@@ -218,13 +303,34 @@ const CONTATTI = {
   email: 'amministrazione@withusassicurazioni.it',
 };
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+/* LA DEMO. Con area.html?demo, area-demo.js sostituisce sul client ogni
+   lettura e ogni accesso, e conToken() qui sotto non chiama il server: si
+   vede l'area di un associato inventato senza toccare niente di vero. */
+const DEMO = !!window.AREA_DEMO;
+if(DEMO) window.AREA_DEMO.installa(db);
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 let IO = null;      // la riga dell'associato
 let PRODOTTI = [];
 let DOMANDE = [];   // le domande del prodotto che si sta compilando
 
-const schermo = h => { $('bd').innerHTML = h; };
+/* TRE FORME DI SCHERMO. 'stretta' per le porte (accesso, password, consensi):
+   una colonna sola, come un modulo. 'area' per la scheda cliente, che ha
+   bisogno di tutta la larghezza. Prima ogni schermata cercava «la» .card e le
+   cambiava classe a mano: bastava che la pagina avesse due riquadri per
+   cambiare quello sbagliato. */
+const schermo = (h, forma) => {
+  const bd = $('bd');
+  bd.className = forma === 'area' ? '' : (forma === 'largo' ? 'card' : 'card stretta');
+  $('wrap').className = forma === 'area' ? 'wrap largo' : 'wrap';
+  if(forma !== 'area') $('briciole').hidden = true;
+  bd.innerHTML = h;
+};
+/* Il link «rifai la password» riporta qui con #...type=recovery. Va ricordato
+   SUBITO: altrimenti dove() — che parte insieme — trova una sessione valida e
+   apre l'area, e la persona entra senza aver mai scelto la password nuova. */
+let RECUPERO = /type=recovery/.test(location.hash);
+const COLONNE_IO = 'id,nome,cognome,email,telefono,deve_cambiare_password,privacy_accettata_il,quote_convenzioni(nome,ente)';
 const OCCHIO = '<button type="button" class="pw-occhio" aria-label="Mostra la password" title="Mostra la password" onclick="mostraPw(this)"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></button>';
 function mostraPw(btn){
   const el = btn.parentElement.querySelector('input'); if(!el) return;
@@ -240,11 +346,15 @@ function mostraPw(btn){
   }, 12000);
 }
 
-function avviso(t, tipo){ const m = $('msg'); if(!m) return; m.className = 'msg ' + (tipo || 'err'); m.innerHTML = t; }
+/* Dentro l'area il riquadro dei messaggi si chiama #msg-area: prima non c'era,
+   e un errore (per esempio una richiesta che non si apriva) non compariva da
+   nessuna parte — il clic sembrava semplicemente non fare niente. */
+function avviso(t, tipo){ const m = $('msg') || $('msg-area'); if(!m) return; m.className = 'msg ' + (tipo || 'err'); m.innerHTML = t; }
 const attesa = (b, t) => { if(b){ b.disabled = true; b.dataset.old = b.dataset.old || b.textContent; b.textContent = t; } };
 const libero = (b) => { if(b){ b.disabled = false; if(b.dataset.old) b.textContent = b.dataset.old; } };
 
 async function conToken(via, corpo){
+  if(DEMO) return window.AREA_DEMO.risposta(via, corpo || {});
   const { data } = await db.auth.getSession();
   const tok = data && data.session && data.session.access_token;
   const r = await fetch(API + '/convenzionati/' + via, {
@@ -259,7 +369,6 @@ async function conToken(via, corpo){
 
 // ── 1. ENTRA ──────────────────────────────────────────────────────────────────
 function schermoAccesso(messaggio){
-  document.querySelector('.card').className = 'card stretta';
   $('chi').style.display = 'none';
   schermo(
      '<h1>Area riservata</h1>'
@@ -303,39 +412,77 @@ async function scordata(){
     : 'Se quell\'indirizzo è registrato, fra poco ricevi l\'email per rifare la password.', 'ok');
 }
 
-async function esci(){ await db.auth.signOut(); IO = null; schermoAccesso(); }
+/* Il battito si ferma PRIMA di uscire: prima continuava a bussare ogni minuto
+   anche dopo «Esci», senza piu' un accesso, e ogni colpo era un rifiuto. */
+async function esci(){ fermaBattito(); await db.auth.signOut(); IO = null; ANAG = null; schermoAccesso(); }
 
 // ── Dove mandare chi e' entrato ───────────────────────────────────────────────
 async function dove(){
   const { data: ses } = await db.auth.getSession();
   if(!ses || !ses.session) return schermoAccesso();
+  /* SOLO LE COLONNE CHE SERVONO, non «*»: sulla riga ci sono anche cose che
+     a questa pagina non servono (l'impronta del codice di conferma, le note
+     di chi ha verificato) e che non hanno motivo di viaggiare fino al browser. */
   const { data, error } = await db.from('quote_convenzione_associati')
-    .select('*, quote_convenzioni(nome, ente)').limit(1);
-  if(error || !data || !data.length){
+    .select(COLONNE_IO).limit(1);
+  if(error){
+    /* UNA RETE CHE CADE NON E' UN ACCESSO SBAGLIATO. Prima qualunque errore
+       buttava fuori la persona con «accesso non abilitato»: chi aveva solo
+       perso il segnale per un attimo si sentiva dire che non era iscritto. */
+    return schermo('<h1>Non riesco a collegarmi</h1>'
+      + '<div class="muted" style="margin-bottom:16px">Controlla la connessione e riprova. Se continua, scrivici: guardiamo noi.</div>'
+      + '<button class="btn" onclick="dove()">Riprova</button>');
+  }
+  if(!data || !data.length){
     /* Un accesso che non e' legato a nessun associato: puo' essere uno di noi
        che ha sbagliato porta. Si dice, e si esce. */
     await db.auth.signOut();
     return schermoAccesso('Questo accesso non è abilitato all\'area convenzionati.');
   }
   IO = data[0];
+  await miaConvenzione();
   $('chi-nome').textContent = (IO.nome || '') + ' ' + (IO.cognome || '');
   $('chi').style.display = 'flex';
-  if(IO.deve_cambiare_password) return schermoPassword();
+  if(RECUPERO || IO.deve_cambiare_password) return schermoPassword();
   if(!IO.privacy_accettata_il) return schermoDati();
   return schermoArea();
 }
 
+/* IL NOME DELLA CONVENZIONE. La protezione del database lascia leggere le
+   convenzioni solo allo staff: l'associato riceveva la propria riga con
+   «quote_convenzioni» vuoto, e la pagina scriveva «Convenzione» seguito dal
+   niente. La funzione mia_convenzione() (supabase/migrations/20261007_area_convenzionati_
+   protezioni.sql) restituisce SOLO nome ed ente della sua. Finche' non e'
+   installata la chiamata fallisce in silenzio e la pagina non scrive la riga:
+   meglio niente che un'etichetta vuota. */
+async function miaConvenzione(){
+  if((IO.quote_convenzioni || {}).nome || typeof db.rpc !== 'function') return;
+  try{
+    const { data, error } = await db.rpc('mia_convenzione');
+    const c = !error && (Array.isArray(data) ? data[0] : data);
+    if(c && c.nome) IO.quote_convenzioni = { nome: c.nome, ente: c.ente || '' };
+  }catch(e){ /* niente nome: la scheda lo omette */ }
+}
+
 // ── 2. LA PASSWORD TUA ────────────────────────────────────────────────────────
 function schermoPassword(){
-  document.querySelector('.card').className = 'card stretta';
+  /* Tre strade arrivano qui, e ognuna ha la sua frase: la prima volta, il
+     link «ho dimenticato la password», e il menu della scheda. */
+  const primaVolta = IO && IO.deve_cambiare_password;
+  const sotto = primaVolta ? 'Quella che ti abbiamo mandato serviva solo per entrare la prima volta.'
+    : RECUPERO ? 'Scegli la password nuova: da adesso entri con questa.'
+    : 'Da adesso entrerai con quella nuova.';
+  const indietro = (!primaVolta && !RECUPERO && IO && IO.privacy_accettata_il)
+    ? '<div style="text-align:center"><button class="link" onclick="schermoArea()">Lascia stare, torna alla mia area</button></div>' : '';
   schermo(
-     '<h1>Scegli la tua password</h1>'
-    +'<div class="muted" style="margin-bottom:16px">Quella che ti abbiamo mandato serviva solo per entrare la prima volta.</div>'
+     '<h1>' + (primaVolta ? 'Scegli la tua password' : 'Cambia la password') + '</h1>'
+    +'<div class="muted" style="margin-bottom:16px">' + sotto + '</div>'
     +'<div class="f"><label>NUOVA PASSWORD</label><div class="pw-box"><input id="p1" type="password" autocomplete="new-password">' + OCCHIO + '</div></div>'
     +'<div class="f"><label>RIPETILA</label><div class="pw-box"><input id="p2" type="password" autocomplete="new-password">' + OCCHIO + '</div></div>'
     +'<div class="pass-hint">Almeno 8 caratteri, con lettere e numeri. Non può contenere il tuo nome o la tua email.</div>'
     +'<div class="msg" id="msg"></div>'
-    +'<button class="btn" id="b" onclick="salvaPassword()">Salva e continua</button>');
+    +'<button class="btn" id="b" onclick="salvaPassword()">Salva e continua</button>'
+    + indietro);
   $('p1').focus();
 }
 
@@ -348,6 +495,10 @@ async function salvaPassword(){
        nel browser sarebbe un suggerimento che basta chiudere la pagina per
        saltare. */
     await conToken('mia-password', { password: p1 });
+    /* Il recupero e' finito: si toglie il segno dall'indirizzo, altrimenti un
+       «aggiorna» del browser riproporrebbe di nuovo questa schermata. */
+    if(RECUPERO){ RECUPERO = false; try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){} }
+    if(!IO) return dove();
     IO.deve_cambiare_password = false;
     if(!IO.privacy_accettata_il) return schermoDati();
     return schermoArea();
@@ -356,7 +507,6 @@ async function salvaPassword(){
 
 // ── 3. I TUOI DATI E I CONSENSI ───────────────────────────────────────────────
 function schermoDati(){
-  document.querySelector('.card').className = 'card stretta';
   schermo(
      '<h1>Confermiamo i tuoi dati</h1>'
     +'<div class="muted" style="margin-bottom:16px">Una volta sola. Poi entri diretto.</div>'
@@ -396,7 +546,7 @@ async function confermaDati(){
       nome: $('nome').value, cognome: $('cognome').value, telefono: $('telefono').value,
       versione_privacy: VERSIONE_PRIVACY,
     });
-    const { data } = await db.from('quote_convenzione_associati').select('*, quote_convenzioni(nome, ente)').limit(1);
+    const { data } = await db.from('quote_convenzione_associati').select(COLONNE_IO).limit(1);
     IO = (data && data[0]) || IO;
     schermoArea();
   }catch(e){ libero($('b')); avviso(e.message); }
@@ -413,30 +563,40 @@ async function confermaDati(){
    banner delle offerte, e i contatti in fondo. Sono le tre cose che servono
    sempre — chi cerca aiuto non deve prima capire in che sezione si trova. */
 const SEZIONI = [
-  { k: 'prodotti',  et: 'Prodotti',    ic: 'ti-shield-check' },
-  { k: 'polizze',   et: 'Le tue polizze', ic: 'ti-file-check' },
-  { k: 'richieste', et: 'Le tue richieste', ic: 'ti-message-2' },
+  { k: 'prodotti',  et: 'Sintesi',     ic: 'ti-layout-dashboard' },
+  { k: 'dati',      et: 'Anagrafica',  ic: 'ti-user' },
+  { k: 'polizze',   et: 'Polizze',     ic: 'ti-file-check' },
+  { k: 'richieste', et: 'Richieste',   ic: 'ti-message-2' },
   { k: 'offerte',   et: 'Offerte',     ic: 'ti-gift' },
-  { k: 'dati',      et: 'I tuoi dati', ic: 'ti-user' },
 ];
 let SEZIONE = 'prodotti';
 let MANCA = [];          // cosa manca all'anagrafica: alimenta il triangolo
 let ANAG = null;
+let POLIZZE = [];        // le sue polizze, come le ha consegnate il server
+let RICHIESTE = [];      // le sue richieste, come le ha consegnate il database
+const APERTI = { contatti: window.innerWidth >= 900, allarmi: true, menu: false };
 
 function disegnaLinguette(){
   const box = $('sezioni'); if(!box) return;
+  const punti = { polizze: rinnoviVicini().length, richieste: preventiviPronti().length };
   box.innerHTML = SEZIONI.map(s =>
-    '<button class="lin' + (SEZIONE === s.k ? ' viva' : '') + '" onclick="vaiA(\'' + s.k + '\')">'
-    + '<i class="ti ' + s.ic + '"></i>' + esc(s.et)
+    '<button type="button" role="tab" aria-selected="' + (SEZIONE === s.k) + '" class="lin' + (SEZIONE === s.k ? ' viva' : '') + '" onclick="vaiA(\'' + s.k + '\')">'
+    + '<span>' + esc(s.et) + '</span>'
     /* IL TRIANGOLO. Sta sulla linguetta e non solo dentro la sezione: se stesse
        solo dentro, per accorgersene bisognerebbe entrarci — cioe' sapere gia'
        che c'e' qualcosa da fare. */
     + (s.k === 'dati' && MANCA.length ? '<i class="ti ti-alert-triangle-filled avviso" title="Mancano dei dati"></i>' : '')
+    + (punti[s.k] ? '<span class="punto" title="C\'è qualcosa da guardare"></span>' : '')
     + '</button>').join('');
 }
 
 function vaiA(k){
   SEZIONE = k;
+  /* Una linguetta riporta sempre alla sua sezione, anche da dentro un modulo o
+     una conversazione: altrimenti la linguetta si accende e sotto non cambia
+     niente. */
+  chiudiDettaglio();
+  const m = $('msg-area'); if(m){ m.className = 'msg'; m.innerHTML = ''; }
   disegnaLinguette();
   for(const s of SEZIONI){
     const el = $('sez-' + s.k);
@@ -447,31 +607,156 @@ function vaiA(k){
 }
 
 async function schermoArea(){
-  const conv = IO.quote_convenzioni || {};
-  document.querySelector('.card').className = 'card';
+  /* LA SCHEDA (a sinistra) e il CORPO (a destra). Il saluto, il banner delle
+     offerte e i contatti stanno FUORI dalle sezioni: sono le cose che servono
+     sempre — chi cerca aiuto non deve prima capire in che sezione si trova. */
   schermo(
-     '<h1>Ciao ' + esc(IO.nome) + '</h1>'
-    +'<div class="muted">Convenzione <b>' + esc(conv.nome || '') + '</b>' + (conv.ente ? ' · ' + esc(conv.ente) : '') + '</div>'
+     '<div class="area">'
+    +'<aside class="scheda" aria-label="La tua scheda"><div id="scheda"></div><div id="aiuto"></div></aside>'
+    +'<section class="principale">'
+    +'<div class="linguette" id="sezioni" role="tablist"></div>'
     +'<div id="banner"></div>'
-    +'<div id="avviso-dati"></div>'
-    +'<div class="linguette" id="sezioni"></div>'
-    +'<div id="sez-prodotti"><h2>I prodotti riservati a te</h2><div id="lista" class="muted">Carico…</div></div>'
-    +'<div id="sez-polizze" style="display:none"><h2>Le tue polizze</h2><div id="polizze" class="muted">Carico…</div></div>'
-    +'<div id="sez-richieste" style="display:none"><h2>Le tue richieste</h2><div id="mie" class="muted">Carico…</div></div>'
-    +'<div id="sez-offerte" style="display:none"><h2>Offerte per te</h2><div id="offerte" class="muted">Carico…</div></div>'
-    +'<div id="sez-dati" style="display:none"><h2>I tuoi dati</h2><div id="dati" class="muted">Carico…</div></div>'
-    +'<div id="aiuto"></div>');
-  SEZIONE = 'prodotti'; ANAG = null; MANCA = [];
+    +'<div id="corpo">'
+    +'<div class="msg" id="msg-area"></div>'
+    +'<div id="sez-prodotti"><div id="avviso-dati"></div><h2 class="sez-titolo">I prodotti della tua convenzione</h2><div id="lista" class="muted">Carico…</div><div id="veloce"></div></div>'
+    +'<div id="sez-polizze" style="display:none"><h2 class="sez-titolo">Le tue polizze</h2><div id="polizze" class="muted">Carico…</div></div>'
+    +'<div id="sez-richieste" style="display:none"><h2 class="sez-titolo">Le tue richieste</h2><div id="mie" class="muted">Carico…</div></div>'
+    +'<div id="sez-offerte" style="display:none"><h2 class="sez-titolo">Offerte per te</h2><div id="offerte" class="muted">Carico…</div></div>'
+    +'<div id="sez-dati" style="display:none"><h2 class="sez-titolo">I tuoi dati</h2><div id="dati" class="muted">Carico…</div></div>'
+    +'</div>'
+    +'<div id="dettaglio" hidden></div>'
+    +'</section></div>', 'area');
+  $('briciole').hidden = false;
+  $('bric-nome').textContent = ((IO.cognome || '') + ' ' + (IO.nome || '')).trim();
+  SEZIONE = 'prodotti'; ANAG = null; MANCA = []; POLIZZE = []; RICHIESTE = []; CAT_APERTA = null; VELOCE_APERTA = false;
   battito();
   disegnaLinguette();
+  disegnaScheda();
   caricaOfferte();
   caricaMiePolizze();
   caricaMieRichieste();
   /* L'anagrafica si chiede SUBITO anche se la sua sezione e' chiusa: serve a
-     sapere se accendere il triangolo, e un avviso che compare solo dopo che ci
-     sei entrato non avvisa nessuno. */
+     sapere se accendere il triangolo e a riempire la scheda, e un avviso che
+     compare solo dopo che ci sei entrato non avvisa nessuno. */
   caricaMiaAnagrafica();
   mostraContatti();
+  caricaProdotti();
+}
+
+/* Il pulsante «aggiorna» della scheda: rilegge tutto senza ridisegnare la
+   pagina, cosi' chi sta guardando le polizze resta sulle polizze. */
+function aggiornaTutto(){
+  APERTI.menu = false;
+  caricaOfferte(); caricaMiePolizze(); caricaMieRichieste(); caricaMiaAnagrafica(); caricaProdotti();
+}
+
+/* ── LA SCHEDA ────────────────────────────────────────────────────────────────
+   Chi sei, come ti troviamo, e che cosa ti aspetta. Si ridisegna ogni volta
+   che arriva un pezzo (anagrafica, polizze, richieste): i pezzi arrivano in
+   ordine sparso, e aspettarli tutti vorrebbe dire una scheda vuota per secondi. */
+const etaDa = d => {
+  const n = new Date(d); if(isNaN(n)) return '';
+  const o = new Date();
+  let a = o.getFullYear() - n.getFullYear();
+  if(o.getMonth() < n.getMonth() || (o.getMonth() === n.getMonth() && o.getDate() < n.getDate())) a--;
+  return a >= 0 && a < 130 ? String(a) : '';
+};
+const giorniA = al => { if(!al) return null; const g = Math.ceil((new Date(al) - new Date()) / 86400000); return isNaN(g) ? null : g; };
+function rinnoviVicini(){ return POLIZZE.filter(p => { const g = giorniA(p.al); return g != null && g >= 0 && g <= 30; }); }
+function preventiviPronti(){ return RICHIESTE.filter(r => r.stato === 'preventivata'); }
+
+function vociAllarme(){
+  const v = [];
+  if(MANCA.length) v.push({ n: MANCA.length, t: 'Aggiornamento dati', ic: 'ti-id', k: 'dati' });
+  const rin = rinnoviVicini().length;
+  if(rin) v.push({ n: rin, t: rin === 1 ? 'Rinnovo in scadenza' : 'Rinnovi in scadenza', ic: 'ti-calendar-due', k: 'polizze' });
+  const pre = preventiviPronti().length;
+  if(pre) v.push({ n: pre, t: pre === 1 ? 'Preventivo pronto' : 'Preventivi pronti', ic: 'ti-file-invoice', k: 'richieste' });
+  return v;
+}
+
+function apriChiudi(k){ APERTI[k] = !APERTI[k]; disegnaScheda(); }
+
+function disegnaScheda(){
+  const box = $('scheda'); if(!box || !IO) return;
+  const a = ANAG || {};
+  const nome = a.nome || IO.nome || '', cognome = a.cognome || IO.cognome || '';
+  const conv = IO.quote_convenzioni || {};
+  const eta = a.data_nascita ? etaDa(a.data_nascita) : '';
+  const via = [a.indirizzo, a.civico].filter(Boolean).join(', ');
+  const luogo = [a.cap, a.comune].filter(Boolean).join(' - ') + (a.provincia ? ' (' + a.provincia + ')' : '');
+  const email = a.email || IO.email || '';
+  const tel = a.cellulare || IO.telefono || '';
+  /* UNA RIGA VUOTA DICE CHE COSA MANCA, e porta dove si compila: un recapito
+     che non c'e' non deve sembrare una riga dimenticata dal programma. */
+  const riga = (ic, testo, cl) => '<button type="button" class="riga-c' + (cl ? ' ' + cl : '') + '" onclick="vaiA(\'dati\')">'
+    + '<i class="ti ' + ic + '"></i><span>' + testo + '</span></button>';
+  const voci = vociAllarme();
+  const tot = voci.reduce((s, v) => s + v.n, 0);
+
+  box.innerHTML =
+     '<div class="testa">'
+    +'<div class="strum">'
+    +'<button type="button" class="icobtn" onclick="aggiornaTutto()" title="Aggiorna" aria-label="Aggiorna i dati"><i class="ti ti-refresh"></i></button>'
+    +'<button type="button" class="icobtn" onclick="apriChiudi(\'menu\')" title="Altro" aria-label="Altre azioni" aria-expanded="' + APERTI.menu + '"><i class="ti ti-dots-vertical"></i></button>'
+    +'</div>'
+    + (APERTI.menu ? '<div class="menu" role="menu">'
+        + '<button type="button" role="menuitem" onclick="APERTI.menu=false;vaiA(\'dati\');disegnaScheda()"><i class="ti ti-user-edit"></i> Modifica i miei dati</button>'
+        + '<button type="button" role="menuitem" onclick="APERTI.menu=false;schermoPassword()"><i class="ti ti-key"></i> Cambia password</button>'
+        + '<button type="button" role="menuitem" onclick="esci()"><i class="ti ti-logout"></i> Esci</button>'
+        + '</div>' : '')
+    +'<div><span class="avatar">' + esc((nome[0] || '') + (cognome[0] || '')) + '</span><span class="bollino" title="Convenzionato">C</span></div>'
+    +'<div class="nome">' + esc((cognome + ' ' + nome).trim()) + '</div>'
+    + (a.data_nascita ? '<div class="nato">' + esc(dataBreve(a.data_nascita)) + (eta ? ' (' + esc(eta) + ')' : '') + '</div>' : '')
+    /* LA CONVENZIONE SI SCRIVE SOLO SE LA SAPPIAMO. Senza il nome si leggeva
+       «Convenzione» seguito dal vuoto, che sembra un guasto. */
+    + (conv.nome ? '<div class="conv">' + esc(conv.nome) + (conv.ente ? ' · ' + esc(conv.ente) : '') + '</div>' : '')
+    +'</div>'
+
+    +'<div class="contatti">'
+    +'<button type="button" class="blocco-t" aria-expanded="' + APERTI.contatti + '" onclick="apriChiudi(\'contatti\')">'
+    +'<i class="ti ti-address-book"></i>Contatti<i class="ti ti-chevron-down freccia"></i></button>'
+    + (APERTI.contatti ? '<div class="righe">'
+        + (via || luogo.trim() ? riga('ti-map-pin', esc(via) + (via && luogo.trim() ? '<br>' : '') + esc(luogo)) : riga('ti-map-pin', 'Indirizzo da completare', 'vuota'))
+        + (email ? riga('ti-mail', esc(email), 'min') : riga('ti-mail', 'Email da completare', 'vuota'))
+        + (tel ? riga('ti-phone', esc(tel)) : riga('ti-phone', 'Cellulare da completare', 'vuota'))
+        + '</div>' : '')
+    +'</div>'
+
+    +'<div class="allarmi">'
+    +'<button type="button" class="blocco-t allarmi-t' + (tot ? '' : ' calmo') + '" aria-expanded="' + APERTI.allarmi + '" onclick="apriChiudi(\'allarmi\')">'
+    +'<span class="conta">' + (tot || '<i class="ti ti-check"></i>') + '</span>Avvisi<i class="ti ti-chevron-down freccia"></i></button>'
+    + (APERTI.allarmi
+        ? (voci.length
+            ? voci.map(v => '<button type="button" class="voce-a" onclick="vaiA(\'' + v.k + '\')">'
+                + '<span class="ic-a"><i class="ti ' + v.ic + '"></i><b>' + v.n + '</b></span>' + esc(v.t)
+                + '<i class="ti ti-chevron-right"></i></button>').join('')
+            : '<div class="voce-a nulla"><span class="ic-a"><i class="ti ti-circle-check"></i></span>Niente da fare: è tutto in ordine.</div>')
+        : '')
+    +'</div>';
+}
+
+/* ── I PRODOTTI, IN TRE FAMIGLIE ──────────────────────────────────────────────
+   Il prodotto non dice di che famiglia e': lo si capisce dal nome e
+   dall'icona che gli ha dato il pannello. Nel dubbio va in «Rami vari», che e'
+   la famiglia di tutto quello che non e' ne' un veicolo ne' una persona.
+   «RC vita privata» e' responsabilita' civile, non vita: lo si dice prima. */
+const CATEGORIE = [
+  { k: 'auto', et: 'Auto',      ic: 'ti-car',                cl: 'cat-auto' },
+  { k: 'vari', et: 'Rami vari', ic: 'ti-building-community', cl: 'cat-vari' },
+  { k: 'vita', et: 'Vita',      ic: 'ti-heart-handshake',    cl: 'cat-vita' },
+];
+let CAT_APERTA = null, VELOCE_APERTA = false;
+
+function categoriaDi(p){
+  const s = ((p.nome || '') + ' ' + (p.icona || '') + ' ' + (p.descrizione || '')).toLowerCase();
+  if(/\b(auto|moto|rca|autoveicol\w*|veicol\w*|autocarr\w*|scooter|ciclomotor\w*|camper|natant\w*|barca)\b|ti-car\b|ti-motorbike|ti-truck|ti-scooter/.test(s)) return 'auto';
+  if(/vita privata|responsabilit/.test(s)) return 'vari';
+  if(/\b(vita|tcm|previden\w*|pension\w*|risparmi\w*|investiment\w*|ltc|rendita)\b|caso morte|long term care|ti-heart-handshake|ti-pig/.test(s)) return 'vita';
+  return 'vari';
+}
+
+async function caricaProdotti(){
   try{
     /* Si chiedono al database senza dire quale convenzione: e' la protezione a
        decidere che si vedono solo i prodotti della PROPRIA. Se lo decidesse
@@ -481,13 +766,83 @@ async function schermoArea(){
       .select('*').eq('attivo', true).order('ordine').order('nome');
     if(error) throw error;
     PRODOTTI = data || [];
-    if(!PRODOTTI.length){
-      $('lista').innerHTML = 'Non ci sono ancora prodotti in questa convenzione. Appena li aggiungiamo li trovi qui.';
-      return;
-    }
-    $('lista').className = '';
-    $('lista').innerHTML = PRODOTTI.map(rigaProdotto).join('');
-  }catch(e){ $('lista').innerHTML = 'Non riesco a caricare i prodotti: ' + esc(e.message || ''); }
+    disegnaProdotti();
+  }catch(e){ const l = $('lista'); if(l){ l.className = 'muted'; l.innerHTML = 'Non riesco a caricare i prodotti: ' + esc(e.message || ''); } }
+}
+
+function apriCategoria(k){ CAT_APERTA = (CAT_APERTA === k) ? null : k; disegnaProdotti(); }
+
+function disegnaProdotti(){
+  const box = $('lista'); if(!box) return;
+  if(!PRODOTTI.length){
+    box.className = 'muted';
+    box.innerHTML = 'Non ci sono ancora prodotti in questa convenzione. Appena li aggiungiamo li trovi qui.';
+    disegnaVeloce();
+    return;
+  }
+  const di = k => PRODOTTI.filter(p => categoriaDi(p) === k);
+  /* Se tutti i prodotti stanno in una famiglia sola, la si apre da se':
+     tre riquadri di cui due vuoti e uno chiuso sembrano una pagina vuota. */
+  const piene = CATEGORIE.filter(c => di(c.k).length);
+  if(CAT_APERTA === null && piene.length === 1) CAT_APERTA = piene[0].k;
+  box.className = '';
+  box.innerHTML = '<div class="cat-griglia">'
+    + CATEGORIE.map(c => {
+        const n = di(c.k).length;
+        return '<button type="button" class="cat ' + c.cl + '" aria-expanded="' + (CAT_APERTA === c.k) + '" onclick="apriCategoria(\'' + c.k + '\')"' + (n ? '' : ' disabled') + '>'
+          + '<span class="cerchio"><i class="ti ' + c.ic + '"></i></span>'
+          + '<span><span class="nm">' + esc(c.et) + '</span><span class="n">' + (n ? n + (n === 1 ? ' prodotto' : ' prodotti') : 'nessun prodotto') + '</span></span>'
+          + '<i class="ti ti-chevron-down"></i></button>';
+      }).join('')
+    + '</div>'
+    + (CAT_APERTA && di(CAT_APERTA).length ? '<div class="cat-pannello">' + di(CAT_APERTA).map(rigaProdotto).join('') + '</div>' : '');
+  disegnaVeloce();
+}
+
+/* ── LA RICHIESTA VELOCE ──────────────────────────────────────────────────────
+   Per chi sa gia' che cosa gli serve: sceglie il prodotto da un elenco solo e
+   va dritto al modulo, senza aprire le famiglie una per una. */
+function disegnaVeloce(){
+  const box = $('veloce'); if(!box) return;
+  if(!PRODOTTI.length){ box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="fisarmonica">'
+    + '<button type="button" aria-expanded="' + VELOCE_APERTA + '" onclick="VELOCE_APERTA=!VELOCE_APERTA;disegnaVeloce()">Richiesta veloce<i class="ti ti-chevron-down"></i></button>'
+    + (VELOCE_APERTA
+        ? '<div class="dentro"><div class="muted" style="margin-bottom:12px">Sai già cosa ti serve? Scegli il prodotto e vai dritto al modulo.</div>'
+          + '<div class="f"><label for="veloce-p">PRODOTTO</label><select id="veloce-p"><option value="">— scegli —</option>'
+          + PRODOTTI.map(p => '<option value="' + esc(p.id) + '">' + esc(p.nome) + '</option>').join('')
+          + '</select></div>'
+          + '<button type="button" class="scegli chiedi" onclick="vaiVeloce()">Continua</button></div>'
+        : '')
+    + '</div>';
+}
+
+function vaiVeloce(){
+  const v = ($('veloce-p') || {}).value;
+  if(!v){ avviso('Scegli prima un prodotto dall\'elenco.'); return; }
+  scegli(v);
+}
+
+/* ── IL DETTAGLIO ─────────────────────────────────────────────────────────────
+   Il modulo di un prodotto e una conversazione si aprono AL POSTO delle
+   sezioni, ma dentro la stessa pagina: la scheda a sinistra resta li', e
+   «Torna indietro» non deve ricaricare tutto da capo. */
+function mostraDettaglio(h){
+  const d = $('dettaglio'), c = $('corpo');
+  if(!d || !c) return schermo(h, 'largo');
+  c.hidden = true; d.hidden = false; d.innerHTML = h;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function chiudiDettaglio(){
+  const d = $('dettaglio'), c = $('corpo');
+  if(d){ d.hidden = true; d.innerHTML = ''; }
+  if(c) c.hidden = false;
+  RICH_APERTA = null;
+}
+function tornaArea(){
+  if(!$('corpo')) return schermoArea();
+  chiudiDettaglio();
+  caricaMieRichieste();
 }
 
 /* ── APRIRE UNA RICHIESTA E PARLARCI SOPRA ────────────────────────────────────
@@ -525,8 +880,7 @@ function disegnaConversazione(){
     ...d.allegati.map(a => ({ q: a.creato_il, tipo: 'all', x: a })),
   ].sort((a, b) => new Date(a.q) - new Date(b.q));
 
-  document.querySelector('.card').className = 'card';
-  schermo(
+  mostraDettaglio(
      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
     +'<h1 style="margin:0">' + esc(r.prodotto_nome) + '</h1>'
     + (rif ? '<span class="muted" style="font-family:ui-monospace,monospace;font-size:12.5px">' + esc(rif) + '</span>' : '')
@@ -542,7 +896,7 @@ function disegnaConversazione(){
     +'<button class="scegli" onclick="mandaMessaggio(this)">Manda</button>'
     +'<label class="scegli chiedi" style="cursor:pointer"><i class="ti ti-paperclip"></i> Allega un file'
     +'<input type="file" id="c-file" style="display:none" onchange="mandaAllegato(this)"></label>'
-    +'<button class="scegli chiedi" style="margin-left:auto" onclick="schermoArea()">Torna indietro</button>'
+    +'<button class="scegli chiedi" style="margin-left:auto" onclick="tornaArea()">Torna indietro</button>'
     +'</div>'
     +'<div class="muted" style="font-size:12.5px;margin-top:8px">Al massimo 10 MB per file. Quello che scrivi qui arriva a chi sta seguendo la tua richiesta.</div>'
     +'</div>');
@@ -621,14 +975,14 @@ async function scaricaAllegato(id, btn){
    fra i presenti vorrebbe dire dire un numero falso, ed e' un numero su cui si
    prendono decisioni. Riparte da sola quando si torna a guardarla. */
 let TIC = null;
+function fermaBattito(){ if(TIC){ clearInterval(TIC); TIC = null; } }
 function battito(){
   const manda = () => { conToken('sono-qui', {}).catch(() => {}); };
   const parti = () => { if(TIC) return; manda(); TIC = setInterval(manda, 60000); };
-  const fermati = () => { if(TIC){ clearInterval(TIC); TIC = null; } };
   if(!battito.__attaccato){
     battito.__attaccato = true;
     document.addEventListener('visibilitychange', () => {
-      if(document.hidden) fermati(); else if(IO) parti();
+      if(document.hidden) fermaBattito(); else if(IO) parti();
     });
   }
   if(!document.hidden) parti();
@@ -667,7 +1021,7 @@ async function caricaMiaAnagrafica(){
     const r = await conToken('mia-anagrafica', {});
     ANAG = r.anagrafica; MANCA = r.manca || [];
   }catch(e){ ANAG = null; MANCA = []; }
-  avvisoDati(); disegnaLinguette(); disegnaDati();
+  avvisoDati(); disegnaLinguette(); disegnaDati(); disegnaScheda();
 }
 
 function disegnaDati(){
@@ -812,14 +1166,16 @@ function comuneAlVolo(input){
 async function salvaMieiDati(btn){
   const corpo = {};
   for(const [k] of CAMPI_MIEI){ const el = $('d-' + k); if(el) corpo[k] = el.value; }
-  const msg = $('msg-dati');
-  const dillo = (t, ok) => { if(msg){ msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.innerHTML = t; } };
+  /* Il riquadro si cerca AL MOMENTO di scrivere: dopo il salvataggio il modulo
+     viene ridisegnato, e quello preso prima non e' piu' in pagina — il
+     «Salvato» finiva in un riquadro che nessuno vedeva (trovato 07/10/2026). */
+  const dillo = (t, ok) => { const msg = $('msg-dati'); if(msg){ msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.innerHTML = t; } };
   attesa(btn, 'Salvo…');
   try{
     const r = await conToken('salva-anagrafica', corpo);
     ANAG = r.anagrafica; MANCA = r.manca || [];
     libero(btn);
-    disegnaDati(); avvisoDati(); disegnaLinguette();
+    disegnaDati(); avvisoDati(); disegnaLinguette(); disegnaScheda();
     /* SI DICE CHE LA RESIDENZA E' IN VERIFICA. Senza, la rivede subito com'era
        prima e pensa che non sia stata salvata — e riprova, e riprova. */
     const inVerifica = r.residenzaDaVerificare
@@ -885,12 +1241,13 @@ async function caricaOfferte(){
             /* L'immagine si carica solo quando serve e non sposta la pagina
                mentre arriva: un riquadro che salta sotto il dito e' il modo
                piu' rapido per far premere la cosa sbagliata. */
-            const testa = o.immagine_url
-              ? '<img src="' + esc(o.immagine_url) + '" alt="" loading="lazy" width="260" height="150">'
+            const img = webSicuro(o.immagine_url), link = webSicuro(o.link);
+            const testa = img
+              ? '<img src="' + esc(img) + '" alt="" loading="lazy" width="260" height="150">'
               : '<div class="p-vuota">' + iconaHtml(o.icona, 'ti-gift') + '</div>';
             const html = testa + corpo;
-            return o.link
-              ? '<a class="post" href="' + esc(o.link) + '" target="_blank" rel="noopener">' + html + '</a>'
+            return link
+              ? '<a class="post" href="' + esc(link) + '" target="_blank" rel="noopener">' + html + '</a>'
               : '<div class="post">' + html + '</div>';
           }).join('')
         + '</div>');
@@ -917,23 +1274,31 @@ async function caricaOfferte(){
   }
 }
 
+/* Un indirizzo che non comincia con http(s) non diventa un link ne'
+   un'immagine: «javascript:...» scritto per sbaglio (o apposta) in un'offerta
+   girerebbe nella pagina di chi la apre, con il suo accesso. */
+const webSicuro = u => /^https?:\/\//i.test(String(u || '').trim()) ? String(u).trim() : '';
+
 function mostraContatti(){
   const c = CONTATTI, voci = [];
-  if(c.whatsapp) voci.push('<a class="wa" href="https://wa.me/' + encodeURIComponent(c.whatsapp)
+  /* La convenzione nel messaggio solo se la sappiamo: «della convenzione .»
+     fa pensare a un messaggio scritto male. */
+  const conv = (IO.quote_convenzioni || {}).nome || '';
+  if(c.whatsapp) voci.push('<a href="https://wa.me/' + encodeURIComponent(c.whatsapp)
     + '?text=' + encodeURIComponent('Ciao, sono ' + (IO.nome || '') + ' ' + (IO.cognome || '')
-      + ' della convenzione ' + ((IO.quote_convenzioni || {}).nome || '') + '. ')
+      + (conv ? ' della convenzione ' + conv : '') + '. ')
     + '" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> WhatsApp</a>');
-  if(c.email) voci.push('<a class="ml" href="mailto:' + esc(c.email)
-    + '?subject=' + encodeURIComponent('Area riservata · ' + ((IO.quote_convenzioni || {}).nome || ''))
+  if(c.email) voci.push('<a href="mailto:' + esc(c.email)
+    + '?subject=' + encodeURIComponent('Area riservata' + (conv ? ' · ' + conv : ''))
     + '"><i class="ti ti-mail"></i> Email</a>');
   /* Sul telefono «chiama» apre il telefono; sul computer spesso non fa niente,
-     quindi il numero si scrive per esteso e si puo' copiare a mano. */
+     quindi il numero si scrive per esteso sopra la barra e si puo' copiare. */
   if(c.telefono) voci.push('<a href="tel:' + esc(String(c.telefono).replace(/\s/g, ''))
-    + '"><i class="ti ti-phone"></i> ' + esc(c.telefono) + '</a>');
+    + '" title="' + esc(c.telefono) + '"><i class="ti ti-phone"></i> Chiama</a>');
   if(!voci.length) return;
-  $('aiuto').innerHTML = '<div style="margin-top:26px"><h2>Ti serve una mano?</h2>'
-    + '<div class="muted" style="margin-bottom:10px">Scrivici o chiamaci: ti risponde una persona dell\'agenzia.</div>'
-    + '<div class="aiuto">' + voci.join('') + '</div></div>';
+  $('aiuto').innerHTML = '<div class="aiuto-nota">Ti serve una mano? Ti risponde una persona dell\'agenzia'
+    + (c.telefono ? ': <b style="white-space:nowrap">' + esc(c.telefono) + '</b>' : '') + '.</div>'
+    + '<nav class="barra" aria-label="Contatta l\'agenzia">' + voci.join('') + '</nav>';
 }
 
 /* ── COME SI DISEGNA UN'ICONA ─────────────────────────────────────────────────
@@ -994,7 +1359,7 @@ function quantoManca(al){
 function bloccoRinnovo(r){
   if(!r) return '';
   const righe = [];
-  if(r.link) righe.push('<a href="' + esc(r.link) + '" target="_blank" rel="noopener" class="scegli" style="text-decoration:none;display:inline-block">Paga il rinnovo' + (r.premio != null ? ' · ' + esc(euro(r.premio)) : '') + '</a>');
+  if(webSicuro(r.link)) righe.push('<a href="' + esc(webSicuro(r.link)) + '" target="_blank" rel="noopener" class="scegli" style="text-decoration:none;display:inline-block">Paga il rinnovo' + (r.premio != null ? ' · ' + esc(euro(r.premio)) : '') + '</a>');
   if(r.bonifico){
     const b = r.bonifico;
     /* L'IBAN si scrive per intero e si puo' copiare: chi lo ribatte a mano da
@@ -1030,6 +1395,8 @@ function vuoto(dove, testo){
 async function caricaMiePolizze(){
   try{
     const { polizze } = await conToken('mie-polizze', {});
+    POLIZZE = polizze || [];
+    disegnaScheda(); disegnaLinguette();
     if(!polizze || !polizze.length){
       return vuoto('polizze', 'Qui compariranno le tue polizze appena ne avrai una con noi.');
     }
@@ -1077,6 +1444,8 @@ async function caricaMieRichieste(){
       .select('id,prodotto_nome,stato,creato_il').order('creato_il', { ascending: false }).limit(20);
     if(error) throw error;
     const righe = data || [];
+    RICHIESTE = righe;
+    disegnaScheda(); disegnaLinguette();
     if(!righe.length){
       return vuoto('mie', 'Non hai ancora mandato nessuna richiesta. Scegli un prodotto e ti rispondiamo noi.');
     }
@@ -1124,15 +1493,18 @@ function campoHtml(c, i){
 function scegli(id){
   const p = PRODOTTI.find(x => x.id === id); if(!p) return;
   DOMANDE = Array.isArray(p.campi) ? p.campi : [];
-  document.querySelector('.card').className = 'card';
   /* Il PREMIO SUBITO non c'e' ancora, e non lo si fa credere: chi preme
      «Scegli» su un prodotto segnato «quotazione» deve sapere che per adesso
      rispondiamo noi, altrimenti aspetta davanti allo schermo un numero che non
      arrivera'. Si dice una volta, in chiaro, e non si nasconde. */
   const subito = p.modalita === 'quotazione';
-  schermo(
+  /* Il telefono si propone da solo: prima quello lasciato all'iscrizione, poi
+     il cellulare dell'anagrafica — chi l'ha appena scritto nei suoi dati non
+     deve riscriverlo qui. */
+  const telefono = IO.telefono || (ANAG && ANAG.cellulare) || '';
+  mostraDettaglio(
      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:2px">'
-    +'<div class="ic" style="width:52px;height:52px;font-size:27px">' + iconaHtml(p.icona, 'ti-file-description') + '</div>'
+    +'<div class="ic-grande">' + iconaHtml(p.icona, 'ti-file-description') + '</div>'
     +'<div><h1 style="margin:0">' + esc(p.nome) + '</h1>'
     + (p.descrizione ? '<div class="muted" style="font-size:13.5px">' + esc(p.descrizione) + '</div>' : '') + '</div></div>'
     + (p.nota_percorso
@@ -1143,17 +1515,20 @@ function scegli(id){
         ? 'Compila e invia: ti prepariamo il preventivo e te lo mandiamo per email. Il calcolo immediato del premio su questo prodotto lo stiamo attivando.'
         : 'Compila e invia: ti prepariamo il preventivo e te lo mandiamo per email.')
     +'</div>'
-    +'<div id="msg" class="msg"></div>'
     + DOMANDE.map(campoHtml).join('')
     +'<div style="margin-bottom:12px"><label for="q-dec" style="font-size:12.5px;color:var(--muted);font-weight:700">DA QUANDO TI SERVE</label>'
     +'<input id="q-dec" type="date" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit;margin-top:4px"></div>'
     +'<div style="margin-bottom:12px"><label for="q-tel" style="font-size:12.5px;color:var(--muted);font-weight:700">TELEFONO PER RICHIAMARTI</label>'
-    +'<input id="q-tel" type="tel" value="' + esc(IO.telefono || '') + '" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit;margin-top:4px"></div>'
+    +'<input id="q-tel" type="tel" value="' + esc(telefono) + '" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit;margin-top:4px"></div>'
     +'<div style="margin-bottom:14px"><label for="q-note" style="font-size:12.5px;color:var(--muted);font-weight:700">ALTRO CHE DOBBIAMO SAPERE</label>'
     +'<textarea id="q-note" rows="3" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit;margin-top:4px;resize:vertical"></textarea></div>'
+    /* L'AVVISO STA SOPRA IL PULSANTE, non in cima al modulo: «manca ancora la
+       targa» scritto trenta centimetri piu' su, sul telefono, non lo vede
+       nessuno — e il pulsante sembra non fare niente. */
+    +'<div id="msg" class="msg"></div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
     +'<button class="scegli" onclick="inviaRichiesta(\'' + p.id + '\',this)">Invia la richiesta</button>'
-    +'<button class="scegli chiedi" onclick="schermoArea()">Torna indietro</button>'
+    +'<button class="scegli chiedi" onclick="tornaArea()">Torna indietro</button>'
     +'</div>');
 }
 
@@ -1176,12 +1551,11 @@ async function inviaRichiesta(id, btn){
       prodotto_id: p.id, risposte,
       decorrenza: g('q-dec') || null, telefono: g('q-tel'), note: g('q-note'),
     });
-    document.querySelector('.card').className = 'card stretta';
-    schermo(
-       '<div style="text-align:center;padding:8px 0 4px"><div style="font-size:46px;line-height:1">✅</div>'
+    mostraDettaglio(
+       '<div style="text-align:center;padding:18px 0 8px"><div style="font-size:52px;line-height:1;color:var(--primario)"><i class="ti ti-circle-check-filled"></i></div>'
       +'<h1 style="margin:12px 0 6px">Richiesta inviata</h1>'
       +'<div class="muted" style="line-height:1.6">L\'abbiamo ricevuta e ti abbiamo mandato una conferma per email.<br>Ti rispondiamo con il preventivo per <b>' + esc(p.nome) + '</b>.</div>'
-      +'<div style="margin-top:20px"><button class="scegli" onclick="schermoArea()">Torna alla mia area</button></div></div>');
+      +'<div style="margin-top:20px"><button class="scegli" onclick="tornaArea()">Torna alla mia area</button></div></div>');
   }catch(e){
     libero(btn);
     /* Non «Errore 500»: chi legge deve sapere se ha sbagliato lui o se e'
@@ -1192,7 +1566,14 @@ async function inviaRichiesta(id, btn){
 }
 
 // Avvio: se la sessione c'e' gia', si entra diretti.
-db.auth.onAuthStateChange((ev) => { if(ev === 'PASSWORD_RECOVERY') schermoPassword(); });
+/* Il recupero password si ricorda e basta: se la riga dell'associato e' gia'
+   arrivata si apre subito la schermata, altrimenti ci pensa dove() appena la
+   legge. Prima la si apriva qui E dove() la ricopriva con l'area. */
+db.auth.onAuthStateChange((ev) => { if(ev === 'PASSWORD_RECOVERY'){ RECUPERO = true; if(IO) schermoPassword(); } });
+/* Il menu della scheda si chiude cliccando altrove, come ogni menu. */
+document.addEventListener('click', ev => {
+  if(APERTI.menu && !ev.target.closest('.strum') && !ev.target.closest('.menu')){ APERTI.menu = false; disegnaScheda(); }
+});
 dove();
 </script>
 </body>

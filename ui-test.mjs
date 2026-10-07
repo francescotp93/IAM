@@ -2705,6 +2705,50 @@ const avvio = async () => {
       return 'due porte che non fanno da elenco';
     });
 
+    await prova('area riservata: il recupero password non viene coperto dall\'area', async () => {
+      /* Il link «ho dimenticato la password» apriva la schermata giusta e un
+         attimo dopo dove() — partita insieme — la copriva con l'area: si
+         entrava senza aver scelto la password nuova (07/10/2026). */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/let RECUPERO = \/type=recovery\/\.test\(location\.hash\)/.test(html), 'il recupero non si ricorda dall\'indirizzo');
+      deve(/if\(RECUPERO \|\| IO\.deve_cambiare_password\) return schermoPassword/.test(html), 'dove() apre l\'area anche durante un recupero');
+      const f = html.slice(html.indexOf('async function esci'), html.indexOf('// ── Dove mandare'));
+      deve(/fermaBattito\(\)/.test(f), 'dopo «Esci» il segnale di presenza continua a bussare');
+      const d = html.slice(html.indexOf('async function dove'), html.indexOf('async function miaConvenzione'));
+      deve(/if\(error\)\{/.test(d) && /Riprova/.test(d), 'un errore di rete butta fuori come un accesso non abilitato');
+      deve(!/select\('\*/.test(d), 'la riga dell\'associato si legge ancora tutta, impronta del codice compresa');
+      return 'recupero, uscita e rete: tre porte che non tradiscono';
+    });
+
+    await prova('area riservata: scheda cliente con avvisi che portano da qualche parte', async () => {
+      /* Il bozzetto del 07/10/2026: scheda a sinistra, linguette a destra. Un
+         avviso che non porta dove si risolve e' solo un'ansia in piu'. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function vociAllarme'), html.indexOf('function apriChiudi'));
+      for (const k of ['dati', 'polizze', 'richieste']) deve(new RegExp("k: '" + k + "'").test(f), 'manca l\'avviso che porta a «' + k + '»');
+      deve(/function categoriaDi/.test(html) && /vita privata/.test(html), 'la RC vita privata finirebbe fra i prodotti vita');
+      const s = html.slice(html.indexOf('async function schermoArea'), html.indexOf('function aggiornaTutto'));
+      deve(/id="msg-area"/.test(s), 'dentro l\'area un errore non ha dove comparire');
+      deve(/webSicuro\(o\.link\)/.test(html), 'un link «javascript:» in un\'offerta diventerebbe cliccabile');
+      return 'scheda, tre avvisi, tre famiglie';
+    });
+
+    await prova('area riservata: la demo non tocca niente di vero', async () => {
+      /* area.html?demo mostra un associato inventato (07/10/2026). Se una sola
+         chiamata sfuggisse al finto, la demo scriverebbe sul database vero o
+         manderebbe una richiesta all'agenzia. Senza ?demo, non deve fare niente. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const js = await (await page.request.get(BASE + '/area-demo.js')).text();
+      deve(/if\s*\(!\/\[\?&\]demo/.test(js), 'la demo si accende anche senza ?demo nell\'indirizzo');
+      for (const m of ['db.from =', 'db.rpc =', 'auth.getSession =', 'auth.signInWithPassword =', 'auth.signOut =', 'auth.resetPasswordForEmail =', 'auth.onAuthStateChange ='])
+        deve(js.includes(m), 'in demo resta vera: ' + m);
+      deve(!/fetch\(/.test(js), 'la demo chiama la rete');
+      const c = html.slice(html.indexOf('async function conToken'), html.indexOf('// ── 1. ENTRA'));
+      deve(c.indexOf('if(DEMO) return') > -1 && c.indexOf('if(DEMO) return') < c.indexOf('fetch('), 'in demo conToken chiama il server vero');
+      deve(/Modalità demo/.test(js), 'la demo non dice di essere una demo');
+      return 'un associato inventato, e nessuna strada verso fuori';
+    });
+
     await prova('«Scegli» apre un modulo vero, non un avviso', async () => {
       /* Fino al 2 settembre 2026 «Scegli» apriva un `alert` che diceva «lo
          stiamo completando»: la prova di allora controllava proprio quello, ed

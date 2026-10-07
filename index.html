@@ -73,17 +73,20 @@
 <script src="tariffe/motore/tfr-datore.js?v=20260917"></script>
 <script src="tariffe/motore/pdf-withus.js?v=20260917"></script>
 <script src="tariffe/motore/pensione.js?v=20260917"></script>
+<!-- Le fasi di caricamento: un posto solo invece di tredici animazioni e una
+     sessantina di «Caricamento…». Il vestito sta in withus-tech.css. -->
+<script src="tariffe/motore/caricamento.js?v=20261007"></script>
 <script src="tariffe/motore/fascicolo.js?v=20260918"></script>
-<script src="tariffe/motore/pagamento-rata.js?v=20260928"></script>
+<script src="tariffe/motore/pagamento-rata.js?v=20260929"></script>
 <script src="tariffe/motore/flusso-ssf.js?v=20260929"></script>
 <script src="tariffe/motore/flusso-hdi.js?v=20260929"></script>
-<script src="tariffe/motore/crm-analisi.js?v=20260928"></script>
+<script src="tariffe/motore/crm-analisi.js?v=20260929"></script>
 <script src="tariffe/motore/estratto-conto.js?v=20260920"></script>
 <!-- Le coordinate su cui i collaboratori versano stanno sui conti, e i conti
      li conosce il motore della contabilità: il controllo dell'IBAN è già lì
      (con la tabella delle lunghezze per paese), e riscriverlo qui vorrebbe
      dire averne due — quello sbagliato sarebbe quello che nessuno guarda. -->
-<script src="tariffe/motore/contabilita.js?v=20260928"></script>
+<script src="tariffe/motore/contabilita.js?v=20260929"></script>
 <script src="tariffe/motore/collaboratori.js?v=20260921"></script>
 <script src="tariffe/motore/registro.js?v=20260923"></script>
 <script src="tariffe/motore/assegnazione.js?v=20260925"></script>
@@ -107,7 +110,7 @@
      scrivono le garanzie in due forme e in due posti; qui diventano una sola,
      i codici di Prima prendono un nome che si può leggere al telefono, e la
      somma delle garanzie si confronta col premio. -->
-<script src="tariffe/motore/garanzie.js?v=20260928"></script>
+<script src="tariffe/motore/garanzie.js?v=20260929"></script>
 <!-- Il vocabolario delle garanzie e la guida che ne nasce: il confronto fra
      prodotti e la guida al cliente parlano la stessa lingua, e la lingua
      sta in un posto solo (02/10/2026). -->
@@ -2246,6 +2249,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
      emoji del sistema operativo. Il kit e' del 03/08/2026. -->
 <link rel="stylesheet" href="withus-pictograms.css?v=1">
 <link rel="stylesheet" href="withus-one-skin.css?v=3">
+<!-- LA PELLE TECH — per ultima: ridefinisce i token che il resto della pagina
+     usa 1.815 volte negli stili in linea, e a parità di specificità vince chi
+     arriva dopo. Spostarla più in alto la disattiva in silenzio. -->
+<link rel="stylesheet" href="withus-tech.css?v=20261007">
 </head>
 <body>
 

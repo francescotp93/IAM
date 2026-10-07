@@ -1,0 +1,416 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   WITH US — LA PELLE TECH                                     (07/10/2026)
+   ───────────────────────────────────────────────────────────────────────────────
+   Questo file cambia COME SI VEDE il sistema, e non che cosa fa. Non contiene
+   nessuna regola di contenuto: solo colore, forma, tipografia e le fasi di
+   caricamento. Si toglie levando un `<link>`, e tutto torna com'era.
+
+   ┌───────────────────────────────────────────────────────────────────────────┐
+   │ PERCHÉ UNA PELLE E NON 60.000 RIGHE RITOCCATE.                            │
+   └───────────────────────────────────────────────────────────────────────────┘
+   Censimento del 07/10/2026: `iam/index.html` usa `var(--…)` **3.103 volte**
+   negli stili in linea, `index.html` 1.815. I nomi sono pochi e ricorrenti
+   (--txt3 380 volte, --surf2 272, --bord2 233, --acc 211). Quindi il colore di
+   quasi tutta l'applicazione si decide RIDEFINENDO QUEI NOMI, da un punto solo,
+   senza toccare una riga di logica — e senza il rischio di una sostituzione
+   cieca su due file da trentamila righe.
+
+   Restano fuori i colori scritti a mano: 262 distinti in IAM, 374 in QUOTO.
+   Quelli non seguono, e sono elencati onestamente in fondo a questo file.
+
+   ┌───────────────────────────────────────────────────────────────────────────┐
+   │ COSA VUOL DIRE «PIÙ TECH», IN QUATTRO SCELTE.                             │
+   └───────────────────────────────────────────────────────────────────────────┘
+   1. NEUTRI FREDDI E PROFONDI. La scala di prima era grigio-azzurra tendente al
+      violetto (#F0F2F8, #5A5A7A, #9090B0): da schermo legge «ufficio». Quella
+      nuova è una sola scala fredda coerente, con i fondi più scuri di mezzo
+      tono e i testi più contrastati.
+   2. UN SECONDO ACCENTO, PER I SEGNALI DI SISTEMA. Il verde resta del marchio
+      e delle azioni. Il ciano dice «la macchina sta lavorando»: caricamenti,
+      stati, spie. Non è inventato qui — è lo stesso linguaggio della schermata
+      di rientro in IAM, che era già l'unico pezzo con un'aria tecnica.
+   3. I NUMERI IN MONOSPAZIATO. Importi, codici, impronte, targhe, date. È la
+      cosa che fa leggere «strumento» più di qualunque colore, e ha un vantaggio
+      vero e non estetico: le cifre si incolonnano, e un importo sbagliato di
+      uno zero si vede a occhio. Si usa un monospaziato DI SISTEMA: un font
+      scaricato è una dipendenza di rete in più su un gestionale che deve
+      aprirsi anche con la linea del telefono.
+   4. ANGOLI PIÙ STRETTI. 16px è un'app di consumo, 3px è uno strumento.
+
+   ┌───────────────────────────────────────────────────────────────────────────┐
+   │ LE FASI DI CARICAMENTO: QUATTRO PRIMITIVE, NON TREDICI.                   │
+   └───────────────────────────────────────────────────────────────────────────┘
+   Oggi ci sono tredici animazioni di attesa diverse, scritte una per schermata
+   (@keyframes spin, qspin, qbspin, ptrSpin, irSpin, clCarico, qbar, irBar,
+   awLoadBar, boot-respiro…), e una sessantina di schermate che scrivono solo
+   «Caricamento…» e basta. Qui ce ne sono quattro, e ognuna risponde a una
+   domanda diversa:
+
+       .wl-barra      «la pagina sta caricando»   — 2px in cima, indeterminata
+       .wl-scheletro  «sta arrivando ROBA COSÌ»   — la forma di quello che verrà
+       .wl-stato      «sto facendo QUESTA cosa»   — una riga mono, con la spia
+       .wl-anello     «questo bottone sta lavorando» — 14px, dentro al bottone
+
+   La regola che le tiene insieme: **un'attesa dice sempre che cosa si sta
+   aspettando**. Un cerchio che gira non lo dice. Lo scheletro lo dice con la
+   forma, lo stato con le parole.
+
+   Chi ha chiesto di non vedere le animazioni (`prefers-reduced-motion`) le
+   ottiene ferme, non assenti: la spia resta accesa, lo scheletro resta grigio.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   1. LA SCALA — i valori grezzi, l'unico posto dove stanno scritti
+   ───────────────────────────────────────────────────────────────────────────── */
+:root{
+  /* neutri freddi, dal foglio al nero */
+  --t-50:#f8fafc;  --t-100:#f1f4f8; --t-150:#e9edf2; --t-200:#dfe5ec;
+  --t-300:#c9d1dc; --t-400:#97a3b2; --t-500:#6e7b8b; --t-600:#4f5b6b;
+  --t-700:#37414f; --t-800:#202833; --t-900:#141a23; --t-950:#0b0f16;
+
+  /* il verde del marchio: non si tocca, è l'identità dell'agenzia */
+  --t-verde:#02984e; --t-verde-scuro:#016b38; --t-verde-vivo:#01c061;
+  --t-verde-tenue:#e8f6ee;
+
+  /* il ciano dei segnali di sistema: caricamenti, spie, stati vivi */
+  --t-dati:#06b6d4; --t-dati-scuro:#0e7490; --t-dati-tenue:rgba(6,182,212,.12);
+
+  /* il monospaziato dei dati — di sistema, non scaricato */
+  --t-mono:ui-monospace,SFMono-Regular,"SF Mono","JetBrains Mono",Menlo,Consolas,"Liberation Mono",monospace;
+
+  /* forma */
+  --t-r:3px;        /* angoli dei contenitori      */
+  --t-r-sm:2px;     /* angoli dei pezzi piccoli    */
+  --t-linea:1px;    /* spessore dei bordi          */
+
+  /* ombre asciutte: poca sfocatura, molto bordo */
+  --t-ombra:0 1px 2px rgba(16,24,40,.06),0 1px 1px rgba(16,24,40,.04);
+  --t-ombra-alta:0 10px 30px rgba(11,15,22,.13);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   2. IL PONTE — i nomi che le due applicazioni usano già, con i valori nuovi
+
+   I selettori ricalcano quelli di partenza (`body`, `body.theme-light`,
+   `body.theme-dark`, `:root`): a parità di specificità vince chi arriva dopo, e
+   questo foglio è l'ultimo. Cambiare la specificità invece di rispettarla
+   avrebbe funzionato lo stesso e avrebbe reso impossibile capire chi vince.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── la scocca «withus one» (barra laterale, intestazioni, schede) ─────────── */
+:root{
+  --w1-verde:var(--t-verde);  --w1-verde2:var(--t-verde-vivo);
+  --w1-verde-scuro:var(--t-verde-scuro); --w1-verde-tenue:var(--t-verde-tenue);
+  --w1-verde-vivo:var(--t-verde-vivo); --w1-verde-medio:#2fb56f;
+  --w1-verde-tenue2:#d9f0e3;
+  --w1-scuro:#0d131c;         /* la barra: quasi nero, con una punta di blu */
+  --w1-scuro2:#141c27;
+  --w1-card:#fff; --w1-sfondo:var(--t-150);
+  --w1-bordo:var(--t-200); --w1-bordo2:var(--t-100);
+  --w1-txt:var(--t-900); --w1-txt2:var(--t-500); --w1-txt3:var(--t-400);
+  --w1-testo:var(--t-900); --w1-testo2:var(--t-500); --w1-testo3:var(--t-400);
+  --w1-rosso:#c92a2a; --w1-ambra:#b45309;
+  --w1-r:var(--t-r);
+  --w1-raggio:var(--t-r);
+  --w1-testo-base:13px;
+  --w1-focus:0 0 0 3px var(--t-dati-tenue);
+  --w1-ombra-sm:var(--t-ombra); --w1-ombra-md:var(--t-ombra); --w1-ombra-lg:var(--t-ombra-alta);
+}
+
+/* ── il tema dell'applicazione — chiaro ───────────────────────────────────── */
+body, body.theme-light{
+  --bg:var(--t-150); --surf:#ffffff; --surf2:var(--t-50); --surf3:var(--t-100);
+  --bord:rgba(20,26,35,.09); --bord2:rgba(20,26,35,.15);
+  --txt:var(--t-900); --txt2:var(--t-500); --txt3:var(--t-400);
+  --shd:var(--t-ombra); --shd2:var(--t-ombra-alta);
+  --r:10px; --rs:var(--t-r);
+  --grn:#0f9d58; --grn-bg:var(--t-verde-tenue); --grn-txt:#0b7a43;
+  --red:#d6342c; --red-bg:#fdeceb; --red-txt:#a62b24;
+  --amb:#c77a14; --amb-bg:#fdf6e7; --amb-txt:#92600c;
+  --blu:var(--t-dati-scuro); --blu-bg:#e6f7fa; --blu-txt:var(--t-dati-scuro);
+  --acc:var(--t-verde); --acc2:var(--t-verde-scuro); --acc-rgb:2,152,78;
+  --prod-prev:var(--t-dati-scuro);
+}
+
+/* ── il tema dell'applicazione — scuro ────────────────────────────────────── */
+body.theme-dark{
+  --bg:var(--t-950); --surf:#121822; --surf2:#18202c; --surf3:#202a38;
+  --bord:rgba(255,255,255,.07); --bord2:rgba(255,255,255,.14);
+  --txt:#e6edf5; --txt2:#93a1b3; --txt3:#64748b;
+  --shd:0 1px 2px rgba(0,0,0,.5); --shd2:0 16px 40px rgba(0,0,0,.6);
+  --r:10px; --rs:var(--t-r);
+  --grn:#2fd48a; --grn-bg:rgba(47,212,138,.12); --grn-txt:#5fe3a6;
+  --red:#ff6b61; --red-bg:rgba(255,107,97,.12); --red-txt:#ff9a93;
+  --amb:#f0b429; --amb-bg:rgba(240,180,41,.12); --amb-txt:#f6cc5c;
+  --blu:var(--t-dati); --blu-bg:var(--t-dati-tenue); --blu-txt:#5ee0ef;
+  --prod-prev:var(--t-dati);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. I RITOCCHI DI FORMA — pochi, e nessuno tocca il modello a scatole
+
+   Niente margini, niente padding, niente display: una pelle che sposta le
+   scatole rompe le schermate e non si accorge di averlo fatto. Qui si cambiano
+   solo angoli, bordi, caratteri e fuoco.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* I NUMERI SI INCOLONNANO. Vale ovunque: un importo, una data e un codice
+   scritti con le cifre a larghezza fissa si leggono in colonna, e uno zero di
+   troppo salta all'occhio invece di nascondersi. */
+body{ font-variant-numeric:tabular-nums; }
+
+/* I DATI VERI IN MONOSPAZIATO: importi, codici, impronte, targhe.
+   `.t-dato` è la classe nuova; le altre sono quelle che il sistema ha già. */
+.t-dato, code, kbd, samp, .mono, .cnt-saldo, .dco-sal{
+  font-family:var(--t-mono);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.01em;
+}
+
+/* LE MICRO-ETICHETTE sopra ai titoli: maiuscoletto spaziato, come l'intestazione
+   di un pannello di strumenti. Esistevano già (`.eyebrow`), erano solo piccole. */
+.eyebrow, .t-etichetta{
+  text-transform:uppercase; letter-spacing:.09em; font-weight:700; font-size:10.5px;
+  font-family:var(--t-mono); color:var(--txt3);
+}
+
+/* ANGOLI E BORDI */
+.card, .panel .card, .d-card, .cnt-card, .modal, .w1-card{ border-radius:var(--r); }
+
+/* ── I CAMPI ─────────────────────────────────────────────────────────────────
+   Qui serve `!important`, e va spiegato perché: i raggi dei campi sono scritti
+   negli stili IN LINEA (`border-radius:9px` ripetuto a mano schermata per
+   schermata), e uno stile in linea batte qualunque foglio. L'alternativa era
+   correggerli a mano in qualche centinaio di punti su due documenti da
+   trentamila righe — cioè un'occasione di rompere qualcosa in cambio di un
+   angolo.
+
+   È ristretto ai campi di testo e di scelta DI PROPOSITO: una casella di
+   spunta, un interruttore o un bottone tondo squadrati sembrerebbero rotti, e
+   di bottoni tondi questo sistema ne ha (il tasto di aiuto, il bottone
+   flottante). Quelli non si toccano. */
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+select, textarea{
+  border-radius:var(--t-r) !important;
+  font-variant-numeric:tabular-nums;
+}
+/* I campi che contengono DATI si scrivono col monospaziato: importi, codici,
+   targhe, date. Si vede subito se una cifra è di troppo. */
+input[inputmode="decimal"], input[inputmode="numeric"], input[type="number"],
+input[type="date"], input[type="time"], input[type="month"]{
+  font-family:var(--t-mono); letter-spacing:-.01em;
+}
+
+/* IL FUOCO È CIANO: si vede dove sta la tastiera senza confondersi con il verde
+   delle azioni, che vuol dire «questo bottone fa una cosa». */
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible{
+  outline:2px solid var(--t-dati); outline-offset:1px;
+}
+
+/* BARRE DI SCORRIMENTO SOTTILI: su una schermata densa una barra spessa è
+   rumore. Solo dove il browser lo permette, e mai al posto della barra vera. */
+*{ scrollbar-width:thin; scrollbar-color:var(--t-300) transparent; }
+::-webkit-scrollbar{ width:9px; height:9px; }
+::-webkit-scrollbar-thumb{ background:var(--t-300); border-radius:99px; border:2px solid transparent; background-clip:content-box; }
+::-webkit-scrollbar-thumb:hover{ background:var(--t-400); background-clip:content-box; }
+::-webkit-scrollbar-track{ background:transparent; }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   4. LE FASI DI CARICAMENTO
+
+   Un'attesa dice sempre che cosa si sta aspettando. Un cerchio che gira non lo
+   dice: lo scheletro lo dice con la forma, lo stato con le parole.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 4a. LA BARRA — «la pagina sta caricando» ─────────────────────────────────
+   Due pixel in cima al pannello. Indeterminata di proposito: una percentuale
+   finta è una bugia, e si vede che è finta quando resta ferma al 90%. */
+.wl-barra{
+  position:relative; height:2px; width:100%; overflow:hidden;
+  background:var(--bord); border-radius:99px;
+}
+.wl-barra::after{
+  content:''; position:absolute; top:0; bottom:0; left:0; width:34%; border-radius:99px;
+  background:linear-gradient(90deg,transparent,var(--t-dati),transparent);
+  animation:wl-corre 1.15s cubic-bezier(.45,0,.25,1) infinite;
+}
+@keyframes wl-corre{ 0%{transform:translateX(-120%)} 100%{transform:translateX(420%)} }
+/* in cima a un pannello, senza doverci pensare */
+.wl-barra.wl-sopra{ position:absolute; top:0; left:0; right:0; width:auto; z-index:5; }
+
+/* ── 4b. LO SCHELETRO — «sta arrivando roba di questa forma» ─────────────────
+   Niente pulsazione che respira: una scia che passa, una volta ogni volta e
+   mezza. Il grigio è quello dei bordi, non un grigio suo: uno scheletro che si
+   fa notare più del contenuto ha sbagliato mestiere. */
+.wl-scheletro{
+  display:block; height:12px; width:100%; border-radius:var(--t-r-sm);
+  background:var(--bord2); position:relative; overflow:hidden; opacity:.55;
+}
+.wl-scheletro + .wl-scheletro{ margin-top:9px; }
+.wl-scheletro::after{
+  content:''; position:absolute; inset:0; transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);
+  animation:wl-scia 1.5s ease-in-out infinite;
+}
+@keyframes wl-scia{ 0%{transform:translateX(-100%)} 60%,100%{transform:translateX(100%)} }
+.wl-scheletro.wl-alto{ height:40px; }
+.wl-scheletro.wl-titolo{ height:18px; }
+/* il gruppo di barre e il blocco «stato + forma» che il motore costruisce */
+.wl-gruppo{ display:block; }
+.wl-attesa{ display:block; }
+.wl-attesa .wl-stato{ margin-bottom:14px; }
+/* un riquadro con dentro il suo scheletro: la forma di una scheda che arriva */
+.wl-riquadro{
+  border:var(--t-linea) solid var(--bord); border-radius:var(--rs);
+  background:var(--surf); padding:14px;
+}
+.wl-riquadro + .wl-riquadro{ margin-top:10px; }
+
+/* ── 4c. LO STATO — «sto facendo questa cosa» ────────────────────────────────
+   Una riga sola, in monospaziato maiuscoletto, con la spia davanti. È quella
+   che sostituisce i sessanta «Caricamento…» sparsi: lì non si sa che cosa si
+   stia aspettando, qui c'è scritto. */
+.wl-stato{
+  display:inline-flex; align-items:center; gap:9px;
+  font-family:var(--t-mono); font-size:11px; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--txt2); line-height:1.5;
+}
+.wl-stato::before{
+  content:''; flex:none; width:6px; height:6px; border-radius:50%;
+  background:var(--t-dati); animation:wl-pulsa 1.5s ease-out infinite;
+}
+@keyframes wl-pulsa{
+  0%{ box-shadow:0 0 0 0 rgba(6,182,212,.55) }
+  70%{ box-shadow:0 0 0 7px rgba(6,182,212,0) }
+  100%{ box-shadow:0 0 0 0 rgba(6,182,212,0) }
+}
+/* la stessa riga quando ha finito o è andata storta: la spia cambia colore e
+   smette di pulsare, così si capisce senza leggere */
+.wl-stato.wl-fatto::before{ background:var(--grn); animation:none; }
+.wl-stato.wl-guasto::before{ background:var(--red); animation:none; }
+
+/* ── 4c-bis. LE ATTESE CHE C'ERANO GIÀ ──────────────────────────────────────
+   `.cl-carico` è il modo in cui undici punti di IAM dicono già «sto
+   lavorando»: una riga di testo con una rotella accanto. Ritoccare la classe
+   invece di riscrivere gli undici punti li porta tutti sul linguaggio nuovo
+   con una regola sola — e soprattutto senza rischiare di sbagliare una
+   sostituzione in un documento da trentamila righe.
+
+   La rotella diventa la spia: un cerchio che gira dice «aspetta», una spia che
+   pulsa dice «sono vivo», e accanto a una frase che dice che cosa sto facendo
+   la seconda è quella giusta. */
+.cl-carico{
+  font-family:var(--t-mono); font-size:11px; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--txt2); gap:9px;
+}
+.cl-carico-g{
+  width:6px !important; height:6px !important; flex:0 0 6px !important;
+  border:0 !important; background:var(--t-dati);
+  animation:wl-pulsa 1.5s ease-out infinite !important;
+}
+
+/* ── 4d. L'ANELLO — «questo bottone sta lavorando» ───────────────────────────
+   Quattordici pixel, un pixel e mezzo di tratto, del colore del testo che lo
+   contiene. Serve solo dentro a un bottone premuto: fuori di lì, uno degli
+   altri tre dice di più. */
+.wl-anello{
+  display:inline-block; width:14px; height:14px; border-radius:50%;
+  border:1.5px solid currentColor; border-top-color:transparent;
+  animation:wl-gira .7s linear infinite; vertical-align:-2px;
+}
+@keyframes wl-gira{ to{ transform:rotate(360deg) } }
+
+/* ── 4e. LA GRIGLIA — solo per le attese a tutto schermo ─────────────────────
+   L'avvio dell'applicazione e il passaggio fra IAM e QUOTO. Era già così nella
+   schermata di rientro: qui diventa una classe invece di restare scritta dentro
+   una funzione. */
+.wl-griglia{ position:relative; overflow:hidden; }
+.wl-griglia::before{
+  content:''; position:absolute; inset:-2px; pointer-events:none;
+  background-image:linear-gradient(rgba(6,182,212,.07) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(6,182,212,.07) 1px,transparent 1px);
+  background-size:38px 38px;
+  -webkit-mask-image:radial-gradient(circle at 50% 45%,#000 0%,transparent 72%);
+  mask-image:radial-gradient(circle at 50% 45%,#000 0%,transparent 72%);
+  animation:wl-scorre 7s linear infinite;
+}
+@keyframes wl-scorre{ to{ background-position:38px 38px,38px 38px } }
+
+/* ── 4f. CHI NON VUOLE LE ANIMAZIONI ─────────────────────────────────────────
+   Ferme, non assenti: la spia resta accesa e lo scheletro resta lì. Togliere
+   l'indicatore invece di fermarlo vorrebbe dire che chi ha quell'impostazione
+   non sa più se la pagina sta caricando. */
+@media (prefers-reduced-motion:reduce){
+  .wl-barra::after, .wl-scheletro::after, .wl-stato::before,
+  .wl-anello, .wl-griglia::before{ animation:none !important; }
+  .wl-barra::after{ width:100%; opacity:.5; }
+  .wl-anello{ border-top-color:currentColor; opacity:.5; }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   5. LE SCHERMATE DI AVVIO — il primo fotogramma
+
+   È la fase di caricamento che si vede sempre, e l'unica che il cliente di
+   un'agenzia non vedrà mai: la vede Francesco e la vedono i collaboratori,
+   venti volte al giorno. Quindi deve essere corta da guardare, non bella.
+
+   Prima: il marchio che respira in mezzo al bianco, e una riga di testo
+   nascosta ai soli lettori di schermo («una riga di testo sotto il marchio è
+   rumore»). Il respiro è un'animazione da schermata di benvenuto: dice
+   «aspetta» senza dire altro, e su un gestionale che si apre venti volte al
+   giorno diventa lungo.
+
+   Adesso: il marchio fermo, la griglia che scorre piano dietro, una barra di
+   due pixel che corre, e la riga che prima era nascosta scritta in chiaro —
+   piccola, in monospaziato. Dire «apertura del preventivatore» costa due
+   centimetri di schermo e toglie la domanda «è partito o è bloccato?».
+
+   Tutto da qui: la marcatura delle due schermate non si tocca.
+   ═════════════════════════════════════════════════════════════════════════════ */
+#boot-screen, .ls{ position:relative; overflow:hidden; }
+#boot-screen::before, .ls::before{
+  content:''; position:absolute; inset:-2px; pointer-events:none;
+  background-image:linear-gradient(rgba(6,182,212,.08) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(6,182,212,.08) 1px,transparent 1px);
+  background-size:38px 38px;
+  -webkit-mask-image:radial-gradient(circle at 50% 45%,#000 0%,transparent 72%);
+  mask-image:radial-gradient(circle at 50% 45%,#000 0%,transparent 72%);
+  animation:wl-scorre 7s linear infinite;
+}
+/* il marchio sta fermo: è la barra a dire che si sta lavorando */
+.boot-logo{ animation:none !important; opacity:1 !important; transform:none !important; }
+/* la barra dei due pixel, sotto al marchio */
+#boot-screen::after{
+  content:''; position:absolute; left:50%; bottom:38%; transform:translateX(-50%);
+  width:164px; height:2px; border-radius:99px; overflow:hidden;
+  background:linear-gradient(90deg,transparent,var(--t-dati),transparent);
+  background-size:40% 100%; background-repeat:no-repeat;
+  animation:wl-corre-sfondo 1.15s cubic-bezier(.45,0,.25,1) infinite;
+}
+@keyframes wl-corre-sfondo{ 0%{background-position:-45% 0} 100%{background-position:145% 0} }
+/* la riga che prima era nascosta: piccola, in monospaziato, sotto la barra */
+#boot-screen .boot-txt{
+  position:static !important; width:auto !important; height:auto !important;
+  margin:0 !important; clip:auto !important; clip-path:none !important;
+  overflow:visible !important; white-space:normal !important;
+  font-family:var(--t-mono); font-size:10.5px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--txt3); padding-top:26px;
+}
+@media (prefers-reduced-motion:reduce){
+  #boot-screen::before, .ls::before, #boot-screen::after{ animation:none !important; }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   QUELLO CHE QUESTA PELLE NON RITONA — detto, non nascosto
+
+   I colori scritti a mano nei due documenti non passano da qui: 262 valori
+   distinti in `iam/index.html`, 374 in `index.html` (censimento 07/10/2026).
+   Sono quasi tutti badge, tag e stati (`#ef4444`, `#f59e0b`, `#22c55e`,
+   `#a855f7`…) e una manciata di fondi di schermate vecchie.
+
+   Non li ho sostituiti in blocco di proposito: una sostituzione cieca su
+   sessantamila righe cambia anche i colori che stanno dentro ai PDF generati,
+   ai fogli esportati e alle finestre che si aprono a parte — e quelli non si
+   vedono in nessuna schermata, quindi un errore lì non lo scopre nessuno.
+   Vanno portati sui token una schermata per volta, guardandola.
+   ═════════════════════════════════════════════════════════════════════════════ */

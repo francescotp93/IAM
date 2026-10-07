@@ -2705,6 +2705,34 @@ const avvio = async () => {
       return 'due porte che non fanno da elenco';
     });
 
+    await prova('area riservata: il recupero password non viene coperto dall\'area', async () => {
+      /* Il link «ho dimenticato la password» apriva la schermata giusta e un
+         attimo dopo dove() — partita insieme — la copriva con l'area: si
+         entrava senza aver scelto la password nuova (07/10/2026). */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      deve(/let RECUPERO = \/type=recovery\/\.test\(location\.hash\)/.test(html), 'il recupero non si ricorda dall\'indirizzo');
+      deve(/if\(RECUPERO \|\| IO\.deve_cambiare_password\) return schermoPassword/.test(html), 'dove() apre l\'area anche durante un recupero');
+      const f = html.slice(html.indexOf('async function esci'), html.indexOf('// ── Dove mandare'));
+      deve(/fermaBattito\(\)/.test(f), 'dopo «Esci» il segnale di presenza continua a bussare');
+      const d = html.slice(html.indexOf('async function dove'), html.indexOf('async function miaConvenzione'));
+      deve(/if\(error\)\{/.test(d) && /Riprova/.test(d), 'un errore di rete butta fuori come un accesso non abilitato');
+      deve(!/select\('\*/.test(d), 'la riga dell\'associato si legge ancora tutta, impronta del codice compresa');
+      return 'recupero, uscita e rete: tre porte che non tradiscono';
+    });
+
+    await prova('area riservata: scheda cliente con avvisi che portano da qualche parte', async () => {
+      /* Il bozzetto del 07/10/2026: scheda a sinistra, linguette a destra. Un
+         avviso che non porta dove si risolve e' solo un'ansia in piu'. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const f = html.slice(html.indexOf('function vociAllarme'), html.indexOf('function apriChiudi'));
+      for (const k of ['dati', 'polizze', 'richieste']) deve(new RegExp("k: '" + k + "'").test(f), 'manca l\'avviso che porta a «' + k + '»');
+      deve(/function categoriaDi/.test(html) && /vita privata/.test(html), 'la RC vita privata finirebbe fra i prodotti vita');
+      const s = html.slice(html.indexOf('async function schermoArea'), html.indexOf('function aggiornaTutto'));
+      deve(/id="msg-area"/.test(s), 'dentro l\'area un errore non ha dove comparire');
+      deve(/webSicuro\(o\.link\)/.test(html), 'un link «javascript:» in un\'offerta diventerebbe cliccabile');
+      return 'scheda, tre avvisi, tre famiglie';
+    });
+
     await prova('«Scegli» apre un modulo vero, non un avviso', async () => {
       /* Fino al 2 settembre 2026 «Scegli» apriva un `alert` che diceva «lo
          stiamo completando»: la prova di allora controllava proprio quello, ed

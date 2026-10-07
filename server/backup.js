@@ -14,7 +14,12 @@ import { execFile } from 'child_process';
 const __dir = path.dirname(fileURLToPath(import.meta.url));      // .../server
 const ROOT = path.join(__dir, '..');                            // repo root (/opt/withus-backend)
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/+$/, '');
-const OUT = process.env.BACKUP_DIR || path.join(ROOT, 'backups');
+/* FUORI DAL SITO (07/10/2026, controllo GDPR). Il default era la cartella
+   backups/ dentro /opt/withus-backend, che Caddy pubblica sotto
+   /nuovo-preventivo/: l'archivio di tutto il database, letto con la chiave di
+   servizio (cioe' senza RLS), si scaricava senza login. /var/lib/withus e'
+   dell'utente del servizio, con permessi 700. */
+const OUT = process.env.BACKUP_DIR || '/var/lib/withus/backups';
 const KEEP = parseInt(process.env.BACKUP_KEEP || '14', 10);
 const HOUR = parseInt(process.env.BACKUP_HOUR || '3', 10);
 const MIN = parseInt(process.env.BACKUP_MIN || '30', 10);

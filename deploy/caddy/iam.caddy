@@ -49,6 +49,14 @@ iam.withusassicurazioni.it {
 			path *.mjs *.md *.py *.sh *.sql *.service *.timer
 			# IAM ha la sua porta, la radice: sotto /nuovo-preventivo/iam/ non serve
 			path /iam/*
+			# I BACKUP (07/10/2026, controllo GDPR). server/backup.js scriveva
+			# l'archivio notturno di TUTTO il database in /opt/withus-backend/
+			# backups, cioe' dentro questa cartella pubblicata: rispondeva 200 a
+			# chiunque ne indovinasse il nome (data + 03:30). Adesso il backup
+			# scrive fuori dal sito, e qui si nega lo stesso — e si nega ogni
+			# archivio o file di dati, ovunque stia. NON i .zip: da qui si
+			# scarica di proposito l'estensione del connettore Prima.
+			path /backups /backups/* *.tar.gz *.tgz *.tar *.bak *.log *.sqlite *.db *.dump
 		}
 		respond @sorgente_quoto 404
 

@@ -15,7 +15,7 @@ export const restorePortaliRouter = Router();
 const __dir = path.dirname(fileURLToPath(import.meta.url));   // .../server
 const ROOT = path.join(__dir, '..');
 const STORE = process.env.FONTI_STORE || path.join(__dir, 'fonti.store.json');
-const BACKUPS = process.env.BACKUP_DIR || path.join(ROOT, 'backups');
+const BACKUPS = process.env.BACKUP_DIR || '/var/lib/withus/backups';
 const KEY = process.env.RESTORE_KEY || 'leo-restore-fonti-9Zt4Qp2mVx';
 
 function untar(archive, dir, file) {

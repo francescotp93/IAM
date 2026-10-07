@@ -2733,6 +2733,22 @@ const avvio = async () => {
       return 'scheda, tre avvisi, tre famiglie';
     });
 
+    await prova('area riservata: la demo non tocca niente di vero', async () => {
+      /* area.html?demo mostra un associato inventato (07/10/2026). Se una sola
+         chiamata sfuggisse al finto, la demo scriverebbe sul database vero o
+         manderebbe una richiesta all'agenzia. Senza ?demo, non deve fare niente. */
+      const html = await (await page.request.get(BASE + '/area.html')).text();
+      const js = await (await page.request.get(BASE + '/area-demo.js')).text();
+      deve(/if\s*\(!\/\[\?&\]demo/.test(js), 'la demo si accende anche senza ?demo nell\'indirizzo');
+      for (const m of ['db.from =', 'db.rpc =', 'auth.getSession =', 'auth.signInWithPassword =', 'auth.signOut =', 'auth.resetPasswordForEmail =', 'auth.onAuthStateChange ='])
+        deve(js.includes(m), 'in demo resta vera: ' + m);
+      deve(!/fetch\(/.test(js), 'la demo chiama la rete');
+      const c = html.slice(html.indexOf('async function conToken'), html.indexOf('// ── 1. ENTRA'));
+      deve(c.indexOf('if(DEMO) return') > -1 && c.indexOf('if(DEMO) return') < c.indexOf('fetch('), 'in demo conToken chiama il server vero');
+      deve(/Modalità demo/.test(js), 'la demo non dice di essere una demo');
+      return 'un associato inventato, e nessuna strada verso fuori';
+    });
+
     await prova('«Scegli» apre un modulo vero, non un avviso', async () => {
       /* Fino al 2 settembre 2026 «Scegli» apriva un `alert` che diceva «lo
          stiamo completando»: la prova di allora controllava proprio quello, ed

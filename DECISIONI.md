@@ -1799,3 +1799,19 @@ ferma a sinistra: «Torna indietro» non ricarica più tutto.
   questa sessione Node non c'è. Verificati a mano nel browser, con un finto
   database, i percorsi principali su computer e telefono, e ricontrollati con
   uno script tutti i vincoli testuali delle prove esistenti sull'area.
+
+### 07/10/2026 (seguito) — La demo dell'area riservata
+
+🟡 **`area.html?demo`** (e il pulsante «Area riservata (demo)» nella pagina
+Convenzioni di IAM) mostra l'area di un associato inventato, Mario Rossi.
+Tutto passa da `area-demo.js`, che in demo sostituisce sul client ogni
+lettura, l'accesso e le chiamate al server: verificato nel browser che non
+parte nessuna richiesta né verso Supabase né verso api.withusassicurazioni.it.
+Quello che si scrive in demo vive finché la scheda resta aperta. Una striscia
+gialla dice sempre che è una demo. Senza `?demo` il file non fa niente.
+*Come tornare indietro:* togliere il pulsante da index.html e il tag
+`area-demo.js` da area.html (o `git revert`).
+
+🟢 **Trovato provando la demo:** dopo «Salva i miei dati» il messaggio
+«Salvato» non compariva mai, perché veniva scritto nel modulo di prima del
+ridisegno. Corretto: anche nell'area vera.

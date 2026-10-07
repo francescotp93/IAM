@@ -259,6 +259,8 @@
 <div class="wrap" id="wrap"><div class="card stretta" id="bd"><div class="muted" style="text-align:center">Caricamento…</div></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- La demo (area.html?demo): senza ?demo nell'indirizzo non fa niente. -->
+<script src="area-demo.js"></script>
 <script>
 /* ══ AREA RISERVATA CONVENZIONATI ═════════════════════════════════════════════
    Chi entra qui non fa parte dell'agenzia: e' un associato di una convenzione,
@@ -301,6 +303,11 @@ const CONTATTI = {
   email: 'amministrazione@withusassicurazioni.it',
 };
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+/* LA DEMO. Con area.html?demo, area-demo.js sostituisce sul client ogni
+   lettura e ogni accesso, e conToken() qui sotto non chiama il server: si
+   vede l'area di un associato inventato senza toccare niente di vero. */
+const DEMO = !!window.AREA_DEMO;
+if(DEMO) window.AREA_DEMO.installa(db);
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 let IO = null;      // la riga dell'associato
@@ -347,6 +354,7 @@ const attesa = (b, t) => { if(b){ b.disabled = true; b.dataset.old = b.dataset.o
 const libero = (b) => { if(b){ b.disabled = false; if(b.dataset.old) b.textContent = b.dataset.old; } };
 
 async function conToken(via, corpo){
+  if(DEMO) return window.AREA_DEMO.risposta(via, corpo || {});
   const { data } = await db.auth.getSession();
   const tok = data && data.session && data.session.access_token;
   const r = await fetch(API + '/convenzionati/' + via, {
@@ -1158,8 +1166,10 @@ function comuneAlVolo(input){
 async function salvaMieiDati(btn){
   const corpo = {};
   for(const [k] of CAMPI_MIEI){ const el = $('d-' + k); if(el) corpo[k] = el.value; }
-  const msg = $('msg-dati');
-  const dillo = (t, ok) => { if(msg){ msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.innerHTML = t; } };
+  /* Il riquadro si cerca AL MOMENTO di scrivere: dopo il salvataggio il modulo
+     viene ridisegnato, e quello preso prima non e' piu' in pagina — il
+     «Salvato» finiva in un riquadro che nessuno vedeva (trovato 07/10/2026). */
+  const dillo = (t, ok) => { const msg = $('msg-dati'); if(msg){ msg.className = 'msg ' + (ok ? 'ok' : 'err'); msg.innerHTML = t; } };
   attesa(btn, 'Salvo…');
   try{
     const r = await conToken('salva-anagrafica', corpo);

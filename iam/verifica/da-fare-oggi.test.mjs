@@ -74,7 +74,7 @@ prova('il calcolo si avvia da tutti i percorsi, non da uno solo', () => {
 });
 
 prova('un errore su un conteggio non spegne la fascia', () => {
-  deve(/const conta = async \(fn\) => \{ try \{ return await fn\(\); \} catch/.test(corpo),
+  deve(/const conta = async \(fn(?:, nome)?\) => \{ try \{ return await fn\(\); \} catch/.test(corpo),
     'i conteggi non sono protetti uno per uno');
   const protetti = (corpo.match(/await conta\(async \(\) =>/g) || []).length;
   deve(protetti >= 6, 'conteggi protetti: ' + protetti);
@@ -91,10 +91,10 @@ prova('le voci a zero non si mostrano', () => {
 prova('il disegno e separato dalla raccolta, e gestisce il caso vuoto', () => {
   // Separati per due motivi: si puo ridisegnare senza reinterrogare, e si puo
   // verificare la resa senza database.
-  const disegna = (html.match(/function oggiDisegna\(voci\)[\s\S]*?\n\}/) || [''])[0];
+  const disegna = (html.match(/function oggiDisegna\(voci[^)]*\)[\s\S]*?\n\}/) || [''])[0];
   deve(disegna, 'oggiDisegna non esiste: disegno e raccolta sono ancora mescolati');
   deve(/il lavoro è in pari/.test(disegna), 'manca il messaggio per quando non c\'e nulla da fare');
-  deve(/oggiDisegna\(voci\);/.test(corpo), 'la raccolta non usa la funzione di disegno');
+  deve(/oggiDisegna\(voci[,)]/.test(corpo), 'la raccolta non usa la funzione di disegno');
   return 'raccolta → oggiDisegna';
 });
 
@@ -106,7 +106,9 @@ prova('si controlla la variabile del database giusta', () => {
 });
 
 prova('ogni voce porta da qualche parte', () => {
-  const voci = (corpo.match(/voci\.push\(\{/g) || []).length;
+  /* le voci del lavoro di oggi e quelle «da sistemare con calma»: tutte
+     devono portare da qualche parte (critique 07/10/2026). */
+  const voci = (corpo.match(/(?:voci|calma)\.push\(\{/g) || []).length;
   const destinazioni = (corpo.match(/va: \(\) =>/g) || []).length;
   deve(voci >= 6, 'voci previste: ' + voci);
   deve(destinazioni === voci, voci + ' voci ma ' + destinazioni + ' destinazioni');
@@ -140,6 +142,44 @@ prova('i conteggi leggono le tabelle giuste', () => {
   // nessuna scrittura: la scrivania guarda, non tocca
   deve(!/\.insert\(|\.update\(|\.delete\(/.test(corpo), 'la fascia scrive sul database: deve solo leggere');
   return '5 tabelle, sola lettura';
+});
+
+/* ══ UN ELENCO NON È UN CONTEGGIO (critique della Scrivania, 07/10/2026) ═══
+   Il server manda al massimo mille righe per richiesta. La scrivania contava
+   `data.length` su tabelle che ne hanno di più — scadute (~1.665), polizze
+   (~4.000), anagrafiche (2.536) — e diceva «1000» senza dirlo. Adesso o conta
+   il server, o si legge a pagine ordinate; e le tre voci dello scadenzario
+   passano dallo stesso motore della pagina Scadenzario, così i due numeri
+   non possono più divergere. */
+prova('nessun conteggio si ferma al tetto delle mille righe', () => {
+  deve(!/n: data\.length/.test(corpo), 'un conteggio usa ancora le righe scaricate');
+  deve(!/\.limit\(/.test(corpo), 'c\'è un tetto secco');
+  deve(/count: 'exact', head: true \}\)\.eq\('perfezionata', false\)/.test(corpo),
+    'le polizze da perfezionare non le conta il server');
+  const paginate = (corpo.match(/\.order\('id'\)\.range\(da, a\)/g) || []).length;
+  deve(paginate >= 4, 'letture paginate e ordinate: ' + paginate);
+  deve(/if \(r\.parziale\) parziale = true/.test(corpo), 'una lettura fermata non si dichiara');
+  return paginate + ' letture paginate';
+});
+
+prova('rinnovi e scadute sono quelli dello Scadenzario, non una copia', () => {
+  deve(/window\.Scadenzario/.test(corpo), 'la scrivania non usa il motore dello Scadenzario');
+  deve(/M\.conRinnovo\(/.test(corpo) && /M\.statoLavoro\(/.test(corpo), 'il rinnovo non si riconosce col motore');
+  deve(!/sostituzioni/.test(corpo), 'la scrivania guarda ancora `sostituzioni`, che è vuota ovunque');
+  deve(/<script src="\/nuovo-preventivo\/tariffe\/motore\/scadenzario\.js\?v=/.test(html),
+    'IAM non carica il motore dello scadenzario');
+});
+
+prova('i sospesi sono quelli della schermata Sospesi, non il file caricato a mano', () => {
+  deve(!/APP\.sospesi/.test(corpo), 'la voce legge ancora il file caricato a mano');
+  deve(/await sprCarica\(\)/.test(corpo) && /SPR_ESITO/.test(corpo), 'la voce non usa il conto della schermata Sospesi');
+  /* Si guarda la SOTTRAZIONE, non la parola: la prima stesura cercava
+     «da_dichiarare» nel blocco intero e restava verde anche togliendola dal
+     conteggio, perché la stessa parola resta nel totale in euro. */
+  deve(/const n = \(e\.righe \|\| 0\) - \(e\.da_dichiarare \|\| 0\)/.test(corpo),
+    'il numero dei sospesi comprende le rate da dichiarare: finirebbero in due voci');
+  deve(/- \(Number\(e\.totale_da_dichiarare\) \|\| 0\)/.test(corpo),
+    'il totale dei sospesi comprende le rate da dichiarare');
 });
 
 /* ══ I DUE BUCHI DEL MARKETING LI CONTA IL SERVER (21/09/2026) ═════════════

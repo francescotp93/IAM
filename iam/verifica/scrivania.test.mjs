@@ -59,7 +59,7 @@ prova('la striscia di indicatori in cima non c\'è più', () => {
 
 // ── 3. I numeri stanno una volta sola, dentro «Da fare oggi» ─────────────
 prova('«Da fare oggi» disegna i numeri dai dati veri, cliccabili', () => {
-  const d = corpoDi('function oggiDisegna(voci)');
+  const d = corpoDi('function oggiDisegna(voci');
   deve(d, 'manca oggiDisegna');
   deve(/<button/.test(d), 'le voci non sono pulsanti: da tastiera non si raggiungono');
   deve(/oggi-v/.test(d), 'le voci non usano la scheda «da fare oggi»');
@@ -68,9 +68,22 @@ prova('«Da fare oggi» disegna i numeri dai dati veri, cliccabili', () => {
 });
 
 prova('senza niente da fare la scrivania lo dice, e non mostra un vuoto', () => {
-  const d = corpoDi('function oggiDisegna(voci)');
+  const d = corpoDi('function oggiDisegna(voci');
   deve(d && /!window\.__OGGI\.length/.test(d), 'con zero voci non c\'è il caso «niente da fare»');
   deve(/in pari/.test(d), 'non viene detto che il lavoro è in pari');
+});
+
+/* «IN PARI» SOLO SE OGNI LETTURA È RIUSCITA (critique 07/10/2026). Prima una
+   lettura caduta faceva sparire la sua voce in silenzio, e con la rete giù la
+   scrivania scriveva in verde «il lavoro è in pari»: diceva di non fare niente
+   proprio quando non si sapeva niente. */
+prova('con una lettura caduta la scrivania non dice «in pari»', () => {
+  const d = corpoDi('function oggiDisegna(voci') || '';
+  deve(/guasti\.length\s*\?/.test(d), 'il caso vuoto non distingue «niente da fare» da «non si è potuto leggere»');
+  deve(/Non si è potuto controllare/.test(d), 'una lettura caduta non si dichiara');
+  const c = corpoDi('async function caricaDaFareOggi(') || '';
+  deve(/guasti\.push\(nome\)/.test(c), 'chi raccoglie i conteggi non segna le letture cadute');
+  deve(/oggiDisegna\(voci, \{ guasti/.test(c), 'le letture cadute non arrivano al disegno');
 });
 
 // ── 4. La struttura del disegno (senza la striscia) ──────────────────────
@@ -136,7 +149,7 @@ prova('la scrivania non usa emoji di sistema', () => {
   /* La stessa faccina è gialla su un telefono, piatta su Windows e diversa
      su un Mac: in un gestionale non è un simbolo. */
   const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
-  const zona = corpoDi('function oggiDisegna(voci)') || '';
+  const zona = corpoDi('function oggiDisegna(voci') || '';
   deve(!emoji.test(zona), 'c\'è ancora un\'emoji di sistema nella scrivania');
 });
 

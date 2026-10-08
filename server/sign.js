@@ -16,6 +16,7 @@ const APP_URL = (process.env.QUOTO_URL || 'https://quoto.withusassicurazioni.it'
 const SELF_URL = (process.env.SELF_URL || 'https://api.withusassicurazioni.it').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
 import { MITTENTE_NOME } from './mittente.js';
+import { improntaOtp, otpGiusto } from './otpImpronta.js';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
 const OTP_TTL_MIN = Number(process.env.OTP_TTL_MIN || 5);
 const OTP_MAX_TENTATIVI = 5;
@@ -153,7 +154,7 @@ export async function avviaFirmaCliente(preventivoId, { email, telefono, prev } 
   const token = genToken();
   const firma = {
     stato: 'inviata',
-    otp_hash: sha(otp + ':' + token),
+    otp_hash: improntaOtp(otp, token),
     scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(),
     token, email: cli, telefono: tel,
     inviata_il: new Date().toISOString(),
@@ -244,7 +245,7 @@ publicSign.post('/verify', async (req, res) => {
        cifre si indovina provando (audit GDPR, 07/10/2026). Un nuovo invio
        riparte da zero. */
     if ((f.tentativi || 0) >= OTP_MAX_TENTATIVI) return res.status(429).json({ error: 'Troppi tentativi sbagliati: richiedi un nuovo codice.' });
-    if (sha(String(otp) + ':' + t) !== f.otp_hash) {
+    if (!otpGiusto(otp, t, f.otp_hash)) {
       const tentativi = (f.tentativi || 0) + 1;
       await setFirma(id, { ...f, tentativi }, dati);
       return res.status(401).json({ error: 'Codice OTP errato.', tentativi });
@@ -288,7 +289,7 @@ publicSign.post('/resend', async (req, res) => {
     if (!f || !t || f.token !== t) return res.status(403).json({ error: 'link non valido' });
     if (f.stato === 'firmata') return res.json({ ok: true, gia_firmata: true });
     const otp = genOtp();
-    const firma = { ...f, otp_hash: sha(otp + ':' + t), scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(), tentativi: 0 };
+    const firma = { ...f, otp_hash: improntaOtp(otp, t), scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(), tentativi: 0 };
     await setFirma(id, firma, dati);
     const link = `${APP_URL}/firma.html?id=${encodeURIComponent(id)}&t=${encodeURIComponent(t)}`;
     await sendEmail(f.email, 'Nuovo codice di firma — With Us', shell('Nuovo codice di firma',
@@ -505,7 +506,7 @@ export async function avviaFirmaPrivacy(clienteId, { email, telefono } = {}) {
   const tel = telefono || a.cellulare || a.telefono || '';
   if (!cli) throw new Error('Manca l\'email del cliente: aggiungila prima di inviare la privacy.');
   const otp = genOtp(); const token = genToken();
-  const privacy = { stato: 'inviata', otp_hash: sha(otp + ':' + token), scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(), token, email: cli, telefono: tel, inviata_il: new Date().toISOString(), tentativi: 0 };
+  const privacy = { stato: 'inviata', otp_hash: improntaOtp(otp, token), scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(), token, email: cli, telefono: tel, inviata_il: new Date().toISOString(), tentativi: 0 };
   await setAnagPrivacy(clienteId, privacy);
   const link = `${APP_URL}/firma.html?tipo=privacy&id=${encodeURIComponent(clienteId)}&t=${encodeURIComponent(token)}`;
   const html = shell('Firma l\'informativa privacy',
@@ -580,7 +581,7 @@ publicSign.post('/privacy/verify', async (req, res) => {
     if (f.stato === 'firmata') return res.json({ ok: true, gia_firmata: true });
     if (new Date(f.scadenza).getTime() < Date.now()) return res.status(410).json({ error: 'Codice scaduto. Richiedi un nuovo invio.' });
     if ((f.tentativi || 0) >= OTP_MAX_TENTATIVI) return res.status(429).json({ error: 'Troppi tentativi sbagliati: richiedi un nuovo codice.' });
-    if (sha(String(otp) + ':' + t) !== f.otp_hash) {
+    if (!otpGiusto(otp, t, f.otp_hash)) {
       await setAnagPrivacy(id, { ...f, tentativi: (f.tentativi || 0) + 1 });
       return res.status(401).json({ error: 'Codice OTP errato.' });
     }

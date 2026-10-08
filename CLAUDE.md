@@ -8734,9 +8734,8 @@ controprove).
 - **Ruotare** `EXPLORE_KEY`/`PLURIMA_MAP_KEY`/`RESTORE_KEY` se sul server hanno
   il vecchio valore, e le password VNC degli scraper (scritte nei `.service`).
 - **Rendere privato il repository**: oggi è pubblico.
-- `otp_hash` dei convenzionati resta leggibile dall'associato (decisione già
-  aperta il 07/10); il tetto dei tentativi lato server non lo copre, perché il
-  confronto si può fare offline.
+- ~~`otp_hash` dei convenzionati resta leggibile dall'associato.~~ **Chiuso
+  l'08/10/2026**: vedi §77.
 - **Documenti GDPR mancanti**: registro dei trattamenti (art. 30), nomine a
   responsabile (Brevo, Supabase, OVH, Anthropic, openapi.it, Stripe/PayPal),
   DPIA (si trattano dati di salute), procedura data breach, routine per
@@ -8798,3 +8797,40 @@ schermata il server lo applica», e adesso guarda anche lì.
 - **Gli indirizzi arrivati dai flussi delle compagnie** (es. Prima) li ha
   scritti il cliente sul sito della compagnia: se valgano come «raccolti
   dall'agenzia nella vendita» va chiesto al consulente privacy.
+
+---
+
+## 77. I codici di conferma non si ricavano più dall'impronta (08/10/2026)
+
+L'impronta di ogni codice OTP era `sha256(codice + ':' + legame)`. Chi poteva
+leggere quella riga provava il milione di codici di sei cifre sul proprio
+computer — **un secondo**, misurato — trovava quello giusto e lo inseriva al
+primo colpo. Il tetto dei tentativi (§75) non scattava mai, perché al server
+arrivava un tentativo solo, ed era giusto.
+
+Non era solo l'area convenzionati. Lo stesso schema stava in tre posti:
+
+| dove | chi poteva leggere l'impronta | che cosa poteva fare |
+|---|---|---|
+| `convenzionati.js` | l'associato, sulla propria riga | confermare dati e consensi senza ricevere l'email |
+| `sign.js` (firma del cliente su preventivo e privacy) | chi in agenzia legge la scheda | **firmare al posto del cliente** |
+| `firmaCollab.js` (firma del collaboratore e controfirma) | lo staff | firmare al posto del collaboratore — e qui non c'era nemmeno un tetto ai tentativi |
+
+| pezzo | dove |
+|---|---|
+| l'impronta con la chiave, il confronto a tempo costante | `server/otpImpronta.js` |
+| il tetto ai tentativi sulla firma dei collaboratori | `tentativiFirma` in `server/firmaCollab.js` |
+| prove | `server/verifica/otp-impronta.test.mjs` — 5, che **fa** l'attacco |
+
+**Una HMAC con una chiave che sta solo sul server** (`OTP_SEGRETO`, oppure la
+chiave di servizio di Supabase che il backend ha già). Senza chiave
+l'impronta non dice niente. Senza nessuna delle due il server non genera e non
+verifica codici: un ripiego su una chiave nota sarebbe il difetto rimesso
+dentro (§15).
+
+La prova esegue davvero l'attacco del milione di codici e pretende che non
+trovi niente. **Controprova**: rimesso lo sha semplice, l'attacco trova il
+codice in un secondo e la prova diventa rossa con il codice in chiaro.
+
+Conseguenza dichiarata: i codici chiesti **prima** del rilascio non valgono
+più. Scadono comunque in pochi minuti, e se ne chiede uno nuovo.

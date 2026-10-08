@@ -22,6 +22,14 @@ const SELF_URL = (process.env.SELF_URL || 'https://api.withusassicurazioni.it').
 const IAM_URL = (process.env.IAM_URL || 'https://iam.withusassicurazioni.it').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
 import { MITTENTE_NOME } from './mittente.js';
+import { improntaOtp, otpGiusto } from './otpImpronta.js';
+import { creaLimitatore } from './limitatore.js';
+
+/* Cinque tentativi per codice, poi se ne chiede uno nuovo (08/10/2026): qui
+   prima non c'era nessun tetto, e un codice di sei cifre senza tetto si
+   indovina provando. La chiave distingue la firma del collaboratore ('c:')
+   dalla controfirma dell'agente ('a:'), che hanno due codici diversi. */
+const tentativiFirma = creaLimitatore({ max: 5, finestraMs: 60 * 60 * 1000 });
 const NOTIFY_FROM = process.env.NOTIFY_FROM || 'noreply@withusassicurazioni.it';
 const OTP_TTL_MIN = Number(process.env.OTP_TTL_MIN || 5);
 
@@ -225,7 +233,7 @@ firmaCollabRouter.post('/request', async (req, res) => {
     const otp = genOtp(); const token = genToken();
     const row = await sbInsert('iam_firme', {
       team_id: String(teamId), tipo, titolo: titolo || TIPI[tipo] || 'Documento', email: dest,
-      doc_url: docUrl || null, stato: 'inviata', token, otp_hash: sha(otp + ':' + token),
+      doc_url: docUrl || null, stato: 'inviata', token, otp_hash: improntaOtp(otp, token),
       scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString(),
       collab_id: chi.collab_id, utente_id: chi.utente_id,
       versione: versione || null, prodotto_id: prodottoId || null,
@@ -318,7 +326,8 @@ publicFirmaCollab.post('/verify', async (req, res) => {
     if (!t || f.token !== t) return res.status(403).json({ error: 'link non valido' });
     if (f.stato !== 'inviata') return res.json({ ok: true, gia_firmato: true, firmato_collab_il: f.firmato_collab_il });
     if (new Date(f.scadenza).getTime() < Date.now()) return res.status(410).json({ error: 'Codice scaduto.' });
-    if (sha(String(otp) + ':' + t) !== f.otp_hash) return res.status(401).json({ error: 'Codice OTP errato.' });
+    if (tentativiFirma.bloccato('c:' + id)) return res.status(429).json({ error: 'Troppi tentativi sbagliati: chiedi un nuovo codice.' });
+    if (!otpGiusto(otp, t, f.otp_hash)) { tentativiFirma.colpo('c:' + id); return res.status(401).json({ error: 'Codice OTP errato.' }); }
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
     const transazione = 'WU-' + sha(f.token + new Date().toISOString()).slice(0, 12).toUpperCase();
     const upd = await sbPatch('iam_firme', 'id', id, { stato: 'firmata_collab', firmato_collab_il: new Date().toISOString(), ip_collab: ip, transazione });
@@ -342,7 +351,8 @@ firmaCollabRouter.post('/countersign/request', async (req, res) => {
     if (!f) return res.status(404).json({ error: 'non trovato' });
     if (f.stato !== 'firmata_collab') return res.status(400).json({ error: 'Il documento non è pronto per la controfirma.' });
     const otp = genOtp();
-    await sbPatch('iam_firme', 'id', id, { cs_otp_hash: sha(otp + ':' + f.token), cs_scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString() });
+    tentativiFirma.azzera('a:' + id);
+    await sbPatch('iam_firme', 'id', id, { cs_otp_hash: improntaOtp(otp, f.token), cs_scadenza: new Date(Date.now() + OTP_TTL_MIN * 60000).toISOString() });
     await sendEmail(STAFF_INBOX, 'Codice controfirma — With Us', shell('Controfirma documento',
       `<p>Codice per controfirmare <b>${esc(tipoLabel(f.tipo, f.titolo))}</b>:</p>
        <div style="font-size:30px;font-weight:900;letter-spacing:8px;color:#1b2a6b;background:#eef2ff;border-radius:12px;padding:14px;text-align:center">${otp}</div>
@@ -359,7 +369,8 @@ firmaCollabRouter.post('/countersign/verify', async (req, res) => {
     if (!f) return res.status(404).json({ error: 'non trovato' });
     if (f.stato !== 'firmata_collab') return res.status(400).json({ error: 'stato non valido' });
     if (!f.cs_otp_hash || new Date(f.cs_scadenza).getTime() < Date.now()) return res.status(410).json({ error: 'Codice scaduto. Richiedine uno nuovo.' });
-    if (sha(String(otp) + ':' + f.token) !== f.cs_otp_hash) return res.status(401).json({ error: 'Codice OTP errato.' });
+    if (tentativiFirma.bloccato('a:' + id)) return res.status(429).json({ error: 'Troppi tentativi sbagliati: chiedi un nuovo codice.' });
+    if (!otpGiusto(otp, f.token, f.cs_otp_hash)) { tentativiFirma.colpo('a:' + id); return res.status(401).json({ error: 'Codice OTP errato.' }); }
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
     const upd = await sbPatch('iam_firme', 'id', id, { stato: 'completata', firmato_agente_il: new Date().toISOString(), ip_agente: ip, cs_otp_hash: null });
     // copia firmata al collaboratore

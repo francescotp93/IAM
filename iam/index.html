@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.54.0">
-<meta name="app-versione-nome" content="Trattative: la pipeline a colpo d'occhio, i richiami da fare, e niente più aliquote">
+<meta name="app-versione" content="0.55.0">
+<meta name="app-versione-nome" content="Trattative: la scheda con le tappe cliccabili e il riepilogo, e niente quadretti di sfondo">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1162,6 +1162,7 @@ input[type=file]{display:none;}
 #panel-produzione,
 #panel-punti-vendita,
 #panel-pipeline,
+.trs-box,
 #contab-panel-conto {
   --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
   --w1-sfondo:#f3f5f7; --w1-bordo:#e3e8ec;
@@ -1823,7 +1824,7 @@ input[type=file]{display:none;}
    kit e' chiara anche col tema scuro, e il blu del grafico Produzione e'
    pensato per l'altro sfondo. */
 #panel-pipeline{
-  --trt-ink:#0c1a2a; --trt-ink2:#14304a; --trt-riga:rgba(148,178,214,.10);
+  --trt-ink:#0c1a2a; --trt-ink2:#14304a;
   --trt-chiaro:#e8eef6; --trt-chiaro2:#9fb3c8;
   --trt-corso:#2563eb; --trt-corso-bg:#eef3ff;
   --trt-s-prospect:#94a3b8; --trt-s-preventivo:#38bdf8; --trt-s-trattativa:#f59e0b; --trt-s-aperta:#a78bfa;
@@ -1833,12 +1834,9 @@ input[type=file]{display:none;}
 .trt-off{display:none}
 .trt-num{font-family:var(--trt-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 
-/* La testata: la pipeline attiva, su fondo scuro e una griglia appena
-   accennata. È il numero che si guarda per primo, quindi è l'unico grande. */
+/* La testata: la pipeline attiva, su fondo scuro. È il numero che si guarda per primo, quindi è l'unico grande. */
 .trt-hero{position:relative;overflow:hidden;border-radius:calc(var(--w1-raggio) + 6px);padding:20px 22px 18px;margin:0 0 12px;
   color:var(--trt-chiaro);background:
-    linear-gradient(var(--trt-riga) 1px,transparent 1px) 0 0/28px 28px,
-    linear-gradient(90deg,var(--trt-riga) 1px,transparent 1px) 0 0/28px 28px,
     radial-gradient(120% 140% at 100% 0%,rgba(37,99,235,.35),transparent 55%),
     linear-gradient(135deg,var(--trt-ink),var(--trt-ink2));
   box-shadow:var(--w1-ombra)}
@@ -1954,22 +1952,99 @@ input[type=file]{display:none;}
   .trt-r-az{margin-top:0;margin-left:auto}
 }
 /* La scheda della trattativa sta nella finestra di IAM, col tema di IAM. */
-.trt-sez{font-size:11px;font-weight:800;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px}
-.trt-sez:first-child{margin-top:4px}
-.trt-seg{display:inline-flex;border:1px solid var(--bord2);border-radius:var(--rs);overflow:hidden;margin-bottom:10px}
-.trt-seg button{border:none;background:var(--surf2);color:var(--txt2);padding:8px 12px;font-size:12.5px;font-family:inherit;cursor:pointer}
-.trt-seg button.act{background:var(--acc);color:#fff;font-weight:700}
-.trt-ris{display:flex;flex-direction:column;border:1px solid var(--bord);border-radius:var(--rs);margin-top:6px;max-height:240px;overflow:auto}
-.trt-ris:empty{display:none}
-.trt-ris button{text-align:left;border:none;border-top:1px solid var(--bord);background:var(--surf);color:var(--txt);padding:9px 12px;font-size:13px;font-family:inherit;cursor:pointer}
-.trt-ris button:first-child{border-top:none}
-.trt-ris button:hover,.trt-ris button:focus{background:var(--surf2)}
-.trt-ris small{color:var(--txt3);margin-left:6px}
-.trt-scelto{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surf2);border-radius:var(--rs);padding:10px 12px;font-size:13.5px}
-.trt-scelto b{font-weight:700}
-.trt-msg{font-size:12.5px;margin-top:8px;color:var(--red-txt)}
-.trt-msg.ok{color:var(--grn-txt)}
-.trt-chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt);margin-top:10px}
+/* La scheda della trattativa (0.55.0): lo stesso linguaggio della schermata —
+   testata scura, schede bianche, numeri in carattere fisso. I
+   gettoni sono quelli del kit, che la scheda prende dall'elenco qui sopra:
+   la finestra vive fuori dal pannello e senza quell'elenco non li avrebbe. */
+.trs-box{--trt-ink:#0c1a2a;--trt-ink2:#14304a;--trt-chiaro:#e8eef6;--trt-chiaro2:#9fb3c8;
+  --trt-corso:#2563eb;--trt-corso-bg:#eef3ff;--trt-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  max-width:940px;margin:28px auto;min-height:0;padding:0;border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(2,8,23,.45)}
+.trs-testa{position:sticky;top:0;z-index:2;color:var(--trt-chiaro);padding:18px 22px 16px;background:
+  radial-gradient(120% 160% at 100% 0%,rgba(37,99,235,.35),transparent 55%),
+  linear-gradient(135deg,var(--trt-ink),var(--trt-ink2))}
+.trs-testa-su{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+.trs-titolo{font-size:22px;font-weight:800;color:var(--trt-chiaro);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trs-riass{font-size:12.5px;color:var(--trt-chiaro2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trs-riass span{opacity:.5;margin:0 4px}
+.trs-riass b{color:#6ee7b7;margin-left:6px}
+.trs-chiudi{flex-shrink:0;width:36px;height:36px;border-radius:10px;border:1px solid rgba(148,178,214,.25);background:rgba(255,255,255,.04);color:var(--trt-chiaro);cursor:pointer;font-size:17px;display:grid;place-items:center}
+.trs-chiudi:hover{background:rgba(255,255,255,.1)}
+.trs-tappe{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:16px}
+.trs-tappe button{display:flex;align-items:center;gap:8px;justify-content:center;padding:9px 8px;border-radius:10px;border:1px solid rgba(148,178,214,.22);
+  background:rgba(255,255,255,.03);color:var(--trt-chiaro2);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,color .15s;white-space:nowrap}
+.trs-tappe button span{font-family:var(--trt-mono);font-size:10.5px;opacity:.75}
+.trs-tappe button:hover{border-color:rgba(148,178,214,.5);color:var(--trt-chiaro)}
+.trs-tappe button.fatta{color:var(--trt-chiaro);border-color:rgba(96,165,250,.45);background:rgba(37,99,235,.14)}
+.trs-tappe button.act{color:#fff;border-color:#60a5fa;background:var(--trt-corso);box-shadow:0 0 0 3px rgba(96,165,250,.22)}
+.trs-tappe button.vinta.act{background:var(--w1-verde);border-color:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.2)}
+.trs-tappe button.persa.act{background:var(--w1-rosso);border-color:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.2)}
+.trs-tappe button:focus-visible,.trs-chiudi:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
+.trs-box [hidden]{display:none!important}
+.trs-nascosto{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.trs-corpo{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px;background:var(--w1-sfondo)}
+.trs-sez{background:var(--w1-card);border:1px solid var(--w1-bordo);border-radius:12px;padding:14px 16px;box-shadow:var(--w1-ombra);display:flex;flex-direction:column;gap:10px;min-width:0}
+.trs-piena{grid-column:1/-1}
+.trs-sez-t{display:flex;align-items:center;gap:9px;margin:0 0 2px;font-size:13.5px;font-weight:800;color:var(--w1-testo)}
+.trs-ico{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--trt-corso-bg);color:var(--trt-corso);font-size:15px}
+.trs-box .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.trs-box .trs-g3{grid-template-columns:1fr 1fr 1.2fr}
+.trs-box .fld{display:flex;flex-direction:column;gap:5px;position:relative;min-width:0}
+.trs-box .fld label{font-family:var(--trt-mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--w1-testo3)}
+.trs-box .fld input,.trs-box .fld select,.trs-box .fld textarea{height:40px;padding:0 11px;border:1px solid var(--w1-bordo);border-radius:9px;background:var(--w1-card);
+  color:var(--w1-testo);font:inherit;font-size:13.5px;width:100%;min-width:0;transition:border-color .15s,box-shadow .15s}
+.trs-box .fld select{appearance:none;-webkit-appearance:none;padding-right:32px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b9aa9' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center}
+.trs-box .fld textarea{height:auto;min-height:120px;padding:10px 11px;resize:vertical;line-height:1.45}
+.trs-box .fld input:focus,.trs-box .fld select:focus,.trs-box .fld textarea:focus{outline:none;border-color:var(--trt-corso);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+.trs-mono{font-family:var(--trt-mono)!important;letter-spacing:.02em}
+#mt-f-cf{text-transform:uppercase}
+.trs-cerca i{position:absolute;left:12px;bottom:12px;color:var(--w1-testo3);font-size:15px;pointer-events:none}
+.trs-cerca input{padding-left:34px!important}
+.trs-premio input{height:52px!important;font-size:22px!important;font-weight:800;padding-left:32px!important}
+.trs-euro{position:absolute;left:13px;bottom:14px;font-family:var(--trt-mono);font-size:18px;font-weight:700;color:var(--w1-testo3)}
+.trs-box .trt-seg{display:inline-flex;align-self:flex-start;gap:3px;padding:3px;border:1px solid var(--w1-bordo);border-radius:10px;background:var(--w1-sfondo);margin:0}
+.trs-box .trt-seg button{border:none;border-radius:7px;background:transparent;color:var(--w1-testo2);padding:7px 12px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.trs-box .trt-seg button.act{background:var(--w1-card);color:var(--trt-corso);box-shadow:0 1px 3px rgba(16,36,54,.12)}
+.trs-box .trt-ris{display:flex;flex-direction:column;border:1px solid var(--w1-bordo);border-radius:10px;max-height:240px;overflow:auto}
+.trs-box .trt-ris:empty{display:none}
+.trs-box .trt-ris button{text-align:left;border:none;border-top:1px solid var(--w1-bordo);background:var(--w1-card);color:var(--w1-testo);padding:10px 12px;font:inherit;font-size:13px;cursor:pointer}
+.trs-box .trt-ris button:first-child{border-top:none}
+.trs-box .trt-ris button:hover,.trs-box .trt-ris button:focus{background:var(--trt-corso-bg)}
+.trs-box .trt-ris small{color:var(--w1-testo3);margin-left:8px;font-family:var(--trt-mono);font-size:11px}
+.trs-box .trt-scelto{display:flex;align-items:center;gap:12px;background:var(--w1-sfondo);border:1px solid var(--w1-bordo);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--w1-testo)}
+.trs-box .trt-av{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:13px;color:var(--trt-corso);background:var(--trt-corso-bg);font-family:var(--trt-mono);flex-shrink:0}
+.trs-cli{flex:1;min-width:0}
+.trs-cli small{display:block;font-size:11.5px;color:var(--w1-testo3);margin-top:1px}
+.trs-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--w1-bordo);
+  background:var(--w1-card);color:var(--w1-testo);font:inherit;font-size:13px;font-weight:600;cursor:pointer;align-self:flex-start;transition:background .15s,transform .1s}
+.trs-btn:hover{background:var(--w1-sfondo)}
+.trs-btn:active{transform:translateY(1px)}
+.trs-btn-acc{background:var(--w1-verde-scuro);border-color:var(--w1-verde);color:#fff}
+.trs-btn-acc:hover{background:#015a2f}
+.trs-btn:disabled{opacity:.6;cursor:default}
+.trs-sw-r{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:9px 0;border-top:1px dashed var(--w1-bordo);font-size:13px;color:var(--w1-testo);cursor:pointer}
+.trs-sw{appearance:none;-webkit-appearance:none;flex-shrink:0;width:38px;height:22px;border-radius:999px;background:var(--w1-bordo);position:relative;cursor:pointer;transition:background .2s;margin:0}
+.trs-sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.trs-sw:checked{background:var(--trt-corso)}
+.trs-sw:checked::after{transform:translateX(16px)}
+.trs-sw:focus-visible{outline:2px solid var(--trt-corso);outline-offset:2px}
+.trs-piede{position:sticky;bottom:0;display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:12px 16px;background:var(--w1-card);border-top:1px solid var(--w1-bordo)}
+.trs-piede .trt-msg{margin:0 auto 0 0;flex:1;min-width:0}
+.trs-piede .trs-btn{align-self:center}
+.trt-msg{font-size:12.5px;color:var(--w1-rosso,var(--red-txt))}
+.trt-msg.ok{color:var(--w1-verde-scuro,var(--grn-txt))}
+.trt-msg:empty{display:none}
+.trt-chk{display:flex;align-items:center;gap:8px;font-size:13px}
+@media (prefers-reduced-motion:reduce){.trs-sw,.trs-sw::after,.trs-tappe button{transition:none}}
+@media (max-width:720px){
+  .trs-box{margin:0;border-radius:0;min-height:100%;max-width:none}
+  .trs-testa{padding:14px 14px 12px}.trs-titolo{font-size:18px}
+  .trs-tappe{grid-template-columns:repeat(6,minmax(0,1fr))}.trs-tappe button{grid-column:span 2}.trs-tappe button.vinta,.trs-tappe button.persa{grid-column:span 3}
+  .trs-tappe button{padding:8px 10px}
+  .trs-corpo{grid-template-columns:1fr;padding:12px}
+  .trs-box .fgrid,.trs-box .trs-g3{grid-template-columns:1fr}
+}
 </style>
 <link rel="stylesheet" href="withus-pictograms.css?v=20261007">
 <!-- impronta withus-one.css: 9d3672a1 — se cambia, cambia anche il ?v= qui sotto -->
@@ -4360,86 +4435,110 @@ input[type=file]{display:none;}
 
 <!-- MODAL TRATTATIVA -->
 <div class="modal" id="modal-tratt">
-  <div class="modal-box">
-    <div class="modal-hdr">
-      <div class="modal-title" id="mt-title">Nuova trattativa</div>
-      <div style="display:flex;gap:8px;">
-        <button class="mbtn prim" onclick="saveTratt()">Salva</button>
-        <button class="mbtn sec" onclick="closeModal('modal-tratt')">✕</button>
+  <div class="modal-box trs-box" role="dialog" aria-modal="true" aria-labelledby="mt-title">
+    <header class="trs-testa">
+      <div class="trs-testa-su">
+        <div style="min-width:0">
+          <div class="trt-eti">Trattativa</div>
+          <div class="modal-title trs-titolo" id="mt-title">Nuova trattativa</div>
+          <div class="trs-riass" id="mt-riass" aria-live="polite"></div>
+        </div>
+        <button type="button" class="trs-chiudi" aria-label="Chiudi" onclick="closeModal('modal-tratt')"><i class="ti ti-x"></i></button>
       </div>
-    </div>
-    <div class="modal-body">
+      <div class="trs-tappe" role="radiogroup" aria-label="Fase della trattativa" id="mt-tappe">
+        <button type="button" role="radio" data-v="prospect" onclick="trtTappa('prospect')"><span>01</span>Prospect</button>
+        <button type="button" role="radio" data-v="preventivo" onclick="trtTappa('preventivo')"><span>02</span>Preventivo</button>
+        <button type="button" role="radio" data-v="trattativa" onclick="trtTappa('trattativa')"><span>03</span>In trattativa</button>
+        <button type="button" role="radio" data-v="chiusa" class="vinta" onclick="trtTappa('chiusa')"><span>✓</span>Vinta</button>
+        <button type="button" role="radio" data-v="persa" class="persa" onclick="trtTappa('persa')"><span>✕</span>Persa</button>
+      </div>
+      <select id="mt-status" class="trs-nascosto" tabindex="-1" aria-hidden="true" onchange="trtTappeRender()"><option value="prospect">Prospect</option><option value="preventivo">Preventivo inviato</option><option value="trattativa">In trattativa</option><option value="chiusa">Chiusa vinta ✓</option><option value="persa">Persa ✗</option></select>
+    </header>
+    <div class="modal-body trs-corpo">
       <input type="hidden" id="mt-cliente">
       <input type="hidden" id="mt-anag-id">
 
-      <div class="trt-sez">Cliente</div>
-      <div id="mt-cli-scelto"></div>
-      <div id="mt-cli-cerca">
-        <div class="trt-seg" role="tablist">
-          <button type="button" id="mt-cli-m-port" class="act" onclick="trtModoCliente('port')">Dal portafoglio</button>
-          <button type="button" id="mt-cli-m-fast" onclick="trtModoCliente('fast')">Nuovo prospect (fast)</button>
-        </div>
-        <div id="mt-cli-port">
-          <div class="fld"><label for="mt-cli-q">Cerca fra clienti e prospect</label>
-            <input type="search" id="mt-cli-q" placeholder="Cognome, ragione sociale, codice fiscale o partita IVA" oninput="trtCercaCliente()" autocomplete="off"></div>
-          <div class="trt-ris" id="mt-cli-ris"></div>
-        </div>
-        <div id="mt-cli-fast" hidden>
-          <div class="trt-seg">
-            <button type="button" id="mt-fast-fis" class="act" onclick="trtFastTipo('fisica')">Persona</button>
-            <button type="button" id="mt-fast-giu" onclick="trtFastTipo('giuridica')">Società</button>
+      <section class="trs-sez trs-piena">
+        <h3 class="trs-sez-t"><span class="trs-ico"><i class="ti ti-user-circle"></i></span>Cliente</h3>
+        <div id="mt-cli-scelto"></div>
+        <div id="mt-cli-cerca">
+          <div class="trt-seg" role="tablist">
+            <button type="button" id="mt-cli-m-port" class="act" onclick="trtModoCliente('port')"><i class="ti ti-search"></i> Dal portafoglio</button>
+            <button type="button" id="mt-cli-m-fast" onclick="trtModoCliente('fast')"><i class="ti ti-bolt"></i> Nuovo prospect (fast)</button>
           </div>
-          <div class="fgrid" id="mt-fast-fisica">
-            <div class="fld"><label for="mt-f-nome">Nome</label><input id="mt-f-nome"></div>
-            <div class="fld"><label for="mt-f-cognome">Cognome</label><input id="mt-f-cognome"></div>
-            <div class="fld" style="grid-column:1/-1"><label for="mt-f-cf">Codice fiscale</label><input id="mt-f-cf" maxlength="16" style="text-transform:uppercase"></div>
+          <div id="mt-cli-port">
+            <div class="fld trs-cerca"><label for="mt-cli-q">Cerca fra clienti e prospect</label>
+              <i class="ti ti-search" aria-hidden="true"></i>
+              <input type="search" id="mt-cli-q" placeholder="Cognome, ragione sociale, codice fiscale o partita IVA" oninput="trtCercaCliente()" autocomplete="off"></div>
+            <div class="trt-ris" id="mt-cli-ris"></div>
           </div>
-          <div class="fgrid" id="mt-fast-giuridica" hidden>
-            <div class="fld"><label for="mt-f-rs">Ragione sociale</label><input id="mt-f-rs"></div>
-            <div class="fld"><label for="mt-f-piva">Partita IVA</label><input id="mt-f-piva" maxlength="11" inputmode="numeric"></div>
+          <div id="mt-cli-fast" hidden>
+            <div class="trt-seg">
+              <button type="button" id="mt-fast-fis" class="act" onclick="trtFastTipo('fisica')">Persona</button>
+              <button type="button" id="mt-fast-giu" onclick="trtFastTipo('giuridica')">Società</button>
+            </div>
+            <div class="fgrid trs-g3" id="mt-fast-fisica">
+              <div class="fld"><label for="mt-f-nome">Nome</label><input id="mt-f-nome" autocomplete="off"></div>
+              <div class="fld"><label for="mt-f-cognome">Cognome</label><input id="mt-f-cognome" autocomplete="off"></div>
+              <div class="fld"><label for="mt-f-cf">Codice fiscale</label><input id="mt-f-cf" class="trs-mono" maxlength="16" autocomplete="off"></div>
+            </div>
+            <div class="fgrid" id="mt-fast-giuridica" hidden>
+              <div class="fld"><label for="mt-f-rs">Ragione sociale</label><input id="mt-f-rs" autocomplete="off"></div>
+              <div class="fld"><label for="mt-f-piva">Partita IVA</label><input id="mt-f-piva" class="trs-mono" maxlength="11" inputmode="numeric" autocomplete="off"></div>
+            </div>
+            <button type="button" class="trs-btn trs-btn-acc" id="mt-censisci" onclick="trtCensisci()"><i class="ti ti-user-plus"></i> Censisci come prospect</button>
+            <div class="trt-msg" id="mt-fast-msg"></div>
           </div>
-          <button type="button" class="mbtn prim" style="margin-top:10px" onclick="trtCensisci()">Censisci come prospect</button>
-          <div class="trt-msg" id="mt-fast-msg"></div>
         </div>
-      </div>
+      </section>
 
-      <div class="trt-sez">Prodotto</div>
-      <div class="fgrid">
-        <div class="fld"><label for="mt-ramo">Ramo (tipo trattativa)</label><select id="mt-ramo" onchange="trtProdotti()"></select></div>
-        <div class="fld"><label for="mt-compagnia">Compagnia</label><select id="mt-compagnia" onchange="trtProdotti()"></select></div>
-        <div class="fld"><label for="mt-prodotto-id">Prodotto</label><select id="mt-prodotto-id" onchange="trtProdottoScelto()"></select></div>
-        <div class="fld" id="mt-prodotto-libero"><label for="mt-prodotto">Prodotto (scritto a mano)</label><input type="text" id="mt-prodotto" placeholder="se non è in catalogo"></div>
-      </div>
-      <label class="trt-chk"><input type="checkbox" id="mt-target"> È un prodotto target</label>
-      <label class="trt-chk"><input type="checkbox" id="mt-aut" onchange="trtAutRender()"> Richiede l’autorizzazione della direzione</label>
-      <div class="fld" id="mt-aut-box" hidden style="margin-top:8px"><label for="mt-aut-stato">Autorizzazione</label>
-        <select id="mt-aut-stato"><option value="in_attesa">In attesa della direzione</option><option value="concessa">Concessa</option><option value="negata">Negata</option></select>
-        <div class="cl-sub" id="mt-aut-nota"></div></div>
+      <section class="trs-sez">
+        <h3 class="trs-sez-t"><span class="trs-ico"><i class="ti ti-package"></i></span>Prodotto</h3>
+        <div class="fgrid">
+          <div class="fld"><label for="mt-ramo">Ramo (tipo trattativa)</label><select id="mt-ramo" onchange="trtProdotti()"></select></div>
+          <div class="fld"><label for="mt-compagnia">Compagnia</label><select id="mt-compagnia" onchange="trtProdotti()"></select></div>
+          <div class="fld"><label for="mt-prodotto-id">Prodotto</label><select id="mt-prodotto-id" onchange="trtProdottoScelto()"></select></div>
+          <div class="fld" id="mt-prodotto-libero"><label for="mt-prodotto">Prodotto (scritto a mano)</label><input type="text" id="mt-prodotto" placeholder="se non è in catalogo"></div>
+        </div>
+        <label class="trt-chk trs-sw-r"><span>È un prodotto target</span><input type="checkbox" class="trs-sw" id="mt-target"></label>
+        <label class="trt-chk trs-sw-r"><span>Richiede l’autorizzazione della direzione</span><input type="checkbox" class="trs-sw" id="mt-aut" onchange="trtAutRender()"></label>
+        <div class="fld" id="mt-aut-box" hidden><label for="mt-aut-stato">Autorizzazione</label>
+          <select id="mt-aut-stato"><option value="in_attesa">In attesa della direzione</option><option value="concessa">Concessa</option><option value="negata">Negata</option></select>
+          <div class="cl-sub" id="mt-aut-nota"></div></div>
+      </section>
 
-      <div class="trt-sez">Premio</div>
-      <div class="fgrid">
-        <div class="fld"><label for="mt-lordo">Premio lordo (€)</label><input type="number" id="mt-lordo" step="0.01" min="0" inputmode="decimal"></div>
-      </div>
+      <section class="trs-sez">
+        <h3 class="trs-sez-t"><span class="trs-ico"><i class="ti ti-currency-euro"></i></span>Premio e lavorazione</h3>
+        <div class="fld trs-premio"><label for="mt-lordo">Premio lordo</label>
+          <span class="trs-euro" aria-hidden="true">€</span><input type="number" id="mt-lordo" class="trs-mono" step="0.01" min="0" inputmode="decimal" placeholder="0,00"></div>
+        <div class="fgrid">
+          <div class="fld"><label for="mt-prob">Probabilità</label><select id="mt-prob"><option value="10">10%</option><option value="30" selected>30%</option><option value="50">50%</option><option value="70">70%</option><option value="90">90%</option><option value="100">100%</option></select></div>
+          <div class="fld"><label for="mt-prior">Priorità</label><select id="mt-prior"><option value="normale">Normale</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
+          <div class="fld"><label for="mt-collab">Collaboratore</label><select id="mt-collab"><option value="">— nessuno —</option></select></div>
+          <div class="fld"><label for="mt-condividi">Condividi con</label><select id="mt-condividi"><option value="">— nessuna condivisione —</option></select></div>
+        </div>
+      </section>
 
-      <div class="trt-sez">Lavorazione</div>
-      <div class="fgrid">
-        <div class="fld"><label for="mt-status">Stato</label><select id="mt-status"><option value="prospect">Prospect</option><option value="preventivo">Preventivo inviato</option><option value="trattativa">In trattativa</option><option value="chiusa">Chiusa vinta ✓</option><option value="persa">Persa ✗</option></select></div>
-        <div class="fld"><label for="mt-prob">Probabilità</label><select id="mt-prob"><option value="10">10%</option><option value="30" selected>30%</option><option value="50">50%</option><option value="70">70%</option><option value="90">90%</option><option value="100">100%</option></select></div>
-        <div class="fld"><label for="mt-prior">Priorità</label><select id="mt-prior"><option value="normale">Normale</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
-        <div class="fld"><label for="mt-collab">Collaboratore / intermediario</label><select id="mt-collab"><option value="">— nessuno —</option></select></div>
-        <div class="fld"><label for="mt-condividi">Condividi con</label><select id="mt-condividi"><option value="">— nessuna condivisione —</option></select></div>
-      </div>
+      <section class="trs-sez">
+        <h3 class="trs-sez-t"><span class="trs-ico"><i class="ti ti-phone-call"></i></span>Richiamo del cliente</h3>
+        <div class="fgrid">
+          <div class="fld"><label for="mt-recall">Data</label><input type="date" id="mt-recall"></div>
+          <div class="fld"><label for="mt-recall-ora">Ora</label><input type="time" id="mt-recall-ora"></div>
+        </div>
+        <label class="trt-chk trs-sw-r"><span>Mettilo in Agenda</span><input type="checkbox" class="trs-sw" id="mt-in-agenda" checked></label>
+        <button type="button" onclick="exportRecalling()" class="trs-btn"><i class="ti ti-calendar-plus"></i> Esporta in Google Calendar</button>
+      </section>
 
-      <div class="trt-sez">Richiamo del cliente</div>
-      <div class="fgrid">
-        <div class="fld"><label for="mt-recall">Data</label><input type="date" id="mt-recall"></div>
-        <div class="fld"><label for="mt-recall-ora">Ora</label><input type="time" id="mt-recall-ora"></div>
-      </div>
-      <label class="trt-chk"><input type="checkbox" id="mt-in-agenda" checked> Mettilo in Agenda</label>
-      <div class="fld" style="margin-top:12px"><label for="mt-note">Note</label><textarea id="mt-note" rows="3" placeholder="Storico contatti, note..."></textarea></div>
-      <button type="button" onclick="exportRecalling()" class="mbtn sec" style="width:100%;margin-top:10px"><i class="ti ti-calendar-plus"></i> Esporta il richiamo in Google Calendar</button>
-      <div class="trt-msg" id="mt-msg"></div>
+      <section class="trs-sez">
+        <h3 class="trs-sez-t"><span class="trs-ico"><i class="ti ti-notes"></i></span>Note</h3>
+        <div class="fld"><label for="mt-note" class="trs-nascosto">Note</label><textarea id="mt-note" rows="6" placeholder="Storico contatti, note..."></textarea></div>
+      </section>
     </div>
+    <footer class="trs-piede">
+      <div class="trt-msg" id="mt-msg" role="alert"></div>
+      <button type="button" class="trs-btn" onclick="closeModal('modal-tratt')">Annulla</button>
+      <button type="button" class="trs-btn trs-btn-acc" id="mt-salva" onclick="saveTratt()"><i class="ti ti-device-floppy"></i> <span>Salva</span></button>
+    </footer>
   </div>
 </div>
 
@@ -19226,7 +19325,7 @@ function trtHero(r) {
   const C = 2 * Math.PI * 26;
   const anello = '<svg viewBox="0 0 64 64" role="img" aria-label="' + (t === null ? 'Tasso di chiusura non calcolabile' : 'Tasso di chiusura ' + t + '%') + '">' +
     '<circle class="trt-fondo" cx="32" cy="32" r="26" fill="none" stroke-width="7"/>' +
-    (t === null ? '' : '<circle class="trt-arco" cx="32" cy="32" r="26" fill="none" stroke-width="7" transform="rotate(-90 32 32)" stroke-dasharray="' + (C * t / 100).toFixed(1) + ' ' + C.toFixed(1) + '"/>') +
+    (!t ? '' : '<circle class="trt-arco" cx="32" cy="32" r="26" fill="none" stroke-width="7" transform="rotate(-90 32 32)" stroke-dasharray="' + (C * t / 100).toFixed(1) + ' ' + C.toFixed(1) + '"/>') +
     '<text class="trt-val" x="32" y="37" text-anchor="middle">' + (t === null ? '—' : t + '%') + '</text></svg>';
   return '<div class="trt-hero-su">' +
       '<div><div class="trt-eti">Pipeline attiva</div>' +
@@ -19370,15 +19469,16 @@ function trtClienteScelto(id, nome, etichetta) {
   const box = document.getElementById('mt-cli-scelto');
   const cerca = document.getElementById('mt-cli-cerca');
   if (nome) {
-    box.innerHTML = '<div class="trt-scelto"><span><b>' + esc(nome) + '</b>' + (etichetta ? ' <small>' + esc(etichetta) + '</small>' : '') +
+    box.innerHTML = '<div class="trt-scelto"><span class="trt-av" aria-hidden="true">' + esc(trtIniziali(nome)) + '</span><span class="trs-cli"><b>' + esc(nome) + '</b>' + (etichetta ? ' <small>' + esc(etichetta) + '</small>' : '') +
       (id ? '' : ' <small>scritto a mano, non in anagrafica</small>') + '</span>' +
-      '<button type="button" class="mbtn sec" onclick="trtClienteScelto(null,\'\')">Cambia</button></div>';
+      '<button type="button" class="trs-btn" onclick="trtClienteScelto(null,\'\')"><i class="ti ti-arrows-exchange"></i> Cambia</button></div>';
     cerca.hidden = true;
   } else {
     box.innerHTML = '';
     cerca.hidden = false;
     const r = document.getElementById('mt-cli-ris'); if (r) r.innerHTML = '';
   }
+  trtRiassunto();
 }
 
 function trtModoCliente(m) {
@@ -19523,6 +19623,37 @@ function colOpzioniId(sceltoId, nomeVecchio, primo) {
   return out.join('');
 }
 
+/* Le tappe della scheda: cinque bottoni sopra una tendina nascosta, che resta
+   la fonte del valore — chi legge `mt-status` (il salvataggio, le prove) non
+   deve sapere che la schermata la disegna così. */
+function trtTappa(v) {
+  const s = document.getElementById('mt-status'); if (!s) return;
+  s.value = v; trtTappeRender(); trtRiassunto();
+}
+function trtTappeRender() {
+  const v = document.getElementById('mt-status')?.value || 'prospect';
+  const ordine = ['prospect', 'preventivo', 'trattativa'];
+  const fatto = ordine.indexOf(v);
+  document.querySelectorAll('#mt-tappe button').forEach(b => {
+    const k = b.dataset.v;
+    const att = k === v;
+    b.classList.toggle('act', att);
+    b.classList.toggle('fatta', fatto >= 0 && ordine.indexOf(k) >= 0 && ordine.indexOf(k) < fatto || ((v === 'chiusa' || v === 'persa') && ordine.indexOf(k) >= 0));
+    b.setAttribute('aria-checked', att ? 'true' : 'false');
+  });
+}
+/* La riga sotto il titolo: che cosa si sta scrivendo, letto dai campi. */
+function trtRiassunto() {
+  const el = document.getElementById('mt-riass'); if (!el) return;
+  const cli = trtV('mt-cliente');
+  const pid = trtV('mt-prodotto-id');
+  const prod = pid ? ((TRT_CAT?.prodotti || []).find(p => p.id === pid) || {}).nome : trtV('mt-prodotto');
+  const comp = ((TRT_CAT?.compagnie || []).find(c => c.id === trtV('mt-compagnia')) || {}).nome;
+  const l = Number(trtV('mt-lordo'));
+  const pezzi = [cli || 'cliente da scegliere', [trtRamoNome(trtV('mt-ramo')), comp, prod].filter(Boolean).join(' · ') || 'prodotto da scegliere'];
+  el.innerHTML = pezzi.map(esc).join(' <span>/</span> ') + (l > 0 ? ' <b class="trt-num">' + esc(trtEuro(l)) + '</b>' : '');
+}
+
 async function openTrattModal(id) {
   loadTeam(); PIPE_ID = id;
   const t = id ? PIPE.find(x => x.id === id) : null;
@@ -19544,11 +19675,19 @@ async function openTrattModal(id) {
   document.getElementById('mt-aut').checked = !!t?.richiede_autorizzazione;
   document.getElementById('mt-in-agenda').checked = t ? !!t.agenda_id || !t.recall : true;
   trtAutRender(t?.autorizzazione_stato);
+  trtTappeRender();
+  const mod = document.getElementById('modal-tratt');
+  if (mod && !mod.dataset.vivo) {
+    mod.dataset.vivo = '1';
+    mod.addEventListener('input', trtRiassunto);
+    mod.addEventListener('change', trtRiassunto);
+  }
   document.getElementById('modal-tratt').classList.add('show');
 
   const cat = await trtCatalogo();
   document.getElementById('mt-compagnia').innerHTML = trtOpzCompagnie(t?.compagnia_id || '');
   trtProdotti(t?.prodotto_id || '');
+  trtRiassunto();
   document.getElementById('mt-cat-ko')?.remove();
   if (!cat.letto) document.getElementById('mt-target').closest('label').insertAdjacentHTML('beforebegin', '<div class="trt-msg" id="mt-cat-ko">Il catalogo non si è potuto leggere: compagnia e prodotto si scrivono a mano.</div>');
 
@@ -19608,8 +19747,9 @@ async function saveTratt() {
   if (!t.cliente) { msg.textContent = 'Scegli il cliente dal portafoglio o censiscilo come prospect.'; return; }
   const ch = M.chiudibile(t);
   if (!ch.ok) { msg.textContent = ch.motivo; return; }
-  const btn = document.querySelector('#modal-tratt .mbtn.prim');
-  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+  const btn = document.getElementById('mt-salva');
+  const btnT = btn ? btn.querySelector('span') : null;
+  if (btn) { btnT.textContent = 'Salvo…'; btn.disabled = true; }
   try {
     const id = await saveTrattDB(t);
     t.id = id;
@@ -19623,7 +19763,7 @@ async function saveTratt() {
        vuol dire far ricompilare tutto (§73). */
     msg.textContent = 'Non salvato: ' + (e.message || e);
   } finally {
-    if (btn) { btn.textContent = 'Salva'; btn.disabled = false; }
+    if (btn) { btnT.textContent = 'Salva'; btn.disabled = false; }
   }
 }
 

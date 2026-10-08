@@ -8850,7 +8850,7 @@ più. Scadono comunque in pochi minuti, e se ne chiede uno nuovo.
 | prove in Node | `server/verifica/trattative.test.mjs` — 10 |
 | le colonne, il trigger, l'aliquota sul prodotto | `supabase/migrations/20261008b_trattative_intelligenti.sql` (applicata) |
 | la schermata e la scheda | `#panel-pipeline`, `#modal-tratt` e il blocco `trt*` in `iam/index.html` |
-| prove che la fanno GIRARE in Chromium | `iam/verifica/trattative.test.mjs` — 14 |
+| prove che la fanno GIRARE in Chromium | `iam/verifica/trattative.test.mjs` — 15 |
 
 **Misurato prima:** 19 trattative, cliente, prodotto e collaboratore come testo.
 Le colonne nuove stanno **accanto** a quelle di prima: le righe vecchie si
@@ -8889,6 +8889,16 @@ guardare tutta l'agenzia (tendina «Di chi»).
 di chiudere vinta una trattativa che la aspetta o se l'è vista negare. Lo
 stesso trigger mette e toglie `chiusa_il`. Collaudato sul database vero e
 annullato.
+
+**La scheda (0.55.0)** ha lo stesso linguaggio della schermata: testata scura
+con le cinque tappe cliccabili sopra una tendina `mt-status` nascosta, che resta
+la fonte del valore (chi la legge non deve sapere come è disegnata), e un
+riepilogo vivo di cliente, prodotto e premio. Trappola presa dalla fotografia e
+poi dalla prova: **una regola che dice `display` sullo stesso elemento vince
+sull'attributo `hidden`** — il riquadro dell'autorizzazione si vedeva a
+interruttore spento, e lo stesso sarebbe successo al modulo del prospect fast.
+`.trs-box [hidden]{display:none!important}`, con la sua controprova. I
+quadretti di sfondo delle due testate sono stati tolti su richiesta.
 
 **Il prospect fast** passa da `Trattative.prospettoFast` (CF col carattere di
 controllo, P.IVA con la cifra di controllo) e prima cerca se c'è già: con UNA

@@ -1,8 +1,19 @@
 {
-  "versione": "0.55.0",
-  "nome": "Trattative: la scheda con le tappe cliccabili e il riepilogo, e niente quadretti di sfondo",
+  "versione": "0.55.1",
+  "nome": "I contrassegni che nessun controllo guardava",
   "data": "2026-10-08",
   "storia": [
+    {
+      "v": "0.55.1",
+      "data": "2026-10-08",
+      "nome": "I contrassegni che nessun controllo guardava",
+      "voci": [
+        "SEI INDIRIZZI NON SI AGGIORNAVANO PIÙ, e il più delicato è `config.js`: il file che porta l'indirizzo e la chiave del database era caricato SENZA nessun contrassegno di versione. Un indirizzo che non cambia è un indirizzo che il browser non richiede: il giorno che quei valori cambiano, chi ha il programma aperto non li riceve e a lui non funziona niente — mentre a chi riapre funziona tutto. È il guasto più difficile da capire che ci sia.",
+        "Gli altri cinque: la scheda dell'analisi dei bisogni era ferma al 4 AGOSTO su un file del 16 settembre (cinquantatré giorni), e quattro fogli di stile avevano un contrassegno fisso («1», «3») che per definizione non cambia mai.",
+        "PERCHÉ NESSUNO SE N'ERA ACCORTO: i controlli che esistevano guardavano un ELENCO DI FILE SCRITTO A MANO. Il 7 ottobre i tre file di quell'elenco sono stati sistemati, uno per uno; questi sei non erano in nessun elenco, e sono rimasti rotti. Un elenco scritto a mano copre quello che chi l'ha scritto aveva in mente.",
+        "Adesso c'è un controllo che non ha elenchi: legge i due documenti, prende ogni foglio e ogni script locale, e chiede a tutti la stessa cosa — un contrassegno che sia una data, e che non sia più vecchio del file. Il file aggiunto domani è coperto senza che nessuno se ne ricordi."
+      ]
+    },
     {
       "v": "0.55.0",
       "data": "2026-10-08",

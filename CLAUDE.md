@@ -8834,3 +8834,64 @@ codice in un secondo e la prova diventa rossa con il codice in chiaro.
 
 Conseguenza dichiarata: i codici chiesti **prima** del rilascio non valgono
 più. Scadono comunque in pochi minuti, e se ne chiede uno nuovo.
+
+---
+
+## 78. Le trattative, rifatte (08/10/2026)
+
+> «Rivisitiamo la sezione trattative e facciamola in maniera intelligente» —
+> Francesco: ramo, target, compagnia, prodotto, autorizzazione della direzione,
+> cliente dal portafoglio o censito «fast», collaboratore, richiamo in Agenda,
+> grafici del valore in corso e chiuso per prodotto, imponibile dal lordo.
+
+| pezzo | dove |
+|---|---|
+| tutte le regole | `tariffe/motore/trattative.js` |
+| prove in Node | `server/verifica/trattative.test.mjs` — 14 |
+| le colonne, il trigger, l'aliquota sul prodotto | `supabase/migrations/20261008b_trattative_intelligenti.sql` (applicata) |
+| la schermata e la scheda | `#panel-pipeline`, `#modal-tratt` e il blocco `trt*` in `iam/index.html` |
+| prove che la fanno GIRARE in Chromium | `iam/verifica/trattative.test.mjs` — 11 |
+
+**Misurato prima:** 19 trattative, cliente, prodotto e collaboratore come testo.
+Le colonne nuove stanno **accanto** a quelle di prima: le righe vecchie si
+leggono com'erano, e `importo` resta allineato al lordo perché altri lo leggono.
+
+**L'imponibile non si stima.** Si ricava solo da un'aliquota dichiarata, in
+quest'ordine: scritta a mano sulla trattativa → dichiarata sul prodotto in
+catalogo (`iam_compagnia_prodotti.aliquota_imposte`, nuova) → di legge, ma
+**solo per i rami che ne hanno una sola** (vita 0, RC professionale 22,25,
+tutela 21,25, cauzioni 12,5, salute 2,5 — L. 1216/1961, All. A). RC auto
+vuole l'imposta provinciale della provincia del contraente (+10,5% SSN) e
+avvisa che vale per la sola RC. Casa, persona (infortuni 2,5 *e* RC vita
+privata 22,25), impresa, animali e viaggio mescolano imposte: lì la scheda dice
+«dichiara l'aliquota sul prodotto» invece di fare una media a occhio (§8.1).
+Le imposte si ricavano per differenza (§17).
+
+**I grafici** separano in corso, vinte e perse, e seguono i filtri **tranne lo
+stato** (un filtro sullo stato svuoterebbe due grafici su tre). Una trattativa
+senza premio non vale zero: si conta e si dice (§36). Il tasso di chiusura è
+vinte su decise, e da zero decise non si fa una percentuale. Lo staff può
+guardare tutta l'agenzia (tendina «Di chi»).
+
+**L'autorizzazione della direzione** la concede lo staff: un trigger
+(`iam_trattative_regole`) rifiuta chi non lo è, firma chi la concede, e vieta
+di chiudere vinta una trattativa che la aspetta o se l'è vista negare. Lo
+stesso trigger mette e toglie `chiusa_il`. Collaudato sul database vero e
+annullato.
+
+**Il prospect fast** passa da `Trattative.prospettoFast` (CF col carattere di
+controllo, P.IVA con la cifra di controllo) e prima cerca se c'è già: con UNA
+anagrafica con lo stesso codice si aggancia quella (§19).
+
+**Il richiamo** va in `iam_agenda` con id `tratt-<id>`: spostare la data sposta
+lo stesso evento; togliere data o spunta toglie solo quell'evento.
+
+**Due difetti vecchi tolti per strada:** `saveTrattDB` inghiottiva gli errori
+(la scheda si chiudeva su un salvataggio fallito) e un update a zero righe
+passava per riuscito (§47, BUG 1). E la classe `d-inp` usata dal catalogo
+**non ha regole** nel foglio di stile (§65): qui ha le sue dentro
+`.trt-filtri`, nel catalogo resta da sistemare.
+
+**Lo strumento `apply_migration` si è bloccato di nuovo** (60 s, niente
+applicato) su un blocco con `create trigger`: la stessa migrazione è passata in
+tre pezzi con `execute_sql`.

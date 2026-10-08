@@ -48,7 +48,8 @@ const SUL_KIT = [
   'contab-panel-storico',     // brief #02 M5
   'panel-catalogo',           // catalogo prodotti (20/09/2026)
   'panel-produzione',         // produzione per collaboratore (21/09/2026)
-  'panel-punti-vendita'       // punti vendita (23/09/2026)
+  'panel-punti-vendita',      // punti vendita (23/09/2026)
+  'panel-pipeline'            // trattative (08/10/2026)
   /* «contab-panel-conto» non c'è più: il saldo ricostruito e gli estratti
      caricati dalla banca sono i due numeri della quadratura, e dal 20/09/2026
      stanno dentro «Quadratura conti» (Blocco 1 · punto 5). */

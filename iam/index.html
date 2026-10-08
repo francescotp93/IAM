@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.52.0">
-<meta name="app-versione-nome" content="Campagne email: la platea «soft spam» per i clienti, e le disiscrizioni che restano">
+<meta name="app-versione" content="0.53.0">
+<meta name="app-versione-nome" content="Trattative: ramo, compagnia, prodotto, cliente dal portafoglio o prospect fast, richiamo in Agenda, grafici per prodotto e imponibile dal lordo">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -80,6 +80,7 @@
 <script src="/nuovo-preventivo/tariffe/motore/decisioni.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/produzione.js?v=20260921"></script>
 <script src="/nuovo-preventivo/tariffe/motore/collaboratori.js?v=20260921"></script>
+<script src="/nuovo-preventivo/tariffe/motore/trattative.js?v=20261008"></script>
 <script src="/nuovo-preventivo/tariffe/motore/confronto.js?v=20261002"></script>
 <!-- Mettere un prodotto in archivio leggendo il suo PDF (02/10/2026).
      `guida-garanzie.js` serve perché è là che sta la lettura di una riga con
@@ -1160,6 +1161,7 @@ input[type=file]{display:none;}
 #panel-catalogo,
 #panel-produzione,
 #panel-punti-vendita,
+#panel-pipeline,
 #contab-panel-conto {
   --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
   --w1-sfondo:#f3f5f7; --w1-bordo:#e3e8ec;
@@ -1814,6 +1816,79 @@ input[type=file]{display:none;}
   select,
   textarea { font-size: 16px; }
 }
+
+/* ══ LE TRATTATIVE (08/10/2026) ══════════════════════════════════════════════
+   Sul kit di IAM: le classi hanno il prefisso, i colori sono gettoni. Il blu
+   della serie «in corso» e' dichiarato qui e non su :root: la tavolozza del
+   kit e' chiara anche col tema scuro, e il blu del grafico Produzione e'
+   pensato per l'altro sfondo. */
+#panel-pipeline{--trt-corso:#1d4ed8;--trt-corso-bg:#eef3ff;padding-bottom:24px}
+#pp-tratt,#pp-agenda{padding:0 16px}
+.trt-off{display:none}
+.trt-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 12px}
+.trt-k{background:var(--w1-card);border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);padding:12px 14px;box-shadow:var(--w1-ombra)}
+.trt-k-t{font-size:11px;color:var(--w1-testo3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.trt-k-v{font-size:21px;font-weight:800;color:var(--w1-testo);margin-top:3px;font-variant-numeric:tabular-nums}
+.trt-k-s{font-size:11.5px;color:var(--w1-testo2);margin-top:2px}
+.trt-k.corso{border-top:3px solid var(--trt-corso)}
+.trt-k.vinta{border-top:3px solid var(--w1-verde)}
+.trt-k.persa{border-top:3px solid var(--w1-rosso)}
+.trt-k.aut{border-top:3px solid var(--w1-ambra)}
+.trt-grafici{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px}
+.trt-tot{font-size:12px;color:var(--w1-testo2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.trt-barre{display:flex;flex-direction:column;gap:9px;margin:0;padding:0;list-style:none}
+.trt-b{display:grid;grid-template-columns:minmax(0,9.5em) minmax(0,1fr) auto;align-items:center;gap:10px;font-size:12.5px}
+.trt-b-n{display:block;color:var(--w1-testo);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trt-b-pista{display:block;height:12px;background:var(--w1-sfondo);border-radius:2px;overflow:hidden}
+.trt-b-pieno{display:block;height:100%;border-radius:2px;background:var(--trt-corso);min-width:2px}
+.trt-barre.vinta .trt-b-pieno{background:var(--w1-verde)}
+.trt-b-pieno.zero{background:transparent;min-width:0}
+.trt-b-v{text-align:right;font-variant-numeric:tabular-nums;color:var(--w1-testo);font-weight:700;white-space:nowrap}
+.trt-b-v small{display:block;font-weight:500;color:var(--w1-testo3);font-size:10.5px}
+.trt-vuoto{color:var(--w1-testo3);font-size:12.5px;padding:8px 0}
+.trt-nota{font-size:12px;color:var(--w1-testo2);background:var(--w1-sfondo);border-radius:var(--w1-raggio);padding:8px 10px;margin-bottom:10px}
+.trt-avv{font-size:12px;color:var(--w1-ambra);background:var(--w1-ambra-bg);border-radius:var(--w1-raggio);padding:8px 10px;margin-top:10px}
+.trt-filtri .d-inp{width:100%;height:36px;padding:0 10px;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);background:var(--w1-card);color:var(--w1-testo);font:inherit;font-size:13px}
+.trt-filtri .d-inp:focus{outline:none;box-shadow:var(--w1-focus);border-color:var(--w1-verde)}
+.trt-filtri{display:grid;grid-template-columns:minmax(180px,2fr) repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:0 0 10px}
+.trt-lista{padding:0}
+.trt-r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:12px 14px;border-top:1px solid var(--w1-bordo)}
+.trt-r:first-child{border-top:none}
+.trt-r-cli{font-weight:700;color:var(--w1-testo);font-size:13.5px}
+.trt-r-sub{font-size:12px;color:var(--w1-testo2);margin-top:3px}
+.trt-r-sub.rec{color:var(--w1-testo3)}
+.trt-r-sub.rec.scad{color:var(--w1-rosso);font-weight:600}
+.trt-r-dx{text-align:right}
+.trt-r-pr{font-size:15px;font-weight:800;color:var(--w1-testo);font-variant-numeric:tabular-nums}
+.trt-r-net{font-size:11px;color:var(--w1-testo3)}
+.trt-r-az{display:flex;gap:6px;justify-content:flex-end;margin-top:6px}
+.trt-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:5px;vertical-align:1px;background:var(--w1-sfondo);color:var(--w1-testo2)}
+.trt-tag.corso{background:var(--trt-corso-bg);color:var(--trt-corso)}
+.trt-tag.vinta{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
+.trt-tag.persa{background:var(--w1-rosso-bg);color:var(--w1-rosso)}
+.trt-tag.aut{background:var(--w1-ambra-bg);color:var(--w1-ambra)}
+.trt-tag.target{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
+/* La scheda della trattativa sta nella finestra di IAM, col tema di IAM. */
+.trt-sez{font-size:11px;font-weight:800;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px}
+.trt-sez:first-child{margin-top:4px}
+.trt-seg{display:inline-flex;border:1px solid var(--bord2);border-radius:var(--rs);overflow:hidden;margin-bottom:10px}
+.trt-seg button{border:none;background:var(--surf2);color:var(--txt2);padding:8px 12px;font-size:12.5px;font-family:inherit;cursor:pointer}
+.trt-seg button.act{background:var(--acc);color:#fff;font-weight:700}
+.trt-ris{display:flex;flex-direction:column;border:1px solid var(--bord);border-radius:var(--rs);margin-top:6px;max-height:240px;overflow:auto}
+.trt-ris:empty{display:none}
+.trt-ris button{text-align:left;border:none;border-top:1px solid var(--bord);background:var(--surf);color:var(--txt);padding:9px 12px;font-size:13px;font-family:inherit;cursor:pointer}
+.trt-ris button:first-child{border-top:none}
+.trt-ris button:hover,.trt-ris button:focus{background:var(--surf2)}
+.trt-ris small{color:var(--txt3);margin-left:6px}
+.trt-scelto{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surf2);border-radius:var(--rs);padding:10px 12px;font-size:13.5px}
+.trt-scelto b{font-weight:700}
+.trt-calc{font-size:13px;background:var(--surf2);border-radius:var(--rs);padding:10px 12px;margin-top:8px;color:var(--txt)}
+.trt-calc.no{color:var(--amb-txt);background:var(--amb-bg)}
+.trt-calc strong{font-size:15px}
+.trt-msg{font-size:12.5px;margin-top:8px;color:var(--red-txt)}
+.trt-msg.ok{color:var(--grn-txt)}
+.trt-chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt);margin-top:10px}
+@media (max-width:640px){.trt-b{grid-template-columns:minmax(0,7em) minmax(0,1fr) auto}.trt-filtri{grid-template-columns:1fr 1fr}}
 </style>
 <link rel="stylesheet" href="withus-pictograms.css?v=20261007">
 <!-- impronta withus-one.css: 9d3672a1 — se cambia, cambia anche il ?v= qui sotto -->
@@ -2888,57 +2963,66 @@ input[type=file]{display:none;}
 
 <!-- PIPELINE -->
 <div class="panel" id="panel-pipeline">
-  <div class="ptabs">
-    <button class="ptab act" id="pt-tratt" onclick="selPTab('tratt')">Trattative</button>
-    <button class="ptab" id="pt-agenda" onclick="selPTab('agenda')">Agenda</button>
-  </div>
+  <section class="page-head">
+    <div><div class="eyebrow">Commerciale</div><h1>Trattative</h1>
+      <div class="subtitle">Quanto vale quello che è in corso e quello che si è chiuso, prodotto per prodotto.</div></div>
+    <div class="head-actions">
+      <button class="d-btn" type="button" id="pt-agenda" onclick="selPTab(PP_TAB === 'agenda' ? 'tratt' : 'agenda')"><i class="ti ti-calendar-event"></i> <span id="pt-agenda-t">Agenda</span></button>
+      <button class="d-btn primario" type="button" onclick="openTrattModal(null)"><i class="ti ti-plus"></i> Nuova trattativa</button>
+    </div>
+  </section>
+  <span id="pt-tratt" hidden></span>
   <!-- Trattative -->
   <div id="pp-tratt">
-    <div style="display:flex;gap:8px;padding:10px 12px 4px;align-items:center;">
-      <input type="search" id="tr-search" placeholder="Cerca cliente, prodotto..." style="flex:1;padding:8px 12px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:22px;font-size:13px;color:var(--txt);font-family:inherit;" oninput="renderTratt()">
-      <button onclick="openTrattModal(null)" style="width:36px;height:36px;border-radius:50%;background:var(--acc);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-plus" style="font-size:17px;"></i></button>
+    <div id="trt-kpi" class="trt-kpi" aria-live="polite"></div>
+    <div class="trt-grafici">
+      <div class="d-card">
+        <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-progress"></i></span> In corso, per prodotto</div><span class="trt-tot" id="trt-g-corso-t"></span></div>
+        <div class="card-body" id="trt-g-corso"></div>
+      </div>
+      <div class="d-card">
+        <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-circle-check"></i></span> Chiuse vinte, per prodotto</div><span class="trt-tot" id="trt-g-vinte-t"></span></div>
+        <div class="card-body" id="trt-g-vinte"></div>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;padding:0 12px 4px;overflow-x:auto;scrollbar-width:none;">
-      <select id="tr-filt" onchange="renderTratt()" style="flex:1;min-width:100px;padding:7px 10px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:20px;font-size:12px;color:var(--txt);font-family:inherit;">
-        <option value="">Tutti gli status</option>
+    <div class="trt-filtri">
+      <input type="search" id="tr-search" class="d-inp" placeholder="Cerca cliente, prodotto, compagnia…" oninput="renderTratt()" aria-label="Cerca fra le trattative">
+      <select id="tr-filt" class="d-inp" onchange="renderTratt()" aria-label="Stato">
+        <option value="">Tutti gli stati</option>
+        <option value="corso">Tutte le in corso</option>
         <option value="prospect">Prospect</option>
-        <option value="preventivo">Preventivo</option>
+        <option value="preventivo">Preventivo inviato</option>
         <option value="trattativa">In trattativa</option>
-        <option value="chiusa">Chiuse ✓</option>
-        <option value="persa">Perse ✗</option>
+        <option value="chiusa">Chiuse vinte</option>
+        <option value="persa">Perse</option>
+        <option value="autorizzare">Da autorizzare</option>
       </select>
-      <select id="tr-collab" onchange="renderTratt()" style="flex:1;min-width:100px;padding:7px 10px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:20px;font-size:12px;color:var(--txt);font-family:inherit;">
-        <option value="">Tutti i collab.</option>
-      </select>
-      <select id="tr-periodo" onchange="renderTratt()" style="flex:1;min-width:90px;padding:7px 10px;background:var(--surf2);border:.5px solid var(--bord2);border-radius:20px;font-size:12px;color:var(--txt);font-family:inherit;">
+      <select id="tr-ramo" class="d-inp" onchange="renderTratt()" aria-label="Ramo"><option value="">Tutti i rami</option></select>
+      <select id="tr-collab" class="d-inp" onchange="renderTratt()" aria-label="Collaboratore"><option value="">Tutti i collab.</option></select>
+      <select id="tr-periodo" class="d-inp" onchange="renderTratt()" aria-label="Periodo">
         <option value="">Tutti i periodi</option>
-        <option value="7">Ultimi 7gg</option>
-        <option value="30">Ultimi 30gg</option>
-        <option value="90">Ultimi 90gg</option>
-        <option value="365">Quest'anno</option>
+        <option value="7">Ultimi 7 giorni</option>
+        <option value="30">Ultimi 30 giorni</option>
+        <option value="90">Ultimi 90 giorni</option>
+        <option value="365">Ultimo anno</option>
+      </select>
+      <select id="tr-ambito" class="d-inp" onchange="trtCambiaAmbito()" aria-label="Di chi" hidden>
+        <option value="mie">Le mie e condivise</option>
+        <option value="agenzia">Tutta l’agenzia</option>
       </select>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:4px 12px 8px;">
-      <div style="background:var(--surf2);border-radius:var(--rs);padding:8px;text-align:center;"><div style="font-size:16px;font-weight:700;" id="ktr-tot">0</div><div style="font-size:9px;color:var(--txt3);">Totale</div></div>
-      <div style="background:var(--surf2);border-radius:var(--rs);padding:8px;text-align:center;"><div style="font-size:13px;font-weight:700;color:var(--acc);" id="ktr-val">€0</div><div style="font-size:9px;color:var(--txt3);">Pipeline</div></div>
-      <div style="background:var(--grn-bg);border-radius:var(--rs);padding:8px;text-align:center;"><div style="font-size:16px;font-weight:700;color:var(--grn);" id="ktr-ch">0</div><div style="font-size:9px;color:var(--grn-txt);">Chiuse</div></div>
-      <div style="background:var(--red-bg);border-radius:var(--rs);padding:8px;text-align:center;"><div style="font-size:16px;font-weight:700;color:var(--red);" id="ktr-ps">0</div><div style="font-size:9px;color:var(--red-txt);">Perse</div></div>
-    </div>
-    <div class="card"><div id="tr-list"></div></div>
-    <div style="height:16px;"></div>
+    <div class="d-card"><div class="card-body trt-lista" id="tr-list"></div></div>
   </div>
-  <!-- Agenda -->
-  <div id="pp-agenda" style="display:none;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px 4px;">
-      <div style="font-size:13px;font-weight:600;">Prossimi appuntamenti</div>
-      <button onclick="openAgendaModal()" style="display:flex;align-items:center;gap:5px;padding:7px 12px;background:var(--acc);color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;"><i class="ti ti-plus" style="font-size:13px;"></i> Nuovo</button>
+<!-- Agenda -->
+  <div id="pp-agenda" class="trt-off">
+    <div class="d-card">
+      <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-calendar-event"></i></span> Prossimi appuntamenti</div>
+        <button class="d-btn" type="button" onclick="openAgendaModal()"><i class="ti ti-plus"></i> Nuovo</button></div>
+      <div class="card-body">
+        <div class="trt-nota"><i class="ti ti-info-circle"></i> I richiami delle trattative arrivano qui da soli. Con <i class="ti ti-calendar-event"></i> un appuntamento si esporta in Google Calendar o iCal.</div>
+        <div id="ag-list"></div>
+      </div>
     </div>
-    <div style="padding:0 12px 8px;font-size:12px;color:var(--amb-txt);background:var(--amb-bg);margin:0 12px;border-radius:var(--rs);padding:10px 12px;">
-      <i class="ti ti-info-circle" style="font-size:13px;vertical-align:-2px;margin-right:4px;"></i>
-      Cliccando <i class="ti ti-calendar-event"></i> su un appuntamento lo esporti in iCal / Google Calendar.
-    </div>
-    <div class="card" style="margin-top:10px;"><div id="ag-list"></div></div>
-    <div style="height:16px;"></div>
   </div>
 </div>
 
@@ -4201,19 +4285,79 @@ input[type=file]{display:none;}
       </div>
     </div>
     <div class="modal-body">
-      <div class="fgrid">
-        <div class="fld"><label>Cliente</label><input type="text" id="mt-cliente" placeholder="Nome cliente"></div>
-        <div class="fld"><label>Prodotto</label><input type="text" id="mt-prodotto" placeholder="es. RC Auto, Vita..."></div>
-        <div class="fld"><label>Importo stimato (€)</label><input type="number" id="mt-importo" placeholder="0.00" step="0.01" inputmode="decimal"></div>
-        <div class="fld"><label>Status</label><select id="mt-status"><option value="prospect">Prospect</option><option value="preventivo">Preventivo inviato</option><option value="trattativa">In trattativa</option><option value="chiusa">Chiusa ✓</option><option value="persa">Persa ✗</option></select></div>
-        <div class="fld"><label>Data recalling</label><input type="date" id="mt-recall"></div>
-        <div class="fld"><label>Probabilità</label><select id="mt-prob"><option value="10">10%</option><option value="30" selected>30%</option><option value="50">50%</option><option value="70">70%</option><option value="90">90%</option><option value="100">100%</option></select></div>
-        <div class="fld"><label>Priorità</label><select id="mt-prior"><option value="normale">Normale</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
-        <div class="fld"><label>Collaboratore</label><select id="mt-collab"><option value="">— nessuno —</option></select></div>
-        <div class="fld"><label>Condividi con</label><select id="mt-condividi"><option value="">— nessuna condivisione —</option></select></div>
+      <input type="hidden" id="mt-cliente">
+      <input type="hidden" id="mt-anag-id">
+
+      <div class="trt-sez">Cliente</div>
+      <div id="mt-cli-scelto"></div>
+      <div id="mt-cli-cerca">
+        <div class="trt-seg" role="tablist">
+          <button type="button" id="mt-cli-m-port" class="act" onclick="trtModoCliente('port')">Dal portafoglio</button>
+          <button type="button" id="mt-cli-m-fast" onclick="trtModoCliente('fast')">Nuovo prospect (fast)</button>
+        </div>
+        <div id="mt-cli-port">
+          <div class="fld"><label for="mt-cli-q">Cerca fra clienti e prospect</label>
+            <input type="search" id="mt-cli-q" placeholder="Cognome, ragione sociale, codice fiscale o partita IVA" oninput="trtCercaCliente()" autocomplete="off"></div>
+          <div class="trt-ris" id="mt-cli-ris"></div>
+        </div>
+        <div id="mt-cli-fast" hidden>
+          <div class="trt-seg">
+            <button type="button" id="mt-fast-fis" class="act" onclick="trtFastTipo('fisica')">Persona</button>
+            <button type="button" id="mt-fast-giu" onclick="trtFastTipo('giuridica')">Società</button>
+          </div>
+          <div class="fgrid" id="mt-fast-fisica">
+            <div class="fld"><label for="mt-f-nome">Nome</label><input id="mt-f-nome"></div>
+            <div class="fld"><label for="mt-f-cognome">Cognome</label><input id="mt-f-cognome"></div>
+            <div class="fld" style="grid-column:1/-1"><label for="mt-f-cf">Codice fiscale</label><input id="mt-f-cf" maxlength="16" style="text-transform:uppercase"></div>
+          </div>
+          <div class="fgrid" id="mt-fast-giuridica" hidden>
+            <div class="fld"><label for="mt-f-rs">Ragione sociale</label><input id="mt-f-rs"></div>
+            <div class="fld"><label for="mt-f-piva">Partita IVA</label><input id="mt-f-piva" maxlength="11" inputmode="numeric"></div>
+          </div>
+          <button type="button" class="mbtn prim" style="margin-top:10px" onclick="trtCensisci()">Censisci come prospect</button>
+          <div class="trt-msg" id="mt-fast-msg"></div>
+        </div>
       </div>
-      <div class="fld"><label>Note</label><textarea id="mt-note" rows="3" placeholder="Storico contatti, note..."></textarea></div>
-      <button onclick="exportRecalling()" style="display:flex;align-items:center;gap:6px;padding:10px 14px;background:var(--blu-bg);color:var(--blu-txt);border:.5px solid var(--bord2);border-radius:var(--rs);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;width:100%;justify-content:center;"><i class="ti ti-calendar-plus" style="font-size:15px;"></i> Aggiungi recalling al calendario</button>
+
+      <div class="trt-sez">Prodotto</div>
+      <div class="fgrid">
+        <div class="fld"><label for="mt-ramo">Ramo (tipo trattativa)</label><select id="mt-ramo" onchange="trtProdotti();trtCalcola()"></select></div>
+        <div class="fld"><label for="mt-compagnia">Compagnia</label><select id="mt-compagnia" onchange="trtProdotti();trtCalcola()"></select></div>
+        <div class="fld"><label for="mt-prodotto-id">Prodotto</label><select id="mt-prodotto-id" onchange="trtProdottoScelto()"></select></div>
+        <div class="fld" id="mt-prodotto-libero"><label for="mt-prodotto">Prodotto (scritto a mano)</label><input type="text" id="mt-prodotto" placeholder="se non è in catalogo"></div>
+      </div>
+      <label class="trt-chk"><input type="checkbox" id="mt-target"> È un prodotto target</label>
+      <label class="trt-chk"><input type="checkbox" id="mt-aut" onchange="trtAutRender()"> Richiede l’autorizzazione della direzione</label>
+      <div class="fld" id="mt-aut-box" hidden style="margin-top:8px"><label for="mt-aut-stato">Autorizzazione</label>
+        <select id="mt-aut-stato"><option value="in_attesa">In attesa della direzione</option><option value="concessa">Concessa</option><option value="negata">Negata</option></select>
+        <div class="cl-sub" id="mt-aut-nota"></div></div>
+
+      <div class="trt-sez">Premio</div>
+      <div class="fgrid">
+        <div class="fld"><label for="mt-lordo">Premio lordo (€)</label><input type="number" id="mt-lordo" step="0.01" min="0" inputmode="decimal" oninput="trtCalcola()"></div>
+        <div class="fld"><label for="mt-aliquota">Aliquota imposte % <small>(facoltativa)</small></label><input type="number" id="mt-aliquota" step="0.01" min="0" max="100" inputmode="decimal" oninput="trtCalcola()"></div>
+        <div class="fld" id="mt-prov-box" hidden><label for="mt-prov">Imposta provinciale RCA %</label><input type="number" id="mt-prov" step="0.5" min="0" max="16" inputmode="decimal" placeholder="12,5 – 16" oninput="trtCalcola()"></div>
+      </div>
+      <div class="trt-calc" id="mt-calc" aria-live="polite"></div>
+
+      <div class="trt-sez">Lavorazione</div>
+      <div class="fgrid">
+        <div class="fld"><label for="mt-status">Stato</label><select id="mt-status"><option value="prospect">Prospect</option><option value="preventivo">Preventivo inviato</option><option value="trattativa">In trattativa</option><option value="chiusa">Chiusa vinta ✓</option><option value="persa">Persa ✗</option></select></div>
+        <div class="fld"><label for="mt-prob">Probabilità</label><select id="mt-prob"><option value="10">10%</option><option value="30" selected>30%</option><option value="50">50%</option><option value="70">70%</option><option value="90">90%</option><option value="100">100%</option></select></div>
+        <div class="fld"><label for="mt-prior">Priorità</label><select id="mt-prior"><option value="normale">Normale</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
+        <div class="fld"><label for="mt-collab">Collaboratore / intermediario</label><select id="mt-collab"><option value="">— nessuno —</option></select></div>
+        <div class="fld"><label for="mt-condividi">Condividi con</label><select id="mt-condividi"><option value="">— nessuna condivisione —</option></select></div>
+      </div>
+
+      <div class="trt-sez">Richiamo del cliente</div>
+      <div class="fgrid">
+        <div class="fld"><label for="mt-recall">Data</label><input type="date" id="mt-recall"></div>
+        <div class="fld"><label for="mt-recall-ora">Ora</label><input type="time" id="mt-recall-ora"></div>
+      </div>
+      <label class="trt-chk"><input type="checkbox" id="mt-in-agenda" checked> Mettilo in Agenda</label>
+      <div class="fld" style="margin-top:12px"><label for="mt-note">Note</label><textarea id="mt-note" rows="3" placeholder="Storico contatti, note..."></textarea></div>
+      <button type="button" onclick="exportRecalling()" class="mbtn sec" style="width:100%;margin-top:10px"><i class="ti ti-calendar-plus"></i> Esporta il richiamo in Google Calendar</button>
+      <div class="trt-msg" id="mt-msg"></div>
     </div>
   </div>
 </div>
@@ -12523,7 +12667,9 @@ function catApriProdotto(id) {
       '<div><label class="cl-sub">Altri nomi (uno per riga)</label><textarea id="cat-p-alias" class="d-inp" rows="2">' + esc(((p && p.alias) || []).join('\n')) + '</textarea></div>' +
       '<div><label class="cl-sub">Valido dal</label><input type="date" id="cat-p-dal" class="d-inp" value="' + esc(p ? (p.dal || '') : '') + '"></div>' +
       '<div><label class="cl-sub">Valido fino al</label><input type="date" id="cat-p-al" class="d-inp" value="' + esc(p ? (p.al || '') : '') + '"></div>' +
+      '<div><label class="cl-sub">Aliquota imposte % (facoltativa)</label><input type="number" step="0.01" min="0" max="100" id="cat-p-aliq" class="d-inp" value="' + esc(p && p.aliquota_imposte !== null && p.aliquota_imposte !== undefined ? p.aliquota_imposte : '') + '" placeholder="es. 22,25"></div>' +
     '</div>' +
+    '<div class="cl-sub" style="margin-top:4px">L’aliquota serve alle trattative per ricavare l’imponibile dal premio lordo. Si scrive solo se la si conosce: un prodotto con più garanzie ha imposte diverse per ognuna.</div>' +
     '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px">' +
       '<input type="checkbox" id="cat-p-attivo"' + (!p || p.attivo !== false ? ' checked' : '') + '> Attivo (compare nelle tendine)</label>' +
     (p && p.da_verificare ? '<div class="cnt-avv" style="margin-top:10px">Questo prodotto è nato da un’importazione e non l’ha ancora guardato nessuno. Salvando, smette di essere «da verificare».</div>' : '') +
@@ -12551,8 +12697,10 @@ async function catSalvaProdotto(id, compagniaId) {
     dal: catVal('cat-p-dal') || null,
     al: catVal('cat-p-al') || null,
     attivo: !!document.getElementById('cat-p-attivo')?.checked,
-    alias: (document.getElementById('cat-p-alias')?.value || '').split('\n').map(s => s.trim()).filter(Boolean)
+    alias: (document.getElementById('cat-p-alias')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
+    aliquota_imposte: catVal('cat-p-aliq') === '' ? null : Number(catVal('cat-p-aliq'))
   };
+  if (riga.aliquota_imposte !== null && !(riga.aliquota_imposte >= 0 && riga.aliquota_imposte <= 100)) { catMsg(['L’aliquota delle imposte va da 0 a 100.']); return; }
   /* Le stesse regole che la prova misura in Node: il motore le sa, questa
      schermata le chiede. Due validazioni scritte a mano sarebbero due regole,
      e quella che sbaglia sarebbe quella che nessuno guarda. */
@@ -18804,14 +18952,14 @@ function visiblePipelineItems(list) {
   return list.filter(t => !t.utente_id || isPipelineMine(t) || isPipelineSharedWithMe(t));
 }
 
+var PP_TAB = 'tratt';
 function selPTab(t) {
-  document.getElementById('pp-tratt').style.display  = t==='tratt' ?'block':'none';
-  document.getElementById('pp-agenda').style.display = t==='agenda'?'block':'none';
-  ['tratt','agenda'].forEach(x => {
-    const el = document.getElementById('pt-'+x);
-    el.classList.toggle('act', x===t);
-  });
-  if (t==='agenda') renderAgenda();
+  PP_TAB = t === 'agenda' ? 'agenda' : 'tratt';
+  document.getElementById('pp-tratt')?.classList.toggle('trt-off', PP_TAB !== 'tratt');
+  document.getElementById('pp-agenda')?.classList.toggle('trt-off', PP_TAB !== 'agenda');
+  const lbl = document.getElementById('pt-agenda-t');
+  if (lbl) lbl.textContent = PP_TAB === 'agenda' ? 'Torna alle trattative' : 'Agenda';
+  if (PP_TAB === 'agenda') renderAgenda();
 }
 
 /* ══ I COLLABORATORI: UNA FONTE SOLA (21/09/2026) ═══════════════════════════
@@ -18872,159 +19020,540 @@ function colOpzioniNome(scelto, primo) {
   return out.join('');
 }
 
+/* ══ LE TRATTATIVE (08/10/2026) ═════════════════════════════════════════════
+   Richiesta di Francesco: ramo, target, compagnia, prodotto, autorizzazione
+   della direzione, il cliente dal portafoglio o censito «fast», il
+   collaboratore, il richiamo in Agenda, i grafici del valore in corso e
+   chiuso per prodotto, e l'imponibile dal premio lordo.
+
+   Le regole stanno nel motore `/nuovo-preventivo/tariffe/motore/trattative.js`
+   (prove in Node): qui si legge, si chiede e si disegna.
+
+   Le righe scritte prima hanno il cliente, il prodotto e il collaboratore come
+   testo: si leggono com'erano, e il testo resta finche' qualcuno non sceglie
+   di nuovo. */
+var TRT_CAT = null;        /* var e non let: le prove iniettano qui (§17) */
+var TRT_AMBITO = 'mie';
+var TRT_CLI_T = null;
+var TRT_RIS = [];
+
+function trtM() { return window.Trattative || null; }
+
+/* I nomi dei rami. Le CHIAVI sono quelle di tutta la casa (§39): qui c'e' solo
+   come si leggono. */
+var TRT_RAMI = { rca: 'RC Auto', beni: 'Casa e beni', vita: 'Vita', persona: 'Persona e infortuni',
+  tutela: 'Tutela legale', impresa: 'Impresa', rcprof: 'RC professionale', cauzioni: 'Cauzioni',
+  salute: 'Salute', animali: 'Animali', viaggio: 'Viaggio' };
+function trtRamoNome(r) { return TRT_RAMI[r] || r || ''; }
+
+function trtEuro(n) { return n === null || n === undefined || isNaN(n) ? '—' : '€ ' + fmt(n); }
+
+async function trtCatalogo(forza) {
+  if (TRT_CAT && !forza) return TRT_CAT;
+  const cat = { compagnie: [], prodotti: [], letto: true };
+  if (!db) return (TRT_CAT = cat);
+  try {
+    const [c, p] = await Promise.all([
+      db.from('quote_compagnie').select('id,nome,alias,attiva').order('nome'),
+      db.from('iam_compagnia_prodotti').select('id,compagnia_id,nome,ramo,attivo,al,aliquota_imposte').order('nome')
+    ]);
+    if (c.error || p.error) throw (c.error || p.error);
+    cat.compagnie = c.data || []; cat.prodotti = p.data || [];
+  } catch (e) {
+    /* «Non si e' potuto leggere» non e' «non ci sono compagnie» (§12): la
+       scheda lo dice, e il prodotto si puo' scrivere a mano. */
+    console.warn('Catalogo trattative:', e.message || e);
+    cat.letto = false;
+  }
+  return (TRT_CAT = cat);
+}
+
+/* ── L'ELENCO ─────────────────────────────────────────────────────────────── */
+function trtCambiaAmbito() {
+  TRT_AMBITO = document.getElementById('tr-ambito')?.value === 'agenzia' ? 'agenzia' : 'mie';
+  loadTrattDB().then(renderTratt);
+}
+
+function trtVisibili() {
+  if (TRT_AMBITO === 'agenzia' && isPipelineAdmin()) return PIPE.slice();
+  return visiblePipelineItems(PIPE);
+}
+
+/* Il periodo guarda la data che conta: per una trattativa in corso quando e'
+   nata, per una decisa quando si e' decisa. */
+function trtNelPeriodo(t, limStr) {
+  const M = trtM();
+  const f = M ? M.fase(t.status) : 'corso';
+  const d = f === 'corso' ? t.data_ins : (t.chiusa_il || t.data_ins);
+  return !d || String(d).slice(0, 10) >= limStr;
+}
+
+function trtFiltra(lista, conStato) {
+  const M = trtM();
+  const q  = (document.getElementById('tr-search')?.value || '').toLowerCase().trim();
+  const ft = document.getElementById('tr-filt')?.value || '';
+  const fr = document.getElementById('tr-ramo')?.value || '';
+  const fc = document.getElementById('tr-collab')?.value || '';
+  const periodo = parseInt(document.getElementById('tr-periodo')?.value || '0', 10);
+  let l = lista.filter(t => !fc || t.collab === fc).filter(t => !fr || t.ramo === fr);
+  if (conStato && ft) {
+    if (ft === 'corso') l = l.filter(t => M && M.fase(t.status) === 'corso');
+    else if (ft === 'autorizzare') l = l.filter(t => t.richiede_autorizzazione && t.autorizzazione_stato === 'in_attesa');
+    else l = l.filter(t => t.status === ft);
+  }
+  if (q) l = l.filter(t => [t.cliente, t.prodotto, t.compagnia, t.collab, trtRamoNome(t.ramo)].join(' ').toLowerCase().includes(q));
+  if (periodo) {
+    const lim = new Date(); lim.setDate(lim.getDate() - periodo);
+    const limStr = lim.getFullYear() + '-' + String(lim.getMonth() + 1).padStart(2, '0') + '-' + String(lim.getDate()).padStart(2, '0');
+    l = l.filter(t => trtNelPeriodo(t, limStr));
+  }
+  return l;
+}
+
+/* Le barre: la lunghezza e' il valore, il numero accanto e' il valore e
+   quante trattative ci stanno dietro. Un prodotto le cui trattative non
+   hanno un premio NON si disegna lungo zero senza dirlo: compare con la
+   pista vuota e la scritta «premio non indicato» (§36). */
+function trtBarre(gruppi, classe, vuoto) {
+  if (!gruppi.length) return '<div class="trt-vuoto">' + esc(vuoto) + '</div>';
+  const max = Math.max.apply(null, gruppi.map(g => g.valore)) || 0;
+  return '<ul class="trt-barre ' + classe + '">' + gruppi.map(g => {
+    const w = max > 0 ? Math.max(g.valore / max * 100, g.valore > 0 ? 1.5 : 0) : 0;
+    const quante = g.n + (g.n === 1 ? ' trattativa' : ' trattative');
+    const senza = g.senzaValore ? ' · ' + g.senzaValore + ' senza premio' : '';
+    const valore = g.valore > 0 ? trtEuro(g.valore) : 'premio non indicato';
+    return '<li class="trt-b" title="' + esc(g.nome + ': ' + valore + ' — ' + quante + senza) + '">' +
+      '<span class="trt-b-n">' + esc(g.nome) + '</span>' +
+      '<span class="trt-b-pista" aria-hidden="true"><span class="trt-b-pieno' + (w ? '' : ' zero') + '" style="width:' + w.toFixed(1) + '%"></span></span>' +
+      '<span class="trt-b-v">' + esc(valore) + '<small>' + esc(quante + senza) + '</small></span></li>';
+  }).join('') + '</ul>';
+}
+
+function trtKpi(r) {
+  const k = (cls, t, v, sub) => '<div class="trt-k ' + cls + '"><div class="trt-k-t">' + esc(t) + '</div><div class="trt-k-v">' + esc(v) + '</div><div class="trt-k-s">' + esc(sub) + '</div></div>';
+  const senza = n => n ? ' · ' + n + ' senza premio' : '';
+  const quante = n => n + (n === 1 ? ' trattativa' : ' trattative');
+  let h = k('corso', 'In corso', trtEuro(r.corso.valore), quante(r.corso.n) + ' · ponderato ' + trtEuro(r.corso.ponderato) + senza(r.corso.senzaValore)) +
+          k('vinta', 'Chiuse vinte', trtEuro(r.vinte.valore), quante(r.vinte.n) + senza(r.vinte.senzaValore)) +
+          k('persa', 'Perse', trtEuro(r.perse.valore), quante(r.perse.n) + senza(r.perse.senzaValore)) +
+          k('', 'Tasso di chiusura', r.tassoChiusura === null ? '—' : r.tassoChiusura + '%',
+            r.tassoChiusura === null ? 'nessuna trattativa ancora decisa' : 'vinte su decise (vinte + perse)');
+  if (r.daAutorizzare) h += k('aut', 'Da autorizzare', String(r.daAutorizzare), 'aspettano la direzione');
+  return h;
+}
+
 function renderTratt() {
-  console.log('renderTratt chiamato, PIPE:', PIPE.length);
   loadTeam();
+  const M = trtM();
   const selC = document.getElementById('tr-collab');
   if (selC && db) {
     const curC = selC.value;
     colCarica().then(() => { selC.innerHTML = colOpzioniNome(curC, 'Tutti i collab.'); });
   }
-  const visiblePipe = visiblePipelineItems(PIPE);
-  const q       = (document.getElementById('tr-search')?.value||'').toLowerCase();
-  const ft      = document.getElementById('tr-filt')?.value||'';
-  const fc      = document.getElementById('tr-collab')?.value||'';
-  const periodo = parseInt(document.getElementById('tr-periodo')?.value||'0');
-  let lista = visiblePipe.filter(t=>!ft||t.status===ft).filter(t=>!fc||t.collab===fc);
-  if (q) lista = lista.filter(t=>(t.cliente+t.prodotto).toLowerCase().includes(q));
-  if (periodo) {
-    const limite = new Date(); limite.setDate(limite.getDate()-periodo);
-    const limStr = limite.toISOString().split('T')[0];
-    lista = lista.filter(t=>!t.data_ins||t.data_ins>=limStr);
+  const selR = document.getElementById('tr-ramo');
+  if (selR && selR.options.length <= 1) {
+    selR.innerHTML = '<option value="">Tutti i rami</option>' + Object.keys(TRT_RAMI).map(r => '<option value="' + r + '">' + esc(TRT_RAMI[r]) + '</option>').join('');
   }
-  lista.sort((a,b)=>({urgente:0,alta:1,normale:2}[a.prior]||2)-({urgente:0,alta:1,normale:2}[b.prior]||2));
-  document.getElementById('ktr-tot').textContent = visiblePipe.length;
-  document.getElementById('ktr-val').textContent = '€'+fmt(visiblePipe.reduce((a,t)=>a+(parseNum(t.importo)||0),0));
-  document.getElementById('ktr-ch').textContent  = visiblePipe.filter(t=>t.status==='chiusa').length;
-  const kps = document.getElementById('ktr-ps'); if(kps) kps.textContent = visiblePipe.filter(t=>t.status==='persa').length;
-  const oggi = new Date().toISOString().split('T')[0];
-  document.getElementById('tr-list').innerHTML = lista.length ? lista.map(t=>{
-    const sc = SC[t.status]||SC.prospect;
-    const scad = t.recall&&t.recall<=oggi;
-    const isMine = isPipelineMine(t) || isPipelineAdmin();
-    const isShared = isPipelineSharedWithMe(t);
-    const canEdit = isMine;
-    const sharedNames = (t.condivisi_con || t.condivisi || []).map(uid => {
+  const amb = document.getElementById('tr-ambito');
+  if (amb) amb.hidden = !isPipelineAdmin();
+
+  const tutte = trtVisibili();
+  /* I grafici e i numeri seguono i filtri tranne lo stato: dividono gia' loro
+     in corso, vinte e perse, e un filtro sullo stato svuoterebbe due grafici
+     su tre senza dire perche'. */
+  if (M) {
+    const r = M.riepilogo(trtFiltra(tutte, false));
+    const kp = document.getElementById('trt-kpi'); if (kp) kp.innerHTML = trtKpi(r);
+    const g1 = document.getElementById('trt-g-corso');
+    if (g1) g1.innerHTML = trtBarre(r.corso.perProdotto, 'corso', 'Nessuna trattativa in corso.');
+    const g2 = document.getElementById('trt-g-vinte');
+    if (g2) g2.innerHTML = trtBarre(r.vinte.perProdotto, 'vinta', 'Nessuna trattativa chiusa vinta.');
+    const t1 = document.getElementById('trt-g-corso-t'); if (t1) t1.textContent = trtEuro(r.corso.valore);
+    const t2 = document.getElementById('trt-g-vinte-t'); if (t2) t2.textContent = trtEuro(r.vinte.valore);
+  } else {
+    const kp = document.getElementById('trt-kpi');
+    if (kp) kp.innerHTML = '<div class="trt-avv">Il programma dei conti delle trattative non si è caricato: ricarica la pagina.</div>';
+  }
+
+  const lista = trtFiltra(tutte, true);
+  const pr = { urgente: 0, alta: 1, normale: 2 };
+  lista.sort((a, b) => (pr[a.prior] ?? 2) - (pr[b.prior] ?? 2) || String(b.data_ins || '').localeCompare(String(a.data_ins || '')));
+  const oggi = cntOggiIso();
+  const el = document.getElementById('tr-list');
+  if (!el) return;
+  el.innerHTML = lista.length ? lista.map(t => {
+    const f = M ? M.fase(t.status) : 'corso';
+    const sc = SC[t.status] || { lbl: t.status || 'In corso' };
+    const scad = t.recall && String(t.recall).slice(0, 10) <= oggi && f === 'corso';
+    const canEdit = isPipelineMine(t) || isPipelineAdmin();
+    const sharedNames = (t.condivisi_con || []).map(uid => {
       const u = UTENTI_LISTA.find(x => x.id === uid);
-      return u ? ((u.nome||'')+' '+(u.cognome||'')).trim() || u.email : '';
+      return u ? ((u.nome || '') + ' ' + (u.cognome || '')).trim() || u.email : '';
     }).filter(Boolean);
-    return `<div class="tcard">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
-            <span style="font-size:13px;font-weight:600;">${t.cliente||'—'}</span>
-            <span class="tstatus" style="background:${sc.bg};color:${sc.c};">${sc.lbl}</span>
-            ${t.prior==='urgente'?'<span style="font-size:10px;color:var(--red-txt);font-weight:700;">URGENTE</span>':t.prior==='alta'?'<span style="font-size:10px;color:var(--amb-txt);font-weight:700;">ALTA</span>':''}
-          </div>
-          <div style="font-size:12px;color:var(--txt2);">${t.prodotto||'—'}${t.collab?' ·  '+t.collab:''}</div>
-          ${sharedNames.length?`<div style="font-size:11px;color:var(--txt3);margin-top:2px;"> ${sharedNames.join(', ')}</div>`:''}
-          ${isShared?'<div style="font-size:10px;color:var(--blu-txt);margin-top:2px;font-weight:700;">CONDIVISA CON TE</div>':''}
-          ${t.recall?`<div style="font-size:11px;margin-top:3px;color:${scad?'var(--red-txt)':'var(--txt3)'};">${scad?'':'<i class="ti ti-calendar-event"></i>'} Recalling: ${t.recall}
-            <button onclick="openGCal('Recalling: ${encodeForAttr(t.cliente)} - ${encodeForAttr(t.prodotto)}','${t.recall}')" style="margin-left:5px;font-size:10px;padding:1px 6px;background:var(--blu-bg);color:var(--blu-txt);border:none;border-radius:4px;cursor:pointer;"><i class="ti ti-calendar-event"></i> Cal.</button>
-          </div>`:''}
-        </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:14px;font-weight:700;color:var(--acc);">€${fmt(parseNum(t.importo)||0)}</div>
-          <div style="font-size:10px;color:var(--txt3);">${t.prob||0}%</div>
-          ${canEdit?`<div class="tact-btns">
-            <button class="tact-btn" style="background:var(--surf2);color:var(--txt2);border:.5px solid var(--bord2);" onclick="openTrattModal('${t.id}')"><i class="ti ti-pencil"></i></button>
-            <button class="tact-btn" style="background:var(--red-bg);color:var(--red-txt);border:.5px solid var(--red);" onclick="delTratt('${t.id}')">✕</button>
-          </div>`:''}
-        </div>
-      </div>
-    </div>`;
-  }).join('') : '<div class="empty" style="padding:24px;"><i class="ti ti-timeline" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px;text-align:center;"></i><p>Nessuna trattativa.</p></div>';
+    const aut = t.richiede_autorizzazione
+      ? '<span class="trt-tag ' + (t.autorizzazione_stato === 'concessa' ? 'vinta' : t.autorizzazione_stato === 'negata' ? 'persa' : 'aut') + '">' +
+        (t.autorizzazione_stato === 'concessa' ? 'Autorizzata' : t.autorizzazione_stato === 'negata' ? 'Autorizzazione negata' : 'Da autorizzare') + '</span>' : '';
+    const cosa = [trtRamoNome(t.ramo), t.compagnia, t.prodotto].filter(Boolean).join(' · ') || 'Prodotto non indicato';
+    const v = M ? M.valore(t) : null;
+    return '<div class="trt-r">' +
+      '<div><div class="trt-r-cli">' + esc(t.cliente || '—') +
+        '<span class="trt-tag ' + f + '">' + esc(sc.lbl) + '</span>' +
+        (t.target ? '<span class="trt-tag target">Target</span>' : '') + aut +
+        (t.prior === 'urgente' ? '<span class="trt-tag persa">Urgente</span>' : t.prior === 'alta' ? '<span class="trt-tag aut">Alta</span>' : '') +
+      '</div>' +
+      '<div class="trt-r-sub">' + esc(cosa) + (t.collab ? ' · ' + esc(t.collab) : '') + '</div>' +
+      (sharedNames.length ? '<div class="trt-r-sub rec">Condivisa con ' + esc(sharedNames.join(', ')) + '</div>' : '') +
+      (isPipelineSharedWithMe(t) ? '<div class="trt-r-sub rec">Condivisa con te</div>' : '') +
+      (t.recall ? '<div class="trt-r-sub rec' + (scad ? ' scad' : '') + '"><i class="ti ti-calendar-event"></i> Richiamo ' + esc(String(t.recall).slice(0, 10).split('-').reverse().join('/')) + (t.recall_ora ? ' alle ' + esc(t.recall_ora) : '') + (t.agenda_id ? ' · in Agenda' : '') + '</div>' : '') +
+      '</div>' +
+      '<div class="trt-r-dx"><div class="trt-r-pr">' + (v ? trtEuro(v) : '—') + '</div>' +
+        (t.premio_netto ? '<div class="trt-r-net">imponibile ' + trtEuro(Number(t.premio_netto)) + '</div>' : (v ? '<div class="trt-r-net">lordo</div>' : '<div class="trt-r-net">premio non indicato</div>')) +
+        (f === 'corso' ? '<div class="trt-r-net">probabilità ' + (t.prob || 0) + '%</div>' : '') +
+        (canEdit ? '<div class="trt-r-az"><button class="d-btn" type="button" aria-label="Modifica" onclick="openTrattModal(\'' + esc(t.id) + '\')"><i class="ti ti-pencil"></i></button>' +
+          '<button class="d-btn" type="button" aria-label="Elimina" onclick="delTratt(\'' + esc(t.id) + '\')"><i class="ti ti-trash"></i></button></div>' : '') +
+      '</div></div>';
+  }).join('') : '<div class="trt-vuoto" style="padding:18px">Nessuna trattativa.</div>';
 }
 
 function encodeForAttr(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
-// Apre Google Calendar o link universale senza scaricare file
-/* C'erano DUE openGCal(): questa, e un'altra piu' sotto. Vinceva sempre la
-   seconda, perche' la dichiarazione successiva copre la precedente — quindi
-   questa non l'ha mai eseguita nessuno (CLAUDE.md §1). Tolta: lasciarne due
-   vuol dire che il prossimo corregge quella sbagliata e non capisce perche'
-   non cambia niente. La versione viva sta sotto, ed e' quella che sa fare
-   anche l'evento di tutta la giornata. */
+/* ── LA SCHEDA ────────────────────────────────────────────────────────────── */
+function trtV(id) { return (document.getElementById(id)?.value || '').trim(); }
+function trtSet(id, v) { const el = document.getElementById(id); if (el) el.value = v === null || v === undefined ? '' : v; }
 
-function openTrattModal(id) {
-  loadPipe(); loadTeam(); PIPE_ID = id;
-  const t = id ? PIPE.find(x=>x.id===id) : null;
-  document.getElementById('mt-title').textContent = t?t.cliente:'Nuova trattativa';
-  const sv = (fid,val) => { const el=document.getElementById(fid); if(el) el.value=val||''; };
-  if (t) {
-    sv('mt-cliente',t.cliente); sv('mt-prodotto',t.prodotto); sv('mt-importo',t.importo);
-    sv('mt-status',t.status); sv('mt-recall',t.recall); sv('mt-prob',t.prob);
-    sv('mt-prior',t.prior); sv('mt-note',t.note);
+/* Il cliente scelto: la scheda lo mostra, e lo cambia chi preme «cambia». */
+function trtClienteScelto(id, nome, etichetta) {
+  trtSet('mt-anag-id', id || '');
+  trtSet('mt-cliente', nome || '');
+  const box = document.getElementById('mt-cli-scelto');
+  const cerca = document.getElementById('mt-cli-cerca');
+  if (nome) {
+    box.innerHTML = '<div class="trt-scelto"><span><b>' + esc(nome) + '</b>' + (etichetta ? ' <small>' + esc(etichetta) + '</small>' : '') +
+      (id ? '' : ' <small>scritto a mano, non in anagrafica</small>') + '</span>' +
+      '<button type="button" class="mbtn sec" onclick="trtClienteScelto(null,\'\')">Cambia</button></div>';
+    cerca.hidden = true;
   } else {
-    ['mt-cliente','mt-prodotto','mt-importo','mt-recall','mt-note'].forEach(id=>sv(id,''));
-    sv('mt-status','prospect'); sv('mt-prob','30'); sv('mt-prior','normale');
+    box.innerHTML = '';
+    cerca.hidden = false;
+    const r = document.getElementById('mt-cli-ris'); if (r) r.innerHTML = '';
   }
-  // Popola select con utenti IAM registrati
+}
+
+function trtModoCliente(m) {
+  document.getElementById('mt-cli-port').hidden = m !== 'port';
+  document.getElementById('mt-cli-fast').hidden = m !== 'fast';
+  document.getElementById('mt-cli-m-port').classList.toggle('act', m === 'port');
+  document.getElementById('mt-cli-m-fast').classList.toggle('act', m === 'fast');
+}
+
+function trtFastTipo(t) {
+  document.getElementById('mt-fast-fisica').hidden = t !== 'fisica';
+  document.getElementById('mt-fast-giuridica').hidden = t !== 'giuridica';
+  document.getElementById('mt-fast-fis').classList.toggle('act', t === 'fisica');
+  document.getElementById('mt-fast-giu').classList.toggle('act', t === 'giuridica');
+  document.getElementById('mt-cli-fast').dataset.tipo = t;
+}
+
+function trtNomeAnag(a) {
+  return a.tipo === 'giuridica' ? (a.ragione_sociale || a.nominativo || '') : ([a.cognome, a.nome].filter(Boolean).join(' ') || a.nominativo || '');
+}
+
+function trtScegliRis(i) {
+  const a = TRT_RIS[i]; if (!a) return;
+  trtClienteScelto(a.id, trtNomeAnag(a), a.lead ? 'Prospect' : 'Cliente');
+}
+
+/* La ricerca: clienti e prospect, nella stessa lista, e ognuno dice cos'e'.
+   Il testo entra in un filtro PostgREST: virgole, parentesi e asterischi
+   cambierebbero il filtro, quindi si tolgono. */
+function trtCercaCliente() {
+  clearTimeout(TRT_CLI_T);
+  TRT_CLI_T = setTimeout(async () => {
+    const ris = document.getElementById('mt-cli-ris');
+    const q = trtV('mt-cli-q').replace(/[,()*%\\]/g, ' ').trim();
+    if (!ris) return;
+    if (q.length < 2) { ris.innerHTML = ''; return; }
+    try {
+      const { data, error } = await db.from('quote_anagrafiche')
+        .select('id,tipo,nominativo,nome,cognome,ragione_sociale,codice_fiscale,partita_iva,lead')
+        .or('nominativo.ilike.*' + q + '*,ragione_sociale.ilike.*' + q + '*,codice_fiscale.ilike.*' + q + '*,partita_iva.ilike.*' + q + '*')
+        .limit(12);
+      if (error) throw error;
+      if (!data || !data.length) {
+        ris.innerHTML = '<button type="button" onclick="trtModoCliente(\'fast\')">Nessuno trovato: <b>censiscilo come prospect</b></button>';
+        return;
+      }
+      TRT_RIS = data;
+      ris.innerHTML = data.map((a, i) => {
+        const et = a.lead ? 'Prospect' : 'Cliente';
+        return '<button type="button" onclick="trtScegliRis(' + i + ')">' +
+          esc(trtNomeAnag(a)) + '<small>' + et + ' · ' + esc(a.codice_fiscale || a.partita_iva || 'senza codice') + '</small></button>';
+      }).join('') + (data.length === 12 ? '<button type="button" disabled>Ne vedi 12: scrivi di più per restringere</button>' : '');
+    } catch (e) {
+      /* Non «nessun cliente»: non si e' potuto cercare (§12, §18). */
+      ris.innerHTML = '<button type="button" disabled>Non si è potuto cercare: ' + esc(e.message || String(e)) + '</button>';
+    }
+  }, 250);
+}
+
+/* Il censimento fast. Prima si cerca se c'e' gia' (stesso codice fiscale o
+   stessa partita IVA): se c'e' UNO si aggancia quello, invece di fare il
+   doppione che nessuno ritroverebbe (§19, «aggancia solo se e' una»). */
+async function trtCensisci() {
+  const M = trtM(); const msg = document.getElementById('mt-fast-msg');
+  msg.className = 'trt-msg'; msg.textContent = '';
+  if (!M || !db || !ME) { msg.textContent = 'Il programma non è pronto: ricarica la pagina.'; return; }
+  const tipo = document.getElementById('mt-cli-fast').dataset.tipo || 'fisica';
+  const v = M.prospettoFast({ tipo, nome: trtV('mt-f-nome'), cognome: trtV('mt-f-cognome'), codice_fiscale: trtV('mt-f-cf'),
+                              ragione_sociale: trtV('mt-f-rs'), partita_iva: trtV('mt-f-piva') }, ME.id);
+  if (!v.ok) { msg.textContent = v.errori.join(' '); return; }
+  try {
+    const campo = tipo === 'giuridica' ? 'partita_iva' : 'codice_fiscale';
+    const { data: gia, error: e1 } = await db.from('quote_anagrafiche').select('id,tipo,nominativo,nome,cognome,ragione_sociale,lead').eq(campo, v.riga[campo]).limit(2);
+    if (e1) throw e1;
+    if (gia && gia.length === 1) {
+      trtClienteScelto(gia[0].id, trtNomeAnag(gia[0]), gia[0].lead ? 'Prospect' : 'Cliente');
+      msg.className = 'trt-msg ok'; msg.textContent = 'Era già in anagrafica: l’ho agganciato a quello.';
+      return;
+    }
+    if (gia && gia.length > 1) { msg.textContent = 'Ci sono già due anagrafiche con questo codice: scegline una dalla ricerca.'; trtModoCliente('port'); return; }
+    const { data, error } = await db.from('quote_anagrafiche').insert(v.riga).select('id').single();
+    if (error) throw error;
+    if (!data?.id) throw new Error('il database non ha restituito il prospect creato');
+    logMovimento('creazione', 'cliente', 'Prospect da trattativa: ' + v.riga.nominativo, data.id);
+    trtClienteScelto(data.id, trtNomeAnag(v.riga), 'Prospect');
+  } catch (e) { msg.textContent = 'Non salvato: ' + (e.message || String(e)); }
+}
+
+function trtOpzCompagnie(sel) {
+  const c = (TRT_CAT?.compagnie || []).filter(x => x.attiva !== false || x.id === sel);
+  return '<option value="">— nessuna —</option>' + c.map(x => '<option value="' + x.id + '"' + (x.id === sel ? ' selected' : '') + '>' + esc(x.nome) + '</option>').join('');
+}
+
+function trtProdotti(sel) {
+  const s = document.getElementById('mt-prodotto-id'); if (!s) return;
+  const cur = sel !== undefined ? sel : s.value;
+  const comp = trtV('mt-compagnia'), ramo = trtV('mt-ramo');
+  const oggi = cntOggiIso();
+  const lista = (TRT_CAT?.prodotti || []).filter(p => (!comp || p.compagnia_id === comp) && (!ramo || p.ramo === ramo) &&
+    ((p.attivo !== false && (!p.al || p.al >= oggi)) || p.id === cur));
+  s.innerHTML = '<option value="">' + (lista.length ? '— scegli dal catalogo —' : (comp ? 'Nessun prodotto in catalogo' : 'Scegli prima la compagnia')) + '</option>' +
+    lista.map(p => '<option value="' + p.id + '"' + (p.id === cur ? ' selected' : '') + '>' + esc(p.nome) + (comp ? '' : ' · ' + esc((TRT_CAT.compagnie.find(c => c.id === p.compagnia_id) || {}).nome || '')) + '</option>').join('');
+  trtProdottoScelto(true);
+}
+
+function trtProdottoScelto(soloVista) {
+  const id = trtV('mt-prodotto-id');
+  const p = (TRT_CAT?.prodotti || []).find(x => x.id === id);
+  document.getElementById('mt-prodotto-libero').hidden = !!p;
+  if (p && !soloVista) {
+    if (p.ramo && !trtV('mt-ramo')) trtSet('mt-ramo', p.ramo);
+    if (!trtV('mt-compagnia')) trtSet('mt-compagnia', p.compagnia_id);
+  }
+  trtCalcola();
+}
+
+function trtCalcola() {
+  const M = trtM(); const box = document.getElementById('mt-calc'); if (!box) return;
+  const ramo = trtV('mt-ramo');
+  document.getElementById('mt-prov-box').hidden = ramo !== 'rca';
+  if (!M) { box.className = 'trt-calc no'; box.textContent = 'Il programma del calcolo non si è caricato.'; return null; }
+  const p = (TRT_CAT?.prodotti || []).find(x => x.id === trtV('mt-prodotto-id'));
+  const r = M.netto(trtV('mt-lordo'), { ramo, prodotto: p ? p.aliquota_imposte : null, manuale: trtV('mt-aliquota'), provinciale: trtV('mt-prov') });
+  const ph = M.aliquota({ ramo, prodotto: p ? p.aliquota_imposte : null, provinciale: trtV('mt-prov') });
+  const al = document.getElementById('mt-aliquota');
+  if (al) al.placeholder = ph.aliquota !== null ? String(ph.aliquota).replace('.', ',') + ' (' + (ph.fonte === 'prodotto' ? 'dal prodotto' : 'di legge') + ')' : 'da dichiarare';
+  if (r.netto === null) {
+    box.className = 'trt-calc no';
+    box.textContent = r.motivo || 'Imponibile non calcolabile.';
+  } else {
+    box.className = 'trt-calc';
+    box.innerHTML = 'Imponibile <strong>' + esc(trtEuro(r.netto)) + '</strong> · imposte ' + esc(trtEuro(r.imposte)) +
+      ' <small>(aliquota ' + esc(String(r.aliquota).replace('.', ',')) + '% — ' + esc(r.spiega || '') + ')</small>' +
+      (r.avviso ? '<div class="cl-sub" style="margin-top:4px">' + esc(r.avviso) + '</div>' : '');
+  }
+  return r;
+}
+
+/* L'autorizzazione la concede la direzione. Chi non e' staff vede lo stato e
+   non lo cambia: il divieto vero e' un trigger nel database, la tendina chiusa
+   e' solo per non mostrare una porta che poi rifiuta. */
+function trtAutRender(stato) {
+  const on = document.getElementById('mt-aut').checked;
+  const box = document.getElementById('mt-aut-box'); box.hidden = !on;
+  const s = document.getElementById('mt-aut-stato');
+  if (stato !== undefined) s.value = stato || 'in_attesa';
+  s.disabled = !isPipelineAdmin();
+  document.getElementById('mt-aut-nota').textContent = isPipelineAdmin()
+    ? 'La concede o la nega la direzione. Finché non è concessa, la trattativa non si chiude vinta.'
+    : 'La concede la direzione. Finché non è concessa, la trattativa non si chiude vinta.';
+}
+
+/* Una tendina del registro delle persone che vale per IDENTIFICATIVO. Il nome
+   scritto a mano su una riga vecchia resta in elenco, marcato (§48). */
+function colOpzioniId(sceltoId, nomeVecchio, primo) {
+  const gente = window.Collaboratori ? Collaboratori.attivi(COL_GENTE || []) : (COL_GENTE || []);
+  const out = ['<option value="">' + esc(primo || '— nessuno —') + '</option>'];
+  let trovato = false;
+  gente.forEach(c => {
+    const sel = sceltoId ? c.id === sceltoId : (nomeVecchio && colNome(c) === nomeVecchio);
+    if (sel) trovato = true;
+    out.push('<option value="' + esc(c.id) + '"' + (sel ? ' selected' : '') + '>' + esc(colNome(c)) + '</option>');
+  });
+  if (!trovato && nomeVecchio) out.push('<option value="nome:' + esc(nomeVecchio) + '" selected>' + esc(nomeVecchio) + ' (scritto a mano)</option>');
+  return out.join('');
+}
+
+async function openTrattModal(id) {
+  loadTeam(); PIPE_ID = id;
+  const t = id ? PIPE.find(x => x.id === id) : null;
+  document.getElementById('mt-title').textContent = t ? (t.cliente || 'Trattativa') : 'Nuova trattativa';
+  document.getElementById('mt-msg').textContent = '';
+  document.getElementById('mt-fast-msg').textContent = '';
+  ['mt-cli-q','mt-f-nome','mt-f-cognome','mt-f-cf','mt-f-rs','mt-f-piva'].forEach(x => trtSet(x, ''));
+  trtModoCliente('port'); trtFastTipo('fisica');
+  trtClienteScelto(t?.anagrafica_id || null, t?.cliente || '', t?.anagrafica_id ? 'in anagrafica' : '');
+  trtSet('mt-ramo', ''); document.getElementById('mt-ramo').innerHTML = '<option value="">— scegli —</option>' + Object.keys(TRT_RAMI).map(r => '<option value="' + r + '">' + esc(TRT_RAMI[r]) + '</option>').join('');
+  trtSet('mt-ramo', t?.ramo || '');
+  trtSet('mt-prodotto', t?.prodotto_id ? '' : (t?.prodotto || ''));
+  trtSet('mt-lordo', t ? (t.premio_lordo ?? (Number(t.importo) > 0 ? t.importo : '')) : '');
+  trtSet('mt-aliquota', t?.aliquota_fonte === 'manuale' ? t.aliquota_imposte : '');
+  trtSet('mt-prov', t?.imposta_provinciale ?? '');
+  trtSet('mt-status', t?.status && SC[t.status] ? t.status : 'prospect');
+  trtSet('mt-prob', t?.prob || '30'); trtSet('mt-prior', t?.prior || 'normale');
+  trtSet('mt-recall', t?.recall ? String(t.recall).slice(0, 10) : ''); trtSet('mt-recall-ora', t?.recall_ora || '');
+  trtSet('mt-note', t?.note || '');
+  document.getElementById('mt-target').checked = !!t?.target;
+  document.getElementById('mt-aut').checked = !!t?.richiede_autorizzazione;
+  document.getElementById('mt-in-agenda').checked = t ? !!t.agenda_id || !t.recall : true;
+  trtAutRender(t?.autorizzazione_stato);
+  document.getElementById('modal-tratt').classList.add('show');
+
+  const cat = await trtCatalogo();
+  document.getElementById('mt-compagnia').innerHTML = trtOpzCompagnie(t?.compagnia_id || '');
+  trtProdotti(t?.prodotto_id || '');
+  if (!cat.letto) document.getElementById('mt-calc').insertAdjacentHTML('beforebegin', '<div class="trt-msg" id="mt-cat-ko">Il catalogo non si è potuto leggere: compagnia e prodotto si scrivono a mano.</div>');
+
   const sel = document.getElementById('mt-collab');
   const shareSel = document.getElementById('mt-condividi');
   if (shareSel) shareSel.innerHTML = '<option value="">— nessuna condivisione —</option>';
   if (sel && db) {
-    sel.innerHTML = '<option value="">— nessuno —</option>';
     /* Il collaboratore dal registro delle persone; la CONDIVISIONE resta sugli
        account, ed e' giusto: si condivide con chi puo' entrare in IAM, non con
        chi e' in anagrafica. Due domande diverse, due elenchi diversi. */
-    colCarica().then(() => { sel.innerHTML = colOpzioniNome(t?.collab || '', '— nessuno —'); });
+    colCarica().then(() => { sel.innerHTML = colOpzioniId(t?.collaboratore_id || '', t?.collab || '', '— nessuno —'); });
     db.from('iam_utenti').select('id,nome,cognome,email').eq('attivo', true)
-      .then(({data}) => {
-        if (data) {
-          data.forEach(u => {
-            const nome = ((u.nome||'')+' '+(u.cognome||'')).trim() || u.email;
-
-            if (shareSel && u.id !== ME?.id) {
-              const sopt = document.createElement('option');
-              sopt.value = u.id;
-              sopt.textContent = nome;
-              if ((t?.condivisi_con || t?.condivisi || []).includes(u.id)) sopt.selected = true;
-              shareSel.appendChild(sopt);
-            }
-          });
-        }
+      .then(({ data }) => {
+        (data || []).forEach(u => {
+          if (!shareSel || u.id === ME?.id) return;
+          const o = document.createElement('option');
+          o.value = u.id; o.textContent = ((u.nome || '') + ' ' + (u.cognome || '')).trim() || u.email;
+          if ((t?.condivisi_con || []).includes(u.id)) o.selected = true;
+          shareSel.appendChild(o);
+        });
       });
-  } else if (sel) {
-    sel.innerHTML = '<option value="">— nessuno —</option>';
   }
-  document.getElementById('modal-tratt').classList.add('show');
 }
 
 async function saveTratt() {
-  const gv = id => (document.getElementById(id)?.value||'').trim();
-  const condivisi = gv('mt-condividi') ? [gv('mt-condividi')] : [];
-  const t = { id: PIPE_ID||Date.now().toString(), cliente:gv('mt-cliente'), prodotto:gv('mt-prodotto'), importo:gv('mt-importo'), status:gv('mt-status'), recall:gv('mt-recall')||null, prob:gv('mt-prob'), prior:gv('mt-prior'), collab:gv('mt-collab'), condivisi_con: condivisi, note:gv('mt-note'), data_ins: new Date().toISOString().split('T')[0] };
-  if (!t.cliente) { alert('Inserisci il nome del cliente.'); return; }
+  const M = trtM(); const msg = document.getElementById('mt-msg');
+  msg.className = 'trt-msg'; msg.textContent = '';
+  if (!M) { msg.textContent = 'Il programma delle trattative non si è caricato: ricarica la pagina.'; return; }
+  const esistente = PIPE_ID ? PIPE.find(x => x.id === PIPE_ID) : null;
+  const prodId = trtV('mt-prodotto-id');
+  const prod = (TRT_CAT?.prodotti || []).find(p => p.id === prodId);
+  const compId = trtV('mt-compagnia');
+  const comp = (TRT_CAT?.compagnie || []).find(c => c.id === compId);
+  const collabV = trtV('mt-collab');
+  const collabP = collabV && !collabV.startsWith('nome:') ? (COL_GENTE || []).find(c => c.id === collabV) : null;
+  const calc = trtCalcola() || {};
+  const t = {
+    id: PIPE_ID || null,
+    cliente: trtV('mt-cliente'), anagrafica_id: trtV('mt-anag-id') || null,
+    ramo: trtV('mt-ramo') || null, target: document.getElementById('mt-target').checked,
+    compagnia_id: comp ? comp.id : null, compagnia: comp ? comp.nome : (esistente?.compagnia_id ? null : esistente?.compagnia || null),
+    prodotto_id: prod ? prod.id : null, prodotto: prod ? prod.nome : (trtV('mt-prodotto') || null),
+    richiede_autorizzazione: document.getElementById('mt-aut').checked,
+    premio_lordo: trtV('mt-lordo') === '' ? null : Number(trtV('mt-lordo')),
+    imposta_provinciale: trtV('mt-prov') === '' || trtV('mt-ramo') !== 'rca' ? null : Number(trtV('mt-prov')),
+    aliquota_imposte: calc.netto !== null && calc.netto !== undefined ? calc.aliquota : null,
+    aliquota_fonte: calc.netto !== null && calc.netto !== undefined ? calc.fonte : null,
+    premio_netto: calc.netto !== undefined ? calc.netto : null,
+    status: trtV('mt-status') || 'prospect', prob: trtV('mt-prob'), prior: trtV('mt-prior'),
+    collaboratore_id: collabP ? collabP.id : null,
+    collab: collabP ? colNome(collabP) : (collabV.startsWith('nome:') ? collabV.slice(5) : null),
+    condivisi_con: trtV('mt-condividi') ? [trtV('mt-condividi')] : (esistente?.condivisi_con || []),
+    recall: trtV('mt-recall') || null, recall_ora: trtV('mt-recall-ora') || null,
+    note: trtV('mt-note'),
+    agenda_id: esistente?.agenda_id || null
+  };
+  /* Lo stato dell'autorizzazione si manda solo se chi salva lo puo'
+     cambiare: un collaboratore che salva la sua trattativa non deve
+     riscrivere quello che ha deciso la direzione. */
+  if (t.richiede_autorizzazione && isPipelineAdmin()) t.autorizzazione_stato = trtV('mt-aut-stato') || 'in_attesa';
+  else if (t.richiede_autorizzazione) t.autorizzazione_stato = esistente?.autorizzazione_stato || 'in_attesa';
+  if (!t.cliente) { msg.textContent = 'Scegli il cliente dal portafoglio o censiscilo come prospect.'; return; }
+  const ch = M.chiudibile(t);
+  if (!ch.ok) { msg.textContent = ch.motivo; return; }
   const btn = document.querySelector('#modal-tratt .mbtn.prim');
-  if (btn) { btn.textContent='...'; btn.disabled=true; }
+  if (btn) { btn.textContent = '...'; btn.disabled = true; }
   try {
-    await saveTrattDB(t);
+    const id = await saveTrattDB(t);
+    t.id = id;
+    const ag = await trtAgenda(t, esistente, document.getElementById('mt-in-agenda').checked);
     closeModal('modal-tratt');
     await loadTrattDB();
-    goTab('pipeline');
-    setTimeout(() => renderTratt(), 150);
-  } catch(e) {
-    alert('Errore: '+(e.message||e));
+    renderTratt();
+    if (ag) { const k = document.getElementById('trt-kpi'); if (k) k.insertAdjacentHTML('beforebegin', '<div class="trt-avv" id="trt-ag-msg">' + esc(ag) + '</div>'); setTimeout(() => document.getElementById('trt-ag-msg')?.remove(), 6000); }
+  } catch (e) {
+    /* La scheda resta aperta con quello che c'era: chiuderla su un guasto
+       vuol dire far ricompilare tutto (§73). */
+    msg.textContent = 'Non salvato: ' + (e.message || e);
   } finally {
-    if (btn) { btn.textContent='Salva'; btn.disabled=false; }
+    if (btn) { btn.textContent = 'Salva'; btn.disabled = false; }
   }
+}
+
+/* Il richiamo in Agenda: un evento con un id stabile per trattativa, cosi'
+   spostare la data sposta lo stesso evento invece di farne un secondo. Togliere
+   la data (o la spunta) toglie l'evento che la trattativa aveva messo, e
+   nessun altro. */
+async function trtAgenda(t, esistente, voglio) {
+  const M = trtM(); if (!M || !db || !ME) return null;
+  const ev = voglio ? M.richiamo(t) : null;
+  try {
+    if (ev) {
+      const riga = { id: ev.id, titolo: ev.titolo, data: ev.data, ora: ev.ora, note: ev.note, utente_id: ME.id };
+      const { error } = await db.from('iam_agenda').upsert(riga, { onConflict: 'id' });
+      if (error) throw error;
+      if (t.agenda_id !== ev.id) await db.from('iam_trattative').update({ agenda_id: ev.id }).eq('id', parseInt(t.id, 10));
+      if (typeof loadAgendaDB === 'function') loadAgendaDB().then(renderAgendaSePresente);
+      return 'Richiamo messo in Agenda per il ' + ev.data.split('-').reverse().join('/');
+    }
+    if (esistente?.agenda_id) {
+      await db.from('iam_agenda').delete().eq('id', esistente.agenda_id);
+      await db.from('iam_trattative').update({ agenda_id: null }).eq('id', parseInt(t.id, 10));
+      if (typeof loadAgendaDB === 'function') loadAgendaDB().then(renderAgendaSePresente);
+    }
+  } catch (e) {
+    console.warn('Agenda trattativa:', e);
+    return 'Trattativa salvata, ma il richiamo NON è finito in Agenda: ' + (e.message || e);
+  }
+  return null;
 }
 
 function delTratt(id) {
   if (!confirm('Eliminare questa trattativa? L\'operazione non è reversibile.')) return;
-  delTrattDB(id).then(() => {
-    loadPipe(); PIPE=PIPE.filter(t=>t.id!==id); savePipe();
-    loadTrattDB().then(renderTratt);
-  });
+  const t = PIPE.find(x => x.id === id);
+  delTrattDB(id, t).then(() => loadTrattDB().then(renderTratt));
 }
 
 function exportRecalling() {
   const data = document.getElementById('mt-recall')?.value;
-  const cli  = document.getElementById('mt-cliente')?.value||'';
-  const prod = document.getElementById('mt-prodotto')?.value||'';
-  if (!data) { alert('Imposta prima la data del recalling.'); return; }
-  openGCal(`Recalling: ${cli} — ${prod}`, data, '09:00', `Trattativa: ${prod}`);
+  const cli  = document.getElementById('mt-cliente')?.value || '';
+  const prod = document.getElementById('mt-prodotto-id')?.selectedOptions?.[0]?.textContent || document.getElementById('mt-prodotto')?.value || '';
+  if (!data) { alert('Imposta prima la data del richiamo.'); return; }
+  openGCal(`Richiamo: ${cli} — ${prod}`, data, document.getElementById('mt-recall-ora')?.value || '09:00', `Trattativa: ${prod}`);
 }
 
 // ─── AGENDA ───────────────────────────────────────────────────────────────────
@@ -19570,37 +20099,22 @@ function mostraBadgeRuolo() {
 }
 
 // ─── CARICA TRATTATIVE DA SUPABASE ────────────────────────────────────────────
+/* Le mie e quelle condivise con me; lo staff puo' guardare tutta l'agenzia
+   (le politiche del database lo permettono gia', §75). Le colonne arrivano
+   tutte: la scheda e i grafici leggono quelle nuove, le righe vecchie hanno
+   le loro vuote. */
 async function loadTrattDB() {
   if (!db || !ME) { PIPE = []; return; }
-  const mapT = t => ({ id:String(t.id), cliente:t.cliente||'', prodotto:t.prodotto||'', importo:t.importo||0, status:t.status||'prospect', recall:t.recall||'', prob:t.prob||30, prior:t.prior||'normale', collab:t.collab||'', note:t.note||'', data_ins:t.data_ins||'', utente_id:t.utente_id||'', condivisi_con:t.condivisi_con||[] });
+  const mapT = t => Object.assign({}, t, {
+    id: String(t.id), cliente: t.cliente || '', prodotto: t.prodotto || '', importo: t.importo || 0,
+    status: t.status || 'prospect', recall: t.recall || '', prob: t.prob || 30, prior: t.prior || 'normale',
+    collab: t.collab || '', note: t.note || '', data_ins: t.data_ins || '', utente_id: t.utente_id || '',
+    condivisi_con: t.condivisi_con || []
+  });
   try {
-    const isAdmin = false; // Pipeline PER-UTENTE per tutti: ognuno carica solo le proprie + condivise. Le trattative altrui (Super Admin/Admin) si consultano dal modale "Movimenti".
-    if (!isAdmin) {
-      // Tentativo 1: array nativo PostgreSQL
-      let { data, error } = await db.from('iam_trattative').select('*').order('data_ins',{ascending:false})
-        .or(`utente_id.eq.${ME.id},condivisi_con.cs.{${ME.id}}`);
-      if (error) {
-        // Tentativo 2: jsonb array contains
-        ({ data, error } = await db.from('iam_trattative').select('*').order('data_ins',{ascending:false})
-          .or(`utente_id.eq.${ME.id},condivisi_con.cs.["${ME.id}"]`));
-      }
-      if (error) {
-        // Tentativo 3: due query separate unite
-        const { data: own } = await db.from('iam_trattative').select('*').order('data_ins',{ascending:false}).eq('utente_id', ME.id);
-        const { data: shared } = await db.from('iam_trattative').select('*').order('data_ins',{ascending:false}).contains('condivisi_con', [ME.id]);
-        const seen = new Set();
-        data = [...(own||[]), ...(shared||[])].filter(t => { if(seen.has(t.id)) return false; seen.add(t.id); return true; });
-        error = null;
-      }
-      if (error) {
-        // Fallback finale: solo proprie
-        ({ data, error } = await db.from('iam_trattative').select('*').order('data_ins',{ascending:false}).eq('utente_id', ME.id));
-      }
-      if (error) { console.warn('loadTrattDB:', error.message); PIPE = []; return; }
-      PIPE = (data || []).map(mapT);
-      savePipe(); return;
-    }
-    const { data, error } = await db.from('iam_trattative').select('*').order('data_ins',{ascending:false});
+    let q = db.from('iam_trattative').select('*').order('data_ins', { ascending: false });
+    if (!(TRT_AMBITO === 'agenzia' && isPipelineAdmin())) q = q.or(`utente_id.eq.${ME.id},condivisi_con.cs.{${ME.id}}`);
+    const { data, error } = await q;
     if (error) { console.warn('loadTrattDB:', error.message); PIPE = []; return; }
     PIPE = (data || []).map(mapT);
     savePipe();
@@ -19610,59 +20124,55 @@ async function loadTrattDB() {
   }
 }
 
+/* Salva e restituisce l'id. Un errore NON si inghiotte: prima la scheda si
+   chiudeva come se avesse salvato anche quando il database diceva di no, e la
+   trattativa spariva alla prima rilettura (§47, BUG 1). E un aggiornamento che
+   tocca zero righe non e' un successo. */
 async function saveTrattDB(t) {
-  if (!db || !ME) { savePipe(); return; }
-  try {
-    const isTemp = !t.id || String(t.id).length >= 13;
-    if (isTemp) {
-      const payload = {
-        cliente: t.cliente || '',
-        prodotto: t.prodotto || null,
-        importo: parseNum(t.importo) || 0,
-        status: t.status || 'aperta',
-        recall: t.recall || null,
-        prob: t.prob ? parseInt(t.prob) : null,
-        prior: t.prior || null,
-        collab: t.collab || null,
-        condivisi_con: t.condivisi_con || [],
-        note: t.note || null,
-        data_ins: t.data_ins || new Date().toISOString().split('T')[0],
-        utente_id: ME.id,
-        aggiornato_il: new Date().toISOString()
-      };
-      const { data, error } = await db.from('iam_trattative').insert(payload).select('id').single();
-      if (error) throw error;
-      if (data?.id) { const idx = PIPE.findIndex(x=>x.id===t.id); if(idx>=0) PIPE[idx].id = String(data.id); t.id = String(data.id); savePipe(); }
-    } else {
-      const existing = PIPE.find(x => x.id === String(t.id));
-      const payload = {
-        cliente: t.cliente || '',
-        prodotto: t.prodotto || null,
-        importo: parseNum(t.importo) || 0,
-        status: t.status || 'aperta',
-        recall: t.recall || null,
-        prob: t.prob ? parseInt(t.prob) : null,
-        prior: t.prior || null,
-        collab: t.collab || null,
-        condivisi_con: t.condivisi_con || [],
-        note: t.note || null,
-        data_ins: t.data_ins || new Date().toISOString().split('T')[0],
-        utente_id: existing?.utente_id || ME.id,
-        aggiornato_il: new Date().toISOString()
-      };
-      const { error } = await db.from('iam_trattative').update(payload).eq('id', parseInt(t.id));
-      if (error) throw error;
-      logMovimento('Trattativa aggiornata', 'trattativa', payload.cliente || null, String(t.id));
-    }
-  } catch(e) { console.warn('Errore save trattativa:', e); savePipe(); }
+  if (!db || !ME) throw new Error('nessun collegamento all’archivio');
+  const esistente = t.id ? PIPE.find(x => x.id === String(t.id)) : null;
+  const payload = {
+    cliente: t.cliente || '', anagrafica_id: t.anagrafica_id || null,
+    ramo: t.ramo || null, target: !!t.target,
+    compagnia_id: t.compagnia_id || null, compagnia: t.compagnia || null,
+    prodotto_id: t.prodotto_id || null, prodotto: t.prodotto || null,
+    richiede_autorizzazione: !!t.richiede_autorizzazione,
+    premio_lordo: t.premio_lordo, imposta_provinciale: t.imposta_provinciale,
+    aliquota_imposte: t.aliquota_imposte, aliquota_fonte: t.aliquota_fonte, premio_netto: t.premio_netto,
+    /* `importo` resta allineato al lordo: la Scrivania e lo storico lo leggono. */
+    importo: t.premio_lordo !== null && t.premio_lordo !== undefined ? t.premio_lordo : (esistente ? esistente.importo : 0),
+    status: t.status || 'prospect', recall: t.recall || null, recall_ora: t.recall_ora || null,
+    prob: t.prob ? parseInt(t.prob, 10) : null, prior: t.prior || null,
+    collaboratore_id: t.collaboratore_id || null, collab: t.collab || null,
+    condivisi_con: t.condivisi_con || [], note: t.note || null,
+    aggiornato_il: new Date().toISOString()
+  };
+  if ('autorizzazione_stato' in t) payload.autorizzazione_stato = t.autorizzazione_stato;
+  if (!esistente) {
+    payload.utente_id = ME.id;
+    payload.data_ins = cntOggiIso();
+    const { data, error } = await db.from('iam_trattative').insert(payload).select('id').single();
+    if (error) throw error;
+    if (!data?.id) throw new Error('il database non ha restituito la trattativa creata');
+    logMovimento('Trattativa creata', 'trattativa', payload.cliente || null, String(data.id));
+    return String(data.id);
+  }
+  const { data, error } = await db.from('iam_trattative').update(payload).eq('id', parseInt(t.id, 10)).select('id');
+  if (error) throw error;
+  if (!data || !data.length) throw new Error('nessuna riga aggiornata: la trattativa non è tua o non c’è più');
+  logMovimento('Trattativa aggiornata', 'trattativa', payload.cliente || null, String(t.id));
+  return String(t.id);
 }
 
-async function delTrattDB(id) {
-  if (!db) { loadPipe(); PIPE=PIPE.filter(t=>t.id!==id); savePipe(); return; }
+async function delTrattDB(id, t) {
+  if (!db) return;
   try {
-    await db.from('iam_trattative').delete().eq('id', id);
+    const { error } = await db.from('iam_trattative').delete().eq('id', id);
+    if (error) throw error;
+    /* Il richiamo che la trattativa aveva messo in Agenda se ne va con lei. */
+    if (t && t.agenda_id) await db.from('iam_agenda').delete().eq('id', t.agenda_id);
     logMovimento('Trattativa eliminata', 'trattativa', null, String(id));
-  } catch(e) { console.warn(e); }
+  } catch(e) { alert('Non eliminata: ' + (e.message || e)); }
 }
 
 // ─── CARICA AGENDA DA SUPABASE ────────────────────────────────────────────────

@@ -66,7 +66,10 @@ e.prova('LE TRE TENDINE NON LEGGONO PIÙ GLI ACCOUNT', () => {
 
   const i = html.indexOf("const sel = document.getElementById('mt-collab');");
   const seg = html.slice(i, i + 1600);
-  deve(/colOpzioniNome\(/.test(seg), 'la scheda della trattativa non usa la tendina unica');
+  /* Dall'08/10/2026 la scheda salva l'IDENTIFICATIVO della persona (e il nome
+     accanto, per le righe vecchie): la tendina e' `colOpzioniId`, che legge lo
+     stesso registro. La regola e' «dal registro», non «per nome». */
+  deve(/colOpzioni(Nome|Id)\(/.test(seg), 'la scheda della trattativa non usa la tendina unica');
   deve(/mt-condividi|shareSel/.test(seg), 'la condivisione è sparita insieme al resto');
 
   const prod = html.slice(html.indexOf("const collabSel = document.getElementById('prod-collab');"), html.indexOf("const anno = parseInt(annoSel"));

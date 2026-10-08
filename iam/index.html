@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.53.0">
-<meta name="app-versione-nome" content="Trattative: ramo, compagnia, prodotto, cliente dal portafoglio o prospect fast, richiamo in Agenda, grafici per prodotto e imponibile dal lordo">
+<meta name="app-versione" content="0.54.0">
+<meta name="app-versione-nome" content="Trattative: la pipeline a colpo d'occhio, i richiami da fare, e niente più aliquote">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1822,52 +1822,137 @@ input[type=file]{display:none;}
    della serie «in corso» e' dichiarato qui e non su :root: la tavolozza del
    kit e' chiara anche col tema scuro, e il blu del grafico Produzione e'
    pensato per l'altro sfondo. */
-#panel-pipeline{--trt-corso:#1d4ed8;--trt-corso-bg:#eef3ff;padding-bottom:24px}
+#panel-pipeline{
+  --trt-ink:#0c1a2a; --trt-ink2:#14304a; --trt-riga:rgba(148,178,214,.10);
+  --trt-chiaro:#e8eef6; --trt-chiaro2:#9fb3c8;
+  --trt-corso:#2563eb; --trt-corso-bg:#eef3ff;
+  --trt-s-prospect:#94a3b8; --trt-s-preventivo:#38bdf8; --trt-s-trattativa:#f59e0b; --trt-s-aperta:#a78bfa;
+  --trt-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  padding-bottom:24px}
 #pp-tratt,#pp-agenda{padding:0 16px}
 .trt-off{display:none}
-.trt-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 12px}
-.trt-k{background:var(--w1-card);border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);padding:12px 14px;box-shadow:var(--w1-ombra)}
-.trt-k-t{font-size:11px;color:var(--w1-testo3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-.trt-k-v{font-size:21px;font-weight:800;color:var(--w1-testo);margin-top:3px;font-variant-numeric:tabular-nums}
-.trt-k-s{font-size:11.5px;color:var(--w1-testo2);margin-top:2px}
-.trt-k.corso{border-top:3px solid var(--trt-corso)}
-.trt-k.vinta{border-top:3px solid var(--w1-verde)}
-.trt-k.persa{border-top:3px solid var(--w1-rosso)}
-.trt-k.aut{border-top:3px solid var(--w1-ambra)}
+.trt-num{font-family:var(--trt-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+
+/* La testata: la pipeline attiva, su fondo scuro e una griglia appena
+   accennata. È il numero che si guarda per primo, quindi è l'unico grande. */
+.trt-hero{position:relative;overflow:hidden;border-radius:calc(var(--w1-raggio) + 6px);padding:20px 22px 18px;margin:0 0 12px;
+  color:var(--trt-chiaro);background:
+    linear-gradient(var(--trt-riga) 1px,transparent 1px) 0 0/28px 28px,
+    linear-gradient(90deg,var(--trt-riga) 1px,transparent 1px) 0 0/28px 28px,
+    radial-gradient(120% 140% at 100% 0%,rgba(37,99,235,.35),transparent 55%),
+    linear-gradient(135deg,var(--trt-ink),var(--trt-ink2));
+  box-shadow:var(--w1-ombra)}
+.trt-hero-su{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
+.trt-eti{font-family:var(--trt-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--trt-chiaro2)}
+.trt-eti::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#34d399;margin-right:7px;vertical-align:1px;box-shadow:0 0 0 3px rgba(52,211,153,.18)}
+.trt-hero-v{font-size:34px;font-weight:800;line-height:1.1;margin-top:6px}
+.trt-hero-s{font-size:12.5px;color:var(--trt-chiaro2);margin-top:4px}
+.trt-hero-s b{color:var(--trt-chiaro);font-weight:700}
+.trt-anello{display:flex;align-items:center;gap:12px}
+.trt-anello svg{width:64px;height:64px;flex-shrink:0}
+.trt-anello .trt-fondo{stroke:rgba(148,178,214,.18)}
+.trt-anello .trt-arco{stroke:#34d399;stroke-linecap:round;transition:stroke-dasharray .6s cubic-bezier(.2,.8,.2,1)}
+.trt-anello .trt-val{fill:var(--trt-chiaro);font-family:var(--trt-mono);font-size:15px;font-weight:700}
+.trt-anello-t{font-size:12px;color:var(--trt-chiaro2);max-width:13em;line-height:1.35}
+.trt-anello-t b{display:block;color:var(--trt-chiaro);font-size:13px}
+.trt-tubo{display:flex;height:10px;border-radius:999px;overflow:hidden;background:rgba(148,178,214,.14);margin:18px 0 12px;gap:2px}
+.trt-tubo span{display:block;height:100%;min-width:3px;transition:flex-grow .6s cubic-bezier(.2,.8,.2,1)}
+.trt-tappe{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:0;padding:0;list-style:none}
+.trt-tappa{font-size:12px;color:var(--trt-chiaro2)}
+.trt-tappa i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:0}
+.trt-tappa b{display:block;color:var(--trt-chiaro);font-size:15px;margin-top:2px}
+.trt-c-prospect{background:var(--trt-s-prospect)}.trt-c-preventivo{background:var(--trt-s-preventivo)}
+.trt-c-trattativa{background:var(--trt-s-trattativa)}.trt-c-aperta{background:var(--trt-s-aperta)}
+
+/* I riquadri sotto: piccoli, con l'icona nel suo cerchio. */
+.trt-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:0 0 12px}
+.trt-k{display:flex;gap:12px;align-items:flex-start;background:var(--w1-card);border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);padding:13px 14px;box-shadow:var(--w1-ombra)}
+.trt-k-i{flex-shrink:0;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:17px;background:var(--w1-sfondo);color:var(--w1-testo2)}
+.trt-k.vinta .trt-k-i{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
+.trt-k.persa .trt-k-i{background:var(--w1-rosso-bg);color:var(--w1-rosso)}
+.trt-k.aut .trt-k-i{background:var(--w1-ambra-bg);color:var(--w1-ambra)}
+.trt-k.trt-call .trt-k-i{background:var(--trt-corso-bg);color:var(--trt-corso)}
+.trt-k-t{font-family:var(--trt-mono);font-size:10px;color:var(--w1-testo3);letter-spacing:.1em;text-transform:uppercase}
+.trt-k-v{font-size:19px;font-weight:800;color:var(--w1-testo);margin-top:2px;white-space:nowrap}
+.trt-k-s{font-size:11.5px;color:var(--w1-testo2);margin-top:1px}
+.trt-k.trt-allarme{border-color:var(--w1-rosso)}
+.trt-k.trt-allarme .trt-k-v{color:var(--w1-rosso)}
+
+/* I due grafici per prodotto. */
 .trt-grafici{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px}
-.trt-tot{font-size:12px;color:var(--w1-testo2);font-variant-numeric:tabular-nums;white-space:nowrap}
-.trt-barre{display:flex;flex-direction:column;gap:9px;margin:0;padding:0;list-style:none}
-.trt-b{display:grid;grid-template-columns:minmax(0,9.5em) minmax(0,1fr) auto;align-items:center;gap:10px;font-size:12.5px}
-.trt-b-n{display:block;color:var(--w1-testo);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.trt-b-pista{display:block;height:12px;background:var(--w1-sfondo);border-radius:2px;overflow:hidden}
-.trt-b-pieno{display:block;height:100%;border-radius:2px;background:var(--trt-corso);min-width:2px}
-.trt-barre.vinta .trt-b-pieno{background:var(--w1-verde)}
+.trt-tot{font-size:12.5px;font-weight:700;color:var(--w1-testo);white-space:nowrap}
+.trt-barre{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
+.trt-b{display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;gap:4px 10px;font-size:12.5px}
+.trt-b-r{font-family:var(--trt-mono);font-size:10.5px;color:var(--w1-testo3)}
+.trt-b-n{display:block;color:var(--w1-testo);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trt-b-pista{grid-column:2/4;display:block;height:6px;background:var(--w1-sfondo);border-radius:999px;overflow:hidden}
+.trt-b-pieno{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#60a5fa,var(--trt-corso));min-width:3px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.trt-barre.vinta .trt-b-pieno{background:linear-gradient(90deg,#4ade80,var(--w1-verde))}
 .trt-b-pieno.zero{background:transparent;min-width:0}
-.trt-b-v{text-align:right;font-variant-numeric:tabular-nums;color:var(--w1-testo);font-weight:700;white-space:nowrap}
-.trt-b-v small{display:block;font-weight:500;color:var(--w1-testo3);font-size:10.5px}
-.trt-vuoto{color:var(--w1-testo3);font-size:12.5px;padding:8px 0}
+.trt-b-v{text-align:right;color:var(--w1-testo);font-weight:700;white-space:nowrap}
+.trt-b-v small{font-weight:500;color:var(--w1-testo3);font-size:10.5px;margin-left:6px}
+.trt-vuoto{color:var(--w1-testo3);font-size:12.5px;padding:10px 0;display:flex;align-items:center;gap:8px}
+
 .trt-nota{font-size:12px;color:var(--w1-testo2);background:var(--w1-sfondo);border-radius:var(--w1-raggio);padding:8px 10px;margin-bottom:10px}
-.trt-avv{font-size:12px;color:var(--w1-ambra);background:var(--w1-ambra-bg);border-radius:var(--w1-raggio);padding:8px 10px;margin-top:10px}
-.trt-filtri .d-inp{width:100%;height:36px;padding:0 10px;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);background:var(--w1-card);color:var(--w1-testo);font:inherit;font-size:13px}
-.trt-filtri .d-inp:focus{outline:none;box-shadow:var(--w1-focus);border-color:var(--w1-verde)}
-.trt-filtri{display:grid;grid-template-columns:minmax(180px,2fr) repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:0 0 10px}
+.trt-avv{font-size:12px;color:var(--w1-ambra);background:var(--w1-ambra-bg);border-radius:var(--w1-raggio);padding:8px 10px;margin:0 0 10px}
+
+/* La barra dei filtri: una riga sola, la ricerca con la sua lente. */
+.trt-filtri{display:grid;grid-template-columns:minmax(200px,2.2fr) repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0 0 10px}
+.trt-cerca{position:relative}
+.trt-cerca i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--w1-testo3);font-size:15px;pointer-events:none}
+.trt-filtri .d-inp{width:100%;height:38px;padding:0 10px;border:1px solid var(--w1-bordo);border-radius:calc(var(--w1-raggio) + 4px);background:var(--w1-card);color:var(--w1-testo);font:inherit;font-size:13px;min-width:0;text-overflow:ellipsis}
+.trt-cerca .d-inp{padding-left:33px}
+.trt-filtri .d-inp:focus{outline:none;box-shadow:var(--w1-focus);border-color:var(--trt-corso)}
+
+/* L'elenco: ogni trattativa è una riga con la sua tappa scritta a lato. */
 .trt-lista{padding:0}
-.trt-r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:12px 14px;border-top:1px solid var(--w1-bordo)}
-.trt-r:first-child{border-top:none}
-.trt-r-cli{font-weight:700;color:var(--w1-testo);font-size:13.5px}
-.trt-r-sub{font-size:12px;color:var(--w1-testo2);margin-top:3px}
-.trt-r-sub.rec{color:var(--w1-testo3)}
-.trt-r-sub.rec.scad{color:var(--w1-rosso);font-weight:600}
+.trt-testa-l{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--w1-bordo);font-size:12px;color:var(--w1-testo2)}
+.trt-r{position:relative;display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px 14px 13px 17px;border-top:1px solid var(--w1-bordo);transition:background .15s}
+.trt-r:first-of-type{border-top:none}
+.trt-r:hover{background:var(--w1-sfondo)}
+.trt-r::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--trt-s-prospect)}
+.trt-r.f-preventivo::before{background:var(--trt-s-preventivo)}
+.trt-r.f-trattativa::before{background:var(--trt-s-trattativa)}
+.trt-r.f-aperta::before{background:var(--trt-s-aperta)}
+.trt-r.f-chiusa::before{background:var(--w1-verde)}
+.trt-r.f-persa::before{background:var(--w1-rosso)}
+.trt-av{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:13px;color:var(--trt-corso);background:var(--trt-corso-bg);font-family:var(--trt-mono)}
+.trt-r.f-chiusa .trt-av{color:var(--w1-verde-scuro);background:var(--w1-verde-tenue)}
+.trt-r.f-persa .trt-av{color:var(--w1-rosso);background:var(--w1-rosso-bg)}
+.trt-r-mid{min-width:0}
+.trt-hero-nota{margin-top:8px}
+.trt-r-cli{font-weight:700;color:var(--w1-testo);font-size:13.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.trt-r-sub{font-size:12px;color:var(--w1-testo2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trt-r-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.trt-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--w1-sfondo);color:var(--w1-testo2);white-space:nowrap}
+.trt-chip.trt-scad{background:var(--w1-rosso-bg);color:var(--w1-rosso)}
+.trt-chip.trt-oggi{background:var(--w1-ambra-bg);color:var(--w1-ambra)}
+.trt-passi{display:inline-flex;gap:3px;margin-left:2px}
+.trt-passi span{width:14px;height:4px;border-radius:2px;background:var(--w1-bordo)}
+.trt-passi span.trt-si{background:var(--trt-corso)}
+.trt-r.f-chiusa .trt-passi span{background:var(--w1-verde)}
+.trt-r.f-persa .trt-passi span.trt-si{background:var(--w1-rosso)}
 .trt-r-dx{text-align:right}
-.trt-r-pr{font-size:15px;font-weight:800;color:var(--w1-testo);font-variant-numeric:tabular-nums}
-.trt-r-net{font-size:11px;color:var(--w1-testo3)}
+.trt-r-pr{font-size:15px;font-weight:800;color:var(--w1-testo)}
+.trt-r-net{font-size:11px;color:var(--w1-testo3);font-family:var(--trt-mono)}
 .trt-r-az{display:flex;gap:6px;justify-content:flex-end;margin-top:6px}
-.trt-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:5px;vertical-align:1px;background:var(--w1-sfondo);color:var(--w1-testo2)}
+.trt-r-az .d-btn{height:30px;padding:0 9px}
+.trt-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--w1-sfondo);color:var(--w1-testo2)}
 .trt-tag.corso{background:var(--trt-corso-bg);color:var(--trt-corso)}
 .trt-tag.vinta{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
 .trt-tag.persa{background:var(--w1-rosso-bg);color:var(--w1-rosso)}
 .trt-tag.aut{background:var(--w1-ambra-bg);color:var(--w1-ambra)}
 .trt-tag.target{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
+@media (prefers-reduced-motion:reduce){.trt-b-pieno,.trt-tubo span,.trt-anello .trt-arco{transition:none}}
+@media (max-width:640px){
+  .trt-hero{padding:16px}.trt-hero-v{font-size:27px}
+  .trt-kpi{grid-template-columns:1fr 1fr}.trt-k{padding:11px;gap:9px}.trt-k-i{width:28px;height:28px;font-size:15px}.trt-k-v{font-size:16px}
+  .trt-b-v small{display:block;margin-left:0}
+  .trt-filtri{grid-template-columns:1fr 1fr}.trt-cerca{grid-column:1/-1}
+  .trt-r{grid-template-columns:32px minmax(0,1fr)}.trt-av{width:32px;height:32px}
+  .trt-r-dx{grid-column:2;text-align:left;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .trt-r-az{margin-top:0;margin-left:auto}
+}
 /* La scheda della trattativa sta nella finestra di IAM, col tema di IAM. */
 .trt-sez{font-size:11px;font-weight:800;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px}
 .trt-sez:first-child{margin-top:4px}
@@ -1882,13 +1967,9 @@ input[type=file]{display:none;}
 .trt-ris small{color:var(--txt3);margin-left:6px}
 .trt-scelto{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surf2);border-radius:var(--rs);padding:10px 12px;font-size:13.5px}
 .trt-scelto b{font-weight:700}
-.trt-calc{font-size:13px;background:var(--surf2);border-radius:var(--rs);padding:10px 12px;margin-top:8px;color:var(--txt)}
-.trt-calc.no{color:var(--amb-txt);background:var(--amb-bg)}
-.trt-calc strong{font-size:15px}
 .trt-msg{font-size:12.5px;margin-top:8px;color:var(--red-txt)}
 .trt-msg.ok{color:var(--grn-txt)}
 .trt-chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt);margin-top:10px}
-@media (max-width:640px){.trt-b{grid-template-columns:minmax(0,7em) minmax(0,1fr) auto}.trt-filtri{grid-template-columns:1fr 1fr}}
 </style>
 <link rel="stylesheet" href="withus-pictograms.css?v=20261007">
 <!-- impronta withus-one.css: 9d3672a1 — se cambia, cambia anche il ?v= qui sotto -->
@@ -2974,19 +3055,21 @@ input[type=file]{display:none;}
   <span id="pt-tratt" hidden></span>
   <!-- Trattative -->
   <div id="pp-tratt">
-    <div id="trt-kpi" class="trt-kpi" aria-live="polite"></div>
+    <section class="trt-hero" id="trt-hero" aria-live="polite"></section>
+    <div id="trt-kpi" class="trt-kpi"></div>
     <div class="trt-grafici">
       <div class="d-card">
-        <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-progress"></i></span> In corso, per prodotto</div><span class="trt-tot" id="trt-g-corso-t"></span></div>
+        <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-chart-bar"></i></span> In corso, per prodotto</div><span class="trt-tot trt-num" id="trt-g-corso-t"></span></div>
         <div class="card-body" id="trt-g-corso"></div>
       </div>
       <div class="d-card">
-        <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-circle-check"></i></span> Chiuse vinte, per prodotto</div><span class="trt-tot" id="trt-g-vinte-t"></span></div>
+        <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-trophy"></i></span> Chiuse vinte, per prodotto</div><span class="trt-tot trt-num" id="trt-g-vinte-t"></span></div>
         <div class="card-body" id="trt-g-vinte"></div>
       </div>
     </div>
     <div class="trt-filtri">
-      <input type="search" id="tr-search" class="d-inp" placeholder="Cerca cliente, prodotto, compagnia…" oninput="renderTratt()" aria-label="Cerca fra le trattative">
+      <div class="trt-cerca"><i class="ti ti-search" aria-hidden="true"></i>
+        <input type="search" id="tr-search" class="d-inp" placeholder="Cerca cliente, prodotto, compagnia…" oninput="renderTratt()" aria-label="Cerca fra le trattative" autocomplete="off"></div>
       <select id="tr-filt" class="d-inp" onchange="renderTratt()" aria-label="Stato">
         <option value="">Tutti gli stati</option>
         <option value="corso">Tutte le in corso</option>
@@ -2996,6 +3079,7 @@ input[type=file]{display:none;}
         <option value="chiusa">Chiuse vinte</option>
         <option value="persa">Perse</option>
         <option value="autorizzare">Da autorizzare</option>
+        <option value="richiamare">Da richiamare</option>
       </select>
       <select id="tr-ramo" class="d-inp" onchange="renderTratt()" aria-label="Ramo"><option value="">Tutti i rami</option></select>
       <select id="tr-collab" class="d-inp" onchange="renderTratt()" aria-label="Collaboratore"><option value="">Tutti i collab.</option></select>
@@ -3007,13 +3091,13 @@ input[type=file]{display:none;}
         <option value="365">Ultimo anno</option>
       </select>
       <select id="tr-ambito" class="d-inp" onchange="trtCambiaAmbito()" aria-label="Di chi" hidden>
-        <option value="mie">Le mie e condivise</option>
+        <option value="mie">Mie e condivise</option>
         <option value="agenzia">Tutta l’agenzia</option>
       </select>
     </div>
-    <div class="d-card"><div class="card-body trt-lista" id="tr-list"></div></div>
+    <div class="d-card"><div class="trt-testa-l" id="tr-conto"></div><div class="card-body trt-lista" id="tr-list"></div></div>
   </div>
-<!-- Agenda -->
+  <!-- Agenda -->
   <div id="pp-agenda" class="trt-off">
     <div class="d-card">
       <div class="card-head"><div class="card-title"><span class="pictogram"><i class="ti ti-calendar-event"></i></span> Prossimi appuntamenti</div>
@@ -4321,8 +4405,8 @@ input[type=file]{display:none;}
 
       <div class="trt-sez">Prodotto</div>
       <div class="fgrid">
-        <div class="fld"><label for="mt-ramo">Ramo (tipo trattativa)</label><select id="mt-ramo" onchange="trtProdotti();trtCalcola()"></select></div>
-        <div class="fld"><label for="mt-compagnia">Compagnia</label><select id="mt-compagnia" onchange="trtProdotti();trtCalcola()"></select></div>
+        <div class="fld"><label for="mt-ramo">Ramo (tipo trattativa)</label><select id="mt-ramo" onchange="trtProdotti()"></select></div>
+        <div class="fld"><label for="mt-compagnia">Compagnia</label><select id="mt-compagnia" onchange="trtProdotti()"></select></div>
         <div class="fld"><label for="mt-prodotto-id">Prodotto</label><select id="mt-prodotto-id" onchange="trtProdottoScelto()"></select></div>
         <div class="fld" id="mt-prodotto-libero"><label for="mt-prodotto">Prodotto (scritto a mano)</label><input type="text" id="mt-prodotto" placeholder="se non è in catalogo"></div>
       </div>
@@ -4334,11 +4418,8 @@ input[type=file]{display:none;}
 
       <div class="trt-sez">Premio</div>
       <div class="fgrid">
-        <div class="fld"><label for="mt-lordo">Premio lordo (€)</label><input type="number" id="mt-lordo" step="0.01" min="0" inputmode="decimal" oninput="trtCalcola()"></div>
-        <div class="fld"><label for="mt-aliquota">Aliquota imposte % <small>(facoltativa)</small></label><input type="number" id="mt-aliquota" step="0.01" min="0" max="100" inputmode="decimal" oninput="trtCalcola()"></div>
-        <div class="fld" id="mt-prov-box" hidden><label for="mt-prov">Imposta provinciale RCA %</label><input type="number" id="mt-prov" step="0.5" min="0" max="16" inputmode="decimal" placeholder="12,5 – 16" oninput="trtCalcola()"></div>
+        <div class="fld"><label for="mt-lordo">Premio lordo (€)</label><input type="number" id="mt-lordo" step="0.01" min="0" inputmode="decimal"></div>
       </div>
-      <div class="trt-calc" id="mt-calc" aria-live="polite"></div>
 
       <div class="trt-sez">Lavorazione</div>
       <div class="fgrid">
@@ -12667,9 +12748,7 @@ function catApriProdotto(id) {
       '<div><label class="cl-sub">Altri nomi (uno per riga)</label><textarea id="cat-p-alias" class="d-inp" rows="2">' + esc(((p && p.alias) || []).join('\n')) + '</textarea></div>' +
       '<div><label class="cl-sub">Valido dal</label><input type="date" id="cat-p-dal" class="d-inp" value="' + esc(p ? (p.dal || '') : '') + '"></div>' +
       '<div><label class="cl-sub">Valido fino al</label><input type="date" id="cat-p-al" class="d-inp" value="' + esc(p ? (p.al || '') : '') + '"></div>' +
-      '<div><label class="cl-sub">Aliquota imposte % (facoltativa)</label><input type="number" step="0.01" min="0" max="100" id="cat-p-aliq" class="d-inp" value="' + esc(p && p.aliquota_imposte !== null && p.aliquota_imposte !== undefined ? p.aliquota_imposte : '') + '" placeholder="es. 22,25"></div>' +
     '</div>' +
-    '<div class="cl-sub" style="margin-top:4px">L’aliquota serve alle trattative per ricavare l’imponibile dal premio lordo. Si scrive solo se la si conosce: un prodotto con più garanzie ha imposte diverse per ognuna.</div>' +
     '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px">' +
       '<input type="checkbox" id="cat-p-attivo"' + (!p || p.attivo !== false ? ' checked' : '') + '> Attivo (compare nelle tendine)</label>' +
     (p && p.da_verificare ? '<div class="cnt-avv" style="margin-top:10px">Questo prodotto è nato da un’importazione e non l’ha ancora guardato nessuno. Salvando, smette di essere «da verificare».</div>' : '') +
@@ -12697,10 +12776,8 @@ async function catSalvaProdotto(id, compagniaId) {
     dal: catVal('cat-p-dal') || null,
     al: catVal('cat-p-al') || null,
     attivo: !!document.getElementById('cat-p-attivo')?.checked,
-    alias: (document.getElementById('cat-p-alias')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
-    aliquota_imposte: catVal('cat-p-aliq') === '' ? null : Number(catVal('cat-p-aliq'))
+    alias: (document.getElementById('cat-p-alias')?.value || '').split('\n').map(s => s.trim()).filter(Boolean)
   };
-  if (riga.aliquota_imposte !== null && !(riga.aliquota_imposte >= 0 && riga.aliquota_imposte <= 100)) { catMsg(['L’aliquota delle imposte va da 0 a 100.']); return; }
   /* Le stesse regole che la prova misura in Node: il motore le sa, questa
      schermata le chiede. Due validazioni scritte a mano sarebbero due regole,
      e quella che sbaglia sarebbe quella che nessuno guarda. */
@@ -19055,7 +19132,7 @@ async function trtCatalogo(forza) {
   try {
     const [c, p] = await Promise.all([
       db.from('quote_compagnie').select('id,nome,alias,attiva').order('nome'),
-      db.from('iam_compagnia_prodotti').select('id,compagnia_id,nome,ramo,attivo,al,aliquota_imposte').order('nome')
+      db.from('iam_compagnia_prodotti').select('id,compagnia_id,nome,ramo,attivo,al').order('nome')
     ]);
     if (c.error || p.error) throw (c.error || p.error);
     cat.compagnie = c.data || []; cat.prodotti = p.data || [];
@@ -19099,6 +19176,7 @@ function trtFiltra(lista, conStato) {
   if (conStato && ft) {
     if (ft === 'corso') l = l.filter(t => M && M.fase(t.status) === 'corso');
     else if (ft === 'autorizzare') l = l.filter(t => t.richiede_autorizzazione && t.autorizzazione_stato === 'in_attesa');
+    else if (ft === 'richiamare') l = l.filter(t => { const x = trtRich(t, cntOggiIso()); return x && x.giorni <= 0; });
     else l = l.filter(t => t.status === ft);
   }
   if (q) l = l.filter(t => [t.cliente, t.prodotto, t.compagnia, t.collab, trtRamoNome(t.ramo)].join(' ').toLowerCase().includes(q));
@@ -19115,32 +19193,83 @@ function trtFiltra(lista, conStato) {
    hanno un premio NON si disegna lungo zero senza dirlo: compare con la
    pista vuota e la scritta «premio non indicato» (§36). */
 function trtBarre(gruppi, classe, vuoto) {
-  if (!gruppi.length) return '<div class="trt-vuoto">' + esc(vuoto) + '</div>';
+  if (!gruppi.length) return '<div class="trt-vuoto"><i class="ti ti-chart-bar-off" aria-hidden="true"></i>' + esc(vuoto) + '</div>';
   const max = Math.max.apply(null, gruppi.map(g => g.valore)) || 0;
-  return '<ul class="trt-barre ' + classe + '">' + gruppi.map(g => {
+  return '<ul class="trt-barre ' + classe + '">' + gruppi.map((g, i) => {
     const w = max > 0 ? Math.max(g.valore / max * 100, g.valore > 0 ? 1.5 : 0) : 0;
     const quante = g.n + (g.n === 1 ? ' trattativa' : ' trattative');
     const senza = g.senzaValore ? ' · ' + g.senzaValore + ' senza premio' : '';
     const valore = g.valore > 0 ? trtEuro(g.valore) : 'premio non indicato';
     return '<li class="trt-b" title="' + esc(g.nome + ': ' + valore + ' — ' + quante + senza) + '">' +
+      '<span class="trt-b-r">' + String(i + 1).padStart(2, '0') + '</span>' +
       '<span class="trt-b-n">' + esc(g.nome) + '</span>' +
-      '<span class="trt-b-pista" aria-hidden="true"><span class="trt-b-pieno' + (w ? '' : ' zero') + '" style="width:' + w.toFixed(1) + '%"></span></span>' +
-      '<span class="trt-b-v">' + esc(valore) + '<small>' + esc(quante + senza) + '</small></span></li>';
+      '<span class="trt-b-v trt-num">' + esc(valore) + '<small>' + esc(quante + senza) + '</small></span>' +
+      '<span class="trt-b-pista" aria-hidden="true"><span class="trt-b-pieno' + (w ? '' : ' zero') + '" style="width:' + w.toFixed(1) + '%"></span></span></li>';
   }).join('') + '</ul>';
 }
 
-function trtKpi(r) {
-  const k = (cls, t, v, sub) => '<div class="trt-k ' + cls + '"><div class="trt-k-t">' + esc(t) + '</div><div class="trt-k-v">' + esc(v) + '</div><div class="trt-k-s">' + esc(sub) + '</div></div>';
+/* La testata: il valore della pipeline, il ponderato, l'anello del tasso di
+   chiusura e il tubo delle tappe. Il tubo si divide per VALORE; se nessuna
+   tappa ha un premio si divide per NUMERO, e lo dice — un tubo vuoto quando
+   le trattative ci sono si legge come «non c'è niente». */
+function trtHero(r) {
+  const c = r.corso;
+  const tappe = c.perStato || [];
+  const perValore = tappe.some(x => x.valore > 0);
+  const tot = tappe.reduce((a, x) => a + (perValore ? x.valore : x.n), 0);
+  const tubo = tot > 0
+    ? tappe.filter(x => (perValore ? x.valore : x.n) > 0).map(x =>
+        '<span class="trt-c-' + x.stato + '" style="flex-grow:' + (perValore ? x.valore : x.n) + '" title="' + esc(x.nome) + '"></span>').join('')
+    : '';
+  const senza = c.senzaValore ? ' · <b>' + c.senzaValore + '</b> senza premio' : '';
+  const t = r.tassoChiusura;
+  const C = 2 * Math.PI * 26;
+  const anello = '<svg viewBox="0 0 64 64" role="img" aria-label="' + (t === null ? 'Tasso di chiusura non calcolabile' : 'Tasso di chiusura ' + t + '%') + '">' +
+    '<circle class="trt-fondo" cx="32" cy="32" r="26" fill="none" stroke-width="7"/>' +
+    (t === null ? '' : '<circle class="trt-arco" cx="32" cy="32" r="26" fill="none" stroke-width="7" transform="rotate(-90 32 32)" stroke-dasharray="' + (C * t / 100).toFixed(1) + ' ' + C.toFixed(1) + '"/>') +
+    '<text class="trt-val" x="32" y="37" text-anchor="middle">' + (t === null ? '—' : t + '%') + '</text></svg>';
+  return '<div class="trt-hero-su">' +
+      '<div><div class="trt-eti">Pipeline attiva</div>' +
+        '<div class="trt-hero-v trt-num">' + esc(trtEuro(c.valore)) + '</div>' +
+        '<div class="trt-hero-s">ponderato <b class="trt-num">' + esc(trtEuro(c.ponderato)) + '</b> · <b>' + c.n + '</b> ' + (c.n === 1 ? 'trattativa' : 'trattative') + senza + '</div></div>' +
+      '<div class="trt-anello">' + anello + '<div class="trt-anello-t"><b>Tasso di chiusura</b>' +
+        (t === null ? 'nessuna trattativa ancora decisa' : 'vinte su decise (vinte + perse)') + '</div></div>' +
+    '</div>' +
+    '<div class="trt-tubo" aria-hidden="true">' + tubo + '</div>' +
+    '<ul class="trt-tappe">' + tappe.map(x =>
+      '<li class="trt-tappa"><i class="trt-c-' + x.stato + '"></i>' + esc(x.nome) +
+        '<b class="trt-num">' + esc(trtEuro(x.valore)) + '</b>' + x.n + (x.n === 1 ? ' trattativa' : ' trattative') + '</li>').join('') + '</ul>' +
+    (tot > 0 && !perValore ? '<div class="trt-hero-s trt-hero-nota">Nessuna tappa ha un premio: il tubo è diviso per numero di trattative.</div>' : '');
+}
+
+function trtKpi(r, daRichiamare) {
+  const k = (cls, ico, t, v, sub) => '<div class="trt-k ' + cls + '"><span class="trt-k-i"><i class="ti ' + ico + '" aria-hidden="true"></i></span><div>' +
+    '<div class="trt-k-t">' + esc(t) + '</div><div class="trt-k-v trt-num">' + esc(v) + '</div><div class="trt-k-s">' + esc(sub) + '</div></div></div>';
   const senza = n => n ? ' · ' + n + ' senza premio' : '';
   const quante = n => n + (n === 1 ? ' trattativa' : ' trattative');
-  let h = k('corso', 'In corso', trtEuro(r.corso.valore), quante(r.corso.n) + ' · ponderato ' + trtEuro(r.corso.ponderato) + senza(r.corso.senzaValore)) +
-          k('vinta', 'Chiuse vinte', trtEuro(r.vinte.valore), quante(r.vinte.n) + senza(r.vinte.senzaValore)) +
-          k('persa', 'Perse', trtEuro(r.perse.valore), quante(r.perse.n) + senza(r.perse.senzaValore)) +
-          k('', 'Tasso di chiusura', r.tassoChiusura === null ? '—' : r.tassoChiusura + '%',
-            r.tassoChiusura === null ? 'nessuna trattativa ancora decisa' : 'vinte su decise (vinte + perse)');
-  if (r.daAutorizzare) h += k('aut', 'Da autorizzare', String(r.daAutorizzare), 'aspettano la direzione');
+  let h = k('vinta', 'ti-trophy', 'Chiuse vinte', trtEuro(r.vinte.valore), quante(r.vinte.n) + senza(r.vinte.senzaValore)) +
+          k('persa', 'ti-circle-x', 'Perse', trtEuro(r.perse.valore), quante(r.perse.n) + senza(r.perse.senzaValore)) +
+          k('trt-call' + (daRichiamare.scaduti ? ' trt-allarme' : ''), 'ti-phone-call', 'Da richiamare', String(daRichiamare.n),
+            daRichiamare.n ? (daRichiamare.scaduti ? daRichiamare.scaduti + ' in ritardo' : 'oggi') : 'nessun richiamo arretrato');
+  if (r.daAutorizzare) h += k('aut', 'ti-shield-lock', 'Da autorizzare', String(r.daAutorizzare), 'aspettano la direzione');
   return h;
 }
+
+/* Il motore si carica con un contrassegno di versione e resta in cache dieci
+   minuti (§74): una scheda che ha la pagina nuova e il motore di stamattina
+   non deve fermarsi, deve solo non mostrare il conto alla rovescia. */
+function trtRich(t, oggi) {
+  const M = trtM();
+  return M && typeof M.richiamoStato === 'function' ? M.richiamoStato(t, oggi) : null;
+}
+
+function trtIniziali(n) {
+  const p = String(n || '').trim().split(/\s+/).filter(Boolean);
+  return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+/* I passi di una trattativa: prospect → preventivo → in trattativa → decisa. */
+var TRT_PASSI = { prospect: 1, preventivo: 2, trattativa: 3, aperta: 1, chiusa: 4, persa: 4 };
 
 function renderTratt() {
   loadTeam();
@@ -19157,13 +19286,17 @@ function renderTratt() {
   const amb = document.getElementById('tr-ambito');
   if (amb) amb.hidden = !isPipelineAdmin();
 
+  const oggi = cntOggiIso();
   const tutte = trtVisibili();
   /* I grafici e i numeri seguono i filtri tranne lo stato: dividono gia' loro
      in corso, vinte e perse, e un filtro sullo stato svuoterebbe due grafici
      su tre senza dire perche'. */
   if (M) {
-    const r = M.riepilogo(trtFiltra(tutte, false));
-    const kp = document.getElementById('trt-kpi'); if (kp) kp.innerHTML = trtKpi(r);
+    const base = trtFiltra(tutte, false);
+    const r = M.riepilogo(base);
+    const rich = base.map(t => trtRich(t, oggi)).filter(x => x && x.giorni <= 0);
+    const hero = document.getElementById('trt-hero'); if (hero) hero.innerHTML = trtHero(r);
+    const kp = document.getElementById('trt-kpi'); if (kp) kp.innerHTML = trtKpi(r, { n: rich.length, scaduti: rich.filter(x => x.scaduto).length });
     const g1 = document.getElementById('trt-g-corso');
     if (g1) g1.innerHTML = trtBarre(r.corso.perProdotto, 'corso', 'Nessuna trattativa in corso.');
     const g2 = document.getElementById('trt-g-vinte');
@@ -19171,20 +19304,21 @@ function renderTratt() {
     const t1 = document.getElementById('trt-g-corso-t'); if (t1) t1.textContent = trtEuro(r.corso.valore);
     const t2 = document.getElementById('trt-g-vinte-t'); if (t2) t2.textContent = trtEuro(r.vinte.valore);
   } else {
-    const kp = document.getElementById('trt-kpi');
-    if (kp) kp.innerHTML = '<div class="trt-avv">Il programma dei conti delle trattative non si è caricato: ricarica la pagina.</div>';
+    const hero = document.getElementById('trt-hero');
+    if (hero) hero.innerHTML = '<div class="trt-hero-s">Il programma dei conti delle trattative non si è caricato: ricarica la pagina.</div>';
   }
 
   const lista = trtFiltra(tutte, true);
   const pr = { urgente: 0, alta: 1, normale: 2 };
   lista.sort((a, b) => (pr[a.prior] ?? 2) - (pr[b.prior] ?? 2) || String(b.data_ins || '').localeCompare(String(a.data_ins || '')));
-  const oggi = cntOggiIso();
+  const conto = document.getElementById('tr-conto');
+  if (conto) conto.innerHTML = '<span><b class="trt-num">' + lista.length + '</b> ' + (lista.length === 1 ? 'trattativa' : 'trattative') +
+    (lista.length !== tutte.length ? ' su ' + tutte.length : '') + '</span><span>ordinate per priorità</span>';
   const el = document.getElementById('tr-list');
   if (!el) return;
   el.innerHTML = lista.length ? lista.map(t => {
     const f = M ? M.fase(t.status) : 'corso';
     const sc = SC[t.status] || { lbl: t.status || 'In corso' };
-    const scad = t.recall && String(t.recall).slice(0, 10) <= oggi && f === 'corso';
     const canEdit = isPipelineMine(t) || isPipelineAdmin();
     const sharedNames = (t.condivisi_con || []).map(uid => {
       const u = UTENTI_LISTA.find(x => x.id === uid);
@@ -19195,24 +19329,32 @@ function renderTratt() {
         (t.autorizzazione_stato === 'concessa' ? 'Autorizzata' : t.autorizzazione_stato === 'negata' ? 'Autorizzazione negata' : 'Da autorizzare') + '</span>' : '';
     const cosa = [trtRamoNome(t.ramo), t.compagnia, t.prodotto].filter(Boolean).join(' · ') || 'Prodotto non indicato';
     const v = M ? M.valore(t) : null;
-    return '<div class="trt-r">' +
-      '<div><div class="trt-r-cli">' + esc(t.cliente || '—') +
-        '<span class="trt-tag ' + f + '">' + esc(sc.lbl) + '</span>' +
+    const rs = trtRich(t, oggi);
+    const passo = TRT_PASSI[String(t.status || '').toLowerCase()] || 1;
+    const passi = '<span class="trt-passi" aria-label="Tappa ' + passo + ' di 4">' + [1, 2, 3, 4].map(i => '<span' + (i <= passo ? ' class="trt-si"' : '') + '></span>').join('') + '</span>';
+    const meta = [];
+    if (rs) meta.push('<span class="trt-chip ' + (rs.scaduto ? 'trt-scad' : rs.oggi ? 'trt-oggi' : '') + '"><i class="ti ti-phone" aria-hidden="true"></i> Richiamo ' + esc(rs.etichetta) + (t.recall_ora ? ' · ' + esc(t.recall_ora) : '') + '</span>');
+    else if (t.recall && f === 'corso') meta.push('<span class="trt-chip"><i class="ti ti-calendar-event" aria-hidden="true"></i> ' + esc(String(t.recall).slice(0, 10).split('-').reverse().join('/')) + '</span>');
+    if (t.agenda_id && f === 'corso') meta.push('<span class="trt-chip"><i class="ti ti-calendar-check" aria-hidden="true"></i> in Agenda</span>');
+    if (t.collab) meta.push('<span class="trt-chip"><i class="ti ti-user" aria-hidden="true"></i> ' + esc(t.collab) + '</span>');
+    if (sharedNames.length) meta.push('<span class="trt-chip"><i class="ti ti-users" aria-hidden="true"></i> ' + esc(sharedNames.join(', ')) + '</span>');
+    if (isPipelineSharedWithMe(t)) meta.push('<span class="trt-chip">Condivisa con te</span>');
+    return '<div class="trt-r f-' + esc(String(t.status || 'aperta').toLowerCase()) + '">' +
+      '<span class="trt-av" aria-hidden="true">' + esc(trtIniziali(t.cliente)) + '</span>' +
+      '<div class="trt-r-mid"><div class="trt-r-cli">' + esc(t.cliente || '—') +
+        '<span class="trt-tag ' + f + '">' + esc(sc.lbl) + '</span>' + passi +
         (t.target ? '<span class="trt-tag target">Target</span>' : '') + aut +
         (t.prior === 'urgente' ? '<span class="trt-tag persa">Urgente</span>' : t.prior === 'alta' ? '<span class="trt-tag aut">Alta</span>' : '') +
       '</div>' +
-      '<div class="trt-r-sub">' + esc(cosa) + (t.collab ? ' · ' + esc(t.collab) : '') + '</div>' +
-      (sharedNames.length ? '<div class="trt-r-sub rec">Condivisa con ' + esc(sharedNames.join(', ')) + '</div>' : '') +
-      (isPipelineSharedWithMe(t) ? '<div class="trt-r-sub rec">Condivisa con te</div>' : '') +
-      (t.recall ? '<div class="trt-r-sub rec' + (scad ? ' scad' : '') + '"><i class="ti ti-calendar-event"></i> Richiamo ' + esc(String(t.recall).slice(0, 10).split('-').reverse().join('/')) + (t.recall_ora ? ' alle ' + esc(t.recall_ora) : '') + (t.agenda_id ? ' · in Agenda' : '') + '</div>' : '') +
+      '<div class="trt-r-sub">' + esc(cosa) + '</div>' +
+      (meta.length ? '<div class="trt-r-meta">' + meta.join('') + '</div>' : '') +
       '</div>' +
-      '<div class="trt-r-dx"><div class="trt-r-pr">' + (v ? trtEuro(v) : '—') + '</div>' +
-        (t.premio_netto ? '<div class="trt-r-net">imponibile ' + trtEuro(Number(t.premio_netto)) + '</div>' : (v ? '<div class="trt-r-net">lordo</div>' : '<div class="trt-r-net">premio non indicato</div>')) +
-        (f === 'corso' ? '<div class="trt-r-net">probabilità ' + (t.prob || 0) + '%</div>' : '') +
-        (canEdit ? '<div class="trt-r-az"><button class="d-btn" type="button" aria-label="Modifica" onclick="openTrattModal(\'' + esc(t.id) + '\')"><i class="ti ti-pencil"></i></button>' +
-          '<button class="d-btn" type="button" aria-label="Elimina" onclick="delTratt(\'' + esc(t.id) + '\')"><i class="ti ti-trash"></i></button></div>' : '') +
+      '<div class="trt-r-dx"><div class="trt-r-pr trt-num">' + (v ? esc(trtEuro(v)) : '—') + '</div>' +
+        '<div class="trt-r-net">' + (v ? 'premio lordo' : 'premio non indicato') + (f === 'corso' ? ' · ' + (t.prob || 0) + '%' : '') + '</div>' +
+        (canEdit ? '<div class="trt-r-az"><button class="d-btn" type="button" aria-label="Modifica" title="Modifica" onclick="openTrattModal(\'' + esc(t.id) + '\')"><i class="ti ti-pencil"></i></button>' +
+          '<button class="d-btn" type="button" aria-label="Elimina" title="Elimina" onclick="delTratt(\'' + esc(t.id) + '\')"><i class="ti ti-trash"></i></button></div>' : '') +
       '</div></div>';
-  }).join('') : '<div class="trt-vuoto" style="padding:18px">Nessuna trattativa.</div>';
+  }).join('') : '<div class="trt-vuoto" style="padding:22px 14px"><i class="ti ti-inbox" aria-hidden="true"></i>Nessuna trattativa con questi filtri.</div>';
 }
 
 function encodeForAttr(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
@@ -19350,29 +19492,6 @@ function trtProdottoScelto(soloVista) {
     if (p.ramo && !trtV('mt-ramo')) trtSet('mt-ramo', p.ramo);
     if (!trtV('mt-compagnia')) trtSet('mt-compagnia', p.compagnia_id);
   }
-  trtCalcola();
-}
-
-function trtCalcola() {
-  const M = trtM(); const box = document.getElementById('mt-calc'); if (!box) return;
-  const ramo = trtV('mt-ramo');
-  document.getElementById('mt-prov-box').hidden = ramo !== 'rca';
-  if (!M) { box.className = 'trt-calc no'; box.textContent = 'Il programma del calcolo non si è caricato.'; return null; }
-  const p = (TRT_CAT?.prodotti || []).find(x => x.id === trtV('mt-prodotto-id'));
-  const r = M.netto(trtV('mt-lordo'), { ramo, prodotto: p ? p.aliquota_imposte : null, manuale: trtV('mt-aliquota'), provinciale: trtV('mt-prov') });
-  const ph = M.aliquota({ ramo, prodotto: p ? p.aliquota_imposte : null, provinciale: trtV('mt-prov') });
-  const al = document.getElementById('mt-aliquota');
-  if (al) al.placeholder = ph.aliquota !== null ? String(ph.aliquota).replace('.', ',') + ' (' + (ph.fonte === 'prodotto' ? 'dal prodotto' : 'di legge') + ')' : 'da dichiarare';
-  if (r.netto === null) {
-    box.className = 'trt-calc no';
-    box.textContent = r.motivo || 'Imponibile non calcolabile.';
-  } else {
-    box.className = 'trt-calc';
-    box.innerHTML = 'Imponibile <strong>' + esc(trtEuro(r.netto)) + '</strong> · imposte ' + esc(trtEuro(r.imposte)) +
-      ' <small>(aliquota ' + esc(String(r.aliquota).replace('.', ',')) + '% — ' + esc(r.spiega || '') + ')</small>' +
-      (r.avviso ? '<div class="cl-sub" style="margin-top:4px">' + esc(r.avviso) + '</div>' : '');
-  }
-  return r;
 }
 
 /* L'autorizzazione la concede la direzione. Chi non e' staff vede lo stato e
@@ -19417,8 +19536,6 @@ async function openTrattModal(id) {
   trtSet('mt-ramo', t?.ramo || '');
   trtSet('mt-prodotto', t?.prodotto_id ? '' : (t?.prodotto || ''));
   trtSet('mt-lordo', t ? (t.premio_lordo ?? (Number(t.importo) > 0 ? t.importo : '')) : '');
-  trtSet('mt-aliquota', t?.aliquota_fonte === 'manuale' ? t.aliquota_imposte : '');
-  trtSet('mt-prov', t?.imposta_provinciale ?? '');
   trtSet('mt-status', t?.status && SC[t.status] ? t.status : 'prospect');
   trtSet('mt-prob', t?.prob || '30'); trtSet('mt-prior', t?.prior || 'normale');
   trtSet('mt-recall', t?.recall ? String(t.recall).slice(0, 10) : ''); trtSet('mt-recall-ora', t?.recall_ora || '');
@@ -19432,7 +19549,8 @@ async function openTrattModal(id) {
   const cat = await trtCatalogo();
   document.getElementById('mt-compagnia').innerHTML = trtOpzCompagnie(t?.compagnia_id || '');
   trtProdotti(t?.prodotto_id || '');
-  if (!cat.letto) document.getElementById('mt-calc').insertAdjacentHTML('beforebegin', '<div class="trt-msg" id="mt-cat-ko">Il catalogo non si è potuto leggere: compagnia e prodotto si scrivono a mano.</div>');
+  document.getElementById('mt-cat-ko')?.remove();
+  if (!cat.letto) document.getElementById('mt-target').closest('label').insertAdjacentHTML('beforebegin', '<div class="trt-msg" id="mt-cat-ko">Il catalogo non si è potuto leggere: compagnia e prodotto si scrivono a mano.</div>');
 
   const sel = document.getElementById('mt-collab');
   const shareSel = document.getElementById('mt-condividi');
@@ -19466,7 +19584,6 @@ async function saveTratt() {
   const comp = (TRT_CAT?.compagnie || []).find(c => c.id === compId);
   const collabV = trtV('mt-collab');
   const collabP = collabV && !collabV.startsWith('nome:') ? (COL_GENTE || []).find(c => c.id === collabV) : null;
-  const calc = trtCalcola() || {};
   const t = {
     id: PIPE_ID || null,
     cliente: trtV('mt-cliente'), anagrafica_id: trtV('mt-anag-id') || null,
@@ -19475,10 +19592,6 @@ async function saveTratt() {
     prodotto_id: prod ? prod.id : null, prodotto: prod ? prod.nome : (trtV('mt-prodotto') || null),
     richiede_autorizzazione: document.getElementById('mt-aut').checked,
     premio_lordo: trtV('mt-lordo') === '' ? null : Number(trtV('mt-lordo')),
-    imposta_provinciale: trtV('mt-prov') === '' || trtV('mt-ramo') !== 'rca' ? null : Number(trtV('mt-prov')),
-    aliquota_imposte: calc.netto !== null && calc.netto !== undefined ? calc.aliquota : null,
-    aliquota_fonte: calc.netto !== null && calc.netto !== undefined ? calc.fonte : null,
-    premio_netto: calc.netto !== undefined ? calc.netto : null,
     status: trtV('mt-status') || 'prospect', prob: trtV('mt-prob'), prior: trtV('mt-prior'),
     collaboratore_id: collabP ? collabP.id : null,
     collab: collabP ? colNome(collabP) : (collabV.startsWith('nome:') ? collabV.slice(5) : null),
@@ -20137,8 +20250,7 @@ async function saveTrattDB(t) {
     compagnia_id: t.compagnia_id || null, compagnia: t.compagnia || null,
     prodotto_id: t.prodotto_id || null, prodotto: t.prodotto || null,
     richiede_autorizzazione: !!t.richiede_autorizzazione,
-    premio_lordo: t.premio_lordo, imposta_provinciale: t.imposta_provinciale,
-    aliquota_imposte: t.aliquota_imposte, aliquota_fonte: t.aliquota_fonte, premio_netto: t.premio_netto,
+    premio_lordo: t.premio_lordo,
     /* `importo` resta allineato al lordo: la Scrivania e lo storico lo leggono. */
     importo: t.premio_lordo !== null && t.premio_lordo !== undefined ? t.premio_lordo : (esistente ? esistente.importo : 0),
     status: t.status || 'prospect', recall: t.recall || null, recall_ora: t.recall_ora || null,

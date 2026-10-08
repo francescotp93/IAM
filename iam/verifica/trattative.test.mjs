@@ -81,7 +81,7 @@ const pagina = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</
 <body><div id="app"><div class="panels">${pannello}</div>${scheda}</div>
 <script>${motore('anagrafica.js')}</script><script>${motore('collaboratori.js')}</script><script>${motore('trattative.js')}</script>
 <script>${FINTO}${STUB}${codice}
-window.__API = { renderTratt, openTrattModal, saveTratt, trtCalcola, trtCensisci, trtModoCliente, trtFastTipo,
+window.__API = { renderTratt, openTrattModal, saveTratt, trtCensisci, trtModoCliente, trtFastTipo,
   trtClienteScelto, stato: () => ({ PIPE, TRT_CAT }) };
 </script></body></html>`;
 
@@ -97,7 +97,7 @@ page.on('pageerror', e => errori.push(e.message));
 await page.setContent(pagina);
 
 const PIPE_PROVA = [
-  { id: '1', cliente: 'ROSSI', status: 'prospect', prodotto: 'RC Auto', premio_lordo: 800, prob: 50, data_ins: '2026-10-01', utente_id: 'u-collab' },
+  { id: '1', cliente: 'ROSSI', status: 'prospect', prodotto: 'RC Auto', premio_lordo: 800, prob: 50, recall: '2026-10-07', data_ins: '2026-10-01', utente_id: 'u-collab' },
   { id: '2', cliente: 'BIANCHI', status: 'trattativa', prodotto: 'RC Auto', importo: 400, prob: 100, data_ins: '2026-10-02', utente_id: 'u-collab' },
   { id: '3', cliente: 'VERDI', status: 'preventivo', prodotto: 'Casa', importo: 0, prob: 30, data_ins: '2026-10-03', utente_id: 'u-collab' },
   { id: '4', cliente: 'NERI', status: 'chiusa', prodotto: 'Tutela legale', premio_lordo: 300, chiusa_il: '2026-10-04', data_ins: '2026-09-01', utente_id: 'u-collab' },
@@ -113,19 +113,42 @@ prova('la schermata si disegna senza errori', async () => {
   deve(!errori.length, 'errori nella pagina: ' + errori.join(' | '));
 });
 
-prova('I NUMERI: in corso, vinte e perse separate; lo zero non è un valore', async () => {
+prova('I NUMERI: la pipeline in testa, vinte e perse separate; lo zero non è un valore', async () => {
+  const h = await page.locator('#trt-hero').innerText();
+  deve(/1\.200,00/.test(h), 'la pipeline non è 1.200: ' + h);
+  deve(/1 senza premio/.test(h), 'la trattativa senza premio non si dichiara: ' + h);
+  deve(/50%/.test(h), 'tasso di chiusura: ' + h);
   const k = await page.locator('#trt-kpi').innerText();
-  deve(/1\.200,00/.test(k), 'in corso non è 1.200: ' + k);
-  deve(/1 senza premio/.test(k), 'la trattativa senza premio non si dichiara: ' + k);
   deve(/300,00/.test(k) && /1\.000,00/.test(k), 'vinte o perse sbagliate: ' + k);
-  deve(/50%/.test(k), 'tasso di chiusura: ' + k);
-  return 'in corso 1.200, vinte 300, perse 1.000, 50%';
+  deve(!/1\.200,00/.test(k), 'la pipeline è finita anche fra i riquadri: due numeri uguali a cento pixel');
+  return 'pipeline 1.200, vinte 300, perse 1.000, 50%';
+});
+
+prova('IL TUBO DELLE TAPPE: diviso per valore, e la tappa vuota resta nella legenda', async () => {
+  const seg = await page.locator('#trt-hero .trt-tubo span').evaluateAll(es => es.map(e => e.className + ':' + e.style.flexGrow));
+  deve(seg.join() === 'trt-c-prospect:800,trt-c-trattativa:400', 'segmenti: ' + seg.join());
+  const tappe = await page.locator('#trt-hero .trt-tappa').allInnerTexts();
+  deve(tappe.length === 3 && /Preventivo/.test(tappe[1]) && /1 trattativa/.test(tappe[1]), 'tappe: ' + tappe.join(' | '));
+  return 'prospect 800, trattativa 400, preventivo vuoto ma in legenda';
+});
+
+prova('IL RICHIAMO SCADUTO si vede: nel riquadro, sulla riga e col suo filtro', async () => {
+  const k = await page.locator('#trt-kpi .trt-k.trt-call').innerText();
+  deve(/1/.test(k) && /in ritardo/.test(k), 'riquadro: ' + k);
+  const chip = await page.locator('#tr-list .trt-chip.trt-scad').allInnerTexts();
+  deve(chip.length === 1 && /scaduto ieri/.test(chip[0]), 'chip: ' + chip.join());
+  await page.selectOption('#tr-filt', 'richiamare');
+  const n = await page.locator('#tr-list .trt-r').count();
+  await page.selectOption('#tr-filt', '');
+  deve(n === 1, 'il filtro «da richiamare» ne mostra ' + n);
+  return 'ROSSI, scaduto ieri';
 });
 
 prova('IL GRAFICO IN CORSO: per prodotto, dal più grande, e chi non ha premio lo dice', async () => {
   const righe = await page.locator('#trt-g-corso .trt-b').allInnerTexts();
+  const nomi = await page.locator('#trt-g-corso .trt-b-n').allInnerTexts();
   deve(righe.length === 2, 'righe: ' + righe.length);
-  deve(/^RC Auto/.test(righe[0]) && /1\.200,00/.test(righe[0]) && /2 trattative/.test(righe[0]), righe[0]);
+  deve(nomi[0] === 'RC Auto' && /1\.200,00/.test(righe[0]) && /2 trattative/.test(righe[0]), righe[0]);
   deve(/Casa/.test(righe[1]) && /premio non indicato/.test(righe[1]), 'la casa: ' + righe[1]);
   const w = await page.locator('#trt-g-corso .trt-b-pieno').evaluateAll(es => es.map(e => e.style.width));
   deve(parseFloat(w[0]) === 100 && parseFloat(w[1]) === 0, 'larghezze: ' + w.join(', '));
@@ -142,23 +165,13 @@ prova('il filtro sullo stato filtra l’elenco, NON i grafici', async () => {
   deve(n === 1 && g === 2, 'elenco ' + n + ', grafico ' + g);
 });
 
-prova('L’IMPONIBILE: RC professionale 122,25 → 100, e la casa senza aliquota lo dice', async () => {
+prova('LE ALIQUOTE NON CI SONO PIÙ: la scheda chiede solo il premio lordo', async () => {
   await page.evaluate(() => window.__API.openTrattModal(null));
   await page.waitForTimeout(50);
-  await page.selectOption('#mt-ramo', 'rcprof');
-  await page.fill('#mt-lordo', '122.25');
-  let t = await page.locator('#mt-calc').innerText();
-  deve(/100,00/.test(t) && /22,25/.test(t), t);
-  await page.selectOption('#mt-ramo', 'beni');
-  await page.locator('#mt-lordo').dispatchEvent('input');
-  t = await page.locator('#mt-calc').innerText();
-  deve(/dichiara/.test(t) && !/Imponibile/.test(t), 'la casa ha un imponibile inventato: ' + t);
-  await page.fill('#mt-aliquota', '10');
-  t = await page.locator('#mt-calc').innerText();
-  deve(/111,14/.test(t), 'con l’aliquota scritta a mano: ' + t);
-  await page.selectOption('#mt-ramo', 'rca'); await page.fill('#mt-aliquota', '');
-  deve(await page.locator('#mt-prov-box').isVisible(), 'RCA senza il campo della provincia');
-  return '100 + 22,25; casa: «dichiara»; RCA chiede la provincia';
+  for (const id of ['#mt-aliquota', '#mt-prov', '#mt-calc']) {
+    deve(await page.locator(id).count() === 0, id + ' è ancora nella scheda');
+  }
+  deve(await page.locator('#mt-lordo').isVisible(), 'il premio lordo è sparito con le aliquote');
 });
 
 prova('senza cliente non si salva, e la scheda resta aperta', async () => {
@@ -207,11 +220,12 @@ prova('IL RICHIAMO VA IN AGENDA con un id stabile', async () => {
   await page.evaluate(() => { window.SCRITTE = []; window.RISPOSTE['iam_trattative:insert'] = { data: { id: 77 }, error: null }; return window.__API.saveTratt(); });
   const s = await page.evaluate(() => window.SCRITTE);
   const tr = s.find(x => x.tab === 'iam_trattative' && x.op === 'insert');
-  deve(tr && tr.dati.premio_netto === 100 && tr.dati.aliquota_fonte === 'ramo' && tr.dati.anagrafica_id === 'a-gia', 'trattativa: ' + JSON.stringify(tr && tr.dati));
+  deve(tr && tr.dati.premio_lordo === 121.25 && tr.dati.anagrafica_id === 'a-gia', 'trattativa: ' + JSON.stringify(tr && tr.dati));
+  deve(!('premio_netto' in tr.dati) && !('aliquota_imposte' in tr.dati), 'si scrive ancora un imponibile che nessuno ha dichiarato');
   deve(tr.dati.importo === 121.25, 'importo non allineato al lordo');
   const ag = s.find(x => x.tab === 'iam_agenda' && x.op === 'upsert');
   deve(ag && ag.dati.id === 'tratt-77' && ag.dati.data === '2026-10-20' && ag.dati.ora === '10:30', 'agenda: ' + JSON.stringify(ag));
-  return 'netto 100, agenda tratt-77';
+  return 'lordo 121,25, agenda tratt-77';
 });
 
 prova('UN COLLABORATORE non concede l’autorizzazione e non chiude vinta una trattativa che la aspetta', async () => {
@@ -225,6 +239,21 @@ prova('UN COLLABORATORE non concede l’autorizzazione e non chiude vinta una tr
   const m = await page.locator('#mt-msg').innerText();
   const n = await page.evaluate(() => window.SCRITTE.length);
   deve(/autorizzazione/.test(m) && n === 0, m + ' / scritte ' + n);
+});
+
+prova('CON IL MOTORE DI STAMATTINA IN CACHE la schermata si disegna lo stesso (§74)', async () => {
+  const esito = await page.evaluate(l => {
+    PIPE = l;
+    const vero = { richiamoStato: Trattative.richiamoStato, fasiCorso: Trattative.fasiCorso };
+    delete Trattative.richiamoStato; delete Trattative.fasiCorso;
+    let errore = null;
+    try { window.__API.renderTratt(); } catch (e) { errore = e.message; }
+    Object.assign(Trattative, vero);
+    const righe = document.querySelectorAll('#tr-list .trt-r').length;
+    window.__API.renderTratt();
+    return { errore, righe };
+  }, PIPE_PROVA);
+  deve(!esito.errore && esito.righe > 0, 'con un motore vecchio: ' + (esito.errore || esito.righe + ' righe'));
 });
 
 prova('UN AGGIORNAMENTO CHE NON TOCCA RIGHE NON È UN SALVATAGGIO (BUG 1)', async () => {
@@ -248,6 +277,11 @@ if (process.env.FOTO) {
   await conPipe(PIPE_PROVA);
   await page.evaluate(() => document.querySelectorAll('html,body,.panels,.panel,#app').forEach(e => { e.scrollTop = 0; }));
   await page.screenshot({ path: process.env.FOTO, fullPage: true });
+  if (process.env.FOTO_TELEFONO) {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.evaluate(() => document.querySelectorAll('html,body,.panels,.panel,#app').forEach(e => { e.scrollTop = 0; }));
+    await page.screenshot({ path: process.env.FOTO_TELEFONO, fullPage: true });
+  }
 }
 await browser.close();
 console.log(`\nTRATTATIVE NEL BROWSER: ${ok} superate, ${esiti.length - ok} fallite`);

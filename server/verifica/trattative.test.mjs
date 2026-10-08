@@ -1,8 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 //  LE TRATTATIVE — tariffe/motore/trattative.js  (08/10/2026)
 //
-//  Le prove che, se saltano, producono un imponibile credibile e falso (una
-//  media a occhio su un ramo che mescola imposte), un grafico che conta come
+//  Le prove che, se saltano, producono un grafico che conta come
 //  zero un valore mai scritto, o un prospect con un codice fiscale sbagliato.
 //
 //  Codici fiscali e partite IVA costruiti qui col carattere di controllo
@@ -25,51 +24,34 @@ function piva(dieci) {
   return dieci + ((10 - s % 10) % 10);
 }
 
-prova('l’imponibile si ricava dividendo, e le imposte sono la differenza', () => {
-  const r = T.netto(122.25, { ramo: 'rcprof' });
-  deve(r.netto === 100 && r.imposte === 22.25 && r.aliquota === 22.25, JSON.stringify(r));
-  /* Netto + imposte torna SEMPRE col lordo: su cento lordi a caso. */
-  for (let i = 1; i <= 100; i++) {
-    const l = Math.round(i * 37.13 * 100) / 100;
-    const x = T.netto(l, { ramo: 'tutela' });
-    deve(Math.abs(x.netto + x.imposte - l) < 1e-9, l + ': ' + x.netto + ' + ' + x.imposte);
-  }
-  return '122,25 → 100 + 22,25';
+prova('la pipeline ha le sue tappe, nell’ordine, e una tappa vuota resta al suo posto', () => {
+  const f = T.fasiCorso([
+    { status: 'trattativa', importo: 300 },
+    { status: 'prospect', premio_lordo: 100 },
+    { status: 'prospect', importo: 0 },
+    { status: 'chiusa', importo: 999 },
+    { status: 'persa', importo: 999 }
+  ]);
+  deve(f.map(x => x.stato).join() === 'prospect,preventivo,trattativa', 'tappe: ' + f.map(x => x.stato).join());
+  deve(f[0].valore === 100 && f[0].n === 2 && f[0].senzaValore === 1, 'prospect: ' + JSON.stringify(f[0]));
+  deve(f[1].n === 0 && f[1].valore === 0, 'il preventivo vuoto è sparito');
+  deve(f.reduce((a, x) => a + x.valore, 0) === 400, 'le decise sono entrate nella pipeline');
+  /* `aperta` è il valore di partenza della colonna: compare solo se c'è. */
+  deve(T.fasiCorso([{ status: 'aperta', importo: 5 }]).some(x => x.stato === 'aperta'), 'una «aperta» è sparita');
+  return 'prospect 100 (1 senza premio), preventivo 0, trattativa 300';
 });
 
-prova('un ramo che mescola imposte NON ha un’aliquota: non si stima', () => {
-  for (const ramo of ['beni', 'persona', 'impresa', 'animali', 'viaggio']) {
-    const r = T.netto(500, { ramo });
-    deve(r.netto === null && /dichiara/.test(r.motivo), ramo + ' ha prodotto un imponibile: ' + JSON.stringify(r));
-  }
-  return 'beni, persona, impresa, animali, viaggio';
-});
-
-prova('l’aliquota dichiarata sul prodotto vale sul ramo, quella scritta a mano su tutte', () => {
-  deve(T.netto(110, { ramo: 'beni', prodotto: 10 }).netto === 100, 'il prodotto non vale');
-  const m = T.netto(110, { ramo: 'rcprof', prodotto: 22.25, manuale: '10' });
-  deve(m.netto === 100 && m.fonte === 'manuale', 'la mano non vince: ' + JSON.stringify(m));
-  /* Zero e' un'aliquota vera (vita), non un vuoto. */
-  deve(T.netto(100, { ramo: 'beni', prodotto: 0 }).netto === 100, 'zero dichiarato trattato come vuoto');
-  deve(T.netto(100, { ramo: 'beni', manuale: '' }).netto === null, 'un campo vuoto diventato aliquota');
-  return 'mano > prodotto > ramo';
-});
-
-prova('RC auto: senza imposta provinciale non si calcola, con quella aggiunge il 10,5% SSN', () => {
-  deve(T.netto(1000, { ramo: 'rca' }).netto === null, 'RCA calcolata senza provincia');
-  const r = T.netto(1265, { ramo: 'rca', provinciale: 16 });
-  deve(r.aliquota === 26.5 && r.netto === 1000 && r.avviso, JSON.stringify(r));
-  return '16 + 10,5 = 26,5';
-});
-
-prova('vita è esente: il netto è il lordo', () => {
-  const r = T.netto(1200, { ramo: 'vita' });
-  deve(r.netto === 1200 && r.imposte === 0, JSON.stringify(r));
-});
-
-prova('senza premio lordo non c’è imponibile, e lo dice', () => {
-  deve(/premio lordo/.test(T.netto(null, { ramo: 'vita' }).motivo), 'nessun motivo');
-  deve(T.netto(0, { ramo: 'vita' }).netto === null, 'zero diventato un premio');
+prova('il richiamo si dice in giorni, contati sulle date e non sull’orologio', () => {
+  const r = s => T.richiamoStato({ status: 'prospect', recall: s }, '2026-10-08');
+  deve(r('2026-10-08').oggi && r('2026-10-08').etichetta === 'oggi', 'oggi');
+  deve(r('2026-10-09').etichetta === 'domani', 'domani');
+  deve(r('2026-10-15').etichetta === 'tra 7 giorni', r('2026-10-15').etichetta);
+  deve(r('2026-10-06').scaduto && r('2026-10-06').etichetta === 'scaduto da 2 giorni', 'scaduto');
+  /* Il cambio dell'ora legale (25/10/2026) non sposta un giorno. */
+  deve(T.giorniA('2026-10-26', '2026-10-24') === 2, 'ora legale: ' + T.giorniA('2026-10-26', '2026-10-24'));
+  deve(T.richiamoStato({ status: 'chiusa', recall: '2026-09-01' }, '2026-10-08') === null, 'una vinta si richiama');
+  deve(T.richiamoStato({ status: 'prospect', recall: 'domani' }, '2026-10-08') === null, 'una data inventata');
+  return 'oggi, domani, tra 7, scaduto da 2';
 });
 
 prova('il riepilogo separa in corso, vinte e perse, e non conta lo zero', () => {
@@ -83,6 +65,7 @@ prova('il riepilogo separa in corso, vinte e perse, e non conta lo zero', () => 
   deve(r.corso.valore === 800 && r.corso.n === 3 && r.corso.senzaValore === 1, 'in corso: ' + JSON.stringify(r.corso));
   deve(r.corso.ponderato === 550, 'ponderato ' + r.corso.ponderato);
   deve(r.vinte.valore === 400 && r.perse.valore === 1000, 'vinte/perse mescolate');
+  deve(r.corso.perStato && r.corso.perStato.map(x => x.stato).join() === 'prospect,preventivo,trattativa,aperta', 'il riepilogo non porta le tappe');
   deve(r.corso.perProdotto[0].nome === 'RC Auto' && r.corso.perProdotto[0].valore === 800, 'per prodotto');
   const casa = r.corso.perProdotto.find(g => g.nome === 'Casa');
   deve(casa && casa.valore === 0 && casa.senzaValore === 1, 'la casa senza valore non si dichiara');

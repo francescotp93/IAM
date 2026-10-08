@@ -263,18 +263,31 @@
      Non sono titoli di garanzia: sono le celle della tabella che descrive una
      garanzia. Il titolo del blocco è la riga che PRECEDE «Garanzie di base»
      e che non è essa stessa un'etichetta. */
+  /* L'APOSTROFO CHE HA FATTO SPARIRE LA RIGA PIÙ IMPORTANTE DEL DIP.
+     Fino all'08/10/2026 qui c'era `/^che cosa (non )?e' assicurato/`, con
+     l'apostrofo. Ma `etichetta()` normalizza prima «è» in «e» — senza
+     apostrofo — e nei documenti la riga è scritta «Che cosa è assicurato?».
+     Risultato: la regex non ha mai combaciato con niente. Misurato su 214
+     documenti veri: 165 portano quella riga, e per il motore non c'era.
+     Si accetta l'apostrofo e la sua assenza, perché le compagnie scrivono
+     tutt'e due. */
   var ETICHETTE = [
     /^garanzie di base/i,
     /^ulteriori garanzie con un premio/i,
     /^limitazioni,?\s*esclusioni e rivalse/i,
     /^rischi esclusi/i,
-    /^che cosa (non )?e' assicurato/i,
+    /^che cosa (non )?e'? assicurato/i,
     /^ci sono limiti di copertura/i,
     /^dove vale la copertura/i,
     /^che obblighi ho/i
   ];
+  /* Gli accenti si appianano una volta sola, e in un posto solo: la stessa
+     riga va confrontata con le etichette e con la domanda che apre la sezione
+     delle coperture, e due appiattimenti scritti in due punti diversi sono il
+     modo in cui uno dei due resta indietro. */
+  function pianura(l) { return pulisci(l).replace(/[àá]/gi, 'a').replace(/[èé]/gi, 'e'); }
   function etichetta(l) {
-    var t = pulisci(l).replace(/[àá]/gi, 'a').replace(/[èé]/gi, 'e');
+    var t = pianura(l);
     for (var i = 0; i < ETICHETTE.length; i++) if (ETICHETTE[i].test(t)) return true;
     return false;
   }
@@ -377,6 +390,75 @@
     return ultima;
   }
 
+  /* ── LA SEZIONE CHE IL REGOLAMENTO OBBLIGA A SCRIVERE ────────────────────
+     «Che cosa è assicurato?» non è un titolo che una compagnia sceglie: è una
+     delle domande che il DIP deve portare, nell'ordine in cui il modello le
+     mette (Reg. IVASS 41/2018, e prima l'IPID europeo). Sotto quella domanda
+     la compagnia ELENCA le coperture del prodotto — ed è la dichiarazione più
+     autorevole che esista, perché è quella che il cliente legge per prima.
+
+     MISURATO l'08/10/2026 su 214 documenti scaricati dalle compagnie: 165 la
+     portano, e il motore non la usava come ancora. Il conto delle garanzie
+     riconosciute era auto 5,2 e tutto il resto fra 0,0 e 0,7 — casa 0,6,
+     salute 0,5, vita 0,0 — perché le forme che il motore cercava («X
+     (opzionale)», «SEZIONE A - GARANZIA…», l'elenco delle opzionali) sono le
+     forme di un set informativo AUTO. Fuori dall'auto i documenti non le
+     usano: elencano sotto quella domanda.
+
+     TRE FORME, tutte dal corpo dei documenti veri:
+       «• Incendio e altri danni alla casa: copre i danni…»   AXA casa
+       «✓ Invalidità Totale Permanente (operante se…)»        BNP Cardif vita
+       «• Furto copre quanto sottratto dai ladri…»            AXA casa
+     Il nome è quello che sta prima dei due punti, o prima della parentesi: il
+     resto è la descrizione, e prenderla per nome vorrebbe dire cercare nel
+     vocabolario una frase.
+
+     DOVE SI CHIUDE: alla prima domanda successiva («Che cosa NON è
+     assicurato?», «Ci sono limiti di copertura?», …). Sotto quella ci sono le
+     ESCLUSIONI, e leggerle come coperture sarebbe il modo di far risultare
+     assicurato esattamente quello che non lo è. Le righe delle esclusioni
+     portano «✗», e si fermano anche su quello. */
+  var MARCATORI = /^[•·▪◦‣⁃○●*✔✓]\s*/;
+  var MARCATORI_NO = /^[✗✘×x]\s/i;
+  var R_ASSICURATO = /^che cosa e'? assicurato/i;
+  /* Tre pagine dopo la domanda, e non una di più: una sezione che non si
+     chiude perché la domanda dopo non è stata riconosciuta si mangerebbe
+     tutto il documento, e le esclusioni diventerebbero coperture. */
+  var PAGINE_SEZIONE = 3;
+
+  /* Il nome di una voce elencata sotto la domanda. Non è `nomePulito` da solo:
+     prima va tagliata la descrizione, che in quella forma segue il nome sulla
+     stessa riga. */
+  function nomeDellaVoce(t) {
+    var s = pulisci(t).replace(MARCATORI, '');
+    /* I due punti sono il separatore più affidabile: «Incendio e altri danni
+       alla casa: copre i danni…». */
+    var i = s.indexOf(':');
+    if (i > 3) s = s.slice(0, i);
+    else {
+      /* Poi la parentesi: «Invalidità Totale Permanente (operante se…)». */
+      var j = s.indexOf('(');
+      if (j > 3) s = s.slice(0, j);
+    }
+    /* E quando non c'è né l'una né l'altra, la descrizione comincia con un
+       verbo: «Furto copre quanto sottratto dai ladri». Si taglia davanti al
+       verbo, che in questi documenti è sempre uno di questi. */
+    s = s.replace(/\s+(copre|coprono|copertura|prevede|prevedono|garantisce|garantiscono|offre|offrono|assicura|assicurano|indennizza|rimborsa|mette a disposizione|paga|interviene|è operante|opera)\b[\s\S]*$/i, '');
+    return nomePulito(s);
+  }
+
+  /* Una voce elencata può essere una garanzia o una frase. Si pretende che
+     somigli a un NOME: non più di otto parole, non una riga intera, e che
+     cominci per lettera. Senza questo controllo l'elenco delle coperture che
+     il vocabolario non conosce si riempiva di mezze frasi, e un elenco così
+     non lo legge nessuno — che è il modo di rendere inutile la dichiarazione
+     di quello che non si è capito. */
+  function somigliaAUnNome(s) {
+    if (!s || s.length < 4 || s.length > 70) return false;
+    if (s.split(/\s+/).length > 8) return false;
+    return /^[A-Za-zÀ-ÿ]/.test(s);
+  }
+
   function blocchi(pagine, ramo) {
     var C = motoreConfronto();
     var fuori = [], trovati = [];
@@ -410,6 +492,12 @@
       });
     }
 
+    /* Sta FUORI dal giro delle pagine di proposito: la domanda «Che cosa è
+       assicurato?» si apre in fondo a una pagina e l'elenco continua sulla
+       successiva — misurato sul DIP salute di AXA. Una variabile dentro il
+       giro si azzererebbe al cambio di pagina e metà elenco si perderebbe. */
+    var assicuratoDa = null;
+
     (pagine || []).forEach(function (p) {
       var num = p && p.n != null ? p.n : null;
       var linee = testo(p && p.testo).split(/\r?\n/);
@@ -417,13 +505,46 @@
       linee.forEach(function (l, i) {
         var t = pulisci(l);
         if (!t) return;
-        if (ZONE_CIECHE.test(t)) { cieca = true; return; }
+        if (ZONE_CIECHE.test(t)) { cieca = true; assicuratoDa = null; return; }
         if (cieca) return;              /* dal glossario in giù, su questa pagina, non si cerca */
         /* Le righe che un elenco si è già mangiato non si guardano di nuovo:
            altrimenti lo stesso elenco si legge una volta per ogni sua riga
            che contiene «garanzie opzionali», e «Garanzie Aggiuntive» diventa
            una copertura di nome «Aggiuntive». */
         if (i <= finoA) return;
+
+        /* ── LA SEZIONE OBBLIGATORIA: SI APRE E SI CHIUDE QUI ──────────────
+           PRIMA del filtro delle etichette, e non è un dettaglio di ordine:
+           la domanda che apre la sezione È essa stessa un'etichetta, e
+           lasciandola cadere nel filtro la sezione non si aprirebbe mai. È
+           lo stesso inciampo che l'apostrofo aveva già fatto fare. */
+        if (R_ASSICURATO.test(pianura(t))) { assicuratoDa = num; return; }
+        if (assicuratoDa != null) {
+          /* La domanda dopo chiude: sotto ci sono le esclusioni. */
+          if (etichetta(t)) { assicuratoDa = null; return; }
+          /* E il marcatore delle esclusioni chiude anche quando la domanda
+             non si è letta: «✗ Assicurato con Età inferiore ai 18 anni» non è
+             una copertura, è il contrario di una copertura. */
+          if (MARCATORI_NO.test(t)) { assicuratoDa = null; return; }
+          if (num != null && num - assicuratoDa >= PAGINE_SEZIONE) assicuratoDa = null;
+        }
+        if (assicuratoDa != null && MARCATORI.test(t)) {
+          var vo = nomeDellaVoce(t);
+          if (somigliaAUnNome(vo)) {
+            var rv = riconosce(C, ramo, vo);
+            if (rv) {
+              trovati.push({ garanzia: rv.id, titolo: vo, esatto: rv.esatto,
+                pagina: num, riga: t.slice(0, 220), forma: 'dip' });
+            } else {
+              var kv = vo.toLowerCase().replace(/^garanzi[ae]\s+/, '');
+              if (!fuori.some(function (x) { return x.chiave === kv; })) {
+                fuori.push({ chiave: kv, nome: vo, pagina: num, riga: t.slice(0, 220), forma: 'dip' });
+              }
+            }
+          }
+          return;
+        }
+
         if (etichetta(t)) return;
 
         /* L'ELENCO SI GUARDA PRIMA DI TUTTO IL RESTO, e non è un dettaglio di
@@ -777,7 +898,13 @@
        3. la pagina più bassa, a parità, perché il documento descrive prima e
           liquida dopo: il titolo che apre la garanzia vale più di
           un'intestazione dell'articolo che ne regola l'indennizzo. */
-    var PESO = { blocco: 3, sezione: 3, garanzia: 2, elenco: 1 };
+    /* `dip` è la voce elencata sotto «Che cosa è assicurato?». Pesa come un
+       titolo di garanzia e più di una voce d'elenco di opzionali: è la
+       compagnia che dichiara che quella copertura c'è, nel documento che il
+       regolamento le impone di scrivere. Non pesa come un titolo di sezione
+       delle Condizioni perché quello è il testo contrattuale, e quando ci
+       sono tutt'e due è quello che si vuole citare. */
+    var PESO = { blocco: 3, sezione: 3, garanzia: 2, dip: 2, elenco: 1 };
     function meglio(a, b2) {
       if (!a) return true;
       if (!!b2.esatto !== !!a.esatto) return !!b2.esatto;

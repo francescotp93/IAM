@@ -211,6 +211,48 @@ const GUASTI = [
      preso, e aveva ragione: l'ampiezza del fascicolo (`da`–`a`) dà lo stesso
      numero, quindi quel ramo era ridondante. Togliere il peso morto è meglio
      che tenere un guasto che non misura niente. */
+
+  /* ── LA SEZIONE OBBLIGATORIA DEL DIP (08/10/2026) ─────────────────────────
+     Il guasto peggiore di questo gruppo è il terzo: una sezione che non si
+     chiude trasforma in COPERTURE le righe delle esclusioni. Un confronto che
+     dice a un cliente che una polizza copre l'acqua quando il documento la
+     esclude non è una casella storta: è adeguatezza. */
+  ['la domanda «Che cosa e assicurato?» torna invisibile (l\'apostrofo)', SP,
+    (s) => s.replace("    /^che cosa (non )?e'? assicurato/i,", "    /^che cosa (non )?e' assicurato/i,")
+      .replace("var R_ASSICURATO = /^che cosa e'? assicurato/i", "var R_ASSICURATO = /^che cosa e' assicurato/i")],
+
+  ['le coperture elencate sotto la domanda non si leggono piu\'', SP,
+    (s) => s.replace('        if (assicuratoDa != null && MARCATORI.test(t)) {', '        if (false) {')],
+
+  ['LA SEZIONE NON SI CHIUDE: LE ESCLUSIONI DIVENTANO COPERTURE', SP,
+    (s) => s.replace('          if (etichetta(t)) { assicuratoDa = null; return; }', '          if (etichetta(t)) { return; }')
+      .replace('          if (MARCATORI_NO.test(t)) { assicuratoDa = null; return; }',
+        '          if (MARCATORI_NO.test(t)) { return; }')],
+
+  ['il nome della voce si porta dietro la descrizione (i due punti)', SP,
+    (s) => s.replace('    if (i > 3) s = s.slice(0, i);', '    if (i > 999) s = s.slice(0, i);')],
+
+  ['il nome della voce si porta dietro la condizione fra parentesi', SP,
+    (s) => s.replace('      if (j > 3) s = s.slice(0, j);', '      if (j > 999) s = s.slice(0, j);')],
+
+  /* ATTENZIONE AL GUASTO DEBOLE: la prima versione di questo guasto toglieva
+     solo gli ultimi cinque verbi dell'elenco e lasciava dentro «copre», che è
+     proprio quello che la prova usa. Risultava NON PRESO, e sembrava una prova
+     debole: era un guasto che non rompeva niente. Qui si tolgono i primi, che
+     sono quelli che i documenti usano. */
+  ['il nome non si taglia davanti al verbo della descrizione', SP,
+    (s) => s.replace('(copre|coprono|copertura|prevede|prevedono|', '(mai_un_verbo|')],
+
+  ['nell\'elenco delle coperture sconosciute tornano a finire le frasi', SP,
+    (s) => s.replace('    if (s.split(/\\s+/).length > 8) return false;',
+      '    if (s.split(/\\s+/).length > 99) return false;')],
+
+  ['una copertura sconosciuta elencata sotto la domanda sparisce invece di dichiararsi', SP,
+    (s) => s.replace("                fuori.push({ chiave: kv, nome: vo, pagina: num, riga: t.slice(0, 220), forma: 'dip' });",
+      '                void kv;')],
+
+  ['la sezione non si apre piu\': la riga finisce nel filtro delle etichette', SP,
+    (s) => s.replace('        if (R_ASSICURATO.test(pianura(t))) { assicuratoDa = num; return; }', '')],
 ]
 
 let sfuggiti = 0

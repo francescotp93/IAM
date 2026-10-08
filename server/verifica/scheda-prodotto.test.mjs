@@ -603,6 +603,127 @@ prova('UNA GARANZIA NON LETTA NON PORTA IMPORTI, E NON SI VANTA DI AVERLI', () =
     'dice di portare un importo attaccato a mano che invece è stato buttato: ' + r.frase);
 });
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   LA SEZIONE CHE IL REGOLAMENTO OBBLIGA A SCRIVERE          (08/10/2026)
+
+   Perché questa prova esiste, coi numeri: il lettore è stato misurato su 207
+   documenti veri scaricati dalle compagnie. Auto 5,2 garanzie riconosciute in
+   media; casa 0,6, salute 0,5, VITA 0,0. Le forme che cercava — «X
+   (opzionale)», «SEZIONE A - GARANZIA…», l'elenco delle opzionali — sono le
+   forme di un set informativo AUTO, e fuori dall'auto i documenti non le
+   usano: elencano le coperture sotto «Che cosa è assicurato?», che è una delle
+   domande che il DIP DEVE portare.
+
+   165 documenti su 214 hanno quella riga. Il motore non solo non la usava come
+   ancora: non la riconosceva nemmeno come etichetta, perché la regex cercava
+   «e'» con l'apostrofo mentre la riga, appianata, dice «e». Una regex che non
+   ha mai combaciato con niente.
+
+   LA COSA CHE QUESTA PROVA DIFENDE DAVVERO sta nell'ultima asserzione: sotto
+   «Che cosa NON è assicurato?» ci sono le ESCLUSIONI, e leggerle come coperture
+   sarebbe il modo più diretto di far risultare assicurato esattamente quello
+   che non lo è — davanti a un cliente, su un foglio col nostro nome.
+   ───────────────────────────────────────────────────────────────────────────── */
+const DIP_CASA = [
+  { n: 1, testo: 'DIP AGGIUNTIVO DANNI\nMultirischio abitazione\nDIP Aggiuntivo - Casa - ed. 06/2026 pag. 1 di 2' },
+  { n: 2, testo: 'Che cosa è assicurato?\n'
+      + 'Ad integrazione di quanto indicato nel DIP Danni, la polizza prevede le seguenti sezioni:\n'
+      /* Forma 1: il nome, i due punti, la descrizione. */
+      + '• Incendio del fabbricato: copre i danni all\'abitazione causati da incendio, esplosione o scoppio.\n'
+      /* Forma 2: nome e descrizione attaccati, senza due punti — il taglio lo
+         fa il verbo. */
+      + '• Furto e rapina copre quanto sottratto dai ladri in caso di furto con destrezza o estorsione.\n'
+      /* Forma 3: la spunta e la condizione fra parentesi. */
+      + '✓ Tutela legale (operante se selezionata in Polizza)\n'
+      /* Una copertura che il vocabolario non ha: va DICHIARATA, non buttata. */
+      + '• Vita digitale: copre l\'assicurato e il suo nucleo familiare dai rischi su internet.\n'
+      /* UNA VOCE CHE NON È UN NOME. Sta sotto la domanda, comincia col
+         pallino, è lunga meno di settanta caratteri — e non è il nome di
+         niente: è il seguito della frase di prima. Serve a misurare il
+         vincolo delle otto parole, che senza un caso così non misura nulla. */
+      + '• Sono previste garanzie aggiuntive tra le quali il fenomeno\n'
+      /* E qui comincia il contrario delle coperture. */
+      + 'Che cosa NON è assicurato?\n'
+      + '✗ Danni da acqua causati da negligenza nella manutenzione delle tubazioni\n'
+      + '✗ Assistenza domestica fuori dal territorio italiano\n'
+      + 'DIP Aggiuntivo - Casa - ed. 06/2026 pag. 2 di 2' },
+];
+
+/* LO STESSO DOCUMENTO CON LE ESCLUSIONI A PALLINI, e serve proprio per questo.
+   Nel documento sopra le esclusioni portano «✗», e quel marcatore le ferma da
+   solo: la prova sulle esclusioni restava verde anche togliendo la chiusura
+   della sezione, perché la fermava il secondo controllo. Misurato con un
+   guasto: NON PRESO.
+
+   Ma non tutte le compagnie usano la crocetta — molte elencano le esclusioni
+   col pallino, identiche alle coperture. Qui dentro l'unica cosa che impedisce
+   a un'esclusione di diventare una copertura è la CHIUSURA DELLA SEZIONE, e
+   così il guasto si vede. */
+const DIP_CASA_PALLINI = [
+  { n: 1, testo: 'DIP AGGIUNTIVO DANNI\nMultirischio abitazione\nDIP Casa pallini - ed. 06/2026 pag. 1 di 2' },
+  { n: 2, testo: 'Che cosa è assicurato?\n'
+      + '• Incendio del fabbricato: copre i danni all\'abitazione causati da incendio.\n'
+      + 'Che cosa NON è assicurato?\n'
+      + '• Danni da acqua: esclusi i danni causati da negligenza nella manutenzione.\n'
+      + '• Assistenza domestica: esclusa fuori dal territorio italiano.\n'
+      + 'DIP Casa pallini - ed. 06/2026 pag. 2 di 2' },
+];
+
+prova('LE COPERTURE ELENCATE SOTTO «Che cosa è assicurato?» SI LEGGONO', () => {
+  /* Il ramo si passa a mano: qui si misura l'ancora della sezione, non il
+     riconoscimento del ramo, che ha la sua prova. */
+  const d = S.scheda(DIP_CASA, { ramo: 'casa' });
+  deve(d.ok, 'il documento non è stato letto: ' + d.motivo);
+  ['incendio_fabbricato', 'furto_casa', 'tutela_legale_casa'].forEach((id) => {
+    const x = g(d, id);
+    deve(x && x.stato === 'presente', 'la copertura «' + id + '» elencata sotto la domanda non è stata letta');
+    deve(x.forma === 'dip', 'è stata letta da un\'altra forma (' + x.forma + '), non dalla sezione del DIP');
+  });
+  /* Le tre forme devono funzionare tutt'e tre: se ne passasse una sola, la
+     prova sopra resterebbe verde con due terzi del lavoro non fatto. */
+  deve(g(d, 'incendio_fabbricato').nome_documento === 'Incendio del fabbricato',
+    'il nome col «:» si porta dietro la descrizione: ' + g(d, 'incendio_fabbricato').nome_documento);
+  deve(g(d, 'furto_casa').nome_documento === 'Furto e rapina',
+    'il nome senza «:» non si taglia davanti al verbo: ' + g(d, 'furto_casa').nome_documento);
+  deve(g(d, 'tutela_legale_casa').nome_documento === 'Tutela legale',
+    'il nome con la parentesi si porta dietro la condizione: ' + g(d, 'tutela_legale_casa').nome_documento);
+});
+
+prova('e quella che il vocabolario non conosce si dichiara, invece di sparire', () => {
+  const d = S.scheda(DIP_CASA, { ramo: 'casa' });
+  deve((d.fuoriVocabolario || []).some((x) => /vita digitale/i.test(x.nome)),
+    'una copertura venduta che il vocabolario non ha è sparita dal confronto: '
+      + JSON.stringify((d.fuoriVocabolario || []).map((x) => x.nome)));
+  /* E la descrizione non deve finire nell'elenco: un elenco di mezze frasi non
+     lo legge nessuno, e una dichiarazione che nessuno legge non è una
+     dichiarazione. */
+  (d.fuoriVocabolario || []).forEach((x) => {
+    deve(String(x.nome).split(/\s+/).length <= 8,
+      'nell\'elenco delle coperture sconosciute è finita una frase: «' + x.nome + '»');
+  });
+});
+
+prova('LE ESCLUSIONI NON DIVENTANO COPERTURE', () => {
+  /* «Danni da acqua» e «Assistenza domestica» stanno in questo documento SOLO
+     sotto «Che cosa NON è assicurato?». Se la sezione non si chiudesse, il
+     prodotto risulterebbe coprire l'acqua e l'assistenza — e il confronto lo
+     direbbe a un cliente. È il danno peggiore che questo motore possa fare. */
+  [DIP_CASA, DIP_CASA_PALLINI].forEach((doc, n) => {
+    const d = S.scheda(doc, { ramo: 'casa' });
+    deve(d.ok, 'il documento ' + (n + 1) + ' non è stato letto: ' + d.motivo);
+    /* La copertura vera di quel documento DEVE restare: una prova che passa
+       perché il motore non legge più niente non prova niente. */
+    deve(g(d, 'incendio_fabbricato') && g(d, 'incendio_fabbricato').stato === 'presente',
+      'nel documento ' + (n + 1) + ' non si legge più nemmeno la copertura vera');
+    ['danni_acqua', 'assistenza_casa'].forEach((id) => {
+      const x = g(d, id);
+      deve(!x || x.stato !== 'presente',
+        'nel documento ' + (n + 1) + ' una garanzia nominata solo fra le ESCLUSIONI risulta assicurata: '
+          + id + (x ? ' (letta da «' + x.riga + '»)' : ''));
+    });
+  });
+});
+
 // ── esecuzione ───────────────────────────────────────────────────────────────
 let ko = 0;
 console.log('\nSCHEDA PRODOTTO — leggere un documento di compagnia');

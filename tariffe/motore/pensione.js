@@ -1037,7 +1037,13 @@ function foglioHtml(d) {
         '</tr></table>'
       : '<table class="confronto"><tr><th>Nel fondo pensione</th></tr><tr>' +
         '<td><ul>' + q.fondo.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td></tr></table>') +
-    '<p class="nota">' + esc(q.fonte) + ' — ' + esc(q.daVerificare) + '</p>';
+    /* LA FONTE SÌ, L'APPUNTO NO. `q.fonte` è una citazione di legge e sul
+       foglio del cliente ci sta bene. `q.daVerificare` è un promemoria
+       nostro — dice testualmente «da confermare con HDI prima di dirlo a un
+       cliente» — e stampato SUL foglio del cliente diventa una barzelletta
+       involontaria. Resta dove serve: sulla schermata di chi lavora
+       (QUOTO, pv-avviso). (08/10/2026) */
+    '<p class="nota">' + esc(q.fonte) + '</p>';
 
   /* IL LATO DEL DATORE DI LAVORO: prima la tabella coi numeri, sotto la
      spiegazione. Tutto dal suo motore. */
@@ -1050,11 +1056,35 @@ function foglioHtml(d) {
       '<div class="spiega">' + TFR_DATORE.spiegazioneHtml(e.datore) + '</div>';
   }
 
-  var bloccoMarchi = marchi.length
-    ? '<div class="daconfermare"><b>Valori ancora da confermare</b><ul>' +
-      marchi.map(function (m) { return '<li><b>' + esc(m.gruppo) + '</b> · ' + esc(m.etichetta) + ' — ' + esc(m.fonte) + '</li>'; }).join('') +
-      '</ul></div>'
-    : '';
+  /* ══ L'ELENCO DEI VALORI DA CONFERMARE NON STA PIÙ QUI ══════════════════
+     (08/10/2026, richiesta di Francesco)
+
+     Stava in fondo al foglio, in un riquadro ambra, e diceva cose come «da
+     leggere sull'ISC della Nota informativa HDI», «non letta sull'originale»,
+     «da riscontrare su Normattiva». Sono APPUNTI DI LAVORO, non informazioni
+     per il cliente: un cliente che legge «da riscontrare su Normattiva» non
+     impara niente sulla sua pensione e smette di fidarsi di tutti gli altri
+     numeri della pagina — anche di quelli giusti.
+
+     La prudenza non si perde, cambia posto. Resta intera dove serve:
+     · sulla schermata di chi lavora, in cima e in ambra (QUOTO, pv-card
+       «Valori ancora da confermare»);
+     · nel blocco all'INVIO: finché la lista non è vuota il foglio si scarica
+       ma non si manda al cliente, ed è un rifiuto, non un avviso;
+     · nella riga d'archivio (`schedaArchivio.daConfermare`), così fra un anno
+       si sa con quali numeri era stato fatto quel conto.
+
+     E al cliente resta quello che gli riguarda davvero, in una lingua che può
+     usare: la filigrana STIMA su tutto il foglio, la banda della stima
+     prudenziale quando c'è, il disclaimer, e la riga che dice di quale
+     tariffa sono i numeri. Quella è la stessa verità, detta a chi la legge.
+
+     Qui resta la marca STIMA, la stessa che il PDF mette in filigrana: il
+     foglio HTML è quello che il cliente riceve quando il PDF non si genera
+     (niente rete), e non deve sembrare PIÙ definitivo del PDF solo perché è
+     il ripiego.
+     ══════════════════════════════════════════════════════════════════════ */
+  var marcaStima = marchi.length ? '<span class="stima">STIMA</span>' : '';
 
   var html =
 '<!doctype html><html lang="it"><head><meta charset="utf-8">' +
@@ -1079,14 +1109,15 @@ function foglioHtml(d) {
 'tr.azzera{background:#eaf7f0;font-weight:700}' +
 'ul{margin:0;padding-left:16px}li{margin-bottom:3px}' +
 '.nota{color:#5b6b7c;font-size:11.5px}' +
-'.daconfermare{background:#fff8ec;border:1px solid #f0dcb8;border-radius:8px;padding:11px 14px;margin:18px 0;font-size:11.5px}' +
+'.stima{display:inline-block;margin-left:10px;padding:3px 8px;border:1px solid #f0dcb8;background:#fff8ec;color:#a76008;' +
+  'border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.1em;vertical-align:middle}' +
 '.disclaimer{margin-top:22px;padding-top:12px;border-top:1px solid #d8e3dc;color:#5b6b7c;font-size:11px;line-height:1.6}' +
 '.firma{margin-top:18px;font-size:12px}' +
 '@media print{body{padding:0}h2{break-after:avoid}table{break-inside:avoid}}' +
 '</style></head><body>' +
 
 '<div class="testa"><div>' +
-  '<h1>La tua pensione, in una pagina</h1>' +
+  '<h1>La tua pensione, in una pagina' + marcaStima + '</h1>' +
   '<div class="sotto">' + esc(cli.nome) + ' · ' + esc(e.etichettaLavoro) + ' · ' + e.eta + ' anni · ' + esc(data) + '</div>' +
 '</div>' + (d.logo ? '<img src="' + esc(d.logo) + '" alt="">' : '') + '</div>' +
 
@@ -1128,7 +1159,7 @@ fasciaPrudenziale +
 
 '<h2>Quanto ti fa risparmiare di tasse</h2>' + bloccoFiscale +
 
-bloccoTfr + bloccoDatore + bloccoRiscatto + bloccoMarchi +
+bloccoTfr + bloccoDatore + bloccoRiscatto +
 
 '<div class="firma"><b>' + esc(con.nome) + '</b>' +
   (con.ruolo ? ' · ' + esc(con.ruolo) : '') +
@@ -1228,10 +1259,34 @@ function documentoPdf(d) {
   if (e.mostraTfr) blocchi.push({ tipo: 'tabella', intestazioni: ['Se il TFR resta in azienda', 'Nel fondo pensione'],
     righe: [[q.azienda.map(function (x) { return '· ' + x; }).join('\n'), q.fondo.map(function (x) { return '· ' + x; }).join('\n')]] });
   else blocchi.push({ tipo: 'testo', titolo: 'NEL FONDO PENSIONE', punti: true, paragrafi: q.fondo.slice(), size: 7.8, leading: 3.8 });
-  blocchi.push({ tipo: 'testo', paragrafi: [q.fonte + ' — ' + q.daVerificare], size: 7 });
+  /* La fonte di legge sì, il promemoria interno no: vedi la nota gemella in
+     `foglioHtml`. (08/10/2026) */
+  blocchi.push({ tipo: 'testo', paragrafi: [q.fonte], size: 7 });
 
-  if (marchi.length) blocchi.push({ tipo: 'testo', tono: 'ambra', titolo: 'VALORI ANCORA DA CONFERMARE', punti: true,
-    paragrafi: marchi.map(function (m) { return m.gruppo + ' · ' + m.etichetta + ' — ' + m.fonte; }), size: 7.2, leading: 3.6 });
+  /* ══ IL RIQUADRO «VALORI ANCORA DA CONFERMARE» NON ESCE PIÙ SUL PDF ═══════
+     (08/10/2026, richiesta di Francesco)
+
+     Era l'ultimo blocco del foglio: un riquadro ambra con dentro frasi come
+     «Segnaposto — da leggere sull'ISC della Nota informativa HDI», «non letta
+     sull'originale», «da riscontrare su Normattiva». Sono APPUNTI DI LAVORO
+     nostri. Al cliente non dicono niente che possa usare, e gli dicono una
+     cosa che non volevamo: che il foglio che ha in mano è una bozza — così
+     smette di fidarsi anche dei numeri giusti, che sono quasi tutti.
+
+     Quello che il cliente deve sapere resta, e in una lingua che è sua:
+     · la FILIGRANA «STIMA» su tutta la pagina (poche righe più sotto, ed è
+       accesa dalla stessa lista: `marchi.length`);
+     · la BANDA della stima prudenziale, quando manca l'età di inizio lavoro;
+     · il DISCLAIMER («proiezione illustrativa, NON è una promessa di
+       rendimento, non prevede l'assegno INPS»);
+     · la riga che dice di quale TARIFFA sono i numeri, col nome del prodotto
+       e l'alternativa.
+
+     La prudenza non è stata tolta: ha cambiato destinatario. La lista intera
+     resta davanti a CHI LAVORA — in cima alla schermata di QUOTO, nel rifiuto
+     che blocca l'invio al cliente finché non è vuota, e nella riga d'archivio
+     che fra un anno dirà con quali numeri era stato fatto quel conto.
+     ═══════════════════════════════════════════════════════════════════════ */
 
   var nomeFile = 'Analisi-previdenziale-' + String(cli.nome || '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + String(data).replace(/\//g, '-') + '.pdf';
   return {

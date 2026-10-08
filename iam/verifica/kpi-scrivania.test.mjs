@@ -42,15 +42,20 @@ function conScrivania(risposte = {}) {
       const q = {
         select: () => q,
         gte: () => q,
+        /* le letture sono paginate e ordinate (critique 07/10/2026): una
+           select senza range si ferma a mille righe e il riquadro diceva
+           «1000 polizze attive» su un portafoglio di quattromila. */
+        order: () => q,
+        range: () => q,
         then: (ris, err) => Promise.resolve(esito()).then(ris, err)
       };
       return q;
     }
   };
-  const s = stanza(html, ['kpiRiquadro', 'kpiEuro', 'caricaKpiScrivania'], {
+  const s = stanza(html, ['kpiRiquadro', 'kpiEuro', 'kpiMese', 'caricaKpiScrivania', 'cntTutte'], {
     db,
     altro: {
-      KPI_ULTIMO: 0,
+      KPI_ULTIMO: 0, CNT_PASSO: 1000, CNT_GIRI: 50,
       wdsISO: (d) => new Date(d).toISOString().slice(0, 10),
       Promise, console: { warn() {}, log() {} }
     }
@@ -75,6 +80,18 @@ e.prova('la striscia esiste, e NON ripete i numeri di «Da fare oggi»', () => {
   deve(!/perfezionata/.test(k), 'i KPI rifanno il conteggio delle polizze da perfezionare');
   deve(!/quote_anagrafiche/.test(k), 'i KPI rifanno i conteggi della rubrica di «Da fare oggi»');
   deve(!/eq\('stato', 'aperto'\)/.test(k), 'i KPI rifanno il conteggio degli insoluti');
+});
+
+/* LE LETTURE SONO PAGINATE (critique 07/10/2026): una select senza range si
+   ferma a mille righe, e il riquadro Portafoglio diceva «1000 polizze attive»
+   su un portafoglio di quattromila — il tetto del server, non il portafoglio. */
+e.prova('i riquadri leggono a pagine, non fino al tetto delle mille righe', () => {
+  const k = ritaglia(html, 'caricaKpiScrivania');
+  const letture = (k.match(/db\.from\(/g) || []).length;
+  const paginate = (k.match(/\.order\('id'\)\.range\(da, a\)/g) || []).length;
+  deve(letture === 3, 'letture attese 3, trovate ' + letture);
+  deve(paginate === letture, letture + ' letture ma ' + paginate + ' paginate');
+  deve(/p\.parziale/.test(k), 'una lettura fermata non si dichiara nel riquadro');
 });
 
 e.prova('la si chiama da tutti i percorsi che aprono la Scrivania', () => {

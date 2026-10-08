@@ -1733,6 +1733,100 @@ il browser può servire il motore vecchio con la pagina nuova, in silenzio.
 
 ---
 
+## 07/10/2026 — L'area riservata dei convenzionati diventa una scheda cliente
+
+**Perimetro:** `area.html` (la pagina dell'associato). Bozzetto di Francesco:
+la «Sintesi cliente» dei gestionali di compagnia — scheda a sinistra,
+linguette a destra, prodotti divisi in famiglie — ma con la pelle di IAM.
+
+🟡 **La forma cambia, i percorsi no.** A sinistra la scheda (iniziali, nome,
+nascita ed età, convenzione, Contatti e Avvisi richiudibili, barra
+WhatsApp/Email/Chiama in fondo); a destra le linguette Sintesi · Anagrafica ·
+Polizze · Richieste · Offerte. Le cinque sezioni sono le stesse di prima, con
+nomi più corti. Sul telefono la scheda sta sopra e i Contatti partono chiusi.
+*Come tornare indietro:* `git revert` del commit, nessun dato coinvolto.
+
+🟡 **Tre famiglie di prodotti (Auto, Rami vari, Vita) dedotte dal nome e
+dall'icona**, perché la tabella prodotti non ha una colonna «famiglia». Nel
+dubbio un prodotto va in Rami vari; «RC vita privata» è RC, non vita. Se un
+giorno la deduzione sbaglia troppo, la cosa giusta è una colonna `famiglia`
+scelta dal pannello (🔴 database, non fatta).
+
+🟡 **«Richiesta veloce»** al posto del «Fast Quote» del bozzetto: un elenco
+unico dei prodotti che porta dritto al modulo. Non calcola premi.
+
+🟢 **Avvisi nella scheda e puntini sulle linguette:** dati mancanti (triangolo,
+come prima), rinnovi entro 30 giorni, preventivi pronti. Ognuno porta alla
+sua sezione.
+
+🟢 **Il modulo e le conversazioni si aprono dentro la pagina**, con la scheda
+ferma a sinistra: «Torna indietro» non ricarica più tutto.
+
+🟢 **Guasti corretti, trovati verificando:**
+- *Recupero password:* il link «ho dimenticato la password» apriva la
+  schermata giusta e un attimo dopo `dove()` la copriva con l'area — si
+  entrava senza aver scelto la password nuova. Adesso il recupero si ricorda.
+- *Uscita:* il segnale di presenza continuava a bussare ogni minuto dopo
+  «Esci». Si ferma.
+- *Rete instabile:* qualunque errore di lettura buttava fuori con «accesso non
+  abilitato». Adesso dice che non riesce a collegarsi e offre «Riprova».
+- *Errori invisibili:* dentro l'area non c'era il riquadro dei messaggi, e una
+  richiesta che non si apriva non diceva niente. C'è (`#msg-area`).
+- *«Manca ancora: targa»* compariva in cima al modulo, lontano dal pulsante:
+  sul telefono sembrava un pulsante rotto. Ora sta sopra il pulsante.
+- *Convenzione vuota:* si leggeva «Convenzione» seguito dal niente (vedi 🔴 2).
+  Ora la riga compare solo se il nome c'è, e il messaggio WhatsApp non dice
+  più «della convenzione .».
+- *Link delle offerte e dei rinnovi:* solo `http(s)://`.
+- La riga dell'associato si legge per colonne, non con `*`.
+- Due colori blu fuori palette (offerte, pulsante email) portati sui token.
+
+🔴 **Preparato, NON applicato** — `supabase/bozze/area-convenzionati-protezioni.sql`:
+1. **Un associato può riscriversi la propria riga dal browser** (politica
+   `assoc_update_proprio`): cambiare convenzione, segnarsi un consenso privacy
+   senza OTP, scriversi l'impronta del codice. Nessuno la usa: la bozza la
+   toglie.
+2. **Il nome della convenzione non arriva all'associato** (quote_convenzioni è
+   leggibile solo dallo staff): la bozza aggiunge `mia_convenzione()`, che dà
+   solo nome ed ente della sua. La pagina la chiama già e tace finché manca.
+
+**Fuori perimetro, annotato:**
+- 🔴 L'associato può **leggere** `otp_hash` della propria riga: sha256 di sei
+  cifre, si indovina in un attimo. Chiuderlo vuol dire cambiare `chiEntra()`
+  nel server (oggi legge la riga col token dell'associato) e spostare
+  l'impronta: è un rilascio del server.
+- Le prove automatiche (`node ui-test.mjs`) non sono state lanciate: sul PC di
+  questa sessione Node non c'è. Verificati a mano nel browser, con un finto
+  database, i percorsi principali su computer e telefono, e ricontrollati con
+  uno script tutti i vincoli testuali delle prove esistenti sull'area.
+
+### 07/10/2026 (seguito) — La demo dell'area riservata
+
+🟡 **`area.html?demo`** (e il pulsante «Area riservata (demo)» nella pagina
+Convenzioni di IAM) mostra l'area di un associato inventato, Mario Rossi.
+Tutto passa da `area-demo.js`, che in demo sostituisce sul client ogni
+lettura, l'accesso e le chiamate al server: verificato nel browser che non
+parte nessuna richiesta né verso Supabase né verso api.withusassicurazioni.it.
+Quello che si scrive in demo vive finché la scheda resta aperta. Una striscia
+gialla dice sempre che è una demo. Senza `?demo` il file non fa niente.
+*Come tornare indietro:* togliere il pulsante da index.html e il tag
+`area-demo.js` da area.html (o `git revert`).
+
+🟢 **Trovato provando la demo:** dopo «Salva i miei dati» il messaggio
+«Salvato» non compariva mai, perché veniva scritto nel modulo di prima del
+ridisegno. Corretto: anche nell'area vera.
+
+### 07/10/2026 (seguito) — Protezioni dell'area applicate
+
+🔴→✅ Su richiesta di Francesco applicata `supabase/migrations/20261007_area_convenzionati_protezioni.sql`
+(prima in `bozze/`). Verificato sul database: la politica `assoc_update_proprio`
+non c'è più (resta solo `assoc_update` dello staff), `mia_convenzione()` esiste,
+è eseguibile dagli utenti autenticati e non da `anon`. Da adesso il nome della
+convenzione compare nella scheda dell'associato.
+Resta aperto (fuori perimetro): la lettura di `otp_hash` da parte dell'associato.
+
+---
+
 ## 08/10/2026 — Gli appunti di lavoro non arrivano al cliente
 
 **Perimetro:** il foglio dell'analisi previdenziale, nelle sue due forme — il

@@ -30,31 +30,41 @@ const html = leggi('index.html');
 const corpo = (html.match(/async function caricaDaFareOggi\([^)]*\)[\s\S]*?\n\}/) || [''])[0];
 if (!corpo) { console.log('DA FARE OGGI\n  X   la funzione caricaDaFareOggi non si trova'); process.exit(1); }
 
+/* LA SCRIVANIA METTE PRIMA IL LAVORO (critique del 07/10/2026). La testata
+   promette «le cose che richiedono attenzione, prima di tutto il resto», e
+   la prima cosa sotto era un grafico alto 540 pixel: «Da fare oggi»
+   cominciava a metà schermo. Adesso viene subito dopo la testata, prima del
+   grafico e degli indicatori. */
 prova('la fascia esiste ed è la prima cosa nella scrivania', () => {
   const pannello = html.slice(html.indexOf('<div class="panel" id="panel-dashboard">'));
-  const iOggi = pannello.indexOf('id="oggi"');
-  const iVuoto = pannello.indexOf('id="d-empty"');
-  const iContenuto = pannello.indexOf('id="d-content"');
+  const fine = pannello.indexOf('<div class="panel" id="panel-', 10);
+  const p = fine > 0 ? pannello.slice(0, fine) : pannello;
+  const iTesta = p.indexOf('class="page-head"');
+  const iOggi = p.indexOf('id="oggi"');
+  const iGrafico = p.indexOf('id="vol-card"');
+  const iKpi = p.indexOf('id="kpi-riga"');
   deve(iOggi > 0, 'la fascia "Da fare oggi" non c\'è');
-  deve(iOggi < iVuoto && iOggi < iContenuto, 'la fascia non è la prima cosa che si vede');
-  return 'prima di tutto il resto';
+  deve(iTesta < iOggi, 'la testata non viene prima');
+  deve(iOggi < iGrafico && iOggi < iKpi, 'la fascia non è la prima cosa dopo la testata: il lavoro sta sotto il grafico');
+  deve(!/display:\s*none/.test(p.slice(iOggi, iGrafico)), 'la fascia nasce nascosta');
+  return 'testata → da fare oggi → grafico → indicatori';
 });
 
-prova('la fascia sta FUORI dal blocco che richiede i file di contabilita', () => {
-  // #d-content parte con display:none e si apre solo dopo il caricamento dei
-  // file: se la fascia stesse dentro, un agente che non fa contabilita non
-  // vedrebbe mai il proprio lavoro.
-  const iOggi = html.indexOf('id="oggi"');
-  const iContenuto = html.indexOf('id="d-content"');
-  deve(iOggi < iContenuto, 'la fascia e dentro #d-content: resterebbe nascosta');
-  const dopoOggi = html.slice(iOggi, iContenuto);
-  deve(!/display:\s*none/.test(dopoOggi), 'la fascia nasce nascosta');
-  return 'sempre visibile';
-});
-
-prova('il messaggio della scrivania vuota non promette piu tutto', () => {
-  const riga = (html.match(/id="d-empty"[^\n]*/) || [''])[0];
-  deve(/contabilit/i.test(riga), 'il messaggio dice ancora che senza file non c\'e nulla da vedere');
+/* IL VECCHIO BLOCCO IN FONDO È UN RIMANDO (scelta di Francesco, 07/10/2026).
+   Prima c'erano un secondo titolo «Scrivania», novità ferme all'11/06, un
+   modulo ticket e un messaggio che chiedeva di caricare file che non si
+   caricano più: la pagina finiva in un vicolo cieco. */
+prova('il vecchio blocco in fondo è un collegamento al Cruscotto, non un vicolo cieco', () => {
+  deve(!/id="d-content"/.test(html) && !/id="d-empty"/.test(html), 'il vecchio blocco è ancora nella pagina');
+  deve(!/Carica i file per vedere/.test(html), 'la scrivania chiede ancora di caricare file che non si caricano più');
+  const pannello = html.slice(html.indexOf('<div class="panel" id="panel-dashboard">'));
+  const p = pannello.slice(0, pannello.indexOf('<div class="panel" id="panel-', 10));
+  deve(/goTab\('cruscotto'\)/.test(p), 'la contabilità del giorno non si raggiunge dalla scrivania');
+  deve(/apriGiacenza\(\)/.test(p), 'la giacenza contanti non ha più una porta: si raggiungeva solo dal blocco tolto');
+  deve(!/goTab\('conto'\)/.test(p), 'una scorciatoia punta ancora alla schermata «conto», che non esiste più');
+  const build = (html.match(/function buildDashboard\(\)[\s\S]*?\n\}/) || [''])[0];
+  deve(!/getElementById\('d-(metrics|tipo|anz|mov|empty|content)'\)/.test(build),
+    'buildDashboard scrive ancora negli elementi tolti: il primo che manca ferma tutto quello che viene dopo');
 });
 
 prova('il calcolo si avvia da tutti i percorsi, non da uno solo', () => {
@@ -74,7 +84,7 @@ prova('il calcolo si avvia da tutti i percorsi, non da uno solo', () => {
 });
 
 prova('un errore su un conteggio non spegne la fascia', () => {
-  deve(/const conta = async \(fn\) => \{ try \{ return await fn\(\); \} catch/.test(corpo),
+  deve(/const conta = async \(fn(?:, nome)?\) => \{ try \{ return await fn\(\); \} catch/.test(corpo),
     'i conteggi non sono protetti uno per uno');
   const protetti = (corpo.match(/await conta\(async \(\) =>/g) || []).length;
   deve(protetti >= 6, 'conteggi protetti: ' + protetti);
@@ -91,10 +101,10 @@ prova('le voci a zero non si mostrano', () => {
 prova('il disegno e separato dalla raccolta, e gestisce il caso vuoto', () => {
   // Separati per due motivi: si puo ridisegnare senza reinterrogare, e si puo
   // verificare la resa senza database.
-  const disegna = (html.match(/function oggiDisegna\(voci\)[\s\S]*?\n\}/) || [''])[0];
+  const disegna = (html.match(/function oggiDisegna\(voci[^)]*\)[\s\S]*?\n\}/) || [''])[0];
   deve(disegna, 'oggiDisegna non esiste: disegno e raccolta sono ancora mescolati');
   deve(/il lavoro è in pari/.test(disegna), 'manca il messaggio per quando non c\'e nulla da fare');
-  deve(/oggiDisegna\(voci\);/.test(corpo), 'la raccolta non usa la funzione di disegno');
+  deve(/oggiDisegna\(voci[,)]/.test(corpo), 'la raccolta non usa la funzione di disegno');
   return 'raccolta → oggiDisegna';
 });
 
@@ -106,7 +116,12 @@ prova('si controlla la variabile del database giusta', () => {
 });
 
 prova('ogni voce porta da qualche parte', () => {
-  const voci = (corpo.match(/voci\.push\(\{/g) || []).length;
+  /* le voci del lavoro di oggi e quelle «da sistemare con calma»: tutte
+     devono portare da qualche parte (critique 07/10/2026). */
+  /* Le NOTE senza numero (es. «il perfezionamento non è tenuto, quindi non si
+     conta») non sono voci da aprire: dicono perché un numero manca. Tutte le
+     altre devono portare da qualche parte. */
+  const voci = (corpo.match(/(?:voci|calma)\.push\(\{(?! n: null)/g) || []).length;
   const destinazioni = (corpo.match(/va: \(\) =>/g) || []).length;
   deve(voci >= 6, 'voci previste: ' + voci);
   deve(destinazioni === voci, voci + ' voci ma ' + destinazioni + ' destinazioni');
@@ -140,6 +155,59 @@ prova('i conteggi leggono le tabelle giuste', () => {
   // nessuna scrittura: la scrivania guarda, non tocca
   deve(!/\.insert\(|\.update\(|\.delete\(/.test(corpo), 'la fascia scrive sul database: deve solo leggere');
   return '5 tabelle, sola lettura';
+});
+
+/* ══ UN ELENCO NON È UN CONTEGGIO (critique della Scrivania, 07/10/2026) ═══
+   Il server manda al massimo mille righe per richiesta. La scrivania contava
+   `data.length` su tabelle che ne hanno di più — scadute (~1.665), polizze
+   (~4.000), anagrafiche (2.536) — e diceva «1000» senza dirlo. Adesso o conta
+   il server, o si legge a pagine ordinate; e le tre voci dello scadenzario
+   passano dallo stesso motore della pagina Scadenzario, così i due numeri
+   non possono più divergere. */
+prova('nessun conteggio si ferma al tetto delle mille righe', () => {
+  deve(!/n: data\.length/.test(corpo), 'un conteggio usa ancora le righe scaricate');
+  deve(!/\.limit\(/.test(corpo), 'c\'è un tetto secco');
+  deve(/count: 'exact', head: true \}\)\.eq\('perfezionata', false\)/.test(corpo),
+    'le polizze da perfezionare non le conta il server');
+  const paginate = (corpo.match(/\.order\('id'\)\.range\(da, a\)/g) || []).length;
+  deve(paginate >= 4, 'letture paginate e ordinate: ' + paginate);
+  deve(/if \(r\.parziale\) parziale = true/.test(corpo), 'una lettura fermata non si dichiara');
+  return paginate + ' letture paginate';
+});
+
+/* IL PERFEZIONAMENTO SI CONTA SOLO SE È TENUTO (07/10/2026). Misurato: 7.154
+   polizze e nessuna mai segnata come perfezionata. «7.077 da perfezionare»
+   era tutto il portafoglio meno le annullate: un numero vero che non dice
+   niente, e il più grande della lista. */
+prova('le polizze da perfezionare si contano solo se qualcuno le segna come perfezionate', () => {
+  deve(/eq\('perfezionata', true\)/.test(corpo), 'non si guarda se il campo è mai stato compilato');
+  deve(/if \(!fatte\.count\) \{/.test(corpo), 'con il campo mai compilato la voce conta lo stesso tutto il portafoglio');
+  deve(/nessuna polizza risulta mai segnata come perfezionata/.test(corpo), 'il motivo per cui il numero manca non si dice');
+});
+
+prova('rinnovi e scadute sono quelli dello Scadenzario, non una copia', () => {
+  deve(/window\.Scadenzario/.test(corpo), 'la scrivania non usa il motore dello Scadenzario');
+  deve(/M\.conRinnovo\(/.test(corpo) && /M\.statoLavoro\(/.test(corpo), 'il rinnovo non si riconosce col motore');
+  deve(!/sostituzioni/.test(corpo), 'la scrivania guarda ancora `sostituzioni`, che è vuota ovunque');
+  deve(/<script src="\/nuovo-preventivo\/tariffe\/motore\/scadenzario\.js\?v=/.test(html),
+    'IAM non carica il motore dello scadenzario');
+});
+
+prova('i sospesi sono quelli della schermata Sospesi, non il file caricato a mano', () => {
+  deve(!/APP\.sospesi/.test(corpo), 'la voce legge ancora il file caricato a mano');
+  deve(/await sprCarica\(\)/.test(corpo) && /SPR_ESITO/.test(corpo), 'la voce non usa il conto della schermata Sospesi');
+  /* E vale il cancello della Contabilità: chi non può aprire i Sospesi non ne
+     vede il numero e l'importo dalla Scrivania. Il cancello va CHIAMATO prima
+     della lettura, non solo esistere (§1). */
+  const iCanc = corpo.indexOf("contabPuo('sospesi')"), iLett = corpo.indexOf('await sprCarica()');
+  deve(iCanc > 0 && iCanc < iLett, 'i sospesi si leggono senza guardare il permesso sulla Contabilità');
+  /* Si guarda la SOTTRAZIONE, non la parola: la prima stesura cercava
+     «da_dichiarare» nel blocco intero e restava verde anche togliendola dal
+     conteggio, perché la stessa parola resta nel totale in euro. */
+  deve(/const n = \(e\.righe \|\| 0\) - \(e\.da_dichiarare \|\| 0\)/.test(corpo),
+    'il numero dei sospesi comprende le rate da dichiarare: finirebbero in due voci');
+  deve(/- \(Number\(e\.totale_da_dichiarare\) \|\| 0\)/.test(corpo),
+    'il totale dei sospesi comprende le rate da dichiarare');
 });
 
 /* ══ I DUE BUCHI DEL MARKETING LI CONTA IL SERVER (21/09/2026) ═════════════

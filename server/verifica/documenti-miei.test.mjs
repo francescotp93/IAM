@@ -108,7 +108,7 @@ await prova('e sta dietro all\'accesso, non davanti', () => {
   deve(!/publicFirmaCollab\.get\('\/mio/.test(src),
     'la rotta dell\'area riservata e\' finita sul router pubblico');
   const idx = fs.readFileSync(new URL('../index.js', import.meta.url), 'utf8');
-  deve(/app\.use\('\/firma-collab', requireAuth, firmaCollabRouter\)/.test(idx),
+  deve(/app\.use\('\/firma-collab', requireAuth,(?: requireInterno,)? firmaCollabRouter\)/.test(idx),
     'firmaCollabRouter non e\' piu\' dietro requireAuth: la rotta si aprirebbe a chiunque');
 });
 

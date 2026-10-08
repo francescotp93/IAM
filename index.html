@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.49.2">
-<meta name="app-versione-nome" content="Il tacito rinnovo non si afferma quando non si sa">
+<meta name="app-versione" content="0.51.0">
+<meta name="app-versione-nome" content="La Scrivania si legge come un registro, e un account esterno non vede più niente">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -2498,6 +2498,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <div style="margin:14px 0;display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="loadConvenzioni()" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-refresh"></i> Aggiorna</button>
         <button id="conv-btn-nuova" onclick="toggleNuovaConvenzione()" style="display:none;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ti ti-plus"></i> Nuova convenzione</button>
+        <!-- L'AREA COME LA VEDE UN ASSOCIATO, con dati inventati: si guarda
+             senza credenziali e senza toccare niente di vero. -->
+        <a href="area.html?demo" target="_blank" rel="noopener" style="background:#eef3ff;color:var(--blue);border:1px solid #c9d6ff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none"><i class="ti ti-eye"></i> Area riservata (demo)</a>
       </div>
       <!-- CHI C'E' ADESSO. Sta in cima e non in fondo: e' la cosa che si guarda
            entrando, non quella che si cerca. -->

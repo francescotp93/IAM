@@ -295,7 +295,7 @@ await prova('l\'API v1 registra una riga per compagnia e rimanda esito_id come c
 
 await prova('index.js monta /esiti dietro il login e passa il registro all\'API v1', () => {
   const idx = fs.readFileSync(path.join(qui, 'index.js'), 'utf8');
-  deve(/app\.use\('\/esiti', requireAuth, esitiRouter\)/.test(idx), '/esiti non e\' montata dietro requireAuth');
+  deve(/app\.use\('\/esiti', requireAuth,(?: requireInterno,)? esitiRouter\)/.test(idx), '/esiti non e\' montata dietro requireAuth');
   deve(/esiti: registraEsito/.test(idx), 'l\'API v1 non riceve il registro');
 });
 

@@ -8687,3 +8687,57 @@ più. È **non si scrive il carattere vietato dentro il costrutto che lo vieta**
 - **`withus-one.js` ha la sua disciplina a parte** (`versione-scocca.test.mjs`,
   §9): impronta annotata invece della data. Sono due meccanismi per due file
   con due ritmi diversi, ed è voluto (§12).
+
+---
+
+## 75. «Autenticato» non vuol dire «dell'agenzia» (controllo GDPR, 07/10/2026)
+
+Un controllo GDPR e di sicurezza ha trovato un difetto solo, con molte facce.
+**I convenzionati (area.html) hanno un account Supabase e NON hanno una riga in
+`iam_utenti`.** Tutto quello che si fidava del solo login dava a loro i dati
+di tutta l'agenzia.
+
+| porta | prima | adesso |
+|---|---|---|
+| backup notturno del database | **scaricabile da chiunque** (200 su `/nuovo-preventivo/backups/…`) | 404, e scritto fuori dal sito (PR #311) |
+| contenitore `documenti` | leggibile da ogni account | interni o chi l'ha caricato |
+| `iam_utenti` | leggibile da tutti; una riga si creava da sé (`mail_caselle`, `rete`…) | lettura agli interni, inserimento chiuso |
+| `iam_trattative` | una politica `true` scavalcava le altre | tolta: proprie, condivise, staff |
+| `quote_note` (diario clienti) | leggere/modificare/cancellare: ogni account | interni; correggere e cancellare: autore o staff |
+| backend, rotte con la chiave di servizio | bastava un login | `requireInterno` (riga in `iam_utenti`, non sospeso) |
+| `/crm` | chiave di servizio, chiunque cancellava | token di chi chiama (vale la RLS), cancellare: admin |
+| OTP di firma e area convenzionati | tentativi infiniti | 5 per codice, tetto per indirizzo sulle rotte pubbliche |
+| chiavi di debug (`plurima-*`, `restore`) | valore di riserva scritto nel repo pubblico | senza variabile d'ambiente la porta resta chiusa |
+| header HTTP su IAM | nessuno | HSTS, nosniff, Referrer-Policy, frame-ancestors |
+
+**La regola:** «interno» = `iam_mio_ruolo() is not null` nel database,
+`requireInterno` nel backend — sono la stessa domanda. Le rotte dei
+convenzionati stanno fuori da quel cancello apposta.
+
+Misurato dopo, simulando i tre tipi di account: esterno 0 righe ovunque; admin
+tutto; collaboratore le sue trattative (prima le vedeva **tutte e 24**).
+
+**Lo strumento `apply_migration` si blocca sui `DROP POLICY`** (non risponde in
+60 s e non applica niente). La migrazione è scritta con `ALTER POLICY`, che fa
+la stessa cosa e lascia la politica al suo posto.
+
+Prove: `server/verifica/sicurezza-account-esterni.test.mjs` (14, cinque
+controprove).
+
+### Cosa resta aperto (decisioni di Francesco)
+
+- **Leggere i log di Caddy** per sapere se qualcuno ha scaricato un backup da
+  `/nuovo-preventivo/backups/` prima della chiusura, e cancellare dal VPS gli
+  archivi rimasti nella cartella vecchia. Da qui il VPS non si raggiunge se non
+  dal canale comandi.
+- **La notifica al Garante entro 72 ore** (art. 33) è una decisione legale.
+- **Ruotare** `EXPLORE_KEY`/`PLURIMA_MAP_KEY`/`RESTORE_KEY` se sul server hanno
+  il vecchio valore, e le password VNC degli scraper (scritte nei `.service`).
+- **Rendere privato il repository**: oggi è pubblico.
+- `otp_hash` dei convenzionati resta leggibile dall'associato (decisione già
+  aperta il 07/10); il tetto dei tentativi lato server non lo copre, perché il
+  confronto si può fare offline.
+- **Documenti GDPR mancanti**: registro dei trattamenti (art. 30), nomine a
+  responsabile (Brevo, Supabase, OVH, Anthropic, openapi.it, Stripe/PayPal),
+  DPIA (si trattano dati di salute), procedura data breach, routine per
+  cancellazione/portabilità e per applicare `conserva_fino`.

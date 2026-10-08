@@ -89,7 +89,9 @@ prova('i percorsi di servizio sono quelli che IAM gia\' inoltra (vercel.json)', 
 // ── 2. nascosto quello che va nascosto, e NIENTE di quello che il browser carica ──
 prova('QUOTO: il sorgente del backend e la configurazione restano fuori', () => {
   const n = nascosti('sorgente_quoto');
-  for (const dovuto of ['/server/*', '/scraper/*', '/supabase/*', '/deploy/*', '/config/*', '/node_modules/*', '/.git/*', '/.env', '/.env.*', '*.mjs', '/package.json', '/static-server.js', '/iam/*'])
+  /* /backups/* e gli archivi: il 07/10/2026 il backup notturno di tutto il
+     database rispondeva 200 sotto /nuovo-preventivo/backups/ (controllo GDPR). */
+  for (const dovuto of ['/server/*', '/scraper/*', '/supabase/*', '/deploy/*', '/config/*', '/node_modules/*', '/.git/*', '/.env', '/.env.*', '*.mjs', '/package.json', '/static-server.js', '/iam/*', '/backups/*', '*.tar.gz', '*.sqlite', '*.log'])
     deve(n.includes(dovuto), 'non nascosto: ' + dovuto);
   return n.length + ' regole';
 });

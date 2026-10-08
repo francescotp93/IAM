@@ -35,3 +35,8 @@ backups/
 # GitHub Pages senza dire perche'. (02/08/2026)
 node_modules
 node_modules/
+
+# Impeccable: binario del motore (si riscarica da solo) e impostazioni locali
+.claude/settings.local.json
+.claude/skills/impeccable/scripts/bin/
+.playwright-mcp/

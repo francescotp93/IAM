@@ -6,7 +6,10 @@
 import { Router } from 'express';
 
 export const plurimaExploreRouter = Router();
-const KEY = process.env.EXPLORE_KEY || 'leo-explore-Px7wQ2';
+/* Nessun valore di riserva (audit GDPR, 07/10/2026): una chiave scritta in un
+   repository pubblico non protegge niente. Senza la variabile d'ambiente la
+   porta resta chiusa. */
+const KEY = process.env.EXPLORE_KEY || '';
 const DEFAULT = process.env.ITALIANA_SCRAPER_URL || 'http://127.0.0.1:4300';
 function target(q) {
   const p = String(q.port || '');
@@ -37,7 +40,7 @@ const OPS = {
 };
 
 plurimaExploreRouter.get('/', async (req, res) => {
-  if ((req.query.key || '') !== KEY) return res.status(403).json({ error: 'chiave non valida' });
+  if (!KEY || (req.query.key || '') !== KEY) return res.status(403).json({ error: 'chiave non valida' });
   const op = String(req.query.op || 'status');
   if (!OPS[op]) return res.status(400).json({ error: 'op non consentita', consentite: Object.keys(OPS) });
   const SCR = target(req.query);

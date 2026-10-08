@@ -370,15 +370,43 @@
      sull'ultima. E si spezza sui separatori: senza, il primo nome che si
      riconosce si prende tutta la riga e gli altri sei si perdono. */
   function leggiElenco(C, ramo, linee, i, riga, num, dentro) {
-    var pezzo = pulisci(riga), ultima = i;
+    var pezzo = pulisci(riga), ultima = i, prese = [pulisci(riga)];
     for (var k = 1; k <= 4 && i + k < linee.length; k++) {
       var l = pulisci(linee[i + k]);
       /* L'elenco finisce dove comincia un'intestazione di tabella. */
       if (!l || etichetta(l)) break;
       pezzo += ' ' + l;
+      prese.push(l);
       ultima = i + k;
     }
-    pezzo.split(/[,;()\.:]+/).forEach(function (voce) {
+
+    /* ── DUE LETTURE DELLO STESSO ELENCO, E SERVONO TUTT'E DUE ──────────────
+       1. TUTTO INCOLLATO, spezzato sulla punteggiatura. È la forma di un
+          elenco scritto in prosa: «Garanzie Aggiuntive (Cristalli, Eventi /
+          Sociopolitici, Assistenza, Rinuncia alla Rivalsa).» — lì «Eventi
+          Sociopolitici» sta a cavallo di due righe, e riga per riga si
+          perderebbe.
+       2. RIGA PER RIGA. È la forma di un elenco pulito, una garanzia per riga:
+          «GARANZIE OPZIONALI / Incendio, Furto e Rapina / Ricorso Terzi e
+          Ripristino locali di proprietà / Kasko Completa».
+
+       PERCHÉ SERVONO TUTT'E DUE, misurato l'08/10/2026 sul set informativo
+       Groupama Guidamica: la prima lettura da sola perdeva il FURTO. Incollate,
+       quelle righe diventano «Furto e Rapina Ricorso Terzi e Ripristino locali
+       di proprietà Kasko Completa Collisione estesa» — 79 caratteri, oltre il
+       tetto dei 70, e il pezzo si butta.
+
+       E il motivo per cui prima non si vedeva è istruttivo: le due colonne del
+       DIP arrivavano impastate una sull'altra, e i punti e virgola della
+       colonna delle ESCLUSIONI spezzavano il pezzo nel punto giusto. Funzionava
+       per caso. Leggere bene le colonne ha tolto l'incidente fortunato e ha
+       fatto vedere il buco che c'era sotto.
+
+       Le due letture possono trovare la stessa garanzia: non è un problema,
+       perché fra due costituzioni uguali `meglio()` ne tiene una sola. */
+    var voci = pezzo.split(/[,;()\.:]+/);
+    prese.forEach(function (l) { voci = voci.concat(l.split(/[,;()\.:]+/)); });
+    voci.forEach(function (voce) {
       var v = nomePulito(voce);
       if (!v || v.length < 4 || v.length > 70) return;
       var ric = riconosce(C, ramo, v);

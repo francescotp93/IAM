@@ -603,6 +603,54 @@ prova('UNA GARANZIA NON LETTA NON PORTA IMPORTI, E NON SI VANTA DI AVERLI', () =
     'dice di portare un importo attaccato a mano che invece è stato buttato: ' + r.frase);
 });
 
+prova('UN ELENCO PULITO, UNA GARANZIA PER RIGA, SI LEGGE', () => {
+  /* Misurato l'08/10/2026 sul set informativo Groupama Guidamica: il FURTO si
+     perdeva. L'elenco delle opzionali è pulito — una garanzia per riga — e il
+     lettore incollava le righe con uno spazio spezzando solo sulla
+     punteggiatura: «Furto e Rapina Ricorso Terzi e Ripristino locali di
+     proprietà Kasko Completa Collisione estesa» fa 79 caratteri, oltre il
+     tetto dei 70, e il pezzo si buttava.
+
+     E perché il buco non si vedeva: le due colonne del DIP arrivavano
+     impastate, e i punti e virgola della colonna delle ESCLUSIONI spezzavano
+     il pezzo nel posto giusto. Funzionava per caso. Le righe qui sotto sono
+     quelle vere di quel documento. */
+  const d = S.scheda([
+    { n: 1, testo: 'Prodotto: AUTO assicurazione R.C. Auto\nSET GU pag. 1 di 2' },
+    { n: 2, testo: 'GARANZIE OPZIONALI\n'
+        + 'Incendio, Furto e Rapina\n'
+        + 'Ricorso Terzi e Ripristino locali di proprietà\n'
+        + 'Kasko Completa\n'
+        + 'Collisione estesa\n'
+        + 'SET GU pag. 2 di 2' },
+  ], { ramo: 'auto' });
+  deve(d.ok, 'il documento non è stato letto: ' + d.motivo);
+  deve(g(d, 'furto') && g(d, 'furto').stato === 'presente',
+    'il FURTO si perde di nuovo: un elenco con una garanzia per riga non si legge');
+  deve(g(d, 'incendio') && g(d, 'incendio').stato === 'presente',
+    'l\'incendio, che sta sulla stessa riga del furto, non si legge');
+  deve(g(d, 'kasko') && g(d, 'kasko').stato === 'presente',
+    'la kasko, che sta su una riga sua più in basso, non si legge');
+});
+
+prova('e un nome a cavallo di due righe non si perde per questo', () => {
+  /* La lettura riga per riga da sola non basta: nel documento DALLBOGG vero
+     «Eventi Sociopolitici» sta spezzato fra due righe, e leggendo solo per
+     riga si perderebbe. Le due letture servono tutt'e due. */
+  const d = S.scheda([
+    { n: 1, testo: 'Prodotto: AUTO assicurazione R.C. Auto\nSET DB pag. 1 di 2' },
+    { n: 2, testo: 'Puoi inoltre integrare la polizza con le seguenti ulteriori\n'
+        + 'garanzie opzionali (i dettagli sono nel DIP Aggiuntivo):\n'
+        + 'Garanzie Aggiuntive (Cristalli, Eventi\n'
+        + 'Sociopolitici, Assistenza, Rinuncia alla Rivalsa).\n'
+        + 'SET DB pag. 2 di 2' },
+  ], { ramo: 'auto' });
+  deve(g(d, 'eventi_sociopolitici') && g(d, 'eventi_sociopolitici').stato === 'presente',
+    'un nome spezzato fra due righe si perde: ' + JSON.stringify(g(d, 'eventi_sociopolitici')));
+  deve(g(d, 'rinuncia_rivalsa') && g(d, 'rinuncia_rivalsa').stato === 'presente',
+    'l\'ultimo nome dell\'elenco si perde');
+});
+
 /* ─────────────────────────────────────────────────────────────────────────────
    LA SEZIONE CHE IL REGOLAMENTO OBBLIGA A SCRIVERE          (08/10/2026)
 

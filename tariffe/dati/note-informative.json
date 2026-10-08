@@ -2,7 +2,7 @@
   "_cos_e": "Il catalogo dei documenti precontrattuali delle compagnie: dove stanno, non che cosa dicono. È la lista di lavoro del raccoglitore e della schermata «Metti un prodotto in archivio» di Confronta.",
   "_misurato_il": "2026-10-08",
   "_come_e_stato_costruito": "Con WebSearch, che gira sui server di Anthropic e non passa dal proxy di rete dell'ambiente. Ogni voce riporta un URL che il motore di ricerca ha indicizzato sul dominio della compagnia stessa.",
-  "_IL_LIMITE_DA_SAPERE": "UNA VERIFICA HA UNA DATA, E QUELLA DATA INVECCHIA. L'08/10/2026 il catalogo è stato RIPASSATO TUTTO, uno per uno: dei 283 documenti di 56 compagnie, 214 sono stati scaricati davvero e portano la loro impronta e il loro peso; 69 no. Questo è il salto rispetto a prima, quando 240 indirizzi su 283 non erano mai stati aperti e il catalogo era in gran parte una lista di speranze.\n\nMA «verificato» VUOL DIRE «QUEL GIORNO HA RISPOSTO», NON «RISPONDE». Le compagnie spostano i PDF a ogni edizione nuova, e lo si è visto sul campo: 15 indirizzi che una ricerca aveva trovato rispondono 404, e sei documenti Vera finivano fuori elenco perché il sito reindirizza a un dominio nuovo. Prima di mettere un confronto davanti a un cliente il documento va ripreso: serve per questo il controllo mensile, non per pignoleria.\n\nPERCHÉ I 69 NON SONO ARRIVATI, misurato: 22 non_pdf, 26 non_preso, 15 scaduto, 6 trovato. I «non_preso» sono quasi tutti siti che rifiutano l'indirizzo da cui parte la chiamata (Allianz 403, Zurich 400, Vittoria 502, REVO 403, Prima 403): non è l'indirizzo del documento a essere sbagliato, è il sito che non vuole parlare con un datacenter. Per quelli la strada è il browser dell'agenzia, non questa funzione. I «non_pdf» sono documenti spostati, con al loro posto la pagina del prodotto: è il caso più insidioso, perché un raccoglitore che non guardasse i byte archivierebbe quell'HTML come se fosse un documento. I «trovato» rimasti sono sei documenti Assimoco: il sito non risponde entro due minuti.\n\nE RESTANO 62 INDIRIZZI CHE NON FINISCONO PER .pdf (portali Liferay, .ashx, endpoint di download): di quelli, quando arrivano, arriva comunque un PDF vero — lo si controlla guardando i byte e non l'etichetta.",
+  "_IL_LIMITE_DA_SAPERE": "UNA VERIFICA HA UNA DATA, E QUELLA DATA INVECCHIA. L'08/10/2026 il catalogo è stato RIPASSATO TUTTO, uno per uno: dei 283 documenti di 56 compagnie, 222 sono stati scaricati davvero e portano la loro impronta e il loro peso; 61 no. Prima di quel giorno 240 indirizzi su 283 non erano mai stati aperti, e il catalogo era in gran parte una lista di speranze.\n\nMA «verificato» VUOL DIRE «QUEL GIORNO HA RISPOSTO», NON «RISPONDE». Le compagnie spostano i PDF a ogni edizione nuova, e lo si è visto sul campo lo stesso giorno: 15 indirizzi rispondevano 404, e sei documenti Vera finivano fuori elenco perché il sito reindirizza a un dominio nuovo (piuvera.it). Otto di quelli sono stati RITROVATI online e riprovati, e portano `url_precedente` con l'indirizzo vecchio. Prima di mettere un confronto davanti a un cliente il documento va ripreso: serve per questo il controllo mensile, non per pignoleria.\n\nPERCHÉ I 61 NON ARRIVANO, misurato: 22 non_pdf, 26 non_preso, 7 scaduto, 6 trovato.\n· I «non_preso» sono siti che rifiutano l'INDIRIZZO DA CUI PARTE la chiamata, non quello del documento: Allianz 403, Zurich 400, Vittoria 502, REVO 403, Prima 403. Provato e misurato: presentarsi con uno User-Agent che dice chi chiama non cambia niente, e per Allianz la ricerca ha confermato che i file VECCHI sono ancora al loro posto e indicizzati. Per quelli la strada è il browser dell'agenzia, non questa funzione.\n· I «non_pdf» sono documenti spostati, con al loro posto la pagina del prodotto: è il caso più insidioso, perché un raccoglitore che non guardasse i byte archivierebbe quell'HTML come se fosse un documento. Zurich Connect (6) e Intesa Sanpaolo (9) sono tutti così, e la ricerca di indirizzi nuovi ha ridato le stesse pagine HTML: quei portali non servono più PDF statici.\n· I «trovato» rimasti sono sei documenti Assimoco: il sito non risponde entro due minuti, nemmeno riprovando in giorni diversi.\n\nE UNA COSA CHE NON SI PRENDE DA UN AGGREGATORE. Cercando gli indirizzi nuovi sono saltati fuori quattro set informativi su siti di terzi (un broker, un bucket di un comparatore). Sono stati scartati, e non per diffidenza: di quell'edizione non risponde nessuno, il file può essere vecchio di anni senza che si veda, e un confronto mostrato a un cliente su un'edizione sbagliata è un problema di adeguatezza. Il documento precontrattuale si prende dal sito di chi lo emette.",
   "_perche_l_edizione_conta": "Misurato: il set informativo DALLBOGG su cui è stato tarato il lettore è l'edizione 06/2020, ma quella pubblicata oggi è la 04/25. Un confronto mostrato a un cliente nel 2026 su un documento del 2020 è un rischio di adeguatezza a sé, indipendente da quanto bene lo si legge. Per questo ogni voce porta l'edizione come sta scritta nel nome del file o nel titolo, e per questo serve il controllo mensile.",
   "_stati": {
     "trovato": "l'URL è stato trovato da una ricerca ma non è stato aperto da nessuno",
@@ -570,23 +570,29 @@
           "ramo": "casa",
           "prodotto": "Immagina Adesso - Modulo Casa (ed. 28.06.2025)",
           "tipo": "set_informativo",
-          "url": "https://www.generali.it/cmsassets/site/9aa964a7-9172-441d-ad63-314b627836e9/2__ORI_Set_Informativo_Immagina_Adesso_Modulo_Casa_ed_28062025GI562664_(1).pdf",
-          "stato": "scaduto",
+          "url": "https://cdn.generali.it/-/media/generali_b2c/documenti-correlati/privati/immagina/immagina-adesso/2--ori-set-informativo-immagina-adesso-modulo-casa-ed-28062025gi562664.ashx?rev=852898a78d37427b9ff23b0a15f073fa",
+          "stato": "verificato",
           "trovato_il": "2026-10-08",
-          "come_trovato": "WebSearch limitata a generali.it. PDF vero (estensione .pdf) sul CMS ufficiale. Attenzione: l'URL contiene parentesi e un suffisso _(1), da mantenere identico.",
+          "come_trovato": "ritrovato online l'2026-10-08 dopo che il precedente non rispondeva (visto-nei-risultati)",
           "provato_il": "2026-10-08",
-          "motivo_non_preso": "Il sito della compagnia ha risposto 404: l'indirizzo non c'è più. Succede a ogni edizione nuova: va ritrovato."
+          "url_precedente": "https://www.generali.it/cmsassets/site/9aa964a7-9172-441d-ad63-314b627836e9/2__ORI_Set_Informativo_Immagina_Adesso_Modulo_Casa_ed_28062025GI562664_(1).pdf",
+          "indirizzo_ritrovato_il": "2026-10-08",
+          "impronta": "a4434c81eb435df45558159bfe138ada547f0bb3b02fdf2cb0d1f1a2909c928f",
+          "byte": 1227837
         },
         {
           "ramo": "rc",
           "prodotto": "Immagina Adesso - Modulo Armonia / RC (ed. 28.06.2025)",
           "tipo": "set_informativo",
-          "url": "https://www.generali.it/cmsassets/site/f5b86088-c1c4-4276-8fc2-1fdbe914105d/3_ORI_Set_Informativo_Immagina_Adesso_Modulo_Armonia_ed_28062025GI562666.pdf",
-          "stato": "scaduto",
+          "url": "https://cdn.generali.it/-/media/generali_b2c/documenti-correlati/privati/immagina/immagina-adesso/3--ori-set-informativo-immagina-adesso-modulo-armonia-ed-28062025gi562666.ashx?rev=f52aa82062064067ab3e048a29ed3421",
+          "stato": "verificato",
           "trovato_il": "2026-10-08",
-          "come_trovato": "WebSearch limitata a generali.it. PDF vero sul CMS ufficiale. Il modulo Armonia contiene la RC della vita privata ed esclude espressamente i rischi da circolazione veicoli.",
+          "come_trovato": "ritrovato online l'2026-10-08 dopo che il precedente non rispondeva (visto-nei-risultati)",
           "provato_il": "2026-10-08",
-          "motivo_non_preso": "Il sito della compagnia ha risposto 404: l'indirizzo non c'è più. Succede a ogni edizione nuova: va ritrovato."
+          "url_precedente": "https://www.generali.it/cmsassets/site/f5b86088-c1c4-4276-8fc2-1fdbe914105d/3_ORI_Set_Informativo_Immagina_Adesso_Modulo_Armonia_ed_28062025GI562666.pdf",
+          "indirizzo_ritrovato_il": "2026-10-08",
+          "impronta": "2a05ebb1951a8f438d54fd49f97e0247de5b4c8a59c1db0a7b54fa0f35459f7f",
+          "byte": 788418
         },
         {
           "ramo": "salute",
@@ -616,12 +622,15 @@
           "ramo": "auto",
           "prodotto": "Generali Sei in Auto - Altri Veicoli (ed. 01/26, DIP 01/26, DIP agg. 07/26)",
           "tipo": "set_informativo",
-          "url": "https://www.generali.it/cmsassets/site/59378633-168f-4437-adfe-e0416ebc7484/GI_SI_Gen6Auto_Altri_Veicoli_ed_01_26_DIP_01_26_DIPA_07_26_A4.pdf",
-          "stato": "scaduto",
+          "url": "https://cdn.generali.it/-/media/generali_b2c/documenti-correlati/privati/assicurazione-auto/altri-veicoli/sei-in-auto-altri-veicoli/set-informativo-generali-sei-in-auto---altri-veicoli.ashx",
+          "stato": "verificato",
           "trovato_il": "2026-10-08",
-          "come_trovato": "WebSearch limitata a generali.it. PDF vero sul CMS ufficiale. Riguarda veicoli diversi dalle autovetture (autobus, macchine operatrici), non la RCA autovetture.",
+          "come_trovato": "ritrovato online l'2026-10-08 dopo che il precedente non rispondeva (dedotto-dal-percorso)",
           "provato_il": "2026-10-08",
-          "motivo_non_preso": "Il sito della compagnia ha risposto 404: l'indirizzo non c'è più. Succede a ogni edizione nuova: va ritrovato."
+          "url_precedente": "https://www.generali.it/cmsassets/site/59378633-168f-4437-adfe-e0416ebc7484/GI_SI_Gen6Auto_Altri_Veicoli_ed_01_26_DIP_01_26_DIPA_07_26_A4.pdf",
+          "indirizzo_ritrovato_il": "2026-10-08",
+          "impronta": "3bea186804c8735bf8013e8bbcca1c127ac7e5900badaa9d8ebc5cf6f2fc0874",
+          "byte": 3632860
         },
         {
           "ramo": "altro",
@@ -1669,45 +1678,57 @@
           "ramo": "casa",
           "prodotto": "CASApiuFAMIGLIA (versione mutuatario)",
           "tipo": "set_informativo",
-          "url": "https://www.veraassicurazioni.it/wp-content/uploads/2025/06/Setinformativo_VA_CASApiuFAMIGLIA_mutuatario_07.2025.pdf",
-          "stato": "scaduto",
+          "url": "https://www.piuvera.it/media/filer_public/8b/a8/8ba8e9d7-1ff7-4934-818b-31f8fc9c13c4/set_informativo_casapiufamiglia_mutuo_sal.pdf",
+          "stato": "verificato",
           "trovato_il": "2026-10-08",
-          "come_trovato": "WebSearch limitata ai domini veraassicurazioni.it / veravita.it. Set informativo con DIP Danni, DIP aggiuntivo Danni (realizzato 06/2025) e condizioni. Il piu recente trovato per Vera.",
+          "come_trovato": "ritrovato online l'2026-10-08 dopo che il precedente non rispondeva (visto-nei-risultati)",
           "provato_il": "2026-10-08",
-          "motivo_non_preso": "Il sito della compagnia ha risposto 404: l'indirizzo non c'è più. Succede a ogni edizione nuova: va ritrovato."
+          "url_precedente": "https://www.veraassicurazioni.it/wp-content/uploads/2025/06/Setinformativo_VA_CASApiuFAMIGLIA_mutuatario_07.2025.pdf",
+          "indirizzo_ritrovato_il": "2026-10-08",
+          "impronta": "8f08d9781a650556d606b1036174ac1674ab4ae564d17363ac0892c3973afa1a",
+          "byte": 2790479
         },
         {
           "ramo": "salute",
           "prodotto": "SALUTEpiuBENESSERE – Formula Azienda",
           "tipo": "set_informativo",
-          "url": "https://www.veraassicurazioni.it/wp-content/uploads/2025/06/Setinformativo_VA_SalutepiuBenessere_FormulaAzienda_07.2025.pdf",
-          "stato": "scaduto",
+          "url": "https://www.piuvera.it/media/filer_public/b3/4c/b34c78f6-47f8-4512-8576-af7ebe739fd8/set_informativo_salutepiubenessere_azienda.pdf",
+          "stato": "verificato",
           "trovato_il": "2026-10-08",
-          "come_trovato": "WebSearch su dominio veraassicurazioni.it. Edizione 07/2025.",
+          "come_trovato": "ritrovato online l'2026-10-08 dopo che il precedente non rispondeva (visto-nei-risultati)",
           "provato_il": "2026-10-08",
-          "motivo_non_preso": "Il sito della compagnia ha risposto 404: l'indirizzo non c'è più. Succede a ogni edizione nuova: va ritrovato."
+          "url_precedente": "https://www.veraassicurazioni.it/wp-content/uploads/2025/06/Setinformativo_VA_SalutepiuBenessere_FormulaAzienda_07.2025.pdf",
+          "indirizzo_ritrovato_il": "2026-10-08",
+          "impronta": "b825fd5c78d5f5e6328a5b507bb26ef47345b9b11341c7c74be5b274160ee740",
+          "byte": 1626287
         },
         {
           "ramo": "auto",
           "prodotto": "Vera Autovetture (RC Auto + CVT, ed. 06.2022)",
           "tipo": "set_informativo",
-          "url": "https://veraassicurazioni.it/wp-content/uploads/2022/05/Set_Informativo_VERA_AUTOVETTURE_2_ed-06.2022_valida-dal_01062022.pdf",
-          "stato": "scaduto",
+          "url": "https://www.piuvera.it/media/filer_public/a3/ad/a3ad15b4-c872-407d-aa53-ee2b8568b44b/set_informativo_autopiusicura.pdf",
+          "stato": "verificato",
           "trovato_il": "2026-10-08",
-          "come_trovato": "WebSearch su dominio veraassicurazioni.it. Valido dal 01/06/2022. ATTENZIONE: edizione datata, da riverificare contro lo 'Storico Prodotti' del sito prima dell'uso con un cliente.",
+          "come_trovato": "ritrovato online l'2026-10-08 dopo che il precedente non rispondeva (visto-nei-risultati)",
           "provato_il": "2026-10-08",
-          "motivo_non_preso": "Il sito della compagnia ha risposto 404: l'indirizzo non c'è più. Succede a ogni edizione nuova: va ritrovato."
+          "url_precedente": "https://veraassicurazioni.it/wp-content/uploads/2022/05/Set_Informativo_VERA_AUTOVETTURE_2_ed-06.2022_valida-dal_01062022.pdf",
+          "indirizzo_ritrovato_il": "2026-10-08",
+          "impronta": "af4617ef4378c6bcb889c76a49d6274472a6af126591ee99e7627ac7318926ce",
+          "byte": 1872199
         },
         {
           "ramo": "auto",
           "prodotto": "Vera Veicoli Commerciali (RC Auto e CVT)",
           "tipo": "set_informativo",
-          "url": "https://www.veraassicurazioni.it/wp-content/uploads/2020/06/SIVERA_VeiComm6_ed7-2020.pdf",
-          "stato": "scaduto",
+          "url": "https://www.piuvera.it/media/filer_public/9d/6f/9d6f80f1-5c07-4ff5-932d-a4d993962e08/set_informativo_veicoli_commerciali.pdf",
+          "stato": "verificato",
           "trovato_il": "2026-10-08",
-          "come_trovato": "WebSearch su dominio veraassicurazioni.it. Edizione 07/2020, datata.",
+          "come_trovato": "ritrovato online l'2026-10-08 dopo che il precedente non rispondeva (visto-nei-risultati)",
           "provato_il": "2026-10-08",
-          "motivo_non_preso": "Il sito della compagnia ha risposto 404: l'indirizzo non c'è più. Succede a ogni edizione nuova: va ritrovato."
+          "url_precedente": "https://www.veraassicurazioni.it/wp-content/uploads/2020/06/SIVERA_VeiComm6_ed7-2020.pdf",
+          "indirizzo_ritrovato_il": "2026-10-08",
+          "impronta": "536d75347d525931567d199e950eb904fd6489d6613a1432ce2389390ff13e00",
+          "byte": 2079213
         },
         {
           "ramo": "infortuni",
@@ -1724,12 +1745,15 @@
           "ramo": "rc",
           "prodotto": "MULTIRISCHI COMMERCIO",
           "tipo": "set_informativo",
-          "url": "https://www.veraassicurazioni.it/wp-content/uploads/2022/12/Set-Informativo-MULTIRISCHI-COMMERCIO-ed.03.11.2022-dal-01.01.2023.pdf",
-          "stato": "scaduto",
+          "url": "https://www.piuvera.it/media/filer_public/44/7e/447eb9a9-8447-47f3-9948-97549c5a0432/set_informativo_multiprotezione_business_multirischi.pdf",
+          "stato": "verificato",
           "trovato_il": "2026-10-08",
-          "come_trovato": "WebSearch su dominio veraassicurazioni.it. Edizione 03.11.2022, in vigore dal 01/01/2023.",
+          "come_trovato": "ritrovato online l'2026-10-08 dopo che il precedente non rispondeva (visto-nei-risultati)",
           "provato_il": "2026-10-08",
-          "motivo_non_preso": "Il sito della compagnia ha risposto 404: l'indirizzo non c'è più. Succede a ogni edizione nuova: va ritrovato."
+          "url_precedente": "https://www.veraassicurazioni.it/wp-content/uploads/2022/12/Set-Informativo-MULTIRISCHI-COMMERCIO-ed.03.11.2022-dal-01.01.2023.pdf",
+          "indirizzo_ritrovato_il": "2026-10-08",
+          "impronta": "ad92b6fb2ae1634102ed7dbed785222cd8687e1acc0a588c885905f270f9baba",
+          "byte": 1410988
         }
       ]
     },
@@ -3840,6 +3864,18 @@
       "dove_stanno_i_pdf": "fuori dal repository, in /tmp/note-informative: sono documenti delle compagnie e un repository non è il posto dove tenerli. Nel catalogo restano impronta e peso, che sono la prova.",
       "quanto_e_durata": "tredici minuti, sei richieste alla volta su compagnie diverse. Una per una ci volevano ottanta minuti.",
       "cosa_non_ha_funzionato": "Presentarsi con uno User-Agent che dice chi chiama non ha spostato un solo 403. Quei siti non guardano chi chiama: rifiutano il datacenter. E allargare la ricerca dell'intestazione PDF al primo kilobyte non ha recuperato i due documenti Credem, che cominciano per byte che non si è ancora capito che cosa siano."
+    },
+    "la_ricerca_degli_indirizzi_persi": {
+      "che_cosa": "Quattordici ricerche in parallelo, una per gruppo di compagnie, per ritrovare l'indirizzo attuale dei 69 documenti che non arrivavano. Ogni candidato riporta dove è stato visto.",
+      "candidati_trovati": 59,
+      "provati": 50,
+      "arrivati": 8,
+      "scartati_perche_di_terzi": 4,
+      "domini_da_autorizzare": [
+        "lithium.allianz.it (2 documenti)",
+        "www.insaluteservizi.com (1 documento)"
+      ],
+      "cosa_si_e_imparato": "Per Allianz e Zurich il problema non è l'indirizzo: i file sono al loro posto e indicizzati, è il sito che rifiuta il datacenter. Per Zurich Connect e Intesa Sanpaolo i portali non servono più PDF statici, e qualunque indirizzo nuovo torna HTML. Gli 8 recuperati sono tutti Vera (il dominio è cambiato) e Generali (i percorsi cambiano a ogni edizione)."
     }
   }
 }

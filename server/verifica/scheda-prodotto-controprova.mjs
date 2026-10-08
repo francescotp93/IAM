@@ -253,6 +253,19 @@ const GUASTI = [
 
   ['la sezione non si apre piu\': la riga finisce nel filtro delle etichette', SP,
     (s) => s.replace('        if (R_ASSICURATO.test(pianura(t))) { assicuratoDa = num; return; }', '')],
+
+  /* ── L'ELENCO LETTO IN DUE MODI (08/10/2026) ──────────────────────────────
+     Il primo guasto è quello vero: era il comportamento di prima, e perdeva
+     il furto su tre documenti Groupama. */
+  ['l\'elenco si legge solo tutto incollato: un elenco pulito si perde', SP,
+    (s) => s.replace("    prese.forEach(function (l) { voci = voci.concat(l.split(/[,;()\\.:]+/)); });", '')],
+
+  ['l\'elenco si legge solo riga per riga: un nome a cavallo di due righe si perde', SP,
+    (s) => s.replace('    var voci = pezzo.split(/[,;()\\.:]+/);', '    var voci = [];')],
+
+  ['l\'elenco non guarda piu\' le righe dopo la prima', SP,
+    (s) => s.replace('for (var k = 1; k <= 4 && i + k < linee.length; k++)',
+      'for (var k = 1; k <= 0 && i + k < linee.length; k++)')],
 ]
 
 let sfuggiti = 0

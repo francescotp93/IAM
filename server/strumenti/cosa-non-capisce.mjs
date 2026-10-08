@@ -106,9 +106,20 @@ for (const f of files) {
     const nome = x.nome || x.chiave || x.titolo || '';
     const k = chiave(nome);
     if (!k || k.length < 4) return;
-    if (!conta.has(k)) conta.set(k, { k, come: new Set(), documenti: 0, compagnie: new Set(), rami: new Set(), esempi: [] });
+    if (!conta.has(k)) {
+      conta.set(k, { k, come: new Set(), documenti: 0, compagnie: new Set(), rami: new Set(),
+        /* DA QUALE REGOLA ARRIVA, e senza questo lo strumento è mezzo cieco:
+           un nome trovato dalla sezione obbligatoria del DIP è un candidato
+           per il vocabolario, uno trovato da un titolo di articolo nelle
+           Condizioni è quasi sempre rumore — una riga della tabella delle
+           percentuali di invalidità, per esempio. Distinguerli a occhio, su
+           mille nomi, non si fa. */
+        forme: new Set(), pagine: [], esempi: [] });
+    }
     const v = conta.get(k);
     v.come.add(String(nome).slice(0, 70));
+    if (x.forma) v.forme.add(x.forma);
+    if (x.pagina != null && v.pagine.length < 5) v.pagine.push(x.pagina);
     v.documenti++;
     if (chi) { v.compagnie.add(chi.compagnia); v.rami.add(chi.ramo); }
     v.rami.add(r.ramo);
@@ -131,10 +142,19 @@ console.log(tutti.length + ' nomi diversi fuori vocabolario\n');
 console.log('DA METTERE IN VOCABOLARIO (lo stesso nome in tre o più compagnie diverse)');
 console.log('-'.repeat(100));
 const l = (s, n) => String(s == null ? '' : s).slice(0, n).padEnd(n);
-console.log(l('nome', 46) + l('compagnie', 11) + l('documenti', 11) + 'rami');
+console.log(l('nome', 46) + l('compagnie', 11) + l('doc', 6) + l('forma', 10) + 'rami');
 const forti = tutti.filter((x) => x.compagnie.size >= 3);
-forti.forEach((x) => console.log(l([...x.come][0], 46) + l(x.compagnie.size, 11) + l(x.documenti, 11) + [...x.rami].join(' ')));
+forti.forEach((x) => console.log(l([...x.come][0], 46) + l(x.compagnie.size, 11) + l(x.documenti, 6)
+  + l([...x.forme].join('+'), 10) + [...x.rami].join(' ')));
 if (!forti.length) console.log('  (nessuno)');
+
+/* Il conto per FORMA: dice quale regola porta i candidati e quale il rumore.
+   È il numero da guardare prima di toccare il vocabolario. */
+const perForma = {};
+tutti.forEach((x) => [...x.forme].forEach((f) => { perForma[f] = (perForma[f] || 0) + 1; }));
+console.log('\nDA QUALE REGOLA ARRIVANO I NOMI SCONOSCIUTI');
+Object.entries(perForma).sort((a, b) => b[1] - a[1])
+  .forEach(([f, n]) => console.log('  ' + String(n).padStart(5) + '  ' + f));
 
 console.log('\nUNA COMPAGNIA SOLA: quasi sempre nomi commerciali, NON da mettere in vocabolario');
 console.log('  ' + tutti.filter((x) => x.compagnie.size === 1).length + ' nomi');
@@ -144,6 +164,7 @@ console.log('  ' + tutti.filter((x) => x.compagnie.size === 1).length + ' nomi')
 const fuoriFile = path.join(cartella, '_fuori-vocabolario.json');
 fs.writeFileSync(fuoriFile, JSON.stringify(tutti.map((x) => ({
   chiave: x.k, come_sta_scritto: [...x.come], documenti: x.documenti,
-  compagnie: [...x.compagnie], rami: [...x.rami], esempi: x.esempi,
+  compagnie: [...x.compagnie], rami: [...x.rami], forme: [...x.forme],
+  pagine: x.pagine, esempi: x.esempi,
 })), null, 2) + '\n');
 console.log('\nTutto in ' + fuoriFile);

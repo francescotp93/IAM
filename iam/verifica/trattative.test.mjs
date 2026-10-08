@@ -81,7 +81,7 @@ const pagina = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</
 <body><div id="app"><div class="panels">${pannello}</div>${scheda}</div>
 <script>${motore('anagrafica.js')}</script><script>${motore('collaboratori.js')}</script><script>${motore('trattative.js')}</script>
 <script>${FINTO}${STUB}${codice}
-window.__API = { renderTratt, openTrattModal, saveTratt, trtCensisci, trtModoCliente, trtFastTipo,
+window.__API = { renderTratt, openTrattModal, saveTratt, trtCensisci, trtTappa, trtModoCliente, trtFastTipo,
   trtClienteScelto, stato: () => ({ PIPE, TRT_CAT }) };
 </script></body></html>`;
 
@@ -174,6 +174,26 @@ prova('LE ALIQUOTE NON CI SONO PIÙ: la scheda chiede solo il premio lordo', asy
   deve(await page.locator('#mt-lordo').isVisible(), 'il premio lordo è sparito con le aliquote');
 });
 
+prova('LA SCHEDA: le tappe comandano la fase, e la testata riassume quello che si scrive', async () => {
+  await page.click('#mt-tappe [data-v="trattativa"]');
+  const v = await page.inputValue('#mt-status');
+  const att = await page.locator('#mt-tappe button.act').getAttribute('data-v');
+  const fatte = await page.locator('#mt-tappe button.fatta').evaluateAll(es => es.map(e => e.dataset.v).join());
+  deve(v === 'trattativa' && att === 'trattativa' && fatte === 'prospect,preventivo', 'stato ' + v + ', acceso ' + att + ', fatte ' + fatte);
+  await page.fill('#mt-lordo', '450');
+  const r = await page.locator('#mt-riass').innerText();
+  deve(/450,00/.test(r), 'il riepilogo non segue il premio: ' + r);
+  /* Un campo nascosto resta nascosto: una regola di stile che dice
+     «display» sullo stesso elemento vince sull'attributo, e un riquadro
+     che deve sparire resta lì. */
+  for (const id of ['#mt-aut-box', '#mt-cli-fast', '#mt-fast-giuridica']) {
+    deve(!(await page.locator(id).isVisible()), id + ' si vede anche se è nascosto');
+  }
+  await page.click('#mt-tappe [data-v="prospect"]');
+  await page.fill('#mt-lordo', '');
+  return 'tappa 3 accesa, 1 e 2 fatte, riepilogo € 450,00';
+});
+
 prova('senza cliente non si salva, e la scheda resta aperta', async () => {
   await page.evaluate(() => { window.SCRITTE = []; return window.__API.saveTratt(); });
   const m = await page.locator('#mt-msg').innerText();
@@ -234,7 +254,7 @@ prova('UN COLLABORATORE non concede l’autorizzazione e non chiude vinta una tr
   await page.evaluate(() => window.__API.trtClienteScelto('a1', 'ROSSI', 'Cliente'));
   await page.check('#mt-aut'); await page.locator('#mt-aut').dispatchEvent('change');
   deve(await page.locator('#mt-aut-stato').isDisabled(), 'la tendina dell’autorizzazione è aperta a un collaboratore');
-  await page.selectOption('#mt-status', 'chiusa');
+  await page.click('#mt-tappe [data-v="chiusa"]');
   await page.evaluate(() => { window.SCRITTE = []; return window.__API.saveTratt(); });
   const m = await page.locator('#mt-msg').innerText();
   const n = await page.evaluate(() => window.SCRITTE.length);
@@ -277,6 +297,15 @@ if (process.env.FOTO) {
   await conPipe(PIPE_PROVA);
   await page.evaluate(() => document.querySelectorAll('html,body,.panels,.panel,#app').forEach(e => { e.scrollTop = 0; }));
   await page.screenshot({ path: process.env.FOTO, fullPage: true });
+  for (const [foto, larga] of [[process.env.FOTO_SCHEDA, 1200], [process.env.FOTO_SCHEDA_TEL, 390]]) {
+    if (!foto) continue;
+    await page.setViewportSize({ width: larga, height: 900 });
+    await page.evaluate(() => { document.querySelectorAll('.panels').forEach(e => { e.style.display = 'none'; }); window.__API.openTrattModal('1'); });
+    await page.waitForTimeout(150);
+    await page.evaluate(() => document.querySelectorAll('html,body,#app,.modal').forEach(e => { e.scrollTop = 0; }));
+    await page.screenshot({ path: foto, fullPage: true });
+    await page.evaluate(() => { document.getElementById('modal-tratt').classList.remove('show'); document.querySelectorAll('.panels').forEach(e => { e.style.display = ''; }); });
+  }
   if (process.env.FOTO_TELEFONO) {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.evaluate(() => document.querySelectorAll('html,body,.panels,.panel,#app').forEach(e => { e.scrollTop = 0; }));

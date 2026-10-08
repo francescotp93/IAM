@@ -1,8 +1,19 @@
 {
-  "versione": "0.54.0",
-  "nome": "Trattative: la pipeline a colpo d'occhio, i richiami da fare, e niente più aliquote",
+  "versione": "0.55.0",
+  "nome": "Trattative: la scheda con le tappe cliccabili e il riepilogo, e niente quadretti di sfondo",
   "data": "2026-10-08",
   "storia": [
+    {
+      "v": "0.55.0",
+      "data": "2026-10-08",
+      "nome": "Trattative: la scheda con le tappe cliccabili e il riepilogo, e niente quadretti di sfondo",
+      "voci": [
+        "Trattative: la scheda ha lo stile della sezione, con le tappe in alto (Prospect, Preventivo, In trattativa, Vinta, Persa) che si scelgono con un clic",
+        "Trattative: sotto il titolo della scheda si legge mentre si compila che cosa si sta scrivendo: cliente, prodotto e premio",
+        "Trattative: i campi sono divisi in schede (Cliente, Prodotto, Premio e lavorazione, Richiamo, Note), con interruttori al posto delle caselle",
+        "Trattative: tolti i quadretti dallo sfondo scuro, e l'anello del tasso di chiusura non disegna più un pallino quando è a zero"
+      ]
+    },
     {
       "v": "0.54.0",
       "data": "2026-10-08",

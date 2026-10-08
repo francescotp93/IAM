@@ -88,6 +88,76 @@ const DOMINI = [
   'www.italiana.it',
   'www.allianz.it',
   'www.nobis.it',
+
+  /* ── LE COMPAGNIE AGGIUNTE L'08/10/2026 ───────────────────────────────────
+     Da dieci compagnie a quarantasei, comprese le banche che vendono prodotti
+     assicurativi (Intesa, Poste, Credit Agricole, BNP Cardif, Credem, Banco
+     BPM, BPER, Mediolanum) e le dirette. Ogni dominio sta qui perche' il
+     catalogo porta un documento che sta la' sopra: l'elenco e il catalogo si
+     controllano a vicenda, e una prova li confronta.
+
+     NESSUNO DI QUESTI INDIRIZZI E' STATO APERTO: la rete di questo ambiente e'
+     chiusa verso i siti delle compagnie. Sono indirizzi TROVATI, non
+     verificati, e alcuni non finiscono per .pdf (Liferay di AXA, .ashx di
+     Generali): si scoprira' alla prima chiamata vera, come si e' scoperto il
+     02/10/2026 che dallbogg.it reindirizza a dallbogg.com. */
+  'areaclienti.hdiassicurazioni.it',
+  'assets.europassistance.it',
+  'bnl.it',
+  'canegatto.conte.it',
+  'cdn.generali.it',
+  'cdn.groupama.it',
+  'dallbogg.com',
+  'dallbogg.it',
+  'genertel.it',
+  'intermediari.conte.it',
+  'intesasanpaolorbmsalute.com',
+  'sara.it',
+  'setinformativi.bnpparibascardif.it',
+  'static.credit-agricole.it',
+  'static.sitewww.arcassicura.it',
+  'veraassicurazioni.it',
+  'www.adir.it',
+  'www.allianz.it',
+  'www.allianzdirect.it',
+  'www.amtrust.it',
+  'www.assimoco.it',
+  'www.axa.it',
+  'www.bene.it',
+  'www.ca-assicurazioni.it',
+  'www.ca-vita.it',
+  'www.cattolica.it',
+  'www.conte.it',
+  'www.credemassicurazioni.it',
+  'www.credemvita.it',
+  'www.dallbogg.com',
+  'www.generali.it',
+  'www.genertel.it',
+  'www.gruppoitas.it',
+  'www.helvetia.com',
+  'www.intesasanpaoloassicurazioni.com',
+  'www.intesasanpaoloinsuranceagency.it',
+  'www.intesasanpaoloprotezione.com',
+  'www.italiana.it',
+  'www.linear.it',
+  'www.media.poste.it',
+  'www.mediolanumvita.it',
+  'www.munichre.com',
+  'www.netinsurance.it',
+  'www.nobis.it',
+  'www.prima.it',
+  'www.quixa.it',
+  'www.realemutua.it',
+  'www.revoinsurance.com',
+  'www.sara.it',
+  'www.unipol.it',
+  'www.unisalute.it',
+  'www.veraassicurazioni.it',
+  'www.verti.it',
+  'www.vittoriaassicurazioni.com',
+  'www.zurich-connect.it',
+  'www.zurich.it',
+  'youquote.hdia.it',
 ]
 
 /* 15 MB: il set informativo vero pesa 2. Il tetto serve anche a non far

@@ -1994,3 +1994,50 @@ garanzia con due clic**, e resta scritto che l'ha attaccato una persona:
   adesso c'è il metro per sapere se un ritocco migliora o peggiora.
 - **`pdfjs-dist` è servito in locale** per misurare (installato senza salvarlo
   nel package.json): il metro va lanciato a mano, non è nel cancello.
+
+---
+
+## 08/10/2026 — Il catalogo delle note informative: da 10 a 56 compagnie
+
+**Perimetro:** `tariffe/dati/note-informative.json` e l'elenco dei domini della
+funzione `prendi-documento`. Richiesta di Francesco: «recupera tutte le note
+informative presenti online di compagnie assicurative e banche operanti in
+Italia, solo prodotti assicurativi».
+
+🟢 **Trovati 283 documenti di 56 compagnie** (prima: 43 di 10), cercati con
+otto ricerche in parallelo, una per gruppo, **limitate al dominio ufficiale di
+ogni compagnia**. Niente aggregatori: un documento preso da un comparatore può
+essere vecchio o di un altro prodotto, e finirebbe davanti a un cliente.
+Dentro ci sono anche le banche che vendono assicurazioni — Intesa Sanpaolo,
+Poste, Crédit Agricole, BNP Paribas Cardif, Credem, Vera (Banco BPM), Arca
+(BPER), Mediolanum — e le dirette (Genertel, ConTe, Linear, Quixa, Verti,
+Prima, Allianz Direct, Zurich Connect).
+
+Per ramo: auto 98, vita 43, casa 41, salute 37, infortuni 20, rc 14, viaggio 9.
+
+🔴 **NESSUNO DI QUESTI 240 INDIRIZZI NUOVI È STATO APERTO**, e il catalogo lo
+scrive in testa. La rete di questo ambiente è chiusa verso i siti delle
+compagnie (403 al CONNECT, rimisurato oggi). «trovato» vuol dire «qualcuno ha
+visto questo indirizzo scritto da qualche parte», non «di là arriva un PDF» —
+e 71 indirizzi su 283 non finiscono nemmeno per `.pdf` (portali Liferay di
+AXA, `.ashx` di Generali, endpoint `get_file`): potrebbero consegnare una
+pagina HTML. Si scoprirà alla prima chiamata vera, come il 02/10/2026 si
+scoprì che `dallbogg.it` reindirizza a `dallbogg.com`.
+
+🟡 **I 46 domini nuovi sono stati messi nella funzione `prendi-documento` nel
+repository, ma la funzione NON è stata reinstallata.** L'elenco dei domini è
+l'unica cosa che impedisce a quella funzione di diventare un proxy aperto, e
+una prova confronta il catalogo con l'elenco: se divergono, il documento non si
+scarica e nessuno capisce perché.
+
+🟢 **Strumento nuovo: `aggiungi-al-catalogo.mjs`.** Fonde un elenco nuovo nel
+catalogo senza creare doppioni (la chiave è l'URL) e **senza perdere le
+verifiche già fatte** — un documento «verificato» con la sua impronta non torna
+«trovato» solo perché una ricerca l'ha ritrovato. Ogni documento nuovo nasce
+«trovato», mai «verificato»: una ricerca sul web non è una verifica.
+
+**Fuori perimetro, annotato:**
+- **Scaricarli davvero**: servono la chiave pubblica del progetto Supabase
+  (non è in questo ambiente) e il rilascio della funzione con i domini nuovi.
+- **`www.munichre.com`** è finito fra i domini: è un riassicuratore, e il
+  documento che ci sta sopra va guardato prima di fidarsi.

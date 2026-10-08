@@ -88,7 +88,7 @@ await prova('il limitatore: cinque tentativi, poi fermo; un codice nuovo riparte
 
 await prova('firma: il tetto ai tentativi si controlla PRIMA di confrontare il codice', () => {
   const s = leggi('server/sign.js');
-  const pezzi = s.split("sha(String(otp) + ':' + t) !== f.otp_hash");
+  const pezzi = s.split("!otpGiusto(otp, t, f.otp_hash)");
   deve(pezzi.length === 3, 'attese due verifiche OTP, trovate ' + (pezzi.length - 1));
   for (const p of pezzi.slice(0, 2)) {
     const prima = p.slice(-600);
@@ -98,7 +98,7 @@ await prova('firma: il tetto ai tentativi si controlla PRIMA di confrontare il c
 
 await prova('area convenzionati: tetto ai tentativi prima del confronto, e azzerato a ogni codice nuovo', () => {
   const s = leggi('server/convenzionati.js');
-  const i = s.indexOf("impronta(codice + ':' + assoc.id) !== assoc.otp_hash");
+  const i = s.indexOf("!otpGiusto(codice, assoc.id, assoc.otp_hash)");
   deve(i > 0, 'confronto non trovato');
   deve(/tentativiCodice\.bloccato\(assoc\.id\)/.test(s.slice(i - 400, i)), 'il blocco non sta prima del confronto');
   deve(/tentativiCodice\.azzera\(assoc\.id\)/.test(s), 'un codice nuovo non azzera i tentativi');

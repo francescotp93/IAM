@@ -1824,3 +1824,51 @@ non c'è più (resta solo `assoc_update` dello staff), `mia_convenzione()` esist
 è eseguibile dagli utenti autenticati e non da `anon`. Da adesso il nome della
 convenzione compare nella scheda dell'associato.
 Resta aperto (fuori perimetro): la lettura di `otp_hash` da parte dell'associato.
+
+---
+
+## 08/10/2026 — Gli appunti di lavoro non arrivano al cliente
+
+**Perimetro:** il foglio dell'analisi previdenziale, nelle sue due forme — il
+PDF e il foglio HTML di scorta. Richiesta di Francesco: «nel pdf del calcolo
+della pensione devi levare questa parte», con la foto del riquadro ambra
+«VALORI ANCORA DA CONFERMARE».
+
+🟢 **Tolto il riquadro dal documento del cliente.** Dentro c'erano frasi come
+«Segnaposto — da leggere sull'ISC della Nota informativa HDI», «non letta
+sull'originale», «da riscontrare su Normattiva». Sono appunti nostri: al
+cliente non dicono niente che possa usare, e gli dicono una cosa che non
+volevamo — che il foglio in mano è una bozza — così smette di fidarsi anche
+dei numeri giusti, che sono quasi tutti.
+
+🟡 **Tolto anche da un secondo posto, che nessuno aveva notato.** Cercando
+quelle frasi è saltato fuori che in fondo al blocco sul riscatto il foglio
+stampava «Tempi e condizioni reali di liquidazione in caso di LICENZIAMENTO
+rispetto alle DIMISSIONI: **da confermare con HDI prima di dirlo a un
+cliente**» — sul foglio del cliente. La citazione di legge accanto (artt. 11 e
+14 D.Lgs. 252/2005) resta: quella è una fonte, non un appunto.
+
+🟡 **La prudenza non è stata tolta: ha cambiato destinatario.** La lista intera
+resta dove la legge chi lavora — in cima alla schermata di QUOTO, nel rifiuto
+che blocca l'INVIO al cliente finché non è vuota, e nella riga d'archivio
+(`parametri_usati.daConfermare`), che fra un anno dirà con quali numeri era
+stato fatto quel conto. Al cliente resta quello che lo riguarda, in una lingua
+che è sua: la filigrana STIMA, la banda della stima prudenziale, il disclaimer
+e la riga che dice di quale tariffa sono i numeri.
+
+🟡 **Aggiunta la marca STIMA sul foglio HTML di scorta.** Il PDF aveva già la
+filigrana; il foglio HTML è quello che il cliente riceve quando il PDF non si
+genera (niente rete), e non deve sembrare PIÙ definitivo del PDF solo perché è
+il ripiego.
+
+**Prove:** la prova che chiedeva il contrario («il foglio porta i valori da
+confermare») è stata **sostituita**, non cancellata: adesso la regola si misura
+su tutti e due i documenti, cercando NOVE FRASI DI SERVIZIO invece del titolo
+del riquadro — il titolo si toglie in un minuto, l'abitudine di scrivere
+appunti dentro ai testi no. Pensione 63/63, controprova 10/10 guasti presi.
+
+**Fuori perimetro, annotato:**
+- **I segnaposto HDI restano segnaposto**: rendimento, ISC e coefficiente di
+  conversione sono ancora da leggere sui documenti della compagnia. Finché
+  restano, il foglio si scarica ma non si manda — e adesso è l'unico posto
+  dove quel limite si vede, quindi quel blocco all'invio non va toccato.

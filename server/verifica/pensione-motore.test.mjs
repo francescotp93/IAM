@@ -635,7 +635,7 @@ prova('il foglio spiega su quale divario si misurano le proposte', () => {
   return 'nota presente con versamento in corso, assente senza';
 });
 
-prova('il foglio porta il disclaimer, i valori da confermare e chi firma', () => {
+prova('il foglio porta il disclaimer, la marca STIMA e chi firma', () => {
   const e = P.calcola({ ...BASE, etaInizioLavoro: null });
   const f = P.foglioHtml({ esito: e, cliente: { id: 'a1', nome: 'Mario Rossi' },
     consulente: { nome: 'Francesco Oddo', rui: 'B000123456' }, dataRiferimento: '12/09/2026' });
@@ -643,13 +643,116 @@ prova('il foglio porta il disclaimer, i valori da confermare e chi firma', () =>
   deve(/STIMA PRUDENZIALE/.test(f.html), 'lo scenario prudenziale non è marcato sul foglio');
   deve(f.html.indexOf('STIMA PRUDENZIALE') < f.html.indexOf('Dove sei oggi'),
     'l\'avviso prudenziale sta sotto i numeri: un avviso in fondo lo legge chi già sapeva');
-  deve(/Valori ancora da confermare/.test(f.html), 'i valori da confermare non arrivano sul foglio');
-  deve(/Tariffa HDI/.test(f.html), 'i segnaposto HDI non arrivano sul foglio del cliente');
+  /* La marca STIMA accanto al titolo è la gemella della filigrana del PDF: il
+     foglio HTML è quello che il cliente riceve quando il PDF non si genera, e
+     non deve sembrare PIÙ definitivo del PDF solo perché è il ripiego. */
+  deve(/class="stima"/.test(f.html), 'il foglio di scorta non porta la marca STIMA che il PDF mette in filigrana');
   deve(/illustrativo/.test(f.html) && /NON è una promessa/.test(f.html), 'manca il disclaimer');
   deve(/B000123456/.test(f.html), 'il foglio non porta l\'iscrizione RUI di chi firma');
   deve(/Quando posso prendere prima i miei soldi/.test(f.html), 'il blocco sul riscatto non arriva sul foglio');
   deve(/48 mesi/.test(f.html) && /75%/.test(f.html), 'il foglio non riporta i numeri delle anticipazioni e dei riscatti');
-  return 'prudenziale in cima, da confermare, disclaimer, RUI e riscatti';
+  /* La fonte di legge resta: è una citazione, non un appunto. */
+  deve(/D\.Lgs\. 252\/2005/.test(f.html), 'il foglio non cita più la norma del riscatto');
+  return 'prudenziale in cima, marca STIMA, disclaimer, RUI e riscatti';
+});
+
+/* ── 8-bis. GLI APPUNTI DI LAVORO NON ARRIVANO AL CLIENTE (08/10/2026) ─────
+   Questa prova ha SOSTITUITO quella che chiedeva il contrario: fino al
+   07/10/2026 il foglio doveva portare l'elenco dei valori da confermare, e il
+   PDF lo stampava in fondo in un riquadro ambra.
+
+   Francesco l'ha guardato dalla parte del cliente e aveva ragione: dentro
+   c'erano frasi come «Segnaposto — da leggere sull'ISC della Nota informativa
+   HDI», «non letta sull'originale», «da riscontrare su Normattiva». Sono
+   appunti nostri. Al cliente non dicono niente che possa usare, e gli dicono
+   una cosa che non volevamo — che il foglio in mano è una bozza — così smette
+   di fidarsi anche dei numeri giusti, che sono quasi tutti.
+
+   Cercando quelle frasi è saltato fuori che ce n'era anche una SECONDA, e
+   peggiore, che nessuno aveva notato: in fondo al blocco sul riscatto il
+   foglio stampava «da confermare con HDI prima di dirlo a un cliente» — sul
+   foglio del cliente. Per questo la prova non cerca il titolo del riquadro ma
+   le FRASI DI SERVIZIO, e le cerca su tutti e due i documenti: il titolo si
+   toglie in un minuto, l'abitudine di scrivere appunti dentro ai testi no. */
+prova('GLI APPUNTI DI LAVORO NON ARRIVANO AL CLIENTE, NÉ SUL PDF NÉ SUL FOGLIO DI SCORTA', () => {
+  const SERVIZIO = [
+    /segnaposto/i,
+    /da leggere su/i,
+    /da riscontrare/i,
+    /non letta sull'originale/i,
+    /normattiva/i,
+    /valori ancora da confermare/i,
+    /da confermare con/i,
+    /prima di (dirlo|consegnare)/i,
+    /provvisorio/i,
+  ];
+  const d = { esito: P.calcola({ ...BASE, etaInizioLavoro: null }), cliente: { id: 'a1', nome: 'Mario Rossi' },
+    consulente: { nome: 'Francesco Oddo', rui: 'B000123456' }, dataRiferimento: '12/09/2026' };
+
+  const f = P.foglioHtml(d);
+  deve(f.ok, (f.problemi || []).join('; '));
+  const pdf = P.documentoPdf(d);
+  deve(pdf.ok, (pdf.problemi || []).join('; '));
+  /* Il PDF si guarda TUTTO, come esce dal motore: blocchi, avvertenze, bande.
+     Guardare solo i blocchi lascerebbe scoperto il posto più facile dove
+     rimettere una frase di servizio senza accorgersene. */
+  const testoPdf = JSON.stringify(pdf.documento);
+
+  const trovate = [];
+  SERVIZIO.forEach((r) => {
+    const a = f.html.match(r), b = testoPdf.match(r);
+    if (a) trovate.push('foglio HTML: ' + f.html.slice(Math.max(0, a.index - 70), a.index + 70).replace(/\s+/g, ' '));
+    if (b) trovate.push('PDF: ' + testoPdf.slice(Math.max(0, b.index - 70), b.index + 70).replace(/\s+/g, ' '));
+  });
+  deve(!trovate.length, 'un appunto di lavoro è finito sul documento del cliente:\n    ' + trovate.join('\n    '));
+
+  /* LA CITAZIONE DI LEGGE NON È UN APPUNTO, E DEVE RESTARE — su tutti e due i
+     documenti. Senza questa riga il modo più comodo di far passare la prova
+     sarebbe cancellare l'intero paragrafo invece della sola frase di servizio:
+     il cliente perderebbe la norma su cui si regge il riscatto, e nessuno se
+     ne accorgerebbe. (Un guasto della controprova non veniva preso, ed è stato
+     lui a dirlo.) */
+  /* Si cerca la FRASE INTERA della fonte, non il numero del decreto: quel
+     numero compare anche altrove nel documento, quindi cercarlo avrebbe
+     lasciato passare la cancellazione dell'intero paragrafo. */
+  const fonteRiscatto = P.TFR.quandoLiRiprendo.fonte;
+  deve(fonteRiscatto && fonteRiscatto.length > 20, 'la fonte del riscatto non esiste più nel motore');
+  deve(f.html.indexOf(fonteRiscatto) >= 0, 'il foglio HTML non cita più la norma del riscatto');
+  deve(testoPdf.indexOf(fonteRiscatto) >= 0, 'il PDF non cita più la norma del riscatto');
+
+  /* E il controllo al contrario: le frasi di servizio ESISTONO ancora nel
+     motore. Se un domani sparissero anche da lì, questa prova passerebbe per
+     il motivo sbagliato — non perché i documenti sono puliti, ma perché non
+     c'è più niente da tenere fuori. */
+  const dentro = JSON.stringify(P.daConfermare()) + String(P.TFR.quandoLiRiprendo.daVerificare);
+  deve(SERVIZIO.some((r) => r.test(dentro)),
+    'nel motore non esiste più nessuna frase di servizio: la prova non sta misurando niente');
+  return 'nove frasi di servizio cercate su due documenti, nessuna trovata';
+});
+
+prova('la prudenza non è sparita: resta davanti a chi lavora', () => {
+  /* Togliere l'elenco dal foglio del cliente non vuol dire smettere di
+     contare i valori provvisori. Chi firma deve continuare a saperlo PRIMA,
+     e la riga d'archivio deve poterlo dire fra un anno. */
+  const lista = P.daConfermare();
+  deve(lista.length > 0, 'la lista dei valori da confermare è vuota: la marcatura si è spenta');
+
+  const d = { esito: P.calcola(BASE), cliente: { id: 'a1', nome: 'Mario Rossi' }, anagraficaId: 'a1',
+    consulente: { nome: 'Francesco Oddo', rui: 'B000123456' }, dataRiferimento: '12/09/2026' };
+
+  /* 1. la filigrana STIMA sul PDF è accesa proprio da quella lista */
+  const pdf = P.documentoPdf(d);
+  deve(pdf.documento.filigrana === 'STIMA',
+    'con dei valori da confermare il PDF non si marca più come stima: ' + pdf.documento.filigrana);
+
+  /* 2. la riga d'archivio se la porta dietro, tutta */
+  const sc = P.schedaArchivio(d);
+  const archiviati = sc.riga.parametri_usati.daConfermare;
+  deve(Array.isArray(archiviati) && archiviati.length === lista.length,
+    'l\'archivio non conserva l\'elenco dei valori provvisori di quel giorno');
+  deve(/Segnaposto|da leggere/i.test(JSON.stringify(archiviati)),
+    'nell\'archivio restano le etichette ma non le fonti: fra un anno non si saprà che cosa mancava');
+  return lista.length + ' voci: fuori dal foglio del cliente, dentro all\'archivio';
 });
 
 prova('gli importi sul foglio hanno il punto delle migliaia, sempre', () => {

@@ -165,7 +165,8 @@ marketingRouter.get('/segmenti', async (req, res) => {
         id: sg.id, nome: sg.nome, descrizione: sg.descrizione, filtri: sg.filtri,
         membri: conta.totale, contattabili: conta.contattabili.length,
         senza_email: conta.senzaEmail.length, senza_consenso: conta.senzaConsenso.length,
-        sincronizzato_il: sg.brevo_sync_il
+        opposti: (conta.opposti || []).length, per_soft_spam: conta.perSoftSpam || 0,
+        parziale: !!conta.parziale, sincronizzato_il: sg.brevo_sync_il
       });
     }
     res.json({ segmenti: out });
@@ -208,6 +209,9 @@ marketingRouter.post('/anteprima', async (req, res) => {
       contattabili: m.contattabili.length,
       senza_email: m.senzaEmail.length,
       senza_consenso: m.senzaConsenso.length,
+      opposti: (m.opposti || []).length,
+      per_soft_spam: m.perSoftSpam || 0,
+      parziale: !!m.parziale,
       esempi: m.contattabili.slice(0, 8).map(a => a.nominativo),
       esclusi: [...m.senzaEmail, ...m.senzaConsenso].slice(0, 8).map(a => ({
         nominativo: a.nominativo, motivo: a.email ? 'consenso mancante' : 'email mancante'
@@ -233,6 +237,19 @@ async function listaPer(tok, tipo, id) {
 
   const etichetta = (tipo === 'segmento' ? 'IAM · Segmento ' : 'IAM · Gruppo ') + riga.nome;
   const esito = await sincronizza({ nomeLista: etichetta, listIdEsistente: riga.brevo_list_id, contattabili: m.contattabili });
+
+  /* Chi si è disiscritto da Brevo si registra qui come opposto: da quel
+     momento non entra più in nessuna lista costruita da IAM, nemmeno con il
+     soft spam (art. 130 c. 4). Una riga che non si riesce a scrivere non
+     ferma la campagna: Brevo intanto non gli scrive comunque. */
+  esito.opposizioni_registrate = 0;
+  for (const mail of esito.disiscritti || []) {
+    try {
+      const r = await sbPatch(tok, `quote_anagrafiche?email=ilike.${encodeURIComponent(mail)}&opposizione_marketing_il=is.null`,
+        { opposizione_marketing_il: new Date().toISOString() });
+      esito.opposizioni_registrate += (r || []).length;
+    } catch (e) { /* si riprova alla prossima sincronizzazione */ }
+  }
 
   await sbPatch(tok, `${tabella}?id=eq.${encodeURIComponent(id)}`, {
     brevo_list_id: esito.listId, brevo_sync_il: new Date().toISOString()

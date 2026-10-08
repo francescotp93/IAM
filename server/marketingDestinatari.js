@@ -18,8 +18,10 @@
 //  Due regole non negoziabili, applicate qui e non nell'interfaccia (una regola
 //  che vive solo in una schermata si aggira con una chiamata fatta a mano):
 //    1. CONSENSO. Chi non ha `consenso_marketing = true` non entra in nessuna
-//       lista. Mai. Un invio commerciale senza consenso tracciato e' un rischio
-//       che ricade sull'agenzia.
+//       lista — con UNA eccezione di legge, che si sceglie per segmento e non
+//       vale mai per i gruppi: il «soft spam» (art. 130 c. 4 Codice Privacy),
+//       cioè email a un CLIENTE su prodotti analoghi a quelli che ha comprato.
+//       Chi si è opposto non entra in nessun caso, consenso o no.
 //    2. VISIBILITA'. Le letture su Supabase viaggiano con il token di CHI
 //       CHIEDE, non con la chiave di servizio: cosi' la Row Level Security vale
 //       anche qui, e nessuno sincronizza un gruppo che non potrebbe vedere.
@@ -42,6 +44,22 @@ export async function sbGet(token, path) {
   const t = await r.text();
   if (!r.ok) throw new Error('Supabase: ' + (t.slice(0, 200) || r.status));
   return t ? JSON.parse(t) : [];
+}
+
+/* Tutte le righe, a pagine. PostgREST ne manda al massimo mille per richiesta
+   qualunque cosa si chieda (§50, §53): con 4.465 anagrafiche un segmento ne
+   vedeva le prime mille e taceva sul resto. L'ordine per id rende le pagine
+   stabili; il tetto esiste e si dichiara con `parziale`. */
+const PASSO = 1000, PAGINE_MAX = 60;
+export async function sbTutte(token, path) {
+  const sep = path.includes('?') ? '&' : '?';
+  const righe = [];
+  for (let i = 0; i < PAGINE_MAX; i++) {
+    const pagina = await sbGet(token, `${path}${sep}order=id.asc&limit=${PASSO}&offset=${i * PASSO}`);
+    righe.push(...(pagina || []));
+    if (!pagina || pagina.length < PASSO) return { righe, parziale: false };
+  }
+  return { righe, parziale: true };
 }
 
 export async function sbPatch(token, path, body) {
@@ -72,7 +90,8 @@ const pulisci = (s) => String(s == null ? '' : s).replace(/[(),]/g, ' ').trim();
 
 /* ── L'elenco dei campi che ci servono di un'anagrafica ───────────────────── */
 const CAMPI_ANAG = 'id,nominativo,cognome,nome,email,consenso_marketing,privacy_firma,data_nascita,tipo,'
-  + 'sposato,ha_figli,casa_proprieta,stato_civile,professione,comune,provincia,intermediario_id,lead';
+  + 'sposato,ha_figli,casa_proprieta,stato_civile,professione,comune,provincia,intermediario_id,lead,'
+  + 'opposizione_marketing_il';
 
 /* Il consenso vale se c'è il campo OPPURE se la privacy è stata firmata con la
    spunta del marketing elettronico. La seconda strada non è un'eccezione di
@@ -86,19 +105,42 @@ function haConsenso(a) {
   return !!(pf && pf.stato === 'firmata' && pf.consensi && pf.consensi.marketing_elettronico === true);
 }
 
-/* Un contatto vale per una campagna solo se ha un indirizzo E il consenso.
-   Le due cose si contano separate perche' dicono due cose diverse: «manca la
-   mail» e' lavoro di segreteria, «manca il consenso» e' una domanda da fare al
-   cliente. */
-function smista(righe) {
-  const contattabili = [], senzaEmail = [], senzaConsenso = [];
+/* La platea «soft spam» (art. 130 c. 4 Codice Privacy), 08/10/2026.
+   Senza consenso si può scrivere a una persona solo se:
+     · è un CLIENTE — ha almeno una polizza; un lead non ha comprato niente;
+     · non si è OPPOSTA — e l'opposizione vale per sempre;
+     · si parla di prodotti ANALOGHI a quelli acquistati, e l'informativa data
+       al momento della vendita lo diceva. Queste due il programma non le può
+       verificare: le dichiara chi crea il segmento (`soft_spam_confermato`),
+       e senza quella dichiarazione la platea non si accende.
+   Vale solo per le email, solo per i segmenti, mai per i gruppi. */
+export function softSpamAttivo(f) {
+  return !!(f && f.base === 'soft_spam' && f.soft_spam_confermato && f.soft_spam_confermato.il);
+}
+
+/* Un contatto vale per una campagna solo se ha un indirizzo E una base per
+   scrivergli: il consenso, o — dove il segmento lo dichiara — il soft spam.
+   Le cose si contano separate perche' dicono cose diverse: «manca la mail» e'
+   lavoro di segreteria, «manca il consenso» e' una domanda da fare al cliente,
+   «si e' opposto» e' una risposta gia' data, e non si chiede piu'. */
+function smista(righe, opz = {}) {
+  const contattabili = [], senzaEmail = [], senzaConsenso = [], opposti = [];
+  let perSoftSpam = 0;
+  const clienti = opz.clienti || null;
   for (const a of righe || []) {
     const mail = String(a.email || '').trim();
     if (!mail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { senzaEmail.push(a); continue; }
-    if (!haConsenso(a)) { senzaConsenso.push(a); continue; }
-    contattabili.push({ ...a, email: mail.toLowerCase() });
+    if (a.opposizione_marketing_il) { opposti.push(a); continue; }
+    let base = haConsenso(a) ? 'consenso' : null;
+    if (!base && opz.softSpam && a.lead !== true && clienti && clienti.has(a.id)) base = 'soft_spam';
+    if (!base) { senzaConsenso.push(a); continue; }
+    if (base === 'soft_spam') perSoftSpam++;
+    contattabili.push({ ...a, email: mail.toLowerCase(), base });
   }
-  return { contattabili, senzaEmail, senzaConsenso, totale: (righe || []).length };
+  return {
+    contattabili, senzaEmail, senzaConsenso, opposti, perSoftSpam,
+    parziale: !!opz.parziale, totale: (righe || []).length
+  };
 }
 
 /* ── GRUPPO: chi ne fa parte adesso ───────────────────────────────────────── */
@@ -107,6 +149,9 @@ export async function membriGruppo(token, gruppoId) {
   const ids = [...new Set((membri || []).map(m => m.anagrafica_id))];
   if (!ids.length) return smista([]);
   const anag = await sbGet(token, `quote_anagrafiche?id=in.(${ids.join(',')})&select=${CAMPI_ANAG}`);
+  /* Niente soft spam sui gruppi: un gruppo («Famiglia Rossi», «Studio X»)
+     mette insieme persone che non hanno comprato tutte, e la regola vale per
+     il singolo cliente. */
   return smista(anag);
 }
 
@@ -141,7 +186,9 @@ export async function membriSegmento(token, filtri) {
   if (Number.isFinite(Number(f.eta_min))) q.push(`data_nascita=lte.${menoAnni(Number(f.eta_min))}`);
   if (Number.isFinite(Number(f.eta_max))) q.push(`data_nascita=gte.${menoAnni(Number(f.eta_max) + 1)}`);
 
-  let anag = await sbGet(token, 'quote_anagrafiche?' + q.join('&'));
+  const letta = await sbTutte(token, 'quote_anagrafiche?' + q.join('&'));
+  let anag = letta.righe;
+  let parziale = letta.parziale;
 
   /* Appartenenza a un gruppo, o a un tipo di gruppo (tutte le famiglie). */
   if (f.gruppo_id || f.gruppo_tipo) {
@@ -160,13 +207,18 @@ export async function membriSegmento(token, filtri) {
 
   /* I filtri di portafoglio. Una sola lettura delle polizze, poi si incrocia. */
   const usaPolizze = f.prodotto || f.senza_prodotto || f.compagnia || f.scadenza_da || f.scadenza_a || f.con_polizze;
+  /* Le polizze si leggono intere (sono colonne leggere) e si incrociano in
+     memoria. Prima si passavano gli id dei clienti dentro l'indirizzo: con
+     qualche migliaio di anagrafiche l'indirizzo diventa più lungo di quello
+     che un server accetta, e la richiesta muore. */
   if (usaPolizze && anag.length) {
-    const ids = anag.map(a => a.id);
-    const p = ['select=cliente_id,prodotto,compagnia,data_scadenza', `cliente_id=in.(${ids.join(',')})`];
+    const p = ['select=id,cliente_id,prodotto,compagnia,data_scadenza', 'cliente_id=not.is.null'];
     if (f.compagnia) p.push(`compagnia=ilike.*${encodeURIComponent(pulisci(f.compagnia))}*`);
     if (f.scadenza_da) p.push(`data_scadenza=gte.${encodeURIComponent(f.scadenza_da)}`);
     if (f.scadenza_a) p.push(`data_scadenza=lte.${encodeURIComponent(f.scadenza_a)}`);
-    const pol = await sbGet(token, 'quote_polizze?' + p.join('&'));
+    const lp = await sbTutte(token, 'quote_polizze?' + p.join('&'));
+    if (lp.parziale) parziale = true;
+    const pol = lp.righe;
 
     const combacia = (x, nome) => String(x.prodotto || '').toLowerCase().includes(String(nome).toLowerCase());
     if (f.prodotto) {
@@ -181,13 +233,24 @@ export async function membriSegmento(token, filtri) {
        da compagnia o scadenza: uno che ha la casa con un'altra compagnia la casa
        ce l'ha lo stesso, e mandargli l'offerta casa e' una figura. */
     if (f.senza_prodotto) {
-      const tutte = await sbGet(token, `quote_polizze?select=cliente_id,prodotto&cliente_id=in.(${ids.join(',')})`);
-      const hanno = new Set(tutte.filter(x => combacia(x, f.senza_prodotto)).map(x => x.cliente_id));
+      const lt = await sbTutte(token, 'quote_polizze?select=id,cliente_id,prodotto&cliente_id=not.is.null');
+      if (lt.parziale) parziale = true;
+      const hanno = new Set(lt.righe.filter(x => combacia(x, f.senza_prodotto)).map(x => x.cliente_id));
       anag = anag.filter(a => !hanno.has(a.id));
     }
   }
 
-  return smista(anag);
+  /* Il soft spam vuole sapere chi è CLIENTE: chi ha almeno una polizza, su
+     tutto il portafoglio e non solo su quello filtrato. */
+  let clienti = null;
+  const soft = softSpamAttivo(f);
+  if (soft && anag.length) {
+    const lc = await sbTutte(token, 'quote_polizze?select=id,cliente_id&cliente_id=not.is.null');
+    if (lc.parziale) parziale = true;
+    clienti = new Set(lc.righe.map(x => x.cliente_id));
+  }
+
+  return smista(anag, { softSpam: soft, clienti, parziale });
 }
 
 /* ═══ IL PONTE VERSO BREVO ══════════════════════════════════════════════════ */
@@ -229,12 +292,15 @@ async function listaEsiste(id) {
 }
 
 /* Tutti gli iscritti attuali della lista, per capire chi va tolto. */
-async function iscrittiLista(id) {
+async function iscrittiLista(id, disiscritti) {
   const out = [];
   for (let offset = 0; offset < 5000; offset += 500) {
     const d = await brevoFetch(`/contacts/lists/${id}/contacts?limit=500&offset=${offset}`);
     const c = d.contacts || [];
     out.push(...c.map(x => String(x.email || '').toLowerCase()));
+    /* Chi ha premuto «disiscriviti» su Brevo e' in lista nera: Brevo non gli
+       scrive piu', ma IAM non lo sa. Lo si raccoglie qui per registrarlo. */
+    if (disiscritti) for (const x of c) if (x.emailBlacklisted) disiscritti.push(String(x.email || '').toLowerCase());
     if (c.length < 500) break;
   }
   return out;
@@ -254,7 +320,8 @@ export async function sincronizza({ nomeLista, listIdEsistente, contattabili }) 
   }
 
   const volute = contattabili.map(c => c.email);
-  const dentro = await iscrittiLista(listId);
+  const disiscritti = [];
+  const dentro = await iscrittiLista(listId, disiscritti);
   const daTogliere = dentro.filter(e => !volute.includes(e));
 
   if (volute.length) {
@@ -302,7 +369,7 @@ export async function sincronizza({ nomeLista, listIdEsistente, contattabili }) 
     await new Promise(r => setTimeout(r, 1500));
   }
 
-  return { listId, iscritti, attesi: volute.length, allineata, rimossi: daTogliere.length };
+  return { listId, iscritti, attesi: volute.length, allineata, rimossi: daTogliere.length, disiscritti };
 }
 
 export const _perTest = { smista, pulisci };

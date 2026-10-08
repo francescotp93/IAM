@@ -1,8 +1,18 @@
 {
-  "versione": "0.51.0",
-  "nome": "La Scrivania si legge come un registro, e un account esterno non vede più niente",
-  "data": "2026-10-07",
+  "versione": "0.52.0",
+  "nome": "Campagne email: la platea «soft spam» per i clienti, e le disiscrizioni che restano",
+  "data": "2026-10-08",
   "storia": [
+    {
+      "v": "0.52.0",
+      "data": "2026-10-08",
+      "nome": "Campagne email: la platea «soft spam» per i clienti, e le disiscrizioni che restano",
+      "voci": [
+        "Marketing › Segmenti: si può scegliere di scrivere anche ai clienti senza consenso, su prodotti analoghi (art. 130 c. 4), dichiarando che l'informativa lo prevede",
+        "Marketing: chi si disiscrive da una campagna Brevo resta registrato in IAM come opposto, e non entra più in nessuna lista",
+        "Marketing › Segmenti: i conteggi leggono tutta la rubrica, non più solo le prime mille anagrafiche"
+      ]
+    },
     {
       "v": "0.51.0",
       "data": "2026-10-07",

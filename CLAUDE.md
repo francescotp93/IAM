@@ -8847,25 +8847,36 @@ più. Scadono comunque in pochi minuti, e se ne chiede uno nuovo.
 | pezzo | dove |
 |---|---|
 | tutte le regole | `tariffe/motore/trattative.js` |
-| prove in Node | `server/verifica/trattative.test.mjs` — 14 |
+| prove in Node | `server/verifica/trattative.test.mjs` — 10 |
 | le colonne, il trigger, l'aliquota sul prodotto | `supabase/migrations/20261008b_trattative_intelligenti.sql` (applicata) |
 | la schermata e la scheda | `#panel-pipeline`, `#modal-tratt` e il blocco `trt*` in `iam/index.html` |
-| prove che la fanno GIRARE in Chromium | `iam/verifica/trattative.test.mjs` — 11 |
+| prove che la fanno GIRARE in Chromium | `iam/verifica/trattative.test.mjs` — 14 |
 
 **Misurato prima:** 19 trattative, cliente, prodotto e collaboratore come testo.
 Le colonne nuove stanno **accanto** a quelle di prima: le righe vecchie si
 leggono com'erano, e `importo` resta allineato al lordo perché altri lo leggono.
 
-**L'imponibile non si stima.** Si ricava solo da un'aliquota dichiarata, in
-quest'ordine: scritta a mano sulla trattativa → dichiarata sul prodotto in
-catalogo (`iam_compagnia_prodotti.aliquota_imposte`, nuova) → di legge, ma
-**solo per i rami che ne hanno una sola** (vita 0, RC professionale 22,25,
-tutela 21,25, cauzioni 12,5, salute 2,5 — L. 1216/1961, All. A). RC auto
-vuole l'imposta provinciale della provincia del contraente (+10,5% SSN) e
-avvisa che vale per la sola RC. Casa, persona (infortuni 2,5 *e* RC vita
-privata 22,25), impresa, animali e viaggio mescolano imposte: lì la scheda dice
-«dichiara l'aliquota sul prodotto» invece di fare una media a occhio (§8.1).
-Le imposte si ricavano per differenza (§17).
+**L'imponibile non c'è più (stesso giorno, 0.54.0).** La prima stesura
+ricavava il premio netto dal lordo con le aliquote di legge per ramo e quelle
+dichiarate sul prodotto. Francesco: «leviamo la parte delle aliquote, in quanto
+non le conosco». Un numero calcolato su un'aliquota che chi lavora non sa
+verificare è un numero che nessuno può smentire, cioè §8.1 dal lato opposto: si
+è tolto dalla scheda, dal catalogo prodotti e dal motore. Le colonne
+(`premio_netto`, `aliquota_*`, `imposta_provinciale`,
+`iam_compagnia_prodotti.aliquota_imposte`) **restano nel database, vuote e non
+lette**: toglierle è una migrazione che non serve a niente oggi, e riaverle il
+giorno che servono non costa una seconda migrazione.
+
+**La grafica (0.54.0).** In cima la **pipeline attiva** su fondo scuro: valore,
+ponderato, anello del tasso di chiusura e il **tubo delle tappe**
+(`Trattative.fasiCorso`), diviso per valore — e per numero, dichiarandolo, se
+nessuna tappa ha un premio. Sotto i riquadri, fra cui **«Da richiamare»**
+(`Trattative.richiamoStato`, giorni contati sulle date e non sull'orologio,
+§44; su una trattativa decisa non si richiama nessuno). Ogni riga ha la sua
+tappa scritta a lato e il richiamo in parole. Le classi nuove hanno tutte il
+prefisso: `scad` e `si` senza prefisso esistevano già in QUOTO e
+`fusione-collisioni` le ha prese (§26). La schermata regge un motore vecchio
+in cache (§74), e c'è la prova con la controprova.
 
 **I grafici** separano in corso, vinte e perse, e seguono i filtri **tranne lo
 stato** (un filtro sullo stato svuoterebbe due grafici su tre). Una trattativa

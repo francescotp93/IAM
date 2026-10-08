@@ -1,8 +1,19 @@
 {
-  "versione": "0.53.0",
-  "nome": "Trattative: ramo, compagnia, prodotto, cliente dal portafoglio o prospect fast, richiamo in Agenda, grafici per prodotto e imponibile dal lordo",
+  "versione": "0.54.0",
+  "nome": "Trattative: la pipeline a colpo d'occhio, i richiami da fare, e niente più aliquote",
   "data": "2026-10-08",
   "storia": [
+    {
+      "v": "0.54.0",
+      "data": "2026-10-08",
+      "nome": "Trattative: la pipeline a colpo d'occhio, i richiami da fare, e niente più aliquote",
+      "voci": [
+        "Trattative: in cima la pipeline attiva, con il valore ponderato, il tasso di chiusura e le tappe (prospect, preventivo, in trattativa) divise per valore",
+        "Trattative: un riquadro «Da richiamare» conta i richiami di oggi e quelli in ritardo, e c'è il filtro per vederli",
+        "Trattative: ogni riga mostra a che tappa è la trattativa e quando va richiamato il cliente (oggi, domani, scaduto da…)",
+        "Trattative: tolto il calcolo dell'imponibile e le aliquote, dalla scheda della trattativa e dal catalogo prodotti: si scrive solo il premio lordo"
+      ]
+    },
     {
       "v": "0.53.0",
       "data": "2026-10-08",

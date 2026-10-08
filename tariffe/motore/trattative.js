@@ -5,7 +5,7 @@
    maniera intelligente»: ramo, target, compagnia, prodotto, autorizzazione
    della direzione, il cliente dal portafoglio o censito «fast», il
    collaboratore, il richiamo in Agenda, i grafici del valore in corso e
-   chiuso per prodotto, e l'imponibile ricavato dal premio lordo.
+   chiuso per prodotto.
 
    Qui stanno le REGOLE. La schermata (`trt*` in iam/index.html) raccoglie,
    chiama e disegna: una formula scritta dentro la pagina non si prova senza
@@ -13,15 +13,9 @@
 
    LE TRE COSE CHE QUESTO MOTORE NON FA, ed e' il motivo per cui esiste:
 
-   1. Non inventa un'aliquota. L'imponibile si ricava solo da un'aliquota
-      DICHIARATA: quella scritta a mano sulla trattativa, quella dichiarata sul
-      prodotto del catalogo, o quella di legge di un ramo che ne ha UNA sola.
-      Un ramo che mescola garanzie con imposte diverse (la casa: incendio e
-      furto al 22,25%, assistenza al 10%, tutela al 21,25%) non ha un'aliquota
-      sua, e una media a occhio sarebbe un imponibile credibile e falso (§8.1).
-   2. Non conta come zero un valore che nessuno ha scritto. Una trattativa
+   1. Non conta come zero un valore che nessuno ha scritto. Una trattativa
       senza premio resta fuori dalle somme e si CONTA a parte (§36, §42).
-   3. Non mescola in corso, vinte e perse in un totale unico.
+   2. Non mescola in corso, vinte e perse in un totale unico.
    ═══════════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -45,26 +39,6 @@
     return s ? s.fase : 'corso';
   }
 
-  /* ── L'IMPONIBILE ──────────────────────────────────────────────────────────
-     Le aliquote delle imposte sulle assicurazioni: L. 29/10/1961 n. 1216,
-     Allegato A (tariffa), come modificata dalla L. 311/2004; per l'RC auto
-     l'imposta provinciale (D.Lgs. 68/2011 art. 17: 12,5% con variazione fino a
-     3,5 punti decisa dalla provincia) piu' il contributo al Servizio sanitario
-     nazionale del 10,5% (D.Lgs. 209/2005 art. 334).
-
-     Solo i rami che hanno UNA imposta. Gli altri — beni, persona (dove stanno
-     sia gli infortuni al 2,5% sia la RC della vita privata al 22,25%),
-     impresa, animali, viaggio — l'aliquota la dichiara il prodotto. */
-  var ALIQUOTE_RAMO = {
-    vita:     { aliquota: 0,     voce: 'assicurazioni sulla vita: esenti' },
-    rcprof:   { aliquota: 22.25, voce: 'responsabilità civile generale' },
-    tutela:   { aliquota: 21.25, voce: 'tutela legale' },
-    cauzioni: { aliquota: 12.5,  voce: 'cauzione' },
-    salute:   { aliquota: 2.5,   voce: 'malattia' }
-  };
-  var SSN_RCA = 10.5;
-  var FONTE_LEGGE = 'L. 1216/1961, Allegato A';
-
   function num(v) {
     if (v === null || v === undefined || v === '') return null;
     if (typeof v === 'number') return isFinite(v) ? v : null;
@@ -76,49 +50,6 @@
 
   /* Arrotondamento simmetrico al centesimo: `Math.round(-0.5)` fa -0 (§17). */
   function cent(n) { var s = n < 0 ? -1 : 1; return s * Math.round(Math.abs(n) * 100 + 1e-9) / 100; }
-
-  function aliquotaValida(a) { return a !== null && a >= 0 && a <= 100; }
-
-  /* Quale aliquota vale, e perche'. L'ordine e' quello della conoscenza:
-     chi la scrive sulla trattativa sa qualcosa che il prodotto non sa (un
-     premio fatto solo di una garanzia); il prodotto sa la sua composizione;
-     la legge sa solo il ramo. */
-  function aliquota(opz) {
-    opz = opz || {};
-    var manuale = num(opz.manuale);
-    if (aliquotaValida(manuale)) return { aliquota: manuale, fonte: 'manuale', spiega: 'scritta sulla trattativa' };
-    var prodotto = num(opz.prodotto);
-    if (aliquotaValida(prodotto)) return { aliquota: prodotto, fonte: 'prodotto', spiega: 'dichiarata sul prodotto in catalogo' };
-    var ramo = String(opz.ramo || '').toLowerCase();
-    if (ramo === 'rca') {
-      var prov = num(opz.provinciale);
-      if (!aliquotaValida(prov)) {
-        return { aliquota: null, fonte: null,
-          motivo: 'RC auto: serve l’imposta provinciale della provincia del contraente (12,5% base, fino a 16%).' };
-      }
-      return { aliquota: cent(prov + SSN_RCA), fonte: 'ramo',
-        spiega: 'imposta provinciale ' + prov + '% + SSN ' + SSN_RCA + '%',
-        avviso: 'Vale per la sola RC auto: se il premio comprende furto, incendio o altre garanzie l’imponibile è diverso.' };
-    }
-    var r = ALIQUOTE_RAMO[ramo];
-    if (r) return { aliquota: r.aliquota, fonte: 'ramo', spiega: r.voce + ' — ' + FONTE_LEGGE };
-    if (!ramo) return { aliquota: null, fonte: null, motivo: 'Scegli il ramo o il prodotto.' };
-    return { aliquota: null, fonte: null,
-      motivo: 'Il ramo «' + ramo + '» mescola garanzie con imposte diverse: dichiara l’aliquota sul prodotto in catalogo, o scrivila qui.' };
-  }
-
-  /* Dal lordo all'imponibile. Le imposte si ricavano per DIFFERENZA, cosi'
-     netto + imposte torna sempre col lordo (§17: due arrotondamenti separati
-     fanno comparire il centesimo che nessuno sa spiegare). */
-  function netto(lordo, opz) {
-    var l = num(lordo);
-    var a = aliquota(opz);
-    if (l === null || l <= 0) return { netto: null, imposte: null, aliquota: a.aliquota, fonte: a.fonte, motivo: 'Manca il premio lordo.' };
-    if (a.aliquota === null) return { netto: null, imposte: null, aliquota: null, fonte: null, motivo: a.motivo };
-    var n = cent(l / (1 + a.aliquota / 100));
-    return { netto: n, imposte: cent(l - n), aliquota: a.aliquota, fonte: a.fonte,
-             spiega: a.spiega, avviso: a.avviso || null };
-  }
 
   /* ── IL VALORE DI UNA TRATTATIVA ───────────────────────────────────────────
      Il premio lordo; sulle righe scritte prima dell'08/10/2026 c'e' solo
@@ -173,6 +104,50 @@
     return { valore: cent(tot), ponderato: cent(pond), n: lista.length, senzaValore: senza };
   }
 
+  /* Le tappe di una trattativa in corso, nell'ordine in cui si attraversano.
+     `aperta` e' il valore di partenza della colonna e non dice a che punto
+     si e': sta in una tappa sua, dichiarata, invece di finire in una delle
+     altre per somiglianza. Una tappa vuota resta nell'elenco con zero: la
+     barra della pipeline ha sempre le stesse tappe nello stesso posto. */
+  var TAPPE = ['prospect', 'preventivo', 'trattativa', 'aperta'];
+
+  function fasiCorso(lista) {
+    var m = {};
+    TAPPE.forEach(function (k) { m[k] = { stato: k, nome: STATI[k].nome, valore: 0, n: 0, senzaValore: 0 }; });
+    (lista || []).forEach(function (t) {
+      var k = String(t.status || 'aperta').toLowerCase();
+      if (fase(k) !== 'corso') return;
+      if (!m[k]) k = 'aperta';
+      var v = valore(t);
+      m[k].n++;
+      if (v === null) m[k].senzaValore++; else m[k].valore = cent(m[k].valore + v);
+    });
+    return TAPPE.map(function (k) { return m[k]; }).filter(function (x) { return x.stato !== 'aperta' || x.n > 0; });
+  }
+
+  /* I giorni fra due date ISO, contati sui numeri della stringa: una data
+     ISO non ha un fuso orario, e farla passare da toISOString gliene da' uno
+     (CLAUDE.md §44). */
+  function giorniA(data, oggi) {
+    var re = /^(\d{4})-(\d{2})-(\d{2})/;
+    var a = re.exec(String(data || '')), b = re.exec(String(oggi || ''));
+    if (!a || !b) return null;
+    var da = Date.UTC(+a[1], +a[2] - 1, +a[3]), db = Date.UTC(+b[1], +b[2] - 1, +b[3]);
+    return Math.round((da - db) / 86400000);
+  }
+
+  /* Il richiamo detto in parole. Su una trattativa decisa non si richiama
+     nessuno: un «scaduto da 40 giorni» su una trattativa vinta manda a
+     telefonare a chi ha gia' firmato. */
+  function richiamoStato(t, oggi) {
+    if (!t || !t.recall || fase(t.status) !== 'corso') return null;
+    var g = giorniA(t.recall, oggi);
+    if (g === null) return null;
+    var etichetta = g === 0 ? 'oggi' : g === 1 ? 'domani' : g > 1 ? 'tra ' + g + ' giorni'
+      : g === -1 ? 'scaduto ieri' : 'scaduto da ' + (-g) + ' giorni';
+    return { giorni: g, scaduto: g < 0, oggi: g === 0, etichetta: etichetta };
+  }
+
   /* Il riepilogo che i grafici disegnano. Il tasso di chiusura si calcola
      solo sulle trattative DECISE (vinte + perse): quelle in corso non sono
      ancora ne' una cosa ne' l'altra. E da zero decise non si fa una
@@ -188,7 +163,7 @@
     var c = somma(corso, true), v = somma(vinte), p = somma(perse);
     var decise = vinte.length + perse.length;
     return {
-      corso: Object.assign(c, { perProdotto: perProdotto(corso, opz.max) }),
+      corso: Object.assign(c, { perProdotto: perProdotto(corso, opz.max), perStato: fasiCorso(corso) }),
       vinte: Object.assign(v, { perProdotto: perProdotto(vinte, opz.max) }),
       perse: Object.assign(p, { perProdotto: perProdotto(perse, opz.max) }),
       tassoChiusura: decise ? Math.round(vinte.length / decise * 100) : null,
@@ -281,8 +256,8 @@
   }
 
   var API = {
-    VERSIONE: VERSIONE, STATI: STATI, ALIQUOTE_RAMO: ALIQUOTE_RAMO, SSN_RCA: SSN_RCA,
-    fase: fase, num: num, aliquota: aliquota, netto: netto, valore: valore,
+    VERSIONE: VERSIONE, STATI: STATI,
+    fase: fase, num: num, valore: valore, fasiCorso: fasiCorso, giorniA: giorniA, richiamoStato: richiamoStato,
     nomeProdotto: nomeProdotto, perProdotto: perProdotto, riepilogo: riepilogo,
     pivaValida: pivaValida, cfValido: cfValido, prospettoFast: prospettoFast,
     chiudibile: chiudibile, richiamo: richiamo

@@ -122,6 +122,13 @@
 <!-- Il testo di un PDF, una voce per pagina: lo usano il preventivo,
      Confronta e il caricamento di una polizza (02/10/2026). -->
 <script src="tariffe/motore/pdf-testo.js?v=20261002"></script>
+<!-- L'importo scritto a mano o stampato da una compagnia: quello che ha due
+     letture si rifiuta invece di interpretarlo. Serve al lettore delle polizze. -->
+<script src="tariffe/motore/importo.js?v=20261006"></script>
+<!-- Leggere una polizza dal suo PDF: le regole stanno qui, provate in Node.
+     Dipende da anagrafica.js (carattere di controllo del codice fiscale) e da
+     importo.js (un premio ambiguo si rifiuta invece di interpretarlo). -->
+<script src="tariffe/motore/polizza-da-pdf.js?v=20261008"></script>
 <script src="tariffe/motore/lettura-proposta.js?v=20261002"></script>
 <script src="tariffe/motore/foglio-cassa.js?v=20260930"></script>
 <script src="tariffe/motore/piano-rate.js?v=20260921"></script>
@@ -17771,6 +17778,10 @@ async function pnuApri() {
     return;
   }
   PNU_CLIENTE = null;
+  /* Si azzera insieme al cliente, e non è un dettaglio: senza, la seconda
+     polizza scritta nella stessa sessione si porterebbe dietro la provenienza
+     del PDF della prima — cioè una prova falsa, che è peggio di nessuna. */
+  PCP_LETTURA = null;
   polPannello('Nuova polizza', 'Una polizza che non nasce da un preventivo: arrivata per telefono, o fatta su un portale.',
     '<div class="empty-state">Carico compagnie e catalogo…</div>');
   /* Le due letture stanno in piedi da sole (§35): senza il catalogo il modulo
@@ -17803,6 +17814,22 @@ function pnuForm(guasti) {
       Non si è potuto leggere ${guasti.join(' e ')}. Non vuol dire che non ci sia:
       vuol dire che non si è potuto leggerlo. La polizza si può scrivere lo stesso.</div>` : ''}
     <div id="pnu-msg"></div>
+
+    <!-- CARICARE LA POLIZZA DAL SUO PDF. Non e' una scorciatoia al
+         SALVATAGGIO: e' una scorciatoia alla DIGITAZIONE. Quello che il motore
+         legge finisce nei campi qui sotto, con scritto da quale pagina viene e
+         che cosa non ha capito; a salvare e' sempre «Crea la polizza», con i
+         suoi controlli, dopo che una persona ha guardato. -->
+    <div class="pnu-scheda">
+      <div class="pnu-scheda-t"><span class="pnu-pitto"><i class="ti ti-file-upload"></i></span> Carica il PDF della polizza</div>
+      <div class="pnu-scheda-c">
+        <input id="pcp-file" type="file" accept="application/pdf,.pdf" onchange="pcpDaFile(this)">
+        <div class="pnu-nota">Il PDF si legge <b>qui dentro</b>: il documento non esce da questa pagina e non
+          va in nessun servizio esterno. Compilo quello che ho capito e ti dico da dove l'ho preso.
+          <b>Niente si salva finché non lo salvi tu.</b></div>
+        <div id="pcp-esito"></div>
+      </div>
+    </div>
 
     <div class="pnu-scheda">
       <div class="pnu-scheda-t"><span class="pnu-pitto"><i class="ti ti-user"></i></span> Il cliente</div>
@@ -17886,16 +17913,7 @@ function pnuForm(guasti) {
   </div>`;
   /* Il componente cliente è quello di tutta la casa: registrato dopo che il
      campo esiste, altrimenti `clpCerca` non trova le sue opzioni. */
-  clpInstalla('pnu-cliente-q', {
-    origine: 'nuova polizza',
-    onScelto: function (a) {
-      PNU_CLIENTE = a || null;
-      const el = document.getElementById('pnu-cliente-sel');
-      if (el) el.innerHTML = a
-        ? '<b>' + esc(a.nominativo || '') + '</b>' + (a.codice_fiscale ? ' · ' + esc(a.codice_fiscale) : '')
-        : 'Nessun cliente scelto: la polizza non si salva senza.';
-    }
-  });
+  clpInstalla('pnu-cliente-q', { origine: 'nuova polizza', onScelto: pnuClienteScelto });
   /* L'anteprima si disegna subito: con i valori di partenza (oggi, +1 anno,
      annuale) dice gia' che cosa manca — il premio. */
   pnuAnteprima();
@@ -17908,6 +17926,20 @@ function pnuForm(guasti) {
      adesso: 2026-09-21 -> 2027-09-21
    Nessun errore e nessuna schermata rotta: una data credibile e falsa che
    finisce nello scadenzario e fa telefonare il giorno sbagliato. */
+/* CHI SCRIVE `PNU_CLIENTE` È UNO SOLO. Lo scelgono due strade — il componente
+   di ricerca e il lettore del PDF — e due scritture della stessa cosa si
+   separano al primo ritocco: una aggiorna l'etichetta a schermo e l'altra no,
+   e si salva una polizza intestata a chi si vede scritto da un'altra parte. */
+function pnuClienteScelto(a) {
+  PNU_CLIENTE = a || null;
+  const el = document.getElementById('pnu-cliente-sel');
+  if (el) el.innerHTML = a
+    ? '<b>' + esc(a.nominativo || '') + '</b>' + (a.codice_fiscale ? ' · ' + esc(a.codice_fiscale) : '')
+    : 'Nessun cliente scelto: la polizza non si salva senza.';
+  const q = document.getElementById('pnu-cliente-q');
+  if (q) q.value = a ? (a.nominativo || '') : '';
+}
+
 function pnuPiuUnAnno(iso) {
   if (!iso) return '';
   return (window.PianoRate ? PianoRate.piuUnAnno(iso) : null) || '';
@@ -18051,6 +18083,184 @@ function pnuMsg(errori) {
 function pnuVal(id) { const e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; }
 function pnuNum(id) { const v = parseFloat(pnuVal(id)); return isFinite(v) ? v : null; }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CARICARE UNA POLIZZA DAL SUO PDF                            (08/10/2026)
+
+   Tre cose che questo pezzo NON fa, e sono quelle che lo rendono sicuro:
+
+   1. NON SALVA. Riempie i campi del modulo qui sopra e si ferma. A scrivere è
+      «Crea la polizza», con tutti i suoi controlli, dopo che una persona ha
+      guardato. Un caricamento automatico che salva da solo mette in archivio
+      gli errori alla stessa velocità con cui mette i dati giusti.
+
+   2. NON AGGANCIA UN CLIENTE PER NOME. Solo il codice fiscale sceglie una
+      scheda da solo, perché in archivio ha un indice unico ed è una chiave
+      vera. Un nome che combacia apre una scelta, mai un collegamento: due
+      persone fuse in una scheda sola si scoprono quando una delle due
+      telefona per una polizza intestata a un altro.
+
+   3. NON MANDA IL DOCUMENTO DA NESSUNA PARTE. Il PDF si legge nel browser, e
+      una polizza porta nome, indirizzo, codice fiscale e targa del cliente:
+      mandarla a un servizio esterno per farsela leggere è esattamente quello
+      che le regole di casa vietano.
+
+   Le regole stanno nel motore `polizza-da-pdf.js`, provate in Node. Qui c'è
+   solo il giro: leggi il file, chiedi all'archivio, riempi, racconta.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+var PCP_LETTURA = null;   /* l'ultima lettura, per attaccarla alla polizza salvata */
+
+async function pcpDaFile(input) {
+  const f = input && input.files && input.files[0];
+  const box = document.getElementById('pcp-esito');
+  const dica = (h) => { if (box) box.innerHTML = h; };
+  const attesa = (t) => dica(window.Caricamento ? Caricamento.stato(t) : esc(t) + '…');
+  if (!f) return;
+  PCP_LETTURA = null;
+  try {
+    if (!window.PdfTesto || !window.PolizzaDaPdf) {
+      dica(pcpAvviso('I motori di lettura non sono caricati: ricarica la pagina.', 'ko')); return;
+    }
+    attesa('Leggo il PDF');
+    await PdfTesto.caricaPdfJs();
+    const pagine = await PdfTesto.testoPagine(f);
+    const lettura = PolizzaDaPdf.leggi(pagine);
+    if (!lettura.ok) { dica(pcpAvviso(lettura.motivo, 'ko')); return; }
+
+    attesa('Cerco il cliente e la polizza in archivio');
+    const archivio = await pcpArchivio(lettura);
+    const decisione = PolizzaDaPdf.decide(lettura, archivio);
+    PCP_LETTURA = lettura;
+    pcpRiempi(lettura, decisione);
+  } catch (e) {
+    dica(pcpAvviso('Non sono riuscito a leggere il PDF: ' + (e && e.message ? e.message : e), 'ko'));
+  } finally {
+    /* Il campo si svuota: senza, ricaricare lo stesso file non fa scattare
+       `onchange` e sembra che il tasto non funzioni. */
+    if (input) input.value = '';
+  }
+}
+
+/* Le tre domande all'archivio. Separate di proposito: il motore resta puro e
+   qui si vede esattamente che cosa si è chiesto. */
+async function pcpArchivio(lettura) {
+  const c = lettura.campi || {};
+  const cf = c.codice_fiscale ? c.codice_fiscale.valore : '';
+  const nome = c.contraente ? c.contraente.valore : '';
+  const numero = c.numero_polizza ? c.numero_polizza.valore : '';
+  const fuori = { clientePerCf: null, omonimi: [], polizzaPerNumero: null };
+  if (!db) return fuori;
+
+  if (cf) { try { fuori.clientePerCf = await anagGiaCensita(cf, null); } catch (e) {} }
+
+  /* Gli omonimi si cercano SOLO quando non c'è un codice fiscale: con il
+     codice la domanda è già chiusa, e una lista di nomi simili accanto a una
+     risposta certa invita soltanto a sbagliare. */
+  if (!cf && nome) {
+    try {
+      const { data } = await db.from('quote_anagrafiche')
+        .select('id,nominativo,codice_fiscale,comune').ilike('nominativo', '%' + sbq(nome) + '%').limit(8);
+      fuori.omonimi = data || [];
+    } catch (e) {}
+  }
+  if (numero) {
+    try {
+      const { data } = await db.from('quote_polizze')
+        .select('id,numero_polizza,cliente,compagnia,data_effetto').eq('numero_polizza', numero).limit(1);
+      fuori.polizzaPerNumero = (data && data[0]) || null;
+    } catch (e) {}
+  }
+  return fuori;
+}
+
+function pcpAvviso(testo, tono) {
+  return '<div class="pdoc-esito ' + (tono === 'ko' ? 'ko' : 'ok') + '" style="margin-top:10px">'
+    + '<i class="ti ti-' + (tono === 'ko' ? 'alert-triangle' : 'circle-check') + '"></i> ' + esc(testo) + '</div>';
+}
+
+/* Mette un valore in un campo SOLO se il campo può riceverlo: su una tendina,
+   un valore che non è fra le opzioni non dà nessun errore e lascia il campo
+   com'era — cioè sembra riempito e non lo è. Qui torna false e chi chiama lo
+   dice a schermo. */
+function pcpMetti(id, valore) {
+  const e = document.getElementById(id);
+  if (!e || valore == null || valore === '') return false;
+  if (e.tagName === 'SELECT') {
+    const ok = Array.prototype.some.call(e.options, (o) => o.value === String(valore));
+    if (!ok) return false;
+  }
+  e.value = String(valore);
+  return true;
+}
+
+function pcpRiempi(lettura, decisione) {
+  const c = lettura.campi || {};
+  const v = (k) => (c[k] ? c[k].valore : null);
+  const nonMessi = [];
+
+  /* I campi del contratto. L'ordine conta: la compagnia PRIMA, perché è lei a
+     caricare l'elenco dei prodotti. */
+  if (c.compagnia && !pcpMetti('pnu-compagnia', v('compagnia'))) {
+    nonMessi.push('la compagnia letta è «' + v('compagnia') + '», che non è fra quelle in anagrafica compagnie');
+  } else if (c.compagnia) { try { pnuCompagniaCambiata(); } catch (e) {} }
+
+  pcpMetti('pnu-numero', v('numero_polizza'));
+  pcpMetti('pnu-effetto', v('data_effetto'));
+  pcpMetti('pnu-scadenza', v('data_scadenza'));
+  if (c.frazionamento && !pcpMetti('pnu-fraz', v('frazionamento'))) {
+    nonMessi.push('il frazionamento letto è «' + v('frazionamento') + '», che la tendina non prevede');
+  }
+  if (c.premio_annuo) pcpMetti('pnu-annuo', v('premio_annuo'));
+  if (c.premio_rata) pcpMetti('pnu-rata', v('premio_rata'));
+  try { pnuRicalcolaRata('annuo'); } catch (e) {}
+  try { pnuAnteprima(); } catch (e) {}
+
+  /* IL CLIENTE. Solo il codice fiscale lo sceglie da solo. */
+  let cliente = '';
+  if (decisione.azione === 'cliente_trovato') {
+    pnuClienteScelto(decisione.cliente);
+    cliente = '<b>Cliente riconosciuto dal codice fiscale:</b> ' + esc(decisione.cliente.nominativo || '')
+      + '. L\'ho già scelto qui sopra.';
+  } else if (decisione.azione === 'gia_in_archivio') {
+    const p = decisione.polizza;
+    cliente = '<b>Questa polizza è già in archivio</b> (numero ' + esc(p.numero_polizza || '') + ', '
+      + esc(p.cliente || 'cliente non indicato') + '). Non ne creo una seconda: '
+      + '<a href="#" onclick="document.getElementById(\'pol-ov\')?.remove();polDettaglio(\'' + esc(p.id) + '\');return false">aprila</a>.';
+  } else if (decisione.azione === 'scelta_a_mano') {
+    cliente = '<b>Il cliente scegli tu.</b> ' + esc(decisione.perche) + '<ul style="margin:6px 0 0 16px">'
+      + decisione.omonimi.map((o) => '<li>' + esc(o.nominativo || '')
+        + (o.codice_fiscale ? ' · ' + esc(o.codice_fiscale) : ' · <i>senza codice fiscale</i>')
+        + (o.comune ? ' · ' + esc(o.comune) : '') + '</li>').join('') + '</ul>';
+  } else {
+    cliente = '<b>Cliente non in archivio.</b> ' + esc(decisione.perche)
+      + ' Il contraente letto è <b>' + esc(v('contraente') || '—') + '</b>'
+      + (v('codice_fiscale') ? ' · ' + esc(v('codice_fiscale')) : '')
+      + '. Censiscilo dal campo «Il cliente» qui sopra.';
+  }
+
+  /* IL RESOCONTO. Quello che ha letto, da dove, e quello che non ha capito —
+     perché è lì che chi guarda deve guardare. */
+  const letti = Object.keys(c).filter((k) => c[k]);
+  const righe = letti.map((k) => '<li><b>' + esc(k.replace(/_/g, ' ')) + '</b>: ' + esc(String(c[k].valore))
+    + ' <span style="opacity:.65">(pagina ' + c[k].pagina + ', letto «' + esc(String(c[k].grezzo).slice(0, 40)) + '»)</span></li>').join('');
+  const persi = (lettura.nonCapito || []).map((x) => '<li><b>' + esc(x.campo.replace(/_/g, ' ')) + '</b>: '
+    + esc(x.perche) + '</li>').join('');
+
+  const box = document.getElementById('pcp-esito');
+  if (!box) return;
+  box.innerHTML =
+    '<div style="margin-top:10px;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);padding:12px;background:var(--w1-card)">'
+    + '<div style="font-size:12.5px;margin-bottom:8px">' + cliente + '</div>'
+    + (lettura.avvisi || []).map((a) => pcpAvviso(a, 'ko')).join('')
+    + (nonMessi.length ? pcpAvviso(nonMessi.join(' · '), 'ko') : '')
+    + '<div style="font-size:12px;margin-top:8px"><b>Ho letto ' + letti.length + ' dati su ' + (letti.length + (lettura.nonCapito || []).length) + '</b>'
+    + '<ul style="margin:4px 0 0 16px;font-size:11.5px;line-height:1.6">' + righe + '</ul></div>'
+    + (persi ? '<div style="font-size:12px;margin-top:8px;color:var(--w1-ambra)"><b>Questi non li ho capiti, e li ho lasciati vuoti</b>'
+        + '<ul style="margin:4px 0 0 16px;font-size:11.5px;line-height:1.6">' + persi + '</ul></div>' : '')
+    + '<div class="pnu-nota" style="margin-top:10px"><b>Controlla tutto prima di salvare.</b> Questo lettore non è '
+    + 'ancora stato misurato su polizze vere delle compagnie: quello che ha letto è una proposta, non un dato certo.</div>'
+    + '</div>';
+}
+
 async function pnuSalva() {
   if (!pnuPuo()) return;
   const errori = [];
@@ -18091,8 +18301,19 @@ async function pnuSalva() {
     /* Da dove viene questa riga. Il flusso scrive 'ssf'; qui 'manuale', e il
        catalogo si annota quando c'è — serve il giorno in cui si aggancerà
        `prodotto_id` sul serio (§39). */
-    fonte: 'manuale',
-    dati: prodId ? { catalogo_prodotto_id: prodId } : {},
+    /* Se i campi sono stati proposti dal lettore del PDF lo si scrive, e si
+       tiene la PROVENIENZA di ogni valore: fra un anno, davanti a una cifra
+       che non torna, si risale alla pagina del documento da cui era stata
+       letta invece di ricominciare. Resta scritto che è una PROPOSTA: quello
+       che si salva è quello che c'è nei campi adesso, e chi ha guardato può
+       averlo corretto — ed è giusto così. */
+    fonte: PCP_LETTURA ? 'polizza_pdf' : 'manuale',
+    dati: Object.assign(
+      prodId ? { catalogo_prodotto_id: prodId } : {},
+      PCP_LETTURA ? { letto_da_pdf: Object.assign(
+        PolizzaDaPdf.perSalvare(PCP_LETTURA, { clienteId: PNU_CLIENTE.id }).polizza.dati.letto_da_pdf,
+        { nota: 'Valori PROPOSTI dal lettore e poi confermati a mano: quello salvato è quello che c\'era nei campi.' }
+      ) } : {}),
     creato_nome: (currentUser && currentUser.name) || null
   };
   pnuMsg([]);

@@ -1872,3 +1872,65 @@ appunti dentro ai testi no. Pensione 63/63, controprova 10/10 guasti presi.
   conversione sono ancora da leggere sui documenti della compagnia. Finché
   restano, il foglio si scarica ma non si manda — e adesso è l'unico posto
   dove quel limite si vede, quindi quel blocco all'invio non va toccato.
+
+---
+
+## 08/10/2026 — Caricare una polizza dal suo PDF (task #10)
+
+**Perimetro:** il modulo «Nuova polizza» del quotatore, il motore nuovo
+`tariffe/motore/polizza-da-pdf.js` e le sue prove.
+
+🟢 **È una scorciatoia alla DIGITAZIONE, non al salvataggio.** Carichi il PDF,
+il motore legge, i campi del modulo si riempiono — e lì si ferma. A scrivere è
+sempre «Crea la polizza», con i suoi controlli, dopo che una persona ha
+guardato. Un caricamento che salva da solo mette in archivio gli errori alla
+stessa velocità con cui mette i dati giusti.
+
+🟡 **MISURATO SULL'ARCHIVIO prima di scrivere una riga**, e tre numeri hanno
+deciso il disegno:
+- 4.465 schede cliente, 4.348 col codice fiscale, **tutti distinti** (il
+  database ha un indice unico su `upper(trim(codice_fiscale))`): quindi il CF
+  è una chiave vera e può scegliere il cliente da solo;
+- 7.149 polizze su 7.154 hanno un numero, e anche quello è **unico**: quindi
+  il doppione si riconosce prima di provare a scriverlo, invece di prendersi
+  un errore del database che non spiega niente;
+- in archivio la stessa compagnia è scritta «HDI» 2.999 volte e «HDI
+  Assicurazioni» 5: una parola nuova per la stessa cosa non è un sinonimo, è
+  un filtro che da domani non trova più tutto. Il motore riporta sempre alla
+  parola che l'archivio usa già — vale anche per il frazionamento.
+
+🟡 **Il cliente si riconosce dal codice fiscale, mai dal nome.** Col CF valido
+la scheda si sceglie da sola. Un nome che combacia apre una SCELTA, mai un
+collegamento: due persone fuse in una scheda sola non si scoprono il giorno
+dopo, si scoprono quando una delle due telefona per una polizza intestata a un
+altro. È la stessa regola che il lettore dei flussi HDI aveva già scritto.
+
+🟡 **Quello che non ha capito lo dichiara.** Ogni valore porta la pagina e il
+testo grezzo da cui viene; quello che manca è elencato col perché. Un premio
+scritto in modo ambiguo («1.248») si rifiuta invece di interpretarlo — passa
+dallo stesso motore del link di pagamento. Una data con l'anno a due cifre si
+rifiuta. Un codice fiscale che non supera il carattere di controllo non si usa.
+Una scansione si dichiara scansione, e con parole diverse a seconda che le
+parole leggibili siano zero o quattro.
+
+🔴 **IL LETTORE NON È MISURATO SU NESSUNA POLIZZA VERA, E LA SCHERMATA LO
+DICE.** In questo repository non c'è nemmeno un contratto di un cliente: i PDF
+che ci sono sono set informativi e condizioni, cioè documenti di PRODOTTO. Le
+ancore («Polizza n.», «Contraente», «Decorrenza», «Premio») sono quelle del
+linguaggio comune dei contratti italiani, non la forma di una compagnia
+precisa. Il 02/10/2026 è già successo con i set informativi: tarato su una
+compagnia sola, il lettore trovava 12 garanzie su 17 su quella e 3 su AXA, 0 su
+HDI. **Servono tre o quattro polizze vere per misurare**, e finché non ci sono
+la schermata scrive accanto ai dati che quella è una proposta.
+
+**Fuori perimetro, annotato:**
+- **Le rate** nascono già da sole (`titGenera`) quando si salva: non le tocco.
+- **Il mezzo di pagamento** non si legge dal PDF di proposito: è una chiave
+  esterna, e un codice inventato farebbe fallire l'inserimento.
+- **La schermata Clienti non valida il codice fiscale**: `salvaNuovaAnagrafica`
+  accetta qualunque stringa, e il carattere di controllo è scritto due volte
+  (nel motore e dentro la pagina). Non l'ho toccato perché è fuori da questo
+  task, ma è il buco da cui entrano i codici storti che poi questo lettore
+  trova in archivio.
+- **La targa** si legge ma non ha una colonna sua: finisce in
+  `dati.letto_da_pdf.targa`.

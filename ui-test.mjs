@@ -10962,8 +10962,12 @@ const avvio = async () => {
     await prova('blocco 3 · filtri: le due liste combaciano, NEI DUE VERSI', async () => {
       const h = fs.readFileSync('index.html', 'utf8');
       const srv = fs.readFileSync('server/marketingDestinatari.js', 'utf8');
+      /* Il server «onora» un filtro anche quando lo legge in una funzione che
+         membriSegmento chiama: la base soft spam e la sua dichiarazione si
+         leggono in softSpamAttivo (08/10/2026). */
       const corpo = srv.slice(srv.indexOf('export async function membriSegmento'),
-                              srv.indexOf('/* ═══ IL PONTE'));
+                              srv.indexOf('/* ═══ IL PONTE'))
+        + srv.slice(srv.indexOf('export function softSpamAttivo'), srv.indexOf('function smista('));
       const server = [...new Set([...corpo.matchAll(/\bf\.([a-z_]+)/g)].map(m => m[1]))].sort();
       const sf = h.slice(h.indexOf('function segFiltri()'), h.indexOf('async function segCopertura'));
       const ui = [...new Set([...sf.matchAll(/f\.([a-z_]+)\s*=/g)].map(m => m[1]))].sort();

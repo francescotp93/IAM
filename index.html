@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.51.0">
-<meta name="app-versione-nome" content="La Scrivania si legge come un registro, e un account esterno non vede più niente">
+<meta name="app-versione" content="0.52.0">
+<meta name="app-versione-nome" content="Campagne email: la platea «soft spam» per i clienti, e le disiscrizioni che restano">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -18454,6 +18454,7 @@ function cmpRenderListe() {
       ? CMP_SEGMENTI.map(sg => {
           const fuori = (sg.senza_email || 0) + (sg.senza_consenso || 0);
           const d = (sg.descrizione ? esc(sg.descrizione) + ' · ' : '') + sg.membri + ' in segmento'
+            + (sg.filtri && sg.filtri.base === 'soft_spam' ? ' · <b>soft spam</b>' + (sg.per_soft_spam ? ' (' + sg.per_soft_spam + ' senza consenso)' : '') : '')
             + (fuori ? ' · <span class="cmp-fuori">' + fuori + ' non contattabili</span>' : '');
           return cmpRiga(sg, CMP_SEG_SCELTI.has(sg.id), `cmpScegliSegmento('${sg.id}')`, d);
         }).join('')
@@ -18536,6 +18537,20 @@ async function segApri() {
         <div><label>Un gruppo preciso</label><select id="seg-gruppo"><option value="">Indifferente</option>${
           gruppi.map(g => `<option value="${esc(g.id)}">${esc(g.nome)}</option>`).join('')}</select></div>
         <div class="full"><label>Chi</label><select id="seg-chi"><option value="clienti">Solo clienti</option><option value="tutti">Clienti e lead</option><option value="lead">Solo lead</option></select></div>
+        <div class="full"><label>A chi si può scrivere</label><select id="seg-base" onchange="segBase()">
+          <option value="consenso">Solo a chi ha dato il consenso marketing</option>
+          <option value="soft_spam">Anche ai clienti senza consenso, su prodotti analoghi (soft spam)</option></select></div>
+      </div>
+      <div id="seg-soft" class="cl-empty" style="display:none;margin-top:10px;text-align:left">
+        <b>Soft spam — art. 130, comma 4, Codice Privacy.</b> Si può scrivere senza consenso a un
+        <b>cliente</b> (almeno una polizza) che <b>non si è opposto</b>, solo per <b>email</b> e solo su
+        prodotti <b>analoghi</b> a quelli che ha già. I lead restano fuori, chi si è disiscritto anche.
+        <br>Due cose il programma non le può verificare, e le dichiari tu:
+        <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-weight:400">
+          <input type="checkbox" id="seg-soft-ok" style="margin-top:3px">
+          <span>L'informativa privacy consegnata ai clienti prevede l'invio di email su prodotti analoghi, e
+          gli indirizzi sono stati raccolti dall'agenzia al momento della vendita. Questa campagna
+          parlerà di prodotti assicurativi analoghi a quelli in portafoglio.</span></label>
       </div>
       <div class="cl-empty" style="margin-top:10px;text-align:left">
         <b>«No, o mai chiesto» vuol dire proprio questo.</b> Figli, stato civile e casa di proprietà
@@ -18555,6 +18570,20 @@ async function segApri() {
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
   segCopertura();
+}
+
+/* La platea soft spam si accende solo con la dichiarazione spuntata: la base
+   giuridica la decide una persona, e resta scritta nel segmento con chi e
+   quando (server/marketingDestinatari.js, softSpamAttivo). */
+function segBase() {
+  const soft = document.getElementById('seg-base')?.value === 'soft_spam';
+  const box = document.getElementById('seg-soft');
+  if (box) box.style.display = soft ? '' : 'none';
+}
+
+function segSoftMancante() {
+  return document.getElementById('seg-base')?.value === 'soft_spam'
+    && !document.getElementById('seg-soft-ok')?.checked;
 }
 
 function segFiltri() {
@@ -18582,6 +18611,13 @@ function segFiltri() {
   const chi = v('seg-chi');
   if (chi === 'clienti') f.solo_clienti = true;
   if (chi === 'lead') f.solo_lead = true;
+  if (v('seg-base') === 'soft_spam' && document.getElementById('seg-soft-ok')?.checked) {
+    f.base = 'soft_spam';
+    f.soft_spam_confermato = {
+      il: new Date().toISOString(),
+      da: (typeof currentUser !== 'undefined' && currentUser && (currentUser.email || currentUser.id)) || null
+    };
+  }
   return f;
 }
 
@@ -18622,6 +18658,7 @@ async function segCopertura() {
 
 async function segAnteprima() {
   const el = document.getElementById('seg-anteprima');
+  if (segSoftMancante()) { el.textContent = 'Per il soft spam spunta la dichiarazione: senza, valgono solo i consensi.'; el.className = 'cmp-conta vuoto'; return; }
   const f = segFiltri();
   if (!Object.keys(f).length) { el.textContent = 'Senza filtri il segmento sarebbe tutta la rubrica.'; el.className = 'cmp-conta vuoto'; return; }
   el.textContent = 'Conto…'; el.className = 'cmp-conta';
@@ -18630,7 +18667,10 @@ async function segAnteprima() {
     const fuori = (d.senza_email || 0) + (d.senza_consenso || 0);
     el.innerHTML = '<b>' + d.contattabili.toLocaleString('it-IT') + '</b> destinatari su ' + d.membri.toLocaleString('it-IT') + ' nel segmento'
       + (d.esempi?.length ? '<br><small>' + d.esempi.map(esc).join(' · ') + (d.contattabili > d.esempi.length ? ' …' : '') + '</small>' : '')
-      + (fuori ? '<br><span class="cmp-fuori">' + fuori + ' esclusi: ' + (d.senza_consenso || 0) + ' senza consenso, ' + (d.senza_email || 0) + ' senza email</span>' : '');
+      + (d.per_soft_spam ? '<br><small>di cui <b>' + d.per_soft_spam.toLocaleString('it-IT') + '</b> clienti senza consenso, per soft spam</small>' : '')
+      + (fuori ? '<br><span class="cmp-fuori">' + fuori + ' esclusi: ' + (d.senza_consenso || 0) + ' senza consenso, ' + (d.senza_email || 0) + ' senza email</span>' : '')
+      + (d.opposti ? '<br><span class="cmp-fuori">' + d.opposti + ' si sono opposti: esclusi per sempre</span>' : '')
+      + (d.parziale ? '<br><span class="cmp-fuori">La lettura si è fermata prima della fine: i numeri sono in difetto.</span>' : '');
     el.className = 'cmp-conta' + (d.contattabili === 0 ? ' vuoto' : '');
   } catch (e) { el.textContent = 'Anteprima non riuscita: ' + (e.message || e); el.className = 'cmp-conta vuoto'; }
 }
@@ -18638,6 +18678,7 @@ async function segAnteprima() {
 async function segSalva() {
   const nome = (document.getElementById('seg-nome')?.value || '').trim();
   if (!nome) { alert('Dai un nome al segmento: fra sei mesi sarà l\'unica cosa che lo distingue.'); return; }
+  if (segSoftMancante()) { alert('Per il soft spam spunta la dichiarazione sull\'informativa: senza, il segmento vale solo per chi ha dato il consenso.'); return; }
   const filtri = segFiltri();
   if (!Object.keys(filtri).length) { alert('Metti almeno un filtro: senza, il segmento è tutta la rubrica.'); return; }
   try {

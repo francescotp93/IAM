@@ -8741,3 +8741,60 @@ controprove).
   responsabile (Brevo, Supabase, OVH, Anthropic, openapi.it, Stripe/PayPal),
   DPIA (si trattano dati di salute), procedura data breach, routine per
   cancellazione/portabilità e per applicare `conserva_fino`.
+
+---
+
+## 76. La platea «soft spam», e le disiscrizioni che restano (08/10/2026)
+
+> «sì, aggiungi la platea soft spam» — Francesco, dopo aver chiesto se per le
+> email il discorso fosse diverso da WhatsApp.
+
+Misurato prima: **5** anagrafiche su 4.465 hanno il consenso marketing, e
+**1.192** clienti hanno un'email e almeno una polizza. L'art. 130 c. 4 del
+Codice Privacy permette email senza consenso a un CLIENTE, su prodotti
+ANALOGHI a quelli acquistati, se l'informativa lo diceva al momento della
+raccolta e se non si è opposto. Solo email: WhatsApp e SMS no.
+
+| pezzo | dove |
+|---|---|
+| la regola | `softSpamAttivo` e `smista` in `server/marketingDestinatari.js` |
+| la colonna dell'opposizione | `supabase/migrations/20261008_opposizione_marketing.sql` (applicata) |
+| la scelta nel segmento, con la dichiarazione | `segBase` / `segSoftMancante` / `segFiltri` in `index.html` |
+| le disiscrizioni da Brevo → IAM | `listaPer` in `server/marketing.js` |
+| prove | `server/verifica/marketing-destinatari.test.mjs` — **15** (erano 8), quattro controprove |
+
+**Le regole, tutte sul server** (una regola che vive solo in una schermata si
+aggira con una chiamata fatta a mano):
+- la platea si accende **solo** con `base: 'soft_spam'` **e** la dichiarazione
+  (`soft_spam_confermato`, con chi e quando). Due cose il programma non le può
+  verificare — che l'informativa lo preveda, e che la campagna parli di
+  prodotti analoghi — e quindi le dichiara una persona, e restano scritte;
+- vale per chi ha **almeno una polizza**, mai per un lead, **mai per i gruppi**;
+- **chi si è opposto non entra mai**, nemmeno col consenso;
+- ogni contattabile porta la sua `base` (`consenso` o `soft_spam`), e
+  l'anteprima dice quanti entrano per l'una e per l'altra.
+
+**Le disiscrizioni restano.** Chi preme «disiscriviti» su Brevo finisce nella
+lista nera di Brevo, ma IAM non lo sapeva: la prossima lista costruita qui lo
+avrebbe rimesso dentro. A ogni sincronizzazione i disiscritti si registrano in
+`opposizione_marketing_il` — una data, perché «quando si è opposto» è la
+domanda del giorno in cui qualcuno contesta un invio.
+
+**Due difetti trovati per strada, e c'erano da prima.** I segmenti leggevano
+le anagrafiche con una richiesta sola: **le prime mille su 4.465**, senza
+dirlo (§50, §53). E i filtri sulle polizze passavano gli id dei clienti
+dentro l'indirizzo: con qualche migliaio di clienti l'indirizzo è più lungo di
+quello che un server accetta. Adesso si legge a pagine (`sbTutte`) e si
+incrocia in memoria, e il tetto si dichiara (`parziale`).
+
+**Un guardiano aggiornato nella regola.** «Le due liste combaciano» guardava
+solo dentro `membriSegmento`: `base` e `soft_spam_confermato` si leggono in
+`softSpamAttivo`, che quella funzione chiama. La regola era «ogni filtro della
+schermata il server lo applica», e adesso guarda anche lì.
+
+### Cosa resta da verificare (non lo fa il programma)
+- **L'informativa privacy** consegnata ai clienti deve citare le email su
+  prodotti analoghi. Se non lo fa, la dichiarazione non va spuntata.
+- **Gli indirizzi arrivati dai flussi delle compagnie** (es. Prima) li ha
+  scritti il cliente sul sito della compagnia: se valgano come «raccolti
+  dall'agenzia nella vendita» va chiesto al consulente privacy.

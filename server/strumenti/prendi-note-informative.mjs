@@ -42,6 +42,12 @@ const arg = (n, d = null) => {
 const DOVE = arg('--dove');
 const SOLO = arg('--solo');
 const PROVA = process.argv.includes('--prova');
+/* `--riprova` ripassa SOLO i documenti che l'ultima volta non sono arrivati.
+   Serve dopo ogni cambio alla funzione (un dominio in più, un'intestazione
+   diversa): rifare tutti e 283 per riprovarne venti vorrebbe dire chiedere a
+   duecentosessanta siti un file che si ha già, e aspettare mezz'ora per
+   sapere una cosa che si sa in due minuti. */
+const RIPROVA = process.argv.includes('--riprova');
 
 /* La chiave pubblica del progetto: sta già dentro il sorgente di IAM, non è un
    segreto. Si passa da fuori perché un repository non è il posto dove tenere
@@ -55,6 +61,12 @@ if (!CHIAVE) {
   process.exit(2);
 }
 const PORTA = 'https://' + PROGETTO + '.supabase.co/functions/v1/prendi-documento';
+
+/* LA DATA È QUELLA DI OGGI, NON UNA SCRITTA A MANO. La prima versione aveva
+   «2026-10-02» dentro il codice: alla seconda raccolta il catalogo avrebbe
+   detto di essere stato controllato il 2 ottobre anche se lo era stato l'8, e
+   una data falsa su una verifica è peggio di nessuna data. */
+const OGGI = new Date().toISOString().slice(0, 10);
 
 if (DOVE && !fs.existsSync(DOVE)) fs.mkdirSync(DOVE, { recursive: true });
 
@@ -89,48 +101,99 @@ function statoDa(r) {
 }
 
 const conta = {};
-let fatti = 0, totale = 0;
-cat.compagnie.forEach((c) => { if (!SOLO || c.compagnia === SOLO) totale += (c.documenti || []).length; });
+let fatti = 0;
+
+/* Chi va ripreso. Con `--riprova` si lasciano stare quelli che sono già
+   arrivati: «verificato» con la sua impronta vuol dire che il file c'è. */
+const daFare = (d) => !RIPROVA || d.stato !== 'verificato';
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   L'ORDINE È INTRECCIATO FRA LE COMPAGNIE, E NON È UN DETTAGLIO.
+
+   Il catalogo tiene i documenti raggruppati per compagnia: sette di Sara, poi
+   sette di Nobis. Prenderne sei alla volta in quell'ordine vorrebbe dire sei
+   richieste insieme allo STESSO sito — che è il modo per farsi rispondere 403
+   o, peggio, per dare fastidio a un sito che non ci ha fatto niente.
+
+   Qui l'elenco si intreccia: il primo documento di ogni compagnia, poi il
+   secondo di ogni compagnia, e così via. Sei alla volta sono sei siti diversi.
+   Uno per uno ci volevano ottanta minuti; così tredici.
+   ───────────────────────────────────────────────────────────────────────────── */
+const lavori = [];
+const scelte = cat.compagnie
+  .filter((c) => !SOLO || c.compagnia === SOLO)
+  .map((c) => ({ c, docs: (c.documenti || []).filter(daFare) }))
+  .filter((x) => x.docs.length);
+const quanti = Math.max(0, ...scelte.map((x) => x.docs.length));
+for (let g = 0; g < quanti; g++) {
+  scelte.forEach((x) => { if (x.docs[g]) lavori.push({ c: x.c, d: x.docs[g] }); });
+}
+const totale = lavori.length;
 console.log('\nRACCOLGO ' + totale + ' documenti' + (SOLO ? ' di ' + SOLO : '') +
+  (RIPROVA ? ' (solo quelli che la volta scorsa non sono arrivati)' : '') +
   (DOVE ? ', li salvo in ' + DOVE : ' (senza salvare: manca --dove)') + '\n');
 
-for (const c of cat.compagnie) {
-  if (SOLO && c.compagnia !== SOLO) continue;
-  for (const d of c.documenti || []) {
-    const r = await prendi(d.url);
-    const stato = statoDa(r);
-    fatti++;
-    conta[stato || 'rete'] = (conta[stato || 'rete'] || 0) + 1;
+/* Quante insieme. Sei è un numero scelto, non trovato: sotto non si guadagna
+   niente di visibile, sopra si comincia a bussare due volte allo stesso sito
+   perché le compagnie con pochi documenti finiscono prima e l'intreccio si
+   stringe sulle altre. */
+const INSIEME = 6;
+let prossimo = 0;
 
-    const eti = { verificato: '✅', scaduto: '🕓', non_pdf: '📄', dominio_non_ammesso: '⛔',
-      non_preso: '❌', null: '🌐' }[String(stato)];
-    console.log(`${eti} [${fatti}/${totale}] ${c.compagnia} · ${d.prodotto}` +
-      (r.ok ? `  ${(r.byte / 1024).toFixed(0)} kB  ${r.impronta.slice(0, 12)}…` +
-        (r.reindirizzato ? `  (reindirizzato a ${r.host})` : '') : `  ${String(r.motivo).slice(0, 110)}`));
+async function unLavoro({ c, d }) {
+  const r = await prendi(d.url);
+  const stato = statoDa(r);
+  fatti++;
+  conta[stato || 'rete'] = (conta[stato || 'rete'] || 0) + 1;
 
-    if (stato) {
-      d.stato = stato;
-      d.provato_il = '2026-10-02';
-      if (r.ok) {
-        d.impronta = r.impronta;
-        d.byte = r.byte;
-        if (r.reindirizzato) d.indirizzo_finale = r.indirizzo_finale;
-      } else {
-        delete d.impronta; delete d.byte;
-        d.motivo_non_preso = String(r.motivo).slice(0, 300);
-      }
+  const eti = { verificato: '✅', scaduto: '🕓', non_pdf: '📄', dominio_non_ammesso: '⛔',
+    non_preso: '❌', null: '🌐' }[String(stato)];
+  console.log(`${eti} [${fatti}/${totale}] ${c.compagnia} · ${d.prodotto}` +
+    (r.ok ? `  ${(r.byte / 1024).toFixed(0)} kB  ${r.impronta.slice(0, 12)}…` +
+      (r.reindirizzato ? `  (reindirizzato a ${r.host})` : '') : `  ${String(r.motivo).slice(0, 110)}`));
+
+  if (stato) {
+    d.stato = stato;
+    d.provato_il = OGGI;
+    if (r.ok) {
+      d.impronta = r.impronta;
+      d.byte = r.byte;
+      if (r.reindirizzato) d.indirizzo_finale = r.indirizzo_finale;
+      delete d.motivo_non_preso;
+    } else {
+      delete d.impronta; delete d.byte;
+      d.motivo_non_preso = String(r.motivo).slice(0, 300);
     }
+  }
 
-    if (r.ok && DOVE) {
-      const nome = (c.compagnia + '-' + d.prodotto).replace(/[^A-Za-z0-9]+/g, '-').slice(0, 70)
-        + '-' + r.impronta.slice(0, 8) + '.pdf';
-      fs.writeFileSync(path.join(DOVE, nome), Buffer.from(r.pdf_base64, 'base64'));
-    }
+  if (r.ok && DOVE) {
+    const nome = (c.compagnia + '-' + d.prodotto).replace(/[^A-Za-z0-9]+/g, '-').slice(0, 70)
+      + '-' + r.impronta.slice(0, 8) + '.pdf';
+    fs.writeFileSync(path.join(DOVE, nome), Buffer.from(r.pdf_base64, 'base64'));
   }
 }
 
+async function squadra() {
+  while (prossimo < lavori.length) {
+    const mio = lavori[prossimo++];
+    /* Un documento che fa saltare tutto fermerebbe la raccolta a metà e il
+       catalogo non direbbe niente degli altri: si scrive il guasto e si va
+       avanti, che è lo stesso motivo per cui `prendi` non rilancia. */
+    try { await unLavoro(mio); } catch (e) {
+      console.log('💥 [' + (++fatti) + '/' + totale + '] ' + mio.c.compagnia + ' · ' +
+        mio.d.prodotto + '  ' + String(e?.message || e).slice(0, 110));
+      conta.guasto = (conta.guasto || 0) + 1;
+    }
+  }
+}
+await Promise.all(Array.from({ length: Math.min(INSIEME, lavori.length) }, squadra));
+
 if (!PROVA) {
-  cat._verificato_il = '2026-10-02';
+  /* `_verificato_il` vuol dire «tutto il catalogo è stato ripassato quel
+     giorno»: un ripasso parziale non ha il diritto di scriverlo, o la data
+     direbbe che sono stati provati 283 documenti quando ne sono stati provati
+     venti. Gli altri conservano il loro `provato_il`, che è quello vero. */
+  if (!RIPROVA && !SOLO) cat._verificato_il = OGGI;
   cat._stati = {
     trovato: 'l\'URL è stato trovato da una ricerca ma non è stato aperto da nessuno',
     verificato: 'da quell\'indirizzo è arrivato un PDF vero: si tiene la sua impronta e il suo peso',

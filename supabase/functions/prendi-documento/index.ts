@@ -68,39 +68,22 @@
    compagnia, e si rimanda in produzione: è una riga in più da scrivere ed è il
    prezzo di non avere un proxy aperto. */
 const DOMINI = [
-  /* `dallbogg.it` REINDIRIZZA a `dallbogg.com`: trovato alla prima chiamata
+  /* I DOMINI SONO QUELLI DEL CATALOGO, e una prova li confronta: se divergono
+     il documento non si scarica e nessuno capisce perche'.
+
+     `dallbogg.it` REINDIRIZZA a `dallbogg.com`: trovato alla prima chiamata
      vera, il 02/10/2026. Servono tutt'e due, e la scoperta vale piu' della
-     riga che l'ha risolta — un elenco di domini scritto a tavolino non ci
-     sarebbe mai arrivato, perche' il reindirizzamento non si vede guardando
-     l'indirizzo. */
-  'dallbogg.it',
-  'dallbogg.com',
-  'www.dallbogg.com',
-  'cdn.groupama.it',
-  'www.sara.it',
-  'www.axa.it',
-  /* HDI tiene i documenti su tre domini diversi: il sito pubblico, l'area
-     clienti e il portale di quotazione. Vanno elencati uno per uno, perché
-     accettare «*.hdiassicurazioni.it» vorrebbe dire accettare anche un
-     sottodominio che un domani serve a qualcos'altro. */
-  'youquote.hdia.it',
-  'areaclienti.hdiassicurazioni.it',
-  'www.italiana.it',
-  'www.allianz.it',
-  'www.nobis.it',
+     riga che l'ha risolta — un elenco scritto a tavolino non ci sarebbe mai
+     arrivato, perche' il reindirizzamento non si vede guardando l'indirizzo.
 
-  /* ── LE COMPAGNIE AGGIUNTE L'08/10/2026 ───────────────────────────────────
-     Da dieci compagnie a quarantasei, comprese le banche che vendono prodotti
-     assicurativi (Intesa, Poste, Credit Agricole, BNP Cardif, Credem, Banco
-     BPM, BPER, Mediolanum) e le dirette. Ogni dominio sta qui perche' il
-     catalogo porta un documento che sta la' sopra: l'elenco e il catalogo si
-     controllano a vicenda, e una prova li confronta.
+     HDI tiene i documenti su tre domini diversi (sito pubblico, area clienti,
+     portale di quotazione) e vanno elencati uno per uno: accettare
+     «*.hdiassicurazioni.it» vorrebbe dire accettare anche un sottodominio che
+     un domani serve a qualcos'altro.
 
-     NESSUNO DI QUESTI INDIRIZZI E' STATO APERTO: la rete di questo ambiente e'
-     chiusa verso i siti delle compagnie. Sono indirizzi TROVATI, non
-     verificati, e alcuni non finiscono per .pdf (Liferay di AXA, .ashx di
-     Generali): si scoprira' alla prima chiamata vera, come si e' scoperto il
-     02/10/2026 che dallbogg.it reindirizza a dallbogg.com. */
+     L'08/10/2026 l'elenco e' passato da undici a 58 domini, con le banche che
+     vendono prodotti assicurativi (Intesa, Poste, Credit Agricole, BNP Cardif,
+     Credem, Vera, Arca, Mediolanum) e le dirette. */
   'areaclienti.hdiassicurazioni.it',
   'assets.europassistance.it',
   'bnl.it',
@@ -145,6 +128,11 @@ const DOMINI = [
   'www.munichre.com',
   'www.netinsurance.it',
   'www.nobis.it',
+  /* `veraassicurazioni.it` REINDIRIZZA qui: scoperto alla prima raccolta vera,
+     l'08/10/2026, su sei documenti Vera che venivano tutti rifiutati. Come
+     dallbogg: un elenco scritto a tavolino non ci arriva, perché il
+     reindirizzamento non si vede guardando l'indirizzo. */
+  'www.piuvera.it',
   'www.prima.it',
   'www.quixa.it',
   'www.realemutua.it',
@@ -165,6 +153,35 @@ const DOMINI = [
 const TETTO = 15 * 1024 * 1024
 const SALTI = 5                        /* quanti reindirizzamenti si seguono */
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   CHI STA CHIAMANDO. Misurato l'08/10/2026, alla prima raccolta vera: su 283
+   documenti, sedici tornavano 403 — dodici di Allianz — e cinque 400 da
+   Zurich. Sono tutti documenti precontrattuali che la compagnia pubblica
+   perché deve: non è un contenuto riservato, è il filtro anti-robot del sito
+   che rifiuta a priori chi non si presenta. Deno, se non gli si dice niente,
+   manda «user-agent: Deno/2.x».
+
+   QUI CI SI PRESENTA PER QUELLO CHE SI È: l'agenzia, col suo indirizzo. Non
+   ci si traveste da Chrome, e la differenza è concreta — se un domani una
+   compagnia volesse tenerci fuori, da questa riga sa chi bloccare, e
+   travestirsi vorrebbe dire togliergli quella possibilità. `Mozilla/5.0
+   (compatible; ...)` è la forma con cui si presentano i programmi, quella di
+   Googlebot: serve perché molti filtri guardano solo il prefisso.
+
+   MISURATO DOPO: non ha cambiato niente. I 403 di Allianz, REVO e Prima e i
+   400 di Zurich sono rimasti identici con la presentazione e senza. Quei siti
+   non guardano chi chiama: rifiutano l'indirizzo da cui arriva la chiamata.
+   La riga resta perché è giusto presentarsi, non perché serve a passare.
+   ───────────────────────────────────────────────────────────────────────────── */
+const CHI_CHIAMA = 'Mozilla/5.0 (compatible; WithusAssicurazioni/1.0; +https://www.withusassicurazioni.it)'
+const INTESTAZIONI_DI_CHI_CHIEDE = {
+  Accept: 'application/pdf,*/*',
+  'User-Agent': CHI_CHIAMA,
+  /* I siti italiani servono la pagina in italiano, e un documento in italiano
+     è quello che si vuole leggere. */
+  'Accept-Language': 'it-IT,it;q=0.9',
+}
+
 function dentroElenco(u: URL): boolean {
   if (u.protocol !== 'https:') return false
   /* Il confronto è sull'host INTERO, non su «finisce con»: «sara.it.male.com»
@@ -177,7 +194,7 @@ async function prendi(indirizzo: string): Promise<{ r: Response; finale: string 
   for (let n = 0; n <= SALTI; n++) {
     const u = new URL(qui)
     if (!dentroElenco(u)) throw new Error('fuori-elenco:' + u.hostname)
-    const r = await fetch(qui, { redirect: 'manual', headers: { Accept: 'application/pdf,*/*' } })
+    const r = await fetch(qui, { redirect: 'manual', headers: INTESTAZIONI_DI_CHI_CHIEDE })
     if (r.status >= 300 && r.status < 400) {
       const dove = r.headers.get('location')
       if (!dove) throw new Error('reindirizzamento senza indirizzo')
@@ -252,16 +269,37 @@ Deno.serve(async (req) => {
         { headers: cors })
     }
 
-    /* Il tipo dichiarato non basta: si guardano i primi byte. Un sito che
-       risponde con una pagina di errore «200 OK» e il content-type sbagliato
-       farebbe archiviare un HTML come se fosse un documento di prodotto. */
-    const firma = new TextDecoder().decode(byte.slice(0, 5))
-    if (firma !== '%PDF-') {
+    /* Il tipo dichiarato non basta: si guardano i byte. Un sito che risponde
+       con una pagina di errore «200 OK» e il content-type sbagliato farebbe
+       archiviare un HTML come se fosse un documento di prodotto.
+
+       MA «%PDF-» NON DEVE STARE AL PRIMO BYTE. La specifica PDF ammette
+       l'intestazione entro il primo kilobyte e i lettori veri la cercano là —
+       pdf.js compreso, che è quello che poi legge il file: un controllo più
+       severo della specifica rifiuterebbe file che si aprono benissimo.
+       Cercarla nel primo kilobyte NON riapre la porta all'HTML, e la prova lo
+       misura in tutt'e due i versi: una pagina d'errore non ha «%PDF-» da
+       nessuna parte, e il tetto del kilobyte ferma una pagina che lo nomina
+       più in là.
+
+       E QUELLO CHE QUESTA LARGHEZZA *NON* HA RISOLTO, perché la tentazione è
+       raccontarsela: l'08/10/2026 due documenti Credem tornavano dichiarati
+       «application/pdf» e cominciavano per due byte illeggibili e tre spazi.
+       Ho allargato la finestra pensando a un'intestazione spostata: non erano
+       quelli. Nel primo kilobyte non c'è «%PDF-» da nessuna parte, e che cosa
+       siano quei byte non si sa — per saperlo servirebbe che il rifiuto
+       riportasse i primi byte in esadecimale, che oggi non fa. I due documenti
+       Credem restano da prendere. */
+    const testa = new TextDecoder('latin1').decode(byte.slice(0, 1024))
+    const dove = testa.indexOf('%PDF-')
+    if (dove < 0) {
+      const firma = new TextDecoder().decode(byte.slice(0, 5))
       return Response.json({
         ok: false,
         motivo: 'Quello che è arrivato non è un PDF (comincia per «' + firma.replace(/[^\x20-\x7e]/g, '·') +
-          '», tipo dichiarato «' + (tipo || 'nessuno') + '»). Quasi sempre è una pagina di errore ' +
-          'travestita da risposta buona, oppure un indirizzo che ora porta alla pagina del prodotto.',
+          '», tipo dichiarato «' + (tipo || 'nessuno') + '», e nel primo kilobyte non c\'è «%PDF-»). ' +
+          'Quasi sempre è una pagina di errore travestita da risposta buona, oppure un indirizzo che ' +
+          'ora porta alla pagina del prodotto.',
       }, { headers: cors })
     }
 
@@ -281,6 +319,10 @@ Deno.serve(async (req) => {
       ok: true, host: new URL(finale).hostname, impronta, byte: byte.length,
       pdf_base64: btoa(b64),
       indirizzo_finale: finale,
+      /* Se l'intestazione non era al primo byte si dice di quanto: è un file
+         un po' storto, e chi lo archivia ha il diritto di saperlo invece di
+         scoprirlo il giorno che un lettore più severo lo rifiuta. */
+      byte_prima_dell_intestazione: dove,
       /* Si dice se c'è stato un salto: un URL del catalogo che reindirizza
          vuol dire che la compagnia ha spostato il documento, e il catalogo va
          aggiornato anche se stavolta è andata bene. */

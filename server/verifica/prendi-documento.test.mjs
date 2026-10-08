@@ -127,11 +127,73 @@ prova('i reindirizzamenti si seguono a mano, e ogni salto si controlla', () => {
   deve(/troppi reindirizzamenti/.test(SRC), 'i salti non hanno un tetto: un anello girerebbe per sempre');
 });
 
+prova('CHI CHIAMA SI PRESENTA, E CON UN RECAPITO', () => {
+  /* Perché c'è questa regola: all'8/10/2026 sedici documenti su 283 tornavano
+     403 e cinque 400. Sono documenti che la compagnia pubblica per obbligo:
+     era il filtro anti-robot del sito a rifiutare chi non si presentava.
+
+     E perché non basta «c'è un User-Agent»: la tentazione è copiare la riga
+     di Chrome e sparire nel mucchio. Qui si pretende il RECAPITO — un
+     indirizzo dentro la stringa — perché è quello che permette a una
+     compagnia di capire chi sta scaricando e, se vuole, di tenerci fuori.
+     Travestirsi da browser vorrebbe dire togliergliela, quella possibilità. */
+  const m = SRC.match(/const CHI_CHIAMA = '([^']+)'/);
+  deve(m, 'la funzione non dichiara chi sta chiamando');
+  const ua = m[1];
+  deve(/withusassicurazioni/i.test(ua), 'chi chiama non si nomina: «' + ua + '»');
+  deve(/\+https:\/\/\S+/.test(ua), 'chi chiama non lascia un recapito a cui rispondere: «' + ua + '»');
+  /* E deve finire nella richiesta VERA, non in una costante che nessuno usa:
+     una stringa dichiarata e mai mandata è una presentazione fatta a sé
+     stessi. Si guarda l'oggetto che la `fetch` riceve davvero. */
+  const quali = SRC.match(/const INTESTAZIONI_DI_CHI_CHIEDE = \{([\s\S]*?)\n\}/);
+  deve(quali, 'non trovo le intestazioni della richiesta');
+  deve(/'User-Agent':\s*CHI_CHIAMA/.test(quali[1]),
+    'la presentazione non è fra le intestazioni della richiesta');
+  const chiamata = SRC.match(/await fetch\(qui, \{([^}]*)\}/);
+  deve(chiamata, 'non trovo la chiamata che scarica il documento');
+  deve(/headers:\s*INTESTAZIONI_DI_CHI_CHIEDE/.test(chiamata[1]),
+    'la richiesta non manda quelle intestazioni: ' + chiamata[1].trim());
+});
+
 prova('si controlla che sia un PDF guardando i byte, non l\'etichetta', () => {
   /* Un sito che risponde «200 OK» con una pagina di errore e il tipo
      sbagliato farebbe archiviare un HTML come documento di prodotto. */
   deve(/'%PDF-'/.test(SRC), 'non si guarda la firma del file');
-  deve(/if \(firma !== '%PDF-'\)/.test(SRC), 'la firma si legge ma non si usa per rifiutare');
+  deve(/if \(dove < 0\)/.test(SRC), 'la firma si cerca ma non si usa per rifiutare');
+});
+
+prova('L\'INTESTAZIONE PDF SI CERCA NEL PRIMO KILOBYTE, NON AL PRIMO BYTE', () => {
+  /* Due regole in una, e tirano in direzioni opposte: larga abbastanza per
+     prendere un PDF con qualche byte davanti (due documenti Credem, 08/10/2026),
+     strétta abbastanza per rifiutare una pagina HTML. Si esegue il controllo
+     vero preso dal sorgente, su byte veri, invece di cercare parole. */
+  const m = SRC.match(/const testa = new TextDecoder\('latin1'\)[\s\S]*?const dove = testa\.indexOf\('%PDF-'\)/);
+  deve(m, 'non trovo la ricerca dell\'intestazione nel sorgente');
+  const quanto = SRC.match(/byte\.slice\(0, (\d+)\)\)\n    const dove/);
+  deve(quanto, 'non trovo quanti byte si guardano');
+  const finestra = Number(quanto[1]);
+  deve(finestra >= 5, 'la finestra è più corta dell\'intestazione stessa: ' + finestra);
+  /* IL TETTO SERVE: cercare «%PDF-» in TUTTO il file prenderebbe una pagina
+     HTML che per caso nomina un PDF, e un documento di 3 MB si deciderebbe
+     guardandone 3 MB. */
+  deve(finestra <= 4096, 'la finestra è troppo larga (' + finestra + '): '
+    + 'cercando l\'intestazione lontano si prende per documento una pagina che la nomina');
+
+  /* Il controllo, eseguito: tre casi veri. */
+  const cerca = (byte) => {
+    const testa = new TextDecoder('latin1').decode(byte.slice(0, finestra));
+    return testa.indexOf('%PDF-');
+  };
+  const enc = (s) => new TextEncoder().encode(s);
+  deve(cerca(enc('%PDF-1.7\n...')) === 0, 'un PDF normale non viene riconosciuto');
+  deve(cerca(new Uint8Array([0xef, 0xbb, 0xbf, 0x20, 0x20, ...enc('%PDF-1.4\n')])) > 0,
+    'un PDF con qualche byte davanti viene rifiutato: è il caso Credem');
+  deve(cerca(enc('<!DOCTYPE html><html><head><title>Pagina non trovata</title>')) < 0,
+    'una pagina HTML passa per documento');
+  /* E il caso cattivo che il tetto deve fermare: un HTML che nomina un PDF
+     oltre la finestra. */
+  const bugiardo = enc('<!DOCTYPE html>' + ' '.repeat(finestra + 50) + '%PDF-1.4');
+  deve(cerca(bugiardo) < 0, 'una pagina HTML che nomina un PDF più in là passa per documento');
 });
 
 prova('il tetto al peso del file è un numero vero, non una parola', () => {

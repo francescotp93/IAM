@@ -1,8 +1,21 @@
 {
-  "versione": "0.52.0",
-  "nome": "Campagne email: la platea «soft spam» per i clienti, e le disiscrizioni che restano",
+  "versione": "0.53.0",
+  "nome": "Trattative: ramo, compagnia, prodotto, cliente dal portafoglio o prospect fast, richiamo in Agenda, grafici per prodotto e imponibile dal lordo",
   "data": "2026-10-08",
   "storia": [
+    {
+      "v": "0.53.0",
+      "data": "2026-10-08",
+      "nome": "Trattative: ramo, compagnia, prodotto, cliente dal portafoglio o prospect fast, richiamo in Agenda, grafici per prodotto e imponibile dal lordo",
+      "voci": [
+        "Trattative: si sceglie ramo, compagnia e prodotto dal catalogo, si segna se è un prodotto target e se serve l'autorizzazione della direzione",
+        "Trattative: il cliente si cerca fra clienti e prospect, oppure si censisce al volo con nome, cognome e codice fiscale (o ragione sociale e partita IVA) e finisce fra i prospect",
+        "Trattative: il collaboratore viene dal registro dei Collaboratori, e il richiamo del cliente va in Agenda da solo, con data e ora",
+        "Trattative: in alto il valore in corso, le chiuse vinte e le perse, e due grafici per prodotto; le trattative senza premio si contano a parte invece di valere zero",
+        "Trattative: dal premio lordo si calcola l'imponibile con l'aliquota di legge del ramo, o con quella dichiarata sul prodotto in catalogo; dove le imposte sono miste lo dice invece di stimare",
+        "Catalogo prodotti: ogni prodotto può dichiarare la sua aliquota delle imposte"
+      ]
+    },
     {
       "v": "0.52.0",
       "data": "2026-10-08",

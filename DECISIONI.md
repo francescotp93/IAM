@@ -1934,3 +1934,63 @@ la schermata scrive accanto ai dati che quella è una proposta.
   trova in archivio.
 - **La targa** si legge ma non ha una colonna sua: finisce in
   `dati.letto_da_pdf.targa`.
+
+---
+
+## 08/10/2026 — Confronta: misurato su 31 documenti veri, e il pezzo che mancava
+
+**Perimetro:** il lettore dei documenti di prodotto e la schermata «Metti un
+prodotto in archivio». Richiesta di Francesco: «sistemiamo la parte confronta
+prodotti».
+
+🟢 **Prima di sistemare, un metro.** `server/strumenti/misura-scheda-prodotto.mjs`
+punta a una cartella di PDF veri e dice, documento per documento, quante
+garanzie il motore riconosce e quanti numeri attribuisce. Ricostruisce le righe
+con la STESSA funzione del browser (`PdfTesto.righeDaPezzi`): misurare con un
+estrattore diverso da quello di produzione vuol dire misurare l'estrattore.
+
+**LA MISURA, su 31 documenti di sei compagnie** (molto più larga delle 6 del
+02/10):
+
+| | |
+|---|---|
+| documenti letti | 31 su 32 (uno rifiutato: ramo non riconosciuto) |
+| garanzie riconosciute, media | **4,4 per documento** |
+| documenti sotto le 5 garanzie | **16 su 31** |
+| documenti con almeno un importo attribuito | **1 su 31** |
+
+Il meglio: Groupama Guidamica 12/17, Sara Auto 11/17, Groupama Autocontrollo
+10/17, Nobis Car 10/17. Il peggio: AXA fra 0 e 5, tutto il ramo salute a 0, le
+condizioni HDI a 0.
+
+🔴 **Il dato che conta: zero massimali.** Un confronto senza massimali dice
+quali garanzie ci sono, non quanto coprono — cioè non serve. Ho cercato la
+causa e la prima ipotesi era sbagliata (credevo che `pagineBuone` fosse vuoto:
+era un difetto della mia sonda, non del motore — su Guidamica le pagine buone
+sono 66 su 84). La causa vera, misurata: il documento porta **83 righe con un
+importo**, e la regola dell'ancora pretende il nome della garanzia **nella
+stessa riga** del numero. Su questi documenti i massimali stanno nella prosa,
+sotto un titolo di sezione.
+
+🟡 **La regola dell'ancora NON si tocca.** È quella che impedisce di mettere la
+franchigia degli eventi naturali sui cristalli, ed è già successo. Allentarla
+per vicinanza riempirebbe i campi di numeri credibili e falsi.
+
+🟢 **Quello che mancava era il pezzo umano.** Il motore già raccoglieva gli
+importi non attribuiti con pagina e frase (`importiNonAttribuiti`) e la
+schermata li elencava in sola lettura. Adesso ognuno si **attacca a una
+garanzia con due clic**, e resta scritto che l'ha attaccato una persona:
+- un bottone **per ogni cifra** della riga, mai «la prima» — scegliere da soli
+  il primo numero di una riga che ne porta tre è il modo più credibile di
+  scrivere un massimale falso;
+- su una garanzia «non letta» non si attacca e si dice perché (il database lo
+  vieta, e `daArchiviare` lo butterebbe in silenzio);
+- in archivio la frase dice «Importo attaccato a mano (massimale) dalla pagina
+  N»: un numero messo da una persona e uno letto dalla riga si somigliano, ma
+  non valgono uguale il giorno in cui qualcuno li ricontrolla.
+
+**Fuori perimetro, annotato:**
+- **Allargare le forme su AXA e sul ramo salute**: è il prossimo pezzo, e
+  adesso c'è il metro per sapere se un ritocco migliora o peggiora.
+- **`pdfjs-dist` è servito in locale** per misurare (installato senza salvarlo
+  nel package.json): il metro va lanciato a mano, non è nel cancello.

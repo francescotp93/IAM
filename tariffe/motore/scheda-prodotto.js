@@ -943,6 +943,30 @@
   /* Le righe nella forma che vogliono le tre tabelle dell'archivio. Non scrive
      niente: prepara. Chi scrive è la schermata, dopo che una persona ha
      confermato. */
+  /* ── UN IMPORTO ATTACCATO A MANO SI DICHIARA ─────────────────────────────
+     MISURATO il 08/10/2026 su 31 documenti veri di sei compagnie: il motore
+     riconosce in media 4,4 garanzie per documento ma NON ATTRIBUISCE QUASI MAI
+     UN IMPORTO — zero massimali su trenta documenti su trentuno.
+
+     Il motivo non è un difetto da correggere di nascosto: è la regola
+     dell'ancora, che pretende il nome della garanzia NELLA STESSA RIGA del
+     numero. Su questi documenti i massimali stanno nella prosa, sotto un
+     titolo di sezione, e attribuirli per vicinanza è esattamente l'errore che
+     quella regola esiste per impedire (è già successo: la franchigia degli
+     eventi naturali finita sui cristalli).
+
+     Allora li attacca una PERSONA, dalla schermata, con la frase e la pagina
+     davanti. E quando lo fa resta scritto: in archivio un numero messo a mano
+     e un numero letto dalla riga si somigliano, ma non valgono la stessa cosa
+     il giorno in cui qualcuno li ricontrolla. */
+  function provaDellImporto(g, nonLetto) {
+    var base = g.frase || (nonLetto ? g.perche : null);
+    var mano = g.attribuito_a_mano;
+    if (nonLetto || !mano || !mano.length) return base;
+    return 'Importo attaccato a mano (' + mano.join(', ') + ') dalla pagina '
+      + (g.pagina == null ? 'non indicata' : g.pagina) + (base ? ' · ' + base : '');
+  }
+
   function daArchiviare(s, scelte) {
     if (!s || !s.ok) return { ok: false, motivo: (s && s.motivo) || 'Non c\'è nessuna scheda da archiviare.' };
     var dentro = scelte && scelte.length
@@ -963,7 +987,7 @@
           franchigia: nonLetto ? null : g.franchigia,
           scoperto: nonLetto ? null : g.scoperto,
           pagina: g.pagina == null ? null : g.pagina,
-          frase: g.frase || (nonLetto ? g.perche : null)
+          frase: provaDellImporto(g, nonLetto)
         };
       })
     };

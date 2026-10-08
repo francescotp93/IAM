@@ -523,6 +523,113 @@ prova('IL DOCUMENTO NON ESCE DAL BROWSER', async () => {
   deve(!c.file, 'il file finisce nel database');
 });
 
+/* ══ ATTACCARE A MANO UN IMPORTO CHE IL MOTORE NON HA ATTRIBUITO ═══════════
+   (08/10/2026) Misurato su 31 documenti veri di sei compagnie: zero massimali
+   attribuiti su trenta documenti su trentuno. Un confronto senza massimali
+   dice quali garanzie ci sono, non quanto coprono — cioè non serve.
+
+   Il motore resta severo e fa bene: pretende il nome della garanzia NELLA
+   STESSA RIGA del numero, ed è la regola che impedisce di mettere la
+   franchigia degli eventi naturali sui cristalli. Qui si misura il pezzo
+   umano: una persona attacca l'importo avendo davanti la frase e la pagina.
+
+   Un documento con un importo che il motore trova e non sa attribuire: la
+   riga del massimale non nomina nessuna garanzia. */
+const CON_IMPORTO = [
+  { n: 1, testo: 'Prodotto: AUTO assicurazione\nSET AUTO pag. 1 di 2' },
+  { n: 2, testo: 'Furto e Incendio\nGaranzie di base\nopera.\n'
+      + 'Il limite di indennizzo è di € 25.000,00 per sinistro e di € 3.000,00 per anno.\n'
+      + 'SET AUTO pag. 2 di 2' },
+];
+
+prova('GLI IMPORTI NON ATTRIBUITI SI VEDONO, UNO PER OGNI CIFRA DELLA RIGA', async () => {
+  await leggi(CON_IMPORTO, 'con-importo.pdf');
+  const c = await p.evaluate(() => {
+    const s = (window.CFN || (0, eval)('CFN')).scheda;
+    const scatola = document.getElementById('cfn-esito');
+    const tasti = [...scatola.querySelectorAll('button')].map((b) => b.textContent.trim())
+      .filter((t) => /^massimale |^franchigia /.test(t));
+    return { quanti: s.quantiNonAttribuiti, primi: (s.importiNonAttribuiti || [])[0], tasti: tasti,
+      tendine: scatola.querySelectorAll('select[id^="cfn-imp-"]').length };
+  });
+  deve(c.quanti >= 1, 'il motore non ha messo da parte nessun importo: la prova non misura quello che crede');
+  deve(c.tendine >= 1, 'la schermata non offre di scegliere la garanzia a cui attaccarlo');
+  /* UN BOTTONE PER OGNI CIFRA, mai «la prima»: scegliere da soli il primo
+     numero di una riga che ne porta due è il modo più credibile di scrivere un
+     massimale falso. La riga ne porta due, quindi i bottoni sono quattro
+     (massimale/franchigia per ciascuna). */
+  deve(c.tasti.length >= 4, 'non c\'è un bottone per ogni importo della riga: ' + JSON.stringify(c.tasti));
+  deve(c.tasti.some((t) => /25\.000/.test(t)) && c.tasti.some((t) => /3\.000/.test(t)),
+    'i bottoni non portano le cifre vere della riga: ' + JSON.stringify(c.tasti));
+});
+
+prova('SENZA SCEGLIERE LA GARANZIA NON SI ATTACCA NIENTE', async () => {
+  await leggi(CON_IMPORTO, 'con-importo.pdf');
+  const c = await p.evaluate(() => {
+    const vero = window.alert; const avvisi = [];
+    window.alert = (t) => avvisi.push(String(t));
+    try {
+      cfnAttacca(0, 0, 'massimale');          /* nessuna garanzia scelta nella tendina */
+      const s = (0, eval)('CFN').scheda;
+      return { avvisi, conImporti: s.garanzie.filter((g) => g.massimale != null).length };
+    } finally { window.alert = vero; }
+  });
+  deve(c.avvisi.length === 1 && /scegli/i.test(c.avvisi[0]), 'non chiede a quale garanzia: ' + JSON.stringify(c.avvisi));
+  deve(c.conImporti === 0, 'ha attaccato l\'importo a qualche garanzia senza che nessuno l\'abbia scelta');
+});
+
+prova('ATTACCATO, L\'IMPORTO SI VEDE MARCATO «A MANO» E SI PUÒ TOGLIERE', async () => {
+  await leggi(CON_IMPORTO, 'con-importo.pdf');
+  const c = await p.evaluate(() => {
+    const sel = document.querySelector('select[id^="cfn-imp-"]');
+    sel.value = 'furto';
+    cfnScegli('furto', 'presente');           /* un importo si attacca solo a una garanzia letta */
+    document.querySelector('select[id^="cfn-imp-"]').value = 'furto';
+    cfnAttacca(0, 0, 'massimale');
+    const s = (0, eval)('CFN').scheda;
+    const g = s.garanzie.filter((x) => x.garanzia === 'furto')[0];
+    /* Il segno si cerca SULL'ELEMENTO, non nel testo del pannello: la nota
+       che spiega la cosa contiene già le parole «a mano», quindi cercarle nel
+       testo faceva passare la prova anche col segno spento. Un guasto della
+       controprova lo ha mostrato. */
+    const segni = [...document.querySelectorAll('.cfn-r .cnt-tag')]
+      .filter((e) => /a mano/i.test(e.textContent)).length;
+    const dopoTogli = () => {
+      cfnStacca('furto', 'massimale');
+      return (0, eval)('CFN').scheda.garanzie.filter((x) => x.garanzia === 'furto')[0];
+    };
+    return { massimale: g.massimale, mano: g.attribuito_a_mano, pagina: g.pagina,
+      segno: segni, tolto: dopoTogli() };
+  });
+  deve(c.massimale === 25000, 'l\'importo non si è attaccato: ' + c.massimale);
+  deve((c.mano || []).indexOf('massimale') >= 0, 'non resta scritto che è stato attaccato a mano');
+  deve(c.pagina === 2, 'non si porta dietro la pagina da cui viene: ' + c.pagina);
+  deve(c.segno === 1, 'a schermo il segno «a mano» accanto all\'importo non c\'è (ne ho contati ' + c.segno + ')');
+  deve(c.tolto.massimale == null && (c.tolto.attribuito_a_mano || []).length === 0,
+    'il tasto «togli» non toglie: ' + JSON.stringify(c.tolto));
+});
+
+prova('SU UNA GARANZIA «NON LETTA» L\'IMPORTO NON SI ATTACCA, E SI DICE PERCHÉ', async () => {
+  /* Il database vieta i numeri su una garanzia non letta e `daArchiviare` li
+     butta. Lasciarli attaccare qui vorrebbe dire farli sparire al salvataggio
+     senza che nessuno capisca perché. */
+  await leggi(CON_IMPORTO, 'con-importo.pdf');
+  const c = await p.evaluate(() => {
+    const vero = window.alert; const avvisi = [];
+    window.alert = (t) => avvisi.push(String(t));
+    try {
+      cfnScegli('furto', 'non_letto');
+      document.querySelector('select[id^="cfn-imp-"]').value = 'furto';
+      cfnAttacca(0, 0, 'massimale');
+      const g = (0, eval)('CFN').scheda.garanzie.filter((x) => x.garanzia === 'furto')[0];
+      return { avvisi, massimale: g.massimale };
+    } finally { window.alert = vero; }
+  });
+  deve(c.massimale == null, 'ha attaccato un importo a una garanzia non letta: sparirebbe al salvataggio');
+  deve(c.avvisi.length === 1 && /non letta/i.test(c.avvisi[0]),
+    'non spiega perché non si può: ' + JSON.stringify(c.avvisi));
+});
+
 prova('aprendo IAM non si è rotto niente', () => {
   deve(banco.errori.length === 0, banco.errori.slice(0, 3).join(' | '));
 });

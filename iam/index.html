@@ -89,7 +89,7 @@
 <script src="/nuovo-preventivo/tariffe/motore/guida-garanzie.js?v=20261002"></script>
 <script src="/nuovo-preventivo/tariffe/motore/lettura-proposta.js?v=20261002"></script>
 <script src="/nuovo-preventivo/tariffe/motore/pdf-testo.js?v=20261002"></script>
-<script src="/nuovo-preventivo/tariffe/motore/scheda-prodotto.js?v=20261002"></script>
+<script src="/nuovo-preventivo/tariffe/motore/scheda-prodotto.js?v=20261008"></script>
 <!-- L'importo di una richiesta di pagamento. La regola sta nel motore perché è
      una regola sui soldi, e una regola sui soldi scritta dentro una pagina non
      si prova senza aprire un browser. Il guasto da cui è nato il file — un
@@ -6616,13 +6616,13 @@ function cfnDisegna() {
       ? '<div class="d-card"><div class="card-head"><div class="card-title">' +
         '<span class="pictogram"><i class="ti ti-currency-euro"></i></span> ' + s.quantiNonAttribuiti +
         ' importi che non si attribuiscono</div></div><div class="card-body">' +
-        '<div class="cfn-nota" style="margin:0 0 8px">Quasi sempre sono numeri di un sottocaso — il massimale ' +
-        'di legge, uno scoperto, una rivalsa limitata, una franchigia per area. Non sono stati messi addosso ' +
-        'a nessuna garanzia, perché indovinare un massimale è peggio che lasciarlo in bianco. ' +
-        'Eccoli con la loro pagina:</div><ul class="cfn-fuori">' +
-        s.importiNonAttribuiti.map(function (x) {
-          return '<li>pag. ' + x.pagina + ' — <i>' + esc(x.riga.slice(0, 110)) + '</i></li>'; }).join('') +
-        '</ul></div></div>'
+        '<div class="cfn-nota" style="margin:0 0 8px">Il motore non li mette addosso a nessuna garanzia, ' +
+        'perché indovinare un massimale è peggio che lasciarlo in bianco: pretende il nome della garanzia ' +
+        '<b>nella stessa riga</b> del numero, e su questi documenti i massimali stanno nella prosa. ' +
+        '<b>Ma tu hai la frase e la pagina davanti: scegli a quale garanzia va, e attaccalo.</b> ' +
+        'Resterà scritto che l\'hai attaccato a mano.</div>' +
+        s.importiNonAttribuiti.map(function (x, i) { return cfnImporto(x, i); }).join('') +
+        '</div></div>'
       : '');
 
   cfnBottone(true);
@@ -6630,6 +6630,94 @@ function cfnDisegna() {
 
 function cfnStatoDi(g) {
   return (CFN && CFN.scelte[g.garanzia]) || g.stato;
+}
+
+/* ── UN IMPORTO CHE NON SI ATTRIBUISCE, E LA PERSONA CHE LO ATTRIBUISCE ─────
+   (08/10/2026) Misurato su 31 documenti veri di sei compagnie: il motore
+   riconosce in media 4,4 garanzie per documento e NON ATTACCA QUASI MAI UN
+   IMPORTO — zero massimali su trenta documenti su trentuno. Un confronto senza
+   massimali davanti a un cliente non serve a niente: dice quali garanzie ci
+   sono, non quanto coprono.
+
+   Il motore resta com'è, e fa bene: la regola dell'ancora — il nome della
+   garanzia NELLA STESSA RIGA del numero — è quella che impedisce di mettere la
+   franchigia degli eventi naturali sui cristalli, ed è già successo.
+
+   Quello che mancava è il pezzo umano: qui ogni importo che il motore ha
+   trovato ma non ha saputo attribuire si vede con la sua frase e la sua
+   pagina, e si attacca a una garanzia con due clic. Decide una persona, non
+   una regola di vicinanza.
+
+   IMPORTI MULTIPLI: un bottone per importo, mai «il primo». Scegliere da soli
+   il primo numero di una riga che ne porta tre è il modo più credibile di
+   scrivere un massimale falso. */
+function cfnImporto(x, i) {
+  var g = (CFN && CFN.scheda && CFN.scheda.garanzie) || [];
+  var opz = '<option value="">— a quale garanzia? —</option>' +
+    g.map(function (y) { return '<option value="' + esc(y.garanzia) + '">' + esc(y.nome) + '</option>'; }).join('');
+  var importi = (x.importi || []).filter(function (v) { return v != null; });
+  var tasti = importi.map(function (v, k) {
+    return '<button type="button" class="d-btn" style="font-size:11px;padding:3px 9px" ' +
+      'onclick="cfnAttacca(' + i + ',' + k + ',\'massimale\')">massimale ' + cfEuro(v) + '</button>' +
+      '<button type="button" class="d-btn" style="font-size:11px;padding:3px 9px" ' +
+      'onclick="cfnAttacca(' + i + ',' + k + ',\'franchigia\')">franchigia ' + cfEuro(v) + '</button>';
+  }).join(' ');
+  return '<div class="cfn-r" style="padding:9px 11px">' +
+    '<div class="cfn-r-h"><small>pag. ' + x.pagina + '</small></div>' +
+    '<div class="cfn-frase">«' + esc(String(x.riga).slice(0, 170)) + '»</div>' +
+    '<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:7px">' +
+      '<select id="cfn-imp-' + i + '" style="font-size:11.5px;padding:4px 8px;max-width:230px">' + opz + '</select>' +
+      (tasti || '<span class="cfn-nota">nessun importo leggibile in questa riga</span>') +
+    '</div></div>';
+}
+
+function cfnAttacca(i, quale, tipo) {
+  if (!CFN || !CFN.scheda) return;
+  var x = (CFN.scheda.importiNonAttribuiti || [])[i];
+  var sel = document.getElementById('cfn-imp-' + i);
+  var id = sel ? sel.value : '';
+  if (!x) return;
+  if (!id) { alert('Scegli prima a quale garanzia va questo importo.'); return; }
+  var valore = (x.importi || [])[quale];
+  if (valore == null) { alert('Questa riga non porta un importo leggibile.'); return; }
+  var g = CFN.scheda.garanzie.filter(function (y) { return y.garanzia === id; })[0];
+  if (!g) return;
+  /* UNA GARANZIA «NON LETTA» NON PUÒ PORTARE NUMERI: è un vincolo del
+     database, e `daArchiviare` lo rispetta buttando i numeri in silenzio. Se
+     si lasciasse attaccare qui, l'importo sparirebbe al salvataggio e nessuno
+     capirebbe perché. */
+  if (cfnStatoDi(g) === 'non_letto') {
+    alert('«' + g.nome + '» è segnata come NON LETTA, e una garanzia non letta non può portare importi.\n\n' +
+      'Se il documento la prevede, segnala prima «presente»: poi l\'importo si attacca.');
+    return;
+  }
+  g[tipo] = valore;
+  g.attribuito_a_mano = (g.attribuito_a_mano || []).filter(function (t) { return t !== tipo; }).concat([tipo]);
+  /* La PROVA segue l'importo: pagina e frase da cui viene, così fra un anno si
+     torna al punto del documento invece di ricominciare. */
+  if (g.pagina == null) g.pagina = x.pagina;
+  if (!g.frase) g.frase = x.riga;
+  cfnDisegna();
+}
+
+function cfnStacca(id, tipo) {
+  if (!CFN || !CFN.scheda) return;
+  var g = CFN.scheda.garanzie.filter(function (y) { return y.garanzia === id; })[0];
+  if (!g) return;
+  g[tipo] = null;
+  g.attribuito_a_mano = (g.attribuito_a_mano || []).filter(function (t) { return t !== tipo; });
+  cfnDisegna();
+}
+
+/* Un importo attaccato a mano si VEDE, e si può togliere. Senza il segno, fra
+   un mese nessuno saprebbe più quali numeri vengono dal documento e quali da
+   una scelta di qualcuno — e sono due cose che in un confronto non valgono
+   uguale. */
+function cfnMano(g, tipo) {
+  if (!g.attribuito_a_mano || g.attribuito_a_mano.indexOf(tipo) < 0) return '';
+  return ' <span class="cnt-tag" title="Lo hai attaccato tu, non viene letto dalla riga">a mano</span>' +
+    '<button type="button" class="d-btn" style="font-size:10px;padding:1px 6px;margin-left:4px" ' +
+    'onclick="cfnStacca(\'' + esc(g.garanzia) + '\',\'' + tipo + '\')">togli</button>';
 }
 
 function cfnRiga(g, i) {
@@ -6646,8 +6734,8 @@ function cfnRiga(g, i) {
       ? '<div class="cfn-nota" style="margin-top:3px">Sul documento: «' + esc(g.nome_documento) + '»</div>' : '') +
     (g.massimale != null || g.franchigia != null || g.franchigie_per_area
       ? '<div class="cf-num">' +
-        (g.massimale != null ? 'massimale ' + cfEuro(g.massimale) + ' ' : '') +
-        (g.franchigia != null ? 'franchigia ' + cfEuro(g.franchigia) + ' ' : '') +
+        (g.massimale != null ? 'massimale ' + cfEuro(g.massimale) + cfnMano(g, 'massimale') + ' ' : '') +
+        (g.franchigia != null ? 'franchigia ' + cfEuro(g.franchigia) + cfnMano(g, 'franchigia') + ' ' : '') +
         (g.franchigie_per_area ? 'franchigie per area: ' +
           g.franchigie_per_area.map(function (v) { return cfEuro(v); }).join(' · ') : '') +
         '</div>' : '') +

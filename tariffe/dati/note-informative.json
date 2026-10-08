@@ -1,8 +1,8 @@
 {
   "_cos_e": "Il catalogo dei documenti precontrattuali delle compagnie: dove stanno, non che cosa dicono. È la lista di lavoro del raccoglitore e della schermata «Metti un prodotto in archivio» di Confronta.",
-  "_misurato_il": "2026-10-02",
+  "_misurato_il": "2026-10-08",
   "_come_e_stato_costruito": "Con WebSearch, che gira sui server di Anthropic e non passa dal proxy di rete dell'ambiente. Ogni voce riporta un URL che il motore di ricerca ha indicizzato sul dominio della compagnia stessa.",
-  "_IL_LIMITE_DA_SAPERE": "UNA VERIFICA HA UNA DATA, E QUELLA DATA INVECCHIA. Il 02/10/2026 la funzione `prendi-documento` ha provato tutti e 43 gli indirizzi: 32 hanno consegnato un PDF vero (e ne portano l'impronta), 11 no. Ma «verificato» vuol dire «quel giorno ha risposto», non «risponde»: le compagnie spostano i PDF a ogni edizione nuova, e lo si e' visto sul campo — i quattro indirizzi DALLBOGG, trovati da un motore di ricerca, oggi consegnano una pagina HTML al posto del documento. Prima di mostrare un confronto a un cliente, il documento va ripreso: e' per questo che serve il controllo mensile, non per pignoleria.",
+  "_IL_LIMITE_DA_SAPERE": "UNA VERIFICA HA UNA DATA, E QUELLA DATA INVECCHIA — E QUI LA MAGGIOR PARTE DEGLI INDIRIZZI NON E' MAI STATA APERTA. Al 08/10/2026 il catalogo porta 283 documenti di 56 compagnie, ma solo 32 sono stati scaricati davvero (il 02/10/2026, e ne portano l'impronta): gli altri 240 sono indirizzi TROVATI con una ricerca sul dominio della compagnia e mai aperti. «trovato» vuol dire «qualcuno ha visto questo indirizzo scritto da qualche parte», non «di la' arriva un PDF». Inoltre 71 indirizzi non finiscono per .pdf (portali Liferay di AXA, .ashx di Generali, endpoint get_file): potrebbero consegnare una pagina HTML invece del documento. E anche per i 32 verificati vale la regola di sempre: «verificato» vuol dire «quel giorno ha risposto», non «risponde» — le compagnie spostano i PDF a ogni edizione nuova, e lo si e' visto sul campo con i quattro indirizzi DALLBOGG. Prima di mettere un confronto davanti a un cliente, il documento va ripreso: e' per questo che serve il controllo mensile, non per pignoleria.",
   "_perche_l_edizione_conta": "Misurato: il set informativo DALLBOGG su cui è stato tarato il lettore è l'edizione 06/2020, ma quella pubblicata oggi è la 04/25. Un confronto mostrato a un cliente nel 2026 su un documento del 2020 è un rischio di adeguatezza a sé, indipendente da quanto bene lo si legge. Per questo ogni voce porta l'edizione come sta scritta nel nome del file o nel titolo, e per questo serve il controllo mensile.",
   "_stati": {
     "trovato": "l'URL è stato trovato da una ricerca ma non è stato aperto da nessuno",
@@ -561,20 +561,2593 @@
       "da_cercare_ancora": [
         "da decidere se vale la pena: le sue coperture non entrano nel confronto garanzia per garanzia"
       ]
+    },
+    {
+      "compagnia": "Generali Italia S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "casa",
+          "prodotto": "Immagina Adesso - Modulo Casa (ed. 28.06.2025)",
+          "tipo": "set_informativo",
+          "url": "https://www.generali.it/cmsassets/site/9aa964a7-9172-441d-ad63-314b627836e9/2__ORI_Set_Informativo_Immagina_Adesso_Modulo_Casa_ed_28062025GI562664_(1).pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a generali.it. PDF vero (estensione .pdf) sul CMS ufficiale. Attenzione: l'URL contiene parentesi e un suffisso _(1), da mantenere identico."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "Immagina Adesso - Modulo Armonia / RC (ed. 28.06.2025)",
+          "tipo": "set_informativo",
+          "url": "https://www.generali.it/cmsassets/site/f5b86088-c1c4-4276-8fc2-1fdbe914105d/3_ORI_Set_Informativo_Immagina_Adesso_Modulo_Armonia_ed_28062025GI562666.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a generali.it. PDF vero sul CMS ufficiale. Il modulo Armonia contiene la RC della vita privata ed esclude espressamente i rischi da circolazione veicoli."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Immagina Adesso - Modulo Salute e Benessere (ed. 28.06.2025)",
+          "tipo": "set_informativo",
+          "url": "https://cdn.generali.it/-/media/generali_b2c/documenti-correlati/privati/immagina/immagina-adesso/4--ori-set-informativo-immagina-adesso-modulo-salute-e-benessere-ed-28062025gi562668.ashx?rev=a7f6487c8a814df1860ca7961eab7e6c",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a generali.it. ATTENZIONE: URL sul CDN ufficiale cdn.generali.it ma con estensione .ashx, non .pdf. Serve un PDF, pero non ho potuto verificarlo (rete chiusa). Da controllare prima di metterlo in produzione."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Active Protezione Salute e Benessere (ed. 11.07.2026, agg. 01.10.2026)",
+          "tipo": "set_informativo",
+          "url": "https://www.generali.it/cmsassets/site/82ab3cde-ea3c-4cf0-ae3d-471af6eea43d/ORI_Active_Protezione_SALUTEeBENESSERE_ed._11.07.2026_agg._01.10.2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a generali.it. PDF vero sul CMS ufficiale, l'edizione piu recente trovata per il ramo salute Generali."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Generali Sei in Auto - Altri Veicoli (ed. 01/26, DIP 01/26, DIP agg. 07/26)",
+          "tipo": "set_informativo",
+          "url": "https://www.generali.it/cmsassets/site/59378633-168f-4437-adfe-e0416ebc7484/GI_SI_Gen6Auto_Altri_Veicoli_ed_01_26_DIP_01_26_DIPA_07_26_A4.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a generali.it. PDF vero sul CMS ufficiale. Riguarda veicoli diversi dalle autovetture (autobus, macchine operatrici), non la RCA autovetture."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "Immagina Adesso - Norme Comuni del prodotto (ed. 28.06.2025)",
+          "tipo": "condizioni",
+          "url": "https://www.generali.it/cmsassets/site/dd37934d-ddb0-4291-84d3-88bb4dbc4cd4/6__ORI_Set_Informativo_Immagina_Adesso_Norme_Comuni_ed_28062025GI562674.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a generali.it. PDF vero. Sono le norme comuni a tutti i moduli Immagina Adesso: servono per leggere correttamente gli altri moduli."
+        }
+      ]
+    },
+    {
+      "compagnia": "Allianz S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Nuova 4R Futuro - RC Auto e ARD (mod. 40)",
+          "tipo": "set_informativo",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set-informativo-nuova-4r-futuro.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a allianz.it. PDF vero sotto /content/dam/ (Adobe AEM ufficiale Allianz). Edizione piu recente del 4R trovata nei risultati."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Nuova 4R - RC Auto e ARD autovetture (mod. 39)",
+          "tipo": "set_informativo",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/mobilita/set-informativo-nuova-4r.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a allianz.it. PDF vero. Edizione precedente al mod. 40: utile per confronto storico, ma per un cliente usare il 4R Futuro."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Allianz Ultra Casa e Patrimonio - Fabbricato (DIP 941, ed. 21.06.2025)",
+          "tipo": "set_informativo",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/casa-e-famiglia/allianz-ultra/set-informativi-ultra-casa-e-patrimoni/21-06-2025/S_941_AZ_ULTRA_Casa_e_Patrimonio-Fabbricato.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a allianz.it. PDF vero. La cartella 21-06-2025 nel percorso conferma l'edizione: Allianz versiona i set per data di cartella."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Allianz Ultra Casa e Patrimonio - Catastrofi naturali (DIP 943, ed. 21.06.2025)",
+          "tipo": "set_informativo",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/casa-e-famiglia/allianz-ultra/set-informativi-ultra-casa-e-patrimoni/21-06-2025/S_943_AZ_ULTRA_Casa_e_Patrimonio-Catastrofi_naturali.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a allianz.it. PDF vero, stessa cartella datata 21-06-2025."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "Allianz Ultra Casa e Patrimonio - RC della casa (DIP 944, ed. 10.01.2026)",
+          "tipo": "set_informativo",
+          "url": "https://www.allianz.it/content/dam/onemarketing/azit/allianz-it/le-soluzioni-per-te/casa-e-famiglia/allianz-ultra/set-informativi-ultra-casa-e-patrimoni/10-01-2026/SI_944_ULTRA_Casa_e_Patrimonio-RC_della_casa_ed_10012026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a allianz.it. PDF vero, cartella 10-01-2026: e l'edizione piu recente dei moduli Ultra Casa trovata."
+        }
+      ]
+    },
+    {
+      "compagnia": "AXA Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "casa",
+          "prodotto": "Nuova Protezione Casa (mod. 2073) - set informativo completo",
+          "tipo": "set_informativo",
+          "url": "https://www.axa.it/documents/715551/730211/Nuova+Protezione+Casa+-+Set+Informativo+e-commerce.pdf/5adf61f4-40c8-cf1f-c51d-6c51de3839db?t=1663314665874",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a axa.it. PDF vero servito da Liferay (/documents/...). Contiene DIP, DIP aggiuntivo e condizioni."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Protezione Salute - set informativo completo",
+          "tipo": "set_informativo",
+          "url": "https://www.axa.it/documents/715551/1835050/Set+Informativo+Salute+e-commerce.pdf/bb67626a-7bf1-a7c9-5d93-0c2c3f350911?t=1618478061005",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a axa.it. PDF vero su Liferay. Prodotto per singoli, famiglie o collettivita fino a 12 assicurati."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "AutoProtezione - RC Auto altri veicoli (DIP, DIP aggiuntivo e condizioni)",
+          "tipo": "set_informativo",
+          "url": "https://www.axa.it/documents/715551/730220/AutoProtezione+-+DIP,+DIP+Aggiuntivo+e+le+Condizioni+di+assicurazione.pdf/6013fd0f-af62-5e50-1eeb-09ac277bf2f2",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a axa.it. PDF vero su Liferay. ATTENZIONE: l'URL contiene una virgola non codificata, va passato cosi com'e o con %2C."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Nuova Protezione Auto - DIP aggiuntivo RC Auto (ed. 06/2026)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.axa.it/c/document_library/get_file?uuid=b51433ab-6e15-55db-2826-d975054ae3ca&groupId=715551",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a axa.it. ATTENZIONE: endpoint Liferay get_file, senza estensione .pdf nell'URL. Serve il PDF direttamente ma non ho potuto verificarlo (rete chiusa)."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Nuova Protezione Casa - DIP aggiuntivo",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.axa.it/c/document_library/get_file?uuid=ac1f7b7a-1213-e31a-d217-1c39b5a65bdd&groupId=715551",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a axa.it. Endpoint Liferay get_file, stessa avvertenza: nessuna estensione .pdf nell'URL."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Protezione Salute - DIP aggiuntivo (mod. 9160 DIPA, ed. 06/2026)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.axa.it/c/document_library/get_file?uuid=d6b9e7c2-a7ec-7721-b3eb-a1931f57a657&groupId=715551",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a axa.it. Endpoint Liferay get_file, stessa avvertenza."
+        }
+      ]
+    },
+    {
+      "compagnia": "Zurich Insurance Company Ltd - Rappresentanza generale per l'Italia (e Zurich Investments Life)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Zurigo Auto - RC Auto e altri rischi diversi",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich.it/api/archiviodigitale/download?uuid=ad486e84-6cc5-428d-a1e5-d70c6857a4cc",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a zurich.it. ATTENZIONE: Zurich non espone URL con estensione .pdf, tutti i documenti passano dall'endpoint /api/archiviodigitale/download con un uuid. L'indirizzo e diretto al file ma senza estensione."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Zurich Connect Auto - set informativo",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich.it/api/archiviodigitale/download?uuid=80dfb7bd-bd36-4498-bdfb-683a41ff921c",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a zurich.it. Endpoint ArchivioDigitale, stessa avvertenza. Prodotto del canale diretto Zurich Connect, documenti ospitati sul dominio della compagnia."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Zurich Connect Casa e Famiglia (ed. luglio 2023)",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich.it/api/archiviodigitale/download?uuid=55cca1f2-1769-4d28-894f-2b5476e5b535",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a zurich.it. Endpoint ArchivioDigitale. Include il modulo infortuni domestici e del tempo libero solo se acquistato."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Zurich Salute (DIP e DIP aggiuntivo ed. 01.2024)",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich.it/api/ArchivioDigitale/Download?uuid=f10fdedc-dc8c-4294-9e09-4b5d896e6f06",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a zurich.it. Endpoint ArchivioDigitale. Dentro c'e la Sezione 2 Protezione Salute: spese mediche, diagnostica, visite, dentarie, diaria."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Zurich Life Care - TCM a capitale e premio costanti (DIP Vita ed. 04.2026)",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich.it/api/archiviodigitale/download?uuid=9b03dc59-d9f5-45b7-a8fe-4d9e7355e4b8",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a zurich.it. Endpoint ArchivioDigitale. Il DIP Vita risulta datato 20.04.2026 e indicato come ultima versione disponibile."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Zurich Care Autonomia - LTC (set informativo 03/2026)",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich.it/api/archiviodigitale/download?guid=E1792EAF-C7B0-4727-B19F-B9DD17143933&filename=Zurich+Care+Autonomia+-+Set+Informativo_03-2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a zurich.it. Unico caso Zurich in cui l'URL porta il nome del file con estensione .pdf nel parametro filename: utile come conferma che l'endpoint serve PDF."
+        }
+      ]
+    },
+    {
+      "compagnia": "UnipolSai Assicurazioni S.p.A. (ora Unipol Assicurazioni S.p.A.)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "casa",
+          "prodotto": "UnipolSai UNICA - Casa (data 01/11/2023)",
+          "tipo": "set_informativo",
+          "url": "https://www.unipol.it/api/pub/ueba/download/doc/v1/fascicoli/c603e02d-7f8b-4fb8-881c-77ec578255fd",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a unipol.it/unipolsai.it. ATTENZIONE: dopo la fusione i documenti UnipolSai stanno su unipol.it e passano tutti dall'endpoint /api/pub/ueba/download/doc/v1/fascicoli/<uuid>, senza estensione .pdf. Indice: protezione casa, furto, terremoto e alluvione, fotovoltaico."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "UnipolSai UNICA - Famiglia",
+          "tipo": "set_informativo",
+          "url": "https://www.unipol.it/api/pub/ueba/download/doc/v1/fascicoli/74fb6f8e-0e40-4cb3-8d8c-433ef7bfd046",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a unipol.it. Endpoint ueba/fascicoli, stessa avvertenza sul formato URL."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "UnipolSai UNICA - Veicoli R.C.A. Autovetture (DIP aggiuntivo 01/11/2024)",
+          "tipo": "set_informativo",
+          "url": "https://www.unipol.it/api/pub/ueba/download/doc/v1/fascicoli/01e3ead5-6982-4174-afc7-0c5bfea4f6ad",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a unipol.it. Endpoint ueba/fascicoli. E il set RCA autovetture dell'offerta UNICA, piu recente del KmSicuri autovetture (che risulta fermo al 01/05/2022)."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "UnipolSai UNICA - Salute (data 01/11/2023)",
+          "tipo": "set_informativo",
+          "url": "https://www.unipol.it/api/pub/ueba/download/doc/v1/fascicoli/d34c659f-6685-4f9a-bc43-0ef4c213c6ba",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a unipol.it. Endpoint ueba/fascicoli. Il DIP aggiuntivo Danni si dichiara ultima versione pubblicata."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "UnipolSai UNICA - Infortuni (data 01/11/2023)",
+          "tipo": "set_informativo",
+          "url": "https://www.unipol.it/api/pub/ueba/download/doc/v1/fascicoli/1d617c6a-ea11-468f-9a15-e299e25da27d",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a unipol.it. Endpoint ueba/fascicoli. Il DIP aggiuntivo Danni si dichiara ultima versione pubblicata."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "UnipolSai Vita Premium - TCM capitale e premio annuo costanti (tariffa U20019)",
+          "tipo": "set_informativo",
+          "url": "https://www.unipol.it/api/pub/ueba/download/doc/v1/fascicoli/93b572a9-9ec2-4132-b7f6-45455e65c164",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata a unipol.it. Endpoint ueba/fascicoli. Set informativo U20019 con DIP Vita e DIP aggiuntivo Vita (realizzato 21/06/2022)."
+        }
+      ]
+    },
+    {
+      "compagnia": "Società Reale Mutua di Assicurazioni",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "salute",
+          "prodotto": "RealmenteInSalute DayByDay (Mod. 5164/DA MAL, ed. 04/2023)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.realemutua.it/grmashare/1/Documents/LANDING_NEW/DIP%20Aggiuntivo%20Danni_RealmenteInSalute%20DayByDay_5164%20MAL_Ed.%202023.04.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su realemutua.it. ATTENZIONE: il dominio corretto e realemutua.it (con la E), non realmutua.it. I PDF di prodotto stanno sotto /grmashare/1/Documents/. Edizione 04/2023, verificare se superata."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Casamia 2016 - multirischio persona e famiglia (Mod. 5440/DA INC, ed. 07/2024)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.realemutua.it/grmashare/1/Documents/LANDING/DA_CASAMIA2016_5440_INC_072024.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su realemutua.it, cartella /Documents/LANDING/. Documento di 24 pagine, edizione 07/2024 indicata come la piu recente disponibile."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Realmente Protetti Start&Stop (5279 INF, ed. 04/2025)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.realemutua.it/grmashare/1/Documents/LANDING/ProdottiDigitali/DIP%20Aggiuntivo%20Realmente%20Protetti%20Start%26Stop_5279_INF_Ed.%2004.2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su realemutua.it, cartella /Documents/LANDING/ProdottiDigitali/ (prodotti venduti online). Edizione 04/2025, la piu recente trovata per Reale Mutua danni. Garanzie: indennita giornaliera da ricovero e immobilizzazione."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "RC professionale Assistenti Sociali (ed. 07/2024)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.realemutua.it/grmashare/1/Documents/LANDING/Assistenti%20sociali/Dip%20aggiuntivo%20danni.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su realemutua.it, cartella /Documents/LANDING/Assistenti sociali/. RC professionale di convenzione."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Patrimonio Reale (DIP Aggiuntivo IBIP, tar. 043A, ed. 05/2023)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.realemutua.it/grmashare/1/Documents/GrandiClienti_Progettispeciali/PatrimonioReale_DIP%20Aggiuntivo%20IBIP_043A_05_23.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su realemutua.it, cartella /Documents/GrandiClienti_Progettispeciali/ - cartella piena di DIP Aggiuntivi IBIP vita (Capitale Reale Platinum, Crescita Reale Extra, Reale Quota Attiva Private, Sicuro Reale Uno Gold Exclusive). Tutte edizioni 05/2023."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Sicuro Reale Uno Gold (DIP Aggiuntivo IBIP, tar. 116D, ed. 05/2023)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.realemutua.it/grmashare/1/Documents/GrandiClienti_Progettispeciali/Sicuro%20Reale%20Uno%20Gold_DIP%20Aggiuntivo%20IBIP_116D_05_23.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su realemutua.it. Polizza vita Ramo I con partecipazione agli utili, data di realizzazione 29/05/2023."
+        }
+      ]
+    },
+    {
+      "compagnia": "Cattolica Assicurazioni (Gruppo Generali)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Active Veicoli AUTOPIU (Mod. CP014S1822, ed. 08-11/2022)",
+          "tipo": "set_informativo",
+          "url": "https://www.cattolica.it/documents/20121/814147/Set+Informativo+Active+Veicoli+AUTOPI%C3%99+ed.11.2022+new.pdf/18fbec81-4154-3dac-9cfa-7b55d5e3bd73?version=1.0&t=1677058298134",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cattolica.it. I set informativi stanno sotto /documents/20121/<id>/ con nome parlante e query string version/t. Set completo: DIP + DIP Aggiuntivo R.C. Auto + Condizioni. Prodotto auto e taxi."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "CVT Ciclomotori e Motocicli START MOTO (ed. 03/2020)",
+          "tipo": "condizioni",
+          "url": "https://www.cattolica.it/documents/20121/152801/Condizioni+Contrattuali+CVT+Ciclomotori+Motocicli+ed.+03.2020+spa.pdf/5b5c1089-acb5-73a0-a883-e2acfcd1f783?version=1.0&t=1650553522940",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cattolica.it. Condizioni contrattuali; il set abbina DIP Danni (DIP CM) e DIP Aggiuntivo Danni (DIP+ CM). Edizione 03/2020, probabilmente superata."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "ACTIVE VITA - DIP Vita e DIP Danni Sezione Assistenza (Mod. I4003, ed. 10/2022)",
+          "tipo": "dip",
+          "url": "https://www.cattolica.it/documents/20121/145751/ACTIVE+VITA+-+Dip+Vita+e+Danni+ed.+10.2022.pdf/db787e41-3671-72e1-1432-ace0eb368bcc?version=1.0&t=1664982835396",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cattolica.it. Temporanea caso morte con sezione assistenza; copre Italia, San Marino e Citta del Vaticano."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "ACTIVE VITA - Condizioni di Assicurazione (ed. 06/2022)",
+          "tipo": "condizioni",
+          "url": "https://www.cattolica.it/documents/20121/145751/ACTIVE+VITA+-+Condizioni+di+Assicurazione+ed.+06.2022.pdf/eba49d67-8361-ef54-1998-226576c83d03?version=1.0&t=1654846500884",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cattolica.it, stessa cartella /20121/145751/ del DIP Active Vita. Utile come coppia DIP + Condizioni dello stesso prodotto."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Infortuni Correntisti - BCP Torre del Greco (ed. 01/2019)",
+          "tipo": "set_informativo",
+          "url": "https://www.cattolica.it/documents/20121/90186/Infortuni+Correntisti+-+Set+Informativo+01.2019.pdf/8c7564c3-fe93-a986-0d64-95afc20e360a?version=1.1&t=1643322978604",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cattolica.it. Prodotto bancassicurativo riservato ai correntisti; morte da infortunio e invalidita permanente >= 60%. Edizione vecchia (01/2019)."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "D&O Enti e Terzo Settore (ed. 11/2022)",
+          "tipo": "set_informativo",
+          "url": "https://www.cattolica.it/documents/20121/155663/Set+Informativo++D&O+Enti+ed.11.2022+ag.pdf/020dead4-b85a-c965-08a3-280754a6dde1?version=1.0&t=1671623630237",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cattolica.it. Set completo (DIP Danni + DIP Aggiuntivo Danni + Condizioni con glossario). Nel PDF e dichiarato come l'ultimo DIP Aggiuntivo disponibile. Nota: l'URL contiene una & letterale nel nome file."
+        }
+      ]
+    },
+    {
+      "compagnia": "ITAS Mutua (Gruppo ITAS)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Dimensione Auto (Mod. X0424.0)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.gruppoitas.it/o/portali-ist-s-api/api/v1/download?companyId=20097&groupId=20121&codComp=022&codRamo=50&codProd=1001&tipoStampa=INF_I&prgStampa=1&sysdate=2007-03-05T10%3A49%3A13&fname=DIP+E+DIP+AGGIUNTIVO.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su gruppoitas.it. IMPORTANTE per il recupero automatico: ITAS NON serve file statici ma un endpoint API /o/portali-ist-s-api/api/v1/download con parametri codRamo + codProd + tipoStampa=INF_I. Cambiando codProd si scorre il catalogo. Pagina prodotto: /it/prodotti/veicoli/dimensione-auto"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Contratto base RCA (Mod. X1006.0, ed. 10/2025)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.gruppoitas.it/o/portali-ist-s-api/api/v1/download?companyId=20097&groupId=20121&codComp=022&codRamo=50&codProd=1006&tipoStampa=INF_I&prgStampa=5&sysdate=2020-04-08T17%3A21%3A59&fname=DIP+E+DIP+AGGIUNTIVO.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su gruppoitas.it, stesso endpoint API (codRamo=50 = RCA, codProd=1006). Contratto base RCA IVASS, edizione 10/2025."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Easy Driver (Mod. X3041.0, ed. 07/2023)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.gruppoitas.it/o/portali-ist-s-api/api/v1/download?companyId=20097&groupId=20121&codComp=022&codRamo=2C&codProd=3041&tipoStampa=INF_I&prgStampa=0&sysdate=2015-11-02T16%3A27%3A21&fname=DIP+E+DIP+AGGIUNTIVO.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su gruppoitas.it, endpoint API con codRamo=2C. Infortuni del conducente del veicolo assicurato."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "ITAS Living (Mod. X2007.0, ed. 12/2024)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.gruppoitas.it/o/portali-ist-s-api/api/v1/download?companyId=20097&groupId=20121&codComp=022&codRamo=0E&codProd=2007&tipoStampa=INF_I&prgStampa=0&sysdate=2023-06-16T09%3A32%3A36&fname=DIP+E+DIP+AGGIUNTIVO.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su gruppoitas.it, endpoint API con codRamo=0E (rami elementari). Multirischi abitazione: incendio, allagamenti, frane, furto."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Casa Gold (Mod. X2863.0, ed. 05/2022 + agg. 07/2022)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.gruppoitas.it/documents/20121/0/2863_Casa%20gold_DIP%20BASE_2022-05%20+%20AGG_2022-07_ita.pdf/7c02adb2-e0de-2ff7-b0ce-683284cfa7ad",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su gruppoitas.it. Questo e un file statico sotto /documents/20121/0/ (percorso diverso dall'endpoint API): ITAS usa entrambi gli schemi. DIP base + aggiuntivo nello stesso PDF. Edizione 2022, probabilmente superata."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "PMI Shop (Mod. X2043.0, ed. 2020)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.gruppoitas.it/o/portali-ist-s-api/api/v1/download?companyId=20097&groupId=20121&codComp=022&codRamo=07&codProd=2043&tipoStampa=INF_I&prgStampa=0&sysdate=2016-03-15T16%3A36%3A04&fname=DIP+E+DIP+AGGIUNTIVO.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su gruppoitas.it, endpoint API con codRamo=07. Multirischi per negozi e piccole imprese."
+        }
+      ]
+    },
+    {
+      "compagnia": "Vittoria Assicurazioni",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "vita",
+          "prodotto": "Assicurazione vita di non autosufficienza / Long Term Care (PB0112C, ed. 01/07/2020)",
+          "tipo": "set_informativo",
+          "url": "https://www.vittoriaassicurazioni.com/Allegati/Privati/PDF_Salute_benessere/Assicurazione%20vita%20di%20non%20autosufficienza/PB0112C-EDZ-0720.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Unico PDF di prodotto corrente trovato sul dominio ufficiale: percorso /Allegati/Privati/PDF_<area>/<nome prodotto>/. Include le Condizioni di Assicurazione. Edizione 07/2020."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Vittoria Tutela Futuro - Collettiva Mutui Plus (tar. 116L, ed. 10/2013)",
+          "tipo": "nota_informativa",
+          "url": "https://www.vittoriaassicurazioni.com/Allegati/Storico%20Fascicoli/PDF%20storico%20fascicoli/Fascicolo%20116L_102013_FS.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch, cartella /Allegati/Storico Fascicoli/PDF storico fascicoli/ (archivio versioni superate). Fascicolo informativo pre-DIP: nota informativa + condizioni + glossario. ARCHIVIO: non usare con un cliente, serve solo come esempio di formato o per polizze in corso."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Vittoria A Modo Mio (tar. 300Q, ed. 12/2014)",
+          "tipo": "nota_informativa",
+          "url": "https://www.vittoriaassicurazioni.com/Allegati/Storico%20Fascicoli/PDF%20storico%20fascicoli/PB%202106.1214%20-%20VITTORIA%20A%20MODO%20MIO%20tar%20300Q%20DEF.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch, stessa cartella Storico Fascicoli. Vita a versamenti liberi. ARCHIVIO, versione superata."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Vittoria Cresco e Lode (tar. 422T, ed. 06/2014)",
+          "tipo": "nota_informativa",
+          "url": "https://www.vittoriaassicurazioni.com/Allegati/Storico%20Fascicoli/PDF%20storico%20fascicoli/PB.001.422.0614%20Tar%20422T.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch, stessa cartella Storico Fascicoli. Vita a termine fisso a premio annuo con bonus di merito. ARCHIVIO, versione superata."
+        }
+      ]
+    },
+    {
+      "compagnia": "Assimoco",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "specialista",
+      "documenti": [
+        {
+          "ramo": "casa",
+          "prodotto": "Multirischio Abitazione / Famiglia Confort (agg. 13/06/2022)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.assimoco.it/dam/jcr:750f5c5e-9a7a-4c6f-9789-b72a2e099f94/Dip%20Aggiuntivo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su assimoco.it. NOTA per il recupero automatico: Assimoco usa un DAM AEM con URL /dam/jcr:<uuid>/<nomefile>.pdf. Il nome file NON e parlante (piu prodotti hanno tutti 'Dip Aggiuntivo.pdf'), identifica solo l'UUID. Edizione 06/2022."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "RC Cooperazione - responsabilita civile verso terzi (agg. 13/06/2022)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.assimoco.it/dam/jcr:e94f6d30-7e72-4647-921b-2cd18d428e4a/Dip%20Aggiuntivo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su assimoco.it. Stesso nome file del precedente ma UUID diverso: attenzione a non confonderli. Edizione 06/2022."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Fabbricati PMI - multirischi fabbricati (Mod. A0H, agg. 02/2026)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.assimoco.it/dam/jcr:43000468-b450-479e-a950-6e9cf5b538cb/A0H_Fabbricati-PMI_DIP_Aggiuntivo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su assimoco.it. Qui il nome file e parlante (A0H_Fabbricati-PMI). Data ultimo aggiornamento 02/2026: il piu recente del lotto Assimoco."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "AsSiHelp - rendita vitalizia per perdita di autosufficienza (Mod. V ASSIHELP SI 05)",
+          "tipo": "set_informativo",
+          "url": "https://www.assimoco.it/dam/jcr:f77e679a-e897-462b-924c-cdeed10cca9d/ASSIHELP_SI.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su assimoco.it. Set informativo completo (DIP Vita + DIP Aggiuntivo Vita). Attenzione: il titolo del file dice ed. 02/26 ma il corpo riporta 06/25 - incoerenza da verificare."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "AsSipro - temporanea collettiva caso morte e invalidita permanente totale (agg. 02/2026)",
+          "tipo": "set_informativo",
+          "url": "https://www.assimoco.it/dam/jcr:41548c84-fb15-4da8-93a6-7ecd2680d669/ASSIPRO_SI.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su assimoco.it. Set informativo (DIP Vita + DIP Aggiuntivo Vita), data ultimo aggiornamento 02/2026."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "TuteLaLi Assimoco - Formula Clienti (agg. 26/06/2025)",
+          "tipo": "set_informativo",
+          "url": "https://www.assimoco.it/dam/jcr:c58ebcd3-58f9-44a9-8277-ce8779b6c391/TUTELALI_CLIE_SI.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su assimoco.it. Temporanea collettiva caso morte e invalidita permanente, distribuita tramite BCC/Credito Cooperativo."
+        }
+      ]
+    },
+    {
+      "compagnia": "Helvetia Italia Assicurazioni",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "HI-Drive Auto - RC Auto (cod. HI091, ed. 11/2025)",
+          "tipo": "set_informativo",
+          "url": "https://www.helvetia.com/content/dam/os/it/web/it/prodotti-e-servizi/prodotti_dedicati_alla_bancassicurazione/prodotti/veicoli/hidrive/SET_HIDrive_Auto_cod.HI091_202601.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. NOTA: i PDF del sito italiano sono serviti dal DAM del gruppo, helvetia.com/content/dam/os/it/web/it/... (dominio di gruppo ufficiale, non terzi). Percorso organizzato per canale: prodotti_dedicati_alla_bancassicurazione / prodotti-dedicati-alle-agenzie-e-broker / prodotti_dedicati_ai_dipendenti_di_aziende. Emittente Helvetia Italia Assicurazioni S.p.A."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Helvetia InMovimento Moto (cod. H047, ed. 07/2024)",
+          "tipo": "set_informativo",
+          "url": "https://www.helvetia.com/content/dam/os/it/web/it/prodotti-e-servizi/prodotti-dedicati-alle-agenzie-e-broker/privati/veicoli/2024/SetInformativo_InMovimento_Moto_072024.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Canale agenzie e broker, area privati/veicoli. Set completo con DIP + DIP Aggiuntivo + Condizioni."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Helvetia MyCondominium (cod. H1041, ed. 04/2026)",
+          "tipo": "set_informativo",
+          "url": "https://www.helvetia.com/content/dam/os/it/web/it/prodotti-e-servizi/prodotti-dedicati-alle-agenzie-e-broker/privati/casa/mycondominium/2026/SetInformativo_Helvetia_MyCondominum.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Edizione piu recente trovata in tutto il lotto (04/2026). Emittente Helvetia Compagnia Svizzera d'Assicurazioni SA (non Helvetia Italia: verificare la riga Compagnia)."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Helvetia MyHome (cod. H955, ed. 07/2021)",
+          "tipo": "set_informativo",
+          "url": "https://www.helvetia.com/content/dam/os/it/web/it/prodotti-e-servizi/prodotti-dedicati-alle-agenzie-e-broker/privati/casa/2021-07/SetInformativo_MyHome_072021.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Polizza abitazione, canale agenzie e broker. Edizione 07/2021: probabilmente superata, verificare."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Helvetia Protezione Persona - Modulo Infortuni Full (cod. IPNR007, ed. 07/2025)",
+          "tipo": "set_informativo",
+          "url": "https://www.helvetia.com/content/dam/os/it/web/it/prodotti-e-servizi/prodotti_dedicati_alla_bancassicurazione/prodotti/salute/helvetia-protezione-persona-/SET_IPNR007_Helvetia%20Protezione%20Persona_FULL_072025_protetto.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Canale bancassicurazione, area salute. Set completo: DIP Danni + DIP Aggiuntivo Danni + Condizioni con glossario. DIP Aggiuntivo aggiornato al 31/07/2025. Il file e marcato 'protetto': possibili restrizioni di estrazione testo dal PDF."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "Helvetia INimpresa - multirischi impresa (cod. H639, ed. 11/2025)",
+          "tipo": "set_informativo",
+          "url": "https://www.helvetia.com/content/dam/os/it/web/it/prodotti-e-servizi/prodotti-dedicati-alle-agenzie-e-broker/aziende/protezioneazienda-pmi-sicurezza/SetInformativo_Helvetia_Inimpresa.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Area aziende. Datato 5 novembre 2025, emittente Helvetia Compagnia Svizzera d'Assicurazioni SA. Nome file senza data: l'URL resta stabile tra le edizioni, quindi va riscaricato periodicamente."
+        }
+      ]
+    },
+    {
+      "compagnia": "BNP Paribas Cardif (Cardif Vita S.p.A. / Cardif Assurances Risques Divers – Rappresentanza Generale per l'Italia)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "salute",
+          "prodotto": "BNL Sostegno Futuro – Polizza Invalidita Permanente da Malattia (coll. 963)",
+          "tipo": "set_informativo",
+          "url": "https://setinformativi.bnpparibascardif.it/documents/204/BNL/Set%20Informativo_963_BNL%20Sostegno%20Futuro_06_2024_1.0.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata al dominio bnpparibascardif.it; il portale setinformativi.bnpparibascardif.it e l'archivio ufficiale dei set informativi della compagnia. Edizione 06/2024."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Cardif Vita – Set Informativo DVPF (prodotto vita)",
+          "tipo": "set_informativo",
+          "url": "https://setinformativi.bnpparibascardif.it/documents/9000/Cardif%20Vita%20S.p.A./Set%20Informativo_DVPF_1.1.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio bnpparibascardif.it. Set completo (KID + DIP aggiuntivo + condizioni). Versione 1.1."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Polizza BNL Infortuni (versione Small Business, mod. INFBNL0321)",
+          "tipo": "set_informativo",
+          "url": "https://bnl.it/rsc/SupportingFiles/Set_Informativo_BNL_Infortuni.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata al dominio bnl.it (banca del gruppo BNP Paribas, distributore dei prodotti Cardif). Contiene DIP Danni + DIP aggiuntivo Danni. Edizione 03/2021."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "UNICA BNL – Polizza Salute",
+          "tipo": "set_informativo",
+          "url": "https://bnl.it/rsc/SupportingFiles/UNICA_BNL.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio bnl.it. Set informativo polizza salute collocata da BNL con compagnia del gruppo Cardif."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Polizza BNL Avvenire Protetto Privilege",
+          "tipo": "set_informativo",
+          "url": "https://bnl.it/rsc/SupportingFiles/Polizza_BNL_Avvenire_Protetto_Privilege_Set_Informativo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio bnl.it. Nome file esplicitamente 'Set_Informativo'."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "InvestiPolizza BNL Passo Passo (multiramo I e III)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://bnl.it/rsc/SupportingFiles/InvestiPolizza_BNL_Passo_Passo_Set_Informativo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. ATTENZIONE: il nome file dice 'Set_Informativo' ma l'intestazione del documento e DIP aggiuntivo IBIP di BNP Paribas Cardif Vita. Aggiornato al 30/06/2025."
+        }
+      ]
+    },
+    {
+      "compagnia": "Credemvita S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "vita",
+          "prodotto": "Orizzonte by Credemvita (multiramo, tariffa 8989)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.credemvita.it/content/dam/credemvita/documenti/prodotti/doppi/in-collocamento/investimento/multiramo-orizzonte-by-credemvita/set-informativo/CRVMO08989DUE1025_DIP%20Aggiuntivo_ORIZZONTE%20BY%20CREDEMVITA.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata ai domini credemvita.it / credemassicurazioni.it. Il percorso contiene /set-informativo/ e la cartella 'in-collocamento' (prodotto attualmente in vendita). Data aggiornamento 27/10/2025."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Orizzonte by Credemvita – Garantito",
+          "tipo": "condizioni",
+          "url": "https://www.credemvita.it/content/dam/credemvita/documenti/prodotti/doppi/in-collocamento/investimento/multiramo-orizzonte-by-credemvita/set-informativo/CRV8989T1025_Condizioni%20di%20Assicurazione_ORIZZONTE%20BY%20CREDEMVITA.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "Stessa ricerca. Condizioni di Assicurazione comprensive di DIP aggiuntivo IBIP, glossario e fac-simile proposta. Edizione CRV8989T1025."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Risparmio Protetto by Credemvita (vita intera rivalutabile, tariffa 60111)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.credemvita.it/content/dam/credemvita/documenti/prodotti/doppi/in-collocamento/risparmio/risparmio-protetto-by-credemvita/set-informativo/attualmente-in-vigore/CRVMO8966DUE0126_DIP%20Aggiuntivo%20IBIP_Risparmio%20Protetto%20by%20Credemvita.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio credemvita.it. Il percorso contiene 'attualmente-in-vigore'. Aggiornato al 02/01/2026 (il piu recente trovato per il gruppo)."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Credemvita Protezione Vita (TCM, tariffa 60104)",
+          "tipo": "set_informativo",
+          "url": "https://www.credemvita.it/content/dam/credemvita/documenti/prodotti/privati-e-famiglie/protezione/credemvita-protezione-vita/set-informativo/Credemvita%20Protezione%20Vita%20-%20set%20informativo%20-%20in%20vigore%20dal%2026.07.2024.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio credemvita.it. Set completo di temporanea caso morte, in vigore dal 26/07/2024."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Credemvita Collection PRO (unit linked, tariffa 60083)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.credemvita.it/content/dam/credemvita/documenti/prodotti/doppi/in-collocamento/investimento/credemvita-collection-pro-60083/set-informativo/Documento%20Informativo%20Precontrattuale%20Aggiuntivo%20(DIP%20Aggiuntivo%20IBIP)%20-%20280225.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio credemvita.it. Edizione CRVMO03527DUE0225 (28/02/2025)."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Multiramo Active by Credemvita",
+          "tipo": "condizioni",
+          "url": "https://www.credemvita.it/content/dam/credemvita/documenti/prodotti/doppi/in-collocamento/investimento/multiramo-active-by-credemvita/set-informativo/Multiramo%20Active%20By%20Credemvita%20-%20Condizioni.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio credemvita.it. Condizioni di assicurazione del prodotto multiramo."
+        }
+      ]
+    },
+    {
+      "compagnia": "Credemassicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "salute",
+          "prodotto": "Salute Protetta by Credemassicurazioni",
+          "tipo": "set_informativo",
+          "url": "https://www.credemassicurazioni.it/content/dam/credemassicurazioni/documenti/prodotti/persone-e-famiglia/persona/salute-protetta/Set%20Informativo%20-%20in%20vigore%2008-02-2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata al dominio credemassicurazioni.it. Copertura malattia e infortunio, edizione CRSMO08950DUE0225, in vigore dall'08/02/2025."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "Impresa Protetta by Credemassicurazioni",
+          "tipo": "set_informativo",
+          "url": "https://www.credemassicurazioni.it/content/dam/credemassicurazioni/documenti/prodotti/imprese-e-professionisti/persone-e-beni/impresa-protetta/CRSMO08959TUE0625W00.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio credemassicurazioni.it. Multirischi imprese (beni + RC), contiene DIP Danni e DIP aggiuntivo Danni. Edizione 06/2025."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Protezione Eventi Catastrofali (imprese)",
+          "tipo": "set_informativo",
+          "url": "https://www.credemassicurazioni.it/content/dam/credemassicurazioni/documenti/prodotti/imprese-e-professionisti/persone-e-beni/protezione-eventi-catastrofali/CRSMO08975XUE0625W00.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio credemassicurazioni.it. Garanzie CAT NAT su fabbricati e contenuto. Ultimo aggiornamento 23/06/2025."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "Protezione Finanziamento (CPI collettiva ad adesione facoltativa)",
+          "tipo": "set_informativo",
+          "url": "https://www.credemassicurazioni.it/content/dam/credemassicurazioni/documenti/prodotti/imprese-e-professionisti/mutui-e-finanziamenti/protezione-finanziamento/202507%20-%20Set%20informativo%20Protezione%20Finanziamento.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio credemassicurazioni.it. Contiene DIP aggiuntivo Multirischi. Edizione CRSMO03964DUE0725 (07/2025)."
+        }
+      ]
+    },
+    {
+      "compagnia": "Mediolanum Vita S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "salute",
+          "prodotto": "Mediolanum Protezione Gravi Malattie",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.mediolanumvita.it/static-assets/documenti/file/it/2026/04/23//DIP_Aggiuntivo_MPGM.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata ai domini mediolanumvita.it / bancamediolanum.it. Il documento piu recente trovato per Mediolanum: aggiornato al 27/04/2026, solvency ratio 247,30%. NOTA: l'URL indicizzato contiene un doppio slash prima del nome file, l'ho riportato come restituito dalla ricerca."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Mediolanum New Generation (vita intera caso morte)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.mediolanumvita.it/static-assets/pdf_vi/DIP_Aggiuntivo_MNG.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio mediolanumvita.it. DIP aggiuntivo IBIP, data aggiornamento 10/03/2023."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Mediolanum My Life (unit linked)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.mediolanumvita.it/static-assets/pdf_vi/DIP_aggiuntivo_MedMyLife.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio mediolanumvita.it. DIP aggiuntivo IBIP, edizione 10/03/2023."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Mediolanum My Life Wealth",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.mediolanumvita.it/static-assets/pdf_vi/DIP_aggiuntivo_MyLifeWealth.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio mediolanumvita.it. DIP aggiuntivo IBIP, edizione 10/03/2023."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Mediolanum Capitale Sicuro (mista rivalutabile)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.mediolanumvita.it/static-assets/documenti/file/it/2023/05/10//DIP_MCS.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio mediolanumvita.it. DIP aggiuntivo IBIP. NOTA: anche qui l'URL indicizzato presenta un doppio slash prima del nome file."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Mediolanum Capital New",
+          "tipo": "condizioni",
+          "url": "https://www.mediolanumvita.it/static-assets/pdf_vi/MCN_cond_contratto.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio mediolanumvita.it. Condizioni contrattuali del prodotto."
+        }
+      ]
+    },
+    {
+      "compagnia": "Vera Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "casa",
+          "prodotto": "CASApiuFAMIGLIA (versione mutuatario)",
+          "tipo": "set_informativo",
+          "url": "https://www.veraassicurazioni.it/wp-content/uploads/2025/06/Setinformativo_VA_CASApiuFAMIGLIA_mutuatario_07.2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata ai domini veraassicurazioni.it / veravita.it. Set informativo con DIP Danni, DIP aggiuntivo Danni (realizzato 06/2025) e condizioni. Il piu recente trovato per Vera."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "SALUTEpiuBENESSERE – Formula Azienda",
+          "tipo": "set_informativo",
+          "url": "https://www.veraassicurazioni.it/wp-content/uploads/2025/06/Setinformativo_VA_SalutepiuBenessere_FormulaAzienda_07.2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio veraassicurazioni.it. Edizione 07/2025."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Vera Autovetture (RC Auto + CVT, ed. 06.2022)",
+          "tipo": "set_informativo",
+          "url": "https://veraassicurazioni.it/wp-content/uploads/2022/05/Set_Informativo_VERA_AUTOVETTURE_2_ed-06.2022_valida-dal_01062022.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio veraassicurazioni.it. Valido dal 01/06/2022. ATTENZIONE: edizione datata, da riverificare contro lo 'Storico Prodotti' del sito prima dell'uso con un cliente."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Vera Veicoli Commerciali (RC Auto e CVT)",
+          "tipo": "set_informativo",
+          "url": "https://www.veraassicurazioni.it/wp-content/uploads/2020/06/SIVERA_VeiComm6_ed7-2020.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio veraassicurazioni.it. Edizione 07/2020, datata."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "YouCare (infortuni e malattia)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.veraassicurazioni.it/wp-content/uploads/2018/12/YouCare-Vera-dal-01-2019.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio veraassicurazioni.it. DIP aggiuntivo in vigore dal 01/2019. ATTENZIONE: edizione vecchia, probabilmente superata."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "MULTIRISCHI COMMERCIO",
+          "tipo": "set_informativo",
+          "url": "https://www.veraassicurazioni.it/wp-content/uploads/2022/12/Set-Informativo-MULTIRISCHI-COMMERCIO-ed.03.11.2022-dal-01.01.2023.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio veraassicurazioni.it. Edizione 03.11.2022, in vigore dal 01/01/2023."
+        }
+      ]
+    },
+    {
+      "compagnia": "Arca Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "casa",
+          "prodotto": "Ama&Proteggi – Casa a modo tuo (665)",
+          "tipo": "set_informativo",
+          "url": "https://static.sitewww.arcassicura.it/F665_10022026_a2f2ed6cbc.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata al dominio arcassicura.it. I set informativi Arca stanno sul CDN ufficiale static.sitewww.arcassicura.it, con la data nel nome file: 10/02/2026, ultima edizione disponibile."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Arca SuMisura Casa (677)",
+          "tipo": "set_informativo",
+          "url": "https://static.sitewww.arcassicura.it/F677_14012026_8c8d60888e.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio arcassicura.it. Edizione 14/01/2026. Comprende DIP Danni, DIP aggiuntivo Danni e condizioni."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Tutto Tondo – Autovetture e Rimorchi di Autovetture (626A)",
+          "tipo": "set_informativo",
+          "url": "https://static.sitewww.arcassicura.it/F626_A_05072025_ba5cd47d46.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio arcassicura.it, pagina ufficiale /set-informativi/auto. Comprende DIP Danni e DIP aggiuntivo R.C. Auto. Edizione 05/07/2025."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "In Auto – Autovetture e Rimorchi di Autovetture (500A)",
+          "tipo": "set_informativo",
+          "url": "https://static.sitewww.arcassicura.it/F500_A_01072024_17ead8d6e1.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio arcassicura.it. RCA autovetture, taxi e rimorchi con garanzie opzionali furto e infortuni del conducente. Edizione 01/01/2025 dichiarata nel documento (nome file 01/07/2024)."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "SiPrevisto XL (685)",
+          "tipo": "set_informativo",
+          "url": "https://static.sitewww.arcassicura.it/F685_01042025_5ce6704e36.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio arcassicura.it. Polizza infortuni 24 ore per privati, famiglie e imprese. Edizione 01/04/2025."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Protezione 24 (596) – infortuni e malattia",
+          "tipo": "set_informativo",
+          "url": "https://static.sitewww.arcassicura.it/F596_05072025_568234538c.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dominio arcassicura.it. Rimborso spese mediche da infortunio e invalidita permanente da malattia. Edizione 05/07/2025."
+        }
+      ]
+    },
+    {
+      "compagnia": "Intesa Sanpaolo Assicura S.p.A. (sui documenti piu recenti compare come Intesa Sanpaolo Protezione S.p.A.)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "ViaggiaConMe Classica (RC Auto + garanzie accessorie, clienti Intesa Sanpaolo)",
+          "tipo": "set_informativo",
+          "url": "https://www.intesasanpaoloprotezione.com/bin/openAssetInline?path=%2Fcontent%2Fdam%2Fisp_protezione%2Fdocuments%2Fproducts%2Fpersone%2Fviaggiaconme-per-i-clienti-intesa-sanpaolo%2FIspp-ViaggiaConMe-Classica-Set-Informativo-082026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Set informativo completo (DIP + DIP aggiuntivo + condizioni + tabella limiti/franchigie). Data aggiornamento indicata nel documento: 19/08/2026 - e il piu recente trovato per l'auto. Il file e un asset .pdf servito via /bin/openAssetInline?path=... sul dominio della compagnia."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "ViaggiaConMe - KM Illimitati",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloprotezione.com/documents/68759/0/Isa-Dip-Aggiuntivo-VCM-Km-Illimitati-062023.pdf/afd11a35-df8f-98ba-ea72-58dda693d145?t=1686645815860",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo Danni, aggiornamento 23/06/2023, compagnia indicata Intesa Sanpaolo Assicura S.p.A. ATTENZIONE: edizione vecchia, non ho trovato una versione piu recente del KM Illimitati - verificare se il prodotto e ancora in vendita."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "XME Protezione (polizza modulare casa, salute, famiglia, beni) - Condizioni di Assicurazione ed. gennaio 2026",
+          "tipo": "condizioni",
+          "url": "https://www.intesasanpaoloprotezione.com/bin/openAssetInline?path=%2Fcontent%2Fdam%2Fisp_protezione%2Fdocuments%2Fproducts%2Fpersone%2Fxme-protezione%2FIspp-Xme-CdA-Unico-2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Condizioni di Assicurazione unificate di tutti i moduli XME Protezione, edizione gennaio 2026. E il documento piu aggiornato del prodotto multirischi di punta della compagnia. Ramo messo ad 'altro' perche il prodotto e modulare e copre casa, salute, infortuni e RC."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "XME Protezione - Modulo Copertura Casa Fabbricato+ (proprietario)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloprotezione.com/documents/d/intesa-sanpaolo-protezione/isp-proprietario-coperturacasafabbricatoplus-dip-aggiuntivo-horus-pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo Danni, data aggiornamento 01/12/2024, il documento stesso dichiara di essere l'ultima versione disponibile. URL su percorso /documents/d/intesa-sanpaolo-protezione/ che serve il PDF (nome risorsa termina in -pdf, senza estensione esplicita)."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "XME Protezione - Modulo Copertura Casa Fabbricato+ (locatario)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloprotezione.com/documents/d/intesa-sanpaolo-protezione/isp-locatario-coperturacasafabbricatoplus-dip-aggiuntivo-horus-pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Versione per inquilino dello stesso modulo. Data di aggiornamento non visibile nello snippet di ricerca: da leggere sul documento. Stesso schema di URL del gemello 'proprietario'."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "XME Protezione - Area Salute, Modulo Ricoveri e Interventi",
+          "tipo": "condizioni",
+          "url": "https://www.intesasanpaoloprotezione.com/documents/d/intesa-sanpaolo-protezione/ispp-cda-ricoveriinterventi-80-042025-pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Condizioni di Assicurazione + appendice del modulo salute, edizione 04/2025 secondo il nome del file. Il documento elenca i componenti del set informativo (DIP e DIP aggiuntivo inclusi). Esiste anche il modulo Malattie Gravi Extra in edizione 2026 (Ispp-Xme-MalattieGraviExtra-CdA-2026.pdf, stesso dominio) se serve un secondo documento salute."
+        }
+      ]
+    },
+    {
+      "compagnia": "Intesa Sanpaolo Vita S.p.A. (diversi documenti riportano come compagnia Intesa Sanpaolo Assicurazioni S.p.A.)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "vita",
+          "prodotto": "ProteggiPrestito (CPI multirischio: decesso ramo vita + invalidita totale permanente ramo danni)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloprotezione.com/documents/68759/0/Isa-Dip-Aggiuntivo-Multirischio-ProteggiPrestito-OblioOncologico-072024.pdf/6c2046eb-55d2-f867-db43-1e56bdd0703a?t=1721215944830",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo multirischio emesso congiuntamente da Intesa Sanpaolo Vita S.p.A. e Intesa Sanpaolo Assicura S.p.A., aggiornamento 07/2024, versione con oblio oncologico. Capitale assicurabile da 5.000 a 75.000 euro. NOTA: il PDF e ospitato su www.intesasanpaoloprotezione.com (dominio della compagnia danni dello stesso gruppo), non su intesasanpaolovita.it."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Patrimonio Garanzia 5 anni (vita, premio unico, tipo misto, prestazioni rivalutabili)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloassicurazioni.com/documents/DIP_Aggiuntivo_Ed_02_2024.pdf?uuid=b1ccd1b0-1ece-1cfb-2b5c-a8c39e9f4458&groupId=14502&version=1.0",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo IBIP, data di realizzazione 17/02/2024. Il PDF riporta il recapito PEC servizioclienti@pec.intesasanpaolovita.it, quindi la compagnia e Intesa Sanpaolo Vita. URL con estensione .pdf esplicita sul dominio del gruppo."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Prodotto vita VP912 (vita, premio unico, vita intera) - DIP aggiuntivo ed. 07/2025",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloassicurazioni.com/bin/openAssetInline?path=%2Fcontent%2Fdam%2Fisp_assicurazioni%2Fproducts%2Fapprofondimenti-e-download%2Fvp912%2FDIP+Aggiuntivo+ED+07+2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo edizione 07/2025, nella sezione 'approfondimenti e download' del prodotto con codice interno vp912. E il documento vita piu recente che ho trovato sul dominio della compagnia. Il nome commerciale del prodotto non compariva nello snippet: da leggere sul documento."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Traguardo Sicuro 7 Plus (polizza vita)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloinsuranceagency.it/documents/Traguardo-20Sicuro-207-20Plus_DIP-20Aggiuntivo-20_Ed.02.2025?uuid=48ffdff7-f7a7-2bb2-7cf8-442606c949bc&groupId=14502&version=1.0",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo ed. 02/2025, data di aggiornamento 19/02/2025. CAUTELA: il PDF sta su www.intesasanpaoloinsuranceagency.it, dominio di Intesa Sanpaolo Insurance Agency (societa di distribuzione del gruppo), non della compagnia emittente; l'URL non ha estensione .pdf, e un link documentale che serve un PDF. Se la regola 'dominio della compagnia' va applicata in senso strettissimo, scartalo."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Synthesis MIXT5 (vita, premio unico, vita intera)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloinsuranceagency.it/documents/Synthesis_MIXT5_DIP_Aggiuntivo_ed_12_2024?uuid=a1707c06-ca3a-cd74-2c60-17a413137167&groupId=14502&version=1.0",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo ed. 12/2024, data di aggiornamento 02/12/2024. Stessa cautela del precedente: dominio della societa di distribuzione del gruppo Intesa Sanpaolo, non della compagnia; URL documentale senza estensione .pdf."
+        }
+      ]
+    },
+    {
+      "compagnia": "Poste Vita S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "vita",
+          "prodotto": "Poste Progetto Direzione Valore (multiramo, Ramo I + Ramo III, prestazioni rivalutabili con partecipazione agli utili)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.media.poste.it/4cd320c3-239d-4085-9ee1-904c6fec874b/file/DIP-agg_PosteProgettoDirezioneValore",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo IBIP datato 02/02/2026 - la versione piu aggiornata che ho trovato. Dati patrimoniali su bilancio 2024 (patrimonio netto ~5,7 mld, indice di solvibilita vita ~333%). ATTENZIONE: l'URL non finisce in .pdf, e un link diretto al file sul CDN media.poste.it che restituisce il PDF (e lo schema usato da tutta la documentazione Poste)."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Poste Valore Solidita Piu II (vita, forma mista, premio unico, rivalutazione annuale su due gestioni separate)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.media.poste.it/1d497d6a-f314-41fa-b548-2d90cdfb4783/file/DIP-agg-PosteValoreSoliditaPiu-II",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo IBIP datato 02/02/2026, il documento dichiara di essere l'ultima versione disponibile. Stesso schema di URL senza estensione .pdf."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Poste Valore Solidita Piu (versione precedente del prodotto)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.media.poste.it/bfc09cd1-fba4-4157-a578-73a858b2e746/file/dip_agg_postevaloresoliditapiu",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo IBIP del prodotto nella versione senza 'II'. Data non visibile nello snippet: da leggere sul documento, presumibilmente anteriore al Solidita Piu II."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "PostePremium Soluzione Assicurativa (multiramo a prestazioni rivalutabili, Ramo I + Ramo III)",
+          "tipo": "dip",
+          "url": "https://www.media.poste.it/ebfe0227-58da-463c-a70b-028ab131dacf/file/DIP_PostePremiumSoluzioneAssicurativa",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP (base) IBIP datato 19/05/2025. Nella pagina prodotto su postevita.poste.it il set informativo comprende anche DIP aggiuntivo IBIP, GKID+SID e lista fondi. Esiste un prodotto gemello 'PostePremium Soluzione Crescita' con documenti analoghi."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Postapersona Sempre Presente (rendita vitalizia in caso di non autosufficienza / LTC)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.media.poste.it/40aec6c4-9e2e-4f1f-829c-47b35dcde431/web/dip-ppsemprepresente-vita-aggiuntivo",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo Vita (prodotto vita NON di investimento) datato 09/02/2026, segnalato come ultima versione pubblicata. Prodotto LTC: l'ho classificato ramo vita perche contrattualmente e una rendita vitalizia, non una polizza salute."
+        }
+      ]
+    },
+    {
+      "compagnia": "Poste Assicura S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "casa",
+          "prodotto": "Poste Vivere Protetti - Linea Protezione Patrimonio (danni all'abitazione, contenuto, assistenza casa, RC)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.media.poste.it/f60d2804-3897-4a92-829a-6f6ea243f22a/web/dip-aggiuntivovivereprotetti-patrimonio",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo Danni della linea Patrimonio, data 02/12/2024, indice di solvibilita 234,6%. L'URL non contiene un intervallo di validita, quindi e la versione corrente pubblicata (gli archiviati hanno l'URL con 'dal...al...' o il suffisso '-arc'). Nessuna estensione .pdf nell'URL: link diretto al file sul CDN Poste."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Poste Vivere Protetti - Linea Protezione Patrimonio (DIP base)",
+          "tipo": "dip",
+          "url": "https://www.media.poste.it/a993a149-314a-4e3f-9355-bbd47a868fa6/file/dip-vivereprotetti-patrimonio-dal-11112025-al-15122025",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP Danni base, aggiornamento 15/06/2025, dichiarato ultima versione disponibile; descrive la linea come dedicata all'abitazione di proprieta o in locazione. CAUTELA: l'URL contiene l'intervallo di validita 11/11/2025-15/12/2025, quindi e una versione archiviata - usare come riferimento di struttura, ma per la versione in corso partire dalla pagina prodotto."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Poste Vivere Protetti - Linea Protezione Persona (infortuni, malattie, indennita giornaliera, ricoveri, assistenza)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.media.poste.it/c86e43a8-1429-4e21-8526-1347dde335f6/web/dip-aggiuntivovivereprotetti-persona",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP aggiuntivo Danni della linea Persona, data di aggiornamento 02/02/2026, il documento dichiara di essere l'ultimo disponibile. E il piu recente dei documenti Poste Assicura che ho trovato. URL senza intervallo di validita, quindi versione corrente."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "Poste Vivere Protetti - Linea Investimenti (tutela dell'investimento)",
+          "tipo": "dip",
+          "url": "https://www.media.poste.it/9eb67637-dd7d-43a7-8465-fc95d2407f8b/file/dip-vivereprotetti-investimenti",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP Danni della linea Investimenti, data di pubblicazione 15/06/2025. E una copertura danni accessoria a un investimento (non un fondo): resta un prodotto assicurativo ramo danni. Ramo messo ad 'altro' perche non rientra nelle categorie standard."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "Poste Lavorare Protetti (polizza modulare per impresa/attivita: proprieta e conduzione del locale)",
+          "tipo": "set_informativo",
+          "url": "https://www.media.poste.it/8ecffe62-c65a-45b6-bb14-5655ff5e9224/file/PosteLavorareProtetti-26112025",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Set informativo completo, data di aggiornamento 01/09/2025, file pubblicato 26/11/2025. Prodotto rami elementari per le attivita economiche: l'ho tenuto perche e uno dei due prodotti danni principali della compagnia."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "Poste Vivere Protetti - Condizioni Generali di Assicurazione (tutte le linee, incluso Modulo Danni all'Abitazione)",
+          "tipo": "condizioni",
+          "url": "https://www.media.poste.it/34e80256-8902-4f72-9784-3425f901d906/file/postevivereprotetti_cga_24092023_18022024",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Condizioni di Assicurazione complete del prodotto modulare. CAUTELA: l'URL indica validita 24/09/2023-18/02/2024, quindi e una versione archiviata; utile per leggere la struttura delle garanzie, da sostituire con la CGA corrente presa dalla pagina prodotto."
+        }
+      ]
+    },
+    {
+      "compagnia": "Credit Agricole Vita S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "vita",
+          "prodotto": "Avvenire Piu (Tariffa 304) - assicurazione sulla vita intera a premi ricorrenti con rivalutazione annuale del capitale",
+          "tipo": "nota_informativa",
+          "url": "https://www.ca-vita.it/media/filer_public/e2/8c/e28c4550-03d1-425c-9aef-3265142a0e05/304_012016.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Fascicolo Informativo completo (Scheda Sintetica + Nota Informativa + Condizioni Contrattuali), edizione 01/2016. CAUTELA IMPORTANTE: e il formato precontrattuale ANTE Regolamento IVASS 41/2018, quindi non e un DIP/DIP aggiuntivo. L'ho incluso perche e l'unico documento precontrattuale vita che ho trovato come PDF diretto sul dominio ufficiale della compagnia."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Avvenire Piu (Tariffa 304) - edizione precedente",
+          "tipo": "nota_informativa",
+          "url": "https://www.ca-vita.it/media/filer_public/d5/04/d504da78-ac8e-4927-81ca-01e4447e2f3c/304_052009.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Fascicolo Informativo edizione 05/2009 dello stesso prodotto. Molto vecchio: utile solo come storico, non da mettere davanti a un cliente."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Credit Agricole Vita Iniziativa 2013 (Tariffa 349) - vita intera a premio unico",
+          "tipo": "nota_informativa",
+          "url": "https://www.ca-vita.it/media/filer_public/33/34/3334ecd5-385c-4f38-8518-39e3dc9a3374/349_052013.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Fascicolo Informativo edizione 05/2013. Stessa cautela: formato ante Reg. IVASS 41/2018, prodotto probabilmente non piu in vendita."
+        }
+      ]
+    },
+    {
+      "compagnia": "Credit Agricole Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "casa",
+          "prodotto": "Protezione Vivi Casa - set generale (Modulo Abitazione, Famiglia, Animali, Assistenza)",
+          "tipo": "set_informativo",
+          "url": "https://www.ca-assicurazioni.it/media/filer_public/6b/ea/6bea396a-304b-454d-97e2-7a44513f5fb1/set_informativo_generale__abitazione__famiglia.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Set informativo completo (DIP + DIP aggiuntivo + condizioni) del prodotto casa modulare; il DIP aggiuntivo interno e datato 02/2026 e si dichiara ultima versione disponibile. E il documento casa piu aggiornato trovato sul dominio ufficiale, con estensione .pdf esplicita."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Protezione Infortuni per te Evo",
+          "tipo": "set_informativo",
+          "url": "https://www.ca-assicurazioni.it/media/filer_public/f6/6f/f66fae86-ac86-4c56-8310-42b7ce61276f/set_informativo_-_protezione_infortuni_per_te_evo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Set informativo con DIP e DIP aggiuntivo; codice documento CAA_DIP_202501 (edizione 01/2025). Dettaglio utile emerso dallo snippet: l'indennitario infortuni vale in tutto il mondo per viaggi fino a 90 giorni, mentre l'assistenza opera solo in Italia."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Protezione Vivi Casa - set completo (codice CAA_PVC.DIP_202506)",
+          "tipo": "set_informativo",
+          "url": "https://www.ca-assicurazioni.it/media/filer_public/2a/d1/2ad1da7f-4c6e-4908-99bb-68f214dfecf6/gbcai_caacf1_gfampet_202506_set-completo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. Secondo set completo dello stesso prodotto, edizione 06/2025 secondo il codice nel nome file. Da confrontare con il set generale sopra per capire quale configurazione modulare copre (famiglia/animali)."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Modulo Assistenza Salute (distribuito da Credit Agricole Italia)",
+          "tipo": "dip",
+          "url": "https://static.credit-agricole.it/credit-agricole-it/system/ckeditor/attachment_file/data/609/DIP_Modulo_Assistenza.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch. DIP del modulo assistenza salute, PDF su static.credit-agricole.it (dominio ufficiale della banca del gruppo, non della compagnia). CAUTELA: lo snippet non mi ha mostrato la ragione sociale dell'impresa emittente - va verificata sul documento prima di usarlo, potrebbe essere Credit Agricole Assicurazioni S.p.A. o un'altra impresa del gruppo."
+        }
+      ]
+    },
+    {
+      "compagnia": "Genertel S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "diretta",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Genertel Auto (autovetture)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.genertel.it/assicurazioni/documenti/dip_aggiuntivo/dip-aggiuntivo-autovetture.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su genertel.it; DIP Aggiuntivo RCA ed. 07/2025, path stabile /assicurazioni/documenti/dip_aggiuntivo/. Lo stesso documento e raggiungibile anche via asset con hash: /assets/d2d74ff31848bbfa504318cae81d5a90/GT_DIPA_INT_Auto_07.25_ACC.pdf"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Genertel Moto (motoveicoli)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.genertel.it/61442/GTL_DIP_AGGIUNTIVO_INT_Moto_07.23.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; DIP Aggiuntivo RCA Moto ed. 07/2023. ATTENZIONE: edizione vecchia, risulta esistere un DIP Moto ed. 01/2026 ma online l ho trovato solo su domini terzi (gruppomol/mavriq), quindi non lo riporto."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Genertel Moto (motoveicoli)",
+          "tipo": "condizioni",
+          "url": "https://www.genertel.it/assets/73368a092f6510c8479176ccef9d68c7/GT_CA_Moto.pdf?download=",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; Condizioni di Assicurazione per la circolazione dei motoveicoli. URL con hash: va usato cosi come e, il parametro ?download= fa parte del link pubblicato."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Casa Genertel (multirischi abitazione)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://genertel.it/assets/b26100803ca51e5160fb70b8c43e9902/GT_DIPA_Casa.pdf?download=",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; DIP Aggiuntivo Casa ed. 06/2026 - l edizione piu recente trovata per Genertel. Include la garanzia opzionale infortuni domestici e del tempo libero."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Casa Genertel Multirischio",
+          "tipo": "condizioni",
+          "url": "https://www.genertel.it/assicurazioni/documenti/condizioni_generali_assicurazione/condizioni-di-assicurazione-casa-multi-rischio.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; Condizioni di Assicurazione Casa Multirischio, ultimo aggiornamento 02/2026. Path stabile (non hashato), buono per il monitoraggio periodico."
+        }
+      ]
+    },
+    {
+      "compagnia": "ConTe.it (Admiral Europe Compania de Seguros S.A. - marchio ConTe.it)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "diretta",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "ConTe.it Auto - CGA37",
+          "tipo": "set_informativo",
+          "url": "https://www.conte.it/wp-content/uploads/2026/03/CGA37_Auto.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo RCA ed. gennaio 2026, valido per i preventivi salvati dal 30/01/2026. E il set piu recente che ho trovato sul dominio conte.it. Contiene DIP danni + DIP aggiuntivo RCA + condizioni con glossario + privacy."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "ConTe.it Auto - CGA34",
+          "tipo": "set_informativo",
+          "url": "https://www.conte.it/wp-content/uploads/2025/02/CGA34_Auto.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo auto ed. gennaio 2025. Utile come edizione precedente per confronto storico (la TL e prestata da ARAG SE)."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "ConTe.it Auto Premium - CGANRA06 (canale intermediari)",
+          "tipo": "set_informativo",
+          "url": "https://intermediari.conte.it/media/CGANRA06_Auto.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; sottodominio ufficiale intermediari.conte.it. Prodotto Auto Premium, tutela legale prestata da Tutela Legale S.p.A. (diverso dal canale diretto)."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "ConTe.it Moto e Ciclomotori - CGA35",
+          "tipo": "set_informativo",
+          "url": "https://www.conte.it/wp-content/uploads/2025/03/CGA35_MOTO.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo moto/ciclomotori ed. aprile 2025, con formula bonus-malus e garanzie accessorie."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "ConTe.it Moto - CGARAM06 (canale intermediari)",
+          "tipo": "set_informativo",
+          "url": "https://intermediari.conte.it/media/CGARAM06_MOTO-Intermediari.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; sottodominio ufficiale intermediari.conte.it, ed. aprile 2025, RCA motocicli e ciclomotori."
+        },
+        {
+          "ramo": "animali",
+          "prodotto": "ConTe.it Cane e Gatto",
+          "tipo": "set_informativo",
+          "url": "https://canegatto.conte.it/hubfs/SET%20INFORMATIVO%20ConTe%20Cane%20e%20Gatto%2004_2021_2.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; sottodominio ufficiale canegatto.conte.it. Edizione 04/2021, quindi VECCHIA: risulta esistere una ed. 01/2024 ma l ho trovata solo su host HubSpot non riconducibile con certezza al dominio ConTe. Rischi: Admiral Europe + ARAG SE + Europ Assistance."
+        }
+      ]
+    },
+    {
+      "compagnia": "Linear Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "diretta",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Linear Auto (RC Auto autovetture)",
+          "tipo": "set_informativo",
+          "url": "https://www.linear.it/extra/pdf/set_informativo_auto_06-2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo auto ed. 06/2026, l edizione corrente indicata nella pagina linear.it/documenti-utili. Linear usa uno schema di URL regolare e prevedibile: /extra/pdf/set_informativo_<prodotto>_<MM-AAAA>.pdf - ottimo per la raccolta automatica."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Linear Contratto Base Autovetture",
+          "tipo": "set_informativo",
+          "url": "https://www.linear.it/extra/pdf/set_informativo_auto_base_01-2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Contratto Base Autovetture ed. 01/2026 (prodotto base ex art. 22 DL 179/2012)."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Linear AutoBox (con dispositivo satellitare)",
+          "tipo": "set_informativo",
+          "url": "https://www.linear.it/extra/pdf/set_informativo_autobox_05-2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo AutoBox ed. 05/2026."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Linear Auto Danni (incendio, furto, atti vandalici)",
+          "tipo": "set_informativo",
+          "url": "https://www.linear.it/extra/pdf/set_informativo_auto_danni_02-2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Auto Danni ed. 02/2026 - copre i danni al veicolo, non la RCA."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Linear Moto",
+          "tipo": "set_informativo",
+          "url": "https://www.linear.it/extra/pdf/set_informativo_moto_06-2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo moto ed. 06/2026, include la garanzia opzionale infortuni del conducente."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Linear Casa e Famiglia",
+          "tipo": "set_informativo",
+          "url": "https://www.linear.it/extra/pdf/set_informativo_casa_e_famiglia_02-2023.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Casa e Famiglia ed. 02/2023 - unica edizione trovata, da verificare se e ancora la corrente. Contiene la sezione infortuni domestici e del tempo libero."
+        }
+      ]
+    },
+    {
+      "compagnia": "Quixa Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "diretta",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Quixa Assicurazione Auto",
+          "tipo": "set_informativo",
+          "url": "https://www.quixa.it/wp-content/documents/SetInformativi/ed.24.03.2026_Auto.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Auto ed. 24 marzo 2026, l edizione piu recente trovata. Quixa usa uno schema di URL molto regolare: /wp-content/documents/SetInformativi/ed.GG.MM.AAAA_<Prodotto>.pdf"
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Quixa Assicurazione Auto",
+          "tipo": "set_informativo",
+          "url": "https://www.quixa.it/wp-content/documents/SetInformativi/ed.15.01.2026_Auto.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Auto ed. 15 gennaio 2026, edizione precedente utile per confronto."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Quixa Auto Protetta (CVT - corpi veicoli terrestri)",
+          "tipo": "set_informativo",
+          "url": "https://www.quixa.it/wp-content/documents/SetInformativi/ed.15.01.2026_Auto_Protetta.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Auto Protetta ed. 15 gennaio 2026. Esclude veicoli oltre 3,5 t e autovetture di valore superiore a 100.000 euro."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Quixa Moto (ciclomotori e motocicli)",
+          "tipo": "set_informativo",
+          "url": "https://www.quixa.it/wp-content/documents/SetInformativi/ed.20.09.2023_Moto.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Moto ed. 20 settembre 2023 - unica edizione moto trovata, probabilmente superata."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Quixa Smart Salute",
+          "tipo": "set_informativo",
+          "url": "https://www.quixa.it/wp-content/documents/SetInformativi/ed.15.12.2025_Salute.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Smart Salute ed. 15 dicembre 2025. Unico prodotto salute/infortuni autonomo trovato tra le dirette di questo gruppo."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Quixa Smart Casa (assistenza abitazione)",
+          "tipo": "set_informativo",
+          "url": "https://www.quixa.it/wp-content/documents/SetInformativi/ed.30.05.2023_Casa.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Smart Casa ed. 30 maggio 2023. La pagina prodotto cita una ed. 15 gennaio 2026 ma il PDF diretto non e indicizzato: non lo invento, va preso dalla sezione Modulistica."
+        }
+      ]
+    },
+    {
+      "compagnia": "Verti Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "diretta",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Verti Auto",
+          "tipo": "set_informativo",
+          "url": "https://www.verti.it/media/SET-INFORMATIVO-AUTO-ED-19_giugno_2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Auto ed. 19 giugno 2026, la piu recente trovata. NOTA: dentro il PDF la sezione DIPA riporta 8 aprile 2026, quindi le date di copertina e di sezione non coincidono - da tenere presente quando si estrae l edizione automaticamente."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Verti Auto",
+          "tipo": "set_informativo",
+          "url": "https://www.verti.it/media/SET-INFORMATIVO-AUTO-05-07-2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Auto con nome file 05-07-2025 ma DIPA aggiornato al 14 gennaio 2026. Edizione precedente, utile per confronto."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Verti Contratto Base Autovetture",
+          "tipo": "set_informativo",
+          "url": "https://www.verti.it/media/Set-Informativo-Contratto-Base-Auto_Gennaio-2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Contratto Base Autovetture ed. gennaio 2026 (prodotto base ex art. 22 DL 179/2012)."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Verti Motociclo e Ciclomotore",
+          "tipo": "set_informativo",
+          "url": "https://www.verti.it/media/SET-INFORMATIVO-MOTOCICLO-E-CICLOMOTORE-05-07-2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Motociclo e Ciclomotore, luglio 2025."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Verti Casa e Famiglia",
+          "tipo": "set_informativo",
+          "url": "https://www.verti.it/media/SET-INFORMATIVO-CASA-E-FAMIGLIA-05-_07_2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Casa e Famiglia, copertina luglio 2025 con ultimo aggiornamento 14 gennaio 2026. Include la sezione opzionale infortuni domestici e del tempo libero (capitale 50.000 euro). ATTENZIONE: il nome file contiene un underscore anomalo (05-_07_2025) - va copiato esattamente. Verti pubblica anche una pagina di archivio: verti.it/gia-clienti/archivio-set-informativi/"
+        }
+      ]
+    },
+    {
+      "compagnia": "Prima Assicurazioni S.p.A. (intermediario/MGA, non compagnia: i rischi sono di Great Lakes Insurance SE, Zavarovalnica Triglav e iptiQ)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "specialista",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Prima Auto - RCA e Altri Danni",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.prima.it/global-fe-media/information-package-car.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; unico PDF diretto trovato sul dominio prima.it (path /global-fe-media/). E il DIP aggiuntivo per i prodotti RC auto. ATTENZIONE: una delle sezioni Great Lakes risulta aggiornata al 02/10/2020, quindi il file va verificato prima di metterlo davanti a un cliente."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Prima Black Moto - Great Lakes Insurance SE",
+          "tipo": "set_informativo",
+          "url": "https://www.munichre.com/content/dam/munichre/contentlounge/website-pieces/documents/great-lakes-italia/Set-Informativo-moto-Great-Lakes-Prima-Black.pdf/_jcr_content/renditions/original./Set-Informativo-moto-Great-Lakes-Prima-Black.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; ospitato su munichre.com, che e il dominio del GRUPPO della compagnia che porta il rischio (Great Lakes Insurance SE fa parte di Munich Re). Non e un aggregatore. Prodotto Prima Black Moto, distribuito solo tramite la rete di intermediari partner."
+        }
+      ]
+    },
+    {
+      "compagnia": "Allianz Direct S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "diretta",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Allianz Direct Auto (RCA autovetture)",
+          "tipo": "set_informativo",
+          "url": "https://www.allianzdirect.it/dam/documents/set-informativi/prodotti/auto/Set-informativo-auto-web.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Auto ed. 06/2026, la piu recente trovata. Vale per i prodotti acquistati sul sito Allianz Direct e tramite comparatori. Contiene DIP + DIP aggiuntivo RCA + condizioni con glossario + MUP + privacy. URL stabile (non versionato nel nome): buono per il monitoraggio automatico."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Allianz Direct Autovettura",
+          "tipo": "set_informativo",
+          "url": "https://www.allianzdirect.it/dam/documents/set-informativi/prodotti/auto/Set-informativo-autovettura.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; secondo set auto sul dominio ufficiale. CAUTELA: il PDF riporta la dicitura Internal, quindi potrebbe non essere la versione destinata al pubblico. Preferire il file Set-informativo-auto-web.pdf."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Allianz Direct Motocicli e Ciclomotori",
+          "tipo": "set_informativo",
+          "url": "https://www.allianzdirect.it/dam/documents/set-informativi/prodotti/moto/Set-informativo-motociclo-ciclomotore.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Ciclomotori e Motocicli sul dominio ufficiale, URL stabile."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Allianz Direct Io e la mia Casa",
+          "tipo": "set_informativo",
+          "url": "https://www.allianzdirect.it/dam/documents/set-informativi/prodotti/casaefamiglia/Set-informativo-casa.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Io e la mia Casa ed. 02/2026 - la piu recente in circolazione (le copie su domini terzi sono alla 01/2026). Indice: DIP, DIP aggiuntivo, condizioni con glossario, MUP."
+        }
+      ]
+    },
+    {
+      "compagnia": "Zurich Connect (Zurich Insurance Company Ltd - Rappresentanza Generale per l Italia)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "diretta",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Zurich Connect Auto",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich-connect.it/PDF/FascicoliInformativi/EdizioniTariffarie/Auto/Fascicoli%20informativi_2022/Set-Informativo_Assicurazione-Auto_01_22.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Auto ed. gennaio 2022 - unico set auto trovato sul dominio ufficiale. Risulta esistere un aggiornamento DIPA/condizioni 07/2023 ma online l ho visto solo su host terzi (La Cassa, Selecover), quindi non lo riporto. L indice ufficiale e zurich-connect.it/Documenti-e-FAQ/Documenti"
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Zurich Connect Casa e Famiglia (mod. 30139)",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich-connect.it/PDF/FascicoliInformativi/EdizioniTariffarie/Casa/Fascicoli%20Informativi_2021/Set-Informativo_Assicurazione-Casa_03_21.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Casa e Famiglia ed. marzo 2021. Copre danni alla proprieta, furto, infortuni, RC, tutela legale e assistenza in un unico contratto. Edizione vecchia: da riverificare."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Zurich Connect Casa e Famiglia - Protezione guidata (Solyda)",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich-connect.it/PDF/FascicoliInformativi/Set-Informativo_Assicurazione-Casa_Solyda.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Casa Protezione guidata ed. giugno 2021, contiene DIP e DIP aggiuntivo. URL senza data nel path: potenzialmente aggiornato in place, quindi buono da monitorare."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Zurich Connect Moto WeekEnd (mod. 35001)",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich-connect.it/PDF/FascicoliInformativi/Set-Informativo_Assicurazione-Moto-WeekEnd.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo Moto WeekEnd ed. marzo 2021. Garanzie: RCA, furto e incendio, collisione, kasko abbigliamento, tutela legale, assistenza stradale e infortuni del conducente."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "Zurich Connect NoPensieri Assistenza",
+          "tipo": "set_informativo",
+          "url": "https://www.zurich-connect.it/PDF/FascicoliInformativi/Set_Informativo_Nopensieri_Assistenza.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch; set informativo del prodotto assistenza NoPensieri sul dominio ufficiale. URL senza data nel path."
+        }
+      ]
+    },
+    {
+      "compagnia": "UniSalute S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "specialista",
+      "documenti": [
+        {
+          "ramo": "salute",
+          "prodotto": "UniSalute Per Te",
+          "tipo": "set_informativo",
+          "url": "https://www.unisalute.it/assets/pdf/Set%20Informativo%20-%20UniSalute%20Per%20Te_07_2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata al dominio unisalute.it. Edizione 07/2025, la piu recente trovata. Esiste anche la copia su percorso /wps/wcm/connect/ con lo stesso nome file."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "UniSalute Famiglia",
+          "tipo": "set_informativo",
+          "url": "https://www.unisalute.it/wcm/connect/34d87987-9688-4861-8bba-7b06f85aac38/Set+Informativo+UniSalute+Famiglia.pdf?MOD=AJPERES&CVID=oCrNkZy",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su unisalute.it. Set completo: copertura spese sanitarie per malattia e infortunio, ingresso dai 4 ai 65 anni."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "UniSalute Famiglia",
+          "tipo": "dip",
+          "url": "https://www.unisalute.it/wcm/connect/cae8d97f-6c53-4cd9-939e-689b7e843f8f/DIP+UniSalute+Famiglia.pdf?MOD=AJPERES&CACHEID=ROOTWORKSPACE-cae8d97f-6c53-4cd9-939e-689b7e843f8f-nSZ3QWa",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su unisalute.it. DIP Danni standard, file autonomo (non solo dentro il set)."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "UniSalute Famiglia",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.unisalute.it/wcm/connect/84262e1a-86e6-4a81-a2d7-3b595413d1c3/DIP+AGGIUNTIVO+UniSalute+Famiglia.pdf?MOD=AJPERES&CACHEID=ROOTWORKSPACE-84262e1a-86e6-4a81-a2d7-3b595413d1c3-nSZ3QWa",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su unisalute.it. DIP aggiuntivo Danni come file separato: utile perche UniSalute di solito lo pubblica solo dentro il set."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "UniSalute 360",
+          "tipo": "set_informativo",
+          "url": "https://www.unisalute.it/wcm/connect/3940eb7b-7297-4efe-ad34-b93578e32825/SI_UNISALUTE_360%C2%B0.pdf?MOD=AJPERES&CVID=oCrDtYn",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su unisalute.it. Prodotto malattia + infortuni."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "UniSalute Invalidita",
+          "tipo": "set_informativo",
+          "url": "https://www.unisalute.it/assets/pdf/SET+INFORMATIVO+UNISALUTE+INVALIDITA'.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su unisalute.it, cartella /assets/pdf/. Attenzione: l'URL contiene un apostrofo, va codificato come %27 in alcuni client."
+        }
+      ]
+    },
+    {
+      "compagnia": "Intesa Sanpaolo RBM Salute S.p.A. (oggi sotto il marchio Intesa Sanpaolo Protezione, Gruppo Intesa Sanpaolo Vita)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "bancassicurazione",
+      "documenti": [
+        {
+          "ramo": "salute",
+          "prodotto": "XME Protezione - Modulo Ricoveri e Interventi",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloprotezione.com/documents/68759/0/Isa-Dip-Aggiuntivo-Ricoveri-e-Interventi-112021.pdf/a1ad9e76-90a3-7a03-a5aa-d5a1770d7b47?t=1639058185290",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch estesa. Il modulo salute di XME Protezione e emesso da Intesa Sanpaolo RBM Salute ma i PDF stanno sul dominio di gruppo intesasanpaoloprotezione.com. Versione 20/11/2021: esiste una revisione 07/2024 piu recente, il cui link pero non termina in .pdf e quindi non l'ho incluso."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "XME Protezione - Modulo Visite, Prevenzione e Farmaci",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloprotezione.com/documents/68759/0/Isa-Dip-Aggiuntivo-XMe-Visite-Prevenzione-Farmaci-112022.pdf/31d79365-42f0-8aa4-0965-2097e7652c84?t=1667210592566",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch estesa. Versione 19/11/2022, dominio di gruppo."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "XME Protezione - Modulo Visite, Prevenzione e Farmaci",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloprotezione.com/documents/68759/0/Isa-Dip-Aggiuntivo-Visite-Prevenzioni-e-Farmaci-112021.pdf/d4893e71-6b89-eeb6-e86a-54c23734c6ce?t=1639058270675",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch estesa. Versione 2021 dello stesso modulo, utile per confronto storico delle versioni."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "XME Protezione - Modulo Malattie Gravi +",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.intesasanpaoloprotezione.com/documents/68759/0/Isa-XMe-DipAgg-MalattiaGravi++_PMed.pdf/3f7cd924-132d-6d62-d8af-b41cc3a1b780?t=1684325031255",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch estesa. Versione 19/11/2022. Il nome file contiene due '+' letterali, va passato cosi com'e."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "XME Protezione - Modulo Visite, Prevenzione e Farmaci",
+          "tipo": "condizioni",
+          "url": "https://www.intesasanpaoloprotezione.com/documents/68759/0/Isa-Xme-VisitePrevenzioneFarmaci-CdA-2024.pdf/09ecfda7-1498-69fa-41eb-e8e1c68d8431?version=1.0&t=1713529071339",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch estesa. Condizioni di Assicurazione edizione 2024: il documento piu aggiornato trovato per questo modulo."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "ASTRA Salute e Benessere",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://intesasanpaolorbmsalute.com/fascicolo_informativo/DIP_Aggiuntivo_Astra_rev2_p.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata al dominio proprio della compagnia. Unico PDF trovato su intesasanpaolorbmsalute.com. ATTENZIONE: il prodotto risulta nell'archivio prodotti del sito, quindi non piu commercializzabile: va usato solo per polizze in essere, non per confronti su offerte nuove."
+        }
+      ]
+    },
+    {
+      "compagnia": "Europ Assistance Italia S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "specialista",
+      "documenti": [
+        {
+          "ramo": "viaggio",
+          "prodotto": "Travel Protection Top (Mod. 24108)",
+          "tipo": "set_informativo",
+          "url": "https://assets.europassistance.it/Termini%20e%20Condizioni/Viaggi/Travel%20Protection%20Top.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata al dominio europassistance.it. I PDF stanno sul sottodominio ufficiale assets.europassistance.it. DIP aggiuntivo redatto 11/03/2025, durata max 35 giorni consecutivi."
+        },
+        {
+          "ramo": "viaggio",
+          "prodotto": "Cancellation (Mod. 21325)",
+          "tipo": "set_informativo",
+          "url": "https://assets.europassistance.it/Termini%20e%20Condizioni/Viaggi/Cancellation%20Set%20informativo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su europassistance.it. Annullamento viaggio, DIP aggiuntivo aggiornato 25/03/2025."
+        },
+        {
+          "ramo": "viaggio",
+          "prodotto": "Long Stay (Mod. 21116)",
+          "tipo": "set_informativo",
+          "url": "https://assets.europassistance.it/Termini%20e%20Condizioni/Viaggi/Long%20Stay.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su europassistance.it. Polizza annuale, max 90 giorni per singolo viaggio. DIP aggiuntivo aggiornato 11/11/2025: il piu recente del gruppo viaggi."
+        },
+        {
+          "ramo": "viaggio",
+          "prodotto": "Viaggi Study & Stage (Mod. 21391)",
+          "tipo": "set_informativo",
+          "url": "https://assets.europassistance.it/Termini%20e%20Condizioni/Viaggi/SET_VIAGGI_STUDY_STAGE.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su europassistance.it. Viaggi studio/stage fino a 6 mesi. DIP aggiuntivo aggiornato 17/06/2025."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Protezione Salute (Mod. 18289)",
+          "tipo": "set_informativo",
+          "url": "https://assets.europassistance.it/Termini%20e%20Condizioni/Salute/Protezione%20Salute%20-%20Europ%20Assistance%20-%20Santander.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su europassistance.it, cartella /Salute/. Copre infortunio e malattia, ingresso fino a 80 anni. ATTENZIONE: DIP aggiuntivo datato 01/01/2019 e versione distribuita via Santander: verificare se esiste edizione piu recente prima di usarla in un confronto."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "dbCasa (Mod. 17435)",
+          "tipo": "nota_informativa",
+          "url": "https://assets.europassistance.it/Termini%20e%20Condizioni/Casa/DBCasa.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su europassistance.it, cartella /Casa/. Unico documento casa trovato sul dominio: e una Nota Informativa in formato pre-Reg. IVASS 41/2018, quindi vecchio impianto documentale, non un set DIP/DIP aggiuntivo."
+        }
+      ]
+    },
+    {
+      "compagnia": "Nobis Assicurazioni (Nobis Compagnia di Assicurazioni S.p.A., linea ex Filo Diretto)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "casa",
+          "prodotto": "Nobis Casa & Noi (Mod. NCE.2022-2026.001)",
+          "tipo": "set_informativo",
+          "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Casa/CasaeNoi/NCE.2022-2026.001_NOBIS%20CASA%20e%20NOI_set.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su nobis.it. Edizione maggio 2026, la piu recente per il ramo casa. Set completo: DIP, DIP aggiuntivo, glossario, condizioni."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Nobis Car (RC Auto)",
+          "tipo": "set_informativo",
+          "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Auto/NobisRca/Nobis-Car-Set.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su nobis.it. Edizione 01.05.2021, aggiornata al D.M. 54/2020 sul contratto base RCA. E il set RCA piu recente che ho trovato: verificare se esiste edizione successiva."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Cyber Risk Auto",
+          "tipo": "set_informativo",
+          "url": "https://www.nobis.it/Sites/390/WebExplorer/AreeBisogno/Auto/Prodotti/Automotive/Cyber-Risk-Auto_Set%20Informativo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su nobis.it. Edizione 01.05.2022. Nel risultato di ricerca l'host era in maiuscolo (WWW.NOBIS.IT): l'ho normalizzato, il percorso e invariato."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Unica Infortuni (Mod. 2020-2020.001)",
+          "tipo": "set_informativo",
+          "url": "https://www.nobis.it/Sites/394/WebExplorer/AreeBisogno/Privati/Salute/Unica%20Infortuni/Set%20Informativo%20-%20UNICA%20INFORTUNI%202020-2020.001.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su nobis.it, cartella /Privati/Salute/. Ultimo aggiornamento 01/01/2020: prodotto infortuni autonomo."
+        },
+        {
+          "ramo": "viaggio",
+          "prodotto": "Nobis Travel (Mod. 6003)",
+          "tipo": "set_informativo",
+          "url": "https://www.nobis.it/Sites/402/WebExplorer/AreeBisogno/Business/Viaggi/FD%20Travel/6003-ed.09-2026%20-%20NOBIS%20TRAVEL%20-%20Set%20Informativo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su nobis.it. Edizione 09/2026: il documento piu aggiornato trovato in tutto il gruppo. Include garanzia infortuni opzionale."
+        },
+        {
+          "ramo": "viaggio",
+          "prodotto": "Nobis Piu Viaggi (Mod. FDE.PIUVIAGGI.2024)",
+          "tipo": "set_informativo",
+          "url": "https://www.nobis.it/Sites/402/WebExplorer/AreeBisogno/Privati/Viaggi/Piu-Viaggi/FDE.PIUVIAGGI.2024%20-%20NOBIS%20Piu%20Viaggi.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su nobis.it. Polizza annuale multiviaggio, edizione 2024."
+        }
+      ]
+    },
+    {
+      "compagnia": "AmTrust Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "specialista",
+      "documenti": [
+        {
+          "ramo": "infortuni",
+          "prodotto": "AmTrust Infortuni h24",
+          "tipo": "set_informativo",
+          "url": "https://www.amtrust.it/download/Set_Informativo_AmTrust_Infortunih24_Ed_042023.pdf?v=2",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitata al dominio amtrust.it (dominio italiano ufficiale, distinto da amtrustfinancial.com che e il sito USA del gruppo). Edizione 04/2023. E l'unico prodotto retail puro trovato: AmTrust in Italia e specialista RC sanitaria/professionale."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "AmTrust Protezione Infortuni - 3 Virus",
+          "tipo": "set_informativo",
+          "url": "https://www.amtrust.it/download/Set_info_protezione_infortuni_3_virus_Agg122021.pdf?v=2",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su amtrust.it. Edizione 12/2021. Infortuni per personale sanitario, in e fuori attivita professionale."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "AmTrust MLP (RC professionale medico libero professionista)",
+          "tipo": "set_informativo",
+          "url": "https://www.amtrust.it/download/SetInfo_MLP_Agg092023.pdf?v=2",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su amtrust.it. Edizione 07/2020, ultimo aggiornamento 09/2023. Validita mondiale escluso USA/Canada."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "AmTrust Colpa Grave Extra",
+          "tipo": "set_informativo",
+          "url": "https://www.amtrust.it/download/Set_info_ColpaGraveExtra_Agg092023.pdf?v=2",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su amtrust.it. Edizione 02/2023, aggiornamento 09/2023."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "AmTrust Professioni Sanitarie Individuale",
+          "tipo": "set_informativo",
+          "url": "https://www.amtrust.it/download/SetInfo_ProfessioniSanitarieIndividuale_Agg092023.pdf?v=2",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su amtrust.it. Aggiornamento 09/2023."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "AmTrust Tutela al Volante",
+          "tipo": "set_informativo",
+          "url": "https://www.amtrust.it/download/SetInfo_Tutela_al_volante_Agg092023.pdf?v=2",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su amtrust.it. Tutela legale circolazione. ATTENZIONE: il PDF riporta date di aggiornamento incoerenti (07/2022 in una sezione, 09/2023 in un'altra) e contiene campi template non compilati: da verificare prima di metterlo in un confronto."
+        }
+      ]
+    },
+    {
+      "compagnia": "HDI Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": []
+    },
+    {
+      "compagnia": "Sara Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Guido Bene (RCA autovetture e taxi)",
+          "tipo": "set_informativo",
+          "url": "https://www.sara.it/sites/default/files/2026-05/set_informativo_guido_bene_ed_10_2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su sara.it. Set informativo completo (DIP + DIP Aggiuntivo + Condizioni), ed. 10/2025: e l'edizione auto piu recente trovata."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "RuotaLibera Grandi Veicoli",
+          "tipo": "set_informativo",
+          "url": "https://www.sara.it/sites/default/files/2026-05/set_informativo_rlgv_11_2025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su sara.it. Set informativo RCA veicoli da lavoro e autocaravan, ed. 11/2025."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "RuotaLibera / SaraPass",
+          "tipo": "set_informativo",
+          "url": "https://www.sara.it/sites/default/files/2022-07/Set%20Informativo%20RuotaLibera%20ed.%203.2022%20SaraPass.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su sara.it. Set informativo RuotaLibera ed. 3.2022 con garanzia SaraPass."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "SarainCasa (Mod. 50AC)",
+          "tipo": "set_informativo",
+          "url": "https://www.sara.it/sites/default/files/2021-01/Set%20Saraincasa%2050AC%20Ed.%2012-2019%20Definitivo.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su sara.it. Unico set casa multirischi trovato sul dominio; ed. 12/2019, quindi probabilmente superato: verificare in agenzia."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Mi Muovo (mobilita condivisa e TPL)",
+          "tipo": "set_informativo",
+          "url": "https://www.sara.it/sites/default/files/2022-07/set_informativo_mimuovo_ed._2.2022.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su sara.it. Set informativo ed. 2.2022, infortuni del contraente su veicoli in sharing e trasporto pubblico locale."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "Sara Assistenza Sicura (tutela legale)",
+          "tipo": "set_informativo",
+          "url": "https://sara.it/sites/default/files/2024-06/set_informativo_assistenza_sicura_ed.3.2022.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su sara.it. Set informativo tutela legale ed. 3.2022 (copia ricaricata nella cartella 2024-06)."
+        }
+      ]
+    },
+    {
+      "compagnia": "Groupama Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "infortuni",
+          "prodotto": "AirbagPlus+ (infortuni da circolazione)",
+          "tipo": "set_informativo",
+          "url": "https://cdn.groupama.it/app/uploads/2026/05/Set-Informativo-AirbagPlus-Edizione-062026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cdn.groupama.it (CDN ufficiale del gruppo). Set informativo ed. 06/2026: infortuni individuale o familiare complementare alla RCA, tre formule."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Guida Sicura (infortuni del conducente)",
+          "tipo": "dip",
+          "url": "https://cdn.groupama.it/app/uploads/2026/02/Guida-Sicura-ed-02_2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cdn.groupama.it. DIP Danni Guida Sicura, ed. 02/2026 (edizione piu recente delle due 2026 trovate)."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Furto",
+          "tipo": "set_informativo",
+          "url": "https://cdn.groupama.it/app/uploads/2026/02/Set-Informativo-Furto-Ed.-02-2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cdn.groupama.it. Set informativo ramo furto, ed. 02/2026 (piu recente della ed. 01/2026 presente sullo stesso CDN)."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Guidamica Autovetture (RCA)",
+          "tipo": "set_informativo",
+          "url": "https://cdn.groupama.it/app/uploads/2022/12/Set-Informativo-Guidamica-Autovetture-2022.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cdn.groupama.it. Set informativo RCA autovetture, caricato 12/2022: e il set auto piu recente reperito sul dominio, verificare se aggiornato."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Guidamica Motoveicoli (RCA moto e ciclomotori)",
+          "tipo": "set_informativo",
+          "url": "https://cdn.groupama.it/app/uploads/2021/09/Set-Informativo-Guidamica-Motoveicoli.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cdn.groupama.it. Set informativo RCA motoveicoli, DIP Mod. 250086 Ed. 10/2018 in set 12/2019: edizione vecchia."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "MenteSerena Elisir (Mod. 220203C)",
+          "tipo": "set_informativo",
+          "url": "https://cdn.groupama.it/app/uploads/2024/01/SI-MenteSerena-Elisir-Mod-220203C-Ed.-01-2024.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cdn.groupama.it. Set informativo Mod. 220203C Ed. 01/2024, area salute."
+        }
+      ]
+    },
+    {
+      "compagnia": "Italiana Assicurazioni S.p.A. (Gruppo Reale Mutua)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "viaggio",
+          "prodotto": "Caparra Assicurata (annullamento soggiorno)",
+          "tipo": "dip",
+          "url": "https://www.italiana.it/itashare/3/Documents/Landing/Caparra%20Assicurata/DIP%20CAPARRA%20ASSICURATA%202023.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch limitato al dominio italiana.it (cartella documentale ufficiale /itashare/3/Documents). DIP Danni del prodotto annullamento soggiorno."
+        },
+        {
+          "ramo": "viaggio",
+          "prodotto": "Caparra Assicurata (annullamento soggiorno)",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.italiana.it/itashare/3/Documents/Landing/Caparra%20Assicurata/DIP%20AGGIUNTIVO%20CAPARRA%20ASSICURATA%202024.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su italiana.it. DIP Aggiuntivo Danni Mod. PP50101/DA Ed. 07/2024, dichiarato come ultimo disponibile."
+        },
+        {
+          "ramo": "viaggio",
+          "prodotto": "Caparra Assicurata (annullamento soggiorno)",
+          "tipo": "condizioni",
+          "url": "https://www.italiana.it/itashare/3/Documents/Landing/Caparra%20Assicurata/NORMATIVO_CAPARRA%20ASSICURATA%20ed%2010_2023.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su italiana.it. Normativo / condizioni di assicurazione ed. 10/2023, completa il set informativo del prodotto."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "Italiana 4 Bike (assicurazione ciclista)",
+          "tipo": "dip",
+          "url": "https://www.italiana.it/itashare/3/Documents/Italiana4Bike_DIP_Ed.032022.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su italiana.it. DIP Danni Ed. 03/2022, copertura furto e danni alla bicicletta piu RC del ciclista."
+        }
+      ]
+    },
+    {
+      "compagnia": "DALLBOGG: Life and Health AD",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "specialista",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Set Informativo Auto (RCA autovetture)",
+          "tipo": "set_informativo",
+          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-auto-07-22.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch sul sito italiano ufficiale dallbogg.it. Set informativo completo (DIP, DIP Aggiuntivo RC Auto, condizioni, glossario, privacy), ed. 07/2022, aggiornato al 01/07/2022. ATTENZIONE: licenza revocata dalla FSC bulgara dal 09/06/2026, nessuna nuova sottoscrizione possibile. Documento utile solo per gestire polizze in corso."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Set Informativo Assistenza Truck",
+          "tipo": "set_informativo",
+          "url": "https://dallbogg.it/wp-content/uploads/2025/07/db-set-info-truck-assistance-04-25.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su dallbogg.it. Set informativo garanzia assistenza per veicoli industriali, ed. 04/2025. Stessa avvertenza sulla revoca della licenza."
+        }
+      ]
+    },
+    {
+      "compagnia": "Net Insurance S.p.A. / Net Insurance Life S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "specialista",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Difesa Grandine (danni al veicolo da eventi atmosferici)",
+          "tipo": "set_informativo",
+          "url": "https://www.netinsurance.it/wp-content/uploads/2026/01/Set-Informativo-Difesa-Grandine_compressed-1.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch sulla cartella uploads di netinsurance.it. Set informativo ed. 06/2025, aggiornamento 02/2026: il piu recente trovato sul ramo auto."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Protezione Auto (CVT - corpi veicoli terrestri)",
+          "tipo": "set_informativo",
+          "url": "https://www.netinsurance.it/wp-content/uploads/2025/04/Set-Informativo-Protezione-Auto_compressed.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su netinsurance.it. Set informativo polizza danni auto CVT, ed. 03/2025, collocata in convenzione con Deutsche Bank."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "NET Incendio (polizza collettiva incendio ed esplosione)",
+          "tipo": "set_informativo",
+          "url": "https://www.netinsurance.it/wp-content/uploads/2025/05/Set-Informativo-NET-INCENDIO.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su netinsurance.it. Set informativo ed. 11/2024, polizza collettiva ad adesione facoltativa, garanzia incendio ed esplosione sull'immobile."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "All Well (spese mediche e salute)",
+          "tipo": "set_informativo",
+          "url": "https://www.netinsurance.it/wp-content/uploads/2022/05/Set-Informativo-All-Well-Ed.-03_2022.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su netinsurance.it. Set informativo All Well Ed. 03/2022: unico prodotto salute reperito sul dominio, edizione da verificare."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Mountain Care (polizza individuale multirischi)",
+          "tipo": "set_informativo",
+          "url": "https://www.netinsurance.it/wp-content/uploads/2024/06/Polizza-Mountain-Care.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su netinsurance.it. Set informativo polizza individuale multirischi, data di redazione 06/2024."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "NET LTC (long term care)",
+          "tipo": "set_informativo",
+          "url": "https://www.netinsurance.it/wp-content/uploads/2026/02/Set-Informativo_NET-LTC.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su netinsurance.it. Set informativo con DIP Vita, ed. 06/2025 aggiornamento 01/2026, emittente Net Insurance Life."
+        }
+      ]
+    },
+    {
+      "compagnia": "Bene Assicurazioni S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Bene Autofit (R.C. auto autovetture uso privato)",
+          "tipo": "set_informativo",
+          "url": "https://www.bene.it/assets/Set_informativo_Bene_Autofit_edizione_012026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su beneassicurazioni.it: il dominio ufficiale e' bene.it, non beneassicurazioni.it. Set informativo ed. 01/2026 (mod. AFIT_CdA_2601), contiene DIP, DIP aggiuntivo R.C. auto e Condizioni con glossario."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Bene AutoMoto&Van",
+          "tipo": "set_informativo",
+          "url": "https://www.bene.it/assets/Set_Informativo_AutoMotoVan_Auto_edizione_072025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch, PDF su www.bene.it/assets/. Ed. 07/2025 (mod. AM&V_CDAI_2507), set completo DIP + DIP aggiuntivo + Condizioni."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Bene Casa (multirischio abitazione)",
+          "tipo": "set_informativo",
+          "url": "https://www.bene.it/assets/Set_Informativo_Casa_edizione_012025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch, PDF su www.bene.it/assets/. Ed. 01/2025, bundle con DIP, DIP aggiuntivo e Condizioni con glossario."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Bene Infortuni",
+          "tipo": "set_informativo",
+          "url": "https://www.bene.it/assets/Set_Informativo_Assicurazione_Infortuni_Bene_Assicurazioni_Edizione_09_2024.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch, PDF su www.bene.it/assets/. Ed. 09/2024, mod. INF_CGA_2409."
+        },
+        {
+          "ramo": "infortuni",
+          "prodotto": "Bene Infortuni SMART",
+          "tipo": "set_informativo",
+          "url": "https://www.bene.it/assets/Set_Informativo_Assicurazione_Infortuni_SMART_Edizione_09_2024.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch, PDF su www.bene.it/assets/. Ed. 09/2024, mod. INSM_CGA_2409; copre invalidita permanente e decesso da infortunio."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "Bene Climate (eventi catastrofali)",
+          "tipo": "set_informativo",
+          "url": "https://www.bene.it/assets/Set_Informativo_Bene_Climate_edizione_032025.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch, PDF su www.bene.it/assets/. Ed. 03/2025, danni da sisma, alluvione, frana. Utile per il confronto sulle catastrofali obbligatorie."
+        }
+      ]
+    },
+    {
+      "compagnia": "Le Assicurazioni di Roma - Mutua Assicuratrice Romana",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Globale Autovetture (R.C. auto)",
+          "tipo": "set_informativo",
+          "url": "https://www.adir.it/wp-content/uploads/2024/04/Set_Informativo_Autovetture_Ed._04_2024.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch con restrizione al dominio adir.it, che e' il sito ufficiale della mutua. Edizione 04/2024, la piu' recente trovata per l'auto: contiene DIP, DIP aggiuntivo R.C. auto, Condizioni con glossario e scheda prodotto RCA."
+        },
+        {
+          "ramo": "auto",
+          "prodotto": "Auto Base - Contratto Base Autovetture",
+          "tipo": "set_informativo",
+          "url": "https://www.adir.it/wp-content/uploads/2021/04/Set_Informativo_Contratto_Base_Autovetture_Ed._30_04_2021.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su adir.it. Ed. 30/04/2021, il contratto base RCA. Edizione vecchia: va verificata prima di usarla in un confronto."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Assicurazione Malattia e Infortunio (collettiva dipendenti Roma Capitale)",
+          "tipo": "set_informativo",
+          "url": "https://www.adir.it/wp-content/uploads/2026/03/Set_Informativo_Ed._03_2026.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su adir.it. Ed. 03/2026, il documento piu' aggiornato trovato per questa compagnia; copre rimborso spese mediche e infortuni."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Polizza Malattia Collettiva",
+          "tipo": "set_informativo",
+          "url": "https://www.adir.it/wp-content/uploads/2022/03/Set%20Informativo%20Ed.%2003_2022.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su adir.it. Ed. 03/2022, versione precedente della collettiva malattia; da tenere solo come storico perche' esiste l'ed. 03/2026."
+        }
+      ]
+    },
+    {
+      "compagnia": "REVO Insurance S.p.A.",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "specialista",
+      "documenti": [
+        {
+          "ramo": "altro",
+          "prodotto": "REVO per la Microimpresa (multirischio)",
+          "tipo": "set_informativo",
+          "url": "https://www.revoinsurance.com/business/assets/pdf/R051_SI_Ed_11_2025_REVO_per_la_Microimpresa.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch con restrizione al dominio revoinsurance.com: tutti i set informativi sono in chiaro sotto /business/assets/pdf/. Mod. R051, ed. 11/2025. Nota: REVO non fa auto/casa/salute retail, e' una compagnia specialty, quindi i prodotti principali sono questi."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "REVO Eventi catastrofali",
+          "tipo": "set_informativo",
+          "url": "https://www.revoinsurance.com/business/assets/pdf/REVO_Eventi_catastrofali.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su revoinsurance.com. Mod. R050, ed. 03/2025; sisma, frana, alluvione per il patrimonio aziendale (quadro Legge di Bilancio 2024)."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "REVO D&O (R.C. amministratori e sindaci)",
+          "tipo": "set_informativo",
+          "url": "https://www.revoinsurance.com/business/assets/pdf/R020_SI_Ed.02.2026_REVO%20D&O.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su revoinsurance.com. Mod. R020, ed. 02/2026: l'edizione piu' recente trovata per REVO. Attenzione: l'URL contiene una & non codificata, va passato cosi' com'e'."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "REVO Specialty Cyber Risk",
+          "tipo": "set_informativo",
+          "url": "https://www.revoinsurance.com/business/assets/pdf/R040_SI_Ed.01.2026_REVO%20SPECIALTYXCyber%20Risk.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su revoinsurance.com. Mod. R040, ed. 01/2026."
+        },
+        {
+          "ramo": "altro",
+          "prodotto": "REVO Protezione Estate (parametrica perdite pecuniarie)",
+          "tipo": "set_informativo",
+          "url": "https://www.revoinsurance.com/business/assets/pdf/R003_SI_Ed.07.2025_REVO_Protezione_Estate.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su revoinsurance.com. Mod. R003, DIP ed. 07/2025 con Condizioni ed. 08/2024: dentro lo stesso set le date non coincidono."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "REVO Specialty Liability Construction (R.C. imprese di costruzione)",
+          "tipo": "set_informativo",
+          "url": "https://www.revoinsurance.com/business/assets/pdf/R006_SI_Ed.07.2025_REVO_SPecialty_LiabilityXConstruction.pdf",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su revoinsurance.com. Mod. R006, ed. 07/2025. Nota: nel nome file 'SPecialty' ha la P maiuscola, e' davvero scritto cosi' sul sito."
+        }
+      ]
+    },
+    {
+      "compagnia": "Cattolica Assicurazioni (marchio commerciale di Generali Italia S.p.A., ex Societa Cattolica di Assicurazione)",
+      "nota": "Aggiunta l'08/10/2026 cercando online. Nessuno di questi indirizzi è ancora stato aperto.",
+      "a_mandato": false,
+      "natura": "compagnia",
+      "documenti": [
+        {
+          "ramo": "auto",
+          "prodotto": "Active Auto - DIP aggiuntivo R.C. auto",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://cdn.generali.it/-/media/generali_b2c/documenti-correlati/prodotti-brand-cattolica/active-auto/dip-aggiuntivo-ed-072023.ashx?la=it-it&rev=b81a669b0bd24c529d89283f0088c943&hash=211C5C32F96A817EBF4D3CDF067CE5D4",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch: i documenti Cattolica piu' recenti stanno su cdn.generali.it sotto /prodotti-brand-cattolica/ perche' Cattolica e' marchio di Generali Italia. Mod. DIP+atv ed. 07/2023. E' un handler .ashx che restituisce il PDF: non ha estensione .pdf nell'URL."
+        },
+        {
+          "ramo": "casa",
+          "prodotto": "Active Protezione - Modulo CASA",
+          "tipo": "set_informativo",
+          "url": "https://cdn.generali.it/-/media/generali_b2c/documenti-correlati/prodotti-brand-cattolica/active-protezione/set-informativo-active-protezione-modulo-casa.ashx",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cdn.generali.it, percorso prodotti-brand-cattolica. Ed. 28/06/2025: contiene DIP Modulo Casa, DIP aggiuntivo Modulo Casa e Condizioni. E' il prodotto che ha sostituito Active Casa&Persona."
+        },
+        {
+          "ramo": "salute",
+          "prodotto": "Active Protezione - Modulo Salute e Benessere",
+          "tipo": "set_informativo",
+          "url": "https://cdn.generali.it/-/media/generali_b2c/documenti-correlati/prodotti-brand-cattolica/active-protezione/set-informativo-active-protezione--modulo-salute-e-benessere.ashx",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cdn.generali.it, percorso prodotti-brand-cattolica. Set ed. 07/02/2026, formule Starbene Tutti Compresi e Benessere. Nel nome file ci sono due trattini prima di 'modulo', sono corretti."
+        },
+        {
+          "ramo": "vita",
+          "prodotto": "Active Vita - DIP aggiuntivo",
+          "tipo": "dip_aggiuntivo",
+          "url": "https://www.cattolica.it/documents/20121/145751/ACTIVE+VITA+-+Dip+Aggiuntivo+ed.+06.2022.pdf/fc61b43d-1ef1-9ecb-85ad-8f137655fd55?version=1.0&t=1654846503327",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cattolica.it. DIP aggiuntivo multirischi ed. 10/06/2022, 18 pagine. Edizione datata: da verificare prima di metterla davanti a un cliente."
+        },
+        {
+          "ramo": "rc",
+          "prodotto": "Cattolica&Attivita Professionale - Professione tecnica",
+          "tipo": "set_informativo",
+          "url": "https://www.cattolica.it/documents/20121/805401/Set+informativo+Cattolica&Attivit%C3%A0+Professionale+-+Professione+tecnica+ed.+02.2023.pdf/82b0c3d1-a5ef-8a7b-66bd-e00181af01cc?version=1.0&t=1683269665550",
+          "stato": "trovato",
+          "trovato_il": "2026-10-08",
+          "come_trovato": "WebSearch su cattolica.it. Ed. 02/2023, R.C. professionale per tecnici. L'URL contiene una & non codificata nel nome file."
+        }
+      ]
     }
   ],
   "_domini_da_cui_si_prende": [
-    "dallbogg.it",
-    "dallbogg.com",
-    "www.dallbogg.com",
-    "cdn.groupama.it",
-    "www.sara.it",
-    "www.axa.it",
-    "youquote.hdia.it",
     "areaclienti.hdiassicurazioni.it",
-    "www.italiana.it",
+    "assets.europassistance.it",
+    "bnl.it",
+    "canegatto.conte.it",
+    "cdn.generali.it",
+    "cdn.groupama.it",
+    "dallbogg.com",
+    "dallbogg.it",
+    "genertel.it",
+    "intermediari.conte.it",
+    "intesasanpaolorbmsalute.com",
+    "sara.it",
+    "setinformativi.bnpparibascardif.it",
+    "static.credit-agricole.it",
+    "static.sitewww.arcassicura.it",
+    "veraassicurazioni.it",
+    "www.adir.it",
     "www.allianz.it",
-    "www.nobis.it"
+    "www.allianzdirect.it",
+    "www.amtrust.it",
+    "www.assimoco.it",
+    "www.axa.it",
+    "www.bene.it",
+    "www.ca-assicurazioni.it",
+    "www.ca-vita.it",
+    "www.cattolica.it",
+    "www.conte.it",
+    "www.credemassicurazioni.it",
+    "www.credemvita.it",
+    "www.dallbogg.com",
+    "www.generali.it",
+    "www.genertel.it",
+    "www.gruppoitas.it",
+    "www.helvetia.com",
+    "www.intesasanpaoloassicurazioni.com",
+    "www.intesasanpaoloinsuranceagency.it",
+    "www.intesasanpaoloprotezione.com",
+    "www.italiana.it",
+    "www.linear.it",
+    "www.media.poste.it",
+    "www.mediolanumvita.it",
+    "www.munichre.com",
+    "www.netinsurance.it",
+    "www.nobis.it",
+    "www.prima.it",
+    "www.quixa.it",
+    "www.realemutua.it",
+    "www.revoinsurance.com",
+    "www.sara.it",
+    "www.unipol.it",
+    "www.unisalute.it",
+    "www.veraassicurazioni.it",
+    "www.verti.it",
+    "www.vittoriaassicurazioni.com",
+    "www.zurich-connect.it",
+    "www.zurich.it",
+    "youquote.hdia.it"
   ],
   "_perche_un_elenco_di_domini": "Il raccoglitore scarica SOLO da questi domini. Senza il vincolo, una funzione che prende un URL qualunque e lo scarica è un proxy aperto sull'infrastruttura dell'agenzia: chiunque riuscisse a chiamarla potrebbe usarla per raggiungere qualsiasi indirizzo, e i log direbbero che è stata l'agenzia a farlo.",
   "_verificato_il": "2026-10-02",
@@ -585,5 +3158,21 @@
     "per_compagnia": "Groupama 7/7, Sara 7/7, AXA 6/6, Nobis 7/7, HDI 3/3, Italiana 2/2, Allianz 0/7, DALLBOGG 0/4",
     "allianz": "risponde 403 a Supabase: blocca il traffico dei datacenter. Dal browser dell'agenzia si scarica, e il connettore Chrome ha gia' i permessi per allianz.it. Per lei la strada e' quella, non la funzione.",
     "dallbogg": "tutti e quattro gli indirizzi consegnano HTML invece del PDF: la compagnia ha spostato i documenti e al loro posto c'e' la pagina del prodotto. Gli indirizzi vanno ritrovati."
+  },
+  "_come_e_andata_il_08_10_2026": {
+    "che_cosa": "Ricerca online dei documenti precontrattuali di tutte le compagnie e le banche che vendono prodotti assicurativi in Italia.",
+    "compagnie_prima": 10,
+    "compagnie_dopo": 56,
+    "documenti_prima": 43,
+    "documenti_dopo": 283,
+    "stati": {
+      "non_pdf": 4,
+      "verificato": 32,
+      "non_preso": 7,
+      "trovato": 240
+    },
+    "indirizzi_senza_estensione_pdf": 71,
+    "come": "Otto ricerche in parallelo, una per gruppo di compagnie, limitate al dominio ufficiale di ognuna. Niente aggregatori: un documento preso da un comparatore puo' essere vecchio o di un altro prodotto, e finirebbe davanti a un cliente.",
+    "non_scaricati": "La rete di questo ambiente e' chiusa verso i siti delle compagnie (403 al CONNECT, misurato di nuovo l'08/10/2026). Per scaricarli serve la funzione `prendi-documento` su Supabase, con l'elenco dei domini aggiornato e la chiave pubblica del progetto."
   }
 }

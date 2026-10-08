@@ -153,6 +153,33 @@ const GUASTI = [
   ['il bottone per archiviare sparisce dalla schermata Confronta', IAM,
     (s) => s.replace('      <button class="d-btn primario" type="button" onclick="cfnApri()">\n        <i class="ti ti-file-plus"></i> Metti un prodotto in archivio</button>\n', '')],
 
+  /* ── ATTACCARE A MANO UN IMPORTO (08/10/2026) ──────────────────────────────
+     Misurato su 31 documenti veri: zero massimali attribuiti su trenta su
+     trentuno. Il pezzo umano e' l'unica cosa che riempie quei campi, e questi
+     guasti sono i modi in cui riempirli diventa peggio che lasciarli vuoti. */
+  ['si attacca un importo senza che nessuno abbia scelto la garanzia', IAM,
+    (s) => s.replace("  if (!id) { alert('Scegli prima a quale garanzia va questo importo.'); return; }", '')],
+
+  ['UN IMPORTO SI ATTACCA A UNA GARANZIA NON LETTA, E SPARISCE AL SALVATAGGIO', IAM,
+    (s) => s.replace("  if (cfnStatoDi(g) === 'non_letto') {", '  if (false) {')],
+
+  ['il bottone e\' uno solo: si attacca sempre il primo importo della riga', IAM,
+    (s) => s.replace('  var tasti = importi.map(function (v, k) {', '  var tasti = importi.slice(0, 1).map(function (v, k) {')],
+
+  ['l\'importo attaccato a mano non si distingue piu\' da uno letto dalla riga', IAM,
+    (s) => s.replace("  if (!g.attribuito_a_mano || g.attribuito_a_mano.indexOf(tipo) < 0) return '';\n  return ' <span class=\"cnt-tag\"",
+      "  if (true) return '';\n  return ' <span class=\"cnt-tag\"")],
+
+  ['il tasto «togli» non toglie piu\' niente', IAM,
+    (s) => s.replace("  g[tipo] = null;\n  g.attribuito_a_mano = (g.attribuito_a_mano || []).filter(function (t) { return t !== tipo; });", '')],
+
+  ['l\'importo attaccato perde la pagina da cui viene', IAM,
+    (s) => s.replace('  if (g.pagina == null) g.pagina = x.pagina;', '')],
+
+  ['gli importi non attribuiti tornano a essere un elenco da guardare e basta', IAM,
+    (s) => s.replace('        s.importiNonAttribuiti.map(function (x, i) { return cfnImporto(x, i); }).join(\'\') +',
+      "        '<ul>' + s.importiNonAttribuiti.map(function (x) { return '<li>pag. ' + x.pagina + '</li>'; }).join('') + '</ul>' +")],
+
   /* ── il documento che esce dal browser ──────────────────────────────────── */
   ['il documento parte verso un servizio esterno', PDFT,
     (s) => s.replace("  function righeDaPezzi(pezzi) {",

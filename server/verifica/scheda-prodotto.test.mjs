@@ -562,6 +562,47 @@ prova('le legature del PDF non spezzano i nomi', () => {
     'la legatura ha fatto perdere la garanzia: ' + JSON.stringify(g(d, 'collisione_identificati')));
 });
 
+/* ── UN IMPORTO ATTACCATO A MANO SI DICHIARA (08/10/2026) ──────────────────
+   MISURATO su 31 documenti veri di sei compagnie: zero massimali attribuiti su
+   trenta documenti su trentuno. La regola dell'ancora — il nome della garanzia
+   nella stessa riga del numero — è giusta e resta; quello che mancava era il
+   pezzo umano, cioè una persona che attacca l'importo avendo davanti la frase
+   e la pagina. Ma in archivio un numero messo a mano e uno letto dalla riga
+   non valgono la stessa cosa, e devono distinguersi. */
+prova('UN IMPORTO ATTACCATO A MANO ARRIVA IN ARCHIVIO MARCATO COME TALE', () => {
+  const d = S.scheda([{ n: 1, testo: 'Prodotto: AUTO assicurazione\nSET X pag. 1 di 2' },
+    { n: 2, testo: 'Furto e Incendio\nGaranzie di base\nopera.\nSET X pag. 2 di 2' }]);
+  const gg = d.garanzie.filter((x) => x.garanzia === 'furto')[0];
+  deve(gg, 'la garanzia di prova non esiste nel vocabolario');
+
+  /* Prima: nessuna marcatura, la frase resta quella del documento. */
+  const senza = S.daArchiviare(d, ['furto']).garanzie[0];
+  deve(!/attaccato a mano/i.test(String(senza.frase || '')), 'marca a mano un importo che nessuno ha attaccato');
+
+  /* Poi: la schermata attacca, come fa `cfnAttacca`. */
+  gg.stato = 'presente'; gg.massimale = 25000; gg.pagina = 2;
+  gg.attribuito_a_mano = ['massimale'];
+  const con = S.daArchiviare(d, ['furto']).garanzie[0];
+  deve(con.massimale === 25000, 'l\'importo attaccato non arriva in archivio');
+  deve(/attaccato a mano/i.test(String(con.frase)), 'in archivio non resta scritto che è stato attaccato a mano: ' + con.frase);
+  deve(/massimale/.test(String(con.frase)), 'non dice QUALE importo è stato attaccato');
+  deve(/pagina 2/.test(String(con.frase)), 'non dice da quale pagina viene: ' + con.frase);
+});
+
+prova('UNA GARANZIA NON LETTA NON PORTA IMPORTI, E NON SI VANTA DI AVERLI', () => {
+  /* Il vincolo del database vieta i numeri su una garanzia «non letta», e
+     `daArchiviare` li toglie. Ma se la nota continuasse a dire «importo
+     attaccato a mano», l'archivio direbbe di avere un numero che non ha. */
+  const d = S.scheda([{ n: 1, testo: 'Prodotto: AUTO assicurazione\nSET X pag. 1 di 2' },
+    { n: 2, testo: 'Furto e Incendio\nGaranzie di base\nopera.\nSET X pag. 2 di 2' }]);
+  const gg = d.garanzie.filter((x) => x.garanzia === 'furto')[0];
+  gg.stato = 'non_letto'; gg.massimale = 25000; gg.attribuito_a_mano = ['massimale'];
+  const r = S.daArchiviare(d, ['furto']).garanzie[0];
+  deve(r.massimale === null, 'un importo passa su una garanzia non letta: il database lo rifiuterebbe');
+  deve(!/attaccato a mano/i.test(String(r.frase || '')),
+    'dice di portare un importo attaccato a mano che invece è stato buttato: ' + r.frase);
+});
+
 // ── esecuzione ───────────────────────────────────────────────────────────────
 let ko = 0;
 console.log('\nSCHEDA PRODOTTO — leggere un documento di compagnia');

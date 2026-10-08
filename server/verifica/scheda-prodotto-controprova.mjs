@@ -193,6 +193,19 @@ const GUASTI = [
     (s) => s.replace("    if (pagineTot > 0 && pagineDelTipo * 2 < pagineTot) return 'altro'",
       "    if (false) return 'altro'")],
 
+  /* ── L'IMPORTO ATTACCATO A MANO (08/10/2026) ──────────────────────────────
+     In archivio un numero messo da una persona e un numero letto dalla riga si
+     somigliano, ma non valgono la stessa cosa il giorno in cui qualcuno li
+     ricontrolla. */
+  ['un importo attaccato a mano arriva in archivio come se fosse letto dal documento', SP,
+    (s) => s.replace("          frase: provaDellImporto(g, nonLetto)", "          frase: g.frase || (nonLetto ? g.perche : null)")],
+
+  ['la nota dice «attaccato a mano» anche quando l\'importo e\' stato buttato', SP,
+    (s) => s.replace("    if (nonLetto || !mano || !mano.length) return base;", "    if (!mano || !mano.length) return base;")],
+
+  ['non si dice piu\' da quale pagina viene l\'importo attaccato', SP,
+    (s) => s.replace("') dalla pagina '", "')'")],
+
   /* C'era un guasto in più qui: «le pagine di un fascicolo si sommano invece
      di contarsi», che toglieva il ramo per `pagine` come elenco. Non veniva
      preso, e aveva ragione: l'ampiezza del fascicolo (`da`–`a`) dà lo stesso

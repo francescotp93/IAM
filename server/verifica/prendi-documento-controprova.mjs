@@ -45,8 +45,13 @@ const GUASTI = [
   ['i salti non hanno piu\' un tetto', FN,
     (s) => s.replace("  throw new Error('troppi reindirizzamenti')", '  throw new Error("x")')],
 
+  /* L'08/10/2026 il controllo è passato da «il primo byte è %PDF-» a «nel
+     primo kilobyte c'è %PDF-», e questa sentinella puntava alla forma vecchia:
+     il controguasto l'ha detto («SENTINELLA PERSA») invece di contare un
+     guasto preso che non aveva rotto niente. È il motivo per cui quel
+     messaggio esiste. */
   ['non si guarda piu\' se e\' davvero un PDF', FN,
-    (s) => s.replace("    if (firma !== '%PDF-') {", '    if (false) {')],
+    (s) => s.replace("    const dove = testa.indexOf('%PDF-')", '    const dove = 0')],
 
   ['non c\'e\' piu\' un tetto al peso del file', FN,
     (s) => s.replace('const TETTO = 15 * 1024 * 1024', 'const TETT0 = 15 * 1024 * 1024\nconst TETTO = Infinity')],
@@ -113,6 +118,44 @@ const GUASTI = [
   ['un indirizzo del catalogo passa a http in chiaro', CAT,
     (s) => s.replace('"url": "https://www.sara.it/sites/default/files/2021-05/Set_Informativo_Auto_Contratto_Base.pdf"',
       '"url": "http://www.sara.it/sites/default/files/2021-05/Set_Informativo_Auto_Contratto_Base.pdf"')],
+
+  /* ── CHI CHIAMA SI PRESENTA (08/10/2026) ──────────────────────────────────
+     Il guasto che conta è il secondo: travestirsi da Chrome. È la cosa che
+     uno fa d'istinto quando un sito risponde 403, e toglie alla compagnia la
+     possibilità di sapere chi le sta scaricando i documenti. */
+  ['la presentazione sparisce dalle intestazioni della richiesta', FN,
+    (s) => s.replace("  'User-Agent': CHI_CHIAMA,\n", '')],
+
+  ['CI SI TRAVESTE DA CHROME, senza nome e senza recapito', FN,
+    (s) => s.replace(/const CHI_CHIAMA = '[^']+'/,
+      "const CHI_CHIAMA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36'")],
+
+  ['la presentazione c\'e\' ma non nomina l\'agenzia', FN,
+    (s) => s.replace(/const CHI_CHIAMA = '[^']+'/,
+      "const CHI_CHIAMA = 'Mozilla/5.0 (compatible; UnBot/1.0; +https://esempio.it)'")],
+
+  ['il recapito diventa una parola senza indirizzo', FN,
+    (s) => s.replace(/const CHI_CHIAMA = '[^']+'/,
+      "const CHI_CHIAMA = 'Mozilla/5.0 (compatible; WithusAssicurazioni/1.0)'")],
+
+  ['la richiesta vera non manda quelle intestazioni', FN,
+    (s) => s.replace('headers: INTESTAZIONI_DI_CHI_CHIEDE', "headers: { Accept: 'application/pdf,*/*' }")],
+
+  /* ── L'INTESTAZIONE PDF NEL PRIMO KILOBYTE (08/10/2026) ───────────────────
+     Due guasti opposti: troppo severo butta via un PDF vero, troppo largo fa
+     passare per documento una pagina HTML che nomina un PDF più in là. */
+  ['si pretende che «%PDF-» stia al primo byte: un PDF un po\' storto si butta', FN,
+    (s) => s.replace("const testa = new TextDecoder('latin1').decode(byte.slice(0, 1024))",
+      "const testa = new TextDecoder('latin1').decode(byte.slice(0, 5))")],
+
+  ['l\'intestazione si cerca in tutto il file: un HTML che nomina un PDF passa', FN,
+    (s) => s.replace('byte.slice(0, 1024))\n    const dove', 'byte.slice(0, 999999))\n    const dove')],
+
+  ['si cerca l\'intestazione ma non si rifiuta niente', FN,
+    (s) => s.replace('if (dove < 0) {', 'if (false) {')],
+
+  ['si torna a pretendere che l\'intestazione stia all\'inizio', FN,
+    (s) => s.replace("const dove = testa.indexOf('%PDF-')", "const dove = testa.startsWith('%PDF-') ? 0 : -1")],
 ]
 
 let sfuggiti = 0

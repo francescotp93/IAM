@@ -9283,3 +9283,20 @@ la legge, art. 6.1.b-c): dice di aver letto l'informativa.
 Aperto: l'informativa è un **estratto** degli artt. 13-14; l'indirizzo del
 titolare è «Vico Giunone 3, Paceco» nel documento privacy e «Via Cofano 76,
 Trapani» nel piede della landing — uno dei due va corretto da Francesco.
+
+#### L'informativa privacy completa (0.73.2, 09/10/2026)
+
+Il PDF ufficiale dell'agenzia è `docs/privacy/Informativa_Privacy_WithUs_PR01_rev4.1.pdf`
+(pubblico: è il documento da consegnare). Il suo testo per le persone fisiche
+è estratto una volta in `docs/privacy/informativa-pr01.txt`: `sign.js` lo
+carica all'avvio (`INFORMATIVA_COMPLETA_TESTO`) e lo serve da
+`/sign/privacy/informativa.json` e `/sign/privacy/informativa`, che la landing
+mostra **prima** della firma con il link al PDF. Se il file manca si ripiega
+sull'estratto (`INFORMATIVA_PRIVACY`), che resta anche nel documento firmato
+con il rimando al PDF. **Quando cambia la revisione del modulo** si sostituisce
+il PDF, si rigenera il `.txt` e si aggiorna il nome del file nei due posti.
+Il passo privacy chiede anche il consenso facoltativo «terzi» (finalità d).
+
+Aperto: nel PDF l'email del titolare è `amministrazione@withus.it`, nel codice
+`amministrazione@withusassicurazioni.it`; la sede è Paceco nel PDF e «Via
+Cofano 76, Trapani» nel piede della landing.

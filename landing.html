@@ -145,6 +145,10 @@
   .lp-q label{display:inline-flex;gap:6px;align-items:center;margin:0 16px 0 0;font-size:13px;color:var(--ink);font-weight:500}
   .lp-q input{width:auto}
   .lp-h{font-weight:700;font-size:15px;margin:14px 0 6px}
+  /* La casella resta a sinistra e il testo scorre normale: con display:flex
+     ogni grassetto diventava una colonna a sé e la frase si spezzava. */
+  .consent{display:block;position:relative;padding-left:28px}
+  .consent input{position:absolute;left:0;top:1px;margin:0}
 </style>
 </head>
 <body>
@@ -617,12 +621,13 @@ function ckStepPrivacy(){
   document.getElementById('ck-body').innerHTML= ckSteps(ckN('Privacy'))
     +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">Ti abbiamo inviato un\'email con un <b>codice di firma (OTP)</b> a '+esc(CK.cliente.email)+'. Inseriscilo qui sotto per firmare l\'informativa privacy a distanza.</div>'
     +'<div style="font-weight:700;font-size:13px;margin:12px 0 4px">Informativa sul trattamento dei dati personali</div>'
-    +'<div id="ck-pz-testo" style="max-height:170px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.55;color:var(--muted);background:#fafbfc">Caricamento dell\'informativa…</div>'
-    +'<div style="font-size:12px;margin:4px 0 0"><a href="'+API+'/sign/privacy/informativa" target="_blank" rel="noopener" style="color:var(--c1);font-weight:600">Apri l\'informativa in una pagina a sé</a></div>'
+    +'<div id="ck-pz-testo" style="white-space:pre-wrap;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.55;color:var(--muted);background:#fafbfc">Caricamento dell\'informativa…</div>'
+    +'<div style="font-size:12px;margin:4px 0 0"><a href="docs/privacy/Informativa_Privacy_WithUs_PR01_rev4.1.pdf" target="_blank" rel="noopener" style="color:var(--c1);font-weight:600">Scarica l\'informativa (PDF, Mod. PR01 rev 4.1)</a> · <a href="'+API+'/sign/privacy/informativa" target="_blank" rel="noopener" style="color:var(--c1);font-weight:600">apri in una pagina</a></div>'
     +'<label class="consent"><input type="checkbox" id="ck-pz-presa"> Dichiaro di aver <b>ricevuto e letto l\'informativa privacy</b> (Reg. UE 2016/679) e di averne preso visione. *</label>'
     +'<div style="font-weight:700;font-size:12.5px;margin:10px 0 2px;color:var(--muted)">Consensi facoltativi</div>'
     +'<label class="consent"><input type="checkbox" id="ck-pz-mkt-elet"> <b>Marketing elettronico</b>: acconsento a comunicazioni commerciali via email, SMS, WhatsApp.</label>'
     +'<label class="consent"><input type="checkbox" id="ck-pz-mkt-trad"> <b>Marketing tradizionale</b>: acconsento a comunicazioni commerciali via posta e telefono.</label>'
+    +'<label class="consent"><input type="checkbox" id="ck-pz-terzi"> <b>Comunicazione a terzi</b>: acconsento alla comunicazione dei miei dati a soggetti terzi per loro finalità di marketing (finalità d dell\'informativa).</label>'
     +'<label style="font-size:13px;font-weight:700;margin-top:12px;display:block">Codice di firma (OTP)</label>'
     +'<input id="ck-pz-otp" inputmode="numeric" maxlength="6" placeholder="______" style="letter-spacing:6px;text-align:center;font-size:20px;font-weight:800">'
     +'<button class="btn" id="ck-pz-go" onclick="ckPrivacyVerify()"><i class="ti ti-shield-check"></i> Firma la privacy</button>'
@@ -639,7 +644,7 @@ async function ckPrivacyVerify(){
   const otp=(document.getElementById('ck-pz-otp').value||'').trim();
   if(otp.length<6){ err.className='msg err'; err.textContent='Inserisci il codice OTP di 6 cifre.'; return; }
   const btn=document.getElementById('ck-pz-go'); btn.disabled=true; err.className='msg'; err.textContent='Firma in corso…';
-  const consensi={ presa_visione:true, marketing_elettronico:!!document.getElementById('ck-pz-mkt-elet')?.checked, marketing_tradizionale:!!document.getElementById('ck-pz-mkt-trad')?.checked };
+  const consensi={ presa_visione:true, marketing_elettronico:!!document.getElementById('ck-pz-mkt-elet')?.checked, marketing_tradizionale:!!document.getElementById('ck-pz-mkt-trad')?.checked, terzi:!!document.getElementById('ck-pz-terzi')?.checked };
   try{
     const r=await fetch(API+'/sign/privacy/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:CK.clienteId,t:CK.privacyToken,otp,consensi})}).then(x=>x.json());
     if(!r.ok) throw new Error(r.error||'Firma non riuscita.');

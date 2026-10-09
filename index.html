@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.55.0">
-<meta name="app-versione-nome" content="Trattative: la scheda con le tappe cliccabili e il riepilogo, e niente quadretti di sfondo">
+<meta name="app-versione" content="0.56.0">
+<meta name="app-versione-nome" content="Scheda cliente: la testata scura con le linguette e i dati in pastiglie, come le trattative">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -1149,14 +1149,39 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
    BARRA LATERALE sempre visibile (così non scompare quando si scorre) e
    divide il resto in TRE domande — chi è in sintesi, i suoi dati, il suo
    portafoglio — invece di sette linguette tutte allo stesso livello. */
-.clk-corpo{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:start}
-.clk-lato{position:sticky;top:0;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);
-  background:var(--w1-card);padding:14px;text-align:center}
-.clk-foto{width:88px;height:88px;border-radius:50%;background:var(--w1-sfondo);margin:0 auto 10px;
-  display:grid;place-items:center;color:var(--w1-testo3)}
-.clk-foto i{font-size:44px}
-.clk-nome{font-size:15px;font-weight:800;color:var(--w1-testo);line-height:1.3}
-.clk-eta{font-size:12px;font-weight:700;color:var(--w1-testo2);margin-bottom:12px}
+/* LA TESTATA (09/10/2026): lo stesso linguaggio delle trattative — fondo
+   scuro senza trama, il nome grande, i fatti che servono a riconoscere il
+   cliente in poche pastiglie, e le tre linguette dentro la testata invece che
+   sotto. «Stesso stile anche per la scheda cliente» — Francesco. */
+.clk-kit{--clk-ink:#0c1a2a;--clk-ink2:#14304a;--clk-chiaro:#e8eef6;--clk-chiaro2:#9fb3c8;
+  --clk-blu:#2563eb;--clk-blu-bg:#eef3ff;--clk-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.modal.clk-box{padding:0;background:var(--w1-sfondo)}
+.clk-hero{color:var(--clk-chiaro);padding:18px 22px 14px;background:
+  radial-gradient(120% 160% at 100% 0%,rgba(37,99,235,.35),transparent 55%),
+  linear-gradient(135deg,var(--clk-ink),var(--clk-ink2))}
+.clk-hero-su{display:flex;gap:14px;align-items:flex-start}
+.clk-av{flex:none;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
+  font-family:var(--clk-mono);font-size:17px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,#3b82f6,#1d4ed8);box-shadow:0 0 0 3px rgba(96,165,250,.22)}
+.clk-hero-t{flex:1;min-width:0}
+.clk-occhiello{font-family:var(--clk-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--clk-chiaro2)}
+.clk-titolo{font-size:22px;font-weight:800;color:var(--clk-chiaro);margin-top:3px;line-height:1.2;overflow-wrap:anywhere}
+.clk-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.clk-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;
+  border:1px solid rgba(148,178,214,.25);background:rgba(255,255,255,.05);
+  font-size:11.5px;font-weight:600;color:var(--clk-chiaro)}
+.clk-chip i{font-size:13px;color:var(--clk-chiaro2)}
+.clk-chip-mono{font-family:var(--clk-mono);letter-spacing:.02em}
+.clk-chip-lead{background:#f86200;border-color:#f86200;color:#fff;font-weight:800}
+.clk-chip-lead i{color:#fff}
+.clk-chiudi{flex:none;width:36px;height:36px;border-radius:10px;border:1px solid rgba(148,178,214,.25);
+  background:rgba(255,255,255,.04);color:var(--clk-chiaro);cursor:pointer;font-size:17px;display:grid;place-items:center}
+.clk-chiudi:hover{background:rgba(255,255,255,.1)}
+.clk-chiudi:focus-visible,.clk-tab:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
+.clk-corpo{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:start;padding:16px 18px 20px}
+.clk-lato{position:sticky;top:12px;border:1px solid var(--w1-bordo);border-radius:12px;
+  background:var(--w1-card);padding:14px;text-align:left;box-shadow:var(--w1-ombra)}
+.clk-eta{font-size:12px;font-weight:700;color:var(--w1-testo2);margin-bottom:12px;text-align:left}
 .clk-dati{text-align:left;display:flex;flex-direction:column;gap:7px;
   border-top:1px solid var(--w1-bordo2);padding-top:11px}
 .clk-d{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--w1-testo);
@@ -1168,7 +1193,7 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .clk-op-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:9px 11px;border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);
   background:var(--w1-sfondo);font:inherit;font-size:13px;font-weight:700;color:var(--w1-testo);cursor:pointer}
-.clk-op-btn:hover{border-color:var(--w1-verde);color:var(--w1-verde-scuro)}
+.clk-op-btn:hover{border-color:var(--clk-blu);color:var(--clk-blu)}
 .clk-op-menu{display:none;margin-top:8px;text-align:left;border:1px solid var(--w1-bordo);
   border-radius:var(--w1-raggio);background:var(--w1-card);overflow:hidden}
 .clk-op-menu.clk-aperto{display:block}
@@ -1176,12 +1201,16 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
   color:var(--w1-testo3);padding:8px 11px 3px}
 .clk-op-v{display:block;width:100%;text-align:left;padding:7px 11px;border:0;background:none;
   font:inherit;font-size:12.5px;color:var(--w1-testo);cursor:pointer}
-.clk-op-v:hover{background:var(--w1-verde-tenue);color:var(--w1-verde-scuro)}
-/* Le tre linguette grandi. */
-.clk-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:14px}
-.clk-tab{padding:11px 10px;border:0;background:var(--w1-bordo);color:var(--w1-testo2);
-  font:inherit;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
-.clk-tab.clk-on{background:var(--w1-verde);color:#fff}
+.clk-op-v:hover{background:var(--clk-blu-bg);color:var(--clk-blu)}
+/* Le tre linguette, dentro la testata scura. */
+.clk-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:16px}
+.clk-tab{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 8px;border-radius:10px;
+  border:1px solid rgba(148,178,214,.22);background:rgba(255,255,255,.03);color:var(--clk-chiaro2);
+  font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:background .15s,border-color .15s,color .15s}
+.clk-tab i{font-size:15px}
+.clk-tab:hover{border-color:rgba(148,178,214,.5);color:var(--clk-chiaro)}
+.clk-tab.clk-on{color:#fff;border-color:#60a5fa;background:var(--clk-blu);box-shadow:0 0 0 3px rgba(96,165,250,.22)}
 .clk-pane{display:none}
 .clk-pane.clk-on{display:block}
 /* La sintesi: ciambella a sinistra, ultimi eventi a destra. */
@@ -1200,10 +1229,9 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .clk-e b{display:block;font-size:11px;color:var(--w1-testo2);font-weight:700;margin-bottom:2px}
 /* Le schede del riepilogo: situazione, consensi, gruppi, documenti. */
 .clk-schede{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
-.clk-s{border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);background:var(--w1-card);overflow:hidden}
-.clk-s > h4{margin:0;padding:8px 12px;font-size:11px;font-weight:800;text-transform:uppercase;
-  letter-spacing:.04em;color:var(--w1-testo2);background:var(--w1-sfondo);border-bottom:1px solid var(--w1-bordo)}
-.clk-s-c{padding:10px 12px;font-size:12.5px;line-height:1.6}
+.clk-s{border:1px solid var(--w1-bordo);border-radius:12px;background:var(--w1-card);overflow:hidden;box-shadow:var(--w1-ombra)}
+.clk-s > h4{margin:0;padding:10px 14px 4px;font-size:13px;font-weight:800;color:var(--w1-testo);background:none;border:0}
+.clk-s-c{padding:6px 14px 12px;font-size:12.5px;line-height:1.6}
 .clk-kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
 .clk-kv b{font-variant-numeric:tabular-nums}
 .clk-si{color:var(--w1-verde-scuro)}
@@ -1220,9 +1248,9 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .clk-per td:first-child{text-align:left;font-weight:700}
 /* Le schede polizza del portafoglio. */
 .clk-pol{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:12px}
-.clk-p{border:1px solid var(--w1-bordo);border-radius:var(--w1-raggio);background:var(--w1-card);
-  padding:12px;cursor:pointer}
-.clk-p:hover{border-color:var(--w1-verde)}
+.clk-p{border:1px solid var(--w1-bordo);border-radius:12px;background:var(--w1-card);
+  padding:12px;cursor:pointer;box-shadow:var(--w1-ombra);transition:border-color .15s,transform .15s}
+.clk-p:hover{border-color:var(--clk-blu);transform:translateY(-1px)}
 .clk-p-num{font-family:ui-monospace,monospace;font-size:14px;font-weight:800;color:var(--w1-testo)}
 .clk-p-pro{font-size:12px;color:var(--w1-testo2);margin-bottom:7px}
 .clk-p-g{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:11.5px;margin-top:8px}
@@ -1289,8 +1317,11 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .clk-fascia-dubbio{background:#fff8ec;color:#b06a00;border:1px solid #f6dfb8}
 .gruppi-add-btn{white-space:nowrap}
 @media(max-width:860px){.clk-corpo{grid-template-columns:1fr}.clk-lato{position:static}}
+@media(max-width:640px){.clk-hero{padding:14px 14px 12px}.clk-titolo{font-size:18px}
+  .clk-av{width:42px;height:42px;font-size:14px}.clk-corpo{padding:12px}
+  .clk-tab{flex-direction:column;gap:2px;font-size:11px;white-space:normal;text-align:center}}
 @media(max-width:640px){.clk-testa{grid-template-columns:1fr 1fr}.clk-r.clk-largo{grid-column:span 2}
-  .fc-bar{grid-template-columns:1fr 1fr}.clk-tabs{grid-template-columns:1fr}
+  .fc-bar{grid-template-columns:1fr 1fr}
   .clk-pol{grid-template-columns:1fr}}
 @media(max-width:640px){.pol-due{grid-template-columns:1fr}.pol-testa{gap:6px 12px}}
 @media(max-width:640px){.pnu-griglia{grid-template-columns:1fr}.pnu-kit{padding:12px}
@@ -30003,19 +30034,31 @@ async function apriAnagrafica(id) {
   </div>`;
   const html = `
   <div class="modal-ov" id="anag-overlay" onclick="if(event.target.id==='anag-overlay')this.remove()">
-    <div class="modal clk-kit" style="width:980px;max-width:96vw;max-height:90vh;overflow:auto">
-      <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">
-        <span>${esc(a.nominativo)}${(!isG && window.Anagrafica && Anagrafica.compleannoOggi(a.data_nascita)) ? ' <span class="sc-torta" title="Oggi compie gli anni"><i class="ti ti-cake"></i></span>' : ''} <span class="${isG ? 'badge-admin' : 'badge-collab'}" style="margin-left:8px;font-size:11px">${isG ? 'Giuridica' : 'Fisica'}</span>${awIsLead(a) ? ` <span style="margin-left:6px;font-size:11px;font-weight:800;background:#f86200;color:#fff;border-radius:6px;padding:2px 8px;letter-spacing:.3px"><i class="ti ti-flag-2" style="vertical-align:-1px"></i> LEAD</span>` : ''}</span>
-        <button class="ghost" style="padding:6px 10px" onclick="document.getElementById('anag-overlay').remove()"><i class="ti ti-x"></i></button>
-      </div>
+    <div class="modal clk-kit clk-box" style="width:980px;max-width:96vw;max-height:90vh;overflow:auto">
+      <header class="clk-hero">
+        <div class="clk-hero-su">
+          <div class="clk-av" aria-hidden="true">${esc(clkIniziali(a.nominativo))}</div>
+          <div class="clk-hero-t">
+            <div class="clk-occhiello">Scheda cliente</div>
+            <div class="clk-titolo">${esc(a.nominativo)}${(!isG && window.Anagrafica && Anagrafica.compleannoOggi(a.data_nascita)) ? ' <span class="sc-torta" title="Oggi compie gli anni"><i class="ti ti-cake"></i></span>' : ''}</div>
+            <div class="clk-chips">
+              <span class="clk-chip">${isG ? '<i class="ti ti-building"></i> Persona giuridica' : '<i class="ti ti-user"></i> Persona fisica'}</span>
+              ${awIsLead(a) ? '<span class="clk-chip clk-chip-lead"><i class="ti ti-flag-2"></i> Lead</span>' : ''}
+              ${(a.codice_fiscale || a.partita_iva) ? `<span class="clk-chip clk-chip-mono">${esc(a.codice_fiscale || a.partita_iva)}</span>` : ''}
+              ${a.comune ? `<span class="clk-chip"><i class="ti ti-map-pin"></i> ${esc(a.comune)}${a.provincia ? ' (' + esc(a.provincia) + ')' : ''}</span>` : ''}
+            </div>
+          </div>
+          <button class="clk-chiudi" title="Chiudi" aria-label="Chiudi" onclick="document.getElementById('anag-overlay').remove()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="clk-tabs" role="tablist">
+          <button class="clk-tab clk-on" id="clk-t-sintesi" onclick="clkTab('sintesi')"><i class="ti ti-layout-dashboard"></i> Sintesi cliente</button>
+          <button class="clk-tab" id="clk-t-anagrafica" onclick="clkTab('anagrafica')"><i class="ti ti-id"></i> Dettaglio anagrafica</button>
+          <button class="clk-tab" id="clk-t-portafoglio" onclick="clkTab('portafoglio')"><i class="ti ti-briefcase"></i> Portafoglio</button>
+        </div>
+      </header>
       <div class="clk-corpo">
       ${clkLato(a, isG)}
       <div>
-      <div class="clk-tabs">
-        <button class="clk-tab clk-on" id="clk-t-sintesi" onclick="clkTab('sintesi')">Sintesi cliente</button>
-        <button class="clk-tab" id="clk-t-anagrafica" onclick="clkTab('anagrafica')">Dettaglio anagrafica</button>
-        <button class="clk-tab" id="clk-t-portafoglio" onclick="clkTab('portafoglio')">Portafoglio</button>
-      </div>
       <div class="clk-pane clk-on" id="clk-p-sintesi">
         <div class="clk-due">
           <div><div class="clk-tit">Composizione portafoglio</div>
@@ -30169,8 +30212,6 @@ function clkLato(a, isG) {
      fra le schede, chi le cerca non sa in quale linguetta guardare. */
   const voce = (t, fn) => `<button class="clk-op-v" onclick="${fn}">${t}</button>`;
   return `<div class="clk-lato">
-    <div class="clk-foto"><i class="ti ${isG ? 'ti-building' : 'ti-user'}"></i></div>
-    <div class="clk-nome">${esc(a.nominativo || '—')}</div>
     <!-- LA FASCIA DELLO STATO (26/09/2026). La riempie clkStato quando le
          polizze sono arrivate: prima di allora non si sa, e uno spazio vuoto è
          meglio di un «Prospect» scritto su un cliente con dieci polizze solo
@@ -30210,6 +30251,13 @@ function clkLato(a, isG) {
       </div>
     </div>
   </div>`;
+}
+
+/* Le iniziali per il tondo della testata: le prime lettere delle prime due
+   parole. Un nome vuoto dà un trattino, non un tondo vuoto. */
+function clkIniziali(n) {
+  const p = String(n || '').trim().split(/\s+/).filter(Boolean);
+  return p.length ? p.slice(0, 2).map(w => w[0]).join('').toUpperCase() : '—';
 }
 
 function clkOperazioni() {

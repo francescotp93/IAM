@@ -1,8 +1,18 @@
 {
-  "versione": "0.55.0",
-  "nome": "Trattative: la scheda con le tappe cliccabili e il riepilogo, e niente quadretti di sfondo",
-  "data": "2026-10-08",
+  "versione": "0.56.0",
+  "nome": "Scheda cliente: la testata scura con le linguette e i dati in pastiglie, come le trattative",
+  "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.56.0",
+      "data": "2026-10-09",
+      "nome": "Scheda cliente: la testata scura con le linguette e i dati in pastiglie, come le trattative",
+      "voci": [
+        "Scheda cliente: in alto la testata scura con le iniziali, il nome, il tipo di persona, il codice fiscale e il comune, sempre visibili",
+        "Scheda cliente: le tre linguette (Sintesi, Dettaglio anagrafica, Portafoglio) stanno nella testata, come nella scheda della trattativa",
+        "Scheda cliente: riquadri con angoli e ombre uguali alle trattative, e su telefono la testata si stringe senza far scorrere la pagina di lato"
+      ]
+    },
     {
       "v": "0.55.0",
       "data": "2026-10-08",

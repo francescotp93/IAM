@@ -8916,3 +8916,14 @@ passava per riuscito (§47, BUG 1). E la classe `d-inp` usata dal catalogo
 **Lo strumento `apply_migration` si è bloccato di nuovo** (60 s, niente
 applicato) su un blocco con `create trigger`: la stessa migrazione è passata in
 tre pezzi con `execute_sql`.
+
+### La scheda cliente con lo stesso linguaggio (0.56.0, 09/10/2026)
+
+La finestra di `apriAnagrafica` ha la testata scura delle trattative
+(`.clk-hero`): iniziali (`clkIniziali`), nome, pastiglie con tipo di persona,
+codice fiscale o partita IVA e comune, e le **tre linguette dentro la
+testata**. Nome e fotografia sono usciti dalla barra laterale perché adesso
+stanno sopra: il nome scritto due volte nella stessa finestra è il doppione
+che §65 vieta. Le classi sono tutte `clk-*` (in IAM non ce n'è nessuna, quindi
+`fusione-collisioni` non cambia), e i colori sono variabili su `.clk-kit`, mai
+su `:root` (§31). Niente quadretti di sfondo, come chiesto per le trattative.

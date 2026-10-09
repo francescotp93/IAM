@@ -1,8 +1,18 @@
 {
-  "versione": "0.59.0",
-  "nome": "Titoli: la testata scura con le fasce dentro, come lo scadenzario",
+  "versione": "0.60.0",
+  "nome": "Portafoglio: la testata scura con Nuova polizza e Foglio cassa, come titoli e scadenzario",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.60.0",
+      "data": "2026-10-09",
+      "nome": "Portafoglio: la testata scura con Nuova polizza e Foglio cassa, come titoli e scadenzario",
+      "voci": [
+        "Portafoglio: in alto la testata scura, con i tasti Nuova polizza e Foglio cassa e il numero delle polizze che stai guardando",
+        "Portafoglio: se filtri per date la testata dice su quale data e in che periodo, e se il portafoglio è stato caricato solo in parte lo dice in giallo",
+        "Portafoglio: filtri e tabella in schede bianche, con i totali in fondo alla tabella; su telefono i due tasti occupano tutta la riga"
+      ]
+    },
     {
       "v": "0.59.0",
       "data": "2026-10-09",

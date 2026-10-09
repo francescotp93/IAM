@@ -1,8 +1,18 @@
 {
-  "versione": "0.57.0",
-  "nome": "Foglio cassa: la testata scura col periodo e i totali, come le trattative e la scheda cliente",
+  "versione": "0.58.0",
+  "nome": "Scadenzario: la testata scura con le fasce dentro, come le trattative e il foglio cassa",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.58.0",
+      "data": "2026-10-09",
+      "nome": "Scadenzario: la testata scura con le fasce dentro, come le trattative e il foglio cassa",
+      "voci": [
+        "Scadenzario: in alto la testata scura, con la data di oggi, i 15 giorni di proroga e il numero delle scadenze che stai guardando sempre in vista",
+        "Scadenzario: le quattro fasce (fuori i 15 giorni, nei 15 giorni, vicine, più avanti) e il tasto «Solo non rinnovate» stanno nella testata, e si cliccano come prima",
+        "Scadenzario: polizze sospese, filtri e tabella in schede bianche, con i totali in fondo alla tabella; su telefono niente scorrimento di lato"
+      ]
+    },
     {
       "v": "0.57.0",
       "data": "2026-10-09",

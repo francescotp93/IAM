@@ -8962,3 +8962,13 @@ totali dentro la testata. `#fc-summary` sta lì con i suoi avvisi, che sul fondo
 scuro hanno regole loro (`.fc-hero .fc-avv`) e restano incorniciati: la prova
 del 22/09 lo misura. Filtri, tabella e quadrature (`.fc-quadri`) sono schede
 bianche. Tutto sotto `.fc-kit`, che adesso avvolge la pagina intera.
+
+### Lo scadenzario con lo stesso linguaggio (0.58.0, 09/10/2026)
+
+`#page-scadenzario` ha la testata scura (`.rin-hero`) con oggi, la proroga
+(`rinM().PROROGA`, non un 15 scritto a mano) e il numero delle scadenze in
+pastiglie (`rinRenderChips`, chiamata da `rinRenderFasce`; quando la lettura
+cade si svuota con le fasce: un «0 scadenze» su un guasto sarebbe falso). Le
+fasce e «Solo non rinnovate» stanno nella testata, con gli stessi id. Le
+regole di `.rin-fascia` valgono anche per i Titoli (`#tit-fasce`): il vetro si
+applica **solo** dentro `.rin-hero`, mai alla classe nuda.

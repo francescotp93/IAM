@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.57.0">
-<meta name="app-versione-nome" content="Foglio cassa: la testata scura col periodo e i totali, come le trattative e la scheda cliente">
+<meta name="app-versione" content="0.58.0">
+<meta name="app-versione-nome" content="Scadenzario: la testata scura con le fasce dentro, come le trattative e il foglio cassa">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -822,6 +822,71 @@ button{font-family:inherit}
 .rin-fascia.avv{border-left-color:#e07b00}.rin-fascia.avv b{color:#c25a00}
 .rin-fascia.ok{border-left-color:#2a7fd5}.rin-fascia.ok b{color:#1f5fa8}
 .rin-gg{font-size:11px;color:var(--muted);margin-top:2px}
+/* ── LO SCADENZARIO CON LO STESSO LINGUAGGIO DELLE TRATTATIVE (09/10/2026)
+   «Stesso stile anche per lo scadenzario» — Francesco. Testata scura con le
+   quattro fasce dentro, in caselle di vetro; filtri e tabella in schede
+   bianche. Le regole delle fasce valgono anche per i Titoli (`#tit-fasce`),
+   quindi qui si cambiano SOLO dentro la testata. Colori come variabili sul
+   contenitore, mai su :root (§31). */
+.rin-kit{--rin-ink:#0c1a2a;--rin-ink2:#14304a;--rin-chiaro:#e8eef6;--rin-chiaro2:#9fb3c8;
+  --rin-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.rin-hero{color:var(--rin-chiaro);padding:18px 22px 16px;border-radius:14px;
+  box-shadow:0 10px 30px -12px rgba(12,26,42,.55);background:
+  radial-gradient(120% 160% at 100% 0%,rgba(37,99,235,.35),transparent 55%),
+  linear-gradient(135deg,var(--rin-ink),var(--rin-ink2))}
+.rin-hero-su{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.rin-hero-ic{flex:none;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
+  font-size:24px;color:#fff;background:linear-gradient(135deg,#3b82f6,#1d4ed8);
+  box-shadow:0 0 0 3px rgba(96,165,250,.22)}
+.rin-hero-t{flex:1;min-width:220px}
+.rin-occhiello{font-family:var(--rin-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--rin-chiaro2)}
+.rin-titolo{font-size:22px;font-weight:800;color:var(--rin-chiaro);margin:3px 0 0;line-height:1.2}
+.rin-sotto{font-size:12.5px;color:var(--rin-chiaro2);margin-top:4px;line-height:1.5;max-width:640px}
+.rin-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.rin-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;
+  border:1px solid rgba(148,178,214,.25);background:rgba(255,255,255,.05);
+  font-size:11.5px;font-weight:600;color:var(--rin-chiaro);font-variant-numeric:tabular-nums}
+.rin-pill i{font-size:13px;color:var(--rin-chiaro2)}
+.rin-pill-n{font-family:var(--rin-mono)}
+.rin-hero-az{display:flex;gap:6px;flex-wrap:wrap}
+.rin-hb{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:10px;
+  border:1px solid rgba(148,178,214,.25);background:rgba(255,255,255,.05);color:var(--rin-chiaro);
+  font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.rin-hb:hover{background:rgba(255,255,255,.12);border-color:rgba(148,178,214,.5)}
+.rin-hb:focus-visible,.rin-hero .rin-fascia:focus-visible,.rin-hero .rin-chip:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
+/* Le quattro fasce, dentro la testata: vetro, con la striscia del colore a
+   sinistra come prima — rosso scoperte, arancio in proroga, blu vicine. */
+.rin-hero .rin-fasce{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:16px 0 0}
+.rin-hero .rin-fascia{background:rgba(255,255,255,.05);border:1px solid rgba(148,178,214,.2);
+  border-left:4px solid rgba(148,178,214,.45);border-radius:12px;box-shadow:none;min-width:0}
+.rin-hero .rin-fascia:hover{background:rgba(255,255,255,.1);box-shadow:none}
+.rin-hero .rin-fascia b{color:#fff}
+.rin-hero .rin-fascia span,.rin-hero .rin-fascia .rin-card-sub{color:var(--rin-chiaro2)}
+.rin-hero .rin-fascia.urg{border-left-color:#f87171}.rin-hero .rin-fascia.urg b{color:#fca5a5}
+.rin-hero .rin-fascia.avv{border-left-color:#fb923c}.rin-hero .rin-fascia.avv b{color:#fdba74}
+.rin-hero .rin-fascia.ok{border-left-color:#60a5fa}.rin-hero .rin-fascia.ok b{color:#93c5fd}
+.rin-hero .rin-fascia.att{background:rgba(37,99,235,.28);border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.22)}
+.rin-hero .rin-extra{margin:12px 0 0}
+.rin-hero .rin-chip{background:rgba(255,255,255,.06);border-color:rgba(248,113,113,.5);color:var(--rin-chiaro)}
+.rin-hero .rin-chip b{color:#fca5a5}
+.rin-hero .rin-chip:hover{background:rgba(255,255,255,.12);border-color:#f87171}
+.rin-hero .rin-chip.att{background:rgba(239,68,68,.22);border-color:#f87171;color:#fff}
+.rin-hero .rin-chip.att b{color:#fff}
+.rin-hero .rin-chip-nota{color:var(--rin-chiaro2)}
+.rin-hero .rin-chip-nota b{color:var(--rin-chiaro)}
+.rin-hero .rin-avv{color:#fdba74}
+.rin-corpo{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.rin-corpo > div:empty{display:none}
+.rin-filtri,.rin-tab{background:#fff;border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 1px 2px rgba(12,26,42,.06)}
+.rin-filtri{padding:10px 12px}
+.rin-filtri .pf-top{margin:0}
+.rin-tab{overflow:hidden}
+.rin-tab .table-wrap{margin:0;border:0;border-radius:0}
+.rin-tab .pf-totali{margin:0;border:0;border-top:1px solid var(--line);border-radius:0}
+@media(max-width:640px){.rin-hero{padding:14px;border-radius:12px}.rin-titolo{font-size:18px}
+  .rin-hero-ic{width:42px;height:42px;font-size:20px}.rin-hero-az{width:100%}
+  .rin-hb{flex:1;justify-content:center}.rin-hero .rin-fasce{grid-template-columns:1fr 1fr}}
 /* Il filtro del rinnovo sta in una riga sua, sotto le fasce: e' un'altra
    domanda, e mescolarlo alle quattro fasce romperebbe la regola per cui
    quelle non si sovrappongono. Accanto, sempre, quante NON sono in quel
@@ -3827,17 +3892,31 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
     </div>
 
     <div class="page" id="page-scadenzario">
-      <div class="page-title">Scadenzario e rinnovi</div>
-      <div class="page-sub">Non un elenco di date: per ogni polizza si vede se il rinnovo è già stato lavorato</div>
-
+      <div class="rin-kit">
+      <header class="rin-hero">
+        <div class="rin-hero-su">
+          <div class="rin-hero-ic" aria-hidden="true"><i class="ti ti-calendar-due"></i></div>
+          <div class="rin-hero-t">
+            <div class="rin-occhiello">Portafoglio · Rinnovi</div>
+            <h1 class="rin-titolo">Scadenzario e rinnovi</h1>
+            <div class="rin-sotto">Non un elenco di date: per ogni polizza si vede se il rinnovo è già stato lavorato, e chi è ancora coperto dalla proroga.</div>
+            <!-- Oggi, la proroga e quante scadenze stai guardando: le tre cose
+                 da cui dipende ogni numero qui sotto. -->
+            <div class="rin-pills" id="rin-chips"></div>
+          </div>
+          <div class="rin-hero-az">
+            <button class="rin-hb" onclick="rinExportExcel()" title="Scarica l'elenco filtrato"><i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
+          </div>
+        </div>
+        <div class="rin-fasce" id="rin-fasce"></div>
+        <div class="rin-extra" id="rin-extra"></div>
+      </header>
+      <div class="rin-corpo">
       <!-- Blocco 3 · punto 3: le sospese in cima, e non in mezzo alle altre.
            Una polizza sospesa non ha la scadenza che dice il contratto: nello
            scadenzario normale comparirebbe con una data falsa. -->
       <div id="rin-sospese"></div>
-
-      <div class="rin-fasce" id="rin-fasce"></div>
-      <div class="rin-extra" id="rin-extra"></div>
-
+      <div class="rin-filtri">
       <div class="pf-top">
         <div class="pf-filters">
           <div class="pf-f"><label>Scadenza dal</label>
@@ -3870,10 +3949,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             </select></div>
           <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="rinRender()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="rinAzzera()">Azzera filtri</button></div>
         </div>
-        <button class="pf-exp" onclick="rinExportExcel()" title="Scarica l'elenco filtrato">
-          <i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
+      </div>
       </div>
 
+      <div class="rin-tab">
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr>
@@ -3884,6 +3963,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         </table>
       </div>
       <div class="pf-totali" id="rin-totali"></div>
+      </div>
+      </div>
+      </div>
     </div>
 
     <div class="page" id="page-storico">
@@ -22316,10 +22398,26 @@ function rinFiltra() {
   return rinOrdina(base);
 }
 
+/* Le pastiglie della testata: oggi, la proroga e quante scadenze si stanno
+   guardando. Le fasce si contano rispetto a OGGI e alla PROROGA: scritti in
+   alto, i numeri delle card si leggono sapendo da dove vengono. */
+function rinRenderChips() {
+  var box = document.getElementById('rin-chips');
+  var M = rinM();
+  if (!box || !M) return;
+  var oggi = new Date();
+  var n = RIN_VISTA.length;
+  box.innerHTML = '<span class="rin-pill"><i class="ti ti-calendar"></i> oggi '
+    + oggi.toLocaleDateString('it-IT') + '</span>'
+    + '<span class="rin-pill"><i class="ti ti-shield-half"></i> proroga ' + M.PROROGA + ' giorni</span>'
+    + '<span class="rin-pill rin-pill-n"><i class="ti ti-list"></i> ' + n + (n === 1 ? ' scadenza' : ' scadenze') + '</span>';
+}
+
 function rinRenderFasce() {
   var box = document.getElementById('rin-fasce');
   var M = rinM();
   if (!box || !M) return;
+  rinRenderChips();
   var base = rinFiltraSenzaFascia(true);
   var c = M.conteggi(base);
   box.innerHTML = M.FASCE.map(function (f) {
@@ -22639,7 +22737,7 @@ async function loadScadenzario() {
     RIN_RATE_SOSPESE = 0; RIN_IMPORTO_SOSPESO = 0;
     body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Scadenzario non disponibile.<br><small>'
       + esc(RIN_LETTURA_KO) + '</small></div></td></tr>';
-    ['rin-fasce', 'rin-extra'].forEach(function (id) {
+    ['rin-fasce', 'rin-extra', 'rin-chips'].forEach(function (id) {
       var b = document.getElementById(id); if (b) b.innerHTML = '';
     });
     var t2 = document.getElementById('rin-totali');

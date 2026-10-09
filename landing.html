@@ -152,6 +152,16 @@
   .link-ric{display:block;margin:8px auto 0;background:none;border:none;color:var(--c1);font-weight:600;font-size:13px;cursor:pointer;text-decoration:underline}
   .lp-check{margin-top:4px} .lp-check li{border-top:none;padding:4px 0;font-weight:500}
   .lp-ok{color:var(--c1);font-weight:700;width:18px;flex-shrink:0}
+  .lp-gancio,.lp-rip{font-family:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif}
+  .lp-gancio{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin:12px 0 10px;padding:16px 14px;border:1px dashed var(--line);border-radius:12px;background:#f7f8fa}
+  .lp-gancio .q{font-weight:700;font-size:17px;line-height:1.3;color:var(--ink);max-width:26ch;text-wrap:balance}
+  .lp-gancio .s{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.45;max-width:34ch;text-wrap:balance}
+  .lp-prezzo{margin:12px 0 10px;padding:14px 14px 12px;border:1px solid var(--line);border-radius:12px;background:#f7f8fa;font-family:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif}
+  .lp-prezzo .v{display:inline-flex;align-items:flex-start;justify-content:center;letter-spacing:-1px}
+  .lp-prezzo .lp-eur{font-size:.5em;line-height:1;margin:.18em .08em 0 0;letter-spacing:0}
+  .lp-svela{animation:lpSvela .45s ease-out}
+  @keyframes lpSvela{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.lp-svela{animation:none}}
   .lp-rip{border:1px solid var(--line);border-radius:10px;padding:8px 11px;margin:8px 0;font-size:12.5px;background:#fff}
   .lp-rip .t{font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px}
   .lp-rip .r{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
@@ -214,7 +224,7 @@
     </form>
   </div>
 </section>
-<div class="foot">With Us Società Cooperativa · Sede legale: Vico Giunone 3, 91027 Paceco (TP) · Sede operativa: Via Cofano 76, 91100 Trapani · RUI A000747484 · amministrazione@withusassicurazioni.it · <a href="recesso.html" style="color:inherit;text-decoration:underline">Recesso da una polizza acquistata online</a></div>
+<div class="foot">With Us Società Cooperativa · Sede legale: Vico Giunone 3, 91027 Paceco (TP) · Sede operativa: Via Cofano 76, 91100 Trapani · RUI A000747484 · amministrazione@withusassicurazioni.it<span id="foot-recesso" hidden> · <a href="recesso.html" style="color:inherit;text-decoration:underline">Recesso da una polizza acquistata online</a></span></div>
 
 <script>
 const API = 'https://api.withusassicurazioni.it';
@@ -355,7 +365,19 @@ const fonte = params.get('fonte') || (document.referrer || 'landing');
 const P = PRODOTTI[key] || PRODOTTI.vita;
 /* Il pulsante «Recesso online» in testa alla pagina si sceglie dal Lab quando
    si crea il link (recesso=1). Il collegamento nel piede resta sempre. */
-if (params.get('recesso') === '1') { const r = document.getElementById('cta-recesso'); if (r) r.hidden = false; }
+/* Anche il collegamento nel piede segue la spunta (Francesco, 09/10/2026: «il
+   tasto del recesso spunta a priori che sia flaggato oppure no»). Con UNA
+   eccezione, ed è un obbligo: se il prodotto si compra online da questa pagina,
+   il recesso online deve essere raggiungibile (condizioni HDI art. 2.15, e
+   per tutti i prodotti venduti a distanza): lì il piede lo mostra sempre.
+   Si ricontrolla quando arriva la configurazione della vendita online. */
+function aggiornaRecesso(){
+  const spunta = params.get('recesso') === '1';
+  const r = document.getElementById('cta-recesso'); if (r) r.hidden = !spunta;
+  const f = document.getElementById('foot-recesso');
+  if (f) f.hidden = !(spunta || (typeof vdOnline === 'function' && VD && vdOnline()));
+}
+aggiornaRecesso();
 // var (non const) così i gestori onclick/onchange inline trovano le variabili
 var SS = { tipo:'attiva', liv:'base', comp:'s' };
 var QS = { opt:0, addon:false };
@@ -462,8 +484,8 @@ function renderPcard(){
    accanto al numero stesso, non in una nota: un prezzo grande e verde senza
    «indicativo» si legge come garantito. Niente frasi su imposte e detrazioni
    finché non sono verificate sul prodotto, e niente «in attesa del Set
-   Informativo» davanti al cliente: è un'informazione interna. «da 60 €» è il
-   premio minimo di polizza (RCAB_PMIN del motore). */
+   Informativo» davanti al cliente: è un'informazione interna. Prima del
+   calcolo NESSUN numero: il premio si scopre calcolandolo. */
 /* Regime fiscale: si CITA il DIP aggiuntivo HDI (Mod. DAP5821, ed. 05/2026,
    sezione «Regime fiscale»), parola per parola e con la fonte accanto, invece
    di riassumerlo (decisione di Francesco, 09/10/2026). Niente detrazione: sta
@@ -472,8 +494,19 @@ var CN_FISCALE = 'Le garanzie previste dalla presente polizza sono esenti dall�
 var CN_FISCALE_FONTE = 'DIP aggiuntivo Danni, Mod. DAP5821, ed. 05/2026 · Regime fiscale';
 function renderPcardCatnat(){
   const q=CN.q, online=!!(q&&q.vendita_online);
-  const prezzo = q ? '<div class="v">'+eur(q.prezzo)+'</div>' : '<div class="v"><span style="font-size:22px;font-weight:600">da</span> € 60</div>';
+  /* IL PREMIO SI SCOPRE CALCOLANDOLO (Francesco, 09/10/2026: «non deve essere
+     visibile così sempre fisso ma deve uscire in fase di quotazione, così da
+     suscitare interesse»). Prima del calcolo la scheda fa la domanda e non dà
+     un numero; il numero compare solo quando è quello del cliente. */
   const nota = online ? 'Premio annuo calcolato sui dati inseriti' : 'Premio indicativo, soggetto a verifica dei dati';
+  const testa = q
+    /* Centrato a occhio, non solo a misura: con «€ 234» tutto grande il segno
+       dell'euro tira lo sguardo a sinistra e il numero sembra spostato. L'euro
+       è piccolo e alzato, e il blocco sta nello stesso riquadro della domanda. */
+    ? '<div class="price-big lp-prezzo lp-svela"><div class="da" style="text-transform:uppercase;letter-spacing:.06em;font-size:11.5px">Il tuo premio</div><div class="v"><span class="lp-eur">€</span>'+Number(q.prezzo).toLocaleString('it-IT')+'</div><div class="u">all\'anno</div>'
+      + '<div style="font-size:12px;color:var(--muted);font-weight:500;margin-top:4px">'+nota+'</div></div>'
+    : '<div class="lp-gancio"><div class="q">Quanto costa proteggere la tua casa da terremoto e alluvione?</div>'
+      + '<div class="s">Inserisci il CAP e il valore di ricostruzione: il premio lo scopri in pochi secondi.</div></div>';
   const voci=['Terremoto','Alluvione, inondazione e bombe d\'acqua','Fabbricato e contenuto','Contenuto assicurato per il 20% del valore del fabbricato'];
   const consulente='<button class="pcta lp-sec" onclick="cnConsulente()"><i class="ti ti-message-circle"></i> PARLA CON UN CONSULENTE WITH US</button>';
   let cta;
@@ -482,8 +515,7 @@ function renderPcardCatnat(){
   else cta='<button class="pcta" onclick="cnRichiedi()"><i class="ti ti-file-text"></i> RICHIEDI IL PREVENTIVO</button>';
   document.getElementById('pcard').innerHTML =
     '<div class="ph">'+P.nome+'</div><div class="psub">With Us Assicurazioni</div>'
-    + '<div class="price-big"><div class="da" style="text-transform:uppercase;letter-spacing:.06em;font-size:11.5px">Stima del premio</div>'+prezzo+'<div class="u">all\'anno</div>'
-    + '<div style="font-size:12px;color:var(--muted);font-weight:500;margin-top:4px">'+nota+'</div></div>'
+    + testa
     + '<div class="lp-fisc">«'+esc(CN_FISCALE)+'»<span>'+esc(CN_FISCALE_FONTE)+'</span></div>'
     + '<ul class="incl lp-check">'+voci.map(v=>'<li><span class="lp-ok" aria-hidden="true">✓</span> '+v+'</li>').join('')+'</ul>'
     + cnRipartizione(q)
@@ -530,7 +562,7 @@ async function cnCalcola(){
   CN.calcolo=false; renderPcard();
 }
 renderPcard();
-fetch('tariffe/vendita-distanza.json',{cache:'no-store'}).then(r=>r.json()).then(c=>{ VD=c||{}; renderPcard(); aggiornaDettCta(); }).catch(()=>{ VD={}; renderPcard(); aggiornaDettCta(); });
+fetch('tariffe/vendita-distanza.json',{cache:'no-store'}).then(r=>r.json()).then(c=>{ VD=c||{}; renderPcard(); aggiornaDettCta(); aggiornaRecesso(); }).catch(()=>{ VD={}; renderPcard(); aggiornaDettCta(); });
 function aggiornaDettCta(){ const cta=document.getElementById('dett-cta'); if(cta) cta.style.display = isQuotabile() ? '' : 'none'; }
 
 document.getElementById('lead-form').addEventListener('submit', async function(e){

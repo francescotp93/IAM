@@ -1,8 +1,18 @@
 {
-  "versione": "0.75.3",
-  "nome": "Catastrofali: premio ripartito fra le garanzie come HDI",
+  "versione": "0.76.0",
+  "nome": "Lettura veloce anche per i collaboratori",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.76.0",
+      "data": "2026-10-09",
+      "nome": "Lettura veloce anche per i collaboratori",
+      "voci": [
+        "Collaboratori: portafoglio, rate, clienti e preventivi si aprono subito anche per chi non è in agenzia; prima la lettura impiegava secondi. Chi vede che cosa non cambia",
+        "Landing Rischi catastrofali: il premio non si vede più fisso sulla scheda; prima del calcolo c'è la domanda «Quanto costa proteggere la tua casa?» e il premio compare quando si calcola",
+        "Landing: il collegamento «Recesso» segue la spunta scelta nel Lab anche in fondo alla pagina; resta sempre visibile solo sui prodotti che si comprano online, dove è obbligatorio"
+      ]
+    },
     {
       "v": "0.75.3",
       "data": "2026-10-09",

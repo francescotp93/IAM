@@ -37,6 +37,21 @@ function caricaTariffa(dati) { CAT_CAP = dati || {}; return CAT_CAP; }
    dove vive il calcolo. */
 var RCAB_PMIN = 60;
 
+/* Limiti assuntivi della compagnia (nota tecnica HDI P5820, §3.3.5): fuori da
+   qui la polizza non si emette. Stanno accanto al calcolo e NON dentro
+   calcCatPremio: il premio resta identico a prima (la prova di parità lo
+   sorveglia), e chi quota chiede prima se il valore si può assicurare.
+   Una regola sola per il preventivatore, l'API e la landing. */
+var VALORE_MIN = 40000, VALORE_MAX = 1100000;
+function fuoriLimite(valore){
+  var v = Number(valore);
+  if (!isFinite(v) || v <= 0) return null;   // il valore mancante lo dice chi chiede
+  if (v < VALORE_MIN || v > VALORE_MAX) {
+    return 'Il valore di ricostruzione assicurabile va da ' + VALORE_MIN.toLocaleString('it-IT') + ' a ' + VALORE_MAX.toLocaleString('it-IT') + ' €.';
+  }
+  return null;
+}
+
 function calcCatPremio(cap, valore, opt){
   const t = (CAT_CAP||{})[String(cap).padStart(5,'0')];
   if (!t || !valore) return null;
@@ -57,11 +72,12 @@ function calcCatPremio(cap, valore, opt){
 
 /* ── si consegna a chi lo carica, e niente di piu' ───────────────────────── */
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { calcCatPremio: calcCatPremio, caricaTariffa: caricaTariffa, RCAB_PMIN: RCAB_PMIN };
+  module.exports = { calcCatPremio: calcCatPremio, caricaTariffa: caricaTariffa, RCAB_PMIN: RCAB_PMIN, fuoriLimite: fuoriLimite, VALORE_MIN: VALORE_MIN, VALORE_MAX: VALORE_MAX };
 }
 if (typeof window !== 'undefined') {
   window.calcCatPremio = calcCatPremio;
   window.caricaTariffaCat = caricaTariffa;
   window.RCAB_PMIN = RCAB_PMIN;
+  window.catFuoriLimite = fuoriLimite;
 }
 })();

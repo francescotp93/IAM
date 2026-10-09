@@ -9244,3 +9244,14 @@ presa visione).
 - La landing intera è passata allo stile di IAM: `withus-one-tokens.css`,
   Figtree, fondo chiaro, schede bianche, verde With Us per tutti i prodotti
   (i colori per prodotto `c1/c2` restano nei dati e non si applicano).
+
+#### I limiti della catastrofali valgono ovunque (0.72.1, 09/10/2026)
+
+`fuoriLimite(valore)` sta in `tariffe/motore/catastrofali.js`, accanto al
+calcolo ma **fuori** da `calcCatPremio` (la prova di parità vuole il premio
+identico a prima). La chiamano il preventivatore interno (`rcabRefreshPanel`,
+`rcabNext`, `rcabInvia`), l'API (`quotaCatastrofali` in `prodottiApi.js`) e la
+landing (`venditaDistanza.js`): fabbricato da 40.000 a 1.100.000 €. Il
+preventivatore interno rifiuta anche un contraente con partita IVA (serve il
+codice fiscale del proprietario, nota tecnica §1.3). Prova in
+`vendita-distanza.test.mjs`, con controprova.

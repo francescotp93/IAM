@@ -82,6 +82,15 @@ prova('il contraente è il proprietario persona fisica, maggiorenne', () => {
   const b = buono(); b.cliente.dataNascita = ''; deve(!cancelloCon(aperta, 'catastrofali', b).ok, 'passa senza data di nascita');
   deve(!maggiorenne('2010-06-01', new Date(2026, 9, 9)) && maggiorenne('2008-10-09', new Date(2026, 9, 9)) && !maggiorenne('2008-10-10', new Date(2026, 9, 9)), 'i 18 anni si contano male');
 });
+prova('un limite solo: motore, preventivatore interno e API usano fuoriLimite', () => {
+  deve(motore.fuoriLimite(39999) && motore.fuoriLimite(1100001) && !motore.fuoriLimite(40000) && !motore.fuoriLimite(1100000), 'i limiti del motore sono sbagliati');
+  const idx = fs.readFileSync(path.join(RADICE, 'index.html'), 'utf8');
+  const blocco = (n) => { const i = idx.indexOf('function ' + n + '('); return idx.slice(i, idx.indexOf('\nfunction ', i + 10)); };
+  for (const f of ['rcabRefreshPanel', 'rcabNext', 'rcabInvia']) deve(/catFuoriLimite\(/.test(blocco(f)), f + ' non controlla i limiti');
+  deve(/length!==16/.test(blocco('rcabNext')) && /length!==16/.test(blocco('rcabInvia')), 'il preventivatore interno accetta una partita IVA come contraente');
+  const api = fs.readFileSync(path.join(RADICE, 'server/prodottiApi.js'), 'utf8');
+  deve(/catastrofali\.fuoriLimite\(/.test(api), 'l\'API quota fuori dai limiti');
+});
 prova('gli altri prodotti dello shop non cambiano', () => {
   deve(cancelloVendita('vita', {}).ok && cancelloVendita('infortuni-famiglia', {}).ok, 'il cancello tocca altri prodotti');
 });

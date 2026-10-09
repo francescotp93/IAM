@@ -1,8 +1,17 @@
 {
-  "versione": "0.75.1",
-  "nome": "Scrivania più veloce",
+  "versione": "0.75.2",
+  "nome": "Catastrofali: tariffa allineata all'Excel HDI",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.75.2",
+      "data": "2026-10-09",
+      "nome": "Catastrofali: tariffa allineata all'Excel HDI",
+      "voci": [
+        "Rischi catastrofali abitazione: i tassi per CAP sono quelli esatti del preventivatore Excel di HDI (prima alcuni erano arrotondati e su pochi CAP il premio usciva più alto di 1 €)",
+        "Rischi catastrofali abitazione: il premio annuo ora coincide con l'Excel HDI su tutti i 71.685 casi provati (ogni CAP, tre valori, cinque combinazioni di garanzie), senza l'abbonamento per tutela legale e peritale"
+      ]
+    },
     {
       "v": "0.75.1",
       "data": "2026-10-09",

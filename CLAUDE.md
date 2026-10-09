@@ -9417,3 +9417,37 @@ Resta aperto: provare altri CAP; il contenuto (il motore usa il 20% del
 fabbricato, il portale chiede somme proprie); la ripartizione per garanzia
 (il portale spalma il minimo in proporzione e toglie i centesimi dal
 terremoto, il nostro elenco mostra i premi puri, il totale è lo stesso).
+
+### Catastrofali: la tariffa è quella dell'Excel HDI, al centesimo (0.75.2, 09/10/2026)
+
+> «Io ho sempre il file Excel che lo quota dove c'è la tariffa, devi escludere
+> però la garanzia Abbonamento per assistenza legale, peritale e arbitrale» —
+> Francesco.
+
+Il file («Proposta #rischi catastrofali civili abitazioni HDI, tariffa in
+vigore dal 01/01/2023») ha un foglio nascosto `tassi` con 4.779 CAP e un
+foglio `Preventivatore`. **Non entra nel repository** (documento interno di HDI).
+
+- Il premio che vendiamo è la cella **N17 «Premio annuo polizza»**:
+  ROUNDDOWN della somma, minimo 60 € spalmato in proporzione. La N22 aggiunge
+  +3,3% e +20% di commissioni con l'abbonamento tutela legale: **fuori**, ed
+  era già fuori (`commissioni: 0`, «senza tutela legale»).
+- Stessi CAP del nostro `catastrofali_cap.json`, ma **554 tassi erano troncati
+  a 5 decimali** (0,234175 → 0,23417): su 16 casi il premio usciva di 1 €
+  diverso. Adesso la tabella ha i tassi esatti dell'Excel.
+- **Virgola mobile**: 781,55 + 156,31 + 85,14 in JavaScript fa
+  1022,9999999999999 e `Math.floor` dava 1022 dove Excel dà 1023. Il motore
+  arrotonda per difetto dopo aver tolto il rumore (`Math.round(base*1e6)/1e6`).
+- Confronto completo, con le formule dell'Excel fatte girare da LibreOffice:
+  4.779 CAP × 3 valori × 5 combinazioni = **71.685 casi, tutti identici**.
+- `server/verifica/catastrofali-excel-hdi.test.mjs` (4) gira su un campione
+  di 1.995 casi (`campioni/catastrofali-excel-hdi.csv`, solo CAP e premi)
+  che comprende tutti i casi di confine. Controprove: tabella vecchia → 14
+  premi diversi; `Math.floor` nudo → 1 diverso (CAP 37135).
+- L'Excel conferma anche: contenuto **fisso al 20%** a primo rischio
+  assoluto, alluvione contenuto solo con terremoto contenuto e alluvione
+  fabbricato, semestrale solo da 120 € con +2%, limite 1.100.000 €.
+
+Per rifare il confronto su un Excel nuovo: copiare il file, generare un foglio
+`casi` con le formule di J7/J9/J12/J14/M/N17 per ogni CAP, convertirlo in CSV
+con `soffice --headless --convert-to csv` (ricalcola), e confrontarlo col motore.

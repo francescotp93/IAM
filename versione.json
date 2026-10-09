@@ -1,8 +1,17 @@
 {
-  "versione": "0.56.0",
-  "nome": "Scheda cliente: la testata scura con le linguette e i dati in pastiglie, come le trattative",
+  "versione": "0.56.1",
+  "nome": "Controlli: la giornata degli incassi si legge tutta, e tre prove tornano verdi",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.56.1",
+      "data": "2026-10-09",
+      "nome": "Controlli: la giornata degli incassi si legge tutta, e tre prove tornano verdi",
+      "voci": [
+        "Contabilità › Appunti incassi: la giornata si legge per intero anche quando un flusso porta più di mille rate nello stesso giorno, e se la lettura si ferma la schermata lo dice",
+        "Controlli automatici: tre prove di Contabilità e Sospesi erano rosse per come guardavano il codice, non per un guasto, e adesso misurano la regola giusta"
+      ]
+    },
     {
       "v": "0.56.0",
       "data": "2026-10-09",

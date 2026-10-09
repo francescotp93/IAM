@@ -109,7 +109,7 @@ prova('OGNI LETTURA STA IN PIEDI DA SOLA, e quello che manca si dichiara', () =>
 
 prova('NIENTE TETTI SECCHI: le letture sono paginate', () => {
   const b = soloJs(blocco());
-  deve(!/\.limit\(/.test(b), 'il cruscotto ha un tetto secco: perde righe in silenzio (§50, §53)');
+  deve(!/\.limit\((?!1\))/.test(b), 'il cruscotto ha un tetto secco: perde righe in silenzio (§50, §53)');
   deve((b.match(/\.range\(a, b\)/g) || []).length >= 7, 'non tutte le letture paginano');
   /* E quando la paginazione si ferma, lo dice: un totale parziale che non si
      dichiara è il difetto §50 rimesso dentro. */

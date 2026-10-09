@@ -92,7 +92,7 @@ prova('una voce che è una PERSONA non può essere «denaro in casa subito»', (
   /* Se il premio ce l'ha in mano il collaboratore, in cassa dell'agenzia non
      c'è: è un vincolo del database, non una raccomandazione della schermata —
      la schermata è una delle strade, non l'unica. */
-  const sql = soloSql(sqlChe('iam_modalita_pagamento'));
+  const sql = soloSql(sqlChe('iam_modalita_collab_mai_subito'));
   deve(/collaboratore_id is null or contabilizza = 'sospeso'/.test(sql),
     'manca il vincolo che vieta a un collaboratore di essere «subito»');
   deve(/unique index[\s\S]{0,120}collaboratore_id/.test(sql),
@@ -196,7 +196,7 @@ prova('«non si è potuto leggere» non diventa «non ce n\'è»', () => {
   deve(/non vuol dire che non ce ne siano/.test(b), 'un guasto di lettura non si dichiara');
   deve(/SPR_PARZIALE/.test(b), 'non si accorge se la lettura si è fermata a metà');
   deve(/cntTutte\(/.test(b), 'la lettura non è paginata: il server ne manda mille per volta (§50)');
-  deve(!/\.limit\(/.test(b), 'c\'è ancora un limite scritto a mano');
+  deve(!/\.limit\((?!1\))/.test(b), 'c\'è ancora un limite scritto a mano');
   deve(/\.order\(/.test(b), 'la lettura paginata non ha un ordine stabile (§63-bis)');
   return 'paginata, ordinata, e la mancanza dichiarata';
 });

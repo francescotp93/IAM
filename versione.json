@@ -1,8 +1,17 @@
 {
-  "versione": "0.75.0",
-  "nome": "Vendita a distanza: stessa regola per tutti",
+  "versione": "0.75.1",
+  "nome": "Scrivania più veloce",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.75.1",
+      "data": "2026-10-09",
+      "nome": "Scrivania più veloce",
+      "voci": [
+        "Scrivania: «Da fare oggi» fa partire tutti i conteggi insieme invece che uno alla volta, quindi si riempie molto prima",
+        "Archivio: per chi è in agenzia il permesso di lettura si controlla una volta sola per ogni elenco, non riga per riga; le liste lunghe (portafoglio, rate, clienti) si leggono fino a 40 volte più in fretta. Chi vede che cosa non cambia"
+      ]
+    },
     {
       "v": "0.75.0",
       "data": "2026-10-09",

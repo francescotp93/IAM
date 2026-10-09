@@ -9364,3 +9364,36 @@ se il prodotto è vendibile; il passo «Esigenze» c'è per tutti
 Difetto chiuso: l'avvio del pagamento con carta e PayPal mandava solo
 `{prodotto, params}`, e il cancello avrebbe rifiutato sempre. Ora manda anche
 `cliente` e `accettazioni`; una prova lo sorveglia, con controprova.
+
+### La Scrivania lenta: il permesso riga per riga, e i conteggi in fila (0.75.1, 09/10/2026)
+
+> «Dashboard si carica troppo lentamente» — Francesco.
+
+Due cause, misurate:
+
+1. **Il permesso si chiedeva su ogni riga.** `quote_vede(creato_da)` è
+   SECURITY DEFINER, Postgres non la scioglie e la chiama per ogni riga, e
+   ogni chiamata rilegge `iam_utenti`. Una pagina di mille righe dello
+   scadenzario, da admin: **580 ms**; con `(select iam_is_staff()) or
+   quote_vede(creato_da)` la domanda «sei staff?» diventa un InitPlan
+   calcolato una volta: **13 ms**. Conteggio completo di sei tabelle: 20 ms.
+   La regola non cambia (quote_vede comincia già con iam_is_staff): contate
+   prima e dopo le righe visibili per admin, collaboratore ed esterno, uguali.
+   Migrazione `20261009_rls_staff_una_volta.sql` (polizze, titoli,
+   anagrafiche, preventivi, sinistri, pratiche), applicata con `ALTER POLICY`.
+   **Per un collaboratore resta lento** (2,6 s per gli stessi conteggi):
+   lì si passa ancora da quote_vede riga per riga. Il rimedio è un lavoro a sé.
+2. **«Da fare oggi» aspettava nove conteggi uno dopo l'altro.** Adesso ogni
+   conteggio è un `passo`, partono insieme e alla fine le voci si uniscono
+   nell'ordine scritto, qualunque lettura arrivi prima. Ogni passo resta
+   isolato da `conta` (§35). Anche rate e scadenzario partono insieme.
+
+Prova che fa girare il codice con un archivio finto lento:
+`iam/verifica/scrivania-veloce.test.mjs` (3) — tempo, ordine delle voci,
+guasto isolato, con due controprove (codice di prima: «al massimo 2 richieste
+in volo»; voci unite all'arrivo: insoluti non più in cima).
+
+Resta aperto: la paginazione per `range` rilegge da capo le righe precedenti
+a ogni pagina (costo che cresce col quadrato); il riquadro Portafoglio dei KPI
+scarica ancora tutte le polizze per fare una somma che potrebbe fare il
+database.

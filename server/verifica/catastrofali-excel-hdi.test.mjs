@@ -30,7 +30,7 @@ M.caricaTariffa(JSON.parse(fs.readFileSync(path.join(RADICE, 'tariffe/catastrofa
 
 const casi = fs.readFileSync(path.join(RADICE, 'server/verifica/campioni/catastrofali-excel-hdi.csv'), 'utf8')
   .split('\n').filter(l => l && !l.startsWith('#') && !l.startsWith('cap;'))
-  .map(l => { const c = l.split(';'); return { cap: c[0], valore: +c[1], terrCont: c[2] === 'si', alluFabb: c[3] === 'si', alluCont: c[4] === 'si', premio: +c[5] }; });
+  .map(l => { const c = l.split(';'); return { cap: c[0], valore: +c[1], terrCont: c[2] === 'si', alluFabb: c[3] === 'si', alluCont: c[4] === 'si', premio: +c[5], n: c.slice(6, 10).map(Number) }; });
 
 const esiti = [];
 const prova = (n, f) => { try { const m = f(); esiti.push([true, n, m || '']); } catch (e) { esiti.push([false, n, e.message]); } };
@@ -49,6 +49,33 @@ prova('ogni premio coincide con quello dell\'Excel HDI (senza tutela legale)', (
   }
   deve(!diversi.length, diversi.length + ' premi diversi: ' + diversi.slice(0, 5).join(' · '));
   return casi.length + ' premi identici';
+});
+
+/* LA RIPARTIZIONE FRA LE GARANZIE (09/10/2026). L'Excel spalma il minimo di
+   60 € in proporzione e toglie i centesimi dell'arrotondamento dalla prima
+   garanzia (N7 = N17 − le altre). Le altre si confrontano al centesimo; la
+   prima può scostarsi di un centesimo e mezzo dalla cifra che l'Excel tiene
+   senza arrotondare, perché noi la ricaviamo dalle altre GIÀ arrotondate:
+   è il prezzo per avere garanzie che sommano esattamente il premio. */
+prova('la ripartizione fra le garanzie è quella dell\'Excel HDI, e somma il premio', () => {
+  const cent = x => Math.round(Math.round(x * 1e8) / 1e6) / 100;
+  const diversi = [];
+  for (const k of casi) {
+    const r = M.calcCatPremio(k.cap, k.valore, { terrCont: k.terrCont, alluFabb: k.alluFabb, alluCont: k.alluCont });
+    const xl = [k.n[0]];
+    if (k.terrCont) xl.push(k.n[1]);
+    if (k.alluFabb) xl.push(k.n[2]);
+    if (k.terrCont && k.alluFabb && k.alluCont) xl.push(k.n[3]);
+    const noi = r.garanzie.map(g => g.premio);
+    const somma = noi.reduce((a, b) => a + b, 0);
+    const male = noi.length !== xl.length
+      || noi.slice(1).some((v, i) => v !== cent(xl[i + 1]))
+      || Math.abs(noi[0] - xl[0]) > 0.0151
+      || Math.abs(somma - r.premio) > 1e-9;
+    if (male) diversi.push(k.cap + ' ' + k.valore + ' € → nostro ' + noi.join(' + ') + ', Excel ' + xl.join(' + '));
+  }
+  deve(!diversi.length, diversi.length + ' ripartizioni diverse: ' + diversi.slice(0, 3).join(' · '));
+  return casi.length + ' ripartizioni identiche';
 });
 
 prova('i casi di confine sono nel campione (dove la virgola mobile sbagliava di un euro)', () => {

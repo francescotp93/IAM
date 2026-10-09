@@ -1,8 +1,17 @@
 {
-  "versione": "0.75.2",
-  "nome": "Catastrofali: tariffa allineata all'Excel HDI",
+  "versione": "0.75.3",
+  "nome": "Catastrofali: premio ripartito fra le garanzie come HDI",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.75.3",
+      "data": "2026-10-09",
+      "nome": "Catastrofali: premio ripartito fra le garanzie come HDI",
+      "voci": [
+        "Rischi catastrofali abitazione: il premio di ogni garanzia è ripartito come fa HDI. Sotto il minimo di 60 € il premio si divide in proporzione, e le garanzie sommano sempre il premio annuo (prima, per esempio, 25,77 + 15,06 sotto un totale di 60 €)",
+        "Landing Rischi catastrofali: dopo il calcolo mostra come si compone il premio, garanzia per garanzia; la ripartizione compare anche nel riepilogo prima del pagamento"
+      ]
+    },
     {
       "v": "0.75.2",
       "data": "2026-10-09",

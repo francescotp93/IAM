@@ -61,7 +61,8 @@ function calcCatPremio(cap, valore, opt){
   let pTerrCont=0; if(opt.terrCont){ pTerrCont=tTerr*(0.20*valore)/1000; g.push({nome:'Terremoto · Contenuto (20%)', somma:0.20*valore, premio:pTerrCont}); }
   let pAlluFabb=0; if(opt.alluFabb){ pAlluFabb=tAllu*valore/1000; g.push({nome:'Alluvione/Inondazione · Fabbricato', somma:valore, premio:pAlluFabb}); }
   let pAlluCont=0; if(opt.terrCont && opt.alluFabb && opt.alluCont){ pAlluCont=tAllu*(0.20*valore)/1000; g.push({nome:'Alluvione/Inondazione · Contenuto (20%)', somma:0.20*valore, premio:pAlluCont}); }
-  let base = pTerrFabb+pTerrCont+pAlluFabb+pAlluCont;
+  const calcolato = pTerrFabb+pTerrCont+pAlluFabb+pAlluCont;
+  let base = calcolato;
   if (base < RCAB_PMIN) base = RCAB_PMIN;
   /* Per difetto all'euro, come ROUNDDOWN del preventivatore Excel di HDI. Prima
      si toglie il rumore della virgola mobile: 781,55 + 156,31 + 85,14 in
@@ -69,6 +70,27 @@ function calcCatPremio(cap, valore, opt){
      Excel (15 cifre) dà 1023 — un euro in meno al cliente, CAP 37135. */
   const baseFloor = Math.floor(Math.round(base * 1e6) / 1e6);
   let premio = baseFloor;                 // nessuna commissione, nessuna tutela legale/peritale
+  /* LA RIPARTIZIONE FRA LE GARANZIE, come la fa HDI (Excel, colonne M e N;
+     portale PASS, record QPA). Sotto il minimo i 60 € si spalmano in
+     proporzione al premio di ogni garanzia; poi il totale si arrotonda per
+     difetto all'euro e i centesimi tolti escono dalla PRIMA garanzia
+     (terremoto · fabbricato), le altre restano intere. Così le garanzie
+     sommano sempre il premio annuo base, e il cliente non legge 25,77 +
+     15,06 sotto un totale di 60 €. `calcolato` tiene il premio puro di
+     tariffa (somma assicurata × tasso / 1000), che resta la regola. */
+  const fattore = calcolato > 0 ? base / calcolato : 1;
+  /* Al centesimo come Excel: prima si toglie il rumore della virgola mobile
+     (6,425 in JavaScript è 6,42499999…, e un arrotondamento nudo dà 6,42
+     dove Excel dà 6,43 — CAP 24014). */
+  const cent = x => Math.round(Math.round(x * 1e8) / 1e6) / 100;
+  let altre = 0;
+  for (let i = 1; i < g.length; i++) {
+    g[i].calcolato = g[i].premio;
+    g[i].premio = cent(g[i].premio * fattore);
+    altre += g[i].premio;
+  }
+  g[0].calcolato = g[0].premio;
+  g[0].premio = cent(baseFloor - altre);
   let semestrale = null;
   if (opt.frazionamento === 'Semestrale' && baseFloor >= 120){ premio = premio*1.02; semestrale = premio/2; }
   return { garanzie:g, base, baseFloor, premio, semestrale, tassoTerr:tTerr, tassoAllu:tAllu };

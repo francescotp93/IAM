@@ -68,7 +68,10 @@ export function quotaCatastrofali(p) {
   return {
     prezzo: Number(q.premio),
     etich: ETICHETTA_CATNAT,
-    dettaglio: { cap, valore, terrCont, alluFabb, alluCont, garanzie: q.garanzie.map(g => ({ nome: g.nome, somma: g.somma })) },
+    dettaglio: { cap, valore, terrCont, alluFabb, alluCont, /* Il premio di ogni garanzia è quello RIPARTITO come lo fa HDI
+       (il minimo spalmato, i centesimi tolti dalla prima): le righe sommano
+       il prezzo, e la pagina le mostra così come le scrive il motore. */
+      garanzie: q.garanzie.map(g => ({ nome: g.nome, somma: g.somma, premio: g.premio })) },
   };
 }
 

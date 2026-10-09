@@ -1,8 +1,17 @@
 {
-  "versione": "0.69.0",
-  "nome": "Scrivania più snella",
+  "versione": "0.70.0",
+  "nome": "Agenda nella Scrivania",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.70.0",
+      "data": "2026-10-09",
+      "nome": "Agenda nella Scrivania",
+      "voci": [
+        "Scrivania: in cima a «Da fare oggi» c'è l'agenda della giornata, con gli appuntamenti in ordine di ora",
+        "Scrivania: gli appuntamenti già passati si fanno da parte e il prossimo si accende in verde; un clic apre l'agenda"
+      ]
+    },
     {
       "v": "0.69.0",
       "data": "2026-10-09",

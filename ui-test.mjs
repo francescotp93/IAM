@@ -600,6 +600,21 @@ const avvio = async () => {
     browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   }
 
+  /* OGNI pagina del collaudo resta senza rete (09/10/2026). Diciotto blocchi
+     aprivano il loro contesto senza bloccaRete: finche' il CDN non si
+     raggiungeva dal contenitore non cambiava niente, ma il giorno in cui
+     jsdelivr ha cominciato a rispondere, supabase-js VERO ha sostituito il
+     database finto e quelle pagine hanno parlato con il database di
+     produzione — 98 prove rosse per la strada, e richieste vere partite da un
+     collaudo. La rete si chiude qui, una volta per tutte: le route registrate
+     dopo da una prova valgono prima di questa, quindi nessuna si perde. */
+  const nuovoContestoVero = browser.newContext.bind(browser);
+  browser.newContext = async (...a) => {
+    const c = await nuovoContestoVero(...a);
+    await bloccaRete(c);
+    return c;
+  };
+
   /* ── A. senza sessione: schermata di accesso ────────────────────────────── */
   {
     const { context, page, errori } = await nuovaPagina(browser, { sessione: false, url: BASE + '/?email=prova%40withus.it' });
@@ -652,10 +667,15 @@ const avvio = async () => {
         verde: getComputedStyle(document.documentElement).getPropertyValue('--blue').trim(),
         corpo: getComputedStyle(document.body).fontSize,
         fondo: getComputedStyle(document.body).backgroundColor,
+        /* il fondo dev'essere quello del gettone --bg, qualunque valore la
+           pelle gli dia: il 07/10 la pelle tech l'ha spostato, e un colore
+           scritto qui dentro misurava la tavolozza di ieri, non la catena. */
+        gettone: (() => { const d = document.createElement('div'); d.style.background = 'var(--bg)';
+          document.body.appendChild(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; })(),
       }));
       deve(v.verde === '#02984e', '--blue non risolve al verde With Us (vale: "' + v.verde + '")');
       deve(v.corpo === '13px', 'corpo del testo non a 13px (vale: ' + v.corpo + ')');
-      deve(v.fondo === 'rgb(238, 241, 244)', 'fondo pagina non dal token (vale: ' + v.fondo + ')');
+      deve(v.gettone !== 'rgba(0, 0, 0, 0)' && v.fondo === v.gettone, 'fondo pagina non dal token (vale: ' + v.fondo + ', il gettone: ' + v.gettone + ')');
     });
     await prova('emb-iam: nessun errore JavaScript', async () => {
       deve(errori.length === 0, errori.join(' | '));

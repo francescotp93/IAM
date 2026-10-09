@@ -63,8 +63,8 @@ const GUASTI = [
   ['gli angoli tornano tondi come un\'app di consumo', PELLE, T_PELLE,
     (s) => s.replace('--r:10px; --rs:var(--t-r);\n  --grn:#0f9d58;', '--r:16px; --rs:12px;\n  --grn:#0f9d58;')],
 
-  ['i campi degli importi perdono il monospaziato', PELLE, T_PELLE,
-    (s) => s.replace('  font-family:var(--t-mono); letter-spacing:-.01em;\n}', '  letter-spacing:-.01em;\n}')],
+  ['i campi degli importi tornano al monospaziato pesante', PELLE, T_PELLE,
+    (s) => s.replace('  font-family:var(--t-sans); font-variant-numeric:tabular-nums; letter-spacing:-.01em;\n}', '  font-family:var(--t-mono); letter-spacing:-.01em;\n}')],
 
   /* ── le fasi di caricamento ──────────────────────────────────────────────── */
   ['senza animazioni la barra SPARISCE invece di fermarsi', PELLE, T_PELLE,
@@ -77,7 +77,7 @@ const GUASTI = [
     (s) => s.replace('  display:block; height:12px; width:100%; border-radius:var(--t-r-sm);', '  display:block; height:0; width:100%; border-radius:var(--t-r-sm);')],
 
   ['lo stato torna a essere una riga di testo qualunque', PELLE, T_PELLE,
-    (s) => s.replace('  font-family:var(--t-mono); font-size:11px; letter-spacing:.07em;\n  text-transform:uppercase; color:var(--txt2); line-height:1.5;',
+    (s) => s.replace('  font-family:var(--t-sans); font-size:11px; letter-spacing:.07em;\n  text-transform:uppercase; color:var(--txt2); line-height:1.5;',
       '  font-size:12px; color:var(--txt2); line-height:1.5;')],
 
   ['le undici attese che c\'erano gia\' tornano alla rotella', PELLE, T_PELLE,

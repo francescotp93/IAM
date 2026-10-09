@@ -9109,3 +9109,47 @@ quei due blocchi.
 `ui-test.mjs` dà 429/527 sia con queste modifiche sia su `main` senza: lo
 stesso elenco di rossi, nessuno nuovo. Quei 98 rossi non vengono da qui e
 vanno guardati a parte.
+
+### Le 98 prove rosse: il collaudo parlava col database vero (0.68.0, 09/10/2026)
+
+**Non erano 98 guasti: era uno.** Diciotto blocchi di `ui-test.mjs` aprivano il
+loro contesto con `browser.newContext()` senza `bloccaRete`. Finché jsdelivr
+non si raggiungeva dal contenitore (§10, «il CDN non è raggiungibile») la
+libreria vera non arrivava e il database finto restava al suo posto; il giorno
+in cui il CDN ha cominciato a rispondere, **supabase-js vero ha sostituito
+quello finto** e quelle pagine hanno parlato col database di produzione — da
+anonime, quindi «permission denied for function quote_vede», utenti `null` e
+schermate vuote. La rete adesso si chiude subito dopo il lancio del browser,
+per ogni contesto: le route registrate dopo da una prova valgono prima.
+Risultato: **429 → 527/527**.
+
+Le tre rosse rimaste erano vere: `.pol-gar-quadra.ko` con tre colori a mano
+(ora i gettoni `--w1-rosso`/`--w1-rosso-bg`); il foglio cassa la cui barra la
+prova non riconosceva più perché il `div.fc-gg` chiudeva la fetta prima del
+tasto Cerca (ora `span`); e la prova del fondo pagina che fissava il colore di
+prima della pelle tech (ora confronta il fondo con il gettone `--bg`).
+
+### Caratteri più leggeri: Figtree (0.68.0)
+
+> «Vorrei che tutti i caratteri e numeri siano simili a questi, che sono meno
+> pesanti da vedere» — Francesco, con il portale di Prima.
+
+Un carattere solo, **Figtree**, per testo e numeri, nei due documenti:
+`--t-sans` in `withus-tech.css`, che la pelle applica a `body` e ai campi. Il
+`<link>` di Google Fonts sta in ogni documento (la pelle non scarica niente, e
+la sua prova lo sorveglia). Si caricano **solo gli spessori 400-700**: i 157
+titoli a 800 e i pochi a 900 ricadono da soli sul 700, senza toccare le regole.
+
+Il monospaziato resta solo ai codici (`code`, `kbd`, `samp`, gli editor JSON
+dei parametri): importi, saldi, numeri di polizza, stati e caricamenti sono
+nel carattere del testo con `tabular-nums`, quindi si incolonnano lo stesso.
+Le variabili locali `--rin-mono`, `--fc-mono`, `--clk-mono`, `--trt-mono`,
+`--cf-mono` puntano a `--t-sans`. Inter e Share Tech Mono non si caricano più
+(resta solo la splash di QUOTO, bloccata, che li nomina). Le quattro prove
+della pelle che pretendevano il monospaziato sono aggiornate nella regola;
+25/25 controprove.
+
+**Trappola, annotata:** `pelle-tech-controprova.mjs` modifica i file e li
+rimette a posto alla fine. Lanciarla in sottofondo e intanto fare `git stash`
+cattura nel ripostiglio un file a metà guasto. Le controprove si lanciano con
+il banco fermo (§42).

@@ -75,7 +75,16 @@
   /* il ciano dei segnali di sistema: caricamenti, spie, stati vivi */
   --t-dati:#06b6d4; --t-dati-scuro:#0e7490; --t-dati-tenue:rgba(6,182,212,.12);
 
-  /* il monospaziato dei dati — di sistema, non scaricato */
+  /* IL CARATTERE DEL TESTO E DEI NUMERI (09/10/2026). Francesco ha chiesto
+     caratteri «meno pesanti da vedere», sul modello del portale di Prima: un
+     sans geometrico, aperto, con i numeri disegnati come il testo. Figtree è
+     il più vicino fra quelli liberi; lo carica il <link> di ogni documento
+     (questo foglio non scarica niente), e si caricano SOLO gli spessori fino
+     a 700: i titoli scritti a 800 e 900 ricadono da soli sul 700, cioè si
+     alleggeriscono senza toccare cento regole. Senza rete, il sistema. */
+  --t-sans:'Figtree',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+
+  /* il monospaziato dei codici — di sistema, non scaricato */
   --t-mono:ui-monospace,SFMono-Regular,"SF Mono","JetBrains Mono",Menlo,Consolas,"Liberation Mono",monospace;
 
   /* forma */
@@ -159,9 +168,21 @@ body.theme-dark{
    troppo salta all'occhio invece di nascondersi. */
 body{ font-variant-numeric:tabular-nums; }
 
-/* I DATI VERI IN MONOSPAZIATO: importi, codici, impronte, targhe.
-   `.t-dato` è la classe nuova; le altre sono quelle che il sistema ha già. */
-.t-dato, code, kbd, samp, .mono, .cnt-saldo, .dco-sal{
+/* UN CARATTERE SOLO. I campi e i bottoni non ereditano il carattere della
+   pagina da soli: senza questa riga dentro un modulo si leggerebbero in un
+   altro disegno. */
+body, button, input, select, textarea{ font-family:var(--t-sans); }
+
+/* I DATI: importi e saldi nel carattere del testo, con le cifre a larghezza
+   fissa (si incolonnano lo stesso); il monospaziato resta ai codici.
+   Fino al 09/10/2026 anche gli importi erano monospaziati: è stato tolto su
+   richiesta di Francesco, perché pesava sulla lettura. */
+.t-dato, .mono, .cnt-saldo, .dco-sal{
+  font-family:var(--t-sans);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.01em;
+}
+code, kbd, samp{
   font-family:var(--t-mono);
   font-variant-numeric:tabular-nums;
   letter-spacing:-.01em;
@@ -171,7 +192,7 @@ body{ font-variant-numeric:tabular-nums; }
    di un pannello di strumenti. Esistevano già (`.eyebrow`), erano solo piccole. */
 .eyebrow, .t-etichetta{
   text-transform:uppercase; letter-spacing:.09em; font-weight:700; font-size:10.5px;
-  font-family:var(--t-mono); color:var(--txt3);
+  font-family:var(--t-sans); color:var(--txt3);
 }
 
 /* ANGOLI E BORDI */
@@ -194,11 +215,11 @@ select, textarea{
   border-radius:var(--t-r) !important;
   font-variant-numeric:tabular-nums;
 }
-/* I campi che contengono DATI si scrivono col monospaziato: importi, codici,
-   targhe, date. Si vede subito se una cifra è di troppo. */
+/* I campi che contengono DATI: cifre a larghezza fissa, nel carattere del
+   testo. Si vede subito se una cifra è di troppo. */
 input[inputmode="decimal"], input[inputmode="numeric"], input[type="number"],
 input[type="date"], input[type="time"], input[type="month"]{
-  font-family:var(--t-mono); letter-spacing:-.01em;
+  font-family:var(--t-sans); font-variant-numeric:tabular-nums; letter-spacing:-.01em;
 }
 
 /* IL FUOCO È CIANO: si vede dove sta la tastiera senza confondersi con il verde
@@ -272,7 +293,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
    stia aspettando, qui c'è scritto. */
 .wl-stato{
   display:inline-flex; align-items:center; gap:9px;
-  font-family:var(--t-mono); font-size:11px; letter-spacing:.07em;
+  font-family:var(--t-sans); font-size:11px; letter-spacing:.07em;
   text-transform:uppercase; color:var(--txt2); line-height:1.5;
 }
 .wl-stato::before{
@@ -300,7 +321,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
    pulsa dice «sono vivo», e accanto a una frase che dice che cosa sto facendo
    la seconda è quella giusta. */
 .cl-carico{
-  font-family:var(--t-mono); font-size:11px; letter-spacing:.07em;
+  font-family:var(--t-sans); font-size:11px; letter-spacing:.07em;
   text-transform:uppercase; color:var(--txt2); gap:9px;
 }
 .cl-carico-g{
@@ -393,7 +414,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   position:static !important; width:auto !important; height:auto !important;
   margin:0 !important; clip:auto !important; clip-path:none !important;
   overflow:visible !important; white-space:normal !important;
-  font-family:var(--t-mono); font-size:10.5px; letter-spacing:.09em;
+  font-family:var(--t-sans); font-size:10.5px; letter-spacing:.09em;
   text-transform:uppercase; color:var(--txt3); padding-top:26px;
 }
 @media (prefers-reduced-motion:reduce){

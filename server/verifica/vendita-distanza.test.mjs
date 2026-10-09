@@ -7,7 +7,7 @@ import { execSync } from 'child_process';
 import path from 'path';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
-import { quotaCatastrofali, cancelloCon, cancelloVendita, coerenza, ESIGENZE_CATNAT, configurazione, schedaCompleta, maggiorenne } from '../venditaDistanza.js';
+import { quotaCatastrofali, cancelloCon, cancelloVendita, coerenza, ESIGENZE_CATNAT, configurazione, schedaCompleta, maggiorenne, esigenzeDi } from '../venditaDistanza.js';
 
 const RADICE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const req = createRequire(import.meta.url);
@@ -107,8 +107,23 @@ prova('davanti al cliente: stima dichiarata, niente promesse fiscali, niente not
   const cfg = configurazione('catastrofali');
   deve(!/Set Informativo|tariffa/i.test(cfg.motivo || ''), 'il messaggio al cliente contiene note interne: ' + cfg.motivo);
 });
-prova('gli altri prodotti dello shop non cambiano', () => {
-  deve(cancelloVendita('vita', {}).ok && cancelloVendita('infortuni-famiglia', {}).ok, 'il cancello tocca altri prodotti');
+prova('LA STESSA REGOLA vale per tutti i prodotti dello shop', () => {
+  /* Senza configurazione o senza documenti non si incassa; con i documenti
+     servono questionario coerente e presa visione PRIMA del pagamento. */
+  deve(!cancelloVendita('prodotto-inventato', {}).ok, 'un prodotto non configurato si incassa');
+  for (const k of ['animali', 'tutela', 'infortuni', 'aglea-attiva']) deve(!cancelloVendita(k, {}).ok, k + ' si incassa senza documenti');
+  const tuttoBene = (k) => ({ accettazioni: { esigenze: Object.fromEntries(esigenzeDi(k).map(q => [q.k, q.serve])), precontrattuale_letta: true } });
+  for (const k of ['vita', 'infortuni-famiglia']) {
+    deve(cancelloVendita(k, tuttoBene(k)).ok, k + ' non si incassa nemmeno con tutto in regola: ' + cancelloVendita(k, tuttoBene(k)).errore);
+    deve(!cancelloVendita(k, {}).ok, k + ' si incassa senza questionario');
+    const x = tuttoBene(k); delete x.accettazioni.precontrattuale_letta; deve(!cancelloVendita(k, x).ok, k + ' si incassa senza presa visione');
+    for (const q of esigenzeDi(k)) { const y = tuttoBene(k); y.accettazioni.esigenze[q.k] = !q.serve; deve(!cancelloVendita(k, y).ok, k + ': risposta sbagliata a ' + q.k + ' passa'); }
+    deve(configurazione(k).documenti.length > 0, k + ' senza documenti');
+  }
+  const l = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
+  deve(/function ckLab\(\)\{ return \['Dati','Privacy','Documenti','Esigenze','Pagamento','Firma'\]; \}/.test(l), 'il passo Esigenze non c\'è per tutti i prodotti');
+  deve((l.match(/accettazioni:CK\.accettazioni\}\)/g) || []).length >= 2, 'l\'avvio del pagamento (carta, PayPal) non manda le risposte al server: il cancello lo fermerebbe sempre');
+  deve(/return !!t && t!=='lead' && vdOnline\(\)/.test(l), 'la landing attiva online prodotti che la configurazione non dichiara vendibili');
 });
 prova('ogni rotta che incassa passa dal cancello', () => {
   const s = fs.readFileSync(path.join(RADICE, 'server/shop.js'), 'utf8');
@@ -120,7 +135,8 @@ prova('ogni rotta che incassa passa dal cancello', () => {
 });
 prova('nella landing esigenze e documenti vengono PRIMA del pagamento', () => {
   const l = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
-  deve(/if\(\(P\.quote\|\|\{\}\)\.tipo==='catnat'\) ckStepEsigenze\(\); else ckStepPay\(\);/.test(l), 'dopo i documenti si va dritti al pagamento');
+  const dn = l.slice(l.indexOf('async function ckDocsNext('), l.indexOf('// ── 3-bis)'));
+  deve(/ckStepEsigenze\(\);/.test(dn) && !/ckStepPay\(\)/.test(dn), 'dopo i documenti si va dritti al pagamento');
   deve(/precontrattuale_letta:true/.test(l) && /avvertenze_lette:true/.test(l), 'la presa visione non arriva al server');
   deve(!/vd-tecnica|Nota-Tecnica|Scheda-prodotto/i.test(l), 'un documento interno è finito nella pagina pubblica');
   deve(!/calcCatPremio/.test(l), 'la landing calcola il prezzo da sola invece di chiederlo al server');

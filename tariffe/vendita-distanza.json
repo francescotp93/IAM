@@ -1,5 +1,5 @@
 {
-  "_leggimi": "Prodotti venduti a distanza dalla landing (Lab › Vendita a distanza). vendita_online diventa true SOLO quando: il Set Informativo della compagnia (DIP, DIP aggiuntivo, Condizioni) e' in documenti, la compagnia ha autorizzato la vendita a distanza, e la tariffa e' stata verificata sul portale. Finche' e' false la landing calcola una stima e raccoglie la richiesta, ma non incassa. Il campo motivo lo legge il CLIENTE: va scritto in linguaggio commerciale, mai con informazioni interne (cosa manca va in «mancano»).",
+  "_leggimi": "Prodotti venduti a distanza dalla landing (Lab › Vendita a distanza). Per OGNI prodotto: vendita_online diventa true solo con il Set Informativo in documenti, l'autorizzazione della compagnia alla vendita a distanza e la tariffa verificata. Prima del pagamento il cliente risponde al questionario richieste ed esigenze (bisogno + domande del prodotto + domande comuni) e dichiara di aver letto i documenti. Un prodotto che non e' qui non si vende online. Il campo motivo lo legge il CLIENTE: linguaggio commerciale, niente note interne (cosa manca va in mancano).",
   "catastrofali": {
     "nome": "Rischi Catastrofali Abitazione",
     "compagnia": "HDI Assicurazioni S.p.A.",
@@ -19,6 +19,156 @@
       "DIP Danni (Mod. DP5821): fa parte del Set Informativo e va consegnato prima della stipula",
       "Autorizzazione di HDI alla vendita a distanza del prodotto",
       "Verifica della tariffa sul portale HDI"
+    ]
+  },
+  "vita": {
+    "nome": "RC Vita Privata",
+    "compagnia": "HDI Assicurazioni S.p.A. (prodotto Globale Casa)",
+    "vendita_online": true,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [
+      {
+        "nome": "DIP Danni — Globale Casa",
+        "url": "/docs/casa/GlobaleCasa_DIP.pdf"
+      },
+      {
+        "nome": "DIP aggiuntivo Danni — Globale Casa",
+        "url": "/docs/casa/GlobaleCasa_DIP_Aggiuntivo.pdf"
+      },
+      {
+        "nome": "Condizioni di Assicurazione — Globale Casa",
+        "url": "/docs/casa/GlobaleCasa_Condizioni.pdf"
+      }
+    ],
+    "bisogno": "Vuoi una copertura per i danni che tu o la tua famiglia potete causare involontariamente ad altri nella vita privata?",
+    "domande": [],
+    "mancano": []
+  },
+  "infortuni-famiglia": {
+    "nome": "Infortuni Famiglia",
+    "compagnia": "Great Lakes Insurance SE",
+    "vendita_online": true,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [
+      {
+        "nome": "Set Informativo Famiglia — DIP, DIP aggiuntivo, Nota informativa e Condizioni",
+        "url": "/docs/infortuni-famiglia/Set_Informativo_Famiglia.pdf"
+      }
+    ],
+    "bisogno": "Vuoi un indennizzo per gli infortuni che tu e la tua famiglia potete subire nel tempo libero?",
+    "domande": [
+      {
+        "k": "eta",
+        "d": "Tutte le persone da assicurare hanno al massimo 68 anni?",
+        "serve": true,
+        "no": "Il prodotto assicura persone fino a 68 anni: un consulente valuta con te un'alternativa."
+      },
+      {
+        "k": "lavoro",
+        "d": "Hai capito che la polizza copre solo gli infortuni del tempo libero, non quelli sul lavoro?",
+        "serve": true,
+        "no": "Se ti serve una copertura anche sul lavoro, questo prodotto non è adatto: ti ricontatta un consulente."
+      }
+    ],
+    "mancano": []
+  },
+  "aglea-attiva": {
+    "nome": "Aglea Salus · Attiva",
+    "vendita_online": false,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [],
+    "bisogno": "Vuoi un piano sanitario per ricoveri, visite, prevenzione e non autosufficienza?",
+    "domande": [],
+    "mancano": [
+      "Set Informativo del piano (le schede garanzie in docs/aglea non bastano)"
+    ]
+  },
+  "aglea-protezione": {
+    "nome": "Aglea Salus · Protezione",
+    "vendita_online": false,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [],
+    "bisogno": "Vuoi un piano sanitario per grandi interventi, ricoveri, diagnostica e visite?",
+    "domande": [],
+    "mancano": [
+      "Set Informativo del piano (le schede garanzie in docs/aglea non bastano)"
+    ]
+  },
+  "aglea-ltc": {
+    "nome": "Aglea Salus · Long Term Care",
+    "vendita_online": false,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [],
+    "bisogno": "Vuoi una rendita in caso di non autosufficienza?",
+    "domande": [],
+    "mancano": [
+      "Set Informativo del piano (le schede garanzie in docs/aglea non bastano)"
+    ]
+  },
+  "aglea-medici": {
+    "nome": "Aglea Medici",
+    "vendita_online": false,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [],
+    "bisogno": "Vuoi un piano sanitario pensato per i medici?",
+    "domande": [],
+    "mancano": [
+      "Set Informativo del prodotto (DIP, DIP aggiuntivo, Condizioni)"
+    ]
+  },
+  "aglea-salute360": {
+    "nome": "Salute 360",
+    "vendita_online": false,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [],
+    "bisogno": "Vuoi un piano sanitario per ricoveri, prevenzione e visite?",
+    "domande": [],
+    "mancano": [
+      "Set Informativo del prodotto (DIP, DIP aggiuntivo, Condizioni)"
+    ]
+  },
+  "aglea-senis": {
+    "nome": "Senis Assistance",
+    "vendita_online": false,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [],
+    "bisogno": "Vuoi un piano sanitario e di assistenza pensato per i senior?",
+    "domande": [],
+    "mancano": [
+      "Set Informativo del prodotto (DIP, DIP aggiuntivo, Condizioni)"
+    ]
+  },
+  "infortuni": {
+    "nome": "Infortuni",
+    "vendita_online": false,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [],
+    "bisogno": "Vuoi un indennizzo in caso di infortunio, 24 ore su 24?",
+    "domande": [],
+    "mancano": [
+      "Set Informativo del prodotto (DIP, DIP aggiuntivo, Condizioni)"
+    ]
+  },
+  "tutela": {
+    "nome": "Tutela Legale",
+    "vendita_online": false,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [],
+    "bisogno": "Vuoi una copertura per le spese legali e peritali?",
+    "domande": [],
+    "mancano": [
+      "Set Informativo del prodotto (DIP, DIP aggiuntivo, Condizioni)"
+    ]
+  },
+  "animali": {
+    "nome": "Animali domestici",
+    "vendita_online": false,
+    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "documenti": [],
+    "bisogno": "Vuoi una copertura per le cure veterinarie del tuo animale?",
+    "domande": [],
+    "mancano": [
+      "Set Informativo del prodotto (DIP, DIP aggiuntivo, Condizioni)"
     ]
   }
 }

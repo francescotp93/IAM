@@ -9340,3 +9340,27 @@ Nel Lab (Landing per prodotto e Vendita a distanza) la casella aggiunge
 «Scopri di più». Il collegamento nel piede **resta sempre**, con o senza
 casella: per le polizze concluse online il recesso deve essere raggiungibile
 (condizioni HDI art. 2.15). Prova in `recesso.test.mjs`.
+
+### Vendita a distanza: la stessa regola per tutti i prodotti (0.75.0, 09/10/2026)
+
+Decisione di Francesco: «regola piena». Ogni prodotto dello shop ha la sua
+voce in `tariffe/vendita-distanza.json` (`vendita_online`, `documenti`,
+`bisogno`, `domande`, `motivo`, `mancano`); **un prodotto che non c'è non si
+vende online**. `cancelloVendita` vale per tutti: documenti presenti,
+questionario coerente (`esigenzeDi`: bisogno + domande del prodotto + due
+comuni) e presa visione prima del pagamento; la catastrofali aggiunge la
+scheda dell'abitazione, il contraente e le avvertenze.
+
+Oggi si vendono online **RC Vita Privata** (documenti di Globale Casa,
+confermati da Francesco) e **Infortuni Famiglia** (Set Informativo). Tutti gli
+altri (Aglea, Infortuni, Tutela, Animali) sono `vendita_online: false` e la
+landing mostra «Richiedi il preventivo» con il messaggio commerciale: le
+schede garanzie Aglea in `docs/aglea/` **non** valgono come Set Informativo.
+
+La landing legge la configurazione dal sito (`VD`) e attiva il pulsante solo
+se il prodotto è vendibile; il passo «Esigenze» c'è per tutti
+(`ckStepEsigenzeGen`, domande e documenti da `/shop/quote`).
+
+Difetto chiuso: l'avvio del pagamento con carta e PayPal mandava solo
+`{prodotto, params}`, e il cancello avrebbe rifiutato sempre. Ora manda anche
+`cliente` e `accettazioni`; una prova lo sorveglia, con controprova.

@@ -1,8 +1,18 @@
 {
-  "versione": "0.63.1",
-  "nome": "Storico preventivi: si leggono tutti, non più solo i 100 più recenti",
+  "versione": "0.64.0",
+  "nome": "Emissioni: la testata scura con le due code in caselle numerate, come lo storico",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.64.0",
+      "data": "2026-10-09",
+      "nome": "Emissioni: la testata scura con le due code in caselle numerate, come lo storico",
+      "voci": [
+        "Richieste di emissione: in alto la testata scura, col numero delle pratiche e il premio in coda (quelle senza premio si contano a parte, non valgono zero)",
+        "Richieste di emissione: Tutte, Da emettere e Attesa bonifico sono caselle col numero, e si cliccano per vedere una coda sola",
+        "Richieste di emissione: la tabella in una scheda bianca; su telefono niente scorrimento di lato"
+      ]
+    },
     {
       "v": "0.63.1",
       "data": "2026-10-09",

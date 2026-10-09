@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.63.1">
-<meta name="app-versione-nome" content="Storico preventivi: si leggono tutti, non più solo i 100 più recenti">
+<meta name="app-versione" content="0.64.0">
+<meta name="app-versione-nome" content="Emissioni: la testata scura con le due code in caselle numerate, come lo storico">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -929,6 +929,8 @@ button{font-family:inherit}
 .rin-hero .stor-f[data-f="da_gestire"]{border-left-color:#fb923c}
 .rin-hero .stor-f[data-f="in_esame"]{border-left-color:#60a5fa}
 .rin-hero .stor-f[data-f="emessa"]{border-left-color:#34d399}
+.rin-hero .emiss-f[data-f="emettere"]{border-left-color:#60a5fa}
+.rin-hero .emiss-f[data-f="bonifico"]{border-left-color:#fb923c}
 .rin-hero .rin-viste .tk-f:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
 @media(max-width:640px){.rin-viste-5{grid-template-columns:repeat(3,minmax(0,1fr))}.rin-hero .sin-n{font-size:20px}}
 @media(max-width:640px){.rin-seg{width:100%}.rin-hero .rin-seg .ana-tab{flex:1;justify-content:center}
@@ -4108,13 +4110,37 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
     <!-- ── RICHIESTE DI EMISSIONE ── -->
     <div class="page" id="page-emissioni">
-      <div class="page-title">Richieste di emissione</div>
-      <div class="page-sub">Pratiche per cui il collaboratore ha richiesto l'emissione · gestiscile da qui</div>
+      <div class="rin-kit">
+      <!-- Stesso linguaggio di storico, sinistri e portafoglio (09/10/2026). -->
+      <header class="rin-hero">
+        <div class="rin-hero-su">
+          <div class="rin-hero-ic" aria-hidden="true"><i class="ti ti-file-certificate"></i></div>
+          <div class="rin-hero-t">
+            <div class="rin-occhiello">Preventivi</div>
+            <h1 class="rin-titolo">Richieste di emissione</h1>
+            <div class="rin-sotto">Pratiche per cui il collaboratore ha richiesto l'emissione: gestiscile da qui.</div>
+            <div class="rin-pills" id="emiss-chips"></div>
+          </div>
+        </div>
+        <!-- Due code diverse dentro la stessa: chi aspetta che l'agenzia emetta
+             e chi aspetta il bonifico del cliente. Il numero conta le righe che
+             il clic mostrerà. -->
+        <div class="rin-viste" id="emiss-filters">
+          <button class="tk-f emiss-f active" data-f="tutte" onclick="setEmissFilter('tutte')"><b class="sin-n">·</b><span class="rin-vista-l">Tutte</span></button>
+          <button class="tk-f emiss-f" data-f="emettere" onclick="setEmissFilter('emettere')"><b class="sin-n">·</b><span class="rin-vista-l">Da emettere</span></button>
+          <button class="tk-f emiss-f" data-f="bonifico" onclick="setEmissFilter('bonifico')"><b class="sin-n">·</b><span class="rin-vista-l">Attesa bonifico</span></button>
+        </div>
+      </header>
+      <div class="rin-corpo">
+      <div class="rin-tab">
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr><th>Data/ora</th><th>Prodotto</th><th>Riferimento</th><th class="soldi">Premio</th><th>Stato</th><th>Operatore</th></tr></thead>
           <tbody id="emiss-body"><tr><td colspan="6"><div class="empty-state">Nessuna richiesta di emissione.</div></td></tr></tbody>
         </table>
+      </div>
+      </div>
+      </div>
       </div>
     </div>
 
@@ -16290,10 +16316,41 @@ function aggiornaBadgeStorico(){
 }
 // In coda all'operatore: richieste di emissione (in_esame) + bonifici in attesa di sblocco
 function prevInCodaEmiss(r){ const s = prevStato(r); return s === 'in_esame' || (r.dati && r.dati.attesa_sblocco && s !== 'emessa'); }
+/* Le due code dentro la coda delle emissioni: «attesa bonifico» è la pratica
+   ferma finché il cliente non paga, «da emettere» tutto il resto, cioè lavoro
+   dell'agenzia. Una funzione sola conta e filtra, così il numero su una
+   casella è quello che il clic mostra (§63-bis). */
+var EMISS_FILTER = 'tutte';
+function emissAttesaBonifico(r){ return !!(r.dati && r.dati.attesa_sblocco === 'bonifico'); }
+function emissPerFiltro(list, f){
+  if (f === 'bonifico') return list.filter(emissAttesaBonifico);
+  if (f === 'emettere') return list.filter(r => !emissAttesaBonifico(r));
+  return list;
+}
+function setEmissFilter(f){
+  EMISS_FILTER = f;
+  document.querySelectorAll('#emiss-filters .emiss-f').forEach(b => b.classList.toggle('active', b.dataset.f === f));
+  renderEmissioni();
+}
 function renderEmissioni(){
   const body = document.getElementById('emiss-body'); if (!body) return;
-  const list = (STORICO_CACHE || []).filter(prevInCodaEmiss);
-  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">Nessuna richiesta di emissione. </div></td></tr>`; return; }
+  const coda = (STORICO_CACHE || []).filter(prevInCodaEmiss);
+  document.querySelectorAll('#emiss-filters .emiss-f').forEach(b => {
+    const el = b.querySelector('.sin-n'); if (el) el.textContent = emissPerFiltro(coda, b.dataset.f).length;
+  });
+  const list = emissPerFiltro(coda, EMISS_FILTER);
+  /* Il premio in coda: una pratica senza premio non vale zero, si conta a
+     parte e si dice (§36). La lettura parziale si dichiara come nello storico. */
+  const chips = document.getElementById('emiss-chips');
+  if (chips) {
+    const conPremio = list.filter(r => r.premio != null && r.premio !== '');
+    const somma = conPremio.reduce((t, r) => t + (Number(r.premio) || 0), 0);
+    const senza = list.length - conPremio.length;
+    chips.innerHTML = `<span class="rin-pill rin-pill-n"><i class="ti ti-list"></i> ${list.length} ${list.length === 1 ? 'pratica' : 'pratiche'}</span>`
+      + (conPremio.length ? `<span class="rin-pill"><i class="ti ti-coin-euro"></i> premi ${soldi(somma)}${senza ? ` · ${senza} senza premio` : ''}</span>` : '')
+      + (STOR_PARZIALE ? `<span class="rin-pill rin-pill-avv"><i class="ti ti-alert-triangle"></i> lettura parziale</span>` : '');
+  }
+  if (!list.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${coda.length ? 'Nessuna pratica in questa coda.' : 'Nessuna richiesta di emissione.'} </div></td></tr>`; return; }
   const ICON = { persona:'ti-shield-heart', tutela:'ti-gavel', rca:'ti-car', beni:'ti-home', impresa:'ti-building-store', animali:'ti-paw', viaggio:'ti-plane' };
   body.innerHTML = list.map(r => `<tr style="cursor:pointer" onclick="apriPreventivo('${r.id}')" title="Apri e gestisci l'emissione">
     <td style="font-size:12px;color:#aab">${new Date(r.creato_il).toLocaleString('it-IT')}</td>

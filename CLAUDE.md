@@ -9049,3 +9049,14 @@ pagina aperta alle prove dopo. Controprova: col `.limit(100)` di prima, «letti
 
 Il `.limit(100)` che resta in `regCarica` è un'altra cosa: gli ultimi cento
 movimenti della storia di **una** riga, un limite di disegno e non un conteggio.
+
+### Le emissioni con lo stesso linguaggio (0.64.0, 09/10/2026)
+
+`#page-emissioni` usa la testata `rin-*` e le caselle numerate (`.sin-n` dentro
+`#emiss-filters`, classi `tk-f emiss-f`). Le code sono due dentro la stessa:
+**attesa bonifico** (`dati.attesa_sblocco === 'bonifico'`, la pratica ferma
+finché il cliente non paga) e **da emettere** (tutto il resto, lavoro
+dell'agenzia). `emissPerFiltro` conta e filtra con la stessa regola. Il premio
+in coda nelle pastiglie esclude le pratiche senza premio e le conta a parte
+(§36); la lettura parziale si eredita da `STOR_PARZIALE`, perché la coda è lo
+stesso `STORICO_CACHE` dello storico.

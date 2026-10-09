@@ -178,6 +178,8 @@
           <option value="rcprof">RC Professionale (su misura)</option>
         </optgroup>
       </select>
+      <label style="margin-top:12px;display:flex;align-items:center;gap:8px;font-weight:600"><input type="checkbox" id="l-recesso" onchange="buildLanding()" style="width:auto"> Mostra il pulsante «Recesso online» nella landing</label>
+      <p class="muted" style="margin:4px 0 0;font-size:12.5px">Il collegamento al recesso resta comunque nel piede della pagina: per le polizze concluse online deve sempre essere raggiungibile.</p>
       <label style="margin-top:12px">Link della landing (per inserzioni / sito)</label>
       <pre id="landing-link"></pre>
       <button class="btn" onclick="copyLanding()"><i class="ti ti-copy"></i> Copia link</button>
@@ -221,6 +223,7 @@
           <option value="rcprof">RC Professionale (su misura)</option>
         </optgroup>
       </select>
+      <label style="margin-top:12px;display:flex;align-items:center;gap:8px;font-weight:600"><input type="checkbox" id="vad-recesso" onchange="buildVad()" style="width:auto"> Mostra il pulsante «Recesso online» nella landing</label>
       <label style="margin-top:12px">Link di vendita a distanza (web) — da inviare al cliente</label>
       <pre id="vad-link"></pre>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -558,9 +561,13 @@ function copySnippet(){
   const t = document.getElementById('snippet').textContent;
   navigator.clipboard.writeText(t).then(()=>{ alert('Codice copiato! Incollalo nel tuo sito.'); }).catch(()=>{});
 }
+/* Il pulsante «Recesso online» si sceglie quando si crea il link: è un
+   parametro dell'indirizzo (recesso=1), così la stessa landing può uscire con
+   o senza, a seconda di dove la si usa. */
 function buildLanding(){
   const prod = document.getElementById('l-prod').value;
-  const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod);
+  const rec = document.getElementById('l-recesso');
+  const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod) + (rec && rec.checked ? '&recesso=1' : '');
   document.getElementById('landing-link').textContent = url;
   document.getElementById('open-landing').href = url;
 }
@@ -570,7 +577,8 @@ function copyLanding(){
 function buildVad(){
   const sel = document.getElementById('vad-prod'); if (!sel) return;
   const prod = sel.value;
-  const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod) + '&canale=web';
+  const rec = document.getElementById('vad-recesso');
+  const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod) + '&canale=web' + (rec && rec.checked ? '&recesso=1' : '');
   document.getElementById('vad-link').textContent = url;
   document.getElementById('vad-open').href = url;
   const nome = (sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].text) || 'la tua assicurazione';

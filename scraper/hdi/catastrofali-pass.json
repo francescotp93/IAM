@@ -1,0 +1,86 @@
+{
+  "_nota": "Mappa del flusso HDI #Rischi catastrofali sul portale RGI PASS (access.hdia.it/hdi/CommandProcessor). Rilevata il 09/10/2026 leggendo il codice delle pagine. Nessun dato cliente, nessun token: gli id di sessione, di bene e di garanzia cambiano a ogni pratica e vanno letti dalla pagina. Documento: docs/HDI-CATASTROFALI-PASS.md",
+  "prodotto": { "codice": "545", "descrizione": "#Rischi catastrofali", "categoria": "2", "bene": { "codice": "000366", "descrizione": "Abitazione" } },
+  "endpoint": "/hdi/CommandProcessor",
+  "metodo": "POST form (application/x-www-form-urlencoded), sessione = cookie del portale",
+  "protocollo": {
+    "campoComandi": "RGICommand",
+    "separatore": ",",
+    "campiDiControllo": ["RGICommand", "RGIResponseOk", "RGIResponseFoundZero", "RGIResponseFoundOne", "RGIResponseFoundMore", "RGILastCommand", "RGILastResource", "RGIAfterCommand", "RGIMenuActions", "MP", "MJ"],
+    "datiInPagina": {
+      "RGICollection": "contesto pratica: [chiave, valore] (prodotto, bene, nodo, scadenza sessione in 'Expire')",
+      "RGIFormSet": "definizione campi: [nome, tipo, obbligatorio, lunghezza, valore, [codici[], etichette[]], metadati]; metadati[1]=etichetta, [3]=codice fattore, [6]=decimali",
+      "RGIRecordSet": "dati e risultati: righe [tipo, ...]"
+    },
+    "tipiCampo": { "LT": "lista", "R": "numero con decimali", "N": "intero", "F": "testo", "D": "data", "B": "booleano 0/1", "H": "nascosto" },
+    "nomeCampoFattore": "_<idFattore>-<idBene>  (idBene negativo, diverso per ogni pratica: leggerlo da RGICollection.IDBENE)"
+  },
+  "passi": [
+    {
+      "ordine": 1, "pagina": "Dati bene", "form": "RGI_FORM_DATIBENEDINAMICO",
+      "comandiAvanti": ["azioniPostDatiBene", "getListaQuestionariBene", "getGaranzie"],
+      "fattori": [
+        { "id": "1665", "codice": "2RIC", "etichetta": "Costo di ricostruzione a nuovo del fabbricato", "tipo": "R", "decimali": 2, "obbligatorio": true },
+        { "id": "32", "codice": "2TIPAB", "etichetta": "Tipo abitazione", "tipo": "LT", "obbligatorio": true, "valori": { "1": "Appartamento in condominio", "5": "Casa a schiera o Villa plurifamiliare", "6": "Villa monofamiliare" } },
+        { "id": "53", "codice": "2PASS", "etichetta": "Proprietà dell'Assicurato", "tipo": "LT", "obbligatorio": true, "valori": { "0": "No", "1": "Sì" }, "nota": "bloccato su 1" },
+        { "id": "1504", "codice": "2DIMOR", "etichetta": "Dimora", "tipo": "LT", "obbligatorio": true, "valori": { "1": "Dimora abituale", "2": "Dimora saltuaria", "3": "Dimora locata a terzi" } },
+        { "id": "4270", "codice": "2MQL", "etichetta": "Superficie", "tipo": "LT", "obbligatorio": true, "valori": { "1": "Minore di 100 mq", "2": "Compresa tra 100 e 150 mq", "3": "Maggiore di 150 mq" } },
+        { "id": "4272", "codice": "2EFA", "etichetta": "Età del fabbricato", "tipo": "LT", "obbligatorio": true, "valori": { "1": "Minore di 5 anni", "5": "Compresa tra 5 e 15 anni", "6": "Maggiore di 15 anni", "4": "Sconosciuta" } },
+        { "id": "645", "codice": "3PIAN", "etichetta": "Numero dei piani fuori terra", "tipo": "N", "obbligatorio": true },
+        { "id": "646", "codice": null, "etichetta": "Numero dei piani seminterrati o interrati", "tipo": "N", "obbligatorio": true, "nota": "codice fattore da confermare" }
+      ],
+      "indirizzo": "preso dall'anagrafica; il server lo geocodifica e assegna PaindirizzoCcella (cella geografica, 13 cifre)"
+    },
+    {
+      "ordine": 2, "pagina": "Selezione garanzie", "form": "RGI_FORM_SELGAR",
+      "comandiAvanti": ["azioniPostSelezioneUnit"],
+      "garanzie": [
+        { "checkbox": "CKG2568", "codice": "081236", "descrizione": "Terremoto - Fabbricato", "obbligatoria": true },
+        { "checkbox": "CKG2569", "descrizione": "Terremoto - Contenuto" },
+        { "checkbox": "CKG2571", "descrizione": "Alluvione e inondazione - Fabbricato" },
+        { "checkbox": "CKG2570", "descrizione": "Alluvione e inondazione - Contenuto" }
+      ]
+    },
+    {
+      "ordine": 3, "pagina": "Fattori di garanzia", "form": "RGI_FORM_DATIBENEDINAMICO",
+      "comandi": ["fattoriBenePostUnit"],
+      "fattoriBene": [
+        { "id": "4269", "codice": "2PIAN", "etichetta": "Piano", "tipo": "LT", "valori": { "1": "Seminterrato / Terreno / Rialzato", "2": "Intermedio", "3": "Attico / Superattico", "4": "Non applicabile" }, "nota": "obbligatorio solo per appartamento, insieme a _543 Interno e _1503 Piano (testo)" }
+      ],
+      "fattoriGaranziaCalcolati": [
+        { "id": "45", "codice": "3SA", "etichetta": "Somma assicurata", "regola": "= costo di ricostruzione" },
+        { "id": "414", "codice": "3FRAEU", "etichetta": "Franchigia", "regola": "10% della somma assicurata (osservato)" },
+        { "id": "410", "codice": "3LIEU", "etichetta": "Limite di indennizzo", "regola": "80% della somma assicurata (osservato)" },
+        { "id": "61", "codice": "3FOASS", "etichetta": "Forma assicurativa", "regola": "1 = Valore intero" }
+      ]
+    },
+    {
+      "ordine": 4, "pagina": "Questionario IDD adeguatezza", "form": "RGI_FORM_QAD",
+      "comandi": ["questionarioAdeguatezzaDanni"],
+      "azioni": ["IR_calcolaAdeguatezza()", "checkbox di conferma durata/limiti/esclusioni", "IR_Next()"],
+      "nota": "Obbligo IDD: va compilato con le risposte reali del cliente, non automatizzabile senza il cliente"
+    },
+    {
+      "ordine": 5, "pagina": "Quotazione", "form": "RGI_FORM_QUOTADYNA",
+      "comandi": ["verificaValiditaDataTariffa", "azioniPostSelezioneBene", "dynaQuotazione"],
+      "recordPremio": {
+        "SVILUPPO": "[tipo, codiceGaranzia, n, descrizione, formula]  es. (SA*((TAS))/1000)+(0)",
+        "COEFFICIENTI": "[tipo, codiceGaranzia, n, descrizione, formula con valori]  es. (150*((0,172))/1000)+(0); tasso mostrato arrotondato a 3 decimali",
+        "QPA": "premio annuo: RIS per garanzia, SEZ per sezione, TOT, RID (riduzione a carico HDI), LORDO-RID",
+        "QRF": "rata alla firma (GAR, DIR diritti, TOTR, RID, LORDO-RID)",
+        "QRS": "rata successiva (stessa struttura di QRF)",
+        "QPVARF": "provvigioni rata firma",
+        "QPVARS": "provvigioni rate successive",
+        "altri": ["QPANQ", "QPAD", "QPADNQ", "QFLEX", "QMS", "QRIND", "QPVPRF", "QPVPRS"]
+      }
+    }
+  ],
+  "tariffa": {
+    "formula": "premio garanzia = SA x tasso / 1000",
+    "tasso": "per mille, dipende dalla zona (CAP / cella); per il CAP 91025 coincide con tariffe/catastrofali_cap.json [0.1718, 0.1004]",
+    "premioMinimo": 60,
+    "arrotondamento": "totale arrotondato per difetto all'euro; il minimo si ripartisce in proporzione, i centesimi tolti dall'arrotondamento escono dalla prima garanzia (terremoto)",
+    "imposte": "imponibile = lordo (nessuna imposta esposta)",
+    "provvigioni": "nei record QPVARF/QPVARS; le percentuali dell'agenzia NON si scrivono in questo repo pubblico"
+  }
+}

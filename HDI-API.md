@@ -81,3 +81,7 @@ Emissione e firma per ultime, e solo con l'autorizzazione al punto 4.
 premi veri. `/hdi-api/stato` e ogni risposta dicono sempre su quale ambiente si
 sta lavorando — mostrare a un cliente un premio di collaudo è il guaio peggiore
 di tutta questa integrazione.
+
+## Vedi anche
+
+- [`docs/HDI-CATASTROFALI-PASS.md`](docs/HDI-CATASTROFALI-PASS.md): come il portale agenti HDI (PASS) costruisce campi e tariffa del prodotto #Rischi catastrofali, con le quotazioni di prova.

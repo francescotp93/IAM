@@ -9397,3 +9397,23 @@ Resta aperto: la paginazione per `range` rilegge da capo le righe precedenti
 a ogni pagina (costo che cresce col quadrato); il riquadro Portafoglio dei KPI
 scarica ancora tutte le polizze per fare una somma che potrebbe fare il
 database.
+
+### Catastrofali: il premio confrontato col portale HDI (09/10/2026)
+
+Francesco ha portato la mappa del portale agenti HDI (PASS) per il prodotto
+545 #Rischi catastrofali: `docs/HDI-CATASTROFALI-PASS.md` e
+`scraper/hdi/catastrofali-pass.json`. Le quotazioni fatte lì (CAP 91025)
+coincidono col nostro motore: tassi 0,1718 / 0,1004, minimo 60 €, totale per
+difetto all'euro (300.000 € → 81,66 → **81 €**). I fattori del fabbricato
+(tipo, età, superficie, dimora, piani) **non cambiano il tasso**: decide la zona.
+
+`server/verifica/catastrofali-portale-hdi.test.mjs` (6) fissa quei numeri
+come presi DA FUORI, non calcolati da noi: se diventa rossa, il preventivo ha
+smesso di coincidere con quello che HDI emetterebbe, e si rifà la quotazione
+sul portale invece di cambiare il numero. Controprova: arrotondamento per
+eccesso → 82 € contro 81 €, rossa.
+
+Resta aperto: provare altri CAP; il contenuto (il motore usa il 20% del
+fabbricato, il portale chiede somme proprie); la ripartizione per garanzia
+(il portale spalma il minimo in proporzione e toglie i centesimi dal
+terremoto, il nostro elenco mostra i premi puri, il totale è lo stesso).

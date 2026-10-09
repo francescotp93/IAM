@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.66.0">
-<meta name="app-versione-nome" content="Catalogo prodotti: schede bianche in rilievo, i numeri in colonna e le compagnie come riquadri">
+<meta name="app-versione" content="0.67.0">
+<meta name="app-versione-nome" content="Tutte le pagine in chiaro: schede bianche in rilievo al posto delle testate scure">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -1499,6 +1499,65 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .clk-fascia-prospect{background:#e8f1fc;color:#1565c0;border:1px solid #bcd9f5}
 .clk-fascia-dubbio{background:#fff8ec;color:#b06a00;border:1px solid #f6dfb8}
 .gruppi-add-btn{white-space:nowrap}
+/* ── IN CHIARO (09/10/2026) ─────────────────────────────────────────────
+   Francesco: «non possiamo farlo bianco con il riquadro in rilievo?
+   Visivamente sarebbe più leggero». Le testate scure delle pagine del
+   portafoglio, del foglio cassa e della scheda cliente diventano schede
+   bianche in rilievo. Le regole stanno qui, DOPO quelle scure, così le
+   sovrascrivono senza toccarle: le variabili si ridefiniscono sul
+   contenitore, mai su :root (§31). */
+.rin-kit{--rin-chiaro:#1f2a37;--rin-chiaro2:#5a6b7c;--rin-bordo:#d9dde5;--rin-tenue:#f4f5f8}
+.fc-kit{--fc-chiaro:#1f2a37;--fc-chiaro2:#5a6b7c;--fc-bordo:#d9dde5;--fc-tenue:#f4f5f8}
+.clk-kit{--clk-chiaro:#1f2a37;--clk-chiaro2:#5a6b7c;--clk-bordo:#d9dde5;--clk-tenue:#f4f5f8}
+.rin-hero,.fc-hero{background:#fff;border:1px solid var(--rin-bordo,#d9dde5);border-radius:18px;
+  box-shadow:0 1px 2px rgba(15,23,42,.04),0 8px 22px rgba(15,23,42,.05)}
+.fc-hero{border-color:var(--fc-bordo)}
+.clk-hero{background:#fff;border:1px solid var(--clk-bordo);border-radius:18px;margin:14px 18px 0;
+  box-shadow:0 1px 2px rgba(15,23,42,.04),0 8px 22px rgba(15,23,42,.05)}
+.rin-hero-ic,.fc-hero-ic,.clk-av{box-shadow:none}
+.rin-pill,.fc-chip,.clk-chip{background:var(--rin-tenue,#f4f5f8);border-color:#d9dde5}
+.rin-hb,.fc-hb,.clk-chiudi{background:#fff;border-color:#d9dde5}
+.rin-hb:hover,.fc-hb:hover,.clk-chiudi:hover{background:#f4f5f8;border-color:#c3c9d4}
+.rin-hb:focus-visible,.fc-hb:focus-visible,.clk-chiudi:focus-visible,.clk-tab:focus-visible,
+.rin-hero .rin-fascia:focus-visible,.rin-hero .rin-chip:focus-visible,
+.rin-hero .rin-seg .ana-tab:focus-visible,.rin-hero .rin-viste .ana-tab:focus-visible,
+.rin-hero .rin-viste .tk-f:focus-visible{outline-color:#2563eb}
+.rin-hb.rin-hb-pieno{background:#2563eb;border-color:#2563eb;color:#fff}
+.rin-hb.rin-hb-pieno:hover{background:#1d4ed8}
+.rin-pill.rin-pill-avv{background:#fffbeb;border-color:#fcd34d;color:#92400e}
+.rin-pill.rin-pill-avv i{color:#b45309}
+.rin-hero .rin-fascia,.rin-hero .rin-viste .ana-tab,.rin-hero .rin-viste .tk-f{
+  background:var(--rin-tenue);border-color:var(--rin-bordo);border-left-color:#c3c9d4}
+.rin-hero .rin-fascia:hover,.rin-hero .rin-viste .ana-tab:hover,.rin-hero .rin-viste .tk-f:hover{background:#eceef3}
+.rin-hero .rin-fascia b,.rin-hero .rin-viste .ana-tab .cl-count,.rin-hero .sin-n{color:var(--rin-chiaro)}
+.rin-hero .rin-fascia.urg{border-left-color:#ef4444}.rin-hero .rin-fascia.urg b{color:#b91c1c}
+.rin-hero .rin-fascia.avv{border-left-color:#f97316}.rin-hero .rin-fascia.avv b{color:#c2410c}
+.rin-hero .rin-fascia.ok{border-left-color:#3b82f6}.rin-hero .rin-fascia.ok b{color:#1d4ed8}
+.rin-hero .rin-fascia.att,.rin-hero .rin-viste .ana-tab.active,.rin-hero .rin-viste .tk-f.active{
+  background:#eff6ff;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.rin-hero .rin-viste #anag-view-lead{border-left-color:#f86200}
+.rin-hero .sin-f[data-f="aperto"],.rin-hero .stor-f[data-f="da_gestire"],.rin-hero .emiss-f[data-f="bonifico"]{border-left-color:#f97316}
+.rin-hero .sin-f[data-f="in_gestione"],.rin-hero .stor-f[data-f="in_esame"],.rin-hero .emiss-f[data-f="emettere"]{border-left-color:#3b82f6}
+.rin-hero .sin-f[data-f="liquidato"],.rin-hero .stor-f[data-f="emessa"]{border-left-color:#10b981}
+.rin-hero .rin-chip{background:#fff;border-color:rgba(239,68,68,.45)}
+.rin-hero .rin-chip b{color:#b91c1c}
+.rin-hero .rin-chip:hover{background:#fef2f2;border-color:#ef4444}
+.rin-hero .rin-chip.att{background:#fee2e2;border-color:#ef4444;color:#7f1d1d}
+.rin-hero .rin-chip.att b{color:#b91c1c}
+.rin-hero .rin-avv{color:#b45309}
+.rin-seg{background:var(--rin-tenue,#f4f5f8);border-color:#d9dde5}
+.rin-hero .rin-seg .ana-tab:hover{background:#fff}
+.rin-hero .rin-seg .ana-tab.active{background:#2563eb;color:#fff;box-shadow:0 1px 3px rgba(15,23,42,.15)}
+.fc-hero .fc-t{background:var(--fc-tenue);border-color:var(--fc-bordo)}
+.fc-hero .fc-t b{color:var(--fc-chiaro)}
+.fc-hero .fc-t.fc-verde{border-color:#a7f3d0}.fc-hero .fc-t.fc-verde b{color:#047857}
+.fc-hero .fc-t.fc-ambra{border-color:#fcd34d}.fc-hero .fc-t.fc-ambra b{color:#b45309}
+.fc-hero .fc-avv{background:#fffbeb;border-color:#fcd34d;color:#92400e}
+.fc-hero .fc-err{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
+.clk-tab{background:var(--clk-tenue);border-color:var(--clk-bordo)}
+.clk-tab:hover{background:#eceef3;border-color:#c3c9d4}
+.clk-tab.clk-on{color:#fff;border-color:#2563eb;background:#2563eb;box-shadow:0 1px 3px rgba(15,23,42,.15)}
+@media(max-width:640px){.clk-hero{margin:10px 10px 0}}
 @media(max-width:860px){.clk-corpo{grid-template-columns:1fr}.clk-lato{position:static}}
 @media(max-width:640px){.clk-hero{padding:14px 14px 12px}.clk-titolo{font-size:18px}
   .clk-av{width:42px;height:42px;font-size:14px}.clk-corpo{padding:12px}

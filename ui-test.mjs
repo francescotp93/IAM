@@ -5746,6 +5746,59 @@ const avvio = async () => {
       await window.loadScadenzario();
     }, { p: SCADENZE_FINTE, r: RATE_FINTE });
 
+    await prova('storico preventivi · si leggono TUTTI, non i cento più recenti', async () => {
+      /* Fino al 09/10/2026 lo storico leggeva `.limit(100)`: le caselle, il
+         pallino sul menu e la coda delle emissioni contavano su quei cento, e
+         il centunesimo spariva da tutti e tre in silenzio. Qui il finto si
+         comporta come il server vero: al massimo MILLE righe per richiesta,
+         `range` rispettato, `limit` rispettato fino a mille. Con 1.500
+         preventivi una lettura sola ne porterebbe mille — o cento. */
+      const r = await page.evaluate(async () => {
+        const TOT = 1500, vere = db.from.bind(db), pagine = [], gruppi = [];
+        const tutti = Array.from({ length: TOT }, (_, i) => ({ id: 'pv' + i, modulo: 'rca', prodotto: 'RC Auto',
+          cliente: 'Cliente ' + i, creato_il: '2026-09-01T10:00:00Z', creato_da: 'altro', dati: { stato: 'quotato' } }));
+        const finta = (tabella) => {
+          const q = { r: null, l: null, inn: null };
+          ['select', 'order', 'eq', 'neq', 'gte', 'lte', 'is', 'not', 'or'].forEach(m => { q[m] = () => q; });
+          q.in = (c, v) => { q.inn = v; return q; };
+          q.range = (a, b) => { q.r = [a, b]; return q; };
+          q.limit = (n) => { q.l = n; return q; };
+          q.then = (ok, ko) => {
+            let dati = [];
+            if (tabella === 'quote_preventivi') {
+              const da = q.r ? q.r[0] : 0;
+              const quante = Math.min(1000, q.r ? q.r[1] - q.r[0] + 1 : (q.l || 1000), q.l || 1000);
+              pagine.push([da, quante]);
+              dati = tutti.slice(da, da + quante);
+            } else gruppi.push((q.inn || []).length);
+            return Promise.resolve({ data: dati, error: null }).then(ok, ko);
+          };
+          return q;
+        };
+        db.from = (t) => (t === 'quote_preventivi' || t === 'quote_polizze') ? finta(t) : vere(t);
+        /* Senza `showPage`: avvierebbe da sé un secondo caricamento (le pagine
+           si conterebbero due volte) e lascerebbe aperta un'altra pagina alle
+           prove che seguono, che si aspettano lo scadenzario. */
+        try {
+          await window.loadStorico();
+          setStorFilter('tutti');
+        } finally { db.from = vere; }
+        return { letti: STORICO_CACHE.length, distinti: new Set(STORICO_CACHE.map(x => x.id)).size,
+          parziale: STOR_PARZIALE, pagine, gruppi,
+          casella: document.querySelector('#stor-filters .stor-f[data-f="tutti"] .sin-n').textContent,
+          chips: document.getElementById('stor-chips').textContent };
+      });
+      deve(r.letti === 1500, 'preventivi letti: ' + r.letti + ' su 1.500');
+      deve(r.distinti === 1500, 'ha letto due volte gli stessi: ' + r.distinti + ' distinti');
+      deve(r.pagine.length === 2, 'pagine chieste: ' + JSON.stringify(r.pagine));
+      deve(r.casella === '1500', 'la casella «Tutti» dice ' + r.casella);
+      deve(!r.parziale && !/non tutti/.test(r.chips), 'dichiara parziale una lettura completa: ' + r.chips);
+      /* Le polizze dei preventivi si cercano a gruppi: un solo `in(...)` con
+         1.500 id sarebbe un indirizzo più lungo di quello che il server accetta. */
+      deve(r.gruppi.length >= 10 && r.gruppi.every(n => n <= 150), 'aggancio delle polizze non a gruppi: ' + JSON.stringify(r.gruppi));
+      return '1.500 preventivi in ' + r.pagine.length + ' pagine, polizze cercate in ' + r.gruppi.length + ' gruppi';
+    });
+
     await prova('M2.1 · sinistri e storico: l\'intervallo di date filtra, e solo al clic', async () => {
       const r = await page.evaluate(() => {
         const out = {};

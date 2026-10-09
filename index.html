@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.63.0">
-<meta name="app-versione-nome" content="Storico preventivi: la testata scura con gli stati in caselle numerate, come i sinistri">
+<meta name="app-versione" content="0.63.1">
+<meta name="app-versione-nome" content="Storico preventivi: si leggono tutti, non più solo i 100 più recenti">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -16197,8 +16197,14 @@ function storAzzeraFiltri(){
   ['stor-da','stor-a','stor-cliente'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
   renderStorico();
 }
-/* Il tetto della lettura: si dichiara invece di tacerlo (§50). */
-const STOR_TETTO = 100;
+/* Si leggono TUTTI i preventivi, a pagine da mille (09/10/2026, richiesta di
+   Francesco). Prima erano i 100 più recenti: le caselle, il pallino sul menu e
+   la coda delle emissioni contavano su quei cento, e il centunesimo spariva
+   da tutti e tre senza che niente lo dicesse. Misurato il 09/10/2026: 87
+   preventivi, 156 kB in tutto — leggerli tutti non costa niente.
+   `STOR_PARZIALE` dice se la paginazione si è fermata prima della fine: è
+   l'unico caso in cui la pastiglia gialla deve comparire. */
+var STOR_PARZIALE = false;
 function storPerStato(list, f){
   if (f === 'da_gestire') return list.filter(prevDaGestire);
   if (f === 'tutti') return list;
@@ -16207,8 +16213,8 @@ function storPerStato(list, f){
 function storRenderChips(n){
   const box = document.getElementById('stor-chips'); if (!box) return;
   box.innerHTML = `<span class="rin-pill rin-pill-n"><i class="ti ti-list"></i> ${n} ${n === 1 ? 'preventivo' : 'preventivi'}</span>`
-    + ((STORICO_CACHE || []).length >= STOR_TETTO
-      ? `<span class="rin-pill rin-pill-avv" title="Si leggono i ${STOR_TETTO} più recenti: i più vecchi non entrano né nell'elenco né nei numeri delle caselle"><i class="ti ti-alert-triangle"></i> solo i ${STOR_TETTO} più recenti</span>` : '');
+    + (STOR_PARZIALE
+      ? `<span class="rin-pill rin-pill-avv" title="La lettura si è fermata prima della fine: i preventivi più vecchi non entrano né nell'elenco né nei numeri delle caselle"><i class="ti ti-alert-triangle"></i> letti ${(STORICO_CACHE || []).length}, non tutti</span>` : '');
 }
 function renderStorico(){
   const body = document.getElementById('storico-body'); if (!body) return;
@@ -16241,12 +16247,20 @@ async function loadStorico() {
   const body = document.getElementById('storico-body');
   if (!db) return;
   try {
-    let q = db.from('quote_preventivi').select('*').order('creato_il', { ascending: false }).limit(STOR_TETTO);
     const ids = await visibleUserIds();
-    if (ids) q = q.in('creato_da', ids);
-    const { data, error } = await q;
-    if (error) throw error;
-    STORICO_CACHE = data || [];
+    /* Paginata: il server ne manda al massimo mille per richiesta, qualunque
+       tetto si scriva (§50). `id` come secondo ordinamento tiene ferme le
+       pagine quando due preventivi hanno lo stesso istante. La funzione che
+       pagina è quella dello scadenzario: una regola sola su come si legge
+       tutto. */
+    const r = await rinTutte((a, b) => {
+      let q = db.from('quote_preventivi').select('*')
+        .order('creato_il', { ascending: false }).order('id', { ascending: true });
+      if (ids) q = q.in('creato_da', ids);
+      return q.range(a, b);
+    });
+    STORICO_CACHE = r.righe;
+    STOR_PARZIALE = r.parziale;
     await agganciaPolizze(STORICO_CACHE);   // CRM Punto 1
     renderStorico();
     aggiornaBadgeStorico();
@@ -16891,12 +16905,18 @@ async function agganciaPolizze(righe) {
   const ids = righe.map(r => r.id).filter(Boolean);
   if (!ids.length) return;
   try {
-    const { data, error } = await db.from('quote_polizze')
-      .select('id,numero,numero_polizza,preventivo_id,data_effetto,data_scadenza,frazionamento,stato_pagamento,perfezionata,rendicontata')
-      .in('preventivo_id', ids);
-    if (error) throw error;
+    /* A gruppi: gli id passano nell'indirizzo, e con tutto lo storico (non più
+       i cento più recenti) un solo `in(...)` diventerebbe un indirizzo più
+       lungo di quello che il server accetta. Centocinquanta id sono circa
+       seimila caratteri. */
     const perPrev = {};
-    (data || []).forEach(p => { perPrev[p.preventivo_id] = p; });
+    for (let i = 0; i < ids.length; i += 150) {
+      const { data, error } = await db.from('quote_polizze')
+        .select('id,numero,numero_polizza,preventivo_id,data_effetto,data_scadenza,frazionamento,stato_pagamento,perfezionata,rendicontata')
+        .in('preventivo_id', ids.slice(i, i + 150));
+      if (error) throw error;
+      (data || []).forEach(p => { perPrev[p.preventivo_id] = p; });
+    }
     righe.forEach(r => { r.__polizza = perPrev[r.id] || null; });
   } catch (e) {
     console.warn('quote_polizze non disponibile:', e.message || e);

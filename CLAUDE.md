@@ -9026,3 +9026,26 @@ invariate). `renderStorico` applica **prima** date e cliente, conta le caselle
 con `storPerStato` (la stessa funzione che poi filtra: «Da gestire» passa da
 `prevDaGestire` in tutti e due i casi) e solo dopo applica lo stato. La lettura
 si ferma ai 100 più recenti (`STOR_TETTO`), e la testata lo dice (§50).
+
+### Lo storico legge tutti i preventivi (0.63.1, 09/10/2026)
+
+`loadStorico` leggeva `.limit(100)`: le caselle, il pallino `stor-badge` e la
+coda delle emissioni (`renderEmissioni`, che legge lo stesso `STORICO_CACHE`)
+contavano su quei cento, e il centunesimo spariva da tutti e tre in silenzio.
+Adesso pagina con `rinTutte` (la stessa dello scadenzario: una regola sola su
+come si legge tutto), ordinando per `creato_il` e poi `id`, così le pagine
+restano ferme. `STOR_PARZIALE` accende la pastiglia gialla solo se la
+paginazione si ferma davvero. Misurato prima: 87 preventivi, 156 kB.
+
+`agganciaPolizze` cerca le polizze **a gruppi di 150 id**: con tutto lo
+storico un solo `in(...)` diventerebbe un indirizzo più lungo di quello che il
+server accetta. La prova (`storico preventivi · si leggono TUTTI`) sostituisce
+`db.from` con un finto che si comporta come PostgREST — mille righe al massimo
+per richiesta, `range` e `limit` rispettati — perché il banco normale li
+ignora tutti e due, e una prova lì resterebbe verde anche col tetto. Non chiama
+`showPage('storico')`: avvierebbe un secondo caricamento e lascerebbe un'altra
+pagina aperta alle prove dopo. Controprova: col `.limit(100)` di prima, «letti
+100 su 1.500».
+
+Il `.limit(100)` che resta in `regCarica` è un'altra cosa: gli ultimi cento
+movimenti della storia di **una** riga, un limite di disegno e non un conteggio.

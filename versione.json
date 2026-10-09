@@ -1,8 +1,18 @@
 {
-  "versione": "0.63.0",
-  "nome": "Storico preventivi: la testata scura con gli stati in caselle numerate, come i sinistri",
+  "versione": "0.63.1",
+  "nome": "Storico preventivi: si leggono tutti, non più solo i 100 più recenti",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.63.1",
+      "data": "2026-10-09",
+      "nome": "Storico preventivi: si leggono tutti, non più solo i 100 più recenti",
+      "voci": [
+        "Storico preventivi: si leggono tutti i preventivi, a pagine da mille, e non più solo i 100 più recenti",
+        "Le caselle dello storico, il pallino sul menu e la coda delle emissioni contano adesso su tutti i preventivi: prima il centunesimo spariva da tutti e tre",
+        "Se un giorno la lettura si fermasse prima della fine, la testata lo dice in giallo"
+      ]
+    },
     {
       "v": "0.63.0",
       "data": "2026-10-09",

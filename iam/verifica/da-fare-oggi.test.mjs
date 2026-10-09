@@ -86,7 +86,14 @@ prova('il calcolo si avvia da tutti i percorsi, non da uno solo', () => {
 prova('un errore su un conteggio non spegne la fascia', () => {
   deve(/const conta = async \(fn(?:, nome)?\) => \{ try \{ return await fn\(\); \} catch/.test(corpo),
     'i conteggi non sono protetti uno per uno');
-  const protetti = (corpo.match(/await conta\(async \(\) =>/g) || []).length;
+  /* Dal 09/10/2026 i conteggi partono INSIEME (la Scrivania era lenta perché li
+     aspettava uno dopo l'altro): ognuno è un `passo`, e il passo passa da
+     `conta`. La regola resta «protetti uno per uno», e in più nessun conteggio
+     si aspetta da solo prima di far partire il successivo. */
+  deve(/const passo = \(fn, nome\) => \{[^}]*passi\.push\(conta\(/.test(corpo), 'un passo non passa da conta');
+  deve(!/await conta\(/.test(corpo), 'un conteggio si aspetta da solo prima del successivo');
+  deve(/await Promise\.all\(passi\)/.test(corpo), 'i passi non si aspettano insieme');
+  const protetti = (corpo.match(/passo\(async \(voci, calma\) =>/g) || []).length;
   deve(protetti >= 6, 'conteggi protetti: ' + protetti);
   return protetti + ' conteggi indipendenti';
 });

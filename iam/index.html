@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.75.0">
-<meta name="app-versione-nome" content="Vendita a distanza: stessa regola per tutti">
+<meta name="app-versione" content="0.75.1">
+<meta name="app-versione-nome" content="Scrivania più veloce">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15632,6 +15632,19 @@ async function caricaDaFareOggi(forza) {
      paginazione si ferma lo si dice. */
   const tutte = async (fai) => { const r = await cntTutte(fai); if (r.parziale) parziale = true; return r.righe; };
 
+  /* LE LETTURE PARTONO INSIEME (09/10/2026, «la dashboard si carica troppo
+     lentamente»). Erano nove `await` uno dopo l'altro: la Scrivania aspettava
+     la somma dei tempi invece del più lento. Ogni passo scrive nei SUOI due
+     elenchi e alla fine si uniscono nell'ordine in cui sono scritti qui sotto,
+     così le voci escono nello stesso ordine di prima qualunque lettura arrivi
+     per prima. Ogni passo resta isolato (`conta`): uno che cade non porta giù
+     gli altri e lascia il suo nome fra i guasti. */
+  const passi = [];
+  const passo = (fn, nome) => {
+    const v = [], c = [];
+    passi.push(conta(() => fn(v, c), nome).then(() => ({ v, c })));
+  };
+
   /* LO SCADENZARIO DELLA SCRIVANIA È LO SCADENZARIO (critique 07/10/2026).
      Rinnovi, scadute e insoluti si leggono con lo STESSO motore della pagina
      Scadenzario: prima la scrivania contava «scadute senza rinnovo» guardando
@@ -15641,10 +15654,12 @@ async function caricaDaFareOggi(forza) {
   const scad = (async () => {
     const M = window.Scadenzario;
     if (!M) throw new Error('motore dello scadenzario non caricato');
-    const rate = await tutte((da, a) => db.from('quote_titoli')
-      .select('id,polizza_id,tipo,data_decorrenza,importo_lordo,stato,mezzo_pagamento')
-      .eq('stato', 'aperto').order('id').range(da, a));
-    const pol = await tutte((da, a) => db.from('quote_scadenzario').select('*').order('id').range(da, a));
+    const [rate, pol] = await Promise.all([
+      tutte((da, a) => db.from('quote_titoli')
+        .select('id,polizza_id,tipo,data_decorrenza,importo_lordo,stato,mezzo_pagamento')
+        .eq('stato', 'aperto').order('id').range(da, a)),
+      tutte((da, a) => db.from('quote_scadenzario').select('*').order('id').range(da, a))
+    ]);
     const e = M.righe({ polizze: pol, rate: rate, oggi: oggi, sospensione: window.Sospensione || null });
     const righe = M.conRinnovo(e.righe, pol);
     return { M, righe };
@@ -15654,7 +15669,7 @@ async function caricaDaFareOggi(forza) {
   // 1. Insoluti — soldi già fuori. Sempre per primi. Sono le rate scadute di
   //    cui nessuno ha dichiarato come sono state pagate: quelle con una
   //    modalità sono sospesi, e stanno nella voce dei sospesi (§65).
-  await conta(async () => {
+  passo(async (voci, calma) => {
     const { righe } = await scad;
     const ins = righe.filter(r => r.tipo === 'rata' && r.giorni != null && r.giorni < 0);
     if (!ins.length) return;
@@ -15665,7 +15680,7 @@ async function caricaDaFareOggi(forza) {
 
   // 2. Sospesi: lo stesso conto della schermata Sospesi, non una copia. Prima
   //    questa voce leggeva il file caricato a mano, che non si carica più.
-  await conta(async () => {
+  passo(async (voci, calma) => {
     if (typeof sprCarica !== 'function' || !window.Contabilita) return;
     /* Lo stesso cancello della Contabilità: chi non può aprire i Sospesi non
        ne vede nemmeno il numero e l'importo sulla Scrivania. */
@@ -15688,7 +15703,7 @@ async function caricaDaFareOggi(forza) {
 
   // 3. Rinnovi da lavorare: scadono entro 15 giorni o sono in proroga, e non
   //    se ne vede il successore. Sono le fasce del menu dello Scadenzario.
-  await conta(async () => {
+  passo(async (voci, calma) => {
     const { M, righe } = await scad;
     const daFare = righe.filter(r => r.tipo === 'polizza' && (r.fascia === 'vicine' || r.fascia === 'proroga')
       && M.statoLavoro(r).k === 'nessuno');
@@ -15701,7 +15716,7 @@ async function caricaDaFareOggi(forza) {
   // 4. Polizze scoperte e non rinnovate: proroga finita, nessun successore.
   //    In questa voce le ultime otto settimane, che sono quelle ancora da
   //    salvare; le più vecchie si dicono a parte, senza gonfiare il numero.
-  await conta(async () => {
+  passo(async (voci, calma) => {
     const { M, righe } = await scad;
     const perse = righe.filter(r => r.tipo === 'polizza' && r.fascia === 'scoperte' && M.statoLavoro(r).k === 'nessuno');
     const recenti = perse.filter(r => r.giorni != null && r.giorni >= -60);
@@ -15718,7 +15733,7 @@ async function caricaDaFareOggi(forza) {
      l'importazione né la scheda. «7.077 da perfezionare» era tutto il
      portafoglio meno le annullate: un numero vero che non dice niente. Finché
      nessuna polizza risulta mai perfezionata la voce non conta, e lo dice. */
-  await conta(async () => {
+  passo(async (voci, calma) => {
     const { count, error } = await db.from('quote_polizze')
       .select('id', { count: 'exact', head: true }).eq('perfezionata', false).neq('stato_pagamento', 'annullata');
     if (error) throw error;
@@ -15734,7 +15749,7 @@ async function caricaDaFareOggi(forza) {
   }, 'le polizze da perfezionare');
 
   // 6. Preventivi fermi da più di 5 giorni: il cliente sta aspettando
-  await conta(async () => {
+  passo(async (voci, calma) => {
     const righe = await tutte((da, a) => db.from('quote_preventivi')
       .select('id,dati,polizza_emessa,creato_il').lt('creato_il', fra(-5)).order('id').range(da, a));
     const fermi = righe.filter(p => !p.polizza_emessa &&
@@ -15745,7 +15760,7 @@ async function caricaDaFareOggi(forza) {
   }, 'i preventivi');
 
   // 7. Compleanni della settimana: la telefonata che nessuno si aspetta
-  await conta(async () => {
+  passo(async (voci, calma) => {
     const righe = await tutte((da, a) => db.from('quote_anagrafiche')
       .select('id,data_nascita').not('data_nascita', 'is', null).order('id').range(da, a));
     const set = new Set();
@@ -15777,7 +15792,7 @@ async function caricaDaFareOggi(forza) {
   };
 
   // 8. Clienti senza email
-  await conta(async () => {
+  passo(async (voci, calma) => {
     const [tutti, conEmail] = await Promise.all([quantiClienti(null), quantiClienti('con_email')]);
     const n = tutti - conEmail;
     if (!n) return;
@@ -15788,13 +15803,15 @@ async function caricaDaFareOggi(forza) {
   // 9. Clienti senza consenso marketing. La regola è quella del motore, quindi
   //    la stessa di QUOTO: la colonna `consenso_marketing` OPPURE la privacy
   //    firmata con la spunta.
-  await conta(async () => {
+  passo(async (voci, calma) => {
     const [tutti, conConsenso] = await Promise.all([quantiClienti(null), quantiClienti('con_consenso')]);
     const n = tutti - conConsenso;
     if (!n) return;
     calma.push({ n, l: n === 1 ? 'senza consenso marketing' : 'senza consenso marketing',
                 va: () => oggiApri('anagrafiche:senza-consenso') });
   }, 'i consensi');
+
+  for (const e of await Promise.all(passi)) { voci.push(...e.v); calma.push(...e.c); }
 
   // Se nel frattempo è partito un ricalcolo più recente, questo non scrive.
   if (mio !== OGGI_GIRO) return;

@@ -152,6 +152,11 @@
   .link-ric{display:block;margin:8px auto 0;background:none;border:none;color:var(--c1);font-weight:600;font-size:13px;cursor:pointer;text-decoration:underline}
   .lp-check{margin-top:4px} .lp-check li{border-top:none;padding:4px 0;font-weight:500}
   .lp-ok{color:var(--c1);font-weight:700;width:18px;flex-shrink:0}
+  .lp-rip{border:1px solid var(--line);border-radius:10px;padding:8px 11px;margin:8px 0;font-size:12.5px;background:#fff}
+  .lp-rip .t{font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px}
+  .lp-rip .r{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+  .lp-rip .r b{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap;flex-shrink:0}
+  .lp-rip .r.tot{border-top:1px solid var(--line);margin-top:4px;padding-top:5px;font-weight:600}
   .lp-fisc{font-size:12px;line-height:1.5;color:var(--ink);background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:8px 11px;margin:2px 0 8px;font-style:italic}
   .lp-fisc span{display:block;font-style:normal;color:var(--muted);font-size:11px;margin-top:3px}
   /* La casella resta a sinistra e il testo scorre normale: con display:flex
@@ -367,6 +372,8 @@ document.getElementById('f-title').textContent = 'Parla con un consulente With U
 document.title = 'Preventivo ' + P.nome + ' — With Us';
 document.getElementById('benef').innerHTML = (P.benef||[]).map(b=>'<li><i class="ti ti-circle-check"></i> '+b+'</li>').join('');
 const eur = n => '€ ' + Number(n).toLocaleString('it-IT');
+/* Al centesimo, per le righe che si sommano: «€ 22,1» sotto un totale si legge come un errore. */
+const eurC = n => '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // Chip dell'hero personalizzabili per prodotto (fallback generico)
 (function(){
@@ -479,6 +486,7 @@ function renderPcardCatnat(){
     + '<div style="font-size:12px;color:var(--muted);font-weight:500;margin-top:4px">'+nota+'</div></div>'
     + '<div class="lp-fisc">«'+esc(CN_FISCALE)+'»<span>'+esc(CN_FISCALE_FONTE)+'</span></div>'
     + '<ul class="incl lp-check">'+voci.map(v=>'<li><span class="lp-ok" aria-hidden="true">✓</span> '+v+'</li>').join('')+'</ul>'
+    + cnRipartizione(q)
     + '<div class="qrow" style="margin-top:12px"><input id="cn-cap" inputmode="numeric" maxlength="5" placeholder="CAP dell\'abitazione" value="'+esc(CN.cap)+'" oninput="CN.cap=this.value.replace(/\\D/g,\'\');cnCambiato()">'
     + '<input id="cn-val" inputmode="numeric" placeholder="Valore di ricostruzione (€, da 40.000)" value="'+esc(CN.valore)+'" oninput="CN.valore=this.value.replace(/\\D/g,\'\');cnCambiato()"></div>'
     + '<div style="font-size:11.5px;color:var(--muted);margin:2px 0 4px">Il valore di ricostruzione è quanto costerebbe ricostruire la casa da zero, non il prezzo di mercato.</div>'
@@ -490,6 +498,17 @@ function renderPcardCatnat(){
 }
 /* Cambiare CAP o valore rende vecchia la stima: si torna al bottone di
    calcolo, ma senza ridisegnare a ogni lettera (si perderebbe il fuoco). */
+/* Come si compone il premio calcolato: una riga per garanzia, con il premio
+   ripartito come lo fa HDI (sotto il minimo i 60 € si dividono in proporzione).
+   Le righe le scrive il server, che le ha dal motore: la pagina non calcola
+   niente, e se il server non le manda non si mostra niente. */
+function cnRipartizione(q){
+  const g=(((q||{}).dettaglio||{}).garanzie||[]).filter(x=>x && x.premio!=null);
+  if(!g.length) return '';
+  return '<div class="lp-rip"><div class="t">Come si compone il premio</div>'
+    + g.map(x=>'<div class="r"><span>'+esc(x.nome)+'</span><b>'+eurC(x.premio)+'</b></div>').join('')
+    + '<div class="r tot"><span>Premio annuo</span><b>'+eurC(q.prezzo)+'</b></div></div>';
+}
 function cnCambiato(){ if(CN.q){ CN.q=null; const c=document.getElementById('cn-cap'), v=document.getElementById('cn-val'), f=document.activeElement===c?'cn-cap':'cn-val', pos=(document.activeElement||{}).selectionStart; renderPcard(); const el=document.getElementById(f); if(el){ el.focus(); try{ el.setSelectionRange(pos,pos); }catch(_){} } } }
 function cnConsulente(){ document.getElementById('richiedi').scrollIntoView({behavior:'smooth'}); setTimeout(()=>{ const n=document.getElementById('nome'); if(n) n.focus({preventScroll:true}); },400); }
 function lpRichiedi(){ const m=document.getElementById('messaggio'); if(m && !m.value) m.value='Vorrei il preventivo della polizza '+P.nome+'.'; cnConsulente(); }
@@ -806,7 +825,7 @@ function ckStepEsigenzeCatnat(){
      alluvione è scelta: stessa regola del server. */
   const dom=(q.esigenze||[]).filter(d=>!d.se || dt[d.se]);
   const sel=(id,lab,opz)=>'<label>'+lab+' *</label><select id="'+id+'"><option value="">Scegli…</option>'+(opz||[]).map(o=>'<option>'+esc(o)+'</option>').join('')+'</select>';
-  const gar=(dt.garanzie||[]).map(g=>'<li>'+esc(g.nome)+' · somma '+eur(Math.round(g.somma))+'</li>').join('');
+  const gar=(dt.garanzie||[]).map(g=>'<li>'+esc(g.nome)+' · somma '+eur(Math.round(g.somma))+(g.premio!=null?' · premio '+eurC(g.premio):'')+'</li>').join('');
   document.getElementById('ck-body').innerHTML= ckSteps(ckN('Esigenze'))
     +'<div class="lp-h" style="margin-top:0">Le tue esigenze</div>'
     +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 8px">Servono a verificare che la polizza sia adatta a te e alla tua casa. Se non lo è, non procediamo online e ti ricontatta un consulente.</p>'

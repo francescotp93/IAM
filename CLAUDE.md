@@ -9451,3 +9451,34 @@ foglio `Preventivatore`. **Non entra nel repository** (documento interno di HDI)
 Per rifare il confronto su un Excel nuovo: copiare il file, generare un foglio
 `casi` con le formule di J7/J9/J12/J14/M/N17 per ogni CAP, convertirlo in CSV
 con `soffice --headless --convert-to csv` (ricalcola), e confrontarlo col motore.
+
+### Catastrofali: il premio ripartito fra le garanzie come lo fa HDI (0.75.3, 09/10/2026)
+
+> «Sistema anche la ripartizione del minimo tra le garanzie ed aggiorna oltre
+> che il prodotto anche la landing page» — Francesco.
+
+Prima il motore restituiva per ogni garanzia il premio puro di tariffa: sotto
+il minimo il cliente leggeva 25,77 + 15,06 sotto un totale di 60 €. Adesso
+`calcCatPremio` fa quello che fanno l'Excel (colonne M e N) e il portale
+(record QPA): sotto i 60 € il minimo si spalma **in proporzione**, il totale si
+arrotonda per difetto all'euro, e i centesimi tolti escono dalla **prima**
+garanzia (terremoto · fabbricato). Le garanzie sommano sempre `baseFloor`; il
+premio di tariffa resta in `garanzie[i].calcolato`. Con il semestrale le righe
+sommano il premio annuo base, e il +2% resta a parte come nell'Excel.
+
+Confronto completo con LibreOffice: **71.685 casi, ripartizione identica**.
+Le altre garanzie coincidono al centesimo; la prima può differire di 1-2
+centesimi dalla cifra non arrotondata dell'Excel, perché la ricaviamo dalle
+altre GIÀ arrotondate. Al centesimo si arrotonda dopo aver tolto il rumore
+della virgola mobile (6,425 in JS è 6,42499…, CAP 24014).
+
+- Le prove: `catastrofali-excel-hdi` (5, campione di 2.040 casi con le
+  colonne N), `catastrofali-portale-hdi` (37,87 + 22,13 e 50,88 + 30,12),
+  `vendita-distanza` (17: la landing riceve la ripartizione e le righe sommano
+  il prezzo). La parità confronta il premio di TARIFFA (`calcolato`) con il
+  vecchio, che resta identico.
+- La landing: `cnRipartizione` disegna «Come si compone il premio» sotto le
+  voci incluse, al centesimo (`eurC`: `eur` non forza i due decimali), e il
+  riepilogo prima del pagamento scrive il premio di ogni garanzia. I numeri
+  li manda il server (`dettaglio.garanzie[].premio`): la pagina non calcola.
+- Il preventivatore interno mostrava già `g.premio`: adesso le righe tornano.

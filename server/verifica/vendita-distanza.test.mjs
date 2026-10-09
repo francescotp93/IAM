@@ -141,5 +141,20 @@ prova('nella landing esigenze e documenti vengono PRIMA del pagamento', () => {
   deve(!/vd-tecnica|Nota-Tecnica|Scheda-prodotto/i.test(l), 'un documento interno è finito nella pagina pubblica');
   deve(!/calcCatPremio/.test(l), 'la landing calcola il prezzo da sola invece di chiederlo al server');
 });
+prova('la landing riceve la ripartizione per garanzia, e le righe sommano il prezzo', () => {
+  /* Sotto il minimo di 60 € il premio si spalma fra le garanzie come lo fa HDI:
+     prima la landing riceveva solo le somme assicurate, e un cliente che
+     vedesse le righe pure leggerebbe una somma diversa dal prezzo. */
+  for (const valore of [40000, 150000, 600000]) {
+    const a = quotaCatastrofali({ cap: '91025', valore });
+    const g = a.dettaglio.garanzie;
+    deve(g.length === 4 && g.every(x => typeof x.premio === 'number'), 'la ripartizione non arriva alla pagina');
+    const somma = Math.round(g.reduce((t, x) => t + x.premio, 0) * 100) / 100;
+    deve(somma === a.prezzo, valore + ' €: le garanzie sommano ' + somma + ', il prezzo è ' + a.prezzo);
+  }
+  const l = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
+  deve(/function cnRipartizione\(/.test(l) && /\+ cnRipartizione\(q\)/.test(l), 'la landing non mostra la ripartizione');
+  deve(/\.lp-rip\{/.test(l), 'la ripartizione non ha il suo stile');
+});
 console.log('\n' + ok + ' superate, ' + ko + ' fallite\n');
 process.exit(ko ? 1 : 0);

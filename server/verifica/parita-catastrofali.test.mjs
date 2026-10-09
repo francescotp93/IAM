@@ -81,7 +81,11 @@ prova('stesso premio su ogni combinazione, vecchio e nuovo', () => {
   let confronti = 0, diversi = [];
   for (const cap of caps) for (const v of valori) for (const o of opzioni) {
     const a = vecchia(cap, v, o);
-    const b = nuovo.calcCatPremio(cap, v, o);
+    /* Dal 09/10/2026 ogni garanzia porta il premio RIPARTITO come lo fa HDI
+       (il minimo spalmato, i centesimi tolti dalla prima): lo sorveglia
+       catastrofali-excel-hdi.test.mjs. Il premio di tariffa resta in
+       `calcolato`, ed è quello che qui deve restare identico a prima. */
+    const b = (r => r && Object.assign({}, r, { garanzie: r.garanzie.map(g => ({ nome: g.nome, somma: g.somma, premio: g.calcolato })) }))(nuovo.calcCatPremio(cap, v, o));
     confronti++;
     if (JSON.stringify(a) !== JSON.stringify(b)) diversi.push({ cap, v, o, a, b });
   }

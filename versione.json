@@ -1,8 +1,18 @@
 {
-  "versione": "0.65.0",
-  "nome": "Confronta prodotti: la testata scura con la scelta dei due prodotti e i numeri dell’archivio",
+  "versione": "0.66.0",
+  "nome": "Catalogo prodotti: schede bianche in rilievo, i numeri in colonna e le compagnie come riquadri",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.66.0",
+      "data": "2026-10-09",
+      "nome": "Catalogo prodotti: schede bianche in rilievo, i numeri in colonna e le compagnie come riquadri",
+      "voci": [
+        "Strumenti › Catalogo prodotti: fondo chiaro e schede bianche in rilievo, più leggero da guardare",
+        "In cima un riquadro con i numeri del catalogo in colonna e la percentuale di portafoglio coperto; le linguette sono un selettore",
+        "Ogni compagnia è un riquadro con prodotti, alias e stato; se una lettura non riesce il numero dice «non si è potuto leggere» invece di zero"
+      ]
+    },
     {
       "v": "0.65.0",
       "data": "2026-10-09",

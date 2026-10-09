@@ -9060,3 +9060,18 @@ dell'agenzia). `emissPerFiltro` conta e filtra con la stessa regola. Il premio
 in coda nelle pastiglie esclude le pratiche senza premio e le conta a parte
 (§36); la lettura parziale si eredita da `STOR_PARZIALE`, perché la coda è lo
 stesso `STORICO_CACHE` dello storico.
+
+### Confronta prodotti con lo stesso linguaggio (0.65.0, 09/10/2026)
+
+`#panel-confronta` di IAM ha la testata scura delle trattative (`.cf-hero`,
+variabili `--cf-*` su `#panel-confronta`, mai su `:root`): dentro c'è la scelta
+del ramo e dei due prodotti, con gli stessi id di sempre (`cf-ramo`, `cf-a`,
+`cf-b`, `cf-stato`). Le pastiglie (`cfPills`, chiamata da `cfRamo`) dicono
+quanti prodotti ci sono in archivio, quanti nel ramo e di quante compagnie; se
+l'archivio non si è potuto leggere scrivono «archivio non letto», non zero.
+`cf-stato` non ripete più il numero dell'archivio, che sta nelle pastiglie.
+
+Il pannello è entrato fra le schermate sul kit (`SUL_KIT` e l'elenco dei
+gettoni). Essendo l'**ultimo** pannello, la fetta di `pannello()` in
+`kit-schermate.test.mjs` arrivava fino alla finestra delle novità e ne contava
+i bottoni della famiglia «fonti»: adesso si ferma a `modal-cf-nuovo`.

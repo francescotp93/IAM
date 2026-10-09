@@ -1,8 +1,17 @@
 {
-  "versione": "0.64.0",
-  "nome": "Emissioni: la testata scura con le due code in caselle numerate, come lo storico",
+  "versione": "0.65.0",
+  "nome": "Confronta prodotti: la testata scura con la scelta dei due prodotti e i numeri dell’archivio",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.65.0",
+      "data": "2026-10-09",
+      "nome": "Confronta prodotti: la testata scura con la scelta dei due prodotti e i numeri dell’archivio",
+      "voci": [
+        "Prodotti › Confronta: la scelta del nostro prodotto e di quello del concorrente sta nella testata scura, come nelle trattative",
+        "In testata si legge quanti prodotti ci sono in archivio, quanti nel ramo scelto e di quante compagnie; se l'archivio non si legge lo dice invece di scrivere zero"
+      ]
+    },
     {
       "v": "0.64.0",
       "data": "2026-10-09",

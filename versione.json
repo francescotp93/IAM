@@ -1,8 +1,17 @@
 {
-  "versione": "0.68.0",
-  "nome": "Caratteri più leggeri",
+  "versione": "0.69.0",
+  "nome": "Scrivania più snella",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.69.0",
+      "data": "2026-10-09",
+      "nome": "Scrivania più snella",
+      "voci": [
+        "Scrivania: righe di «Da fare oggi» più basse, numeri e titoli meno pesanti, tutto in meno spazio",
+        "Scrivania: testata più corta e «Azioni rapide» più compatte, così il lavoro del giorno si vede tutto senza scorrere"
+      ]
+    },
     {
       "v": "0.68.0",
       "data": "2026-10-09",

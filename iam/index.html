@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.68.0">
-<meta name="app-versione-nome" content="Caratteri più leggeri">
+<meta name="app-versione" content="0.69.0">
+<meta name="app-versione-nome" content="Scrivania più snella">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1361,6 +1361,40 @@ input[type=file]{display:none;}
   .oggi-n{font-size:16px}
   .oggi-e{grid-column:3;grid-row:2;text-align:left;font-size:12px;padding-bottom:8px;margin-top:-4px}
   .oggi-fr{grid-column:4;grid-row:1 / span 2}
+}
+/* ══ LA SCRIVANIA SNELLA (09/10/2026) ══════════════════════════════════════
+   «La dashboard la riusciamo a fare più snella?» — Francesco. Stessi pezzi,
+   stesso ordine, meno peso: righe più basse, numeri e titoli a 600 invece di
+   700, testata più corta. Vale SOLO sulla Scrivania, per la classe
+   .scr-snella del suo pannello: la testata e le schede del kit le usano anche
+   altre schermate, che restano come sono. Non si scrive col nome del pannello
+   davanti perché kit-schermate.test.mjs lo vieta — il kit non deve tornare
+   chiuso lì dentro (§31), e questi sono ritocchi, non il kit. */
+.scr-snella .page-head{margin-bottom:10px;padding-top:12px;align-items:center}
+.scr-snella .page-head h1{font-size:19px;font-weight:600;margin:0 0 2px}
+.scr-snella .eyebrow{font-size:10px;margin-bottom:2px}
+.scr-snella .subtitle{font-size:12px}
+.scr-snella .d-btn{height:30px;font-size:12px}
+.scr-snella .dashboard-grid{gap:10px}
+.scr-snella .card-head{padding:8px 13px}
+.scr-snella .card-title{font-size:13px;font-weight:600}
+.scr-snella .card-title .pictogram{width:24px;height:24px;border-radius:6px}
+.scr-snella .card-title .pictogram i{font-size:14px}
+.scr-snella .oggi-gh{padding:5px 14px 4px 17px;font-size:10px}
+.scr-snella .oggi-v{grid-template-columns:3px 52px minmax(0,1fr) minmax(9ch,auto) 16px;column-gap:12px;min-height:38px}
+.scr-snella .oggi-n{font-size:15px;font-weight:600}
+.scr-snella .oggi-txt{padding:5px 0}
+.scr-snella .oggi-l{font-size:12.5px;font-weight:500}
+.scr-snella .oggi-s{margin-top:1px;font-size:10.5px}
+.scr-snella .oggi-e{font-size:12.5px;font-weight:500}
+.scr-snella .oggi-fr{font-size:13px}
+.scr-snella .oggi-calma{padding:7px 14px 7px 17px}
+.scr-snella .dash-list{padding:2px 6px}
+.scr-snella .dash-list-row{padding:8px 8px;gap:10px;font-size:12.5px}
+.scr-snella .dash-list-row i{font-size:15px}
+@media(max-width:600px){
+  .scr-snella .oggi-v{grid-template-columns:3px 44px minmax(0,1fr) 14px;column-gap:10px}
+  .scr-snella .page-head{align-items:stretch}
 }
 /* Il grafico è compatto: sta sotto il lavoro, non sopra (non più 232px). */
 /* CONTRASTI (soglia AA 4,5:1). Il grigio nebbia #97a3b2 su #f3f5f7 fa 2,3:1:
@@ -2944,7 +2978,7 @@ input[type=file]{display:none;}
 </div>
 
 <!-- DASHBOARD -->
-<div class="panel" id="panel-dashboard">
+<div class="panel scr-snella" id="panel-dashboard">
   <!-- ── DA FARE OGGI (Blocco B) ────────────────────────────────────────────
        Sta FUORI dal blocco #d-content di proposito: quello resta nascosto
        finché non si caricano i file di contabilità, e un agente che vive di

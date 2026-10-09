@@ -9153,3 +9153,23 @@ della pelle che pretendevano il monospaziato sono aggiornate nella regola;
 rimette a posto alla fine. Lanciarla in sottofondo e intanto fare `git stash`
 cattura nel ripostiglio un file a metà guasto. Le controprove si lanciano con
 il banco fermo (§42).
+
+### La Scrivania più snella (0.69.0, 09/10/2026)
+
+> «La dashboard la riusciamo a fare più snella?» — Francesco.
+
+Stessi pezzi e stesso ordine, meno peso: righe di «Da fare oggi» da 50 a 38
+pixel, numeri a 15px e 600 (erano 19px e 700), etichette a 500, intestazioni
+dei gruppi più basse, testata della pagina più corta, bottoni a 30px, «Azioni
+rapide» a righe strette. Tutto in un blocco `.scr-snella …` in
+`iam/index.html`, con la classe sul pannello della Scrivania: testata e schede
+del kit le usano anche le altre schermate, che restano com'erano.
+
+**Non si è scritto `#panel-dashboard .x`**: `kit-schermate.test.mjs` lo vieta,
+perché il kit non deve tornare chiuso dentro la Scrivania (§31). Questi sono
+ritocchi, non il kit, e la classe dedicata tiene distinte le due cose. La prova
+`da-fare-oggi.test.mjs` cercava il pannello con l'attributo `class` scritto per
+intero: adesso lo cerca per `id`, che è quello che voleva dire.
+
+Per fotografare IAM senza login, `#app` va messo in `display:flex`: in `block`
+il contenitore dei pannelli ha altezza zero e la pagina sembra vuota.

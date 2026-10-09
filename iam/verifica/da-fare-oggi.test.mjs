@@ -36,7 +36,7 @@ if (!corpo) { console.log('DA FARE OGGI\n  X   la funzione caricaDaFareOggi non 
    cominciava a metà schermo. Adesso viene subito dopo la testata, prima del
    grafico e degli indicatori. */
 prova('la fascia esiste ed è la prima cosa nella scrivania', () => {
-  const pannello = html.slice(html.indexOf('<div class="panel" id="panel-dashboard">'));
+  const pannello = html.slice(html.indexOf('id="panel-dashboard"'));
   const fine = pannello.indexOf('<div class="panel" id="panel-', 10);
   const p = fine > 0 ? pannello.slice(0, fine) : pannello;
   const iTesta = p.indexOf('class="page-head"');
@@ -57,7 +57,7 @@ prova('la fascia esiste ed è la prima cosa nella scrivania', () => {
 prova('il vecchio blocco in fondo è un collegamento al Cruscotto, non un vicolo cieco', () => {
   deve(!/id="d-content"/.test(html) && !/id="d-empty"/.test(html), 'il vecchio blocco è ancora nella pagina');
   deve(!/Carica i file per vedere/.test(html), 'la scrivania chiede ancora di caricare file che non si caricano più');
-  const pannello = html.slice(html.indexOf('<div class="panel" id="panel-dashboard">'));
+  const pannello = html.slice(html.indexOf('id="panel-dashboard"'));
   const p = pannello.slice(0, pannello.indexOf('<div class="panel" id="panel-', 10));
   deve(/goTab\('cruscotto'\)/.test(p), 'la contabilità del giorno non si raggiunge dalla scrivania');
   deve(/apriGiacenza\(\)/.test(p), 'la giacenza contanti non ha più una porta: si raggiungeva solo dal blocco tolto');

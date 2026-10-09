@@ -9,6 +9,7 @@ import { quotaCatastrofali, cancelloVendita, configurazione, esigenzeDi, SCHEDA_
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
 import { MITTENTE_NOME } from './mittente.js';
+import { sigla } from './landingStatistiche.js';
 const NOTIFY_FROM = process.env.NOTIFY_FROM || STAFF_INBOX;
 // Le anagrafiche/vendite dello shop vengono attribuite al titolare (id auth valido),
 // così soddisfano eventuali vincoli NOT NULL/foreign key su creato_da.
@@ -139,7 +140,12 @@ const META = {
 export const ogRouter = Router();
 ogRouter.get('/:prodotto', (req, res) => {
   const k = req.params.prodotto; const m = META[k] || META.vita;
-  const target = LANDING_BASE + '?prodotto=' + encodeURIComponent(k);
+  /* Il link /l/ è quello che il Lab fa condividere su WhatsApp: chi ci arriva
+     viene da lì, e il contatore delle landing lo conta sotto quel canale. La
+     campagna, se il link ne porta una, passa com'è, ridotta a sigla. */
+  const camp = sigla(req.query.campagna);
+  const target = LANDING_BASE + '?prodotto=' + encodeURIComponent(k) + '&canale=whatsapp'
+    + (camp ? '&campagna=' + encodeURIComponent(camp) : '');
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.send('<!doctype html><html lang="it"><head><meta charset="utf-8">'
     + '<title>' + esc(m.n) + ' — With Us</title>'

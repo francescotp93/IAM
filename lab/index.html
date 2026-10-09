@@ -43,6 +43,10 @@
   .stat{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;}
   .stat .b{flex:1;min-width:130px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
   .stat .b .l{font-size:11px;color:var(--muted);} .stat .b .v{font-size:22px;font-weight:800;}
+  .st-t{width:100%;border-collapse:collapse;font-size:13px;} .st-t th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  .st-t td{padding:7px 8px;border-bottom:1px solid var(--line);} .st-t td.n{text-align:right;font-variant-numeric:tabular-nums;}
+  .st-bars{display:flex;align-items:flex-end;gap:3px;height:140px;} .st-bar{flex:1;min-width:6px;max-width:34px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;}
+  .st-col{width:100%;background:var(--blue,#0aa06e);border-radius:3px 3px 0 0;} .st-d{font-size:9px;color:var(--muted);margin-top:3px;}
   iframe.preview{width:100%;max-width:460px;height:640px;border:1px solid var(--line);border-radius:14px;background:#fff;}
   /* Niente splash d'ingresso: dentro la scocca sarebbe un secondo velo di
      attesa dopo quello del riquadro, un'attesa finta per mostrare un nome che
@@ -125,6 +129,7 @@
   <button class="tab" id="tab-vad" onclick="showTab('vad')"><i class="ti ti-broadcast"></i> Vendita a distanza</button>
   <button class="tab" id="tab-lead" onclick="showTab('lead')"><i class="ti ti-users"></i> Lead ricevuti</button>
   <button class="tab" id="tab-wa" onclick="showTab('wa')"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
+  <button class="tab" id="tab-stat" onclick="showTab('stat')"><i class="ti ti-chart-bar"></i> Statistiche</button>
 </div>
 
 <div class="wrap">
@@ -180,6 +185,9 @@
       </select>
       <label style="margin-top:12px;display:flex;align-items:center;gap:8px;font-weight:600"><input type="checkbox" id="l-recesso" onchange="buildLanding()" style="width:auto"> Mostra il pulsante «Recesso online» nella landing</label>
       <p class="muted" style="margin:4px 0 0;font-size:12.5px">Il collegamento al recesso resta comunque nel piede della pagina: per le polizze concluse online deve sempre essere raggiungibile.</p>
+      <label style="margin-top:12px">Nome della campagna <span style="font-weight:400;color:var(--muted)">(facoltativo: es. facebook-ottobre, volantino-fiera)</span></label>
+      <input id="l-camp" placeholder="es. facebook-ottobre" oninput="buildLanding()">
+      <p class="muted" style="margin:4px 0 0;font-size:12.5px">Serve a contare a parte le visite che arrivano da questo link, nella linguetta «Statistiche». Non scrivere nomi o numeri di persone.</p>
       <label style="margin-top:12px">Link della landing (per inserzioni / sito)</label>
       <pre id="landing-link"></pre>
       <button class="btn" onclick="copyLanding()"><i class="ti ti-copy"></i> Copia link</button>
@@ -224,6 +232,9 @@
         </optgroup>
       </select>
       <label style="margin-top:12px;display:flex;align-items:center;gap:8px;font-weight:600"><input type="checkbox" id="vad-recesso" onchange="buildVad()" style="width:auto"> Mostra il pulsante «Recesso online» nella landing</label>
+      <label style="margin-top:12px">Nome della campagna <span style="font-weight:400;color:var(--muted)">(facoltativo: es. facebook-ottobre, volantino-fiera)</span></label>
+      <input id="vad-camp" placeholder="es. facebook-ottobre" oninput="buildVad()">
+      <p class="muted" style="margin:4px 0 0;font-size:12.5px">Serve a contare a parte le visite che arrivano da questo link, nella linguetta «Statistiche». Non scrivere nomi o numeri di persone.</p>
       <label style="margin-top:12px">Link di vendita a distanza (web) — da inviare al cliente</label>
       <pre id="vad-link"></pre>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -274,6 +285,22 @@
     </div>
   </div>
 
+  <!-- STATISTICHE DELLE LANDING -->
+  <div id="pane-stat" style="display:none">
+    <div class="card">
+      <h2>Quante volte si aprono le landing</h2>
+      <p class="muted">Ogni apertura del link e quello che ne viene fuori: premio calcolato, richiesta di preventivo, attivazione online. Senza cookie e senza dati delle persone: i visitatori si contano «unici al giorno».</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div><label>Dal</label><input type="date" id="st-dal"></div>
+        <div><label>Al</label><input type="date" id="st-al"></div>
+        <button class="btn" onclick="loadStat()"><i class="ti ti-search"></i> Cerca</button>
+      </div>
+    </div>
+    <div class="stat" id="st-somma"></div>
+    <div class="card"><h2>Andamento giorno per giorno</h2><div id="st-giorni"><div class="empty">Carico…</div></div></div>
+    <div class="card"><h2>Per prodotto, canale e campagna</h2><div id="st-tab"><div class="empty">Carico…</div></div></div>
+  </div>
+
   <!-- WHATSAPP -->
   <div id="pane-wa" style="display:none">
     <div class="card">
@@ -313,6 +340,10 @@
       <label style="margin-top:14px;display:flex;align-items:center;gap:8px;font-weight:600">
         <input type="checkbox" id="wa-link" checked onchange="waDirty=false;buildWa()" style="width:auto"> Includi il link alla landing nel testo
       </label>
+      <label style="margin-top:12px">Nome della campagna <span style="font-weight:400;color:var(--muted)">(facoltativo: es. facebook-ottobre, volantino-fiera)</span></label>
+      <input id="wa-camp" placeholder="es. facebook-ottobre" oninput="waDirty=false;buildWa()">
+      <p class="muted" style="margin:4px 0 0;font-size:12.5px">Serve a contare a parte le visite che arrivano da questo link, nella linguetta «Statistiche». Non scrivere nomi o numeri di persone.</p>
+
       <label style="margin-top:14px">Testo del messaggio (modificabile)</label>
       <textarea id="wa-msg" rows="9" oninput="waDirty=true" style="width:100%;font:inherit;padding:12px;border:1px solid var(--line,#d8dde8);border-radius:12px;resize:vertical"></textarea>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
@@ -564,10 +595,22 @@ function copySnippet(){
 /* Il pulsante «Recesso online» si sceglie quando si crea il link: è un
    parametro dell'indirizzo (recesso=1), così la stessa landing può uscire con
    o senza, a seconda di dove la si usa. */
+/* La campagna entra nel link come sigla (minuscole, cifre, trattini): è la
+   stessa riduzione che fa il server, così quello che si legge qui è quello che
+   finirà nelle Statistiche. Un'email o un numero lungo non diventano mai una
+   campagna. */
+function campSigla(v){
+  const s = String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);
+  if (!s || /@/.test(String(v)) || /\d{6,}/.test(s)) return '';
+  return s;
+}
+function campDi(id){ const el = document.getElementById(id); return el ? campSigla(el.value) : ''; }
 function buildLanding(){
   const prod = document.getElementById('l-prod').value;
   const rec = document.getElementById('l-recesso');
-  const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod) + (rec && rec.checked ? '&recesso=1' : '');
+  const camp = campDi('l-camp');
+  const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod) + (rec && rec.checked ? '&recesso=1' : '') + (camp ? '&campagna=' + camp : '');
   document.getElementById('landing-link').textContent = url;
   document.getElementById('open-landing').href = url;
 }
@@ -578,7 +621,8 @@ function buildVad(){
   const sel = document.getElementById('vad-prod'); if (!sel) return;
   const prod = sel.value;
   const rec = document.getElementById('vad-recesso');
-  const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod) + '&canale=web' + (rec && rec.checked ? '&recesso=1' : '');
+  const camp = campDi('vad-camp');
+  const url = LANDING_URL + '?prodotto=' + encodeURIComponent(prod) + '&canale=web' + (rec && rec.checked ? '&recesso=1' : '') + (camp ? '&campagna=' + camp : '');
   document.getElementById('vad-link').textContent = url;
   document.getElementById('vad-open').href = url;
   const nome = (sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].text) || 'la tua assicurazione';
@@ -589,13 +633,14 @@ function copyVad(){
   navigator.clipboard.writeText(document.getElementById('vad-link').textContent).then(()=>{ alert('Link di vendita a distanza copiato!'); }).catch(()=>{});
 }
 function showTab(t){
-  ['widget','vad','lead','wa'].forEach(x=>{
+  ['widget','vad','lead','wa','stat'].forEach(x=>{
     document.getElementById('tab-'+x).classList.toggle('on', t===x);
     document.getElementById('pane-'+x).style.display = t===x?'':'none';
   });
   if (t==='vad') buildVad();
   if (t==='lead') loadLeads();
   if (t==='wa') buildWa();
+  if (t==='stat') loadStat();
 }
 
 // ── WhatsApp: messaggi pronti per prodotto ─────────────────────────────────────
@@ -641,7 +686,8 @@ function waBaseText(){
   const k = waProdKey(); const p = WA_PROD[k] || WA_PROD.vita;
   let txt = p.t;
   if (document.getElementById('wa-link').checked){
-    const link = p.link || (BACKEND_URL + '/l/' + encodeURIComponent(k));
+    const camp = campDi('wa-camp');
+    const link = p.link || (BACKEND_URL + '/l/' + encodeURIComponent(k) + (camp ? '?campagna=' + camp : ''));
     txt += '\n\n' + link;
   }
   return txt;
@@ -688,6 +734,48 @@ async function loadLeads(){
         + '</div>';
     }).join('');
   }catch(e){ box.innerHTML = '<div class="empty" style="color:#c0392b">Errore: '+esc(e.message||e)+'</div>'; }
+}
+
+// ── Statistiche delle landing ─────────────────────────────────────────────────
+/* I conti li fa il database (iam_landing_statistiche, iam_landing_giorni): qui
+   arrivano poche righe già sommate. Una lettura che non riesce non diventa uno
+   zero: «non si è potuto leggere» non è «nessuno l'ha aperta». */
+function statIso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function statPerc(a,b){ return b>0 ? Math.round(a*100/b)+'%' : '—'; }
+const STAT_CANALI = { diretto:'Link diretto', whatsapp:'WhatsApp', web:'Vendita a distanza', facebook:'Facebook', instagram:'Instagram', google:'Google' };
+async function loadStat(){
+  const dal = document.getElementById('st-dal'), al = document.getElementById('st-al');
+  if (!al.value){ const oggi = new Date(); al.value = statIso(oggi); const p = new Date(oggi); p.setDate(p.getDate()-29); dal.value = statIso(p); }
+  const somma = document.getElementById('st-somma'), giorni = document.getElementById('st-giorni'), tab = document.getElementById('st-tab');
+  if (!db){ const m = '<div class="empty">Apri Marketing da IAM per vedere le statistiche (serve la sessione).</div>'; somma.innerHTML=''; giorni.innerHTML=m; tab.innerHTML=m; return; }
+  somma.innerHTML = ''; giorni.innerHTML = tab.innerHTML = '<div class="empty">Carico…</div>';
+  const [r1, r2] = await Promise.all([
+    db.rpc('iam_landing_statistiche', { p_dal: dal.value, p_al: al.value }).then(r=>r, e=>({ error:e })),
+    db.rpc('iam_landing_giorni', { p_dal: dal.value, p_al: al.value }).then(r=>r, e=>({ error:e })),
+  ]);
+  if (r1.error){
+    const m = '<div class="empty" style="color:#c0392b">Non si è potuto leggere: '+esc(r1.error.message||r1.error)+'. Non vuol dire che nessuno abbia aperto le landing.</div>';
+    somma.innerHTML = ''; tab.innerHTML = m;
+  } else {
+    const righe = r1.data || [];
+    const t = righe.reduce((a,r)=>{ ['aperture','visitatori','calcoli','richieste','checkout','acquisti'].forEach(k=>a[k]+=Number(r[k])||0); return a; }, {aperture:0,visitatori:0,calcoli:0,richieste:0,checkout:0,acquisti:0});
+    const b = (l,v,s)=>'<div class="b"><div class="l">'+l+'</div><div class="v">'+v+'</div>'+(s?'<div class="l">'+s+'</div>':'')+'</div>';
+    somma.innerHTML = b('Aperture', t.aperture) + b('Visitatori', t.visitatori, 'unici al giorno')
+      + b('Premio calcolato', t.calcoli, statPerc(t.calcoli,t.visitatori)+' dei visitatori')
+      + b('Richieste', t.richieste, statPerc(t.richieste,t.visitatori)+' dei visitatori')
+      + b('Attivazioni', t.acquisti, t.checkout+' hanno iniziato');
+    tab.innerHTML = !righe.length ? '<div class="empty">Nessuna apertura nel periodo.</div>'
+      : '<div style="overflow-x:auto"><table class="st-t"><thead><tr><th>Prodotto</th><th>Canale</th><th>Campagna</th><th>Aperture</th><th>Visitatori</th><th>Calcoli</th><th>Richieste</th><th>Iniziate</th><th>Attivate</th></tr></thead><tbody>'
+        + righe.map(r=>'<tr><td>'+esc((WA_PROD[r.prodotto]||{}).n||r.prodotto)+'</td><td>'+esc(STAT_CANALI[r.canale]||r.canale)+'</td><td>'+esc(r.campagna||'—')+'</td>'
+          + ['aperture','visitatori','calcoli','richieste','checkout','acquisti'].map(k=>'<td class="n">'+(Number(r[k])||0)+'</td>').join('')+'</tr>').join('')
+        + '</tbody></table></div>';
+  }
+  if (r2.error){ giorni.innerHTML = '<div class="empty" style="color:#c0392b">Non si è potuto leggere l\'andamento: '+esc(r2.error.message||r2.error)+'.</div>'; return; }
+  const g = r2.data || [];
+  if (!g.length){ giorni.innerHTML = '<div class="empty">Nessuna apertura nel periodo.</div>'; return; }
+  const max = Math.max(1, ...g.map(x=>Number(x.aperture)||0));
+  giorni.innerHTML = '<div class="st-bars">' + g.map(x=>{ const a = Number(x.aperture)||0, v = Number(x.visitatori)||0;
+    return '<div class="st-bar" title="'+esc(new Date(x.giorno+'T12:00:00').toLocaleDateString('it-IT'))+': '+a+' aperture, '+v+' visitatori"><div class="st-col" style="height:'+Math.max(2,Math.round(a*100/max))+'%"></div><div class="st-d">'+esc(String(x.giorno).slice(8,10))+'</div></div>'; }).join('') + '</div>';
 }
 
 bootAuth();

@@ -396,17 +396,17 @@ if (P.compagnia){
   /* I documenti si leggono dalla stessa configurazione che usa il server per
      decidere se si vende: il cliente scarica quello che poi gli viene chiesto
      di aver letto. */
-  if (key==='catastrofali'){
+  {
     const box=document.createElement('div'); box.className='lp-docs'; box.id='lp-docs';
     box.innerHTML='<b>Documenti del prodotto</b><span style="font-size:12.5px;color:var(--muted)">Caricamento…</span>';
     exEl.after(box);
     fetch('tariffe/vendita-distanza.json',{cache:'no-store'}).then(r=>r.json()).then(c=>{
-      const d=((c||{}).catastrofali||{}).documenti||[];
+      const d=((c||{})[key]||{}).documenti||[];
       box.innerHTML='<b>Documenti del prodotto, da leggere prima di acquistare</b>'+(d.length?d.map(x=>'<a href="'+esc(x.url)+'" target="_blank" rel="noopener"><i class="ti ti-file-download"></i> '+esc(x.nome)+'</a>').join(''):'<span style="font-size:12.5px;color:var(--muted)">Non ancora disponibili: chiedili al consulente.</span>');
     }).catch(()=>{ box.innerHTML='<b>Documenti del prodotto</b><span style="font-size:12.5px;color:var(--muted)">Non si sono potuti caricare: chiedili al consulente.</span>'; });
   }
   const cta = document.getElementById('dett-cta');
-  if (cta){ if (isQuotabile()) cta.onclick = apriCheckout; else cta.style.display='none'; }
+  if (cta){ cta.onclick = apriCheckout; cta.style.display='none'; }
   sec.hidden = false;
 })();
 
@@ -445,7 +445,9 @@ function renderPcard(){
     '<div class="ph">'+P.nome+'</div><div class="psub">With Us Assicurazioni</div>'
     + priceHtml
     + '<ul class="incl">'+(P.benef||[]).slice(0,3).map(b=>'<li><i class="ti ti-check"></i> '+b+'</li>').join('')+'</ul>'
-    + (isQuotabile() ? '<button class="pcta" onclick="apriCheckout()"><i class="ti ti-shield-check"></i> ATTIVA LA POLIZZA ONLINE</button>' : '')
+    + (isQuotabile() ? '<button class="pcta" onclick="apriCheckout()"><i class="ti ti-shield-check"></i> ATTIVA LA POLIZZA ONLINE</button>'
+        : ((P.quote||{}).tipo && (P.quote||{}).tipo!=='lead' && VD ? '<button class="pcta" onclick="lpRichiedi()"><i class="ti ti-file-text"></i> RICHIEDI IL PREVENTIVO</button>'
+          + '<div style="font-size:12px;color:var(--muted);margin:8px 2px 0;line-height:1.45;text-align:center">'+esc((vdProdotto()||{}).motivo||'Il preventivo definitivo sarà confermato dopo la verifica dei dati e delle condizioni assicurative.')+'</div>' : ''))
     + '<button class="pcta" style="background:#eef1f6;color:var(--ink);margin-top:8px" onclick="document.getElementById(\'richiedi\').scrollIntoView({behavior:\'smooth\'})"><i class="ti ti-message-circle"></i> PARLA CON UN CONSULENTE WITH US</button>';
 }
 /* La scheda prezzo della catastrofali (rivista con Francesco il 09/10/2026).
@@ -490,6 +492,7 @@ function renderPcardCatnat(){
    calcolo, ma senza ridisegnare a ogni lettera (si perderebbe il fuoco). */
 function cnCambiato(){ if(CN.q){ CN.q=null; const c=document.getElementById('cn-cap'), v=document.getElementById('cn-val'), f=document.activeElement===c?'cn-cap':'cn-val', pos=(document.activeElement||{}).selectionStart; renderPcard(); const el=document.getElementById(f); if(el){ el.focus(); try{ el.setSelectionRange(pos,pos); }catch(_){} } } }
 function cnConsulente(){ document.getElementById('richiedi').scrollIntoView({behavior:'smooth'}); setTimeout(()=>{ const n=document.getElementById('nome'); if(n) n.focus({preventScroll:true}); },400); }
+function lpRichiedi(){ const m=document.getElementById('messaggio'); if(m && !m.value) m.value='Vorrei il preventivo della polizza '+P.nome+'.'; cnConsulente(); }
 function cnRichiedi(){ const m=document.getElementById('messaggio'); if(m && !m.value) m.value='Vorrei il preventivo definitivo della polizza Rischi Catastrofali Abitazione.'; cnConsulente(); }
 function upd(){ renderPcard(); }
 function cnParams(){ return { cap:CN.cap, valore:Number(CN.valore)||0, terrCont:true, alluFabb:true, alluCont:true }; }
@@ -508,6 +511,8 @@ async function cnCalcola(){
   CN.calcolo=false; renderPcard();
 }
 renderPcard();
+fetch('tariffe/vendita-distanza.json',{cache:'no-store'}).then(r=>r.json()).then(c=>{ VD=c||{}; renderPcard(); aggiornaDettCta(); }).catch(()=>{ VD={}; renderPcard(); aggiornaDettCta(); });
+function aggiornaDettCta(){ const cta=document.getElementById('dett-cta'); if(cta) cta.style.display = isQuotabile() ? '' : 'none'; }
 
 document.getElementById('lead-form').addEventListener('submit', async function(e){
   e.preventDefault();
@@ -539,7 +544,14 @@ document.getElementById('lead-form').addEventListener('submit', async function(e
 /* La catastrofali si attiva online solo dopo un premio calcolato dal server E
    se il server dice che la vendita a distanza è aperta (Set Informativo
    presente, compagnia d'accordo): altrimenti resta «chiedi informazioni». */
-function isQuotabile(){ const t=(P.quote||{}).tipo; if(t==='catnat') return !!(CN.q&&CN.q.vendita_online); return !!t && t!=='lead'; }
+/* La regola della vendita a distanza vale per TUTTI i prodotti (09/10/2026):
+   si attiva online solo un prodotto che la configurazione dichiara vendibile
+   e che ha i suoi documenti. Gli altri restano «Richiedi il preventivo». La
+   configurazione si legge dal sito; finché non arriva, non si vende. */
+var VD = null;
+function vdProdotto(){ return (VD && VD[key]) || null; }
+function vdOnline(){ const c=vdProdotto(); return !!(c && c.vendita_online===true && Array.isArray(c.documenti) && c.documenti.length); }
+function isQuotabile(){ const t=(P.quote||{}).tipo; if(t==='catnat') return !!(CN.q&&CN.q.vendita_online); return !!t && t!=='lead' && vdOnline(); }
 function currentParams(){ if((P.quote||{}).tipo==='catnat') return cnParams(); return { liv:SS.liv, comp:SS.comp, tipo:SS.tipo, opt:QS.opt, addon:QS.addon }; }
 var PAYCFG={loaded:false}, CK={};
 async function payConfig(){ if(!PAYCFG.loaded){ const c=await fetch(API+'/pay/config').then(r=>r.json()).catch(()=>({})); Object.assign(PAYCFG,c,{loaded:true}); } return PAYCFG; }
@@ -585,7 +597,7 @@ function ckComuneApply(i){
 /* I passi dipendono dal prodotto: la catastrofali ha «Esigenze» prima del
    pagamento (coerenza con richieste ed esigenze e consegna del Set
    Informativo PRIMA della conclusione). ckN dà il numero del passo per nome. */
-function ckLab(){ return (P.quote||{}).tipo==='catnat' ? ['Dati','Privacy','Documenti','Esigenze','Pagamento','Firma'] : ['Dati','Privacy','Documenti','Pagamento','Firma']; }
+function ckLab(){ return ['Dati','Privacy','Documenti','Esigenze','Pagamento','Firma']; }
 function ckN(nome){ return ckLab().indexOf(nome)+1; }
 function ckSteps(n){ // indicatore passi
   const lab=ckLab();
@@ -743,16 +755,52 @@ async function ckDocsNext(){
     for(const f of DOC.id) CK.documenti.push(await ckUpload(f));
     for(const f of DOC.cf) CK.documenti.push(await ckUpload(f));
     CK.accettazioni={ veridicita:true, privacy_firmata:true, ts:new Date().toISOString() };
-    if((P.quote||{}).tipo==='catnat') ckStepEsigenze(); else ckStepPay();
+    ckStepEsigenze();
   }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore nel caricamento'; }
 }
-// ── 3-bis) Esigenze e documenti precontrattuali (solo catastrofali) ──────────────
+// ── 3-bis) Esigenze e documenti precontrattuali (tutti i prodotti; la catastrofali ha in più la scheda dell'abitazione) ──────────────
 //   Prima del pagamento, non dopo: il cliente risponde alle domande sulle sue
 //   esigenze (art. 119-bis CAP, art. 58 Reg. IVASS 40/2018) e riceve il Set
 //   Informativo su supporto durevole (vendita a distanza, art. 83 Reg. IVASS
 //   40/2018). Le domande e i documenti arrivano dal server: una lista sola, e
 //   il server ricontrolla le risposte prima di incassare.
-function ckStepEsigenze(){
+function ckStepEsigenze(){ if((P.quote||{}).tipo==='catnat') return ckStepEsigenzeCatnat(); return ckStepEsigenzeGen(); }
+/* Gli altri prodotti (09/10/2026): stesse tre cose della catastrofali prima
+   di pagare — questionario richieste ed esigenze, documenti da scaricare, la
+   dichiarazione di averli letti — senza la scheda dell'abitazione. Le domande
+   e i documenti li manda il server con il prezzo: una lista sola. */
+var GQ=null;
+async function ckStepEsigenzeGen(){
+  const body=document.getElementById('ck-body');
+  body.innerHTML=ckSteps(ckN('Esigenze'))+'<div class="msg">Carico le domande e i documenti…</div>';
+  try{
+    const r=await fetch(API+'/shop/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto:key,params:currentParams()})});
+    GQ=await r.json(); if(!r.ok||!GQ.ok) throw new Error(GQ.error||'Non riesco a caricare le domande.');
+    if(!GQ.vendita_online) throw new Error(GQ.motivo||'Questo prodotto non si attiva online.');
+  }catch(e){ body.innerHTML=ckSteps(ckN('Esigenze'))+'<div class="msg err" style="display:block">'+esc(e.message)+'</div>'; return; }
+  const dom=GQ.esigenze||[], docs=GQ.documenti||[];
+  body.innerHTML= ckSteps(ckN('Esigenze'))
+    +'<div class="lp-h" style="margin-top:0">Le tue esigenze</div>'
+    +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 8px">Servono a verificare che la polizza sia adatta a te. Se non lo è, non procediamo online e ti ricontatta un consulente.</p>'
+    + dom.map(d=>'<div class="lp-q"><div class="t">'+esc(d.d)+'</div><label><input type="radio" name="es-'+d.k+'" value="si"> Sì</label><label><input type="radio" name="es-'+d.k+'" value="no"> No</label></div>').join('')
+    +'<div class="lp-h">Riepilogo</div><div style="font-size:13px;line-height:1.6">'+esc(P.nome)+' · premio annuo <b>'+eur(GQ.prezzo||0)+'</b></div>'
+    +'<div class="lp-h">Documentazione precontrattuale</div>'
+    +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 6px">Scarica e conserva i documenti: vanno letti prima di acquistare. Riceverai anche il Modulo Unico Precontrattuale (MUP) dell\'intermediario.</p>'
+    +'<div class="lp-docs">'+docs.map(d=>'<a href="'+esc(d.url)+'" target="_blank" rel="noopener"><i class="ti ti-file-download"></i> '+esc(d.nome)+'</a>').join('')+'</div>'
+    +'<p style="color:var(--muted);font-size:12px;margin:0">Hai diritto di recedere entro 14 giorni dalla conclusione del contratto (o dalla ricezione dei documenti, se successiva), anche online dalla pagina <a href="recesso.html" target="_blank" rel="noopener" style="color:var(--c1);font-weight:600">Recesso online</a>.</p>'
+    +'<label class="consent"><input type="checkbox" id="ck-es-letta"> Dichiaro di aver <b>ricevuto, scaricato e letto</b> la documentazione precontrattuale prima dell\'acquisto. *</label>'
+    +'<button class="btn" id="ck-es-next" onclick="ckEsigenzeNextGen()">Procedi al pagamento →</button><div class="msg err" id="ck-es-err"></div>';
+}
+function ckEsigenzeNextGen(){
+  const err=document.getElementById('ck-es-err'), dom=(GQ&&GQ.esigenze)||[], es={};
+  for(const d of dom){ const x=document.querySelector('input[name="es-'+d.k+'"]:checked'); if(!x){ err.className='msg err'; err.textContent='Rispondi a tutte le domande.'; return; } es[d.k]=(x.value==='si'); }
+  const fuori=dom.filter(d=>es[d.k]!==d.serve);
+  if(fuori.length){ err.className='msg err'; err.innerHTML=esc(fuori[0].no||'La polizza non risulta adatta alle tue esigenze.')+' <a href="#richiedi" onclick="document.getElementById(\'ck-ov\').remove()" style="color:inherit;font-weight:700">Lascia i tuoi recapiti</a> e ti ricontatta un consulente.'; return; }
+  if(!document.getElementById('ck-es-letta').checked){ err.className='msg err'; err.textContent='Conferma di aver ricevuto e letto la documentazione precontrattuale.'; return; }
+  CK.accettazioni=Object.assign({}, CK.accettazioni, { esigenze:es, precontrattuale_letta:true, documenti_consegnati:((GQ&&GQ.documenti)||[]).map(d=>d.nome), precontrattuale_ts:new Date().toISOString() });
+  ckStepPay();
+}
+function ckStepEsigenzeCatnat(){
   const q=CN.q||{}, dt=q.dettaglio||{}, docs=q.documenti||[], sc=q.scheda||{};
   /* Le domande condizionate (es. area golenale) valgono solo se la garanzia
      alluvione è scelta: stessa regola del server. */
@@ -833,7 +881,7 @@ async function ckStepPay(){
     if(cfg.stripePublishableKey){
       if(!window.Stripe) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://js.stripe.com/v3/';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
       const stripe=window.Stripe(cfg.stripePublishableKey);
-      const intent=await fetch(API+'/shop/checkout/stripe/create-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json());
+      const intent=await fetch(API+'/shop/checkout/stripe/create-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params,cliente:CK.cliente,accettazioni:CK.accettazioni})}).then(r=>r.json());
       if(intent.clientSecret){
         document.getElementById('ck-amt').textContent='€ '+Number(intent.prezzo).toFixed(2).replace('.',',')+' / anno';
         const elements=stripe.elements({clientSecret:intent.clientSecret});
@@ -849,7 +897,7 @@ async function ckStepPay(){
     if(cfg.paypalClientId){
       if(!window.paypal) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(cfg.paypalClientId)+'&currency=EUR&intent=capture';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
       window.paypal.Buttons({ style:{height:42,label:'pay'},
-        createOrder:async()=>{ const o=await fetch(API+'/shop/checkout/paypal/create-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params})}).then(r=>r.json()); return o.id; },
+        createOrder:async()=>{ const o=await fetch(API+'/shop/checkout/paypal/create-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params,cliente:CK.cliente,accettazioni:CK.accettazioni})}).then(r=>r.json()); return o.id; },
         onApprove:async(data)=>{ const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Confermo…'; const c=await fetch(API+'/shop/checkout/paypal/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body({orderId:data.orderID}))}).then(r=>r.json()); if(c.ok){ CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken; ckStepPrec(); } else { m.className='msg err'; m.textContent=c.error||'Errore'; } },
         onError:()=>{ const m=document.getElementById('ck-pmsg'); m.className='msg err'; m.textContent='Errore PayPal'; }
       }).render('#ck-paypal');

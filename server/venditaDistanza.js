@@ -106,10 +106,31 @@ export const ESIGENZE_CATNAT = [
     no: 'Una seconda copertura sugli stessi rischi va dichiarata e valutata: ti ricontatta un consulente.' },
 ];
 
-export function coerenza(esigenze, params) {
+/* Gli altri prodotti dello shop (09/10/2026, «stessa regola»): il
+   questionario è il bisogno che il prodotto copre, le domande sue
+   (configurazione) e due domande comuni. Senza configurazione non c'è
+   questionario, e quindi non c'è vendita. */
+export function esigenzeDi(prodotto) {
+  if (prodotto === 'catastrofali') return ESIGENZE_CATNAT;
+  const cfg = configurazione(prodotto);
+  if (!cfg) return [];
+  return [
+    { k: 'bisogno', serve: true, d: cfg.bisogno || ('Vuoi la copertura «' + (cfg.nome || prodotto) + '»?'),
+      no: 'Il prodotto non risponde a quello che ti serve: un consulente valuta con te la soluzione giusta.' },
+    ...(Array.isArray(cfg.domande) ? cfg.domande : []),
+    { k: 'letto_cosa_copre', serve: true, d: 'Hai letto nei documenti che cosa copre la polizza, che cosa esclude e i suoi limiti (franchigie, massimali, carenze)?',
+      no: 'Prima di acquistare è importante leggerli: se hai dubbi, un consulente te li spiega.' },
+    { k: 'doppia', serve: false, d: 'Hai già un\'altra polizza che copre gli stessi rischi?',
+      no: 'Una seconda copertura sugli stessi rischi va valutata: ti ricontatta un consulente.' },
+  ];
+}
+
+export function coerenza(esigenze, params, prodotto) {
   const e = esigenze || {}, p = params || {};
   const fuori = [];
-  for (const q of ESIGENZE_CATNAT) {
+  const lista = prodotto ? esigenzeDi(prodotto) : ESIGENZE_CATNAT;
+  if (!lista.length) return { coerente: false, fuori: [{ k: '-', motivo: 'Prodotto senza questionario.' }] };
+  for (const q of lista) {
     if (q.se && !p[q.se]) continue;
     if (e[q.k] !== true && e[q.k] !== false) fuori.push({ k: q.k, motivo: 'Rispondi a tutte le domande.' });
     else if (e[q.k] !== q.serve) fuori.push({ k: q.k, motivo: q.no });
@@ -148,12 +169,13 @@ export function maggiorenne(dataNascita, oggi) {
 /* Il cancello prima di incassare. Vale per i prodotti di questo modulo; gli
    altri prodotti dello shop restano come sono. */
 export function cancelloVendita(prodotto, body) {
-  return cancelloCon(prodotto === 'catastrofali' ? configurazione('catastrofali') : null, prodotto, body);
+  return cancelloCon(configurazione(prodotto), prodotto, body);
 }
 /* La regola, senza leggere il file: così si prova con una configurazione
    aperta senza aprire davvero la vendita. */
 export function cancelloCon(cfg, prodotto, body) {
-  if (prodotto !== 'catastrofali') return { ok: true };
+  /* Vale per TUTTI i prodotti dello shop (09/10/2026): senza configurazione,
+     documenti e questionario un prodotto non si incassa online. */
   if (!cfg || cfg.vendita_online !== true) {
     return { ok: false, errore: (cfg && cfg.motivo) || 'Prodotto non acquistabile online.' };
   }
@@ -161,8 +183,12 @@ export function cancelloCon(cfg, prodotto, body) {
     return { ok: false, errore: 'Documentazione precontrattuale non disponibile: il prodotto non si acquista online.' };
   }
   const acc = (body && body.accettazioni) || {};
-  const c = coerenza(acc.esigenze, body && body.params);
+  const c = coerenza(acc.esigenze, body && body.params, prodotto);
   if (!c.coerente) return { ok: false, errore: 'Il contratto non risulta coerente con le tue richieste ed esigenze: ti ricontatta un consulente.' };
+  if (prodotto !== 'catastrofali') {
+    if (acc.precontrattuale_letta !== true) return { ok: false, errore: 'Prima del pagamento devi dichiarare di aver ricevuto e letto la documentazione precontrattuale.' };
+    return { ok: true };
+  }
   if (!schedaCompleta(acc.abitazione)) return { ok: false, errore: 'Mancano i dati dell\'abitazione richiesti per la scheda di polizza.' };
   const cli = (body && body.cliente) || {};
   if (!/^[A-Z0-9]{16}$/i.test(String(cli.cf || ''))) return { ok: false, errore: 'Serve il codice fiscale del proprietario: la polizza non si intesta a una partita IVA.' };

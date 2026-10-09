@@ -4,7 +4,7 @@
 import { Router } from 'express';
 import { avviaFirmaCliente, avviaFirmaPrivacy } from './sign.js';
 import { creaLeadIAM } from './iamLead.js';
-import { quotaCatastrofali, cancelloVendita, configurazione, ESIGENZE_CATNAT, SCHEDA_CATNAT } from './venditaDistanza.js';
+import { quotaCatastrofali, cancelloVendita, configurazione, esigenzeDi, SCHEDA_CATNAT } from './venditaDistanza.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
@@ -191,11 +191,18 @@ shopRouter.post('/quote', (req, res) => {
     const cfg = configurazione('catastrofali') || {};
     return res.json({ ok: true, prezzo: c.prezzo, etich: c.etich, dettaglio: c.dettaglio,
       vendita_online: cfg.vendita_online === true && Array.isArray(cfg.documenti) && cfg.documenti.length > 0,
-      motivo: cfg.motivo || null, documenti: cfg.documenti || [], esigenze: ESIGENZE_CATNAT.map(q => ({ k: q.k, d: q.d, serve: q.serve, se: q.se || null, no: q.no })), scheda: SCHEDA_CATNAT });
+      motivo: cfg.motivo || null, documenti: cfg.documenti || [], esigenze: esigenzeDi('catastrofali').map(q => ({ k: q.k, d: q.d, serve: q.serve, se: q.se || null, no: q.no })), scheda: SCHEDA_CATNAT });
   }
   const q = calcPrezzo(req.body?.prodotto, req.body?.params);
   if (!q) return res.status(404).json({ error: 'Prodotto non quotabile online.' });
-  res.json({ ok: true, prezzo: q.prezzo, etich: q.etich });
+  /* Ogni prodotto porta con sé se si vende online, i suoi documenti e il
+     questionario: la pagina li mostra PRIMA del pagamento (stessa regola
+     della catastrofali). */
+  const cfg = configurazione(req.body?.prodotto) || {};
+  res.json({ ok: true, prezzo: q.prezzo, etich: q.etich,
+    vendita_online: cfg.vendita_online === true && Array.isArray(cfg.documenti) && cfg.documenti.length > 0,
+    motivo: cfg.motivo || null, documenti: cfg.documenti || [],
+    esigenze: esigenzeDi(req.body?.prodotto).map(x => ({ k: x.k, d: x.d, serve: x.serve, se: x.se || null, no: x.no })) });
 });
 
 // ── Anagrafica cliente (stesso modello di QUOTO: la ritrovi in quote_anagrafiche) ──

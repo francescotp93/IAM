@@ -1,8 +1,18 @@
 {
-  "versione": "0.74.2",
-  "nome": "Lab: pulsante Recesso online a scelta",
+  "versione": "0.75.0",
+  "nome": "Vendita a distanza: stessa regola per tutti",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.75.0",
+      "data": "2026-10-09",
+      "nome": "Vendita a distanza: stessa regola per tutti",
+      "voci": [
+        "Acquisto online, tutti i prodotti: prima del pagamento il cliente risponde alle domande sulle sue esigenze, scarica i documenti precontrattuali e dichiara di averli letti",
+        "Si attivano online solo RC Vita Privata e Infortuni Famiglia, che hanno i documenti; gli altri prodotti mostrano «Richiedi il preventivo» finché non si caricano i loro set informativi",
+        "Corretto: all'avvio del pagamento con carta o PayPal le risposte del questionario arrivano al server"
+      ]
+    },
     {
       "v": "0.74.2",
       "data": "2026-10-09",

@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.64.0">
-<meta name="app-versione-nome" content="Emissioni: la testata scura con le due code in caselle numerate, come lo storico">
+<meta name="app-versione" content="0.65.0">
+<meta name="app-versione-nome" content="Confronta prodotti: la testata scura con la scelta dei due prodotti e i numeri dell’archivio">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -158,6 +158,34 @@
 .cf-v-a{color:var(--acc,#2f6df6)}.cf-v-b{color:#b7791f}.cf-v-null{color:var(--txt3);font-weight:400}
 .cf-fonte{font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.45}
 .cf-fonte q{font-style:italic}
+/* La testata scura (09/10/2026), lo stesso linguaggio delle trattative. I
+   colori sono variabili su #panel-confronta, mai su :root (§31). */
+#panel-confronta{--cf-ink:#0c1a2a;--cf-ink2:#14304a;--cf-chiaro:#e8eef6;--cf-chiaro2:#9fb3c8;
+  --cf-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding-bottom:24px}
+.cf-hero{position:relative;overflow:hidden;border-radius:calc(var(--w1-raggio) + 6px);padding:20px 22px 18px;margin:0 16px 12px;
+  color:var(--cf-chiaro);background:
+    radial-gradient(120% 140% at 100% 0%,rgba(37,99,235,.35),transparent 55%),
+    linear-gradient(135deg,var(--cf-ink),var(--cf-ink2));
+  box-shadow:var(--w1-ombra)}
+.cf-hero-su{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.cf-eti{font-family:var(--cf-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--cf-chiaro2)}
+.cf-eti::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#34d399;margin-right:7px;vertical-align:1px;box-shadow:0 0 0 3px rgba(52,211,153,.18)}
+.cf-hero-t{font-size:20px;font-weight:800;line-height:1.2;margin-top:6px}
+.cf-pills{display:flex;gap:6px;flex-wrap:wrap}
+.cf-pill{font-size:11.5px;padding:4px 10px;border-radius:999px;background:rgba(148,178,214,.14);
+  border:1px solid rgba(148,178,214,.22);color:var(--cf-chiaro2)}
+.cf-pill b{color:var(--cf-chiaro);font-family:var(--cf-mono);font-variant-numeric:tabular-nums}
+.cf-pill-avv{background:rgba(245,158,11,.16);border-color:rgba(245,158,11,.4);color:#fcd34d}
+.cf-hero-corpo{margin-top:16px}
+.cf-hero .cf-f label{color:var(--cf-chiaro2)}
+.cf-hero .cf-vs{color:var(--cf-chiaro2)}
+.cf-hero .cf-f select{background:rgba(255,255,255,.07);border:1px solid rgba(148,178,214,.28);color:var(--cf-chiaro)}
+.cf-hero .cf-f select option{color:#1f2a37;background:#fff}
+.cf-hero .cf-f select:focus{outline:none;box-shadow:var(--w1-focus)}
+.cf-hero .cl-sub{color:var(--cf-chiaro2);margin-top:10px}
+.cf-hero .cl-sub b{color:var(--cf-chiaro)}
+.cf-hero .cl-carico{color:var(--cf-chiaro2)}
+@media (max-width:640px){.cf-hero{padding:16px}.cf-hero-t{font-size:17px}.cf-f{min-width:100%}.cf-vs{padding-bottom:0}}
 /* ══ METTERE UN PRODOTTO IN ARCHIVIO (02/10/2026) ═══════════════════════════
    L'archivio di Confronta era vuoto perché l'unico modo previsto per
    riempirlo era scaricare le note informative dalla rete. Questa è la strada
@@ -1162,6 +1190,7 @@ input[type=file]{display:none;}
 #panel-produzione,
 #panel-punti-vendita,
 #panel-pipeline,
+#panel-confronta,
 .trs-box,
 #contab-panel-conto {
   --w1-verde:#02984e; --w1-verde-scuro:#016b38; --w1-verde-tenue:#eaf7f0;
@@ -5256,10 +5285,18 @@ input[type=file]{display:none;}
     </div>
   </section>
 
-  <div class="d-card">
-    <div class="card-head"><div class="card-title">
-      <span class="pictogram"><i class="ti ti-scale"></i></span> Quali due prodotti</div></div>
-    <div class="card-body">
+  <!-- La testata scura delle trattative: la scelta dei due prodotti è la
+       cosa che si fa per prima, quindi sta lì. Gli id restano quelli di
+       sempre (cf-ramo, cf-a, cf-b, cf-stato): li leggono cfRamo e cfConfronta. -->
+  <section class="cf-hero" aria-label="Quali due prodotti">
+    <div class="cf-hero-su">
+      <div>
+        <div class="cf-eti">Quali due prodotti</div>
+        <div class="cf-hero-t">Il nostro contro l'altro, garanzia per garanzia</div>
+      </div>
+      <div class="cf-pills" id="cf-pills"></div>
+    </div>
+    <div class="cf-hero-corpo">
       <div class="cf-scelte">
         <div class="cf-f"><label for="cf-ramo">Ramo</label><select id="cf-ramo" onchange="cfRamo()"></select></div>
         <div class="cf-f"><label for="cf-a">Il nostro</label><select id="cf-a"></select></div>
@@ -5270,7 +5307,7 @@ input[type=file]{display:none;}
       </div>
       <div id="cf-stato" class="cl-sub"></div>
     </div>
-  </div>
+  </section>
 
   <div id="cf-esito"></div>
 </div>
@@ -6609,7 +6646,9 @@ function cfRami() {
         'precontrattuali delle compagnie (DIP, DIP aggiuntivo, condizioni): finché non ne entra almeno uno ' +
         'per parte, qui non c\'è niente da mettere a confronto — e non si inventa.';
     } else {
-      stato.innerHTML = CF_PRODOTTI.length + (CF_PRODOTTI.length === 1 ? ' prodotto' : ' prodotti') + ' in archivio.';
+      /* Il numero sta già nelle pastiglie della testata: ripeterlo sotto
+         sarebbe lo stesso dato scritto due volte nello stesso riquadro. */
+      stato.innerHTML = '';
     }
   }
   cfRamo();
@@ -6626,7 +6665,24 @@ function cfRamo() {
     }).join('');
     if (prima) s.value = prima;
   });
+  cfPills(lista);
   var e = document.getElementById('cf-esito'); if (e) e.innerHTML = '';
+}
+
+/* Le pastiglie della testata. Su un archivio che non si è potuto leggere non
+   si scrive «0 prodotti»: sarebbe un archivio vuoto falso (§12, §18). */
+function cfPills(lista) {
+  var box = document.getElementById('cf-pills'); if (!box) return;
+  if (CF_ERRORE) { box.innerHTML = '<span class="cf-pill cf-pill-avv">archivio non letto</span>'; return; }
+  var sel = document.getElementById('cf-ramo');
+  var ramo = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : '';
+  var comp = {};
+  (lista || []).forEach(function (p) { comp[p.compagnia] = 1; });
+  var nc = Object.keys(comp).length;
+  box.innerHTML =
+    '<span class="cf-pill"><b>' + CF_PRODOTTI.length + '</b> in archivio</span>' +
+    '<span class="cf-pill"><b>' + (lista || []).length + '</b> nel ramo' + (ramo ? ' ' + esc(ramo) : '') + '</span>' +
+    '<span class="cf-pill"><b>' + nc + '</b> ' + (nc === 1 ? 'compagnia' : 'compagnie') + '</span>';
 }
 
 /* Un prodotto con le sue garanzie, nella forma che vuole il motore. */

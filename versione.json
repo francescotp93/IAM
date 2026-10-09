@@ -1,8 +1,19 @@
 {
-  "versione": "0.67.0",
-  "nome": "Tutte le pagine in chiaro: schede bianche in rilievo al posto delle testate scure",
+  "versione": "0.68.0",
+  "nome": "Caratteri più leggeri",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.68.0",
+      "data": "2026-10-09",
+      "nome": "Caratteri più leggeri",
+      "voci": [
+        "Tutto IAM e il preventivatore usano un carattere nuovo, Figtree, più leggero e simile a quello del portale di Prima",
+        "Anche i numeri (importi, saldi, totali) si leggono nello stesso carattere del testo, sempre incolonnati",
+        "I titoli più pesanti sono stati alleggeriti da soli, senza cambiare la disposizione delle schermate",
+        "Foglio cassa e scheda polizza: due piccole correzioni di grafica trovate dalle prove automatiche"
+      ]
+    },
     {
       "v": "0.67.0",
       "data": "2026-10-09",

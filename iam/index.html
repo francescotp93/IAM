@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.67.0">
-<meta name="app-versione-nome" content="Tutte le pagine in chiaro: schede bianche in rilievo al posto delle testate scure">
+<meta name="app-versione" content="0.68.0">
+<meta name="app-versione-nome" content="Caratteri più leggeri">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -102,8 +102,7 @@
 <script src="/nuovo-preventivo/tariffe/motore/caricamento.js?v=20261007"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
 /* ── IL RIQUADRO «CHI E QUANDO» (19/09/2026) ────────────────────────────────
@@ -161,7 +160,7 @@
 /* La testata scura (09/10/2026), lo stesso linguaggio delle trattative. I
    colori sono variabili su #panel-confronta, mai su :root (§31). */
 #panel-confronta{--cf-ink:#0c1a2a;--cf-ink2:#14304a;--cf-chiaro:#e8eef6;--cf-chiaro2:#9fb3c8;
-  --cf-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding-bottom:24px}
+  --cf-mono:var(--t-sans,Figtree,sans-serif);padding-bottom:24px}
 .cf-hero{position:relative;overflow:hidden;border-radius:calc(var(--w1-raggio) + 6px);padding:20px 22px 18px;margin:0 16px 12px;
   color:var(--cf-chiaro);background:
     radial-gradient(120% 140% at 100% 0%,rgba(37,99,235,.35),transparent 55%),
@@ -400,7 +399,7 @@
 .kpi-c{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:13px 15px;min-width:0}
 .kpi-c.kpi-ko{border-left:3px solid #f59e0b}
 .kpi-c .kpi-k{font-size:11px;color:var(--txt2);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
-.kpi-c .kpi-v{font-size:22px;font-weight:800;margin-top:4px;line-height:1.1;font-family:var(--t-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpi-c .kpi-v{font-size:22px;font-weight:800;margin-top:4px;line-height:1.1;font-family:var(--t-sans,Figtree,sans-serif);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .kpi-c .kpi-v .kpi-u{font-size:13px;font-weight:600;color:var(--txt2)}
 .kpi-c .kpi-s{font-size:11px;color:var(--txt2);margin-top:5px;line-height:1.5}
 @media(max-width:900px){.kpi-riga{grid-template-columns:1fr}}
@@ -433,7 +432,7 @@
    scarto zero (§10). */
 .vol-sintesi{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:14px}
 .vol-k{font-size:11px;color:var(--w1-testo2);text-transform:uppercase;letter-spacing:.03em;font-weight:800}
-.vol-big{font-size:27px;font-weight:800;line-height:1.05;letter-spacing:-.02em;font-family:var(--t-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums}
+.vol-big{font-size:27px;font-weight:800;line-height:1.05;letter-spacing:-.02em;font-family:var(--t-sans,Figtree,sans-serif);font-variant-numeric:tabular-nums}
 .vol-pol{font-size:12.5px;color:var(--w1-testo2);font-weight:600}
 .vol-vs{font-size:12.5px;color:var(--w1-testo2);flex-basis:100%}
 .vol-delta{font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:999px;display:inline-block}
@@ -573,7 +572,7 @@ body { --acc:#02984e;--acc2:#016b38;--acc-rgb:2,152,78; }
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
-body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);display:flex;flex-direction:column;transition:background .25s,color .25s;}
+body{font-family:'Figtree',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);display:flex;flex-direction:column;transition:background .25s,color .25s;}
 
 /* ── LOGIN ── */
 .ls{position:fixed;inset:0;background:linear-gradient(135deg,#eef4f0 0%,#e2ede7 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;padding:32px 24px;}
@@ -610,7 +609,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .theme-light .hdr{background:rgba(255,255,255,.85);}
 .hdr-in{padding:0 16px;height:60px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .hdr-logo{display:flex;align-items:center;gap:10px;}
-.hdr-title{font-family:'Inter',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.5px;color:var(--txt);}
+.hdr-title{font-family:'Figtree',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.5px;color:var(--txt);}
 .hdr-sub{font-size:10px;color:var(--txt3);margin-top:1px;letter-spacing:.3px;display:none;}
 @media(min-width:400px){.hdr-sub{display:block;}}
 .hdr-right{display:flex;align-items:center;gap:8px;}
@@ -1327,7 +1326,7 @@ input[type=file]{display:none;}
 .oggi-grp{border-bottom:1px solid var(--bord2)}
 .oggi-grp:last-of-type{border-bottom:none}
 .oggi-gh{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:8px 16px 7px 19px;
-  background:var(--surf2);border-bottom:1px solid var(--bord);font-family:var(--t-mono,ui-monospace,monospace);
+  background:var(--surf2);border-bottom:1px solid var(--bord);font-family:var(--t-sans,Figtree,sans-serif);
   font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--w1-testo2,var(--txt2))}
 .oggi-gh-n{font-weight:500;letter-spacing:.04em;color:var(--w1-testo2,var(--txt2))}
 .oggi-gl{display:block}
@@ -1339,19 +1338,19 @@ input[type=file]{display:none;}
 .oggi-v.urg::before{background:var(--w1-rosso)}
 .oggi-v.avv::before{background:var(--w1-ambra)}
 .oggi-v:hover{background:var(--surf2)}
-.oggi-n{grid-column:2;text-align:right;font-family:var(--t-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;
+.oggi-n{grid-column:2;text-align:right;font-family:var(--t-sans,Figtree,sans-serif);font-variant-numeric:tabular-nums;
   font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1;color:var(--w1-testo,var(--txt))}
 .oggi-txt{grid-column:3;min-width:0;padding:8px 0}
 .oggi-l{display:block;font-size:13px;font-weight:600;line-height:1.3}
-.oggi-s{display:block;margin-top:3px;font-family:var(--t-mono,ui-monospace,monospace);font-size:11px;line-height:1.4;color:var(--w1-testo2,var(--txt2))}
-.oggi-e{grid-column:4;text-align:right;white-space:nowrap;font-family:var(--t-mono,ui-monospace,monospace);
+.oggi-s{display:block;margin-top:3px;font-family:var(--t-sans,Figtree,sans-serif);font-size:11px;line-height:1.4;color:var(--w1-testo2,var(--txt2))}
+.oggi-e{grid-column:4;text-align:right;white-space:nowrap;font-family:var(--t-sans,Figtree,sans-serif);
   font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;letter-spacing:-.01em;color:var(--w1-testo,var(--txt))}
 .oggi-fr{grid-column:5;color:var(--w1-testo2,var(--txt2));font-size:15px;transition:color .12s ease,transform .12s ease}
 .oggi-v:hover .oggi-fr{color:var(--t-dati-scuro,#0e7490);transform:translateX(2px)}
 .oggi-v:focus-visible,.dash-list-row:focus-visible,.oggi-calma-b:focus-visible,.oggi-ric:focus-visible{outline:2px solid var(--t-dati,#06b6d4);outline-offset:-2px}
 .oggi-guasto{margin:10px 16px;padding:9px 12px;font-size:12.5px;line-height:1.45;color:var(--w1-ambra);background:var(--w1-ambra-bg);border:1px solid currentColor;border-radius:var(--w1-raggio)}
 .oggi-calma{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:10px 16px 10px 19px;border-top:1px solid var(--bord2);
-  background:var(--surf2);font-family:var(--t-mono,ui-monospace,monospace);font-size:11px;color:var(--w1-testo2,var(--txt2))}
+  background:var(--surf2);font-family:var(--t-sans,Figtree,sans-serif);font-size:11px;color:var(--w1-testo2,var(--txt2))}
 .oggi-calma-t{font-weight:700;letter-spacing:.09em;text-transform:uppercase;font-size:10.5px}
 .oggi-calma-b{border:none;background:none;padding:2px 0;font:inherit;color:var(--w1-testo,var(--txt));cursor:pointer;
   text-decoration:underline dotted;text-underline-offset:3px}
@@ -1900,7 +1899,7 @@ input[type=file]{display:none;}
   --trt-chiaro:#e8eef6; --trt-chiaro2:#9fb3c8;
   --trt-corso:#2563eb; --trt-corso-bg:#eef3ff;
   --trt-s-prospect:#94a3b8; --trt-s-preventivo:#38bdf8; --trt-s-trattativa:#f59e0b; --trt-s-aperta:#a78bfa;
-  --trt-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --trt-mono:var(--t-sans,Figtree,sans-serif);
   padding-bottom:24px}
 #pp-tratt,#pp-agenda{padding:0 16px}
 .trt-off{display:none}
@@ -2029,7 +2028,7 @@ input[type=file]{display:none;}
    gettoni sono quelli del kit, che la scheda prende dall'elenco qui sopra:
    la finestra vive fuori dal pannello e senza quell'elenco non li avrebbe. */
 .trs-box{--trt-ink:#0c1a2a;--trt-ink2:#14304a;--trt-chiaro:#e8eef6;--trt-chiaro2:#9fb3c8;
-  --trt-corso:#2563eb;--trt-corso-bg:#eef3ff;--trt-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --trt-corso:#2563eb;--trt-corso-bg:#eef3ff;--trt-mono:var(--t-sans,Figtree,sans-serif);
   max-width:940px;margin:28px auto;min-height:0;padding:0;border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(2,8,23,.45)}
 .trs-testa{position:sticky;top:0;z-index:2;color:var(--trt-chiaro);padding:18px 22px 16px;background:
   radial-gradient(120% 160% at 100% 0%,rgba(37,99,235,.35),transparent 55%),
@@ -2155,7 +2154,7 @@ input[type=file]{display:none;}
      senza dare nessun errore. Sta nella radice del quotatore (montato su
      /nuovo-preventivo/ in produzione) perché è la stessa per le due app: due
      copie si separerebbero al primo ritocco. -->
-<link rel="stylesheet" href="/nuovo-preventivo/withus-tech.css?v=20261007">
+<link rel="stylesheet" href="/nuovo-preventivo/withus-tech.css?v=20261009">
 </head>
 <body>
 
@@ -2213,7 +2212,7 @@ input[type=file]{display:none;}
     <div class="hdr-logo">
 <div class="hdr-mark" title="IAM"></div>
 <div style="width:1px;height:28px;background:#0a1e3c;margin:0 10px;"></div>
-<div><div class="hdr-sub" id="hdr-sub" style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--txt3);letter-spacing:2px;">PIATTAFORMA IAM</div>
+<div><div class="hdr-sub" id="hdr-sub" style="font-size:7px;color:var(--txt3);letter-spacing:2px;">PIATTAFORMA IAM</div>
 </div>
     </div>
     <div class="hdr-right">
@@ -17717,7 +17716,7 @@ function apriVerificaRui(teamId) {
         '<div style="font-size:13px;color:var(--txt2);">' + esc(nome) + '</div>' +
         '<div style="background:var(--surf2);border-radius:9px;padding:11px 13px;">' +
           '<div style="font-size:11px;color:var(--txt3);">Numero dichiarato</div>' +
-          '<div style="font-family:ui-monospace,monospace;font-size:16px;font-weight:700;letter-spacing:.04em;">' + esc(r.rui || '—') + '</div>' +
+          '<div style="font-family:var(--t-sans,Figtree,sans-serif);font-size:16px;font-weight:700;letter-spacing:.04em;">' + esc(r.rui || '—') + '</div>' +
           '<a href="' + IVASS_RUI + '" target="_blank" rel="noopener" style="font-size:12px;color:var(--acc);text-decoration:underline;">Cercalo sul registro IVASS &rarr;</a>' +
         '</div>' +
         '<div>' +

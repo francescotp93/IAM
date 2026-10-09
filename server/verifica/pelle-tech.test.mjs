@@ -124,11 +124,13 @@ prova('I TOKEN NUOVI ARRIVANO DAVVERO, IN TUTT\'E DUE LE APPLICAZIONI', async ()
     const t = await p.evaluate(() => {
       const s = getComputedStyle(document.body);
       const l = (n) => s.getPropertyValue(n).trim();
-      return { dati: l('--t-dati'), mono: l('--t-mono'), scuro: l('--w1-scuro'), rs: l('--rs'), r: l('--w1-r') };
+      return { dati: l('--t-dati'), mono: l('--t-mono'), sans: l('--t-sans'), corpo: s.fontFamily, scuro: l('--w1-scuro'), rs: l('--rs'), r: l('--w1-r') };
     });
     await p.close();
     deve(t.dati === '#06b6d4', nome + ': il ciano dei segnali non arriva (--t-dati = «' + t.dati + '»)');
     deve(/monospace/.test(t.mono), nome + ': il monospaziato non arriva');
+    /* 09/10/2026: un carattere solo per testo e numeri, chiesto da Francesco */
+    deve(/Figtree/.test(t.sans) && /Figtree/.test(t.corpo), nome + ': il carattere del testo non è Figtree (corpo: «' + t.corpo + '»)');
     deve(t.scuro === '#0d131c', nome + ': la barra scura non è quella nuova (--w1-scuro = «' + t.scuro + '»)');
     deve(t.r === 'var(--t-r)' || t.r === '3px', nome + ': il raggio della scocca non è quello nuovo: «' + t.r + '»');
   }
@@ -170,8 +172,8 @@ prova('LE QUATTRO FASI DI CARICAMENTO SI VEDONO DAVVERO', async () => {
   await p.close();
   deve(r.barra && r.barra.h >= 1 && r.barra.h <= 4, 'la barra non è alta due pixel: ' + JSON.stringify(r.barra));
   deve(r.barra.animDopo !== 'none', 'la barra sta ferma');
-  deve(r.stato && /mono/i.test(r.stato.font) && r.stato.trasf === 'uppercase',
-    'lo stato non è in monospaziato maiuscoletto: ' + JSON.stringify(r.stato));
+  deve(r.stato && /Figtree/i.test(r.stato.font) && r.stato.trasf === 'uppercase',
+    'lo stato non è nel carattere del testo, maiuscoletto: ' + JSON.stringify(r.stato));
   deve(r.stato.animPrima !== 'none', 'la spia dello stato non pulsa');
   deve(r.scheletro && r.scheletro.h > 5 && r.scheletro.w > 50, 'lo scheletro non ha corpo: ' + JSON.stringify(r.scheletro));
   deve(r.anello && r.anello.h >= 12 && r.anello.h <= 18, 'l\'anello non è quattordici pixel: ' + JSON.stringify(r.anello));
@@ -215,7 +217,10 @@ prova('I CAMPI DEGLI IMPORTI SONO IN MONOSPAZIATO E SQUADRATI', async () => {
   });
   await p.close();
   deve(r, 'il campo dell\'importo non c\'è più');
-  deve(/mono/i.test(r.font), 'il campo dell\'importo non è in monospaziato: ' + r.font);
+  /* 09/10/2026: le cifre restano incolonnate, ma nel carattere del testo —
+     il monospaziato pesava sulla lettura (richiesta di Francesco). */
+  deve(/Figtree/i.test(r.font), 'il campo dell\'importo non è nel carattere del testo: ' + r.font);
+  deve(/tabular-nums/.test(r.cifre), 'le cifre del campo non si incolonnano: ' + r.cifre);
   deve(parseFloat(r.raggio) <= 4, 'il campo non è squadrato: raggio ' + r.raggio);
 });
 
@@ -234,7 +239,7 @@ prova('LE ATTESE CHE C\'ERANO GIÀ PARLANO LA LINGUA NUOVA', async () => {
     return { font: riga.fontFamily, trasf: riga.textTransform, lato: spia.getBoundingClientRect().width, bordo: s.borderTopWidth };
   });
   await p.close();
-  deve(/mono/i.test(r.font) && r.trasf === 'uppercase', 'la riga non è nel linguaggio nuovo: ' + JSON.stringify(r));
+  deve(/Figtree/i.test(r.font) && r.trasf === 'uppercase', 'la riga non è nel linguaggio nuovo: ' + JSON.stringify(r));
   deve(r.lato <= 8, 'la rotella non è diventata una spia: è larga ' + r.lato + 'px');
   deve(parseFloat(r.bordo) === 0, 'la spia ha ancora il bordo della rotella');
 });
@@ -260,7 +265,7 @@ prova('L\'AVVIO DICE CHE COSA STA FACENDO, A VOCE E A SCHERMO', async () => {
   await p.close();
   deve(r, 'la schermata di avvio non c\'è più');
   deve(r.largo > 40, 'la riga di avvio è ancora nascosta: larga ' + r.largo + 'px');
-  deve(/mono/i.test(r.font) && r.trasf === 'uppercase', 'la riga di avvio non è nel linguaggio nuovo');
+  deve(/Figtree/i.test(r.font) && r.trasf === 'uppercase', 'la riga di avvio non è nel linguaggio nuovo');
   deve(r.grigliaAnim !== 'none', 'la griglia dell\'avvio sta ferma');
   deve(r.logoAnim === 'none', 'il marchio respira ancora: è la barra a dire che si lavora, non il marchio');
   deve(r.dichiarato === 'status', 'l\'avvio non si dichiara ai lettori di schermo');

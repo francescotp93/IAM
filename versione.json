@@ -1,8 +1,19 @@
 {
-  "versione": "0.72.1",
-  "nome": "Catastrofali: limiti anche nel preventivatore",
+  "versione": "0.73.0",
+  "nome": "Recesso online e informativa privacy",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.73.0",
+      "data": "2026-10-09",
+      "nome": "Recesso online e informativa privacy",
+      "voci": [
+        "Recesso online: il cliente che ha comprato sulla landing può recedere da solo dalla pagina «Recesso online», identificandosi con codice fiscale, email e codice OTP",
+        "Recesso online: il cliente riceve una ricevuta via email, l'agenzia viene avvisata per inoltrare il recesso alla compagnia, e le richieste oltre i 14 giorni arrivano segnate da verificare",
+        "Storico e coda emissioni: le pratiche con recesso richiesto hanno l'etichetta «Recesso richiesto»",
+        "Acquisto online: l'informativa privacy si legge nella pagina prima di firmarla, ed è lo stesso testo del documento firmato"
+      ]
+    },
     {
       "v": "0.72.1",
       "data": "2026-10-09",

@@ -26,8 +26,8 @@ const SMS_SENDER = (process.env.BREVO_SMS_SENDER || 'WithUs').slice(0, 11);
 
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function sha(s) { return crypto.createHash('sha256').update(String(s)).digest('hex'); }
-function genOtp() { return String(crypto.randomInt(0, 1000000)).padStart(6, '0'); }
-function genToken() { return crypto.randomBytes(18).toString('base64url'); }
+export function genOtp() { return String(crypto.randomInt(0, 1000000)).padStart(6, '0'); }
+export function genToken() { return crypto.randomBytes(18).toString('base64url'); }
 
 // ── Supabase REST con service role ───────────────────────────────────────────────
 function srvKey() {
@@ -35,12 +35,12 @@ function srvKey() {
   if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY non configurata');
   return key;
 }
-async function sbGet(path) {
+export async function sbGet(path) {
   const key = srvKey();
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
   return r.json().catch(() => []);
 }
-async function sbPatch(path, body) {
+export async function sbPatch(path, body) {
   const key = srvKey();
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method: 'PATCH',
@@ -61,7 +61,7 @@ async function setFirma(id, firma, dati) {
 }
 
 // ── Invio email (Brevo) ──────────────────────────────────────────────────────────
-async function sendEmail(to, subject, html) {
+export async function sendEmail(to, subject, html) {
   const key = process.env.BREVO_API_KEY;
   if (!key) throw new Error('BREVO_API_KEY non configurata');
   const recipients = [...new Set((Array.isArray(to) ? to : [to]).filter(Boolean))].map((e) => ({ email: e }));
@@ -94,7 +94,7 @@ async function sendSms(phone, text) {
 
 // ── Template email ───────────────────────────────────────────────────────────────
 const EMAIL_DISCLAIMER = `<div style="padding:12px 24px;background:#fbfbfd;color:#9aa1b3;font-size:10.5px;line-height:1.5;border-top:1px solid #eef"><b>ATTENZIONE: Privacy Policy - D.Lgs. 196/2003</b><br>Le informazioni contenute in questo messaggio di posta elettronica sono di carattere privato e confidenziale ed esclusivamente rivolte al destinatario sopra indicato. Nel caso aveste ricevuto questo messaggio di posta elettronica per errore, vi comunichiamo che ai sensi di Legge è vietato l'uso, la diffusione, distribuzione o riproduzione da parte di ogni altra persona. Siete pregati di segnalarlo immediatamente, rispondendo al mittente e distruggere quanto ricevuto (compresi i file allegati) senza farne copia o leggerne il contenuto. Grazie.</div>`;
-function shell(title, body) {
+export function shell(title, body) {
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
     <div style="background:linear-gradient(135deg,#0b1437,#1b2a6b);padding:20px 22px;text-align:center">
       <img src="https://quoto.withusassicurazioni.it/withus-logo-white.png" alt="With Us Assicurazioni" style="height:44px;width:auto;display:inline-block">
@@ -271,6 +271,7 @@ publicSign.post('/verify', async (req, res) => {
        ${rigaProposta(prev)}
        <p style="margin-top:8px;color:#6b7488;font-size:13px">Firma elettronica registrata il ${new Date(firma.firmato_il).toLocaleString('it-IT')} (esito OTP positivo).</p>
        ${docsListHtml([{ nome: 'Modulo Unico Precontrattuale (MUP) firmato', url: `${SELF_URL}/sign/mup?id=${encodeURIComponent(prev.id)}&t=${encodeURIComponent(firma.token)}` }, ...docsForPrev(prev)])}
+       ${(prev.dati && prev.dati.fonte === 'shop online') ? `<p style="font-size:13px;color:#3a4254">Hai acquistato a distanza: puoi recedere entro 14 giorni, senza penali, dalla pagina <a href="${APP_URL}/recesso.html" style="color:#02984e;font-weight:700">Recesso online</a>.</p>` : ''}
        <h3 style="margin:20px 0 6px;font-size:15px">Informativa Privacy (Reg. UE 2016/679)</h3>
        <p style="font-size:13px;color:#3a4254">I tuoi dati personali sono trattati da With Us Soc. Coop., in qualità di Titolare, per la gestione del rapporto assicurativo e gli adempimenti di legge. Il conferimento è necessario alla stipula; il trattamento avviene con strumenti elettronici nel rispetto dei principi di liceità e minimizzazione. Hai diritto di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità scrivendo a ${esc(STAFF_INBOX)}. L'informativa completa è disponibile su richiesta e sul nostro sito.</p>
        <h3 style="margin:18px 0 6px;font-size:15px">Set informativo precontrattuale</h3>
@@ -335,6 +336,10 @@ function anagCliente(a, f) {
    nell'archivio usa `caricaDocumento` di server/archivio.js, che restituisce il
    percorso e non un indirizzo. */
 function siNo(v) { return v ? 'SÌ' : 'NO'; }
+/* Il testo dell'informativa sta in un posto solo: lo stampa il documento
+   firmato e lo mostra la pagina PRIMA della firma (/sign/privacy/informativa).
+   Firmare un testo che non si è visto non è un consenso informato. */
+export const INFORMATIVA_PRIVACY = `Titolare del trattamento: WITH US SOCIETA' COOPERATIVA, Vico Giunone 3, Paceco (TP), tel. 09231963896, email amministrazione@withusassicurazioni.it, PEC withus.coop@pec.it, RUI A000747484, soggetta a controllo IVASS. I dati sono trattati per adempimenti normativi, per l'attività di consulenza e intermediazione assicurativa e attività accessorie e — previo consenso — per finalità di marketing (basi giuridiche artt. 6 e 9 GDPR). Conservazione per la durata del rapporto e per i termini di legge (fino a 10 anni; 20 per i rami vita). L'interessato può esercitare i diritti di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità (artt. 15-22 GDPR) scrivendo al Titolare, e proporre reclamo al Garante (www.garanteprivacy.it). Il conferimento per le finalità a) e b) è necessario alla gestione del rapporto; per c) e d) è facoltativo.`;
 // Documento privacy (Mod. PR01) compilato e firmato — copia digitale stile PDF
 function genPrivacyDocHtml(c, cons, firma) {
   const oggi = firma.firmato_il ? new Date(firma.firmato_il).toLocaleString('it-IT') : '';
@@ -390,7 +395,7 @@ function genPrivacyDocHtml(c, cons, firma) {
        ['Comunicazione a soggetti terzi per finalità di marketing', cons.terzi]]
       .map(([t, v]) => `<div class="cons"><span>${t}</span><span class="v ${v ? 'si' : 'no'}">${siNo(v)}</span></div>`).join('')}
     <h2>Informativa (estratto artt. 13-14 GDPR)</h2>
-    <p class="small">Titolare del trattamento: WITH US SOCIETA' COOPERATIVA, Vico Giunone 3, Paceco (TP), tel. 09231963896, email amministrazione@withusassicurazioni.it, PEC withus.coop@pec.it, RUI A000747484, soggetta a controllo IVASS. I dati sono trattati per adempimenti normativi, per l'attività di consulenza e intermediazione assicurativa e attività accessorie e — previo consenso — per finalità di marketing (basi giuridiche artt. 6 e 9 GDPR). Conservazione per la durata del rapporto e per i termini di legge (fino a 10 anni; 20 per i rami vita). L'interessato può esercitare i diritti di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità (artt. 15-22 GDPR) scrivendo al Titolare, e proporre reclamo al Garante (www.garanteprivacy.it). Il conferimento per le finalità a) e b) è necessario alla gestione del rapporto; per c) e d) è facoltativo.</p>
+    <p class="small">${INFORMATIVA_PRIVACY}</p>
     <div class="signwrap">
       <div class="sign-meta">Luogo e data: <b>${esc(c.comune || '—')}, ${esc(dataBreve)}</b></div>
       <div class="signbox">
@@ -564,6 +569,16 @@ publicSign.get('/privacy/doc', async (req, res) => {
     res.send(genPrivacyDocHtml(anagCliente(a, f), f.consensi || {}, f));
   } catch (e) { res.status(500).send('Errore: ' + e.message); }
 });
+
+// L'informativa privacy da leggere PRIMA di firmare (pubblica, senza dati di nessuno)
+publicSign.get('/privacy/informativa', (req, res) => {
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informativa privacy — With Us</title>
+  <style>body{margin:0;background:#f4f6f8;font-family:Figtree,system-ui,Arial,sans-serif;color:#1f2a37}.s{max-width:760px;margin:24px auto;background:#fff;border:1px solid #dde3e9;border-radius:14px;padding:28px 30px;line-height:1.6;font-size:14.5px}h1{font-size:20px;margin:0 0 4px}.m{color:#5b6675;font-size:12.5px;margin-bottom:16px}</style></head>
+  <body><div class="s"><h1>Informativa sul trattamento dei dati personali</h1><div class="m">Mod. PR01 · artt. 13-14 Reg. UE 2016/679 (GDPR)</div><p>${INFORMATIVA_PRIVACY}</p></div></body></html>`);
+});
+
+publicSign.get('/privacy/informativa.json', (req, res) => { res.json({ ok: true, testo: INFORMATIVA_PRIVACY, modello: 'Mod. PR01' }); });
 
 // Cliente: dati per la pagina di firma privacy
 publicSign.get('/privacy/info', async (req, res) => {

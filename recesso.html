@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recesso online — With Us</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="withus-one-tokens.css">
+<style>
+  /* Stesso aspetto della landing e di IAM: gettoni condivisi, Figtree, fondo
+     chiaro e schede bianche in rilievo. */
+  :root{ --c1:var(--w1-verde,#02984e); --c2:var(--w1-verde-scuro,#016b38); --ink:var(--w1-testo,#1f2a37); --muted:#5b6675; --line:var(--w1-bordo,#dde3e9);
+         --ombra:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.06); }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--ink);background:#f4f6f8;font-variant-numeric:tabular-nums}
+  button,input,textarea{font-family:inherit}
+  .wrap{max-width:620px;margin:0 auto;padding:26px 18px 40px}
+  .logo{height:34px;display:block;margin-bottom:16px}
+  h1{font-size:26px;font-weight:700;letter-spacing:-.4px;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:15px;line-height:1.55;margin:0 0 18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--ombra);padding:22px}
+  .passi{display:flex;gap:6px;margin:0 0 16px}
+  .passi div{flex:1;text-align:center;font-size:11px;font-weight:600;color:#9aa2b5}
+  .passi div::before{content:'';display:block;height:5px;border-radius:3px;background:#e6e9ef;margin-bottom:5px}
+  .passi div.on{color:var(--c1)} .passi div.on::before{background:var(--c1)}
+  label{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin:12px 0 4px}
+  input,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14.5px;background:#fff;color:var(--ink)}
+  input:focus,textarea:focus{outline:none;border-color:var(--c1);box-shadow:var(--w1-focus,0 0 0 3px rgba(2,152,78,.14))}
+  .otp{letter-spacing:8px;text-align:center;font-size:22px;font-weight:700}
+  .btn{width:100%;margin-top:16px;padding:13px;border:none;border-radius:10px;background:var(--c1);color:#fff;font-size:15.5px;font-weight:700;cursor:pointer}
+  .btn:hover{background:var(--c2)} .btn:disabled{opacity:.6;cursor:default}
+  .link{background:none;border:none;color:var(--c1);font-weight:600;cursor:pointer;padding:8px 0;font-size:13.5px;text-decoration:underline}
+  .msg{margin-top:10px;font-size:13.5px;line-height:1.45}
+  .err{color:#b42318} .ok{color:var(--c2)}
+  .nota{font-size:12px;color:var(--muted);line-height:1.55;margin-top:14px}
+  .nota a{color:var(--c1)}
+  .pol{border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin:10px 0;display:flex;gap:12px;align-items:flex-start;cursor:pointer;background:#fff}
+  .pol.sel{border-color:var(--c1);box-shadow:0 0 0 3px rgba(2,152,78,.12)}
+  .pol input{width:auto;margin-top:3px}
+  .pol .n{font-weight:700;font-size:15px}
+  .pol .d{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:2px}
+  .tag{display:inline-block;font-size:11.5px;font-weight:700;border-radius:20px;padding:2px 9px;margin-top:6px}
+  .tag.si{background:#eaf7f0;color:var(--c2)} .tag.no{background:#fff4e5;color:#8a5300} .tag.gia{background:#eef1f4;color:#5b6675}
+  .chk{display:flex;gap:9px;align-items:flex-start;margin-top:14px;font-size:13px;line-height:1.5}
+  .chk input{width:18px;height:18px;margin-top:2px;flex-shrink:0}
+  .ricevuta{background:#eaf7f0;border:1px solid #bfe5cf;border-radius:12px;padding:16px;font-size:14px;line-height:1.6}
+  .foot{text-align:center;color:#9aa2b5;font-size:12px;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img class="logo" src="withus-logo-green.png" alt="With Us Assicurazioni">
+  <h1>Recesso da una polizza acquistata online</h1>
+  <p class="sub">Hai acquistato una polizza online con With Us? Puoi recedere entro 14 giorni dalla conclusione del contratto (o dalla ricezione dei documenti, se successiva), senza penali e senza indicare il motivo.</p>
+  <div class="card" id="box"></div>
+  <div class="foot">With Us Società Cooperativa · RUI A000747484 · Puoi recedere anche con raccomandata A/R o PEC alla compagnia, come indicato nelle condizioni di assicurazione.</div>
+</div>
+<script>
+const API = 'https://api.withusassicurazioni.it';
+const INFORMATIVA = API + '/sign/privacy/informativa';
+var R = { token:null, polizze:[], scelta:null };
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+const eur = n => '€ ' + Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+const data = x => x ? new Date(x).toLocaleDateString('it-IT') : '—';
+const box = () => document.getElementById('box');
+function passi(n){ return '<div class="passi">'+['Identificati','Codice','Recesso'].map((l,i)=>'<div class="'+(i<n?'on':'')+'">'+l+'</div>').join('')+'</div>'; }
+async function post(path, body){
+  let r; try{ r = await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); }
+  catch(_){ throw new Error('Connessione al server non riuscita: riprova fra un minuto.'); }
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok || d.ok===false) throw new Error(d.error || ('Errore (HTTP '+r.status+').'));
+  return d;
+}
+
+function passo1(){
+  box().innerHTML = passi(1)
+    + '<label>Codice fiscale del contraente</label><input id="cf" maxlength="16" style="text-transform:uppercase" autocomplete="off">'
+    + '<label>Email usata per l\'acquisto</label><input id="em" type="email" autocomplete="email">'
+    + '<button class="btn" id="b1" onclick="avvia()">Inviami il codice</button><div class="msg" id="m1"></div>'
+    + '<p class="nota">Ti mandiamo un codice all\'indirizzo email indicato in polizza, per essere sicuri che sia tu. I dati che inserisci servono solo a identificarti e a gestire il recesso, come previsto dalla legge (art. 6.1.c del Regolamento UE 2016/679). <a href="'+INFORMATIVA+'" target="_blank" rel="noopener">Informativa privacy</a></p>';
+}
+async function avvia(){
+  const cf=document.getElementById('cf').value.trim().toUpperCase(), em=document.getElementById('em').value.trim();
+  const m=document.getElementById('m1'), b=document.getElementById('b1');
+  if(!/^[A-Z0-9]{16}$/.test(cf)){ m.className='msg err'; m.textContent='Il codice fiscale ha 16 caratteri.'; return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ m.className='msg err'; m.textContent='Indica un indirizzo email valido.'; return; }
+  b.disabled=true; m.className='msg'; m.textContent='Invio in corso…';
+  try{ const d=await post('/recesso/avvia',{cf,email:em}); R.token=d.token; passo2(d.messaggio, cf, em); }
+  catch(e){ b.disabled=false; m.className='msg err'; m.textContent=e.message; }
+}
+function passo2(testo, cf, em){
+  box().innerHTML = passi(2)
+    + '<p class="msg ok" style="margin-top:0">'+esc(testo)+'</p>'
+    + '<label>Codice ricevuto via email</label><input id="otp" class="otp" inputmode="numeric" maxlength="6" placeholder="______">'
+    + '<button class="btn" id="b2" onclick="verifica()">Continua</button><div class="msg" id="m2"></div>'
+    + '<button class="link" onclick="passo1()">Non è arrivato? Ricomincia</button>';
+}
+async function verifica(){
+  const otp=document.getElementById('otp').value.trim(), m=document.getElementById('m2'), b=document.getElementById('b2');
+  if(!/^\d{6}$/.test(otp)){ m.className='msg err'; m.textContent='Il codice ha 6 cifre.'; return; }
+  b.disabled=true; m.className='msg'; m.textContent='Verifica…';
+  try{ const d=await post('/recesso/verifica',{token:R.token,otp}); R.polizze=d.polizze||[]; passo3(); }
+  catch(e){ b.disabled=false; m.className='msg err'; m.textContent=e.message; }
+}
+function riga(p,i){
+  const stato = p.recesso ? '<span class="tag gia">Recesso già richiesto il '+data(p.recesso.richiesto_il)+' · ricevuta '+esc(p.recesso.ricevuta)+'</span>'
+    : (p.entro_termine ? '<span class="tag si">Entro i 14 giorni (fino al '+data(p.termine)+')</span>' : '<span class="tag no">Oltre i 14 giorni: la richiesta viene verificata</span>');
+  return '<label class="pol" id="pol-'+i+'"'+(p.recesso?' style="opacity:.65;cursor:default"':'')+'>'
+    + (p.recesso?'':'<input type="radio" name="pol" value="'+i+'" onchange="scegli('+i+')">')
+    + '<div><div class="n">'+esc(p.prodotto)+'</div><div class="d">Premio '+eur(p.premio)+' · concluso il '+data(p.conclusione)+'</div>'+stato+'</div></label>';
+}
+function passo3(){
+  const libere = R.polizze.filter(p=>!p.recesso).length;
+  box().innerHTML = passi(3)
+    + (R.polizze.length ? '<div style="font-weight:700;font-size:15px">Le tue polizze acquistate online</div>'+R.polizze.map(riga).join('') : '<p class="msg">Non risultano polizze acquistate online.</p>')
+    + (libere ? '<label>Motivo (facoltativo)</label><textarea id="mot" rows="3" maxlength="500" placeholder="Non sei obbligato a indicarlo"></textarea>'
+      + '<label class="chk"><input type="checkbox" id="dich"> Dichiaro di voler recedere dal contratto selezionato. So che il premio pagato mi viene rimborsato dalla compagnia entro 30 giorni.</label>'
+      + '<button class="btn" id="b3" onclick="conferma()">Invia il recesso</button><div class="msg" id="m3"></div>'
+      + '<p class="nota">Il recesso non è possibile se nel frattempo hai chiesto il pagamento di un sinistro su questa polizza.</p>' : '');
+}
+function scegli(i){ R.scelta=i; document.querySelectorAll('.pol').forEach(x=>x.classList.remove('sel')); const el=document.getElementById('pol-'+i); if(el) el.classList.add('sel'); }
+async function conferma(){
+  const m=document.getElementById('m3'), b=document.getElementById('b3');
+  if(R.scelta==null){ m.className='msg err'; m.textContent='Scegli la polizza da cui recedere.'; return; }
+  if(!document.getElementById('dich').checked){ m.className='msg err'; m.textContent='Conferma di voler recedere.'; return; }
+  b.disabled=true; m.className='msg'; m.textContent='Invio…';
+  try{
+    const p=R.polizze[R.scelta];
+    const d=await post('/recesso/conferma',{token:R.token,id:p.id,motivo:document.getElementById('mot').value,dichiarazione:true});
+    const r=(d.polizza&&d.polizza.recesso)||{};
+    box().innerHTML='<div class="ricevuta"><b>Recesso registrato.</b><br>Polizza: '+esc(p.prodotto)+'<br>Ricevuto il: '+new Date(r.richiesto_il||Date.now()).toLocaleString('it-IT')+'<br>Codice ricevuta: <b>'+esc(r.ricevuta||'')+'</b><br><br>Ti abbiamo mandato la ricevuta via email. Inoltriamo il recesso alla compagnia, che ti rimborsa il premio entro 30 giorni.</div>';
+  }catch(e){ b.disabled=false; m.className='msg err'; m.textContent=e.message; }
+}
+passo1();
+</script>
+</body>
+</html>

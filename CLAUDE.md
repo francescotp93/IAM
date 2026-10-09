@@ -9255,3 +9255,31 @@ landing (`venditaDistanza.js`): fabbricato da 40.000 a 1.100.000 €. Il
 preventivatore interno rifiuta anche un contraente con partita IVA (serve il
 codice fiscale del proprietario, nota tecnica §1.3). Prova in
 `vendita-distanza.test.mjs`, con controprova.
+
+### Recesso online e informativa privacy (0.73.0, 09/10/2026)
+
+**Recesso** (`server/recesso.js`, pagina `recesso.html`, rotta pubblica
+`/recesso` sotto `tettoPubblico`, e `/avvia` con un tetto suo di 8 ogni 15
+minuti perché ogni chiamata manda un'email). Tre passi: codice fiscale +
+email → OTP all'email **scritta sulla polizza** (mai a quella digitata) →
+elenco delle polizze `modulo=shop` di quel cliente con il termine → conferma
+con dichiarazione esplicita. Si scrive `dati.recesso` (stato, ricevuta
+`REC-…`, `entro_termine`, motivo, ip), si manda la ricevuta al cliente e
+l'avviso a `STAFF_INBOX`. Regole: la risposta del passo 1 è identica che la
+polizza esista o no; il termine è 14 giorni dall'ultimo fra pagamento, firma
+e creazione (`termineRecesso`); **oltre il termine si registra marcato, non
+si rifiuta** (la ricezione dei documenti può spostarlo, decide una persona);
+non si registra due volte. QUOTO mostra `pillolaRecesso` nello storico e nella
+coda emissioni. Prove: `server/verifica/recesso.test.mjs` (13), che fa girare
+il percorso con un finto PostgREST e una finta Brevo, con controprova.
+
+**Privacy**: il testo dell'informativa è `INFORMATIVA_PRIVACY` in `sign.js`,
+lo stesso del documento firmato; `/sign/privacy/informativa` (pagina) e
+`/sign/privacy/informativa.json` lo mostrano **prima** della firma, e la
+landing lo carica nel passo privacy. La casella del passo 1 non chiede più un
+«consenso» al trattamento per il contratto (la base giuridica è il contratto e
+la legge, art. 6.1.b-c): dice di aver letto l'informativa.
+
+Aperto: l'informativa è un **estratto** degli artt. 13-14; l'indirizzo del
+titolare è «Vico Giunone 3, Paceco» nel documento privacy e «Via Cofano 76,
+Trapani» nel piede della landing — uno dei due va corretto da Francesco.

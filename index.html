@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.72.1">
-<meta name="app-versione-nome" content="Catastrofali: limiti anche nel preventivatore">
+<meta name="app-versione" content="0.73.0">
+<meta name="app-versione-nome" content="Recesso online e informativa privacy">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -16335,7 +16335,7 @@ function renderStorico(){
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:var(--t-sans,Figtree,sans-serif);font-variant-numeric:tabular-nums;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong>${(r.dati&&Array.isArray(r.dati.messaggi)&&r.dati.messaggi.length)?` <span class="msg-pill" onclick="event.stopPropagation();apriMessaggi('${r.id}')" title="Messaggi"><i class="ti ti-message-2"></i> ${r.dati.messaggi.length}</span>`:''}</td>
     <td><strong style="color:var(--blue)">${r.premio!=null?soldi(r.premio):'–'}</strong></td>
-    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}${pillolaScadenza(r)}</td>
+    <td>${(()=>{const s=PREV_STATI[prevStato(r)];return `<span class="tk-badge ${s.cls}">${s.label}</span>`;})()}${pillolaScadenza(r)}${pillolaRecesso(r)}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
 }
@@ -16427,7 +16427,7 @@ function renderEmissioni(){
     <td><i class="ti ${ICON[r.modulo]||'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(r.prodotto || r.modulo || '–')}<div style="font-size:11px;color:var(--muted);font-family:var(--t-sans,Figtree,sans-serif);font-variant-numeric:tabular-nums;margin-top:2px">${esc(prevNumero(r))}</div></td>
     <td><strong>${esc(r.cliente || '–')}</strong></td>
     <td><strong style="color:var(--blue)">${r.premio!=null?soldi(r.premio):'–'}</strong></td>
-    <td>${(()=>{const s=PREV_STATI[prevStato(r)];const att=(r.dati&&r.dati.attesa_sblocco==='bonifico');return `<span class="tk-badge ${att?'st-aperto':s.cls}">${att?'Attesa bonifico':s.label}</span>`;})()}${pillolaScadenza(r)}</td>
+    <td>${(()=>{const s=PREV_STATI[prevStato(r)];const att=(r.dati&&r.dati.attesa_sblocco==='bonifico');return `<span class="tk-badge ${att?'st-aperto':s.cls}">${att?'Attesa bonifico':s.label}</span>`;})()}${pillolaScadenza(r)}${pillolaRecesso(r)}</td>
     <td style="font-size:13px">${esc(r.creato_nome || '–')} <i class="ti ti-chevron-right" style="color:var(--muted)"></i></td>
   </tr>`).join('');
 }
@@ -23112,6 +23112,15 @@ function rinBadge() {
 
 /* La spia: polizza emessa senza data di scadenza. Non è un errore, è un dato
    ufficiale che manca e che solo una persona può fornire. */
+/* Un recesso chiesto online dal cliente (recesso.html) si vede nella lista:
+   è un lavoro da fare entro pochi giorni (inoltro alla compagnia), e oltre i
+   14 giorni va verificato da una persona. */
+function pillolaRecesso(r) {
+  const rc = r && r.dati && r.dati.recesso;
+  if (!rc) return '';
+  const fuori = rc.entro_termine === false;
+  return ` <span class="tk-badge st-aperto" title="Recesso online richiesto il ${esc(new Date(rc.richiesto_il).toLocaleString('it-IT'))} · ricevuta ${esc(rc.ricevuta || '')}">Recesso richiesto${fuori ? ' · oltre 14 gg' : ''}</span>`;
+}
 function pillolaScadenza(r) {
   const p = r && r.__polizza;
   if (!p) return '';

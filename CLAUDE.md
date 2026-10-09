@@ -9075,3 +9075,18 @@ Il pannello è entrato fra le schermate sul kit (`SUL_KIT` e l'elenco dei
 gettoni). Essendo l'**ultimo** pannello, la fetta di `pannello()` in
 `kit-schermate.test.mjs` arrivava fino alla finestra delle novità e ne contava
 i bottoni della famiglia «fonti»: adesso si ferma a `modal-cf-nuovo`.
+
+### Il catalogo prodotti in chiaro (0.66.0, 09/10/2026)
+
+Francesco, guardando le testate scure: «non possiamo farlo bianco con il
+riquadro in rilievo? Visivamente sarebbe più leggero», con la fotografia di un
+gestionale a schede bianche. Il catalogo è il primo in chiaro: fondo grigio
+tenue su `#panel-catalogo`, una scheda bianca in rilievo (`.cat-hero`) con il
+titolo, la percentuale di portafoglio coperto (`#cat-badge`, nascosta quando le
+righe sono zero: da zero non si fa una percentuale), le linguette come
+selettore (stessi id `catt-*`) e i quattro numeri in colonna (`#cat-somma`,
+classi `cat-st*`). Le compagnie sono riquadri (`.cat-griglia`, solo
+nell'elenco; il catalogo di una compagnia resta a righe). `CAT_NON_LETTI` porta
+in `catRenderSomma` quello che non si è potuto leggere: lì il numero è un
+trattino col motivo, mai uno zero (§12). Le altre schermate restano scure
+finché Francesco non dice se portarle tutte in chiaro.

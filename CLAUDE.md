@@ -9300,3 +9300,25 @@ Il passo privacy chiede anche il consenso facoltativo «terzi» (finalità d).
 Aperto: nel PDF l'email del titolare è `amministrazione@withus.it`, nel codice
 `amministrazione@withusassicurazioni.it`; la sede è Paceco nel PDF e «Via
 Cofano 76, Trapani» nel piede della landing.
+
+#### La scheda prezzo della catastrofali, rivista con Francesco (0.74.0, 09/10/2026)
+
+`renderPcardCatnat` in `landing.html`: «Stima del premio», **da 60 €** (il
+premio minimo `RCAB_PMIN`) prima del calcolo, poi il premio calcolato; accanto
+al numero sempre «Premio indicativo, soggetto a verifica dei dati» finché la
+vendita non è aperta. Quattro ✓ (terremoto, alluvione, fabbricato e contenuto,
+contenuto al 20%), poi «Calcola il tuo premio» → «Richiedi il preventivo» (porta
+al modulo col messaggio già scritto) e «Parla con un consulente With Us» (anche
+sugli altri prodotti, al posto di «Chiedi informazioni»).
+
+**Niente affermazioni fiscali sulla pagina del cliente** (esenzione dalle
+imposte e detrazione del 19%) finché Francesco non le conferma per il prodotto:
+l'esenzione è scritta nel DIP aggiuntivo (sezione Regime fiscale), la
+detrazione solo nella nota tecnica interna. **Il campo `motivo` della
+configurazione lo legge il cliente**: linguaggio commerciale, niente note
+interne. Una prova sorveglia tutte e due le cose.
+
+Recapiti (Francesco, 09/10/2026): sede legale Vico Giunone 3, 91027 Paceco
+(TP); sede operativa Via Cofano 76, 91100 Trapani; amministrazione@
+withusassicurazioni.it. Il PDF dell'informativa PR01 rev 4.1 riporta ancora
+`amministrazione@withus.it`: il testo mostrato è corretto, il PDF va rifatto.

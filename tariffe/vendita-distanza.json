@@ -1,10 +1,10 @@
 {
-  "_leggimi": "Prodotti venduti a distanza dalla landing (Lab › Vendita a distanza). vendita_online diventa true SOLO quando: il Set Informativo della compagnia (DIP, DIP aggiuntivo, Condizioni) e' in documenti, la compagnia ha autorizzato la vendita a distanza, e la tariffa e' stata verificata sul portale. Finche' e' false la landing calcola una stima e raccoglie la richiesta, ma non incassa.",
+  "_leggimi": "Prodotti venduti a distanza dalla landing (Lab › Vendita a distanza). vendita_online diventa true SOLO quando: il Set Informativo della compagnia (DIP, DIP aggiuntivo, Condizioni) e' in documenti, la compagnia ha autorizzato la vendita a distanza, e la tariffa e' stata verificata sul portale. Finche' e' false la landing calcola una stima e raccoglie la richiesta, ma non incassa. Il campo motivo lo legge il CLIENTE: va scritto in linguaggio commerciale, mai con informazioni interne (cosa manca va in «mancano»).",
   "catastrofali": {
     "nome": "Rischi Catastrofali Abitazione",
     "compagnia": "HDI Assicurazioni S.p.A.",
     "vendita_online": false,
-    "motivo": "In attesa del Set Informativo della compagnia e della verifica della tariffa: per ora ti prepariamo il preventivo e ti ricontatta un consulente.",
+    "motivo": "Il preventivo definitivo sarà confermato dopo la verifica dei dati e delle condizioni assicurative: lascia i tuoi recapiti e ti ricontatta un consulente With Us.",
     "documenti": [
       {
         "nome": "DIP aggiuntivo Danni (Mod. DAP5821, ed. 05/2026)",

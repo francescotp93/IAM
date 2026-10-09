@@ -9017,3 +9017,12 @@ altri filtri**: il numero su una casella è quello che il clic mostrerà
 (§63-bis). Un sinistro senza stato conta come «aperto», come lo disegna la
 riga. La lettura si ferma ai 300 più recenti (`SIN_TETTO`), e quando li
 raggiunge la testata lo dice (§50): prima taceva.
+
+### Lo storico preventivi con lo stesso linguaggio (0.63.0, 09/10/2026)
+
+`#page-storico` usa la testata `rin-*` e le stesse caselle numerate dei
+sinistri (`.sin-n` dentro `#stor-filters`, classi `tk-f stor-f` e `data-f`
+invariate). `renderStorico` applica **prima** date e cliente, conta le caselle
+con `storPerStato` (la stessa funzione che poi filtra: «Da gestire» passa da
+`prevDaGestire` in tutti e due i casi) e solo dopo applica lo stato. La lettura
+si ferma ai 100 più recenti (`STOR_TETTO`), e la testata lo dice (§50).

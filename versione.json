@@ -1,8 +1,18 @@
 {
-  "versione": "0.62.0",
-  "nome": "Sinistri: la testata scura con gli stati in caselle numerate, come il portafoglio",
+  "versione": "0.63.0",
+  "nome": "Storico preventivi: la testata scura con gli stati in caselle numerate, come i sinistri",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.63.0",
+      "data": "2026-10-09",
+      "nome": "Storico preventivi: la testata scura con gli stati in caselle numerate, come i sinistri",
+      "voci": [
+        "Storico preventivi: in alto la testata scura, col numero dei preventivi che stai guardando",
+        "Storico preventivi: Da gestire, Tutti, Richieste, In esame, Quotati e Polizze emesse sono caselle col numero, e il numero tiene conto degli altri filtri: è quello che vedrai cliccando",
+        "Storico preventivi: si leggono i 100 più recenti, e quando sono di più la testata lo dice invece di tacerlo"
+      ]
+    },
     {
       "v": "0.62.0",
       "data": "2026-10-09",

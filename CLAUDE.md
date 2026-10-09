@@ -8951,3 +8951,14 @@ misuravano il mondo di ieri, una aveva trovato un difetto vero:
   migrazione che ci scrive dentro, un nome di vincolo solo dove lo si definisce.
 
 Cinque controprove, tutte rosse.
+
+### Il foglio cassa con lo stesso linguaggio (0.57.0, 09/10/2026)
+
+`#page-foglio-cassa` ha la testata scura delle trattative e della scheda
+cliente (`.fc-hero`): periodo, data su cui si guarda e numero dei movimenti in
+pastiglie (`#fc-chips`, scritte da `fcRender` **prima** del ritorno sul vuoto,
+perché un elenco vuoto deve dire in quale periodo non ha trovato niente), e i
+totali dentro la testata. `#fc-summary` sta lì con i suoi avvisi, che sul fondo
+scuro hanno regole loro (`.fc-hero .fc-avv`) e restano incorniciati: la prova
+del 22/09 lo misura. Filtri, tabella e quadrature (`.fc-quadri`) sono schede
+bianche. Tutto sotto `.fc-kit`, che adesso avvolge la pagina intera.

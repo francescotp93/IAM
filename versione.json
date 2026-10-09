@@ -1,8 +1,18 @@
 {
-  "versione": "0.56.1",
-  "nome": "Controlli: la giornata degli incassi si legge tutta, e tre prove tornano verdi",
+  "versione": "0.57.0",
+  "nome": "Foglio cassa: la testata scura col periodo e i totali, come le trattative e la scheda cliente",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.57.0",
+      "data": "2026-10-09",
+      "nome": "Foglio cassa: la testata scura col periodo e i totali, come le trattative e la scheda cliente",
+      "voci": [
+        "Foglio cassa: in alto la testata scura, con il periodo e la data su cui si guarda (emissione, effetto o incasso) sempre in vista, e il numero dei movimenti",
+        "Foglio cassa: i totali (premi emessi, incassati, da incassare, provvigioni, resta all'agenzia) stanno nella testata, e gli avvisi si leggono anche sul fondo scuro",
+        "Foglio cassa: Portafoglio, Excel e PDF nella testata; filtri, tabella e le tre quadrature in schede bianche, e su telefono niente scorrimento di lato"
+      ]
+    },
     {
       "v": "0.56.1",
       "data": "2026-10-09",

@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.56.1">
-<meta name="app-versione-nome" content="Controlli: la giornata degli incassi si legge tutta, e tre prove tornano verdi">
+<meta name="app-versione" content="0.57.0">
+<meta name="app-versione-nome" content="Foglio cassa: la testata scura col periodo e i totali, come le trattative e la scheda cliente">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -1130,6 +1130,66 @@ input.mez-ko{border-color:#c0392b;background:#fdecea}
 .fc-quad th{font-size:10px;text-transform:uppercase;letter-spacing:.04em;
   color:var(--w1-testo2);padding:6px 8px}
 .fc-quad td{padding:5px 8px;border-top:1px solid var(--w1-bordo2)}
+/* ── IL FOGLIO CASSA CON LO STESSO LINGUAGGIO DELLE TRATTATIVE (09/10/2026)
+   «Stesso stile anche per il foglio cassa» — Francesco. Testata scura con il
+   periodo in pastiglie e i totali dentro, filtri e tabella in schede bianche.
+   Tutti i colori sono variabili sul contenitore, mai su :root (§31). */
+.fc-kit{--fc-ink:#0c1a2a;--fc-ink2:#14304a;--fc-chiaro:#e8eef6;--fc-chiaro2:#9fb3c8;
+  --fc-blu:#2563eb;--fc-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  margin:-4px 0 0}
+.fc-hero{color:var(--fc-chiaro);padding:18px 22px 16px;border-radius:14px;
+  box-shadow:0 10px 30px -12px rgba(12,26,42,.55);background:
+  radial-gradient(120% 160% at 100% 0%,rgba(37,99,235,.35),transparent 55%),
+  linear-gradient(135deg,var(--fc-ink),var(--fc-ink2))}
+.fc-hero-su{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.fc-hero-ic{flex:none;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
+  font-size:24px;color:#fff;background:linear-gradient(135deg,#3b82f6,#1d4ed8);
+  box-shadow:0 0 0 3px rgba(96,165,250,.22)}
+.fc-hero-t{flex:1;min-width:220px}
+.fc-occhiello{font-family:var(--fc-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fc-chiaro2)}
+.fc-titolo{font-size:22px;font-weight:800;color:var(--fc-chiaro);margin:3px 0 0;line-height:1.2}
+.fc-sotto{font-size:12.5px;color:var(--fc-chiaro2);margin-top:4px;line-height:1.5;max-width:640px}
+.fc-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.fc-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;
+  border:1px solid rgba(148,178,214,.25);background:rgba(255,255,255,.05);
+  font-size:11.5px;font-weight:600;color:var(--fc-chiaro);font-variant-numeric:tabular-nums}
+.fc-chip i{font-size:13px;color:var(--fc-chiaro2)}
+.fc-chip-n{font-family:var(--fc-mono)}
+.fc-hero-az{display:flex;gap:6px;flex-wrap:wrap}
+.fc-hb{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:10px;
+  border:1px solid rgba(148,178,214,.25);background:rgba(255,255,255,.05);color:var(--fc-chiaro);
+  font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.fc-hb:hover{background:rgba(255,255,255,.12);border-color:rgba(148,178,214,.5)}
+.fc-hb:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
+/* I totali dentro la testata: caselle di vetro invece della griglia bianca. */
+.fc-hero .fc-bar{background:transparent;border:0;gap:8px;margin:16px 0 0;border-radius:0;overflow:visible}
+.fc-hero .fc-t{background:rgba(255,255,255,.05);border:1px solid rgba(148,178,214,.2);border-radius:12px;padding:10px 12px}
+.fc-hero .fc-t span{color:var(--fc-chiaro2)}
+.fc-hero .fc-t b{color:#fff;font-size:18px}
+.fc-hero .fc-t small{color:var(--fc-chiaro2)}
+.fc-hero .fc-t.fc-verde{border-color:rgba(52,211,153,.4)}
+.fc-hero .fc-t.fc-verde b{color:#6ee7b7}
+.fc-hero .fc-t.fc-ambra{border-color:rgba(251,191,36,.45)}
+.fc-hero .fc-t.fc-ambra b{color:#fcd34d}
+/* Gli avvisi restano avvisi anche sul fondo scuro: cornice e fondo, colore chiaro. */
+.fc-hero .fc-avv{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.55);color:#fde68a;margin:10px 0 0}
+.fc-hero .fc-err{background:rgba(239,68,68,.14);border-color:rgba(248,113,113,.6);color:#fecaca;margin:10px 0 0}
+/* Le tre quadrature in schede, con il titolo sopra e non dentro: sono tre
+   domande diverse sugli stessi incassi, e si leggono una per una. */
+.fc-quadri .flu-sez{font-size:13px;font-weight:800;color:var(--w1-testo);margin:14px 2px 6px}
+.fc-quadri .table-wrap{background:var(--w1-card);border:1px solid var(--w1-bordo);border-radius:12px;
+  box-shadow:0 1px 2px rgba(12,26,42,.06);overflow:auto;margin:0}
+.fc-quadri .fc-avv{margin:2px 0 0}
+.fc-corpo{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.fc-filtri,.fc-tab{background:var(--w1-card);border:1px solid var(--w1-bordo);border-radius:12px;
+  box-shadow:0 1px 2px rgba(12,26,42,.06)}
+.fc-filtri{padding:10px 12px}
+.fc-filtri .pf-top{margin:0}
+.fc-tab{overflow:hidden}
+.fc-tab .table-wrap{margin:0;border:0;border-radius:0}
+@media(max-width:640px){.fc-hero{padding:14px;border-radius:12px}.fc-titolo{font-size:18px}
+  .fc-hero-ic{width:42px;height:42px;font-size:20px}.fc-hero-az{width:100%}
+  .fc-hb{flex:1;justify-content:center}}
 /* ── LA SCHEDA CLIENTE ─────────────────────────────────────────────────────
    L'identita' sta in cima, larga quanto la finestra. */
 .clk-kit{--w1-card:#fff;--w1-ombra:var(--w1-ombra-sm);--w1-ambra:#b7791f}
@@ -3706,10 +3766,29 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
          nel motore tariffe/motore/foglio-cassa.js; i filtri si applicano al
          clic (M2). ─────────────────────────────────────────────────────── -->
     <div class="page" id="page-foglio-cassa">
-      <div class="page-title">Foglio cassa</div>
-      <div class="page-sub">Che cosa è entrato, da chi, come — e che cosa resta all'agenzia. Dal flusso della compagnia e dagli incassi segnati a mano.</div>
-      <div style="margin:-4px 0 12px"><button class="rin-az" onclick="showPage('portafoglio')"><i class="ti ti-arrow-left"></i> Portafoglio</button></div>
-      <div class="pf-top">
+      <div class="fc-kit">
+      <header class="fc-hero">
+        <div class="fc-hero-su">
+          <div class="fc-hero-ic" aria-hidden="true"><i class="ti ti-cash-register"></i></div>
+          <div class="fc-hero-t">
+            <div class="fc-occhiello">Portafoglio · Contabilità</div>
+            <h1 class="fc-titolo">Foglio cassa</h1>
+            <div class="fc-sotto">Che cosa è entrato, da chi, come — e che cosa resta all'agenzia. Dal flusso della compagnia e dagli incassi segnati a mano.</div>
+            <!-- Il periodo e la data su cui si guarda, sempre sotto gli occhi:
+                 un totale senza il suo periodo non si sa a che cosa si riferisce. -->
+            <div class="fc-chips" id="fc-chips"></div>
+          </div>
+          <div class="fc-hero-az">
+            <button class="fc-hb" onclick="showPage('portafoglio')"><i class="ti ti-arrow-left"></i> Portafoglio</button>
+            <button class="fc-hb" onclick="fcExportExcel()" title="Scarica i movimenti filtrati"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+            <button class="fc-hb" onclick="fcExportPdf()" title="Stampa il foglio cassa filtrato"><i class="ti ti-file-type-pdf"></i> PDF</button>
+          </div>
+        </div>
+        <div id="fc-summary"></div>
+      </header>
+      <div class="fc-corpo">
+      <div class="fc-filtri">
+        <div class="pf-top">
         <div class="pf-filters">
           <div class="pf-f"><label>Compagnia</label><select id="fc-compagnia"><option value="">Tutte</option></select></div>
           <div class="pf-f"><label>Mezzo di pagamento</label><select id="fc-mezzo"><option value="">Tutti</option></select></div>
@@ -3732,20 +3811,18 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           </div></div>
           <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="fcRender()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="fcAzzera()">Questo mese</button></div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="pf-exp" onclick="fcExportExcel()" title="Scarica i movimenti filtrati"><i class="ti ti-file-spreadsheet"></i> Excel</button>
-          <button class="pf-exp" onclick="fcExportPdf()" title="Stampa il foglio cassa filtrato"><i class="ti ti-file-type-pdf"></i> PDF</button>
-        </div>
       </div>
-      <div class="fc-kit">
-        <div id="fc-summary"></div>
+      </div>
+        <div class="fc-tab">
         <div class="table-wrap">
           <table class="storico-table fc-densa">
             <thead><tr><th>Emissione · incasso</th><th>Cliente</th><th>Polizza</th><th>Mezzo · chi paga</th><th class="soldi">Premio</th><th class="soldi">Provv. compagnia</th><th>Collaboratore</th><th class="soldi">Resta all'agenzia</th><th></th></tr></thead>
             <tbody id="fc-body"><tr><td colspan="9"><div class="empty-state">Carico la cassa…</div></td></tr></tbody>
           </table>
         </div>
-        <div id="fc-quadrature"></div>
+        </div>
+        <div id="fc-quadrature" class="fc-quadri"></div>
+      </div>
       </div>
     </div>
 
@@ -31073,6 +31150,17 @@ function fcRender() {
   FC_VISTA.filtri = f;
   const t = FC_VISTA.totali;
   const perEmissione = f.su === 'emissione';
+  /* Le pastiglie della testata: il periodo e la data su cui si guarda. Stanno
+     prima del ritorno anticipato sul vuoto, perché un elenco vuoto deve dire
+     ANCHE in quale periodo non ha trovato niente. */
+  const chips = document.getElementById('fc-chips');
+  if (chips) {
+    const su = { emissione: 'data di emissione', effetto: 'data di effetto', incasso: 'data di incasso' }[f.su] || f.su;
+    const periodo = (f.dal || f.al) ? (f.dal ? polData(f.dal) : '…') + ' → ' + (f.al ? polData(f.al) : '…') : 'tutto il periodo';
+    chips.innerHTML = `<span class="fc-chip"><i class="ti ti-calendar"></i> ${esc(periodo)}</span>`
+      + `<span class="fc-chip"><i class="ti ti-clock"></i> per ${esc(su)}</span>`
+      + `<span class="fc-chip fc-chip-n"><i class="ti ti-list"></i> ${FC_VISTA.righe.length} ${FC_VISTA.righe.length === 1 ? 'movimento' : 'movimenti'}</span>`;
+  }
   /* Una casella della barra dei totali. Prima erano le tessere di `ecpCard`,
      alte il doppio e su due righe: gli stessi numeri con metà pagina
      occupata. Qui l'etichetta sta sopra, piccola, e la cifra sotto. */

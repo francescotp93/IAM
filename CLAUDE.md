@@ -8995,3 +8995,15 @@ di date e il tetto di caricamento. **Esporta Excel resta nella barra dei
 filtri**: la prova del 15/09 misura che sia un tasto e non una fascia dentro
 `.pf-top`. `pf-em` e `pf-stato` erano appigli delle prove senza regola, con lo
 stile in linea: adesso lo stile sta nella regola.
+
+### Le anagrafiche con lo stesso linguaggio (0.61.0, 09/10/2026)
+
+`#page-anagrafiche` usa la testata `rin-*`. «Cerca / Nuovo cliente» sono un
+selettore a due tasti (`.rin-seg`); Tutti / Clienti / Lead (`#anag-viste`) sono
+caselle di vetro col numero grande. **Le classi `ana-tab` e `active` e tutti gli
+id restano**: li usano `anagTab`, `anagView` e le prove. `anagTab('nuova')`
+nasconde `#anag-viste`, che lì non filtrerebbe niente. Le regole del vetro sono
+scritte **solo dentro `.rin-hero`**: `.ana-tab` è usata anche dai selettori del
+modulo (fisica/giuridica, cliente/lead), che restano com'erano. Una fotografia
+presa subito dopo `anagTab` mostra due tasti accesi: è la transizione di 0,15 s
+di `.ana-tab`, non un difetto — si misura il colore dopo una pausa.

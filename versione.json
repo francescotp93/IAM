@@ -1,8 +1,18 @@
 {
-  "versione": "0.60.0",
-  "nome": "Portafoglio: la testata scura con Nuova polizza e Foglio cassa, come titoli e scadenzario",
+  "versione": "0.61.0",
+  "nome": "Clienti: la testata scura con Tutti, Clienti e Lead in grande, come il portafoglio",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.61.0",
+      "data": "2026-10-09",
+      "nome": "Clienti: la testata scura con Tutti, Clienti e Lead in grande, come il portafoglio",
+      "voci": [
+        "Clienti: in alto la testata scura, con Cerca cliente e Nuovo cliente come due tasti affiancati",
+        "Clienti: Tutti, Clienti e Lead sono tre caselle nella testata col numero in grande; si cliccano per filtrare l'elenco, e si nascondono mentre inserisci un cliente nuovo",
+        "Clienti: la ricerca e l'elenco in schede bianche; su telefono niente scorrimento di lato"
+      ]
+    },
     {
       "v": "0.60.0",
       "data": "2026-10-09",

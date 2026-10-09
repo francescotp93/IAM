@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.60.0">
-<meta name="app-versione-nome" content="Portafoglio: la testata scura con Nuova polizza e Foglio cassa, come titoli e scadenzario">
+<meta name="app-versione" content="0.61.0">
+<meta name="app-versione-nome" content="Clienti: la testata scura con Tutti, Clienti e Lead in grande, come il portafoglio">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -888,6 +888,33 @@ button{font-family:inherit}
 /* I due appigli delle prove nelle righe del portafoglio avevano lo stile in
    linea e nessuna regola: un appiglio senza regola il guardiano delle classi
    non lo distingue da un refuso. */
+/* Le anagrafiche nella testata rin-* (09/10/2026). Le due linguette «Cerca /
+   Nuovo» sono un selettore a due tasti; Tutti / Clienti / Lead sono caselle di
+   vetro come le fasce dello scadenzario, col numero grande. Le classi
+   ana-tab e active restano: le usano anagTab, anagView e le prove. */
+.rin-seg{background:rgba(255,255,255,.05);border:1px solid rgba(148,178,214,.25);border-radius:12px;padding:3px;gap:3px}
+.rin-hero .rin-seg .ana-tab{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 13px;margin:0;
+  border:0;border-radius:9px;background:transparent;color:var(--rin-chiaro2);font-family:inherit;font-size:12.5px;
+  font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:none}
+.rin-hero .rin-seg .ana-tab:hover{color:var(--rin-chiaro);background:rgba(255,255,255,.06)}
+.rin-hero .rin-seg .ana-tab.active{background:#2563eb;color:#fff;box-shadow:0 0 0 3px rgba(96,165,250,.22)}
+.rin-viste{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0 0}
+.rin-hero .rin-viste .ana-tab{display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin:0;
+  padding:10px 14px;border:1px solid rgba(148,178,214,.2);border-left:4px solid rgba(148,178,214,.45);
+  border-radius:12px;background:rgba(255,255,255,.05);color:var(--rin-chiaro2);font-family:inherit;
+  text-align:left;cursor:pointer;box-shadow:none;min-width:0}
+.rin-hero .rin-viste .ana-tab:hover{background:rgba(255,255,255,.1)}
+.rin-hero .rin-viste .ana-tab .cl-count{background:none;padding:0;margin:0;font-size:24px;font-weight:800;
+  line-height:1.05;color:#fff;font-variant-numeric:tabular-nums}
+.rin-vista-l{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.rin-vista-l i{font-size:13px;vertical-align:-2px}
+.rin-hero .rin-viste .ana-tab.active{background:rgba(37,99,235,.28);border-color:#60a5fa;color:var(--rin-chiaro);
+  box-shadow:0 0 0 3px rgba(96,165,250,.22)}
+.rin-hero .rin-viste #anag-view-lead{border-left-color:#f86200}
+.rin-hero .rin-seg .ana-tab:focus-visible,.rin-hero .rin-viste .ana-tab:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
+.rin-filtri .anag-search{margin:0}
+@media(max-width:640px){.rin-seg{width:100%}.rin-hero .rin-seg .ana-tab{flex:1;justify-content:center}
+  .rin-hero .rin-viste .ana-tab .cl-count{font-size:20px}}
 .pf-em{font-size:11px;color:var(--muted);margin-top:2px}
 .pf-stato{font-size:10.5px;color:var(--muted);margin-top:2px}
 .rin-hb.rin-hb-pieno{background:#2563eb;border-color:#60a5fa;color:#fff;font-weight:700}
@@ -4304,39 +4331,58 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
     <!-- ── ANAGRAFICHE ── -->
     <div class="page" id="page-anagrafiche">
-      <div class="page-title">Clienti</div>
-      <div class="page-sub">Cerca un cliente esistente o inserisci un nuovo cliente.</div>
-      <div class="ana-toggle">
-        <button class="ana-tab active" id="anag-tab-cerca" onclick="anagTab('cerca')">Cerca cliente</button>
-        <button class="ana-tab" id="anag-tab-nuova" onclick="anagTab('nuova')">Nuovo cliente</button>
-      </div>
-
-      <!-- CERCA -->
-      <div id="anag-cerca">
+      <div class="rin-kit">
+      <!-- Stesso linguaggio di portafoglio, titoli e scadenzario (09/10/2026):
+           la testata usa le stesse classi rin-*, una tavolozza sola. -->
+      <header class="rin-hero">
+        <div class="rin-hero-su">
+          <div class="rin-hero-ic" aria-hidden="true"><i class="ti ti-address-book"></i></div>
+          <div class="rin-hero-t">
+            <div class="rin-occhiello">Anagrafiche</div>
+            <h1 class="rin-titolo">Clienti</h1>
+            <div class="rin-sotto">Cerca un cliente esistente o inserisci un nuovo cliente.</div>
+          </div>
+          <div class="rin-hero-az rin-seg" role="tablist">
+            <button class="ana-tab active" id="anag-tab-cerca" onclick="anagTab('cerca')"><i class="ti ti-search"></i> Cerca cliente</button>
+            <button class="ana-tab" id="anag-tab-nuova" onclick="anagTab('nuova')"><i class="ti ti-user-plus"></i> Nuovo cliente</button>
+          </div>
+        </div>
         <!-- Tre schede e non due. «Tutti» esiste perché arrivando dalla
              Scrivania (clienti senza email) la lista è per forza mista, e
              prima quella modalità spegneva Clienti e Lead: sembravano rotti.
              Adesso il filtro vive DENTRO la scheda scelta, e i conteggi
-             dicono come si divide il buco fra clienti e lead. -->
-        <div class="ana-toggle" style="margin-bottom:.7rem">
-          <button class="ana-tab" id="anag-view-tutti" onclick="anagView('tutti')"><i class="ti ti-list" style="vertical-align:-2px"></i> Tutti <span id="anag-cnt-tutti" class="cl-count" style="margin-left:4px">·</span></button>
-          <button class="ana-tab active" id="anag-view-clienti" onclick="anagView('clienti')"><i class="ti ti-users" style="vertical-align:-2px"></i> Clienti <span id="anag-cnt-cli" class="cl-count" style="margin-left:4px">·</span></button>
-          <button class="ana-tab" id="anag-view-lead" onclick="anagView('lead')"><i class="ti ti-flag-2" style="vertical-align:-2px"></i> Lead <span id="anag-cnt-lead" class="cl-count" style="margin-left:4px">·</span></button>
+             dicono come si divide il buco fra clienti e lead.
+             Stanno nella testata come le fasce dello scadenzario, e si
+             nascondono mentre si inserisce un cliente nuovo: lì non filtrano
+             niente. -->
+        <div class="rin-viste" id="anag-viste">
+          <button class="ana-tab" id="anag-view-tutti" onclick="anagView('tutti')"><span id="anag-cnt-tutti" class="cl-count">·</span><span class="rin-vista-l"><i class="ti ti-list"></i> Tutti</span></button>
+          <button class="ana-tab active" id="anag-view-clienti" onclick="anagView('clienti')"><span id="anag-cnt-cli" class="cl-count">·</span><span class="rin-vista-l"><i class="ti ti-users"></i> Clienti</span></button>
+          <button class="ana-tab" id="anag-view-lead" onclick="anagView('lead')"><span id="anag-cnt-lead" class="cl-count">·</span><span class="rin-vista-l"><i class="ti ti-flag-2"></i> Lead</span></button>
         </div>
+      </header>
+      <div class="rin-corpo">
+
+      <!-- CERCA -->
+      <div id="anag-cerca">
         <div id="anag-lead-hint" style="display:none;background:#fff4e6;border:1px solid #ffd8a8;color:#b06a00;border-radius:10px;padding:8px 12px;margin-bottom:.7rem;font-size:12.5px"><i class="ti ti-info-circle" style="vertical-align:-2px"></i> I <b>Lead</b> sono nominativi senza privacy firmata (recuperati dal preventivatore o inseriti a mano). Firma la privacy dalla scheda per convertirli in clienti.</div>
         <!-- «Compleanni di oggi» stava QUI fino al 21/09/2026: è passato in
              Campagne (Marketing), che è dove si decide che cosa si manda ai
              clienti. Non resta niente al suo posto: un riquadro vuoto o un
              rimando sarebbero il doppione di una schermata che è altrove. -->
+        <div class="rin-filtri">
         <div class="anag-search">
           <input id="anag-q" placeholder="Cerca per nominativo, codice fiscale, P.IVA o telefono…" onkeydown="if(event.key==='Enter')cercaAnagrafica()">
           <button class="btn-add" onclick="cercaAnagrafica()"><i class="ti ti-search"></i> Cerca</button>
         </div>
-        <div class="table-wrap" style="margin-top:1rem">
+        </div>
+        <div class="rin-tab" style="margin-top:12px">
+        <div class="table-wrap">
           <table class="storico-table">
             <thead><tr><th>Tipo</th><th>Nominativo</th><th>Cod. fiscale / P.IVA</th><th>Comune</th><th>Recapito</th><th></th></tr></thead>
             <tbody id="anag-results"><tr><td colspan="6"><div class="empty-state">Cerca un cliente per nominativo, codice fiscale o telefono.</div></td></tr></tbody>
           </table>
+        </div>
         </div>
       </div>
 
@@ -4430,6 +4476,8 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <button class="btn-inf" style="max-width:280px" onclick="salvaNuovaAnagrafica()">Salva cliente</button>
           <div class="ana-ok" id="ag-ok" style="display:none">✓ Cliente salvato.</div>
         </div>
+      </div>
+      </div>
       </div>
     </div>
 
@@ -29761,6 +29809,10 @@ function anagTab(t) {
   document.getElementById('anag-nuova').style.display = t === 'nuova' ? 'block' : 'none';
   document.getElementById('anag-tab-cerca').classList.toggle('active', t === 'cerca');
   document.getElementById('anag-tab-nuova').classList.toggle('active', t === 'nuova');
+  /* Le tre viste filtrano l'elenco: mentre si scrive un cliente nuovo non
+     filtrano niente, e dalla testata se ne vanno. */
+  const viste = document.getElementById('anag-viste');
+  if (viste) viste.style.display = t === 'nuova' ? 'none' : '';
 }
 
 function setAnagTipo(t) {

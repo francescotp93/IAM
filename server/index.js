@@ -13,6 +13,7 @@ import { notifyRouter } from './notify.js';
 import { leadRouter } from './lead.js';
 import { shopRouter, ogRouter } from './shop.js';
 import { signRouter, publicSign } from './sign.js';
+import { recessoRouter } from './recesso.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
 import { convenzionatiRouter, convenzionatiPubblico, convenzionatiRouter_pubblicoAssociati } from './convenzionati.js';
 import { candidaturePubblico } from './candidatureRotte.js';
@@ -101,7 +102,7 @@ app.get('/diag', (req, res) => {
 // candidature. Il tetto è largo (una persona vera non ci arriva mai) e serve a
 // fermare chi prova i codici a ripetizione o chiede codici nuovi all'infinito.
 const tettoPubblico = limitaPerIndirizzo({ max: 600, finestraMs: 10 * 60 * 1000 });
-app.use(['/sign', '/firma-collab', '/convenzionati', '/candidature', '/lead'], tettoPubblico);
+app.use(['/sign', '/firma-collab', '/convenzionati', '/candidature', '/lead', '/recesso'], tettoPubblico);
 
 // ── Mail ──────────────────────────────────────────────────────────────────────
 app.use('/mail', publicMail);
@@ -146,6 +147,8 @@ app.use('/l', ogRouter);
 
 // ── Firma ────────────────────────────────────────────────────
 app.use('/sign', publicSign);
+// Recesso online delle polizze acquistate a distanza (pubblico, con OTP)
+app.use('/recesso', recessoRouter);
 app.use('/sign', requireAuth, requireInterno, signRouter);
 app.use('/firma-collab', publicFirmaCollab);
 app.use('/firma-collab', requireAuth, requireInterno, firmaCollabRouter);

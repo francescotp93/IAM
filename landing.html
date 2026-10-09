@@ -195,7 +195,7 @@
     </form>
   </div>
 </section>
-<div class="foot">With Us Società Cooperativa · Via Cofano 76, 91100 Trapani · RUI A000747484</div>
+<div class="foot">With Us Società Cooperativa · Via Cofano 76, 91100 Trapani · RUI A000747484 · <a href="recesso.html" style="color:inherit;text-decoration:underline">Recesso da una polizza acquistata online</a></div>
 
 <script>
 const API = 'https://api.withusassicurazioni.it';
@@ -572,7 +572,10 @@ function ckStepData(){
     +'<div style="display:flex;gap:10px"><div style="flex:2"><label>Comune di residenza</label><div class="geo-wrap"><input id="ck-comune" autocomplete="off" oninput="ckComuneSearch(this.value)" placeholder="Inizia a digitare…"><div id="ck-com-res" class="geo-res"></div></div></div><div style="flex:1"><label>CAP</label><input id="ck-cap" maxlength="5"></div><div style="flex:1"><label>Prov.</label><input id="ck-prov" maxlength="2" style="text-transform:uppercase"></div></div>'
     +'<label>Email *</label><input id="ck-email" type="email">'
     +'<label>Telefono</label><input id="ck-tel" type="tel">'
-    +'<label class="consent"><input type="checkbox" id="ck-priv"> Acconsento al trattamento dei dati per la gestione del rapporto assicurativo (Reg. UE 2016/679) e procedo alla firma dell\'informativa privacy.</label>'
+    /* Per gestire il contratto i dati si trattano per legge e per contratto
+       (art. 6.1.b-c GDPR), non per consenso: la casella dice di aver letto
+       l'informativa, che qui si apre e si legge PRIMA di andare avanti. */
+    +'<label class="consent"><input type="checkbox" id="ck-priv"> Ho letto l\'<a href="'+API+'/sign/privacy/informativa" target="_blank" rel="noopener" style="color:var(--c1);font-weight:600">informativa sul trattamento dei dati personali</a> (Reg. UE 2016/679) e procedo alla sua firma.</label>'
     +'<button class="btn" id="ck-data-next" onclick="ckDataNext()">Procedi alla firma privacy →</button><div class="msg err" id="ck-err"></div>';
 }
 async function ckDataNext(){
@@ -587,7 +590,7 @@ async function ckDataNext(){
     if(!/^[A-Z0-9]{16}$/.test(c.cf)){ err.className='msg err'; err.textContent='Serve il codice fiscale del proprietario (16 caratteri): la polizza non si intesta a una partita IVA.'; return; }
     if(!c.dataNascita){ err.className='msg err'; err.textContent='Indica la data di nascita: il contraente deve essere maggiorenne.'; return; }
   }
-  if(!document.getElementById('ck-priv').checked){ err.className='msg err'; err.textContent='Devi accettare il consenso privacy per proseguire.'; return; }
+  if(!document.getElementById('ck-priv').checked){ err.className='msg err'; err.textContent='Conferma di aver letto l\'informativa privacy per proseguire.'; return; }
   CK.cliente=c;
   const btn=document.getElementById('ck-data-next'); btn.disabled=true; err.className='msg'; err.textContent='Registrazione anagrafica… (il server può metterci fino a 1 minuto la prima volta)';
   try{
@@ -605,6 +608,9 @@ async function ckDataNext(){
 function ckStepPrivacy(){
   document.getElementById('ck-body').innerHTML= ckSteps(ckN('Privacy'))
     +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">Ti abbiamo inviato un\'email con un <b>codice di firma (OTP)</b> a '+esc(CK.cliente.email)+'. Inseriscilo qui sotto per firmare l\'informativa privacy a distanza.</div>'
+    +'<div style="font-weight:700;font-size:13px;margin:12px 0 4px">Informativa sul trattamento dei dati personali</div>'
+    +'<div id="ck-pz-testo" style="max-height:170px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.55;color:var(--muted);background:#fafbfc">Caricamento dell\'informativa…</div>'
+    +'<div style="font-size:12px;margin:4px 0 0"><a href="'+API+'/sign/privacy/informativa" target="_blank" rel="noopener" style="color:var(--c1);font-weight:600">Apri l\'informativa in una pagina a sé</a></div>'
     +'<label class="consent"><input type="checkbox" id="ck-pz-presa"> Dichiaro di aver <b>ricevuto e letto l\'informativa privacy</b> (Reg. UE 2016/679) e di averne preso visione. *</label>'
     +'<div style="font-weight:700;font-size:12.5px;margin:10px 0 2px;color:var(--muted)">Consensi facoltativi</div>'
     +'<label class="consent"><input type="checkbox" id="ck-pz-mkt-elet"> <b>Marketing elettronico</b>: acconsento a comunicazioni commerciali via email, SMS, WhatsApp.</label>'
@@ -614,6 +620,10 @@ function ckStepPrivacy(){
     +'<button class="btn" id="ck-pz-go" onclick="ckPrivacyVerify()"><i class="ti ti-shield-check"></i> Firma la privacy</button>'
     +'<div style="text-align:center"><button style="background:none;border:none;color:var(--c1);font-weight:700;cursor:pointer;margin-top:10px;text-decoration:underline" onclick="ckPrivacyResend()">Non hai ricevuto il codice? Invialo di nuovo</button></div>'
     +'<div class="msg err" id="ck-pz-err"></div>';
+  /* Il testo arriva dal server (lo stesso del documento firmato): se non si
+     riesce a leggerlo lo si dice, e resta il collegamento alla pagina. */
+  fetch(API+'/sign/privacy/informativa.json').then(r=>r.json()).then(d=>{ const el=document.getElementById('ck-pz-testo'); if(el&&d&&d.testo) el.textContent=d.testo; })
+    .catch(()=>{ const el=document.getElementById('ck-pz-testo'); if(el) el.textContent='Il testo non si è potuto caricare qui: aprilo con il collegamento qui sotto prima di firmare.'; });
 }
 async function ckPrivacyVerify(){
   const err=document.getElementById('ck-pz-err');
@@ -719,7 +729,7 @@ function ckStepEsigenze(){
     +'<div class="lp-h">Documentazione precontrattuale</div>'
     +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 6px">Scarica e conserva i documenti: vanno letti prima di acquistare. Riceverai anche il Modulo Unico Precontrattuale (MUP) dell\'intermediario.</p>'
     +'<div class="lp-docs">'+docs.map(d=>'<a href="'+esc(d.url)+'" target="_blank" rel="noopener"><i class="ti ti-file-download"></i> '+esc(d.nome)+'</a>').join('')+'</div>'
-    +'<p style="color:var(--muted);font-size:12px;margin:0">Hai diritto di recedere entro 14 giorni dalla conclusione del contratto (o dalla ricezione dei documenti, se successiva), con raccomandata A/R o PEC a HDI Assicurazioni; il premio ti viene rimborsato entro 30 giorni.</p>'
+    +'<p style="color:var(--muted);font-size:12px;margin:0">Hai diritto di recedere entro 14 giorni dalla conclusione del contratto (o dalla ricezione dei documenti, se successiva), online dalla pagina <a href="recesso.html" target="_blank" rel="noopener" style="color:var(--c1);font-weight:600">Recesso online</a>, oppure con raccomandata A/R o PEC a HDI Assicurazioni; il premio ti viene rimborsato entro 30 giorni.</p>'
     +'<label class="consent"><input type="checkbox" id="ck-es-letta"> Dichiaro di aver <b>ricevuto, scaricato e letto</b> la documentazione precontrattuale prima dell\'acquisto. *</label>'
     +'<button class="btn" id="ck-es-next" onclick="ckEsigenzeNext()">Procedi al pagamento →</button><div class="msg err" id="ck-es-err"></div>';
   const tip=document.getElementById('ab-tip'), pw=document.getElementById('ab-piano-w');
@@ -862,7 +872,7 @@ async function ckPrecResend(){
     err.className='msg ok'; err.style.cssText='display:block;background:#e8f7ee;color:#1e7d46'; err.textContent='Nuovo codice inviato. Controlla la tua email.';
   }catch(e){ err.className='msg err'; err.textContent=e.message||'Errore.'; }
 }
-function ckDone(){ document.getElementById('ck-body').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Polizza attivata!</div><div style="color:#6b7488">Grazie '+(CK.cliente?CK.cliente.nome:'')+'. Hai firmato privacy e documentazione precontrattuale e completato il pagamento. Riceverai via email la copia firmata e la conferma. La tua pratica è già registrata.</div></div>'; }
+function ckDone(){ document.getElementById('ck-body').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Polizza attivata!</div><div style="color:#6b7488">Grazie '+(CK.cliente?CK.cliente.nome:'')+'. Hai firmato privacy e documentazione precontrattuale e completato il pagamento. Riceverai via email la copia firmata e la conferma. La tua pratica è già registrata. Se ci ripensi, puoi recedere entro 14 giorni dalla pagina <a href="recesso.html" style="color:var(--c1)">Recesso online</a>.</div></div>'; }
 </script>
 </body>
 </html>

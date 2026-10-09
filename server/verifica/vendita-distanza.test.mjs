@@ -91,6 +91,16 @@ prova('un limite solo: motore, preventivatore interno e API usano fuoriLimite', 
   const api = fs.readFileSync(path.join(RADICE, 'server/prodottiApi.js'), 'utf8');
   deve(/catastrofali\.fuoriLimite\(/.test(api), 'l\'API quota fuori dai limiti');
 });
+prova('davanti al cliente: stima dichiarata, niente promesse fiscali, niente note interne', () => {
+  const l = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
+  const blocco = l.slice(l.indexOf('function renderPcardCatnat('), l.indexOf('function cnCambiato('));
+  deve(/Premio indicativo, soggetto a verifica dei dati/.test(blocco), 'il prezzo non dice di essere una stima');
+  deve(!/prezzo è <b>finale|detrarre|imposte sui premi/i.test(blocco), 'la scheda prezzo fa affermazioni fiscali non verificate');
+  const prodotto = l.slice(l.indexOf("  catastrofali: { nome:"), l.indexOf("  casa:      { nome:"));
+  deve(!/detra|IRPEF|imposte/i.test(prodotto), 'i testi del prodotto fanno affermazioni fiscali non verificate');
+  const cfg = configurazione('catastrofali');
+  deve(!/Set Informativo|tariffa/i.test(cfg.motivo || ''), 'il messaggio al cliente contiene note interne: ' + cfg.motivo);
+});
 prova('gli altri prodotti dello shop non cambiano', () => {
   deve(cancelloVendita('vita', {}).ok && cancelloVendita('infortuni-famiglia', {}).ok, 'il cancello tocca altri prodotti');
 });

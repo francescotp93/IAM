@@ -145,6 +145,11 @@
   .lp-q label{display:inline-flex;gap:6px;align-items:center;margin:0 16px 0 0;font-size:13px;color:var(--ink);font-weight:500}
   .lp-q input{width:auto}
   .lp-h{font-weight:700;font-size:15px;margin:14px 0 6px}
+  .pcta.lp-sec{background:#fff;color:var(--ink);border:1px solid var(--line);margin-top:8px;font-size:13.5px}
+  .pcta.lp-sec:hover{background:#f7f8fa}
+  .link-ric{display:block;margin:8px auto 0;background:none;border:none;color:var(--c1);font-weight:600;font-size:13px;cursor:pointer;text-decoration:underline}
+  .lp-check{margin-top:4px} .lp-check li{border-top:none;padding:4px 0;font-weight:500}
+  .lp-ok{color:var(--c1);font-weight:700;width:18px;flex-shrink:0}
   /* La casella resta a sinistra e il testo scorre normale: con display:flex
      ogni grassetto diventava una colonna a sé e la frase si spezzava. */
   .consent{display:block;position:relative;padding-left:28px}
@@ -185,7 +190,7 @@
     <p style="color:var(--muted);font-size:12px;margin-top:14px" id="note"></p>
   </div>
   <div class="card" id="form-area" style="scroll-margin-top:14px"><a id="richiedi"></a>
-    <h2 id="f-title">Chiedi informazioni</h2>
+    <h2 id="f-title">Parla con un consulente With Us</h2>
     <p style="color:var(--muted);font-size:13.5px;margin:0 0 8px">Lasciaci i dati: ti ricontattiamo noi, senza impegno.</p>
     <form id="lead-form">
       <input class="hp" id="azienda_web" tabindex="-1" autocomplete="off" aria-hidden="true">
@@ -199,7 +204,7 @@
     </form>
   </div>
 </section>
-<div class="foot">With Us Società Cooperativa · Via Cofano 76, 91100 Trapani · RUI A000747484 · <a href="recesso.html" style="color:inherit;text-decoration:underline">Recesso da una polizza acquistata online</a></div>
+<div class="foot">With Us Società Cooperativa · Sede legale: Vico Giunone 3, 91027 Paceco (TP) · Sede operativa: Via Cofano 76, 91100 Trapani · RUI A000747484 · amministrazione@withusassicurazioni.it · <a href="recesso.html" style="color:inherit;text-decoration:underline">Recesso da una polizza acquistata online</a></div>
 
 <script>
 const API = 'https://api.withusassicurazioni.it';
@@ -300,8 +305,8 @@ const PRODOTTI = {
   catastrofali: { nome:'Rischi Catastrofali Abitazione', c1:'#02984e', c2:'#016b38', img:IMG('1568605114967-8130f3a36994'),
     hl:'La tua <span class="accent">casa</span> protetta da terremoto e alluvione.',
     claim:'Copertura completa per i danni materiali alla casa e a quello che contiene causati da terremoto, alluvione, inondazione e bombe d\'acqua. Il premio dipende dal CAP e dal valore di ricostruzione.',
-    benef:['Terremoto su fabbricato e contenuto','Alluvione, inondazione e bombe d\'acqua su fabbricato e contenuto','Contenuto assicurato al 20% del valore del fabbricato','Nessuna imposta sul premio, e il 19% si detrae nella dichiarazione dei redditi'],
-    chips:['Premio sul tuo CAP','Senza imposte sul premio','Detraibile al 19% nel 730'],
+    benef:['Terremoto su fabbricato e contenuto','Alluvione, inondazione e bombe d\'acqua su fabbricato e contenuto','Contenuto assicurato al 20% del valore del fabbricato','Premio calcolato sul CAP della tua abitazione'],
+    chips:['Premio sul tuo CAP','Prodotto completo','Stima in un minuto'],
     compagnia:'Prodotto «# Rischi Catastrofali» di HDI Assicurazioni S.p.A., distribuito da With Us',
     dettagli:{
       voci:[
@@ -310,8 +315,7 @@ const PRODOTTI = {
         {k:'Franchigia',v:'10% della somma assicurata'},
         {k:'Limite di indennizzo fabbricato',v:'80% della somma'},
         {k:'Copertura attiva',v:'dal 20° giorno dal pagamento'},
-        {k:'Imposte sul premio',v:'nessuna'},
-        {k:'Detrazione IRPEF',v:'19% del premio'},
+        {k:'Durata',v:'annuale, tacito rinnovo'},
       ],
       include:[
         'Danni materiali e diretti da terremoto al fabbricato e al contenuto, compresi incendio, esplosione e scoppio che ne derivano',
@@ -350,7 +354,7 @@ var CN = { cap:'', valore:'', terrCont:true, alluFabb:true, alluCont:true, q:nul
 document.getElementById('lp-foto').src = P.img;
 document.getElementById('hl').innerHTML = P.hl;
 document.getElementById('claim').textContent = P.claim;
-document.getElementById('f-title').textContent = 'Chiedi informazioni · ' + P.nome;
+document.getElementById('f-title').textContent = 'Parla con un consulente With Us · ' + P.nome;
 document.title = 'Preventivo ' + P.nome + ' — With Us';
 document.getElementById('benef').innerHTML = (P.benef||[]).map(b=>'<li><i class="ti ti-circle-check"></i> '+b+'</li>').join('');
 const eur = n => '€ ' + Number(n).toLocaleString('it-IT');
@@ -424,22 +428,7 @@ function renderPcard(){
     if (q.addon) ctrl += '<label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 2px"><input type="checkbox" '+(QS.addon?'checked':'')+' onchange="QS.addon=this.checked;upd()" style="width:18px;height:18px"> '+q.addon.l+' (+'+eur(q.addon.p)+')</label>';
     priceHtml = ctrl + '<div class="price-big" style="margin-top:8px"><div class="da">'+(q.from?'a partire da':'il tuo preventivo')+'</div><div class="v">'+eur(tot)+'</div><div class="u">all\'anno'+(q.from?'':' · ('+eur(Math.round(tot/12))+'/mese)')+'</div></div>';
   } else if (q.tipo==='catnat'){
-    /* Un solo prodotto, completo: niente scelte (decisione del 09/10/2026). */
-    priceHtml = '<div class="qrow"><input id="cn-cap" inputmode="numeric" maxlength="5" placeholder="CAP dell\'abitazione" value="'+esc(CN.cap)+'" oninput="CN.cap=this.value.replace(/\\D/g,\'\');CN.q=null">'
-      + '<input id="cn-val" inputmode="numeric" placeholder="Valore di ricostruzione (€, da 40.000)" value="'+esc(CN.valore)+'" oninput="CN.valore=this.value.replace(/\\D/g,\'\');CN.q=null"></div>'
-      + '<div style="font-size:11.5px;color:var(--muted);margin:2px 0 8px">Il valore di ricostruzione è quanto costerebbe ricostruire la casa da zero, non il prezzo di mercato.</div>'
-      + '<div style="font-size:12.5px;color:var(--ink);background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:8px 11px;line-height:1.55"><b>Prodotto completo</b>: terremoto e alluvione, inondazione e bombe d\'acqua, sul fabbricato e sul contenuto (20% del fabbricato).</div>'
-      + '<button class="pcta" style="margin-top:10px" onclick="cnCalcola()"'+(CN.calcolo?' disabled':'')+'><i class="ti ti-calculator"></i> '+(CN.calcolo?'CALCOLO…':'CALCOLA IL PREMIO')+'</button>'
-      + (CN.err?'<div class="msg err" style="display:block;margin-top:8px">'+esc(CN.err)+'</div>':'')
-      + (CN.q ? '<div class="price-big" style="margin-top:12px"><div class="da">'+(CN.q.vendita_online?'il tuo preventivo':'stima del premio')+'</div><div class="v">'+eur(CN.q.prezzo)+'</div><div class="u">all\'anno, tutto compreso</div></div>'
-          /* «Esente da imposte» non lo capiva nessuno (Francesco, 09/10/2026).
-             Si dice che cosa vuol dire per chi paga: sul premio non si
-             aggiungono le imposte (L. 205/2017, art. 1 c. 769), e il 19% torna
-             indietro con la dichiarazione dei redditi (c. 768). La detrazione
-             vale per chi ha imposta da cui detrarla: si scrive «circa», mai una
-             promessa. */
-          + '<div style="font-size:12.5px;line-height:1.5;background:var(--w1-verde-tenue,#eaf7f0);border:1px solid #bfe5cf;border-radius:10px;padding:8px 11px;margin:6px 0 0;color:var(--ink)">Il prezzo è <b>finale</b>: per legge su questa polizza non si pagano le imposte sui premi (di solito il 22,25%). E puoi <b>detrarre il 19%</b> nella dichiarazione dei redditi (730 o Redditi PF): circa <b>'+eur(Math.round(CN.q.prezzo*0.19))+'</b> all\'anno, se sei residente in Italia e hai IRPEF da cui detrarlo.</div>'
-          + (CN.q.vendita_online?'':'<div style="font-size:12px;color:var(--muted);margin:4px 0 0">'+esc(CN.q.motivo||'Non acquistabile online: ti ricontatta un consulente.')+'</div>') : '');
+    return renderPcardCatnat();
   } else {
     priceHtml = '<div class="price-big"><div class="da">preventivo</div><div class="v" style="font-size:30px">Su misura</div><div class="u">in base alle tue esigenze</div></div>';
   }
@@ -448,8 +437,44 @@ function renderPcard(){
     + priceHtml
     + '<ul class="incl">'+(P.benef||[]).slice(0,3).map(b=>'<li><i class="ti ti-check"></i> '+b+'</li>').join('')+'</ul>'
     + (isQuotabile() ? '<button class="pcta" onclick="apriCheckout()"><i class="ti ti-shield-check"></i> ATTIVA LA POLIZZA ONLINE</button>' : '')
-    + '<button class="pcta" style="background:#eef1f6;color:var(--ink);margin-top:8px" onclick="document.getElementById(\'richiedi\').scrollIntoView({behavior:\'smooth\'})"><i class="ti ti-phone"></i> CHIEDI INFORMAZIONI</button>';
+    + '<button class="pcta" style="background:#eef1f6;color:var(--ink);margin-top:8px" onclick="document.getElementById(\'richiedi\').scrollIntoView({behavior:\'smooth\'})"><i class="ti ti-message-circle"></i> PARLA CON UN CONSULENTE WITH US</button>';
 }
+/* La scheda prezzo della catastrofali (rivista con Francesco il 09/10/2026).
+   Finché la vendita online non è aperta il numero è una STIMA e lo dice
+   accanto al numero stesso, non in una nota: un prezzo grande e verde senza
+   «indicativo» si legge come garantito. Niente frasi su imposte e detrazioni
+   finché non sono verificate sul prodotto, e niente «in attesa del Set
+   Informativo» davanti al cliente: è un'informazione interna. «da 60 €» è il
+   premio minimo di polizza (RCAB_PMIN del motore). */
+function renderPcardCatnat(){
+  const q=CN.q, online=!!(q&&q.vendita_online);
+  const prezzo = q ? '<div class="v">'+eur(q.prezzo)+'</div>' : '<div class="v"><span style="font-size:22px;font-weight:600">da</span> € 60</div>';
+  const nota = online ? 'Premio annuo calcolato sui dati inseriti' : 'Premio indicativo, soggetto a verifica dei dati';
+  const voci=['Terremoto','Alluvione, inondazione e bombe d\'acqua','Fabbricato e contenuto','Contenuto assicurato per il 20% del valore del fabbricato'];
+  const consulente='<button class="pcta lp-sec" onclick="cnConsulente()"><i class="ti ti-message-circle"></i> PARLA CON UN CONSULENTE WITH US</button>';
+  let cta;
+  if(!q) cta='<button class="pcta" onclick="cnCalcola()"'+(CN.calcolo?' disabled':'')+'><i class="ti ti-calculator"></i> '+(CN.calcolo?'CALCOLO…':'CALCOLA IL TUO PREMIO')+'</button>';
+  else if(online) cta='<button class="pcta" onclick="apriCheckout()"><i class="ti ti-shield-check"></i> ATTIVA LA POLIZZA ONLINE</button>';
+  else cta='<button class="pcta" onclick="cnRichiedi()"><i class="ti ti-file-text"></i> RICHIEDI IL PREVENTIVO</button>';
+  document.getElementById('pcard').innerHTML =
+    '<div class="ph">'+P.nome+'</div><div class="psub">With Us Assicurazioni</div>'
+    + '<div class="price-big"><div class="da" style="text-transform:uppercase;letter-spacing:.06em;font-size:11.5px">Stima del premio</div>'+prezzo+'<div class="u">all\'anno</div>'
+    + '<div style="font-size:12px;color:var(--muted);font-weight:500;margin-top:4px">'+nota+'</div></div>'
+    + '<ul class="incl lp-check">'+voci.map(v=>'<li><span class="lp-ok" aria-hidden="true">✓</span> '+v+'</li>').join('')+'</ul>'
+    + '<div class="qrow" style="margin-top:12px"><input id="cn-cap" inputmode="numeric" maxlength="5" placeholder="CAP dell\'abitazione" value="'+esc(CN.cap)+'" oninput="CN.cap=this.value.replace(/\\D/g,\'\');cnCambiato()">'
+    + '<input id="cn-val" inputmode="numeric" placeholder="Valore di ricostruzione (€, da 40.000)" value="'+esc(CN.valore)+'" oninput="CN.valore=this.value.replace(/\\D/g,\'\');cnCambiato()"></div>'
+    + '<div style="font-size:11.5px;color:var(--muted);margin:2px 0 4px">Il valore di ricostruzione è quanto costerebbe ricostruire la casa da zero, non il prezzo di mercato.</div>'
+    + (CN.err?'<div class="msg err" style="display:block;margin-top:6px">'+esc(CN.err)+'</div>':'')
+    + cta
+    + (q && !online ? '<div style="font-size:12px;color:var(--muted);margin:8px 2px 0;line-height:1.45;text-align:center">Il preventivo definitivo sarà confermato dopo la verifica dei dati e delle condizioni assicurative.</div>' : '')
+    + (q ? '<button class="link-ric" onclick="cnCalcola()">Ricalcola con altri dati</button>' : '')
+    + consulente;
+}
+/* Cambiare CAP o valore rende vecchia la stima: si torna al bottone di
+   calcolo, ma senza ridisegnare a ogni lettera (si perderebbe il fuoco). */
+function cnCambiato(){ if(CN.q){ CN.q=null; const c=document.getElementById('cn-cap'), v=document.getElementById('cn-val'), f=document.activeElement===c?'cn-cap':'cn-val', pos=(document.activeElement||{}).selectionStart; renderPcard(); const el=document.getElementById(f); if(el){ el.focus(); try{ el.setSelectionRange(pos,pos); }catch(_){} } } }
+function cnConsulente(){ document.getElementById('richiedi').scrollIntoView({behavior:'smooth'}); setTimeout(()=>{ const n=document.getElementById('nome'); if(n) n.focus({preventScroll:true}); },400); }
+function cnRichiedi(){ const m=document.getElementById('messaggio'); if(m && !m.value) m.value='Vorrei il preventivo definitivo della polizza Rischi Catastrofali Abitazione.'; cnConsulente(); }
 function upd(){ renderPcard(); }
 function cnParams(){ return { cap:CN.cap, valore:Number(CN.valore)||0, terrCont:true, alluFabb:true, alluCont:true }; }
 async function cnCalcola(){
@@ -735,7 +760,7 @@ function ckStepEsigenze(){
     +sel('ab-eta','Età dell\'edificio',sc.eta)
     +'<div style="display:flex;gap:10px"><div style="flex:1"><label>Piani fuori terra dell\'edificio *</label><input id="ab-pft" type="number" min="1" step="1"></div><div style="flex:1"><label>Piani interrati o seminterrati *</label><input id="ab-pin" type="number" min="0" step="1"></div></div>'
     +'<div class="lp-h">Riepilogo della polizza</div>'
-    +'<div style="font-size:13px;line-height:1.6">CAP abitazione <b>'+esc(dt.cap||'')+'</b> · valore di ricostruzione <b>'+eur(dt.valore||0)+'</b><ul style="margin:6px 0 4px 18px;padding:0">'+gar+'</ul>Premio annuo <b>'+eur(q.prezzo||0)+'</b>, senza imposte da aggiungere; detraibile al 19% nella dichiarazione dei redditi</div>'
+    +'<div style="font-size:13px;line-height:1.6">CAP abitazione <b>'+esc(dt.cap||'')+'</b> · valore di ricostruzione <b>'+eur(dt.valore||0)+'</b><ul style="margin:6px 0 4px 18px;padding:0">'+gar+'</ul>Premio annuo <b>'+eur(q.prezzo||0)+'</b></div>'
     +'<div class="lp-h">Cosa devi sapere prima di acquistare</div>'
     +'<div class="lp-avv"><i class="ti ti-alert-triangle"></i><div>La copertura <b>parte dal 20° giorno</b> dopo il pagamento. In caso di danno restano a tuo carico una <b>franchigia del 10%</b> della somma assicurata (per l\'alluvione almeno 5.000 €), e per il fabbricato l\'indennizzo arriva <b>al massimo all\'80%</b> della somma. Se il valore assicurato è più basso del costo di ricostruzione, l\'indennizzo si riduce in proporzione. La polizza è annuale con <b>tacito rinnovo</b>: si disdice con raccomandata o PEC almeno 30 giorni prima della scadenza.</div></div>'
     +'<label class="consent" style="margin-top:0"><input type="checkbox" id="ck-es-avv"> Ho preso atto di carenza, franchigie, limiti di indennizzo e tacito rinnovo. *</label>'

@@ -1,8 +1,19 @@
 {
-  "versione": "0.73.2",
-  "nome": "Informativa privacy completa",
+  "versione": "0.74.0",
+  "nome": "Catastrofali: scheda prezzo rivista",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.74.0",
+      "data": "2026-10-09",
+      "nome": "Catastrofali: scheda prezzo rivista",
+      "voci": [
+        "Landing Rischi Catastrofali: «Stima del premio» da 60 € all'anno, con scritto accanto «premio indicativo, soggetto a verifica dei dati», e l'elenco di cosa copre",
+        "Landing Rischi Catastrofali: tolte le frasi su imposte e detrazione finché non sono verificate sul prodotto, e tolte le note interne visibili al cliente",
+        "Landing: «Calcola il tuo premio», poi «Richiedi il preventivo»; «Chiedi informazioni» diventa «Parla con un consulente With Us» su tutti i prodotti",
+        "Landing e recesso: nel piede sede legale (Paceco), sede operativa (Trapani) ed email dell'amministrazione"
+      ]
+    },
     {
       "v": "0.73.2",
       "data": "2026-10-09",

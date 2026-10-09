@@ -9482,3 +9482,44 @@ della virgola mobile (6,425 in JS è 6,42499…, CAP 24014).
   riepilogo prima del pagamento scrive il premio di ogni garanzia. I numeri
   li manda il server (`dettaglio.garanzie[].premio`): la pagina non calcola.
 - Il preventivatore interno mostrava già `g.premio`: adesso le righe tornano.
+
+### La lettura veloce anche per i collaboratori, e la landing (0.76.0, 09/10/2026)
+
+**Collaboratori.** Dopo la 0.75.1 lo staff leggeva sei tabelle in 20 ms, un
+collaboratore in **2,6 s**: per lui la politica arriva a `quote_vede`, che si
+chiama riga per riga. `quote_proprietari_visibili()` (SECURITY DEFINER) dice
+UNA volta «quali creatori posso vedere» — me stesso, e chi è nella mia rete se
+ne ho una — e la politica diventa `(select iam_is_staff()) or creato_da = any
+((select quote_proprietari_visibili())::uuid[])`. Collaboratore: **7 ms**.
+Migrazione `20261009b_rls_collaboratore_una_volta.sql`, sulle stesse sei
+tabelle. **Trappola**: senza il `::uuid[]`, `= any ((select f()))` è letto
+come «una riga per elemento» e Postgres rifiuta `uuid = uuid[]`.
+
+Equivalenza provata PRIMA di cambiare le politiche: per ogni utente (e uno
+sconosciuto) contro ogni proprietario possibile (utenti, creatori, uno a
+caso, null), `quote_vede` e la regola nuova danno la stessa risposta su 42
+combinazioni — con due utenti messi nella stessa rete dentro una transazione
+annullata, per provare anche quel ramo. `quote_vede` resta: la usano altre
+politiche e lo storage.
+
+**Landing catastrofali: il premio si scopre calcolandolo** (Francesco: «non
+deve essere visibile così sempre fisso ma deve uscire in fase di quotazione,
+così da suscitare interesse»). Prima del calcolo la scheda mostra la domanda
+(`.lp-gancio`); dopo, «Il tuo premio» con una piccola animazione
+(`.lp-svela`, spenta con `prefers-reduced-motion`). Prova in
+`vendita-distanza` (18), con controprova.
+
+**Il recesso nel piede segue la spunta del Lab** («spunta a priori che sia
+flaggato oppure no»): il pulsante in alto la seguiva già, il collegamento nel
+piede no. Adesso `aggiornaRecesso()` decide tutti e due — con l'eccezione dei
+prodotti che si COMPRANO online da quella pagina (`vdOnline()`: oggi `vita` e
+`infortuni-famiglia`), dove il recesso online resta sempre raggiungibile
+(obbligo). Si ricontrolla quando arriva `vendita-distanza.json`. Prova in
+`recesso` (14).
+
+Il riquadro della domanda (`.lp-gancio`) e quello della ripartizione
+(`.lp-rip`) dichiarano Figtree anche da soli, e la domanda è centrata in una
+colonna con `text-wrap: balance` (Francesco: «usa sempre lo stesso carattere
+che abbiamo deciso e centralo bene»). Nelle fotografie di collaudo il
+carattere si vede solo lasciando passare `fonts.googleapis`/`gstatic`: con la
+rete chiusa esce il ripiego, e sembra un errore che non c'è.

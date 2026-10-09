@@ -156,5 +156,14 @@ prova('la landing riceve la ripartizione per garanzia, e le righe sommano il pre
   deve(/function cnRipartizione\(/.test(l) && /\+ cnRipartizione\(q\)/.test(l), 'la landing non mostra la ripartizione');
   deve(/\.lp-rip\{/.test(l), 'la ripartizione non ha il suo stile');
 });
+prova('il premio non si vede prima del calcolo: si scopre quotando', () => {
+  /* Francesco, 09/10/2026: un «€ 60» fisso sulla scheda non suscita interesse e
+     sembra il prezzo di tutti. Prima del calcolo la scheda fa la domanda. */
+  const l = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
+  const f = (l.match(/function renderPcardCatnat\(\)\{[\s\S]*?\n\}/) || [''])[0];
+  deve(f, 'manca la scheda prezzo della catastrofali');
+  deve(!/€ 60|da<\/span>/.test(f), 'la scheda mostra ancora un prezzo fisso prima del calcolo');
+  deve(/const testa = q\s*(?:\/\*[\s\S]*?\*\/\s*)?\?\s*'<div class="price-big/.test(f) && /:\s*'<div class="lp-gancio"/.test(f), 'senza calcolo la scheda non mostra la domanda al posto del numero');
+});
 console.log('\n' + ok + ' superate, ' + ko + ' fallite\n');
 process.exit(ko ? 1 : 0);

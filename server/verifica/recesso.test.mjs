@@ -131,7 +131,12 @@ await prova('il pulsante si sceglie dal Lab, il collegamento nel piede resta sem
   deve(/id="l-recesso"/.test(lab) && /id="vad-recesso"/.test(lab) && (lab.match(/&recesso=1/g) || []).length >= 2, 'il Lab non offre la scelta nei due posti');
   const land = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
   deve(/id="cta-recesso" href="recesso\.html" hidden/.test(land) && /params\.get\('recesso'\) === '1'/.test(land), 'il pulsante non dipende dalla scelta');
-  deve(/<div class="foot">[^\n]*href="recesso\.html"/.test(land), 'il collegamento nel piede è sparito');
+  /* Dal 09/10/2026 anche il piede segue la spunta, TRANNE sui prodotti che si
+     comprano online da quella pagina: lì il recesso online è un obbligo. */
+  deve(/<div class="foot">[^\n]*<span id="foot-recesso" hidden>[^\n]*href="recesso\.html"/.test(land), 'il collegamento nel piede non c\'è o non dipende dalla spunta');
+  const ag = (land.match(/function aggiornaRecesso\(\)\{[\s\S]*?\n\}/) || [''])[0];
+  deve(/f\.hidden = !\(spunta \|\| \(typeof vdOnline === 'function' && VD && vdOnline\(\)\)\)/.test(ag), 'sui prodotti venduti online il piede non mostra più il recesso');
+  deve(/aggiornaDettCta\(\); aggiornaRecesso\(\);/.test(land), 'arrivata la configurazione, il piede non si ricontrolla');
 });
 await prova('privacy: l\'informativa si legge PRIMA di firmare, ed è lo stesso testo del documento firmato', () => {
   const sign = fs.readFileSync(path.join(RADICE, 'server/sign.js'), 'utf8');

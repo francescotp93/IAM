@@ -132,6 +132,10 @@ await prova('privacy: l\'informativa si legge PRIMA di firmare, ed è lo stesso 
   const land = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
   deve(/ck-pz-testo/.test(land) && /privacy\/informativa\.json/.test(land), 'la landing fa firmare senza mostrare il testo');
   deve(!/Acconsento al trattamento dei dati per la gestione del rapporto/.test(land), 'il contratto chiede ancora un «consenso» che non è la sua base giuridica');
+  const pdf = path.join(RADICE, 'docs/privacy/Informativa_Privacy_WithUs_PR01_rev4.1.pdf');
+  const txt = fs.readFileSync(path.join(RADICE, 'docs/privacy/informativa-pr01.txt'), 'utf8');
+  deve(fs.existsSync(pdf) && /1\) Identità e dati di contatto del titolare/.test(txt) && /11\) Trattamento dei dati personali per una finalità diversa/.test(txt), 'l\'informativa completa (PR01 rev 4.1) non c\'è o è troncata');
+  deve(/INFORMATIVA_COMPLETA_TESTO \|\| INFORMATIVA_PRIVACY/.test(sign) && /Informativa_Privacy_WithUs_PR01_rev4\.1\.pdf/.test(land), 'il cliente non legge il testo completo o non può scaricare il PDF');
 });
 
 srv.close();

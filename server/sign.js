@@ -11,6 +11,9 @@
 import { configurazione as configVenditaDistanza } from './venditaDistanza.js';
 import { Router } from 'express';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const APP_URL = (process.env.QUOTO_URL || 'https://quoto.withusassicurazioni.it').replace(/\/$/, '');
@@ -336,6 +339,16 @@ function anagCliente(a, f) {
    nell'archivio usa `caricaDocumento` di server/archivio.js, che restituisce il
    percorso e non un indirizzo. */
 function siNo(v) { return v ? 'SÌ' : 'NO'; }
+/* L'informativa COMPLETA dell'agenzia (Mod. PR01 rev 4.1, persone fisiche):
+   il PDF ufficiale sta in docs/privacy/ e il suo testo, estratto una volta,
+   in docs/privacy/informativa-pr01.txt. È quello che il cliente legge PRIMA
+   di firmare; il documento firmato ne riporta l'estratto qui sotto e rimanda
+   al PDF. Se il file manca si ripiega sull'estratto, mai su niente. */
+export const INFORMATIVA_PDF = APP_URL + '/docs/privacy/Informativa_Privacy_WithUs_PR01_rev4.1.pdf';
+let INFORMATIVA_COMPLETA_TESTO = null;
+try {
+  INFORMATIVA_COMPLETA_TESTO = fs.readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'docs/privacy/informativa-pr01.txt'), 'utf8');
+} catch (_) { /* resta l'estratto */ }
 /* Il testo dell'informativa sta in un posto solo: lo stampa il documento
    firmato e lo mostra la pagina PRIMA della firma (/sign/privacy/informativa).
    Firmare un testo che non si è visto non è un consenso informato. */
@@ -377,7 +390,7 @@ function genPrivacyDocHtml(c, cons, firma) {
       <div><div class="t"><b>WITH US SOCIETA' COOPERATIVA</b> — Intermediario assicurativo</div>
       <div class="t">Vico Giunone 3, 91027 Paceco (TP) · RUI A000747484 del 14-03-2024 · amministrazione@withusassicurazioni.it</div></div></div>
     <h1>Scheda Cliente e Consenso al trattamento dei dati</h1>
-    <div class="mod">Mod. PR01 · Reg. UE 2016/679 (GDPR)</div>
+    <div class="mod">Mod. PR01 rev 4.1 · Reg. UE 2016/679 (GDPR)</div>
     <h2>Dati del contraente</h2>
     <table class="s">
      <tr><td class="lbl">Nome / Cognome o Denominazione</td><td><b>${esc(c.nominativo || '—')}</b></td></tr>
@@ -396,6 +409,7 @@ function genPrivacyDocHtml(c, cons, firma) {
       .map(([t, v]) => `<div class="cons"><span>${t}</span><span class="v ${v ? 'si' : 'no'}">${siNo(v)}</span></div>`).join('')}
     <h2>Informativa (estratto artt. 13-14 GDPR)</h2>
     <p class="small">${INFORMATIVA_PRIVACY}</p>
+    <p class="small">Testo completo: Informativa privacy Mod. PR01 rev 4.1, <a href="${INFORMATIVA_PDF}">${INFORMATIVA_PDF}</a></p>
     <div class="signwrap">
       <div class="sign-meta">Luogo e data: <b>${esc(c.comune || '—')}, ${esc(dataBreve)}</b></div>
       <div class="signbox">
@@ -575,10 +589,12 @@ publicSign.get('/privacy/informativa', (req, res) => {
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.send(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informativa privacy — With Us</title>
   <style>body{margin:0;background:#f4f6f8;font-family:Figtree,system-ui,Arial,sans-serif;color:#1f2a37}.s{max-width:760px;margin:24px auto;background:#fff;border:1px solid #dde3e9;border-radius:14px;padding:28px 30px;line-height:1.6;font-size:14.5px}h1{font-size:20px;margin:0 0 4px}.m{color:#5b6675;font-size:12.5px;margin-bottom:16px}</style></head>
-  <body><div class="s"><h1>Informativa sul trattamento dei dati personali</h1><div class="m">Mod. PR01 · artt. 13-14 Reg. UE 2016/679 (GDPR)</div><p>${INFORMATIVA_PRIVACY}</p></div></body></html>`);
+  <body><div class="s"><h1>Informativa sul trattamento dei dati personali</h1><div class="m">Mod. PR01 rev 4.1 · artt. 13-14 Reg. UE 2016/679 (GDPR) · <a href="${INFORMATIVA_PDF}" style="color:#02984e;font-weight:600">Scarica il PDF</a></div>${(INFORMATIVA_COMPLETA_TESTO || INFORMATIVA_PRIVACY).split(/\n\n+/).map((x) => '<p>' + esc(x) + '</p>').join('')}</div></body></html>`);
 });
 
-publicSign.get('/privacy/informativa.json', (req, res) => { res.json({ ok: true, testo: INFORMATIVA_PRIVACY, modello: 'Mod. PR01' }); });
+publicSign.get('/privacy/informativa.json', (req, res) => {
+  res.json({ ok: true, testo: INFORMATIVA_COMPLETA_TESTO || INFORMATIVA_PRIVACY, completa: !!INFORMATIVA_COMPLETA_TESTO, modello: 'Mod. PR01 rev 4.1', pdf: INFORMATIVA_PDF });
+});
 
 // Cliente: dati per la pagina di firma privacy
 publicSign.get('/privacy/info', async (req, res) => {

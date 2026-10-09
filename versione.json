@@ -1,8 +1,18 @@
 {
-  "versione": "0.73.1",
-  "nome": "Catastrofali: imposte e detrazione spiegate",
+  "versione": "0.73.2",
+  "nome": "Informativa privacy completa",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.73.2",
+      "data": "2026-10-09",
+      "nome": "Informativa privacy completa",
+      "voci": [
+        "Acquisto online: prima di firmare il cliente legge l'informativa privacy completa dell'agenzia (Mod. PR01 rev 4.1) e può scaricarla in PDF",
+        "Acquisto online: si può dare anche il consenso facoltativo alla comunicazione a terzi, come nel modulo cartaceo",
+        "Landing: le caselle di spunta non spezzano più il testo in colonne"
+      ]
+    },
     {
       "v": "0.73.1",
       "data": "2026-10-09",

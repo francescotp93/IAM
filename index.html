@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.72.0">
-<meta name="app-versione-nome" content="Catastrofali: documenti e stile IAM">
+<meta name="app-versione" content="0.72.1">
+<meta name="app-versione-nome" content="Catastrofali: limiti anche nel preventivatore">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -65,7 +65,7 @@
      caricato PRIMA del corpo del preventivatore, perche' quello lo chiama.
      Stesso file per browser e server: un premio calcolato qui e uno calcolato
      dall'API sono lo stesso numero per costruzione, non per somiglianza. -->
-<script src="tariffe/motore/catastrofali.js?v=20260910"></script>
+<script src="tariffe/motore/catastrofali.js?v=20261009"></script>
 <script src="tariffe/motore/rcnonreg.js?v=20260910"></script>
 <script src="tariffe/motore/amtrust.js?v=20260910"></script>
 <script src="tariffe/motore/tutelalegale.js?v=20260910"></script>
@@ -9902,7 +9902,7 @@ function rcabView(){
         <div class="aw-field"><label>N° piani</label>${num('piani', m.piani, 'step="1"')}</div>
       </div>
       <div class="pv2-sec">Valore e garanzie</div>
-      <div class="aw-field" style="max-width:360px"><label>Costo di ricostruzione a nuovo del Fabbricato (€) *</label><input id="rb-valore" type="number" min="0" step="0.01" value="${esc(m.valore!=null?m.valore:'')}" oninput="rcabRefreshPanel()"></div>
+      <div class="aw-field" style="max-width:360px"><label>Costo di ricostruzione a nuovo del Fabbricato (€) * <span style="font-weight:400;color:var(--muted)">(da 40.000 a 1.100.000)</span></label><input id="rb-valore" type="number" min="40000" max="1100000" step="0.01" value="${esc(m.valore!=null?m.valore:'')}" oninput="rcabRefreshPanel()"></div>
       <div style="font-size:12.5px;color:var(--muted);margin:-.3rem 0 .6rem">Terremoto sul Fabbricato sempre incluso. Contenuto fisso al 20% del valore. Limite fabbricato 1.100.000 €.</div>
       <label class="aw-coincide" style="margin-bottom:.5rem"><input type="checkbox" id="rb-terrCont" ${m.terrCont?'checked':''} onchange="rcabRefreshPanel()"> <span>Terremoto · Contenuto (20%)</span></label>
       <label class="aw-coincide" style="margin-bottom:.5rem"><input type="checkbox" id="rb-alluFabb" ${m.alluFabb?'checked':''} onchange="rcabRefreshPanel()"> <span>Alluvione / Inondazione · Fabbricato</span></label>
@@ -9933,6 +9933,10 @@ function rcabRefreshPanel(){
   RCAB_DATA.quote=q;
   const panel=document.getElementById('rb-panel'); if(!panel) return;
   const eur=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  /* Un premio fuori dai limiti assuntivi non si mostra: sarebbe un numero per
+     una polizza che la compagnia non emette (nota tecnica HDI P5820). */
+  const limite=(typeof catFuoriLimite==='function')?catFuoriLimite(m.valore):null;
+  if(limite){ RCAB_DATA.quote=null; panel.innerHTML=`<div style="font-size:13px;color:#b42318;padding:6px 0 12px">${esc(limite)}</div>`; return; }
   if(!q){ panel.innerHTML=`<div style="font-size:13px;color:var(--muted);padding:6px 0 12px">Inserisci <b>CAP</b> e <b>valore di ricostruzione</b> validi.<br><small>Il CAP deve essere presente nella tariffa.</small></div>`; return; }
   panel.innerHTML=`
     ${q.garanzie.map(g=>`<div class="pv2-line"><span>${esc(g.nome)}</span><b>${eur(g.premio)}</b></div>`).join('')}
@@ -9965,7 +9969,7 @@ function rcabStepAnag(){
     <div class="aw-field geo-wrap"><label>Cerca cliente già censito</label><input id="rb-search" placeholder="Nominativo, codice fiscale, P.IVA…" autocomplete="off" oninput="rcabClienteSearch(this.value)"><div id="rb-search-res" class="geo-res"></div></div>
     <div class="aw-row2">
       <div class="aw-field"><label>Cognome Nome / Ragione sociale *</label>${inp('rb-nominativo', ct.nominativo)}</div>
-      <div class="aw-field"><label>Codice fiscale / Partita IVA *</label>${inp('rb-cfPiva', ct.cfPiva, 'style="text-transform:uppercase"')}</div>
+      <div class="aw-field"><label>Codice fiscale del proprietario * <span style="font-weight:400;color:var(--muted)">(persona fisica, no partita IVA)</span></label>${inp('rb-cfPiva', ct.cfPiva, 'style="text-transform:uppercase" maxlength="16"')}</div>
     </div>`;
 }
 function rcabClienteSearch(q){
@@ -10076,12 +10080,16 @@ function rcabStepPreventivo(){
 function rcabNext(){
   if (RCAB_STEP===0){
     if (!(document.getElementById('rb-nominativo')?.value||'').trim() || !(document.getElementById('rb-cfPiva')?.value||'').trim()){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
+    /* Contraente = proprietario persona fisica, senza partita IVA (nota
+       tecnica HDI P5820, §1.3): una partita IVA qui produce una polizza che
+       la compagnia non emette. */
+    if ((document.getElementById('rb-cfPiva')?.value||'').trim().length!==16){ alert('Il contraente deve essere il proprietario persona fisica: serve il codice fiscale (16 caratteri), non una partita IVA.'); return; }
   }
   if (RCAB_STEP===1){
     const cap=(document.getElementById('rb-cap')?.value||'').trim();
     const val=parseFloat(document.getElementById('rb-valore')?.value)||0;
     if (cap.length<5 || !val){ alert('Inserisci CAP (5 cifre) e Costo di ricostruzione del Fabbricato.'); return; }
-    if (val>1100000){ alert('Limite assuntivo Fabbricato: 1.100.000 €.'); return; }
+    { const lim=(typeof catFuoriLimite==='function')?catFuoriLimite(val):(val>1100000?'Limite assuntivo Fabbricato: 1.100.000 €.':null); if(lim){ alert(lim); return; } }
     if (!(CAT_CAP||{})[cap.padStart(5,'0')]){ alert('CAP '+cap+' non presente nella tariffa. Verifica il CAP.'); return; }
   }
   saveRCabStep();
@@ -10093,9 +10101,10 @@ async function rcabInvia(mode){
   rcabReadForm();
   const ct=RCAB_DATA.contraente||{}, m=RCAB_DATA.immobile||{};
   if(!ct.nominativo||!ct.cfPiva){ alert('Inserisci contraente e Codice fiscale / Partita IVA.'); return; }
+  if(String(ct.cfPiva).trim().length!==16){ alert('Il contraente deve essere il proprietario persona fisica: serve il codice fiscale (16 caratteri), non una partita IVA.'); return; }
   const cap=(m.cap||'').trim();
   if(cap.length<5 || !m.valore){ alert('Inserisci CAP (5 cifre) e Costo di ricostruzione del Fabbricato.'); return; }
-  if(m.valore>1100000){ alert('Limite assuntivo Fabbricato: 1.100.000 €.'); return; }
+  { const lim=(typeof catFuoriLimite==='function')?catFuoriLimite(m.valore):(m.valore>1100000?'Limite assuntivo Fabbricato: 1.100.000 €.':null); if(lim){ alert(lim); return; } }
   if(!(CAT_CAP||{})[cap.padStart(5,'0')]){ alert('CAP '+cap+' non presente nella tariffa. Verifica il CAP.'); return; }
   const q=calcCatPremio(m.cap, m.valore, { terrCont:m.terrCont, alluFabb:m.alluFabb, alluCont:m.alluCont, commissioni:RCAB_DATA.commissioni, frazionamento:RCAB_DATA.frazionamento });
   RCAB_DATA.quote=q;

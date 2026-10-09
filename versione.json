@@ -1,8 +1,17 @@
 {
-  "versione": "0.72.0",
-  "nome": "Catastrofali: documenti e stile IAM",
+  "versione": "0.72.1",
+  "nome": "Catastrofali: limiti anche nel preventivatore",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.72.1",
+      "data": "2026-10-09",
+      "nome": "Catastrofali: limiti anche nel preventivatore",
+      "voci": [
+        "Preventivatore › Catastrofali Abitazione: il valore del fabbricato va da 40.000 a 1.100.000 €, e fuori da lì il premio non si mostra",
+        "Preventivatore › Catastrofali Abitazione: il contraente deve essere il proprietario persona fisica, con codice fiscale e non partita IVA"
+      ]
+    },
     {
       "v": "0.72.0",
       "data": "2026-10-09",

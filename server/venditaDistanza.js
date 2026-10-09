@@ -44,7 +44,7 @@ export function configurazione(prodotto) {
 }
 
 export const ETICHETTA_CATNAT = 'Rischi Catastrofali Abitazione';
-export const VALORE_MIN = 40000, VALORE_MAX = 1100000;
+export const VALORE_MIN = motore.VALORE_MIN, VALORE_MAX = motore.VALORE_MAX;
 
 /* Il prezzo. Restituisce { prezzo, etich, dettaglio } oppure { errore }:
    «CAP non in tariffa» non è un guasto, è una risposta da dare in parole. */
@@ -56,9 +56,8 @@ export function quotaCatastrofali(p) {
   if (!Number.isFinite(valore) || valore <= 0) return { errore: 'Indica il valore di ricostruzione dell\'abitazione.' };
   /* Limiti assuntivi della compagnia (nota tecnica HDI P5820): fuori da qui
      la polizza non si emette, quindi non si quota nemmeno. */
-  if (valore < VALORE_MIN || valore > VALORE_MAX) {
-    return { errore: 'Il valore di ricostruzione assicurabile va da ' + VALORE_MIN.toLocaleString('it-IT') + ' a ' + VALORE_MAX.toLocaleString('it-IT') + ' €.' };
-  }
+  const limite = motore.fuoriLimite(valore);
+  if (limite) return { errore: limite };
   prepara();
   /* Al cliente finale si vende SOLO il prodotto completo (decisione di
      Francesco, 09/10/2026): terremoto e alluvione, su fabbricato e contenuto.

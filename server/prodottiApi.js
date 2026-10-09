@@ -88,6 +88,8 @@ function preparaCatastrofali() {
 
 async function quotaCatastrofali(dati) {
   preparaCatastrofali();
+  const limite = catastrofali.fuoriLimite(dati.valore);
+  if (limite) return { ok: false, errore: 'INVALID_INPUT', messaggio: limite };
   const q = catastrofali.calcCatPremio(String(dati.cap), Number(dati.valore), {
     terrCont: !!dati.contenuto_terremoto,
     alluFabb: !!dati.alluvione_fabbricato,

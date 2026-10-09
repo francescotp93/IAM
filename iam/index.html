@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.56.0">
-<meta name="app-versione-nome" content="Scheda cliente: la testata scura con le linguette e i dati in pastiglie, come le trattative">
+<meta name="app-versione" content="0.56.1">
+<meta name="app-versione-nome" content="Controlli: la giornata degli incassi si legge tutta, e tre prove tornano verdi">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -10408,17 +10408,20 @@ async function appCarica() {
     return;
   }
 
-  let titoli = [];
+  let titoli = [], parziale = false;
   try {
     /* La giornata: le rate incassate QUEL giorno, con la loro polizza. La
        compagnia e il numero di polizza servono all'abbinamento; il cliente e
-       il mezzo servono a leggere la riga. */
-    const { data, error } = await db.from('quote_titoli')
+       il mezzo servono a leggere la riga.
+       Paginata: il server ne manda mille per volta qualunque tetto si scriva,
+       e il giorno in cui arriva un flusso le rate dello stesso giorno sono
+       migliaia (§50, §53). L'ordine per id tiene ferme le pagine. */
+    const r = await cntTutte((a, b) => db.from('quote_titoli')
       .select('id,importo_lordo,provvigione,stato,mezzo_pagamento,incassato_il,fonte,fonte_id,sigla_tipo,'
             + 'polizza:quote_polizze(numero_polizza,compagnia,cliente,data_effetto,modulo,prodotto)')
-      .eq('incassato_il', g).limit(2000);
-    if (error) throw error;
-    titoli = data || [];
+      .eq('incassato_il', g).order('id').range(a, b));
+    titoli = r.righe;
+    parziale = r.parziale;
   } catch (e) {
     somma.innerHTML = '<div class="cnt-err">Non riesco a leggere gli incassi del giorno: ' + esc(e.message || e)
       + '<br><small>Non vuol dire che non ce ne siano.</small></div>';
@@ -10446,6 +10449,10 @@ async function appCarica() {
   const a = M.abbinaFoglio(nostre, dalFoglio);
 
   appDisegna(a, g, nostre.length, dalFoglio.length);
+  /* Un abbinamento fatto su metà giornata direbbe «manca» su righe che ci sono. */
+  if (parziale) avviso.insertAdjacentHTML('afterbegin',
+    '<div class="cnt-err">La lettura degli incassi del giorno si è fermata prima della fine: '
+    + 'gli abbinamenti qui sotto sono parziali, e una riga «senza corrispondenza» può averla nella parte non letta.</div>');
 }
 
 function appDisegna(a, g, quanteNostre, quanteLoro) {

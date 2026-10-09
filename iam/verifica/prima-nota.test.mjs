@@ -153,8 +153,15 @@ prova('le due linguette esistono e hanno il loro inizializzatore', () => {
      causali, e finché i due nomi coincidevano l'elenco qui sotto lo
      intercettava prima — «Conti e causali» apriva la Contabilità e non si
      raggiungeva più. */
-  deve(/\['quadratura','primanota','quadconti',/.test(H), 'selContabTab non conosce le due linguette nuove');
-  deve(!/\['quadratura','primanota','conti',/.test(H), 'il nome ambiguo è tornato: «Conti e causali» non si aprirebbe più');
+  /* Si guarda se le due voci sono NELL'ELENCO, non in che posizione: la prima
+     stesura pretendeva «['quadratura','primanota','quadconti',» ed è diventata
+     rossa il 28/09 su un codice giusto, quando «Appunti incassi» si è messa
+     davanti. Una prova che fissa l'ordine misura il mondo di ieri (§61). */
+  const sel = rotte.slice(0, rotte.indexOf('.forEach('));
+  const elenco = ((sel.match(/\[('[a-z]+'(?:,\s*'[a-z]+')*)\]\s*$/) || [])[1] || '')
+    .split(',').map(x => x.trim().replace(/'/g, ''));
+  deve(elenco.includes('primanota') && elenco.includes('quadconti'), 'selContabTab non conosce le due linguette nuove');
+  deve(!elenco.includes('conti'), 'il nome ambiguo è tornato: «Conti e causali» non si aprirebbe più');
   deve(/if \(sub==='primanota' \|\| sub==='quadconti'\) pntCarica\(\);/.test(H), 'le due linguette non caricano niente');
   return 'due linguette, due pannelli, una riga in selContabTab';
 });

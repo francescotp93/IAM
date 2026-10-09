@@ -8927,3 +8927,27 @@ stanno sopra: il nome scritto due volte nella stessa finestra è il doppione
 che §65 vieta. Le classi sono tutte `clk-*` (in IAM non ce n'è nessuna, quindi
 `fusione-collisioni` non cambia), e i colori sono variabili su `.clk-kit`, mai
 su `:root` (§31). Niente quadretti di sfondo, come chiesto per le trattative.
+
+### Tre prove rosse su main, e una sola era un guasto (0.56.1, 09/10/2026)
+
+`controlla-tutto.mjs` aveva tre file rossi su `main`. Due erano prove che
+misuravano il mondo di ieri, una aveva trovato un difetto vero:
+
+- **«Appunti incassi» leggeva la giornata con `.limit(2000)`**, e PostgREST ne
+  manda mille: il giorno di un flusso grosso l'abbinamento lavorava su metà
+  giornata e chiamava «senza corrispondenza» righe che ce l'hanno. Adesso
+  `cntTutte` con `order('id')`, e la parzialità si dichiara. Il blocco è nato il
+  28/09 **fra i due segnalibri** del cruscotto, ed è per questo che l'ha preso
+  quella prova.
+- **`.limit(1)` non è un tetto**: chiede una riga sola (l'ultima giornata, «c'è
+  già?»). Le prove sui tetti adesso lo ammettono, e nient'altro.
+- **La prova della prima nota fissava la POSIZIONE nell'elenco** di
+  `selContabTab`: «Appunti incassi» si è messa davanti ed è diventata rossa su
+  un codice giusto (§61). Adesso guarda se le voci ci sono.
+- **`sqlChe('iam_modalita_pagamento')` leggeva la migrazione sbagliata**: «l'ultima
+  che nomina la tabella» dal 28/09 è quella che aggiunge il finanziamento Agos,
+  non quella che definisce il vincolo. Si cerca per **nome del vincolo**
+  (`iam_modalita_collab_mai_subito`): un nome di tabella compare in ogni
+  migrazione che ci scrive dentro, un nome di vincolo solo dove lo si definisce.
+
+Cinque controprove, tutte rosse.

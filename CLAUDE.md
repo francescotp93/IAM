@@ -9173,3 +9173,20 @@ intero: adesso lo cerca per `id`, che è quello che voleva dire.
 
 Per fotografare IAM senza login, `#app` va messo in `display:flex`: in `block`
 il contenitore dei pannelli ha altezza zero e la pagina sembra vuota.
+
+### L'agenda di oggi dentro «Da fare oggi» (0.70.0, 09/10/2026)
+
+> «Nel da fare oggi facciamo semplicemente tipo un mini planning che fa vedere
+> gli appuntamenti in agenda del giorno» — Francesco.
+
+`#oggi-ag` sta in cima alla scheda, **fuori** da `#oggi-corpo`: ha la sua
+lettura (`oggiAgenda`, `iam_agenda` filtrata su `data` = oggi in ora locale,
+§44) e il ricalcolo del lavoro non la cancella. Il disegno è puro
+(`oggiAgendaHTML`): in ordine di ora, senza ora in testa («in giornata»),
+passati in grigio, il prossimo in verde, al massimo otto righe e «e altri N».
+Il collaboratore vede le sue e quelle condivise, con lo stesso filtro di
+`loadAgendaDB`; quello scritto sul browser e non ancora salvato si vede
+marcato. **Un'agenda che non si è potuta leggere non si scrive «nessun
+appuntamento»** (§12, §18). Si rilegge a ogni apertura della Scrivania, prima
+del freno dei trenta secondi. Prove: `iam/verifica/agenda-oggi.test.mjs` (8),
+con la controprova sul guasto.

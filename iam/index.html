@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.69.0">
-<meta name="app-versione-nome" content="Scrivania più snella">
+<meta name="app-versione" content="0.70.0">
+<meta name="app-versione-nome" content="Agenda nella Scrivania">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1349,6 +1349,34 @@ input[type=file]{display:none;}
 .oggi-v:hover .oggi-fr{color:var(--t-dati-scuro,#0e7490);transform:translateX(2px)}
 .oggi-v:focus-visible,.dash-list-row:focus-visible,.oggi-calma-b:focus-visible,.oggi-ric:focus-visible{outline:2px solid var(--t-dati,#06b6d4);outline-offset:-2px}
 .oggi-guasto{margin:10px 16px;padding:9px 12px;font-size:12.5px;line-height:1.45;color:var(--w1-ambra);background:var(--w1-ambra-bg);border:1px solid currentColor;border-radius:var(--w1-raggio)}
+/* Il mini planning dell'agenda (09/10/2026): una riga per appuntamento,
+   l'ora a sinistra in colonna, un filo verticale che le unisce. Quelli già
+   passati si fanno da parte, il prossimo si accende. */
+.oggi-ag{display:block;background:var(--surf);border-bottom:1px solid var(--bord2)}
+.oggi-ag:empty{display:none}
+.oggi-ag-l{display:block;padding:2px 0 6px}
+.oggi-ag-r{position:relative;display:grid;grid-template-columns:66px 14px minmax(0,1fr);align-items:start;column-gap:10px;
+  width:100%;padding:6px 16px 6px 0;border:0;background:none;color:var(--w1-testo,var(--txt));text-align:left;
+  font-family:inherit;cursor:pointer;transition:background .12s ease}
+.oggi-ag-r:hover{background:var(--surf2)}
+.oggi-ag-r:focus-visible{outline:2px solid var(--t-dati,#06b6d4);outline-offset:-2px}
+.oggi-ag-ora{grid-column:1;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;line-height:18px;color:var(--w1-testo,var(--txt))}
+.oggi-ag-pt{grid-column:2;position:relative;align-self:stretch}
+.oggi-ag-pt::before{content:'';position:absolute;left:6px;top:-6px;bottom:-6px;width:2px;background:var(--bord2)}
+.oggi-ag-r:first-child .oggi-ag-pt::before{top:9px}
+.oggi-ag-r:last-child .oggi-ag-pt::before{bottom:calc(100% - 9px)}
+.oggi-ag-pt::after{content:'';position:absolute;left:2px;top:5px;width:10px;height:10px;border-radius:50%;
+  background:var(--surf);border:2px solid var(--w1-verde,#16a34a);box-sizing:border-box}
+.oggi-ag-txt{grid-column:3;min-width:0}
+.oggi-ag-t{display:block;font-size:13px;font-weight:600;line-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oggi-ag-n{display:block;font-size:11px;line-height:1.4;color:var(--w1-testo2,var(--txt2));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oggi-ag-pass .oggi-ag-ora,.oggi-ag-pass .oggi-ag-t{color:var(--w1-testo2,var(--txt2));font-weight:500}
+.oggi-ag-pass .oggi-ag-pt::after{border-color:var(--bord2);background:var(--bord2)}
+.oggi-ag-pross .oggi-ag-pt::after{background:var(--w1-verde,#16a34a)}
+.oggi-ag-pross .oggi-ag-ora{color:var(--w1-verde,#16a34a)}
+.oggi-ag-gg{font-size:10.5px;font-weight:500;color:var(--w1-testo2,var(--txt2))}
+.oggi-ag-vuoto{padding:10px 16px 10px 19px;font-size:12.5px;color:var(--w1-testo2,var(--txt2))}
+.oggi-ag-altri{display:block;padding:2px 16px 8px 90px;font-size:11.5px;color:var(--w1-testo2,var(--txt2))}
 .oggi-calma{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:10px 16px 10px 19px;border-top:1px solid var(--bord2);
   background:var(--surf2);font-family:var(--t-sans,Figtree,sans-serif);font-size:11px;color:var(--w1-testo2,var(--txt2))}
 .oggi-calma-t{font-weight:700;letter-spacing:.09em;text-transform:uppercase;font-size:10.5px}
@@ -3020,6 +3048,11 @@ input[type=file]{display:none;}
           <h2 class="card-title"><span class="pictogram" aria-hidden="true"><i class="ti ti-checkbox"></i></span> Da fare oggi</h2>
           <button class="oggi-ric" type="button" onclick="caricaDaFareOggi(true)" title="Ricalcola" aria-label="Ricalcola il lavoro di oggi"><i class="ti ti-refresh" aria-hidden="true"></i></button>
         </div>
+        <!-- Il mini planning della giornata (09/10/2026): gli appuntamenti
+             dell'agenda di oggi, in ordine di ora, sopra il lavoro. Ha il suo
+             contenitore perché ha la sua lettura: il ricalcolo del lavoro non
+             lo cancella, e un'agenda che non si legge non spegne il resto. -->
+        <div class="oggi-ag" id="oggi-ag" aria-live="polite"></div>
         <div class="oggi-corpo" id="oggi-corpo" aria-live="polite">
           <div class="oggi-attesa">Calcolo il lavoro del giorno…</div>
         </div>
@@ -14945,6 +14978,75 @@ function oggiCalmaHTML(calma) {
     + '</div>';
 }
 
+/* ═══ IL MINI PLANNING DI OGGI (09/10/2026) ══════════════════════════════════
+   «Nel da fare oggi facciamo semplicemente tipo un mini planning che fa vedere
+   gli appuntamenti in agenda del giorno» — Francesco.
+
+   Una lettura sua, nel suo contenitore: se l'agenda non risponde il lavoro del
+   giorno resta in piedi, e viceversa (§35). «Non si è potuto leggere l'agenda»
+   non è «oggi è libera» (§12, §18): sono due frasi diverse.
+   Il giorno è quello LOCALE (wdsISO), mai toISOString (§44).
+   Chi vede che cosa: la stessa regola di loadAgendaDB, scritta una volta sola
+   qui accanto — il collaboratore vede le sue e quelle condivise con lui. */
+async function oggiAgenda() {
+  const box = document.getElementById('oggi-ag');
+  if (!box) return;
+  const mio = oggiAgenda.giro = (oggiAgenda.giro || 0) + 1;
+  const oggi = wdsISO(new Date());
+  let righe = [], guasto = false;
+  if (db && ME) {
+    try {
+      let q = db.from('iam_agenda').select('id,data,ora,titolo,note').eq('data', oggi);
+      if (PROFILO && PROFILO.ruolo === 'collaboratore') {
+        q = q.or('utente_id.eq.' + ME.id + ',condivisi_con.cs.{' + ME.id + '}');
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      righe = (data || []).map(a => ({ ...a, id: String(a.id) }));
+    } catch (e) { console.warn('Agenda di oggi:', e.message || e); guasto = true; }
+  } else guasto = true;
+  /* Quello scritto sul browser e non ancora nell'archivio si vede lo stesso,
+     marcato: sparirebbe proprio l'appuntamento appena preso. */
+  const ids = new Set(righe.map(a => a.id));
+  agendaLocale().filter(a => a && a.data === oggi && !ids.has(String(a.id)))
+    .forEach(a => righe.push({ ...a, id: String(a.id), _locale: true }));
+  if (mio !== oggiAgenda.giro) return;
+  box.innerHTML = oggiAgendaHTML(righe, { guasto, ora: new Date() });
+}
+
+/* Il disegno è puro: righe dentro, HTML fuori. Senza ora vanno in testa
+   («in giornata»); passati, prossimo e successivi si distinguono. */
+function oggiAgendaHTML(righe, info) {
+  info = info || {};
+  const adesso = info.ora || new Date();
+  const hh = String(adesso.getHours()).padStart(2, '0') + ':' + String(adesso.getMinutes()).padStart(2, '0');
+  const ord = (righe || []).slice().sort((a, b) => String(a.ora || '').localeCompare(String(b.ora || '')));
+  const conta = ord.length === 1 ? '1 appuntamento' : ord.length + ' appuntamenti';
+  const testa = '<h3 class="oggi-gh"><span>Agenda di oggi</span><span class="oggi-gh-n">'
+    + (info.guasto && !ord.length ? 'non letta' : conta) + '</span></h3>';
+  const avviso = info.guasto
+    ? '<div class="oggi-guasto" role="status">Non si è potuto leggere l\'agenda: non vuol dire che oggi sia libera.</div>'
+    : '';
+  if (!ord.length) {
+    return testa + (avviso || '<div class="oggi-ag-vuoto">Nessun appuntamento in agenda oggi.</div>');
+  }
+  const TETTO = 8;
+  const prossimo = ord.findIndex(a => a.ora && String(a.ora).slice(0, 5) >= hh);
+  const riga = (a, i) => {
+    const o = a.ora ? String(a.ora).slice(0, 5) : '';
+    const cls = !o ? '' : (o < hh ? ' oggi-ag-pass' : (i === prossimo ? ' oggi-ag-pross' : ''));
+    const nota = a._locale ? 'non ancora salvato nell\'archivio' : (a.note || '');
+    return '<button class="oggi-ag-r' + cls + '" type="button" onclick="goTab(\'workdiary\')">'
+      + '<span class="oggi-ag-ora">' + (o ? esc(o) : '<span class="oggi-ag-gg">in giornata</span>') + '</span>'
+      + '<span class="oggi-ag-pt" aria-hidden="true"></span>'
+      + '<span class="oggi-ag-txt"><span class="oggi-ag-t">' + esc(a.titolo || 'Senza titolo') + '</span>'
+      + (nota ? '<span class="oggi-ag-n">' + esc(nota) + '</span>' : '') + '</span></button>';
+  };
+  const altri = ord.length > TETTO
+    ? '<span class="oggi-ag-altri">e altri ' + (ord.length - TETTO) + ' in agenda</span>' : '';
+  return testa + avviso + '<div class="oggi-ag-l">' + ord.slice(0, TETTO).map(riga).join('') + '</div>' + altri;
+}
+
 let OGGI_ULTIMO = 0;
 /* Ogni ricalcolo prende un numero: chi torna e non è l'ultimo partito non
    scrive, così due ricalcoli in volo non mescolano i loro numeri. */
@@ -15490,6 +15592,9 @@ async function caricaDaFareOggi(forza) {
   // si controlla `db`, non `window.db`: sono due cose diverse (db è una
   // variabile di modulo e non finisce sull'oggetto window)
   if (!db) { box.innerHTML = '<div class="oggi-attesa">Servizio dati non disponibile.</div>'; return; }
+  /* L'agenda si rilegge ogni volta, anche dentro i trenta secondi: è una
+     lettura sola, e un appuntamento preso un minuto fa deve già esserci. */
+  oggiAgenda();
   const ora = new Date().getTime();
   if (!forza && OGGI_ULTIMO && (ora - OGGI_ULTIMO) < 30000) return;
   OGGI_ULTIMO = ora;

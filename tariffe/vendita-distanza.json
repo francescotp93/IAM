@@ -5,6 +5,21 @@
     "compagnia": "HDI Assicurazioni S.p.A.",
     "vendita_online": false,
     "motivo": "In attesa del Set Informativo della compagnia e della verifica della tariffa: per ora ti prepariamo il preventivo e ti ricontatta un consulente.",
-    "documenti": []
+    "documenti": [
+      {
+        "nome": "DIP aggiuntivo Danni (Mod. DAP5821, ed. 05/2026)",
+        "url": "/docs/catastrofali/RischiCatastrofali_DIP_Aggiuntivo_DAP5821_05-2026.pdf"
+      },
+      {
+        "nome": "Condizioni di Assicurazione (Mod. P5821, ed. 06/2026)",
+        "url": "/docs/catastrofali/RischiCatastrofali_Condizioni_P5821_06-2026.pdf"
+      }
+    ],
+    "mancano": [
+      "DIP Danni (Mod. DP5821): fa parte del Set Informativo e va consegnato prima della stipula",
+      "Autorizzazione di HDI alla vendita a distanza del prodotto",
+      "Verifica della tariffa sul portale HDI",
+      "Funzione di recesso online (le condizioni prevedono il recesso dalla piattaforma dell'intermediario per le polizze concluse online)"
+    ]
   }
 }

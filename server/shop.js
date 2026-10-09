@@ -4,7 +4,7 @@
 import { Router } from 'express';
 import { avviaFirmaCliente, avviaFirmaPrivacy } from './sign.js';
 import { creaLeadIAM } from './iamLead.js';
-import { quotaCatastrofali, cancelloVendita, configurazione, ESIGENZE_CATNAT } from './venditaDistanza.js';
+import { quotaCatastrofali, cancelloVendita, configurazione, ESIGENZE_CATNAT, SCHEDA_CATNAT } from './venditaDistanza.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
@@ -112,7 +112,7 @@ async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRe
   return { preventivoId, firmaToken };
 }
 
-function leggiCliente(b){ return { nome:String(b?.nome||'').trim().slice(0,80), cognome:String(b?.cognome||'').trim().slice(0,80), cf:String(b?.cf||'').trim().toUpperCase().slice(0,16), email:String(b?.email||'').trim().slice(0,160), telefono:String(b?.telefono||'').trim().slice(0,40) }; }
+function leggiCliente(b){ return { nome:String(b?.nome||'').trim().slice(0,80), cognome:String(b?.cognome||'').trim().slice(0,80), cf:String(b?.cf||'').trim().toUpperCase().slice(0,16), email:String(b?.email||'').trim().slice(0,160), telefono:String(b?.telefono||'').trim().slice(0,40), dataNascita:String(b?.dataNascita||'').trim().slice(0,10) }; }
 
 // ── Anteprima social per-prodotto (Open Graph) + redirect alla landing ───────────
 // Serve link "belli" da condividere su WhatsApp con immagine e titolo del prodotto.
@@ -191,7 +191,7 @@ shopRouter.post('/quote', (req, res) => {
     const cfg = configurazione('catastrofali') || {};
     return res.json({ ok: true, prezzo: c.prezzo, etich: c.etich, dettaglio: c.dettaglio,
       vendita_online: cfg.vendita_online === true && Array.isArray(cfg.documenti) && cfg.documenti.length > 0,
-      motivo: cfg.motivo || null, documenti: cfg.documenti || [], esigenze: ESIGENZE_CATNAT.map(q => ({ k: q.k, d: q.d })) });
+      motivo: cfg.motivo || null, documenti: cfg.documenti || [], esigenze: ESIGENZE_CATNAT.map(q => ({ k: q.k, d: q.d, serve: q.serve, se: q.se || null, no: q.no })), scheda: SCHEDA_CATNAT });
   }
   const q = calcPrezzo(req.body?.prodotto, req.body?.params);
   if (!q) return res.status(404).json({ error: 'Prodotto non quotabile online.' });

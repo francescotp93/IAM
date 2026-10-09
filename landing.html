@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Preventivo assicurazione — With Us</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="withus-one-tokens.css">
 <style>
   :root{ --blue:#3b5bfd; --blue2:#2a45e0; --ink:#141a2e; --muted:#6b7488; --line:#e6e9f2; --c1:#1c8a52; --c2:#0f6b3c; }
   *{box-sizing:border-box}
@@ -94,6 +97,54 @@
   .geo-item{padding:9px 12px;font-size:13.5px;cursor:pointer;border-top:1px solid #f0f2f7}
   .geo-item:first-child{border-top:none}
   .geo-item:hover{background:#f5f7ff}
+
+  /* ═══ IN CHIARO, CON LO STILE DI IAM (09/10/2026) ═══════════════════════════
+     Stessi gettoni di IAM (withus-one-tokens.css), lo stesso carattere
+     (Figtree), fondo chiaro e schede bianche in rilievo. Le regole sopra
+     restano: questo blocco viene dopo e le sovrascrive. Il colore è il verde
+     With Us per tutti i prodotti: una landing per prodotto con un colore suo
+     sembrava un sito diverso ogni volta. */
+  :root{ --c1:var(--w1-verde,#02984e); --c2:var(--w1-verde-scuro,#016b38); --ink:var(--w1-testo,#1f2a37); --muted:#5b6675; --line:var(--w1-bordo,#dde3e9);
+         --lp-sfondo:#f4f6f8; --lp-card:#fff; --lp-ombra:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.06); --lp-r:14px; }
+  body{font-family:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--lp-sfondo);font-variant-numeric:tabular-nums;}
+  button,input,select,textarea{font-family:inherit}
+  .hero{min-height:0;background:var(--lp-sfondo);}
+  .hero-img,.hero-ov{display:none}
+  .hero-in{padding:28px 22px 30px;align-items:start}
+  .brand img{filter:none}
+  .hl{color:var(--ink);text-shadow:none;font-weight:700;font-size:34px;letter-spacing:-.6px;line-height:1.12}
+  .hl .accent{color:var(--c1)}
+  @media(max-width:820px){.hl{font-size:26px}}
+  .claim{color:var(--muted);opacity:1;font-size:15.5px}
+  .chip{background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:600;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .chip i{color:var(--c1)}
+  .cta{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:var(--lp-ombra);font-weight:600}
+  .lp-foto{display:block;width:100%;max-width:520px;height:190px;object-fit:cover;border-radius:var(--lp-r);border:1px solid var(--line);margin-top:18px;box-shadow:var(--lp-ombra)}
+  @media(max-width:820px){.lp-foto{display:none}}
+  .pcard{border:1px solid var(--line);border-radius:var(--lp-r);box-shadow:var(--lp-ombra)}
+  .pcard .ph{font-weight:700}
+  .price-big .v{font-weight:700;letter-spacing:-1px}
+  .price-big .da,.price-big .u{font-weight:600}
+  .pcta,.btn,.dett-cta{background:var(--c1);border-radius:10px;font-weight:700;box-shadow:none}
+  .pcta:hover,.btn:hover,.dett-cta:hover{background:var(--c2)}
+  .seg button.on{background:var(--c1)}
+  .dett-in{border-radius:var(--lp-r);box-shadow:var(--lp-ombra);margin-top:0}
+  .dett-h{font-weight:700}
+  .dett-cell{background:#f7f8fa}
+  .dett-cell .v{font-weight:700;font-size:17px}
+  .card{border-radius:var(--lp-r);box-shadow:var(--lp-ombra)}
+  .card h2{font-weight:700}
+  input:focus,select:focus,textarea:focus{box-shadow:var(--w1-focus,0 0 0 3px rgba(2,152,78,.14))}
+  .ck-box{border-radius:var(--lp-r)}
+  .lp-docs{margin:0 0 18px;padding:12px 14px;background:#f7f8fa;border:1px solid var(--line);border-radius:10px}
+  .lp-docs b{display:block;font-size:13px;margin-bottom:6px}
+  .lp-docs a{display:flex;gap:7px;align-items:center;color:var(--c1);font-weight:600;font-size:13.5px;padding:4px 0}
+  .lp-avv{display:flex;gap:8px;background:#fff8eb;border:1px solid #f3d9a4;color:#7a4b00;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.45;margin:0 0 14px}
+  .lp-q{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:6px 0;background:#fff}
+  .lp-q .t{font-size:13px;margin-bottom:6px;color:var(--ink)}
+  .lp-q label{display:inline-flex;gap:6px;align-items:center;margin:0 16px 0 0;font-size:13px;color:var(--ink);font-weight:500}
+  .lp-q input{width:auto}
+  .lp-h{font-weight:700;font-size:15px;margin:14px 0 6px}
 </style>
 </head>
 <body>
@@ -102,11 +153,12 @@
   <div class="hero-ov"></div>
   <div class="hero-in">
     <div>
-      <div class="brand"><img src="withus-logo-white.png" alt="With Us Assicurazioni" style="height:36px;width:auto;display:block"></div>
+      <div class="brand"><img src="withus-logo-green.png" alt="With Us Assicurazioni" style="height:36px;width:auto;display:block"></div>
       <h1 class="hl" id="hl"></h1>
       <p class="claim" id="claim"></p>
       <div class="chips" id="chips"></div>
       <a class="cta" href="#richiedi">Scopri di più <i class="ti ti-arrow-right"></i></a>
+      <img class="lp-foto" id="lp-foto" alt="" onerror="this.remove()">
     </div>
     <div class="pcard" id="pcard"></div>
   </div>
@@ -241,12 +293,31 @@ const PRODOTTI = {
     hl:'La copertura <span class="accent">su misura</span> per la tua professione.',
     claim:'La RC professionale obbligatoria, con massimali e garanzie adatti al tuo lavoro.',
     benef:['Massimali su misura','Retroattività e postuma','Tariffe per ogni categoria','Emissione rapida'], quote:{ tipo:'lead' } },
-  catastrofali: { nome:'Rischi Catastrofali Abitazione', c1:'#9a3412', c2:'#7c2d12', img:IMG('1568605114967-8130f3a36994'),
-    hl:'La tua <span class="accent">casa</span> al sicuro da terremoto e alluvione.',
-    claim:'Una copertura per i danni all\'abitazione causati da terremoto e, se la scegli, da alluvione e inondazione. Il premio dipende dal CAP e dal valore di ricostruzione.',
-    benef:['Terremoto sul fabbricato, sempre incluso','Alluvione e inondazione, se le scegli','Contenuto al 20% del valore del fabbricato','Premio calcolato sul CAP dell\'abitazione'],
-    chips:['Preventivo immediato','Premio sul tuo CAP','Senza telefonate'],
-    compagnia:'Prodotto di HDI Assicurazioni S.p.A., distribuito da With Us',
+  catastrofali: { nome:'Rischi Catastrofali Abitazione', c1:'#02984e', c2:'#016b38', img:IMG('1568605114967-8130f3a36994'),
+    hl:'La tua <span class="accent">casa</span> protetta da terremoto e alluvione.',
+    claim:'Copertura completa per i danni materiali alla casa e a quello che contiene causati da terremoto, alluvione, inondazione e bombe d\'acqua. Il premio dipende dal CAP e dal valore di ricostruzione.',
+    benef:['Terremoto su fabbricato e contenuto','Alluvione, inondazione e bombe d\'acqua su fabbricato e contenuto','Contenuto assicurato al 20% del valore del fabbricato','Esente da imposte e detraibile al 19% dall\'IRPEF'],
+    chips:['Premio sul tuo CAP','Esente da imposte','Detrazione IRPEF 19%'],
+    compagnia:'Prodotto «# Rischi Catastrofali» di HDI Assicurazioni S.p.A., distribuito da With Us',
+    dettagli:{
+      voci:[
+        {k:'Fabbricato assicurabile',v:'da 40.000 a 1.100.000 €'},
+        {k:'Contenuto',v:'20% del fabbricato'},
+        {k:'Franchigia',v:'10% della somma assicurata'},
+        {k:'Limite di indennizzo fabbricato',v:'80% della somma'},
+        {k:'Copertura attiva',v:'dal 20° giorno dal pagamento'},
+        {k:'Imposte',v:'esente · detraibile 19%'},
+      ],
+      include:[
+        'Danni materiali e diretti da terremoto al fabbricato e al contenuto, compresi incendio, esplosione e scoppio che ne derivano',
+        'Alluvione, inondazione e bombe d\'acqua, sul fabbricato e sul contenuto',
+        'Le scosse nelle 72 ore successive contano come un unico sinistro',
+        'Spese supplementari: demolizione e sgombero, pernottamento altrove se la casa è inagibile, periti, utenze, riprogettazione (con i limiti delle condizioni)',
+        'Durata annuale con tacito rinnovo, con somme e premio adeguati all\'indice ISTAT',
+        'Per l\'alluvione la franchigia minima è di 5.000 €; il contenuto è indennizzato se è danneggiato anche il fabbricato',
+      ],
+      escluso:'Non assicura: edifici in costruzione, abbandonati o non in buone condizioni; abitazioni inagibili o costruite senza autorizzazioni; per l\'alluvione, edifici in area golenale; mareggiate, frane, bradisismo, eruzioni; gioielli, preziosi e denaro. Il terremoto è coperto se l\'area è indicata nei provvedimenti delle Autorità. Leggi l\'elenco completo nelle Condizioni di Assicurazione.',
+    },
     quote:{ tipo:'catnat' } },
   casa:      { nome:'Casa', c1:'#2b8a3e', c2:'#1f6b2e', img:IMG('1568605114967-8130f3a36994'),
     hl:'La tua <span class="accent">casa</span> al sicuro.',
@@ -267,13 +338,11 @@ var SS = { tipo:'attiva', liv:'base', comp:'s' };
 var QS = { opt:0, addon:false };
 /* Rischi catastrofali: il premio lo calcola SOLO il server (/shop/quote), con
    lo stesso motore del preventivatore. La pagina tiene i dati e la risposta. */
-var CN = { cap:'', valore:'', terrCont:false, alluFabb:false, alluCont:false, q:null, err:'', calcolo:false };
+var CN = { cap:'', valore:'', terrCont:true, alluFabb:true, alluCont:true, q:null, err:'', calcolo:false };
 
-document.documentElement.style.setProperty('--c1', P.c1);
-document.documentElement.style.setProperty('--c2', P.c2);
-document.getElementById('hero').style.setProperty('--c1', P.c1);
-document.getElementById('hero').style.setProperty('--c2', P.c2);
-document.getElementById('hero-img').src = P.img;
+/* Il colore è quello di IAM per tutti i prodotti (09/10/2026): P.c1/P.c2
+   restano nei dati ma non si applicano più. La foto va in una scheda. */
+document.getElementById('lp-foto').src = P.img;
 document.getElementById('hl').innerHTML = P.hl;
 document.getElementById('claim').textContent = P.claim;
 document.getElementById('f-title').textContent = 'Chiedi informazioni · ' + P.nome;
@@ -306,6 +375,18 @@ if (P.compagnia){
     '<li><i class="ti ti-circle-check-filled"></i> '+esc(x)+'</li>').join('');
   const exEl = document.getElementById('dett-escluso');
   if (exEl){ if (d.escluso){ exEl.innerHTML = '<i class="ti ti-alert-triangle"></i> '+esc(d.escluso); exEl.style.display='flex'; } else exEl.style.display='none'; }
+  /* I documenti si leggono dalla stessa configurazione che usa il server per
+     decidere se si vende: il cliente scarica quello che poi gli viene chiesto
+     di aver letto. */
+  if (key==='catastrofali'){
+    const box=document.createElement('div'); box.className='lp-docs'; box.id='lp-docs';
+    box.innerHTML='<b>Documenti del prodotto</b><span style="font-size:12.5px;color:var(--muted)">Caricamento…</span>';
+    exEl.after(box);
+    fetch('tariffe/vendita-distanza.json',{cache:'no-store'}).then(r=>r.json()).then(c=>{
+      const d=((c||{}).catastrofali||{}).documenti||[];
+      box.innerHTML='<b>Documenti del prodotto, da leggere prima di acquistare</b>'+(d.length?d.map(x=>'<a href="'+esc(x.url)+'" target="_blank" rel="noopener"><i class="ti ti-file-download"></i> '+esc(x.nome)+'</a>').join(''):'<span style="font-size:12.5px;color:var(--muted)">Non ancora disponibili: chiedili al consulente.</span>');
+    }).catch(()=>{ box.innerHTML='<b>Documenti del prodotto</b><span style="font-size:12.5px;color:var(--muted)">Non si sono potuti caricare: chiedili al consulente.</span>'; });
+  }
   const cta = document.getElementById('dett-cta');
   if (cta){ if (isQuotabile()) cta.onclick = apriCheckout; else cta.style.display='none'; }
   sec.hidden = false;
@@ -338,16 +419,14 @@ function renderPcard(){
     if (q.addon) ctrl += '<label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 2px"><input type="checkbox" '+(QS.addon?'checked':'')+' onchange="QS.addon=this.checked;upd()" style="width:18px;height:18px"> '+q.addon.l+' (+'+eur(q.addon.p)+')</label>';
     priceHtml = ctrl + '<div class="price-big" style="margin-top:8px"><div class="da">'+(q.from?'a partire da':'il tuo preventivo')+'</div><div class="v">'+eur(tot)+'</div><div class="u">all\'anno'+(q.from?'':' · ('+eur(Math.round(tot/12))+'/mese)')+'</div></div>';
   } else if (q.tipo==='catnat'){
-    const chk=(k,l,dis)=>'<label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:5px 0'+(dis?';opacity:.45':'')+'"><input type="checkbox" '+(CN[k]?'checked':'')+(dis?' disabled':'')+' onchange="cnSet(\''+k+'\',this.checked)" style="width:18px;height:18px"> '+l+'</label>';
+    /* Un solo prodotto, completo: niente scelte (decisione del 09/10/2026). */
     priceHtml = '<div class="qrow"><input id="cn-cap" inputmode="numeric" maxlength="5" placeholder="CAP dell\'abitazione" value="'+esc(CN.cap)+'" oninput="CN.cap=this.value.replace(/\\D/g,\'\');CN.q=null">'
-      + '<input id="cn-val" inputmode="numeric" placeholder="Valore di ricostruzione (€)" value="'+esc(CN.valore)+'" oninput="CN.valore=this.value.replace(/\\D/g,\'\');CN.q=null"></div>'
-      + '<div style="font-size:11.5px;color:var(--muted);margin:2px 0 6px">Il valore di ricostruzione è quanto costerebbe ricostruire la casa, non il prezzo di mercato.</div>'
-      + chk('terrCont','Terremoto anche sul contenuto (20%)')
-      + chk('alluFabb','Alluvione e inondazione sul fabbricato')
-      + chk('alluCont','Alluvione e inondazione anche sul contenuto (20%)', !(CN.terrCont&&CN.alluFabb))
-      + '<button class="pcta" style="margin-top:8px" onclick="cnCalcola()"'+(CN.calcolo?' disabled':'')+'><i class="ti ti-calculator"></i> '+(CN.calcolo?'CALCOLO…':'CALCOLA IL PREMIO')+'</button>'
+      + '<input id="cn-val" inputmode="numeric" placeholder="Valore di ricostruzione (€, da 40.000)" value="'+esc(CN.valore)+'" oninput="CN.valore=this.value.replace(/\\D/g,\'\');CN.q=null"></div>'
+      + '<div style="font-size:11.5px;color:var(--muted);margin:2px 0 8px">Il valore di ricostruzione è quanto costerebbe ricostruire la casa da zero, non il prezzo di mercato.</div>'
+      + '<div style="font-size:12.5px;color:var(--ink);background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:8px 11px;line-height:1.55"><b>Prodotto completo</b>: terremoto e alluvione, inondazione e bombe d\'acqua, sul fabbricato e sul contenuto (20% del fabbricato).</div>'
+      + '<button class="pcta" style="margin-top:10px" onclick="cnCalcola()"'+(CN.calcolo?' disabled':'')+'><i class="ti ti-calculator"></i> '+(CN.calcolo?'CALCOLO…':'CALCOLA IL PREMIO')+'</button>'
       + (CN.err?'<div class="msg err" style="display:block;margin-top:8px">'+esc(CN.err)+'</div>':'')
-      + (CN.q ? '<div class="price-big" style="margin-top:12px"><div class="da">'+(CN.q.vendita_online?'il tuo preventivo':'stima del premio')+'</div><div class="v">'+eur(CN.q.prezzo)+'</div><div class="u">all\'anno</div></div>'
+      + (CN.q ? '<div class="price-big" style="margin-top:12px"><div class="da">'+(CN.q.vendita_online?'il tuo preventivo':'stima del premio')+'</div><div class="v">'+eur(CN.q.prezzo)+'</div><div class="u">all\'anno · esente da imposte</div></div>'
           + (CN.q.vendita_online?'':'<div style="font-size:12px;color:var(--muted);margin:4px 0 0">'+esc(CN.q.motivo||'Non acquistabile online: ti ricontatta un consulente.')+'</div>') : '');
   } else {
     priceHtml = '<div class="price-big"><div class="da">preventivo</div><div class="v" style="font-size:30px">Su misura</div><div class="u">in base alle tue esigenze</div></div>';
@@ -360,12 +439,12 @@ function renderPcard(){
     + '<button class="pcta" style="background:#eef1f6;color:var(--ink);margin-top:8px" onclick="document.getElementById(\'richiedi\').scrollIntoView({behavior:\'smooth\'})"><i class="ti ti-phone"></i> CHIEDI INFORMAZIONI</button>';
 }
 function upd(){ renderPcard(); }
-function cnSet(k,v){ CN[k]=v; if(!(CN.terrCont&&CN.alluFabb)) CN.alluCont=false; CN.q=null; renderPcard(); }
-function cnParams(){ return { cap:CN.cap, valore:Number(CN.valore)||0, terrCont:CN.terrCont, alluFabb:CN.alluFabb, alluCont:CN.alluCont }; }
+function cnParams(){ return { cap:CN.cap, valore:Number(CN.valore)||0, terrCont:true, alluFabb:true, alluCont:true }; }
 async function cnCalcola(){
   CN.err=''; CN.q=null;
   if(!/^\d{5}$/.test(CN.cap)){ CN.err='Indica il CAP dell\'abitazione (5 cifre).'; return renderPcard(); }
   if(!(Number(CN.valore)>0)){ CN.err='Indica il valore di ricostruzione.'; return renderPcard(); }
+  if(Number(CN.valore)<40000||Number(CN.valore)>1100000){ CN.err='Il valore di ricostruzione assicurabile va da 40.000 a 1.100.000 €.'; return renderPcard(); }
   CN.calcolo=true; renderPcard();
   try{
     const r=await fetch(API+'/shop/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto:key,params:cnParams()})});
@@ -392,7 +471,7 @@ document.getElementById('lead-form').addEventListener('submit', async function(e
          valore al telefono: la richiesta li porta con sé. */
       messaggio:(document.getElementById('messaggio').value.trim()
         +(((P.quote||{}).tipo==='catnat'&&CN.q)?'\n[Catastrofali] CAP '+CN.cap+' · valore ricostruzione '+eur(Number(CN.valore)||0)+' · stima '+eur(CN.q.prezzo)+'/anno'
-          +(CN.terrCont?' · terremoto contenuto':'')+(CN.alluFabb?' · alluvione fabbricato':'')+(CN.alluCont?' · alluvione contenuto':''):'')).trim(),fonte:'landing · '+fonte,
+          +' · prodotto completo':'')).trim(),fonte:'landing · '+fonte,
       azienda_web:document.getElementById('azienda_web').value
     })});
     const d=await r.json().catch(()=>({}));
@@ -503,6 +582,11 @@ async function ckDataNext(){
     indirizzo:g('ck-indirizzo'), civico:g('ck-civico'), comune:g('ck-comune'), cap:g('ck-cap'), provincia:g('ck-prov').toUpperCase(),
     email:g('ck-email'), telefono:g('ck-tel') };
   if(!c.nome||!c.cognome||!c.cf||!c.email){ err.className='msg err'; err.textContent='Compila i campi obbligatori (nome, cognome, codice fiscale, email).'; return; }
+  if((P.quote||{}).tipo==='catnat'){
+    /* Contraente = proprietario, persona fisica maggiorenne (nota tecnica). */
+    if(!/^[A-Z0-9]{16}$/.test(c.cf)){ err.className='msg err'; err.textContent='Serve il codice fiscale del proprietario (16 caratteri): la polizza non si intesta a una partita IVA.'; return; }
+    if(!c.dataNascita){ err.className='msg err'; err.textContent='Indica la data di nascita: il contraente deve essere maggiorenne.'; return; }
+  }
   if(!document.getElementById('ck-priv').checked){ err.className='msg err'; err.textContent='Devi accettare il consenso privacy per proseguire.'; return; }
   CK.cliente=c;
   const btn=document.getElementById('ck-data-next'); btn.disabled=true; err.className='msg'; err.textContent='Registrazione anagrafica… (il server può metterci fino a 1 minuto la prima volta)';
@@ -605,34 +689,61 @@ async function ckDocsNext(){
 //   40/2018). Le domande e i documenti arrivano dal server: una lista sola, e
 //   il server ricontrolla le risposte prima di incassare.
 function ckStepEsigenze(){
-  const q=CN.q||{}, dom=q.esigenze||[], docs=q.documenti||[], dt=q.dettaglio||{};
+  const q=CN.q||{}, dt=q.dettaglio||{}, docs=q.documenti||[], sc=q.scheda||{};
+  /* Le domande condizionate (es. area golenale) valgono solo se la garanzia
+     alluvione è scelta: stessa regola del server. */
+  const dom=(q.esigenze||[]).filter(d=>!d.se || dt[d.se]);
+  const sel=(id,lab,opz)=>'<label>'+lab+' *</label><select id="'+id+'"><option value="">Scegli…</option>'+(opz||[]).map(o=>'<option>'+esc(o)+'</option>').join('')+'</select>';
   const gar=(dt.garanzie||[]).map(g=>'<li>'+esc(g.nome)+' · somma '+eur(Math.round(g.somma))+'</li>').join('');
   document.getElementById('ck-body').innerHTML= ckSteps(ckN('Esigenze'))
-    +'<div style="font-weight:800;font-size:15px;margin-bottom:6px">Le tue esigenze</div>'
-    +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 8px">Servono a verificare che la polizza sia coerente con quello che ti serve. Se non lo è, non procediamo online e ti ricontatta un consulente.</p>'
-    + dom.map(d=>'<div style="border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:6px 0"><div style="font-size:13px;margin-bottom:6px">'+esc(d.d)+'</div>'
-        +'<label style="display:inline-flex;gap:6px;align-items:center;margin-right:16px;font-size:13px"><input type="radio" name="es-'+d.k+'" value="si" style="width:auto"> Sì</label>'
-        +'<label style="display:inline-flex;gap:6px;align-items:center;font-size:13px"><input type="radio" name="es-'+d.k+'" value="no" style="width:auto"> No</label></div>').join('')
-    +'<div style="font-weight:800;font-size:15px;margin:14px 0 6px">Riepilogo della polizza</div>'
-    +'<div style="font-size:13px;line-height:1.6">CAP abitazione <b>'+esc(dt.cap||'')+'</b> · valore di ricostruzione <b>'+eur(dt.valore||0)+'</b><ul style="margin:6px 0 4px 18px;padding:0">'+gar+'</ul>Premio annuo <b>'+eur(q.prezzo||0)+'</b></div>'
-    +'<div style="font-weight:800;font-size:15px;margin:14px 0 6px">Documentazione precontrattuale</div>'
-    +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 6px">Scarica e conserva i documenti: sono su supporto durevole e vanno letti prima di acquistare. Riceverai anche il Modulo Unico Precontrattuale (MUP) dell\'intermediario.</p>'
-    + docs.map(d=>'<div style="margin:4px 0"><a href="'+esc(d.url)+'" target="_blank" rel="noopener" style="color:var(--c1);font-weight:700"><i class="ti ti-file-download"></i> '+esc(d.nome)+'</a></div>').join('')
-    +'<p style="color:var(--muted);font-size:12px;margin:10px 0 0">Hai diritto di recedere entro 14 giorni dalla conclusione del contratto, senza penali e senza indicarne il motivo, scrivendo a With Us.</p>'
-    +'<label class="consent" style="margin-top:10px"><input type="checkbox" id="ck-es-letta"> Dichiaro di aver <b>ricevuto, scaricato e letto</b> la documentazione precontrattuale prima dell\'acquisto. *</label>'
+    +'<div class="lp-h" style="margin-top:0">Le tue esigenze</div>'
+    +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 8px">Servono a verificare che la polizza sia adatta a te e alla tua casa. Se non lo è, non procediamo online e ti ricontatta un consulente.</p>'
+    + dom.map(d=>'<div class="lp-q"><div class="t">'+esc(d.d)+'</div>'
+        +'<label><input type="radio" name="es-'+d.k+'" value="si"> Sì</label>'
+        +'<label><input type="radio" name="es-'+d.k+'" value="no"> No</label></div>').join('')
+    +'<div class="lp-h">La tua abitazione</div>'
+    +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 4px">Sono i dati che vanno sulla scheda di polizza.</p>'
+    +'<label>Indirizzo e numero civico *</label><input id="ab-ind">'
+    +'<div style="display:flex;gap:10px"><div style="flex:2"><label>Comune *</label><input id="ab-com"></div><div style="flex:1"><label>Interno</label><input id="ab-int"></div></div>'
+    +sel('ab-tip','Tipo di abitazione',sc.tipologia)
+    +'<div id="ab-piano-w">'+sel('ab-piano','Piano',sc.piano)+'</div>'
+    +sel('ab-dest','Uso dell\'abitazione',sc.destinazione)
+    +sel('ab-sup','Superficie',sc.superficie)
+    +sel('ab-eta','Età dell\'edificio',sc.eta)
+    +'<div style="display:flex;gap:10px"><div style="flex:1"><label>Piani fuori terra dell\'edificio *</label><input id="ab-pft" type="number" min="1" step="1"></div><div style="flex:1"><label>Piani interrati o seminterrati *</label><input id="ab-pin" type="number" min="0" step="1"></div></div>'
+    +'<div class="lp-h">Riepilogo della polizza</div>'
+    +'<div style="font-size:13px;line-height:1.6">CAP abitazione <b>'+esc(dt.cap||'')+'</b> · valore di ricostruzione <b>'+eur(dt.valore||0)+'</b><ul style="margin:6px 0 4px 18px;padding:0">'+gar+'</ul>Premio annuo <b>'+eur(q.prezzo||0)+'</b>, esente da imposte</div>'
+    +'<div class="lp-h">Cosa devi sapere prima di acquistare</div>'
+    +'<div class="lp-avv"><i class="ti ti-alert-triangle"></i><div>La copertura <b>parte dal 20° giorno</b> dopo il pagamento. In caso di danno restano a tuo carico una <b>franchigia del 10%</b> della somma assicurata (per l\'alluvione almeno 5.000 €), e per il fabbricato l\'indennizzo arriva <b>al massimo all\'80%</b> della somma. Se il valore assicurato è più basso del costo di ricostruzione, l\'indennizzo si riduce in proporzione. La polizza è annuale con <b>tacito rinnovo</b>: si disdice con raccomandata o PEC almeno 30 giorni prima della scadenza.</div></div>'
+    +'<label class="consent" style="margin-top:0"><input type="checkbox" id="ck-es-avv"> Ho preso atto di carenza, franchigie, limiti di indennizzo e tacito rinnovo. *</label>'
+    +'<div class="lp-h">Documentazione precontrattuale</div>'
+    +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 6px">Scarica e conserva i documenti: vanno letti prima di acquistare. Riceverai anche il Modulo Unico Precontrattuale (MUP) dell\'intermediario.</p>'
+    +'<div class="lp-docs">'+docs.map(d=>'<a href="'+esc(d.url)+'" target="_blank" rel="noopener"><i class="ti ti-file-download"></i> '+esc(d.nome)+'</a>').join('')+'</div>'
+    +'<p style="color:var(--muted);font-size:12px;margin:0">Hai diritto di recedere entro 14 giorni dalla conclusione del contratto (o dalla ricezione dei documenti, se successiva), con raccomandata A/R o PEC a HDI Assicurazioni; il premio ti viene rimborsato entro 30 giorni.</p>'
+    +'<label class="consent"><input type="checkbox" id="ck-es-letta"> Dichiaro di aver <b>ricevuto, scaricato e letto</b> la documentazione precontrattuale prima dell\'acquisto. *</label>'
     +'<button class="btn" id="ck-es-next" onclick="ckEsigenzeNext()">Procedi al pagamento →</button><div class="msg err" id="ck-es-err"></div>';
+  const tip=document.getElementById('ab-tip'), pw=document.getElementById('ab-piano-w');
+  const piano=()=>{ pw.style.display = tip.value==='Villa monofamiliare' ? 'none' : ''; };
+  tip.addEventListener('change',piano); piano();
+  const c=CK.cliente||{}; if(c.indirizzo) document.getElementById('ab-ind').value=(c.indirizzo+' '+(c.civico||'')).trim(); if(c.comune) document.getElementById('ab-com').value=c.comune;
 }
 function ckEsigenzeNext(){
-  const err=document.getElementById('ck-es-err'), dom=(CN.q&&CN.q.esigenze)||[], es={};
+  const err=document.getElementById('ck-es-err'), q=CN.q||{}, dt=q.dettaglio||{};
+  const dom=(q.esigenze||[]).filter(d=>!d.se || dt[d.se]), es={};
   for(const d of dom){ const x=document.querySelector('input[name="es-'+d.k+'"]:checked'); if(!x){ err.className='msg err'; err.textContent='Rispondi a tutte le domande.'; return; } es[d.k]=(x.value==='si'); }
-  /* La regola di coerenza la sa il server: qui si chiede e basta. Se il
-     server rifiuta, il messaggio arriva al passo del pagamento. Per non far
-     pagare a vuoto, però, la risposta che non va si dice subito. */
-  const sbagliate=['abitazione','titolo','bisogno','valore'].filter(k=>es[k]===false).length + (es.doppia===true?1:0);
-  if(sbagliate){ err.className='msg err'; err.innerHTML='Dalle risposte la polizza non risulta coerente con le tue esigenze, quindi non la attiviamo online. <a href="#richiedi" onclick="document.getElementById(\'ck-ov\').remove()" style="color:inherit;font-weight:700">Lascia i tuoi recapiti</a> e ti ricontatta un consulente.'; return; }
+  /* La regola di coerenza è del server; qui la si applica con le stesse
+     risposte attese che il server manda, solo per non far pagare a vuoto. */
+  const fuori=dom.filter(d=>es[d.k]!==d.serve);
+  if(fuori.length){ err.className='msg err'; err.innerHTML=esc(fuori[0].no||'La polizza non risulta adatta alle tue esigenze.')+' <a href="#richiedi" onclick="document.getElementById(\'ck-ov\').remove()" style="color:inherit;font-weight:700">Lascia i tuoi recapiti</a> e ti ricontatta un consulente.'; return; }
+  const v=id=>(document.getElementById(id).value||'').trim();
+  const ab={ indirizzo:v('ab-ind'), comune:v('ab-com'), interno:v('ab-int'), tipologia:v('ab-tip'), piano:v('ab-tip')==='Villa monofamiliare'?'':v('ab-piano'),
+    destinazione:v('ab-dest'), superficie:v('ab-sup'), eta:v('ab-eta'), piani_fuori_terra:parseInt(v('ab-pft'),10), piani_interrati:parseInt(v('ab-pin'),10), cap:dt.cap };
+  if(!ab.indirizzo||!ab.comune||!ab.tipologia||(ab.tipologia!=='Villa monofamiliare'&&!ab.piano)||!ab.destinazione||!ab.superficie||!ab.eta||!(ab.piani_fuori_terra>=1)||!(ab.piani_interrati>=0)){
+    err.className='msg err'; err.textContent='Completa i dati dell\'abitazione.'; return; }
+  if(!document.getElementById('ck-es-avv').checked){ err.className='msg err'; err.textContent='Conferma di aver preso atto di carenza, franchigie e limiti.'; return; }
   if(!document.getElementById('ck-es-letta').checked){ err.className='msg err'; err.textContent='Conferma di aver ricevuto e letto la documentazione precontrattuale.'; return; }
-  CK.accettazioni=Object.assign({}, CK.accettazioni, { esigenze:es, precontrattuale_letta:true,
-    documenti_consegnati:((CN.q&&CN.q.documenti)||[]).map(d=>d.nome), precontrattuale_ts:new Date().toISOString() });
+  CK.accettazioni=Object.assign({}, CK.accettazioni, { esigenze:es, abitazione:ab, avvertenze_lette:true, precontrattuale_letta:true,
+    documenti_consegnati:(q.documenti||[]).map(d=>d.nome), precontrattuale_ts:new Date().toISOString() });
   ckStepPay();
 }
 // ── 4) Pagamento ─────────────────────────────────────────────────────────────────

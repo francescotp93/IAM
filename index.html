@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.61.0">
-<meta name="app-versione-nome" content="Clienti: la testata scura con Tutti, Clienti e Lead in grande, come il portafoglio">
+<meta name="app-versione" content="0.62.0">
+<meta name="app-versione-nome" content="Sinistri: la testata scura con gli stati in caselle numerate, come il portafoglio">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -913,6 +913,21 @@ button{font-family:inherit}
 .rin-hero .rin-viste #anag-view-lead{border-left-color:#f86200}
 .rin-hero .rin-seg .ana-tab:focus-visible,.rin-hero .rin-viste .ana-tab:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
 .rin-filtri .anag-search{margin:0}
+/* I sinistri: gli stati come caselle, ognuno col suo colore a sinistra. */
+.rin-viste-5{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.rin-hero .rin-viste .tk-f{display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin:0;
+  padding:10px 14px;border:1px solid rgba(148,178,214,.2);border-left:4px solid rgba(148,178,214,.45);
+  border-radius:12px;background:rgba(255,255,255,.05);color:var(--rin-chiaro2);font-family:inherit;
+  text-align:left;cursor:pointer;box-shadow:none;min-width:0;height:auto}
+.rin-hero .rin-viste .tk-f:hover{background:rgba(255,255,255,.1)}
+.rin-hero .rin-viste .tk-f.active{background:rgba(37,99,235,.28);border-color:#60a5fa;color:var(--rin-chiaro);
+  box-shadow:0 0 0 3px rgba(96,165,250,.22)}
+.rin-hero .sin-n{font-size:24px;font-weight:800;line-height:1.05;color:#fff;font-variant-numeric:tabular-nums}
+.rin-hero .sin-f[data-f="aperto"]{border-left-color:#fb923c}
+.rin-hero .sin-f[data-f="in_gestione"]{border-left-color:#60a5fa}
+.rin-hero .sin-f[data-f="liquidato"]{border-left-color:#34d399}
+.rin-hero .rin-viste .tk-f:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
+@media(max-width:640px){.rin-viste-5{grid-template-columns:repeat(3,minmax(0,1fr))}.rin-hero .sin-n{font-size:20px}}
 @media(max-width:640px){.rin-seg{width:100%}.rin-hero .rin-seg .ana-tab{flex:1;justify-content:center}
   .rin-hero .rin-viste .ana-tab .cl-count{font-size:20px}}
 .pf-em{font-size:11px;color:var(--muted);margin-top:2px}
@@ -4201,17 +4216,33 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
 
     <!-- ── SINISTRI ── -->
     <div class="page" id="page-sinistri">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
-        <div><div class="page-title">Sinistri</div><div class="page-sub">Apertura e gestione delle denunce di sinistro</div></div>
-        <button class="aw-btn-dark" onclick="apriNuovoSinistro()"><i class="ti ti-plus"></i> Apri sinistro</button>
-      </div>
-      <div class="tk-filters" id="sin-filters">
-        <button class="tk-f sin-f active" data-f="tutti" onclick="setSinFilter('tutti')">Tutti</button>
-        <button class="tk-f sin-f" data-f="aperto" onclick="setSinFilter('aperto')">Aperti</button>
-        <button class="tk-f sin-f" data-f="in_gestione" onclick="setSinFilter('in_gestione')">In gestione</button>
-        <button class="tk-f sin-f" data-f="liquidato" onclick="setSinFilter('liquidato')">Liquidati</button>
-        <button class="tk-f sin-f" data-f="chiuso" onclick="setSinFilter('chiuso')">Chiusi</button>
-      </div>
+      <div class="rin-kit">
+      <!-- Stesso linguaggio di portafoglio, titoli e clienti (09/10/2026). -->
+      <header class="rin-hero">
+        <div class="rin-hero-su">
+          <div class="rin-hero-ic" aria-hidden="true"><i class="ti ti-car-crash"></i></div>
+          <div class="rin-hero-t">
+            <div class="rin-occhiello">Portafoglio · Sinistri</div>
+            <h1 class="rin-titolo">Sinistri</h1>
+            <div class="rin-sotto">Apertura e gestione delle denunce di sinistro.</div>
+            <div class="rin-pills" id="sin-chips"></div>
+          </div>
+          <div class="rin-hero-az">
+            <button class="rin-hb rin-hb-pieno" onclick="apriNuovoSinistro()"><i class="ti ti-plus"></i> Apri sinistro</button>
+          </div>
+        </div>
+        <!-- Gli stati sono caselle col numero: il numero conta i sinistri che
+             passano ANCHE gli altri filtri, cioè quelli che il clic mostrerà. -->
+        <div class="rin-viste rin-viste-5" id="sin-filters">
+          <button class="tk-f sin-f active" data-f="tutti" onclick="setSinFilter('tutti')"><b class="sin-n">·</b><span class="rin-vista-l">Tutti</span></button>
+          <button class="tk-f sin-f" data-f="aperto" onclick="setSinFilter('aperto')"><b class="sin-n">·</b><span class="rin-vista-l">Aperti</span></button>
+          <button class="tk-f sin-f" data-f="in_gestione" onclick="setSinFilter('in_gestione')"><b class="sin-n">·</b><span class="rin-vista-l">In gestione</span></button>
+          <button class="tk-f sin-f" data-f="liquidato" onclick="setSinFilter('liquidato')"><b class="sin-n">·</b><span class="rin-vista-l">Liquidati</span></button>
+          <button class="tk-f sin-f" data-f="chiuso" onclick="setSinFilter('chiuso')"><b class="sin-n">·</b><span class="rin-vista-l">Chiusi</span></button>
+        </div>
+      </header>
+      <div class="rin-corpo">
+      <div class="rin-filtri">
       <!-- M2.1/M2.2 (19/09/2026): le date ovunque, e si cerca solo al clic. -->
       <div class="pf-top">
         <div class="pf-filters">
@@ -4222,11 +4253,16 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
           <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="renderSinistri()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="sinAzzeraFiltri()">Azzera filtri</button></div>
         </div>
       </div>
+      </div>
+      <div class="rin-tab">
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr><th>Data denuncia</th><th>Sinistro</th><th>Contraente</th><th>Compagnia / Polizza</th><th>Stato</th><th>Aperto da</th></tr></thead>
           <tbody id="sinistri-body"><tr><td colspan="6"><div class="empty-state">Nessun sinistro registrato.</div></td></tr></tbody>
         </table>
+      </div>
+      </div>
+      </div>
       </div>
     </div>
 
@@ -24480,23 +24516,37 @@ function subscribeEmissioniRealtime(){
 const SIN_STATI = { aperto:{label:'Aperto',cls:'st-aperto'}, in_gestione:{label:'In gestione',cls:'st-lav'}, liquidato:{label:'Liquidato',cls:'st-quotato'}, chiuso:{label:'Chiuso',cls:'st-risolto'} };
 const SIN_RAMI = ['RC Auto','RC Diversi / RCT','Incendio','Furto e Rapina','Infortuni','Malattia','Tutela Legale','Assistenza','Cristalli','Eventi catastrofali','Vita','Animali domestici','Viaggio','Fotovoltaico','Veicoli storici','Altro'];
 let SINISTRI_CACHE = [], SIN_FILTER = 'tutti', SIN_CLIENTE_ID = null, SIN_PREV = null, sinTimer = null, sinPTimer = null;
+function sinRenderChips(n){
+  const box=document.getElementById('sin-chips'); if(!box) return;
+  box.innerHTML=`<span class="rin-pill rin-pill-n"><i class="ti ti-list"></i> ${n} ${n===1?'sinistro':'sinistri'}</span>`
+    +(SINISTRI_CACHE.length>=SIN_TETTO
+      ?`<span class="rin-pill rin-pill-avv" title="Si leggono i ${SIN_TETTO} più recenti: i più vecchi non entrano né nell'elenco né nei numeri delle caselle"><i class="ti ti-alert-triangle"></i> solo i ${SIN_TETTO} più recenti</span>`:'');
+}
 function setSinFilter(f){ SIN_FILTER=f; document.querySelectorAll('#sin-filters .sin-f').forEach(b=>b.classList.toggle('active',b.dataset.f===f)); renderSinistri(); }
 async function loadSinistri(){
   const body=document.getElementById('sinistri-body'); if(!db) return;
   try{
-    let q=db.from('quote_sinistri').select('*').order('creato_il',{ascending:false}).limit(300);
+    let q=db.from('quote_sinistri').select('*').order('creato_il',{ascending:false}).limit(SIN_TETTO);
     const ids=await visibleUserIds(); if(ids) q=q.in('creato_da',ids);
     const {data,error}=await q; if(error) throw error;
     SINISTRI_CACHE=data||[]; renderSinistri();
-  }catch(e){ body.innerHTML=`<tr><td colspan="6"><div class="empty-state">Tabella sinistri non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`; }
+  }catch(e){
+    body.innerHTML=`<tr><td colspan="6"><div class="empty-state">Tabella sinistri non trovata. Esegui lo SQL su Supabase.<br><small>${esc(e.message||e)}</small></div></td></tr>`;
+    /* Numeri del caricamento di prima su un elenco che non si è letto
+       sarebbero falsi: le caselle tornano al punto, le pastiglie si svuotano. */
+    document.querySelectorAll('#sin-filters .sin-n').forEach(x=>x.textContent='·');
+    const c=document.getElementById('sin-chips'); if(c) c.innerHTML='';
+  }
 }
 function sinAzzeraFiltri(){
   ['sinf-da','sinf-a','sinf-cliente','sinf-compagnia'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
   renderSinistri();
 }
+/* Il tetto della lettura: si dichiara invece di tacerlo (§50). */
+const SIN_TETTO=300;
 function renderSinistri(){
   const body=document.getElementById('sinistri-body'); if(!body) return;
-  let list=SINISTRI_CACHE; if(SIN_FILTER!=='tutti') list=list.filter(s=>(s.stato||'aperto')===SIN_FILTER);
+  let list=SINISTRI_CACHE;
   /* M2.1: le date anche qui. La data di riferimento è la denuncia; senza, il
      giorno in cui il sinistro è stato scritto. */
   const v=id=>(document.getElementById(id)?.value||'').trim();
@@ -24506,6 +24556,16 @@ function renderSinistri(){
   if(a) list=list.filter(s=>quando(s)<=a);
   if(cli) list=list.filter(s=>String(s.contraente||'').toLowerCase().includes(cli));
   if(comp) list=list.filter(s=>String(s.compagnia||'').toLowerCase().includes(comp));
+  /* Le caselle degli stati contano sui sinistri che passano gli ALTRI filtri:
+     il numero stampato su una casella è la promessa di quello che il clic
+     mostrerà (§63-bis). */
+  const statoDi=s=>s.stato||'aperto';
+  document.querySelectorAll('#sin-filters .sin-f').forEach(b=>{
+    const n=b.dataset.f==='tutti'?list.length:list.filter(s=>statoDi(s)===b.dataset.f).length;
+    const el=b.querySelector('.sin-n'); if(el) el.textContent=n;
+  });
+  if(SIN_FILTER!=='tutti') list=list.filter(s=>statoDi(s)===SIN_FILTER);
+  sinRenderChips(list.length);
   if(!list.length){ body.innerHTML='<tr><td colspan="6"><div class="empty-state">Nessun sinistro con questi filtri. </div></td></tr>'; return; }
   body.innerHTML=list.map(s=>{const st=SIN_STATI[s.stato||'aperto']||SIN_STATI.aperto; return `<tr style="cursor:pointer" onclick="apriSinistro('${s.id}')" title="Apri sinistro">
     <td style="font-size:12px;color:#aab">${s.data_denuncia?new Date(s.data_denuncia).toLocaleDateString('it-IT'):new Date(s.creato_il).toLocaleDateString('it-IT')}</td>

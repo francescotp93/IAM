@@ -9007,3 +9007,13 @@ scritte **solo dentro `.rin-hero`**: `.ana-tab` è usata anche dai selettori del
 modulo (fisica/giuridica, cliente/lead), che restano com'erano. Una fotografia
 presa subito dopo `anagTab` mostra due tasti accesi: è la transizione di 0,15 s
 di `.ana-tab`, non un difetto — si misura il colore dopo una pausa.
+
+### I sinistri con lo stesso linguaggio (0.62.0, 09/10/2026)
+
+`#page-sinistri` usa la testata `rin-*`. I cinque stati (`#sin-filters`, classi
+`tk-f sin-f` e `data-f` invariate, che `setSinFilter` usa) sono caselle col
+numero (`.sin-n`), contato in `renderSinistri` sui sinistri che passano **gli
+altri filtri**: il numero su una casella è quello che il clic mostrerà
+(§63-bis). Un sinistro senza stato conta come «aperto», come lo disegna la
+riga. La lettura si ferma ai 300 più recenti (`SIN_TETTO`), e quando li
+raggiunge la testata lo dice (§50): prima taceva.

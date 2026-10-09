@@ -63,7 +63,11 @@ function calcCatPremio(cap, valore, opt){
   let pAlluCont=0; if(opt.terrCont && opt.alluFabb && opt.alluCont){ pAlluCont=tAllu*(0.20*valore)/1000; g.push({nome:'Alluvione/Inondazione · Contenuto (20%)', somma:0.20*valore, premio:pAlluCont}); }
   let base = pTerrFabb+pTerrCont+pAlluFabb+pAlluCont;
   if (base < RCAB_PMIN) base = RCAB_PMIN;
-  const baseFloor = Math.floor(base);
+  /* Per difetto all'euro, come ROUNDDOWN del preventivatore Excel di HDI. Prima
+     si toglie il rumore della virgola mobile: 781,55 + 156,31 + 85,14 in
+     JavaScript fa 1022,9999999999999, e un Math.floor nudo dava 1022 dove
+     Excel (15 cifre) dà 1023 — un euro in meno al cliente, CAP 37135. */
+  const baseFloor = Math.floor(Math.round(base * 1e6) / 1e6);
   let premio = baseFloor;                 // nessuna commissione, nessuna tutela legale/peritale
   let semestrale = null;
   if (opt.frazionamento === 'Semestrale' && baseFloor >= 120){ premio = premio*1.02; semestrale = premio/2; }

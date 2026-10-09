@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.58.0">
-<meta name="app-versione-nome" content="Scadenzario: la testata scura con le fasce dentro, come le trattative e il foglio cassa">
+<meta name="app-versione" content="0.59.0">
+<meta name="app-versione-nome" content="Titoli: la testata scura con le fasce dentro, come lo scadenzario">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -884,6 +884,7 @@ button{font-family:inherit}
 .rin-tab{overflow:hidden}
 .rin-tab .table-wrap{margin:0;border:0;border-radius:0}
 .rin-tab .pf-totali{margin:0;border:0;border-top:1px solid var(--line);border-radius:0}
+.rin-corpo .tit-barra{border-radius:12px;margin:0}
 @media(max-width:640px){.rin-hero{padding:14px;border-radius:12px}.rin-titolo{font-size:18px}
   .rin-hero-ic{width:42px;height:42px;font-size:20px}.rin-hero-az{width:100%}
   .rin-hb{flex:1;justify-content:center}.rin-hero .rin-fasce{grid-template-columns:1fr 1fr}}
@@ -3744,11 +3745,30 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
          agli utenti e non mantenuta. Qui si vede chi deve pagare cosa e quando,
          e soprattutto chi è scaduto senza pagare. ────────────────────────── -->
     <div class="page" id="page-titoli">
-      <div class="page-title">Titoli e quietanze</div>
-      <div class="page-sub">Le rate delle polizze: chi deve pagare, quando, e chi è già scaduto senza pagare</div>
-
-      <div class="rin-fasce" id="tit-fasce"></div>
-
+      <div class="rin-kit">
+      <!-- Stesso linguaggio dello scadenzario (09/10/2026): le classi rin-*
+           della testata sono le stesse, non una copia — una tavolozza sola. -->
+      <header class="rin-hero">
+        <div class="rin-hero-su">
+          <div class="rin-hero-ic" aria-hidden="true"><i class="ti ti-receipt-2"></i></div>
+          <div class="rin-hero-t">
+            <div class="rin-occhiello">Portafoglio · Incassi</div>
+            <h1 class="rin-titolo">Titoli e quietanze</h1>
+            <div class="rin-sotto">Le rate delle polizze: chi deve pagare, quando, e chi è già scaduto senza pagare.</div>
+            <div class="rin-pills" id="tit-chips"></div>
+          </div>
+          <div class="rin-hero-az">
+            <!-- Assegnare una rata alla volta un portafoglio arrivato dalla
+                 compagnia non lo fa nessuno: qui si decide una volta per CODICE, e
+                 la decisione vale anche per il flusso di stanotte. -->
+            <button class="rin-hb" onclick="asgApri()"><i class="ti ti-users-group"></i> Assegna il pregresso</button>
+            <button class="rin-hb" onclick="titExportExcel()"><i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
+          </div>
+        </div>
+        <div class="rin-fasce" id="tit-fasce"></div>
+      </header>
+      <div class="rin-corpo">
+      <div class="rin-filtri">
       <div class="pf-top">
         <div class="pf-filters">
           <div class="pf-f"><label>Scadenza dal</label>
@@ -3777,11 +3797,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
             <select id="tit-compagnia"><option value="">Tutte</option></select></div>
           <div class="pf-f pf-f-az"><button class="pf-cerca" onclick="titRender()"><i class="ti ti-search"></i> Cerca</button><button class="pf-reset" onclick="titAzzera()">Azzera filtri</button></div>
         </div>
-        <!-- Assegnare una rata alla volta un portafoglio arrivato dalla
-             compagnia non lo fa nessuno: qui si decide una volta per CODICE, e
-             la decisione vale anche per il flusso di stanotte. -->
-        <button class="pf-exp" onclick="asgApri()"><i class="ti ti-users-group"></i> Assegna il pregresso</button>
-        <button class="pf-exp" onclick="titExportExcel()"><i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
+      </div>
       </div>
 
       <!-- L'incasso si fa in blocco: segnarne venti uno per uno non lo fa
@@ -3808,6 +3824,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <button class="pf-reset" onclick="titDeseleziona()">Annulla</button>
       </div>
 
+      <div class="rin-tab">
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr>
@@ -3819,6 +3836,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         </table>
       </div>
       <div class="pf-totali" id="tit-totali"></div>
+      </div>
+      </div>
+      </div>
     </div>
 
     <!-- ── SCADENZARIO E RINNOVI (CRM Punto 4) ────────────────────────────
@@ -19304,15 +19324,26 @@ function titFiltra() {
   }).sort((x, y) => String(x.data_scadenza || x.data_decorrenza).localeCompare(String(y.data_scadenza || y.data_decorrenza)));
 }
 
+/* Le pastiglie della testata: oggi (le fasce si contano da oggi) e quanti
+   titoli si stanno guardando. */
+function titRenderChips() {
+  const box = document.getElementById('tit-chips');
+  if (!box) return;
+  const n = TIT_VISTA.length;
+  box.innerHTML = `<span class="rin-pill"><i class="ti ti-calendar"></i> oggi ${new Date().toLocaleDateString('it-IT')}</span>`
+    + `<span class="rin-pill rin-pill-n"><i class="ti ti-list"></i> ${n} ${n === 1 ? 'titolo' : 'titoli'}</span>`;
+}
+
 function titRenderFasce() {
   const box = document.getElementById('tit-fasce');
   if (!box) return;
+  titRenderChips();
   box.innerHTML = TIT_FASCE.map(f => {
     const righe = TIT_ROWS.filter(f.test);
     const somma = righe.reduce((s, t) => s + (Number(t.importo_lordo) || 0), 0);
     return `<button class="rin-fascia ${f.cls}${TIT_FASCIA === f.k ? ' att' : ''}" onclick="titFasciaScegli('${f.k}')">
       <b>${righe.length}</b><span>${f.l}</span>
-      <span style="text-transform:none;letter-spacing:0;font-weight:600">${pfEuro(somma)}</span></button>`;
+      <span class="rin-card-sub">${pfEuro(somma)}</span></button>`;
   }).join('');
 }
 
@@ -20001,6 +20032,9 @@ async function loadTitoli() {
     titBadge();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="9"><div class="empty-state">Titoli non disponibili.<br><small>${esc(e.message || e)}</small></div></td></tr>`;
+    /* Le fasce e le pastiglie del caricamento di prima direbbero dei numeri
+       su un elenco che non si è potuto leggere: si svuotano (§63-bis). */
+    ['tit-fasce', 'tit-chips'].forEach(id => { const x = document.getElementById(id); if (x) x.innerHTML = ''; });
   }
 }
 

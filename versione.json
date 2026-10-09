@@ -1,8 +1,18 @@
 {
-  "versione": "0.58.0",
-  "nome": "Scadenzario: la testata scura con le fasce dentro, come le trattative e il foglio cassa",
+  "versione": "0.59.0",
+  "nome": "Titoli: la testata scura con le fasce dentro, come lo scadenzario",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.59.0",
+      "data": "2026-10-09",
+      "nome": "Titoli: la testata scura con le fasce dentro, come lo scadenzario",
+      "voci": [
+        "Titoli: in alto la testata scura, con la data di oggi e il numero dei titoli che stai guardando sempre in vista",
+        "Titoli: le cinque fasce (insoluti, entro 7 giorni, entro 30, da incassare, tutti) stanno nella testata e si cliccano come prima; Assegna il pregresso ed Esporta Excel sono in alto",
+        "Titoli: filtri, barra della selezione e tabella in schede bianche, con i totali in fondo alla tabella; su telefono niente scorrimento di lato"
+      ]
+    },
     {
       "v": "0.58.0",
       "data": "2026-10-09",

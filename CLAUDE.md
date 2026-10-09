@@ -9090,3 +9090,22 @@ nell'elenco; il catalogo di una compagnia resta a righe). `CAT_NON_LETTI` porta
 in `catRenderSomma` quello che non si è potuto leggere: lì il numero è un
 trattino col motivo, mai uno zero (§12). Le altre schermate restano scure
 finché Francesco non dice se portarle tutte in chiaro.
+
+### Tutte le pagine in chiaro (0.67.0, 09/10/2026)
+
+Visto il catalogo, Francesco: «porta tutte le pagine su questo stile bianco».
+Le testate scure erano cinque famiglie: `rin-*` (scadenzario, titoli,
+portafoglio, anagrafiche, sinistri, storico, emissioni), `fc-*`, `clk-*` in
+`index.html`, e `trt-*`/`trs-*` e `cf-*` in `iam/index.html`. **Le regole scure
+non si sono toccate**: ogni documento ha un blocco «IN CHIARO» scritto DOPO di
+loro, che ridefinisce le variabili `--*-chiaro` sui contenitori (mai su
+`:root`, §31) e sovrascrive sfondi, bordi e colori dei numeri. Il vetro
+(`rgba(255,255,255,.05)`) su bianco sparirebbe, quindi caselle e pastiglie
+prendono un grigio tenue (`#f4f5f8`) col bordo `#d9dde5`; i colori chiari dei
+numeri (`#fca5a5`, `#fdba74`, `#6ee7b7`…) su bianco non si leggerebbero, quindi
+passano alle tinte scure della stessa famiglia. Tornare allo scuro è togliere
+quei due blocchi.
+
+`ui-test.mjs` dà 429/527 sia con queste modifiche sia su `main` senza: lo
+stesso elenco di rossi, nessuno nuovo. Quei 98 rossi non vengono da qui e
+vanno guardati a parte.

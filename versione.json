@@ -1,8 +1,18 @@
 {
-  "versione": "0.66.0",
-  "nome": "Catalogo prodotti: schede bianche in rilievo, i numeri in colonna e le compagnie come riquadri",
+  "versione": "0.67.0",
+  "nome": "Tutte le pagine in chiaro: schede bianche in rilievo al posto delle testate scure",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.67.0",
+      "data": "2026-10-09",
+      "nome": "Tutte le pagine in chiaro: schede bianche in rilievo al posto delle testate scure",
+      "voci": [
+        "Scadenzario, titoli, portafoglio, clienti, sinistri, storico ed emissioni: la testata è una scheda bianca in rilievo, come il catalogo",
+        "Foglio cassa e scheda cliente nello stesso stile chiaro, con i totali e le linguette su fondo bianco",
+        "Trattative (pagina e scheda) e Confronta prodotti in chiaro: niente più testate scure, colori e numeri invariati"
+      ]
+    },
     {
       "v": "0.66.0",
       "data": "2026-10-09",

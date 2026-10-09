@@ -19,8 +19,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.66.0">
-<meta name="app-versione-nome" content="Catalogo prodotti: schede bianche in rilievo, i numeri in colonna e le compagnie come riquadri">
+<meta name="app-versione" content="0.67.0">
+<meta name="app-versione-nome" content="Tutte le pagine in chiaro: schede bianche in rilievo al posto delle testate scure">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2117,6 +2117,34 @@ input[type=file]{display:none;}
   .trs-corpo{grid-template-columns:1fr;padding:12px}
   .trs-box .fgrid,.trs-box .trs-g3{grid-template-columns:1fr}
 }
+/* ── IN CHIARO (09/10/2026) ─────────────────────────────────────────────
+   Francesco: «non possiamo farlo bianco con il riquadro in rilievo?
+   Visivamente sarebbe più leggero». Le testate scure delle trattative,
+   della loro scheda e di Confronta prodotti diventano schede bianche in
+   rilievo, come il catalogo prodotti (0.66.0). Stanno in fondo al foglio,
+   DOPO le regole scure, così le sovrascrivono senza toccarle; le variabili
+   si ridefiniscono sul contenitore, mai su :root (§31). */
+#panel-pipeline,.trs-box{--trt-chiaro:#1f2a37;--trt-chiaro2:#5a6b7c}
+#panel-confronta{--cf-chiaro:#1f2a37;--cf-chiaro2:#5a6b7c}
+.trt-hero,.cf-hero{background:#fff;border:1px solid #d9dde5;border-radius:18px;
+  box-shadow:0 1px 2px rgba(15,23,42,.04),0 8px 22px rgba(15,23,42,.05)}
+.trt-anello .trt-fondo{stroke:#e5e8ee}
+.trt-anello .trt-arco{stroke:#10b981}
+.trt-tubo{background:#eef0f4}
+.trs-testa{background:#fff;border-bottom:1px solid #d9dde5}
+.trs-riass b{color:#047857}
+.trs-chiudi{background:#fff;border-color:#d9dde5}
+.trs-chiudi:hover{background:#f4f5f8}
+.trs-tappe button{background:#f4f5f8;border-color:#d9dde5}
+.trs-tappe button:hover{background:#eceef3;border-color:#c3c9d4}
+.trs-tappe button.fatta{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+.trs-tappe button.act{color:#fff;border-color:#2563eb;box-shadow:0 1px 3px rgba(15,23,42,.15)}
+.trs-tappe button.vinta.act{border-color:var(--w1-verde);box-shadow:0 1px 3px rgba(15,23,42,.15)}
+.trs-tappe button.persa.act{border-color:var(--w1-rosso);box-shadow:0 1px 3px rgba(15,23,42,.15)}
+.trs-tappe button:focus-visible,.trs-chiudi:focus-visible{outline-color:#2563eb}
+.cf-pill{background:#f4f5f8;border-color:#d9dde5}
+.cf-pill-avv{background:#fffbeb;border-color:#fcd34d;color:#92400e}
+.cf-hero .cf-f select{background:#fff;border-color:#d9dde5}
 </style>
 <link rel="stylesheet" href="withus-pictograms.css?v=20261007">
 <!-- impronta withus-one.css: 9d3672a1 — se cambia, cambia anche il ?v= qui sotto -->

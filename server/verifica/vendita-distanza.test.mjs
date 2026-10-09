@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
-import { quotaCatastrofali, cancelloCon, cancelloVendita, coerenza, ESIGENZE_CATNAT, configurazione } from '../venditaDistanza.js';
+import { quotaCatastrofali, cancelloCon, cancelloVendita, coerenza, ESIGENZE_CATNAT, configurazione, schedaCompleta, maggiorenne } from '../venditaDistanza.js';
 
 const RADICE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const req = createRequire(import.meta.url);
@@ -16,46 +16,71 @@ const prova = (n, f) => { try { f(); ok++; console.log('  OK  ' + n); } catch (e
 const deve = (c, m) => { if (!c) throw new Error(m); };
 console.log('\nVENDITA A DISTANZA · CATASTROFALI\n');
 
-prova('il premio è quello del motore del preventivatore, su più CAP e opzioni', () => {
+prova('il premio è quello del motore del preventivatore, sul prodotto COMPLETO', () => {
   motore.caricaTariffa(JSON.parse(fs.readFileSync(path.join(RADICE, 'tariffe/catastrofali_cap.json'), 'utf8')));
-  for (const cap of ['89100', '00187', '09124', '50122', '98121']) for (const o of [[0,0,0],[1,0,0],[0,1,0],[1,1,1],[1,1,0]]) {
-    const opt = { terrCont: !!o[0], alluFabb: !!o[1], alluCont: !!o[2] };
-    const a = quotaCatastrofali({ cap, valore: 180000, ...opt });
-    const b = motore.calcCatPremio(cap, 180000, { ...opt, frazionamento: 'Annuale' });
-    deve(a.prezzo === b.premio, cap + ' ' + o + ': ' + a.prezzo + ' contro ' + b.premio);
+  for (const cap of ['89100', '00187', '09124', '50122', '98121']) for (const val of [40000, 180000, 1100000]) {
+    const a = quotaCatastrofali({ cap, valore: val });
+    const b = motore.calcCatPremio(cap, val, { terrCont: true, alluFabb: true, alluCont: true, frazionamento: 'Annuale' });
+    deve(a.prezzo === b.premio, cap + ' ' + val + ': ' + a.prezzo + ' contro ' + b.premio);
   }
 });
-prova('il contenuto alluvione senza le due garanzie che lo reggono non si paga', () => {
-  const a = quotaCatastrofali({ cap: '50122', valore: 180000, alluCont: true });
+prova('al cliente finale non si vende una versione ridotta, qualunque cosa mandi il browser', () => {
+  const a = quotaCatastrofali({ cap: '50122', valore: 180000, terrCont: false, alluFabb: false, alluCont: false });
   const b = quotaCatastrofali({ cap: '50122', valore: 180000 });
-  deve(a.prezzo === b.prezzo && a.dettaglio.alluCont === false, 'alluvione contenuto passa da sola');
+  deve(a.prezzo === b.prezzo && a.dettaglio.alluCont && a.dettaglio.terrCont && a.dettaglio.alluFabb, 'il browser ha tolto delle garanzie');
+});
+prova('limiti assuntivi della compagnia: fabbricato da 40.000 a 1.100.000 €', () => {
+  deve(quotaCatastrofali({ cap: '89100', valore: 39999 }).errore, 'sotto il minimo quota');
+  deve(quotaCatastrofali({ cap: '89100', valore: 1100001 }).errore, 'sopra il massimo quota');
+  deve(!quotaCatastrofali({ cap: '89100', valore: 40000 }).errore, 'il minimo esatto non quota');
 });
 prova('CAP fuori tariffa o valore mancante: un motivo in parole, non un prezzo', () => {
-  deve(/non è disponibile/.test(quotaCatastrofali({ cap: '99999', valore: 1000 }).errore || ''), 'CAP fuori tariffa');
+  deve(/non è disponibile/.test(quotaCatastrofali({ cap: '99999', valore: 100000 }).errore || ''), 'CAP fuori tariffa');
   deve(quotaCatastrofali({ cap: '89100', valore: 0 }).errore, 'valore zero');
-  deve(quotaCatastrofali({ cap: '891', valore: 1000 }).errore, 'CAP corto');
+  deve(quotaCatastrofali({ cap: '891', valore: 100000 }).errore, 'CAP corto');
 });
 prova('OGGI la vendita online è chiusa: non si incassa', () => {
   const cfg = configurazione('catastrofali');
   deve(cfg && cfg.vendita_online === false, 'la configurazione dice aperta: serve il Set Informativo prima');
   deve(!cancelloVendita('catastrofali', { accettazioni: {} }).ok, 'il cancello lascia passare');
 });
-const tuttoSi = { abitazione: true, titolo: true, bisogno: true, valore: true, doppia: false };
+const tuttoSi = Object.fromEntries(ESIGENZE_CATNAT.map(q => [q.k, q.serve]));
+const P = { terrCont: true, alluFabb: true, alluCont: true };
+const casa = { indirizzo: 'Via Roma 1', comune: 'Trapani', tipologia: 'Appartamento in condominio', piano: 'Piano intermedio',
+  destinazione: 'Abituale', superficie: 'Meno di 100 mq', eta: 'Più di 15 anni', piani_fuori_terra: 4, piani_interrati: 1 };
+const cliente = { cf: 'RSSMRA80A01H501U', dataNascita: '1980-01-01' };
+const buono = () => ({ params: P, cliente: { ...cliente }, accettazioni: { esigenze: { ...tuttoSi }, abitazione: { ...casa }, avvertenze_lette: true, precontrattuale_letta: true } });
 const aperta = { vendita_online: true, documenti: [{ nome: 'Set Informativo', url: '/docs/x.pdf' }] };
-prova('aperta ma SENZA documenti non si incassa', () => {
-  deve(!cancelloCon({ vendita_online: true, documenti: [] }, 'catastrofali', { accettazioni: { esigenze: tuttoSi, precontrattuale_letta: true } }).ok, 'passa senza documenti');
+prova('con tutto in regola il cancello si apre (altrimenti le prove sotto non valgono)', () => {
+  const g = cancelloCon(aperta, 'catastrofali', buono()); deve(g.ok, g.errore);
 });
-prova('senza la presa visione dei documenti PRIMA del pagamento non si incassa', () => {
-  deve(!cancelloCon(aperta, 'catastrofali', { accettazioni: { esigenze: tuttoSi } }).ok, 'passa senza presa visione');
-  deve(cancelloCon(aperta, 'catastrofali', { accettazioni: { esigenze: tuttoSi, precontrattuale_letta: true } }).ok, 'non passa nemmeno quando è tutto a posto');
+prova('aperta ma SENZA documenti non si incassa', () => {
+  deve(!cancelloCon({ vendita_online: true, documenti: [] }, 'catastrofali', buono()).ok, 'passa senza documenti');
+});
+prova('senza la presa visione dei documenti o delle avvertenze PRIMA del pagamento non si incassa', () => {
+  const a = buono(); delete a.accettazioni.precontrattuale_letta; deve(!cancelloCon(aperta, 'catastrofali', a).ok, 'passa senza presa visione');
+  const b = buono(); delete b.accettazioni.avvertenze_lette; deve(!cancelloCon(aperta, 'catastrofali', b).ok, 'passa senza le avvertenze (carenza, franchigie)');
 });
 prova('una risposta non coerente ferma la vendita, una per volta', () => {
   for (const q of ESIGENZE_CATNAT) {
-    const e = { ...tuttoSi, [q.k]: !q.serve };
-    deve(!coerenza(e).coerente, q.k + ' sbagliata passa');
-    deve(!cancelloCon(aperta, 'catastrofali', { accettazioni: { esigenze: e, precontrattuale_letta: true } }).ok, q.k + ' passa il cancello');
+    const x = buono(); x.accettazioni.esigenze[q.k] = !q.serve;
+    deve(!coerenza(x.accettazioni.esigenze, P).coerente, q.k + ' sbagliata passa');
+    deve(!cancelloCon(aperta, 'catastrofali', x).ok, q.k + ' passa il cancello');
   }
-  deve(!coerenza({}).coerente, 'senza risposte risulta coerente');
+  deve(!coerenza({}, P).coerente, 'senza risposte risulta coerente');
+});
+prova('scheda di polizza: senza i dati dell\'abitazione non si incassa', () => {
+  deve(schedaCompleta(casa), 'la scheda completa risulta incompleta');
+  for (const k of ['tipologia', 'destinazione', 'superficie', 'eta', 'piano', 'piani_fuori_terra', 'indirizzo']) {
+    const x = buono(); delete x.accettazioni.abitazione[k];
+    deve(!cancelloCon(aperta, 'catastrofali', x).ok, 'passa senza ' + k);
+  }
+  deve(schedaCompleta({ ...casa, tipologia: 'Villa monofamiliare', piano: '' }), 'una villa monofamiliare non ha piano');
+});
+prova('il contraente è il proprietario persona fisica, maggiorenne', () => {
+  const a = buono(); a.cliente.cf = '01234567890'; deve(!cancelloCon(aperta, 'catastrofali', a).ok, 'passa con una partita IVA');
+  const b = buono(); b.cliente.dataNascita = ''; deve(!cancelloCon(aperta, 'catastrofali', b).ok, 'passa senza data di nascita');
+  deve(!maggiorenne('2010-06-01', new Date(2026, 9, 9)) && maggiorenne('2008-10-09', new Date(2026, 9, 9)) && !maggiorenne('2008-10-10', new Date(2026, 9, 9)), 'i 18 anni si contano male');
 });
 prova('gli altri prodotti dello shop non cambiano', () => {
   deve(cancelloVendita('vita', {}).ok && cancelloVendita('infortuni-famiglia', {}).ok, 'il cancello tocca altri prodotti');
@@ -71,7 +96,8 @@ prova('ogni rotta che incassa passa dal cancello', () => {
 prova('nella landing esigenze e documenti vengono PRIMA del pagamento', () => {
   const l = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
   deve(/if\(\(P\.quote\|\|\{\}\)\.tipo==='catnat'\) ckStepEsigenze\(\); else ckStepPay\(\);/.test(l), 'dopo i documenti si va dritti al pagamento');
-  deve(/precontrattuale_letta:true/.test(l), 'la presa visione non arriva al server');
+  deve(/precontrattuale_letta:true/.test(l) && /avvertenze_lette:true/.test(l), 'la presa visione non arriva al server');
+  deve(!/vd-tecnica|Nota-Tecnica|Scheda-prodotto/i.test(l), 'un documento interno è finito nella pagina pubblica');
   deve(!/calcCatPremio/.test(l), 'la landing calcola il prezzo da sola invece di chiederlo al server');
 });
 console.log('\n' + ok + ' superate, ' + ko + ' fallite\n');

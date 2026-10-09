@@ -9215,3 +9215,32 @@ Le regole IVASS stanno sul server, perché la pagina la riscrive chiunque:
 
 Prove: `server/verifica/vendita-distanza.test.mjs` (10, controprova sulla
 presa visione).
+
+#### Catastrofali: documenti HDI, prodotto completo, stile IAM (0.72.0, 09/10/2026)
+
+- **Documenti pubblici** in `docs/catastrofali/` (DIP aggiuntivo DAP5821 e
+  Condizioni P5821), elencati in `tariffe/vendita-distanza.json`. La **nota
+  tecnica e la scheda prodotto HDI sono a uso interno**: lette per le regole,
+  **mai** pubblicate né messe nel repository (una prova lo controlla sulla
+  landing).
+- Regole prese dalla nota tecnica e imposte sul server: fabbricato **da
+  40.000 a 1.100.000 €**; contraente = proprietario persona fisica,
+  maggiorenne, con codice fiscale (niente partita IVA); le dichiarazioni del
+  §2.3 diventano il questionario (`ESIGENZE_CATNAT`, con `se` per quelle
+  dell'alluvione); i dati di scheda del §3.3.2 (`SCHEDA_CATNAT`) sono
+  obbligatori prima di incassare.
+- **Al cliente finale si vende solo il prodotto completo** (Francesco):
+  `quotaCatastrofali` impone le quattro garanzie qualunque cosa mandi il
+  browser.
+- Prima del pagamento la landing dice **carenza di 20 giorni**, franchigia
+  10% (alluvione min. 5.000 €), limite 80% sul fabbricato, regola
+  proporzionale, tacito rinnovo; il cliente ne prende atto
+  (`avvertenze_lette`, ricontrollato dal server). Esente da imposte,
+  detraibile al 19%.
+- Si apre la vendita (`vendita_online: true`) solo quando la lista `mancano`
+  della configurazione è vuota: manca ancora il **DIP Danni (DP5821)**,
+  l'autorizzazione HDI, la verifica della tariffa e una **funzione di
+  recesso online** (le condizioni la prevedono per le polizze concluse online).
+- La landing intera è passata allo stile di IAM: `withus-one-tokens.css`,
+  Figtree, fondo chiaro, schede bianche, verde With Us per tutti i prodotti
+  (i colori per prodotto `c1/c2` restano nei dati e non si applicano).

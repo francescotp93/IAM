@@ -1,8 +1,19 @@
 {
-  "versione": "0.71.0",
-  "nome": "Catastrofali a distanza",
+  "versione": "0.72.0",
+  "nome": "Catastrofali: documenti e stile IAM",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.72.0",
+      "data": "2026-10-09",
+      "nome": "Catastrofali: documenti e stile IAM",
+      "voci": [
+        "Landing Rischi Catastrofali: il cliente scarica DIP aggiuntivo e Condizioni di Assicurazione, e legge franchigie, limiti, carenza di 20 giorni ed esclusioni prima di acquistare",
+        "Landing Rischi Catastrofali: al cliente finale si propone solo il prodotto completo (terremoto e alluvione su fabbricato e contenuto), per valori da 40.000 a 1.100.000 €",
+        "Vendita a distanza: il questionario segue le dichiarazioni richieste da HDI e raccoglie i dati dell'abitazione per la scheda di polizza",
+        "Landing: stesso aspetto di IAM, con fondo chiaro, schede bianche, carattere Figtree e verde With Us"
+      ]
+    },
     {
       "v": "0.71.0",
       "data": "2026-10-09",

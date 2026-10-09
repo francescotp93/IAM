@@ -126,6 +126,13 @@ await prova('le rotte sono pubbliche ma col tetto, e la pagina c\'è', () => {
   const land = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
   deve((land.match(/recesso\.html/g) || []).length >= 3, 'la landing non porta al recesso online');
 });
+await prova('il pulsante si sceglie dal Lab, il collegamento nel piede resta sempre', () => {
+  const lab = fs.readFileSync(path.join(RADICE, 'lab/index.html'), 'utf8');
+  deve(/id="l-recesso"/.test(lab) && /id="vad-recesso"/.test(lab) && (lab.match(/&recesso=1/g) || []).length >= 2, 'il Lab non offre la scelta nei due posti');
+  const land = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
+  deve(/id="cta-recesso" href="recesso\.html" hidden/.test(land) && /params\.get\('recesso'\) === '1'/.test(land), 'il pulsante non dipende dalla scelta');
+  deve(/<div class="foot">[^\n]*href="recesso\.html"/.test(land), 'il collegamento nel piede è sparito');
+});
 await prova('privacy: l\'informativa si legge PRIMA di firmare, ed è lo stesso testo del documento firmato', () => {
   const sign = fs.readFileSync(path.join(RADICE, 'server/sign.js'), 'utf8');
   deve(/privacy\/informativa\.json/.test(sign) && /\$\{INFORMATIVA_PRIVACY\}<\/p>/.test(sign), 'testo non condiviso fra pagina e documento');

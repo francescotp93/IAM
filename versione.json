@@ -1,8 +1,17 @@
 {
-  "versione": "0.74.1",
-  "nome": "Catastrofali: esenzione citata dal DIP",
+  "versione": "0.74.2",
+  "nome": "Lab: pulsante Recesso online a scelta",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.74.2",
+      "data": "2026-10-09",
+      "nome": "Lab: pulsante Recesso online a scelta",
+      "voci": [
+        "Marketing › Lab: quando crei il link della landing (o della vendita a distanza) puoi scegliere se mostrare il pulsante «Recesso online» in testa alla pagina",
+        "Il collegamento al recesso nel piede della landing resta sempre, perché per le polizze concluse online deve essere raggiungibile"
+      ]
+    },
     {
       "v": "0.74.1",
       "data": "2026-10-09",

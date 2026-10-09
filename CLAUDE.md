@@ -9332,3 +9332,11 @@ dettagli e nel riepilogo prima del pagamento, con la fonte accanto
 pretende che la frase ci sia identica: una parola cambiata la fa diventare
 rossa. La detrazione del 19% resta fuori (solo nella nota tecnica interna).
 Quando arriva un DIP nuovo si aggiornano insieme PDF, frase e fonte.
+
+#### Il pulsante «Recesso online» si sceglie nel Lab (0.74.2, 09/10/2026)
+
+Nel Lab (Landing per prodotto e Vendita a distanza) la casella aggiunge
+`&recesso=1` al link; la landing mostra allora `#cta-recesso` accanto a
+«Scopri di più». Il collegamento nel piede **resta sempre**, con o senza
+casella: per le polizze concluse online il recesso deve essere raggiungibile
+(condizioni HDI art. 2.15). Prova in `recesso.test.mjs`.

@@ -3,6 +3,7 @@
 // incassa senza Set Informativo, senza coerenza con le esigenze e senza la
 // presa visione dei documenti PRIMA del pagamento (IVASS).
 import fs from 'fs';
+import { execSync } from 'child_process';
 import path from 'path';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
@@ -95,9 +96,14 @@ prova('davanti al cliente: stima dichiarata, niente promesse fiscali, niente not
   const l = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
   const blocco = l.slice(l.indexOf('function renderPcardCatnat('), l.indexOf('function cnCambiato('));
   deve(/Premio indicativo, soggetto a verifica dei dati/.test(blocco), 'il prezzo non dice di essere una stima');
-  deve(!/prezzo è <b>finale|detrarre|imposte sui premi/i.test(blocco), 'la scheda prezzo fa affermazioni fiscali non verificate');
+  deve(!/prezzo è <b>finale|detra|IRPEF|730/i.test(blocco), 'la scheda prezzo fa affermazioni fiscali non verificate');
   const prodotto = l.slice(l.indexOf("  catastrofali: { nome:"), l.indexOf("  casa:      { nome:"));
-  deve(!/detra|IRPEF|imposte/i.test(prodotto), 'i testi del prodotto fanno affermazioni fiscali non verificate');
+  deve(!/detra|IRPEF/i.test(prodotto), 'i testi del prodotto parlano di detrazione, che nei documenti per il cliente non c\'è');
+  /* L'esenzione si dice SOLO citando il DIP aggiuntivo, parola per parola. */
+  const dip = execSync('pdftotext docs/catastrofali/RischiCatastrofali_DIP_Aggiuntivo_DAP5821_05-2026.pdf -', { cwd: RADICE, encoding: 'utf8' }).replace(/\s+/g, ' ');
+  const frase = /var CN_FISCALE = '([^']+)'/.exec(l);
+  deve(frase && dip.includes(frase[1]), 'la frase sull\'esenzione non è quella del DIP aggiuntivo: ' + (frase && frase[1]));
+  deve(/CN_FISCALE_FONTE/.test(blocco) && /DAP5821/.test(l), 'la citazione non porta la sua fonte');
   const cfg = configurazione('catastrofali');
   deve(!/Set Informativo|tariffa/i.test(cfg.motivo || ''), 'il messaggio al cliente contiene note interne: ' + cfg.motivo);
 });

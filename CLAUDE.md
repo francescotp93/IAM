@@ -9322,3 +9322,13 @@ Recapiti (Francesco, 09/10/2026): sede legale Vico Giunone 3, 91027 Paceco
 (TP); sede operativa Via Cofano 76, 91100 Trapani; amministrazione@
 withusassicurazioni.it. Il PDF dell'informativa PR01 rev 4.1 riporta ancora
 `amministrazione@withus.it`: il testo mostrato è corretto, il PDF va rifatto.
+
+#### L'esenzione si cita, non si riassume (0.74.1, 09/10/2026)
+
+`CN_FISCALE` in `landing.html` è la frase del DIP aggiuntivo (DAP5821, ed.
+05/2026, «Regime fiscale») parola per parola, mostrata sotto la stima, nei
+dettagli e nel riepilogo prima del pagamento, con la fonte accanto
+(`CN_FISCALE_FONTE`). La prova `vendita-distanza` estrae il testo dal PDF e
+pretende che la frase ci sia identica: una parola cambiata la fa diventare
+rossa. La detrazione del 19% resta fuori (solo nella nota tecnica interna).
+Quando arriva un DIP nuovo si aggiornano insieme PDF, frase e fonte.

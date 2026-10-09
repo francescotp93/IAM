@@ -8982,3 +8982,16 @@ pastiglie (`titRenderChips`, chiamata da `titRenderFasce`) dicono oggi e quanti
 titoli si guardano; quando la lettura cade si svuotano insieme alle fasce. La
 cifra sotto ogni fascia non ha più uno stile in linea: è `rin-card-sub`, e la
 prova che la legge come secondo `span` resta valida.
+
+### Il portafoglio con lo stesso linguaggio (0.60.0, 09/10/2026)
+
+`#page-portafoglio` usa la testata `rin-*` di scadenzario e titoli. Nella
+testata: «Nuova polizza» (sempre dentro `#pf-nuova`, che lo script mostra solo
+allo staff con `display:block` in linea — per questo su telefono il tasto prende
+`width:100%` e non `display:flex`, che lo stile in linea scavalcherebbe) e
+«Foglio cassa» con lo stesso `onclick` che la prova cerca. Le pastiglie
+(`pfRenderChips`, prima del ritorno sul vuoto) dicono quante polizze, il filtro
+di date e il tetto di caricamento. **Esporta Excel resta nella barra dei
+filtri**: la prova del 15/09 misura che sia un tasto e non una fascia dentro
+`.pf-top`. `pf-em` e `pf-stato` erano appigli delle prove senza regola, con lo
+stile in linea: adesso lo stile sta nella regola.

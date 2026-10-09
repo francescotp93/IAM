@@ -9,8 +9,8 @@
      la stessa cosa, o se i documenti sono cambiati senza che la versione sia
      stata alzata. Un numero scritto a mano e non sorvegliato e' la targhetta
      «build 2026-06-15c», ferma tre mesi perche' nessuno se la ricordava. -->
-<meta name="app-versione" content="0.59.0">
-<meta name="app-versione-nome" content="Titoli: la testata scura con le fasce dentro, come lo scadenzario">
+<meta name="app-versione" content="0.60.0">
+<meta name="app-versione-nome" content="Portafoglio: la testata scura con Nuova polizza e Foglio cassa, come titoli e scadenzario">
 
 <meta name="robots" content="noindex, nofollow">
 <script>
@@ -885,6 +885,16 @@ button{font-family:inherit}
 .rin-tab .table-wrap{margin:0;border:0;border-radius:0}
 .rin-tab .pf-totali{margin:0;border:0;border-top:1px solid var(--line);border-radius:0}
 .rin-corpo .tit-barra{border-radius:12px;margin:0}
+/* I due appigli delle prove nelle righe del portafoglio avevano lo stile in
+   linea e nessuna regola: un appiglio senza regola il guardiano delle classi
+   non lo distingue da un refuso. */
+.pf-em{font-size:11px;color:var(--muted);margin-top:2px}
+.pf-stato{font-size:10.5px;color:var(--muted);margin-top:2px}
+.rin-hb.rin-hb-pieno{background:#2563eb;border-color:#60a5fa;color:#fff;font-weight:700}
+.rin-hb.rin-hb-pieno:hover{background:#1d4ed8}
+@media(max-width:640px){.rin-hero-az > div{flex:1}.rin-hero-az > div .rin-hb{width:100%;justify-content:center}}
+.rin-pill.rin-pill-avv{border-color:rgba(251,191,36,.55);color:#fde68a}
+.rin-pill.rin-pill-avv i{color:#fcd34d}
 @media(max-width:640px){.rin-hero{padding:14px;border-radius:12px}.rin-titolo{font-size:18px}
   .rin-hero-ic{width:42px;height:42px;font-size:20px}.rin-hero-az{width:100%}
   .rin-hb{flex:1;justify-content:center}.rin-hero .rin-fasce{grid-template-columns:1fr 1fr}}
@@ -3472,9 +3482,20 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
          passaggio del mouse e la legenda resta sempre visibile sopra la
          tabella. ─────────────────────────────────────────────────────────── -->
     <div class="page" id="page-portafoglio">
-      <div class="page-title">Portafoglio polizze</div>
-      <div class="page-sub">Ogni polizza avanza su quattro fronti indipendenti: pagamento, perfezionamento, rendicontazione, copertura</div>
-
+      <div class="rin-kit">
+      <header class="rin-hero">
+        <div class="rin-hero-su">
+          <div class="rin-hero-ic" aria-hidden="true"><i class="ti ti-briefcase"></i></div>
+          <div class="rin-hero-t">
+            <div class="rin-occhiello">Portafoglio</div>
+            <h1 class="rin-titolo">Portafoglio polizze</h1>
+            <div class="rin-sotto">Ogni polizza avanza su quattro fronti indipendenti: pagamento, perfezionamento, rendicontazione, copertura.</div>
+            <!-- Quante polizze si guardano, su quale data e in che periodo:
+                 un elenco filtrato che non dice il suo filtro si legge come
+                 tutto il portafoglio. -->
+            <div class="rin-pills" id="pf-chips"></div>
+          </div>
+          <div class="rin-hero-az">
       <!-- ── LA PORTA DELL'IMPORTAZIONE STA ANCHE QUI (18/09/2026) ──────────
            La voce «Importa» c'è nella barra in alto, ma quella barra ha
            ventuno voci e scorre: una voce nuova, in mezzo alle altre, non la
@@ -3489,14 +3510,10 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
            aveva nessuna strada per entrare in portafoglio. La porta sta qui,
            dove si guarda il portafoglio, non in una voce di menu da cercare
            (§15). Il tasto lo vede lo staff, come «Importa». -->
-      <div id="pf-nuova" style="display:none;margin:-4px 0 10px">
-        <button class="rin-az rin-primario" onclick="pnuApri()"><i class="ti ti-plus"></i> Nuova polizza</button>
-        <span class="cl-sub" style="margin-left:8px">una polizza che non viene da un preventivo: le rate nascono con lei</span>
+      <div id="pf-nuova" style="display:none">
+        <button class="rin-hb rin-hb-pieno" onclick="pnuApri()" title="Una polizza che non viene da un preventivo: le rate nascono con lei"><i class="ti ti-plus"></i> Nuova polizza</button>
       </div>
-      <div style="margin:-4px 0 10px">
-        <button class="rin-az" onclick="showPage('foglio-cassa')"><i class="ti ti-cash-register"></i> Foglio cassa</button>
-        <span class="cl-sub" style="margin-left:8px">la produzione giorno per giorno: incassi, provvigioni, quadrature, Excel e PDF</span>
-      </div>
+      <button class="rin-hb" onclick="showPage('foglio-cassa')" title="La produzione giorno per giorno: incassi, provvigioni, quadrature, Excel e PDF"><i class="ti ti-cash-register"></i> Foglio cassa</button>
       <!-- IL TASTO «Importa il portafoglio dalla compagnia» NON È PIÙ QUI
            (22/09/2026, richiesta di Francesco: «lo abbiamo già negli
            strumenti»). Il 18/09 era stato messo in cima al Portafoglio
@@ -3509,7 +3526,11 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
            porta in `PAGINE_DA_AVVIARE` e la voce `nav-import` restano dove
            sono, altrimenti la voce di menu aprirebbe un riquadro vuoto
            (§6b). -->
-
+          </div>
+        </div>
+      </header>
+      <div class="rin-corpo">
+      <div class="rin-filtri">
       <div class="pf-top">
         <div class="pf-filters">
           <div class="pf-f"><label>Stato pagamento</label>
@@ -3551,6 +3572,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <button class="pf-exp" onclick="pfExportExcel()" title="Scarica l'elenco filtrato">
           <i class="ti ti-file-spreadsheet"></i> Esporta Excel</button>
       </div>
+      </div>
 
       <!-- I QUATTRO PALLINI NON CI SONO PIÙ (18/09/2026, richiesta di Francesco:
            «leviamo anche nelle polizze i pallini di stato per ora, che tanto
@@ -3559,6 +3581,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
            sono stati cancellati: vivono nel database, si leggono nel pannello
            del pagamento e nell'esportazione. Qui la colonna è una cosa che si
            guarda e si corregge tutti i giorni — come paga il cliente. -->
+      <div class="rin-tab">
       <div class="table-wrap">
         <table class="storico-table">
           <thead><tr>
@@ -3569,6 +3592,9 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         </table>
       </div>
       <div class="pf-totali" id="pf-totali"></div>
+      </div>
+      </div>
+      </div>
     </div>
 
     <!-- ── CONTROLLO DOCUMENTI (Lavoro 3 §3.7-3.8, 18/09/2026) ──────────────
@@ -17725,10 +17751,27 @@ function pfPremioSotto(p) {
   return `<div style="font-size:11px;color:var(--muted);margin-top:2px">${righe.join('<br>')}</div>`;
 }
 
+/* Le pastiglie della testata. Stanno prima del ritorno sul vuoto: un elenco
+   vuoto deve dire ANCHE con quale filtro di date non ha trovato niente. */
+function pfRenderChips() {
+  const box = document.getElementById('pf-chips');
+  if (!box) return;
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const su = { emissione: 'emissione', effetto: 'effetto', scadenza: 'scadenza' }[v('pf-date-su')] || 'emissione';
+  const da = v('pf-da'), a = v('pf-a');
+  const n = PF_VISTA.length;
+  box.innerHTML = `<span class="rin-pill rin-pill-n"><i class="ti ti-list"></i> ${n} ${n === 1 ? 'polizza' : 'polizze'}${n !== PF_ROWS.length ? ' su ' + PF_ROWS.length : ''}</span>`
+    + ((da || a) ? `<span class="rin-pill"><i class="ti ti-calendar"></i> ${esc(su)}: ${da ? pfData(da) : '…'} → ${a ? pfData(a) : '…'}</span>` : '')
+    /* Il tetto si dichiara anche qui, dove si guarda per primo (§50). */
+    + (PF_TOTALE != null && PF_TOTALE > PF_ROWS.length
+        ? `<span class="rin-pill rin-pill-avv"><i class="ti ti-alert-triangle"></i> caricate ${PF_ROWS.length} su ${PF_TOTALE}</span>` : '');
+}
+
 function pfRender() {
   const body = document.getElementById('pf-body');
   if (!body) return;
   PF_VISTA = pfFiltra();
+  pfRenderChips();
   const tot = document.getElementById('pf-totali');
 
   if (!PF_VISTA.length) {
@@ -17770,7 +17813,7 @@ function pfRender() {
       <td><i class="ti ${ICON[p.modulo] || 'ti-file-invoice'}" style="color:var(--blue)"></i> ${esc(p.prodotto || p.modulo || '—')}
         ${p.compagnia ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.compagnia)}</div>` : ''}</td>
       <td style="font-size:12px">${pfData(p.data_effetto)} → ${scad}${avviso}
-        <div style="font-size:11px;color:var(--muted);margin-top:2px" class="pf-em">${
+        <div class="pf-em">${
           p.data_emissione
             ? 'emessa il ' + pfData(p.data_emissione) + ((p.dati && p.dati.emissione_derivata) ? ' (dalla decorrenza)' : '')
             : ((p.dati && p.dati.emissione_non_inviata) ? 'emissione non inviata dalla compagnia' : 'emissione da indicare')}</div></td>
@@ -17779,7 +17822,7 @@ function pfRender() {
              style="color:var(--blue);font-weight:700;text-decoration:underline">${pfPremio(p)}</a>
         ${pfPremioSotto(p)}</td>
       <td>${pfMezzo(p)}
-        <div class="pf-stato" style="font-size:10.5px;color:var(--muted);margin-top:2px"
+        <div class="pf-stato"
              title="${esc((p.__pag || {}).motivo || PF_STATI_KO || '')}">${esc((p.__pag || {}).etichetta || '—')}</div></td>
       <td style="font-size:13px">${esc(p.creato_nome || '—')}
         <div style="margin-top:5px"><button class="rin-az" onclick="event.stopPropagation();pdocApri('${p.id}')" title="Documenti della pratica e cosa manca per perfezionarla">

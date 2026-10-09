@@ -241,6 +241,13 @@ const PRODOTTI = {
     hl:'La copertura <span class="accent">su misura</span> per la tua professione.',
     claim:'La RC professionale obbligatoria, con massimali e garanzie adatti al tuo lavoro.',
     benef:['Massimali su misura','Retroattività e postuma','Tariffe per ogni categoria','Emissione rapida'], quote:{ tipo:'lead' } },
+  catastrofali: { nome:'Rischi Catastrofali Abitazione', c1:'#9a3412', c2:'#7c2d12', img:IMG('1568605114967-8130f3a36994'),
+    hl:'La tua <span class="accent">casa</span> al sicuro da terremoto e alluvione.',
+    claim:'Una copertura per i danni all\'abitazione causati da terremoto e, se la scegli, da alluvione e inondazione. Il premio dipende dal CAP e dal valore di ricostruzione.',
+    benef:['Terremoto sul fabbricato, sempre incluso','Alluvione e inondazione, se le scegli','Contenuto al 20% del valore del fabbricato','Premio calcolato sul CAP dell\'abitazione'],
+    chips:['Preventivo immediato','Premio sul tuo CAP','Senza telefonate'],
+    compagnia:'Prodotto di HDI Assicurazioni S.p.A., distribuito da With Us',
+    quote:{ tipo:'catnat' } },
   casa:      { nome:'Casa', c1:'#2b8a3e', c2:'#1f6b2e', img:IMG('1568605114967-8130f3a36994'),
     hl:'La tua <span class="accent">casa</span> al sicuro.',
     claim:'Proteggi la tua abitazione da incendio, furto e danni.',
@@ -258,6 +265,9 @@ const P = PRODOTTI[key] || PRODOTTI.vita;
 // var (non const) così i gestori onclick/onchange inline trovano le variabili
 var SS = { tipo:'attiva', liv:'base', comp:'s' };
 var QS = { opt:0, addon:false };
+/* Rischi catastrofali: il premio lo calcola SOLO il server (/shop/quote), con
+   lo stesso motore del preventivatore. La pagina tiene i dati e la risposta. */
+var CN = { cap:'', valore:'', terrCont:false, alluFabb:false, alluCont:false, q:null, err:'', calcolo:false };
 
 document.documentElement.style.setProperty('--c1', P.c1);
 document.documentElement.style.setProperty('--c2', P.c2);
@@ -327,6 +337,18 @@ function renderPcard(){
     let ctrl = '<div class="qrow"><select onchange="QS.opt=+this.value;upd()">'+q.opzioni.map((x,i)=>'<option value="'+i+'"'+(QS.opt===i?' selected':'')+'>'+x.l+'</option>').join('')+'</select></div>';
     if (q.addon) ctrl += '<label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0 2px"><input type="checkbox" '+(QS.addon?'checked':'')+' onchange="QS.addon=this.checked;upd()" style="width:18px;height:18px"> '+q.addon.l+' (+'+eur(q.addon.p)+')</label>';
     priceHtml = ctrl + '<div class="price-big" style="margin-top:8px"><div class="da">'+(q.from?'a partire da':'il tuo preventivo')+'</div><div class="v">'+eur(tot)+'</div><div class="u">all\'anno'+(q.from?'':' · ('+eur(Math.round(tot/12))+'/mese)')+'</div></div>';
+  } else if (q.tipo==='catnat'){
+    const chk=(k,l,dis)=>'<label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:5px 0'+(dis?';opacity:.45':'')+'"><input type="checkbox" '+(CN[k]?'checked':'')+(dis?' disabled':'')+' onchange="cnSet(\''+k+'\',this.checked)" style="width:18px;height:18px"> '+l+'</label>';
+    priceHtml = '<div class="qrow"><input id="cn-cap" inputmode="numeric" maxlength="5" placeholder="CAP dell\'abitazione" value="'+esc(CN.cap)+'" oninput="CN.cap=this.value.replace(/\\D/g,\'\');CN.q=null">'
+      + '<input id="cn-val" inputmode="numeric" placeholder="Valore di ricostruzione (€)" value="'+esc(CN.valore)+'" oninput="CN.valore=this.value.replace(/\\D/g,\'\');CN.q=null"></div>'
+      + '<div style="font-size:11.5px;color:var(--muted);margin:2px 0 6px">Il valore di ricostruzione è quanto costerebbe ricostruire la casa, non il prezzo di mercato.</div>'
+      + chk('terrCont','Terremoto anche sul contenuto (20%)')
+      + chk('alluFabb','Alluvione e inondazione sul fabbricato')
+      + chk('alluCont','Alluvione e inondazione anche sul contenuto (20%)', !(CN.terrCont&&CN.alluFabb))
+      + '<button class="pcta" style="margin-top:8px" onclick="cnCalcola()"'+(CN.calcolo?' disabled':'')+'><i class="ti ti-calculator"></i> '+(CN.calcolo?'CALCOLO…':'CALCOLA IL PREMIO')+'</button>'
+      + (CN.err?'<div class="msg err" style="display:block;margin-top:8px">'+esc(CN.err)+'</div>':'')
+      + (CN.q ? '<div class="price-big" style="margin-top:12px"><div class="da">'+(CN.q.vendita_online?'il tuo preventivo':'stima del premio')+'</div><div class="v">'+eur(CN.q.prezzo)+'</div><div class="u">all\'anno</div></div>'
+          + (CN.q.vendita_online?'':'<div style="font-size:12px;color:var(--muted);margin:4px 0 0">'+esc(CN.q.motivo||'Non acquistabile online: ti ricontatta un consulente.')+'</div>') : '');
   } else {
     priceHtml = '<div class="price-big"><div class="da">preventivo</div><div class="v" style="font-size:30px">Su misura</div><div class="u">in base alle tue esigenze</div></div>';
   }
@@ -338,6 +360,21 @@ function renderPcard(){
     + '<button class="pcta" style="background:#eef1f6;color:var(--ink);margin-top:8px" onclick="document.getElementById(\'richiedi\').scrollIntoView({behavior:\'smooth\'})"><i class="ti ti-phone"></i> CHIEDI INFORMAZIONI</button>';
 }
 function upd(){ renderPcard(); }
+function cnSet(k,v){ CN[k]=v; if(!(CN.terrCont&&CN.alluFabb)) CN.alluCont=false; CN.q=null; renderPcard(); }
+function cnParams(){ return { cap:CN.cap, valore:Number(CN.valore)||0, terrCont:CN.terrCont, alluFabb:CN.alluFabb, alluCont:CN.alluCont }; }
+async function cnCalcola(){
+  CN.err=''; CN.q=null;
+  if(!/^\d{5}$/.test(CN.cap)){ CN.err='Indica il CAP dell\'abitazione (5 cifre).'; return renderPcard(); }
+  if(!(Number(CN.valore)>0)){ CN.err='Indica il valore di ricostruzione.'; return renderPcard(); }
+  CN.calcolo=true; renderPcard();
+  try{
+    const r=await fetch(API+'/shop/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto:key,params:cnParams()})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok) throw new Error(d.error||'Calcolo non riuscito, riprova.');
+    CN.q=d;
+  }catch(e){ CN.err=e.message||'Calcolo non riuscito, riprova.'; }
+  CN.calcolo=false; renderPcard();
+}
 renderPcard();
 
 document.getElementById('lead-form').addEventListener('submit', async function(e){
@@ -351,7 +388,11 @@ document.getElementById('lead-form').addEventListener('submit', async function(e
   try{
     const r=await fetch(API+'/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       nome:nome,email:email,telefono:telefono,prodotto:P.nome,
-      messaggio:document.getElementById('messaggio').value.trim(),fonte:'landing · '+fonte,
+      /* Chi ha calcolato il premio della catastrofali non deve ridire CAP e
+         valore al telefono: la richiesta li porta con sé. */
+      messaggio:(document.getElementById('messaggio').value.trim()
+        +(((P.quote||{}).tipo==='catnat'&&CN.q)?'\n[Catastrofali] CAP '+CN.cap+' · valore ricostruzione '+eur(Number(CN.valore)||0)+' · stima '+eur(CN.q.prezzo)+'/anno'
+          +(CN.terrCont?' · terremoto contenuto':'')+(CN.alluFabb?' · alluvione fabbricato':'')+(CN.alluCont?' · alluvione contenuto':''):'')).trim(),fonte:'landing · '+fonte,
       azienda_web:document.getElementById('azienda_web').value
     })});
     const d=await r.json().catch(()=>({}));
@@ -363,8 +404,11 @@ document.getElementById('lead-form').addEventListener('submit', async function(e
 // ── Attivazione online lato cliente ──────────────────────────────────────────────
 //   Flusso: 1) Anagrafica (come QUOTO) → 2) Firma privacy a distanza (OTP)
 //           → 3) Documenti → 4) Pagamento → 5) Firma precontrattuale a distanza (OTP)
-function isQuotabile(){ const t=(P.quote||{}).tipo; return !!t && t!=='lead'; }
-function currentParams(){ return { liv:SS.liv, comp:SS.comp, tipo:SS.tipo, opt:QS.opt, addon:QS.addon }; }
+/* La catastrofali si attiva online solo dopo un premio calcolato dal server E
+   se il server dice che la vendita a distanza è aperta (Set Informativo
+   presente, compagnia d'accordo): altrimenti resta «chiedi informazioni». */
+function isQuotabile(){ const t=(P.quote||{}).tipo; if(t==='catnat') return !!(CN.q&&CN.q.vendita_online); return !!t && t!=='lead'; }
+function currentParams(){ if((P.quote||{}).tipo==='catnat') return cnParams(); return { liv:SS.liv, comp:SS.comp, tipo:SS.tipo, opt:QS.opt, addon:QS.addon }; }
 var PAYCFG={loaded:false}, CK={};
 async function payConfig(){ if(!PAYCFG.loaded){ const c=await fetch(API+'/pay/config').then(r=>r.json()).catch(()=>({})); Object.assign(PAYCFG,c,{loaded:true}); } return PAYCFG; }
 // Helper robusto: POST JSON con messaggi d'errore leggibili (rete, 404, 502 cold-start, errori server)
@@ -406,8 +450,13 @@ function ckComuneApply(i){
   const cap=Array.isArray(c.cap)?c.cap[0]:(c.cap||''); if(cap) set('ck-cap', cap);
   const box=document.getElementById('ck-com-res'); if(box){ box.classList.remove('show'); box.innerHTML=''; }
 }
-function ckSteps(n){ // indicatore passi 1..5
-  const lab=['Dati','Privacy','Documenti','Pagamento','Firma'];
+/* I passi dipendono dal prodotto: la catastrofali ha «Esigenze» prima del
+   pagamento (coerenza con richieste ed esigenze e consegna del Set
+   Informativo PRIMA della conclusione). ckN dà il numero del passo per nome. */
+function ckLab(){ return (P.quote||{}).tipo==='catnat' ? ['Dati','Privacy','Documenti','Esigenze','Pagamento','Firma'] : ['Dati','Privacy','Documenti','Pagamento','Firma']; }
+function ckN(nome){ return ckLab().indexOf(nome)+1; }
+function ckSteps(n){ // indicatore passi
+  const lab=ckLab();
   return '<div style="display:flex;gap:5px;margin:0 0 14px">'+lab.map((l,i)=>'<div style="flex:1;text-align:center"><div style="height:5px;border-radius:3px;background:'+(i<n?'var(--c1)':'#e6e9f2')+'"></div><div style="font-size:10px;color:'+(i<n?'var(--c1)':'#9aa2b5')+';margin-top:4px;font-weight:700">'+l+'</div></div>').join('')+'</div>';
 }
 function apriCheckout(){
@@ -434,7 +483,7 @@ async function ckSelfTest(){
 }
 // ── 1) Anagrafica (stessi dati di QUOTO: la pratica si ritrova in QUOTO) ──────────
 function ckStepData(){
-  document.getElementById('ck-body').innerHTML= ckSteps(1)
+  document.getElementById('ck-body').innerHTML= ckSteps(ckN('Dati'))
     +'<p style="color:var(--muted);font-size:13px;margin:0 0 8px">Inserisci i tuoi dati anagrafici. Il primo passo è la <b>firma dell\'informativa privacy</b> (a distanza).</p>'
     +'<input class="hp" id="ck-hp">'
     +'<div style="display:flex;gap:10px"><div style="flex:1"><label>Nome *</label><input id="ck-nome"></div><div style="flex:1"><label>Cognome *</label><input id="ck-cognome"></div></div>'
@@ -470,7 +519,7 @@ async function ckDataNext(){
 }
 // ── 2) Firma privacy a distanza (OTP via email) ──────────────────────────────────
 function ckStepPrivacy(){
-  document.getElementById('ck-body').innerHTML= ckSteps(2)
+  document.getElementById('ck-body').innerHTML= ckSteps(ckN('Privacy'))
     +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">Ti abbiamo inviato un\'email con un <b>codice di firma (OTP)</b> a '+esc(CK.cliente.email)+'. Inseriscilo qui sotto per firmare l\'informativa privacy a distanza.</div>'
     +'<label class="consent"><input type="checkbox" id="ck-pz-presa"> Dichiaro di aver <b>ricevuto e letto l\'informativa privacy</b> (Reg. UE 2016/679) e di averne preso visione. *</label>'
     +'<div style="font-weight:700;font-size:12.5px;margin:10px 0 2px;color:var(--muted)">Consensi facoltativi</div>'
@@ -529,7 +578,7 @@ function renderDocList(kind){
 }
 function ckStepDocs(){
   DOC = { id:[], cf:[] };
-  document.getElementById('ck-body').innerHTML= ckSteps(3)
+  document.getElementById('ck-body').innerHTML= ckSteps(ckN('Documenti'))
     +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46"><i class="ti ti-shield-check"></i> Informativa privacy firmata. Carica o <b>scatta una foto</b> del documento d\'identità, poi procedi al pagamento.</div>'
     +docUploader('id','Documento d\'identità (fronte/retro)',true)
     +docUploader('cf','Tessera sanitaria / Codice fiscale (facoltativo)',false)
@@ -546,13 +595,50 @@ async function ckDocsNext(){
     for(const f of DOC.id) CK.documenti.push(await ckUpload(f));
     for(const f of DOC.cf) CK.documenti.push(await ckUpload(f));
     CK.accettazioni={ veridicita:true, privacy_firmata:true, ts:new Date().toISOString() };
-    ckStepPay();
+    if((P.quote||{}).tipo==='catnat') ckStepEsigenze(); else ckStepPay();
   }catch(e){ btn.disabled=false; err.className='msg err'; err.textContent=e.message||'Errore nel caricamento'; }
+}
+// ── 3-bis) Esigenze e documenti precontrattuali (solo catastrofali) ──────────────
+//   Prima del pagamento, non dopo: il cliente risponde alle domande sulle sue
+//   esigenze (art. 119-bis CAP, art. 58 Reg. IVASS 40/2018) e riceve il Set
+//   Informativo su supporto durevole (vendita a distanza, art. 83 Reg. IVASS
+//   40/2018). Le domande e i documenti arrivano dal server: una lista sola, e
+//   il server ricontrolla le risposte prima di incassare.
+function ckStepEsigenze(){
+  const q=CN.q||{}, dom=q.esigenze||[], docs=q.documenti||[], dt=q.dettaglio||{};
+  const gar=(dt.garanzie||[]).map(g=>'<li>'+esc(g.nome)+' · somma '+eur(Math.round(g.somma))+'</li>').join('');
+  document.getElementById('ck-body').innerHTML= ckSteps(ckN('Esigenze'))
+    +'<div style="font-weight:800;font-size:15px;margin-bottom:6px">Le tue esigenze</div>'
+    +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 8px">Servono a verificare che la polizza sia coerente con quello che ti serve. Se non lo è, non procediamo online e ti ricontatta un consulente.</p>'
+    + dom.map(d=>'<div style="border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:6px 0"><div style="font-size:13px;margin-bottom:6px">'+esc(d.d)+'</div>'
+        +'<label style="display:inline-flex;gap:6px;align-items:center;margin-right:16px;font-size:13px"><input type="radio" name="es-'+d.k+'" value="si" style="width:auto"> Sì</label>'
+        +'<label style="display:inline-flex;gap:6px;align-items:center;font-size:13px"><input type="radio" name="es-'+d.k+'" value="no" style="width:auto"> No</label></div>').join('')
+    +'<div style="font-weight:800;font-size:15px;margin:14px 0 6px">Riepilogo della polizza</div>'
+    +'<div style="font-size:13px;line-height:1.6">CAP abitazione <b>'+esc(dt.cap||'')+'</b> · valore di ricostruzione <b>'+eur(dt.valore||0)+'</b><ul style="margin:6px 0 4px 18px;padding:0">'+gar+'</ul>Premio annuo <b>'+eur(q.prezzo||0)+'</b></div>'
+    +'<div style="font-weight:800;font-size:15px;margin:14px 0 6px">Documentazione precontrattuale</div>'
+    +'<p style="color:var(--muted);font-size:12.5px;margin:0 0 6px">Scarica e conserva i documenti: sono su supporto durevole e vanno letti prima di acquistare. Riceverai anche il Modulo Unico Precontrattuale (MUP) dell\'intermediario.</p>'
+    + docs.map(d=>'<div style="margin:4px 0"><a href="'+esc(d.url)+'" target="_blank" rel="noopener" style="color:var(--c1);font-weight:700"><i class="ti ti-file-download"></i> '+esc(d.nome)+'</a></div>').join('')
+    +'<p style="color:var(--muted);font-size:12px;margin:10px 0 0">Hai diritto di recedere entro 14 giorni dalla conclusione del contratto, senza penali e senza indicarne il motivo, scrivendo a With Us.</p>'
+    +'<label class="consent" style="margin-top:10px"><input type="checkbox" id="ck-es-letta"> Dichiaro di aver <b>ricevuto, scaricato e letto</b> la documentazione precontrattuale prima dell\'acquisto. *</label>'
+    +'<button class="btn" id="ck-es-next" onclick="ckEsigenzeNext()">Procedi al pagamento →</button><div class="msg err" id="ck-es-err"></div>';
+}
+function ckEsigenzeNext(){
+  const err=document.getElementById('ck-es-err'), dom=(CN.q&&CN.q.esigenze)||[], es={};
+  for(const d of dom){ const x=document.querySelector('input[name="es-'+d.k+'"]:checked'); if(!x){ err.className='msg err'; err.textContent='Rispondi a tutte le domande.'; return; } es[d.k]=(x.value==='si'); }
+  /* La regola di coerenza la sa il server: qui si chiede e basta. Se il
+     server rifiuta, il messaggio arriva al passo del pagamento. Per non far
+     pagare a vuoto, però, la risposta che non va si dice subito. */
+  const sbagliate=['abitazione','titolo','bisogno','valore'].filter(k=>es[k]===false).length + (es.doppia===true?1:0);
+  if(sbagliate){ err.className='msg err'; err.innerHTML='Dalle risposte la polizza non risulta coerente con le tue esigenze, quindi non la attiviamo online. <a href="#richiedi" onclick="document.getElementById(\'ck-ov\').remove()" style="color:inherit;font-weight:700">Lascia i tuoi recapiti</a> e ti ricontatta un consulente.'; return; }
+  if(!document.getElementById('ck-es-letta').checked){ err.className='msg err'; err.textContent='Conferma di aver ricevuto e letto la documentazione precontrattuale.'; return; }
+  CK.accettazioni=Object.assign({}, CK.accettazioni, { esigenze:es, precontrattuale_letta:true,
+    documenti_consegnati:((CN.q&&CN.q.documenti)||[]).map(d=>d.nome), precontrattuale_ts:new Date().toISOString() });
+  ckStepPay();
 }
 // ── 4) Pagamento ─────────────────────────────────────────────────────────────────
 async function ckStepPay(){
   const params=currentParams(), prodotto=key;
-  document.getElementById('ck-body').innerHTML= ckSteps(4)
+  document.getElementById('ck-body').innerHTML= ckSteps(ckN('Pagamento'))
     +'<div style="text-align:center;font-weight:900;font-size:20px;margin-bottom:2px">Paga la tua polizza</div>'
     +'<div id="ck-amt" style="text-align:center;font-weight:800;font-size:16px;color:var(--c1);margin-bottom:4px">Calcolo…</div>'
     +'<div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Pagamento sicuro · carta (POS virtuale), PayPal o bonifico</div>'
@@ -632,7 +718,7 @@ function ckStepPrec(){
   const intro = CK.metodo==='bonifico'
     ? 'Ordine registrato! Completa il bonifico con i dati indicati. Intanto ti abbiamo inviato un\'email con un <b>codice (OTP)</b> per firmare la documentazione precontrattuale (DIP, DIP aggiuntivo, Condizioni e MUP).'
     : 'Pagamento riuscito! Ti abbiamo inviato un\'email con un <b>codice (OTP)</b> per firmare a distanza la documentazione precontrattuale (DIP, DIP aggiuntivo, Condizioni e MUP).';
-  document.getElementById('ck-body').innerHTML= ckSteps(5)
+  document.getElementById('ck-body').innerHTML= ckSteps(ckN('Firma'))
     +'<div class="msg ok" style="display:block;background:#e8f7ee;color:#1e7d46">'+intro+'</div>'
     +'<label class="consent"><input type="checkbox" id="ck-pc-prec"> Dichiaro di aver ricevuto e letto il <b>Set Informativo precontrattuale</b> (DIP, DIP aggiuntivo e Condizioni) e il MUP, ai sensi del Regolamento IVASS. *</label>'
     +'<label class="consent"><input type="checkbox" id="ck-pc-mkt-elet"> (Facoltativo) <b>Marketing elettronico</b>: acconsento a comunicazioni commerciali via email, SMS, WhatsApp.</label>'

@@ -1,8 +1,18 @@
 {
-  "versione": "0.70.0",
-  "nome": "Agenda nella Scrivania",
+  "versione": "0.71.0",
+  "nome": "Catastrofali a distanza",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.71.0",
+      "data": "2026-10-09",
+      "nome": "Catastrofali a distanza",
+      "voci": [
+        "Marketing › Vendita a distanza: c'è la Rischi Catastrofali Abitazione, con landing, link e messaggio WhatsApp",
+        "Landing catastrofali: il cliente inserisce CAP e valore di ricostruzione e vede il premio calcolato con la stessa tariffa del preventivatore",
+        "Vendita a distanza: prima del pagamento il cliente risponde alle domande sulle sue esigenze e scarica il Set Informativo; per ora l'acquisto online resta chiuso finché non c'è la documentazione della compagnia"
+      ]
+    },
     {
       "v": "0.70.0",
       "data": "2026-10-09",

@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import { avviaFirmaCliente, avviaFirmaPrivacy } from './sign.js';
 import { creaLeadIAM } from './iamLead.js';
+import { quotaCatastrofali, cancelloVendita, configurazione, ESIGENZE_CATNAT } from './venditaDistanza.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const STAFF_INBOX = process.env.STAFF_EMAIL || 'intermediari@withusassicurazioni.it';
@@ -38,6 +39,7 @@ const OPZ = {
 };
 function calcPrezzo(prodotto, p) {
   p = p || {};
+  if (prodotto === 'catastrofali') { const q = quotaCatastrofali(p); return q.errore ? null : q; }
   if (prodotto === 'vita') return { prezzo: 144, etich: 'RC Vita Privata' };
   if (prodotto === 'infortuni-famiglia') return { prezzo: 45, etich: 'Infortuni Famiglia' };
   if (prodotto === 'aglea-attiva' || prodotto === 'aglea-protezione') {
@@ -67,14 +69,15 @@ async function ppToken() {
 function stripeH() { return { Authorization: 'Bearer ' + process.env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' }; }
 function esc(s){ return String(s ?? '').replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRef, documenti, accettazioni, clienteId, stato }) {
+async function registraVendita({ prodotto, etich, prezzo, cliente, metodo, payRef, documenti, accettazioni, clienteId, stato, dettaglio }) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const st = stato || 'pagato';
   const dati = { stato:st, public:true, fonte:'shop online', clienteId: clienteId || null,
     contatto:{ nome:cliente.nome, cognome:cliente.cognome, cf:cliente.cf, email:cliente.email, telefono:cliente.telefono },
     documenti: Array.isArray(documenti) ? documenti.slice(0,8) : [],
     accettazioni: accettazioni || null,
-    pagamento:{ metodo, importo:prezzo, payRef, stato:st, data:new Date().toISOString() }, prodottoKey:prodotto };
+    pagamento:{ metodo, importo:prezzo, payRef, stato:st, data:new Date().toISOString() }, prodottoKey:prodotto,
+    ...(dettaglio ? { quotazione: dettaglio } : {}) };
   const nome = ((cliente.nome||'') + ' ' + (cliente.cognome||'')).trim();
   let preventivoId = null;
   if (key) {
@@ -129,6 +132,7 @@ const META = {
   'viaggio':         { n:'Assicurazione Viaggio', d:'Assistenza, spese mediche e bagaglio per i tuoi viaggi.', img:OGIMG('1488646953014-85cb44e25828') },
   'animali':         { n:'Assicurazione Animali', d:'Cure veterinarie e RC per cani e gatti.', img:OGIMG('1601758228041-f3b2795255f1') },
   'rcprof':          { n:'RC Professionale', d:'La copertura su misura per la tua professione.', img:OGIMG('1521791136064-7986c2920216') },
+  'catastrofali':    { n:'Rischi Catastrofali Abitazione', d:'Proteggi la tua casa da terremoto, alluvione e inondazione.', img:OGIMG('1568605114967-8130f3a36994') },
   'casa':            { n:'Assicurazione Casa', d:'Proteggi la tua casa da incendio, furto e danni.', img:OGIMG('1568605114967-8130f3a36994') },
   'auto':            { n:'Assicurazione Auto / Moto', d:'RC Auto e garanzie al miglior prezzo.', img:OGIMG('1503376780353-7e6692767b70') },
 };
@@ -179,6 +183,16 @@ shopRouter.post('/upload', async (req, res) => {
 
 // Quotazione pubblica (prezzo calcolato dal server)
 shopRouter.post('/quote', (req, res) => {
+  /* La catastrofali ha bisogno di dire PERCHE' non quota (CAP fuori tariffa,
+     valore mancante): «prodotto non quotabile» manderebbe a cercare un guasto. */
+  if (req.body?.prodotto === 'catastrofali') {
+    const c = quotaCatastrofali(req.body?.params);
+    if (c.errore) return res.status(400).json({ error: c.errore });
+    const cfg = configurazione('catastrofali') || {};
+    return res.json({ ok: true, prezzo: c.prezzo, etich: c.etich, dettaglio: c.dettaglio,
+      vendita_online: cfg.vendita_online === true && Array.isArray(cfg.documenti) && cfg.documenti.length > 0,
+      motivo: cfg.motivo || null, documenti: cfg.documenti || [], esigenze: ESIGENZE_CATNAT.map(q => ({ k: q.k, d: q.d })) });
+  }
   const q = calcPrezzo(req.body?.prodotto, req.body?.params);
   if (!q) return res.status(404).json({ error: 'Prodotto non quotabile online.' });
   res.json({ ok: true, prezzo: q.prezzo, etich: q.etich });
@@ -254,6 +268,7 @@ shopRouter.post('/checkout/stripe/create-intent', async (req, res) => {
   if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: 'Pagamenti non configurati.' });
   const q = calcPrezzo(req.body?.prodotto, req.body?.params);
   if (!q) return res.status(400).json({ error: 'Prodotto non quotabile.' });
+  { const g = cancelloVendita(req.body?.prodotto, req.body); if (!g.ok) return res.status(400).json({ error: g.errore }); }
   try {
     const body = new URLSearchParams();
     body.set('amount', String(Math.round(q.prezzo * 100)));
@@ -269,13 +284,14 @@ shopRouter.post('/checkout/stripe/create-intent', async (req, res) => {
 shopRouter.post('/checkout/stripe/confirm', async (req, res) => {
   const q = calcPrezzo(req.body?.prodotto, req.body?.params);
   if (!q) return res.status(400).json({ error: 'Prodotto non valido.' });
+  { const g = cancelloVendita(req.body?.prodotto, req.body); if (!g.ok) return res.status(400).json({ error: g.errore }); }
   const id = String(req.body?.id || '');
   try {
     const r = await fetch('https://api.stripe.com/v1/payment_intents/' + encodeURIComponent(id), { headers: stripeH() });
     const d = await r.json(); if (!r.ok) throw new Error(d.error?.message || 'Stripe');
     if (d.status !== 'succeeded') return res.status(400).json({ error: 'Pagamento non riuscito (' + d.status + ').' });
     if (Number(d.amount) !== Math.round(q.prezzo * 100)) return res.status(400).json({ error: 'Importo non valido.' });
-    const v = await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'Carta (Stripe)', payRef:d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni, clienteId:req.body.clienteId });
+    const v = await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'Carta (Stripe)', payRef:d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni, clienteId:req.body.clienteId, dettaglio:q.dettaglio });
     res.json({ ok: true, preventivoId: v.preventivoId, firmaToken: v.firmaToken });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -285,6 +301,7 @@ shopRouter.post('/checkout/paypal/create-order', async (req, res) => {
   if (!process.env.PAYPAL_CLIENT_ID) return res.status(503).json({ error: 'Pagamenti non configurati.' });
   const q = calcPrezzo(req.body?.prodotto, req.body?.params);
   if (!q) return res.status(400).json({ error: 'Prodotto non quotabile.' });
+  { const g = cancelloVendita(req.body?.prodotto, req.body); if (!g.ok) return res.status(400).json({ error: g.errore }); }
   try {
     const token = await ppToken();
     const r = await fetch(ppBase() + '/v2/checkout/orders', { method:'POST', headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
@@ -296,6 +313,7 @@ shopRouter.post('/checkout/paypal/create-order', async (req, res) => {
 shopRouter.post('/checkout/paypal/capture', async (req, res) => {
   const q = calcPrezzo(req.body?.prodotto, req.body?.params);
   if (!q) return res.status(400).json({ error: 'Prodotto non valido.' });
+  { const g = cancelloVendita(req.body?.prodotto, req.body); if (!g.ok) return res.status(400).json({ error: g.errore }); }
   const orderId = String(req.body?.orderId || '');
   try {
     const token = await ppToken();
@@ -304,7 +322,7 @@ shopRouter.post('/checkout/paypal/capture', async (req, res) => {
     if (d.status !== 'COMPLETED') return res.status(400).json({ error: 'Pagamento non completato.' });
     const cap = d.purchase_units?.[0]?.payments?.captures?.[0];
     if (cap && Number(cap.amount?.value) !== Number(q.prezzo.toFixed(2))) return res.status(400).json({ error: 'Importo non valido.' });
-    const v = await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'PayPal', payRef:cap?.id || d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni, clienteId:req.body.clienteId });
+    const v = await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente:leggiCliente(req.body.cliente), metodo:'PayPal', payRef:cap?.id || d.id, documenti:req.body.documenti, accettazioni:req.body.accettazioni, clienteId:req.body.clienteId, dettaglio:q.dettaglio });
     res.json({ ok: true, preventivoId: v.preventivoId, firmaToken: v.firmaToken });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -335,11 +353,12 @@ shopRouter.get('/bonifico', async (req, res) => {
 shopRouter.post('/checkout/bonifico', async (req, res) => {
   const q = calcPrezzo(req.body?.prodotto, req.body?.params);
   if (!q) return res.status(400).json({ error: 'Prodotto non quotabile.' });
+  { const g = cancelloVendita(req.body?.prodotto, req.body); if (!g.ok) return res.status(400).json({ error: g.errore }); }
   try {
     const cliente = leggiCliente(req.body.cliente);
     const b = await getBonificoCfg();
     const causale = ('Polizza ' + q.etich + ' - ' + ((cliente.nome || '') + ' ' + (cliente.cognome || '')).trim()).slice(0, 140);
-    const v = await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente, metodo:'Bonifico', payRef:null, documenti:req.body.documenti, accettazioni:req.body.accettazioni, clienteId:req.body.clienteId, stato:'attesa_bonifico' });
+    const v = await registraVendita({ prodotto:req.body.prodotto, etich:q.etich, prezzo:q.prezzo, cliente, metodo:'Bonifico', payRef:null, documenti:req.body.documenti, accettazioni:req.body.accettazioni, clienteId:req.body.clienteId, stato:'attesa_bonifico', dettaglio:q.dettaglio });
     res.json({ ok: true, preventivoId: v.preventivoId, firmaToken: v.firmaToken,
       bonifico: { intestatario: b.intestatario, iban: b.iban, causale, importo: q.prezzo, etich: q.etich } });
   } catch (e) { res.status(500).json({ error: e.message }); }

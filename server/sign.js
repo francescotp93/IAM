@@ -8,6 +8,7 @@
 //                             invia al cliente l'email privacy + precontrattuale
 //                             e la conferma di avvenuta firma.
 //  Le scritture sul preventivo usano la service role (il cliente non è loggato).
+import { configurazione as configVenditaDistanza } from './venditaDistanza.js';
 import { Router } from 'express';
 import crypto from 'node:crypto';
 
@@ -128,6 +129,14 @@ const PRECONTRATTUALE = [
   ] },
 ];
 function docsForPrev(prev) {
+  /* I prodotti venduti a distanza dichiarano i loro documenti in un posto solo
+     (tariffe/vendita-distanza.json): sono gli stessi che la landing ha fatto
+     leggere al cliente PRIMA del pagamento, e devono essere quelli che riceve. */
+  const chiave = prev && prev.dati && prev.dati.prodottoKey;
+  const cfg = chiave ? configVenditaDistanza(chiave) : null;
+  if (cfg && Array.isArray(cfg.documenti) && cfg.documenti.length) {
+    return cfg.documenti.map((d) => ({ nome: d.nome, url: /^https?:/.test(d.url) ? d.url : APP_URL + d.url }));
+  }
   const p = ((prev && prev.prodotto) || '') + ' ' + ((prev && prev.modulo) || '');
   const m = PRECONTRATTUALE.find((x) => x.match.test(p));
   return m ? m.docs : [];

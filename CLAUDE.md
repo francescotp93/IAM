@@ -9190,3 +9190,28 @@ marcato. **Un'agenda che non si è potuta leggere non si scrive «nessun
 appuntamento»** (§12, §18). Si rilegge a ogni apertura della Scrivania, prima
 del freno dei trenta secondi. Prove: `iam/verifica/agenda-oggi.test.mjs` (8),
 con la controprova sul guasto.
+
+### Rischi Catastrofali Abitazione in vendita a distanza (0.71.0, 09/10/2026)
+
+Il Lab (Vendita a distanza, Landing, WhatsApp) ha la voce `catastrofali`; la
+landing (`?prodotto=catastrofali`) chiede CAP e valore di ricostruzione e
+**il premio lo calcola il server** (`server/venditaDistanza.js` →
+`tariffe/motore/catastrofali.js`, lo stesso motore del preventivatore e
+dell'API: nessun prezzo nella pagina).
+
+Le regole IVASS stanno sul server, perché la pagina la riscrive chiunque:
+- **si incassa solo se** `tariffe/vendita-distanza.json` dice
+  `vendita_online: true` **e** porta i `documenti` (Set Informativo HDI).
+  Oggi è `false`: la landing mostra una **stima** e raccoglie la richiesta
+  (con CAP, valore e stima nel messaggio). Si apre quando ci sono il Set
+  Informativo, l'autorizzazione della compagnia alla vendita a distanza e la
+  tariffa verificata sul portale;
+- **prima del pagamento** (non dopo, come gli altri prodotti dello shop) il
+  cliente risponde al questionario richieste ed esigenze (`ESIGENZE_CATNAT`)
+  e dichiara di aver scaricato e letto i documenti; tutte e cinque le rotte
+  che incassano passano da `cancelloVendita`, che ricontrolla le risposte;
+- i documenti della configurazione sono gli stessi che `sign.js` manda con la
+  firma precontrattuale (`docsForPrev` legge `prodottoKey`).
+
+Prove: `server/verifica/vendita-distanza.test.mjs` (10, controprova sulla
+presa visione).

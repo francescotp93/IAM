@@ -363,6 +363,22 @@ const params = new URLSearchParams(location.search);
 const key = (params.get('prodotto') || 'vita').toLowerCase();
 const fonte = params.get('fonte') || (document.referrer || 'landing');
 const P = PRODOTTI[key] || PRODOTTI.vita;
+/* Il contatore delle landing (09/10/2026): quante volte si apre il link e
+   che cosa ne viene fuori. Nessun cookie, niente salvato nel browser, nessun
+   dato di persone: solo l'evento, il prodotto, da dove arriva (canale) e la
+   campagna scritta nel link. Il server conta le persone con un'impronta che
+   cambia ogni giorno (server/landingStatistiche.js). Ogni evento parte una
+   volta sola per apertura di pagina: ricalcolare tre volte è un calcolo. */
+const TRK_CANALE = params.get('canale') || params.get('utm_source') || (function(){
+  try{ const h=new URL(document.referrer).hostname; if(!h||h===location.hostname) return ''; return h.replace(/^(www|l|m|lm|mobile)\./,'').split('.')[0]; }catch(_){ return ''; }
+})() || 'diretto';
+const TRK_CAMPAGNA = params.get('campagna') || params.get('utm_campaign') || '';
+const TRK_FATTI = {};
+function trk(evento){
+  if(TRK_FATTI[evento]) return; TRK_FATTI[evento]=true;
+  try{ fetch(API+'/landing/evento',{method:'POST',keepalive:true,headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({evento:evento,prodotto:key,canale:TRK_CANALE,campagna:TRK_CAMPAGNA})}).catch(function(){}); }catch(_){}
+}
 /* Il pulsante «Recesso online» in testa alla pagina si sceglie dal Lab quando
    si crea il link (recesso=1). Il collegamento nel piede resta sempre. */
 /* Anche il collegamento nel piede segue la spunta (Francesco, 09/10/2026: «il
@@ -557,11 +573,12 @@ async function cnCalcola(){
     const r=await fetch(API+'/shop/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto:key,params:cnParams()})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok||!d.ok) throw new Error(d.error||'Calcolo non riuscito, riprova.');
-    CN.q=d;
+    CN.q=d; trk('calcolo');
   }catch(e){ CN.err=e.message||'Calcolo non riuscito, riprova.'; }
   CN.calcolo=false; renderPcard();
 }
 renderPcard();
+trk('visita');
 fetch('tariffe/vendita-distanza.json',{cache:'no-store'}).then(r=>r.json()).then(c=>{ VD=c||{}; renderPcard(); aggiornaDettCta(); aggiornaRecesso(); }).catch(()=>{ VD={}; renderPcard(); aggiornaDettCta(); });
 function aggiornaDettCta(){ const cta=document.getElementById('dett-cta'); if(cta) cta.style.display = isQuotabile() ? '' : 'none'; }
 
@@ -585,6 +602,7 @@ document.getElementById('lead-form').addEventListener('submit', async function(e
     })});
     const d=await r.json().catch(()=>({}));
     if(!r.ok||!d.ok) throw new Error(d.error||'Invio non riuscito');
+    trk('richiesta');
     document.getElementById('form-area').innerHTML='<div class="done"><div class="ic2">✓</div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Richiesta inviata!</div><div style="color:#6b7488">Grazie '+nome.split(' ')[0]+', ti ricontattiamo al più presto.</div></div>';
   }catch(err){ btn.disabled=false; msg.className='msg err'; msg.textContent=err.message||'Errore, riprova.'; }
 });
@@ -655,7 +673,7 @@ function ckSteps(n){ // indicatore passi
   return '<div style="display:flex;gap:5px;margin:0 0 14px">'+lab.map((l,i)=>'<div style="flex:1;text-align:center"><div style="height:5px;border-radius:3px;background:'+(i<n?'var(--c1)':'#e6e9f2')+'"></div><div style="font-size:10px;color:'+(i<n?'var(--c1)':'#9aa2b5')+';margin-top:4px;font-weight:700">'+l+'</div></div>').join('')+'</div>';
 }
 function apriCheckout(){
-  if(!isQuotabile()) return; CK={cliente:null};
+  if(!isQuotabile()) return; CK={cliente:null}; trk('checkout');
   const ov=document.createElement('div'); ov.id='ck-ov'; ov.className='ck-ov';
   ov.innerHTML='<div class="ck-box"><div class="ck-head"><b>Attiva · '+P.nome+'</b> <span style="font-size:9px;color:#9aa2b5;font-weight:400">v2</span><button class="ck-x" onclick="document.getElementById(\'ck-ov\').remove()"><i class="ti ti-x"></i></button></div><div id="ck-status" style="font-size:11.5px;padding:7px 18px;background:#fff8e6;color:#9a7b00;border-bottom:1px solid var(--line)">Verifica connessione al server…</div><div class="ck-body" id="ck-body"></div></div>';
   document.body.appendChild(ov); ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
@@ -942,14 +960,14 @@ async function ckStepPay(){
           const {error,paymentIntent}=await stripe.confirmPayment({elements,redirect:'if_required'});
           if(error){ m.className='msg err'; m.textContent=error.message; btn.disabled=false; return; }
           const c=await fetch(API+'/shop/checkout/stripe/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body({id:paymentIntent.id}))}).then(r=>r.json());
-          if(c.ok){ CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken; ckStepPrec(); } else { m.className='msg err'; m.textContent=c.error||'Errore'; btn.disabled=false; } };
+          if(c.ok){ trk('acquisto'); CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken; ckStepPrec(); } else { m.className='msg err'; m.textContent=c.error||'Errore'; btn.disabled=false; } };
       } else { const m=document.getElementById('ck-pmsg'); m.className='msg err'; m.textContent=intent.error||'Pagamento con carta non disponibile, usa PayPal.'; }
     }
     if(cfg.paypalClientId){
       if(!window.paypal) await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(cfg.paypalClientId)+'&currency=EUR&intent=capture';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
       window.paypal.Buttons({ style:{height:42,label:'pay'},
         createOrder:async()=>{ const o=await fetch(API+'/shop/checkout/paypal/create-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prodotto,params,cliente:CK.cliente,accettazioni:CK.accettazioni})}).then(r=>r.json()); return o.id; },
-        onApprove:async(data)=>{ const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Confermo…'; const c=await fetch(API+'/shop/checkout/paypal/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body({orderId:data.orderID}))}).then(r=>r.json()); if(c.ok){ CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken; ckStepPrec(); } else { m.className='msg err'; m.textContent=c.error||'Errore'; } },
+        onApprove:async(data)=>{ const m=document.getElementById('ck-pmsg'); m.className='msg'; m.textContent='Confermo…'; const c=await fetch(API+'/shop/checkout/paypal/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body({orderId:data.orderID}))}).then(r=>r.json()); if(c.ok){ trk('acquisto'); CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken; ckStepPrec(); } else { m.className='msg err'; m.textContent=c.error||'Errore'; } },
         onError:()=>{ const m=document.getElementById('ck-pmsg'); m.className='msg err'; m.textContent='Errore PayPal'; }
       }).render('#ck-paypal');
     }
@@ -965,6 +983,7 @@ async function ckPagaBonifico(){
   try{
     const c=await fetch(API+'/shop/checkout/bonifico',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody)}).then(r=>r.json());
     if(!c.ok) throw new Error(c.error||'Errore');
+    trk('acquisto');
     CK.preventivoId=c.preventivoId; CK.firmaToken=c.firmaToken;
     const b=c.bonifico||{};
     m.textContent='';

@@ -1,8 +1,18 @@
 {
-  "versione": "0.76.0",
-  "nome": "Lettura veloce anche per i collaboratori",
+  "versione": "0.77.0",
+  "nome": "Quante volte si aprono le landing",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.77.0",
+      "data": "2026-10-09",
+      "nome": "Quante volte si aprono le landing",
+      "voci": [
+        "Marketing › Statistiche: quante volte si apre il link di ogni landing, quante persone diverse, quanti calcolano il premio, chiedono un preventivo o attivano online — per prodotto, canale e campagna",
+        "Nel Lab si può dare un nome alla campagna (es. facebook-ottobre) ai link della landing, della vendita a distanza e di WhatsApp: le visite si contano a parte",
+        "Il contatore non usa cookie, non salva l'indirizzo IP e nessun dato delle persone: i visitatori si contano «unici al giorno»"
+      ]
+    },
     {
       "v": "0.76.0",
       "data": "2026-10-09",

@@ -9523,3 +9523,44 @@ colonna con `text-wrap: balance` (Francesco: «usa sempre lo stesso carattere
 che abbiamo deciso e centralo bene»). Nelle fotografie di collaudo il
 carattere si vede solo lasciando passare `fonts.googleapis`/`gstatic`: con la
 rete chiusa esce il ripiego, e sembra un errore che non c'è.
+
+### Il contatore delle landing (0.77.0, 09/10/2026)
+
+> «C'è un modo per capire quanti click riceve il link della landing page?» —
+> Francesco. Non c'era: GitHub Pages non dà statistiche.
+
+| pezzo | dove |
+|---|---|
+| le regole e la rotta `POST /landing/evento` | `server/landingStatistiche.js` |
+| la tabella e le due somme | `supabase/migrations/20261009c_landing_eventi.sql` (applicata) |
+| i cinque eventi | `trk()` in `landing.html` |
+| il canale WhatsApp e la campagna sul link `/l/` | `ogRouter` in `server/shop.js` |
+| il nome della campagna e la linguetta «Statistiche» | `campSigla`, `loadStat` in `lab/index.html` |
+| prove | `server/verifica/landing-statistiche.test.mjs` — 11, quattro controprove |
+
+Cinque eventi, che sono l'imbuto: visita → calcolo (oggi solo la
+catastrofali, l'unica che calcola il premio sul server) → richiesta (contata
+DOPO che il server l'ha ricevuta) → checkout → acquisto (pagamento con carta o
+PayPal confermato, oppure ordine con bonifico registrato). Ognuno parte una
+volta sola per apertura di pagina.
+
+**Fuori dal consenso cookie, ed è la ragione di ogni scelta:** nessun cookie e
+niente salvato nel browser; nessun IP salvato — il visitatore è un'HMAC di IP +
+browser con una chiave che cambia ogni giorno (`LANDING_SEGRETO`, o
+`OTP_SEGRETO`, o la chiave di servizio), 16 caratteri, da cui non si torna
+all'IP e che domani è un'altra; nessun dato di persone — canale e campagna
+entrano solo come sigla, e una sigla con un'email o sei cifre di fila non
+entra. Le anteprime dei link (WhatsApp, Facebook) e i robot non si contano.
+
+La tabella la scrive solo il server (nessuna politica di inserimento: dal
+browser 401, misurato); la leggono lo staff e chi ha il Lab. Le somme le fa il
+database (`iam_landing_statistiche`, `iam_landing_giorni`, SECURITY INVOKER):
+nel Lab non scendono gli eventi uno per uno. Il server risponde **sempre 204**:
+chi visita non vede mai un errore per un contatore.
+
+Il canale si legge dal link (`canale=`, `utm_source`), poi dal sito da cui si
+arriva, altrimenti «diretto». Il link `/l/` del Lab porta `canale=whatsapp`.
+
+Aperto: gli altri prodotti mostrano il prezzo senza un calcolo sul server, quindi
+per loro il passo «calcolo» resta vuoto; la landing di Infortuni Famiglia
+(`/infortuni-famiglia/`) è una pagina a sé e non è ancora contata.

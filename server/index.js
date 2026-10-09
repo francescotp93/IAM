@@ -12,6 +12,7 @@ import { publicPay, securePay } from './pay.js';
 import { notifyRouter } from './notify.js';
 import { leadRouter } from './lead.js';
 import { shopRouter, ogRouter } from './shop.js';
+import { landingRouter } from './landingStatistiche.js';
 import { signRouter, publicSign } from './sign.js';
 import { recessoRouter } from './recesso.js';
 import { firmaCollabRouter, publicFirmaCollab } from './firmaCollab.js';
@@ -144,6 +145,10 @@ app.use('/esiti', requireAuth, requireInterno, esitiRouter);
 // ── Shop ──────────────────────────────────────────────────────
 app.use('/shop', shopRouter);
 app.use('/l', ogRouter);
+/* Il contatore delle landing (09/10/2026): pubblico per forza — chi apre una
+   landing non ha un account. Niente cookie, niente IP salvato: vedi il modulo.
+   Il corpo arriva come testo semplice (fetch keepalive dalla pagina). */
+app.use('/landing', express.text({ type: 'text/plain', limit: '2kb' }), landingRouter());
 
 // ── Firma ────────────────────────────────────────────────────
 app.use('/sign', publicSign);

@@ -1,8 +1,16 @@
 {
-  "versione": "0.73.0",
-  "nome": "Recesso online e informativa privacy",
+  "versione": "0.73.1",
+  "nome": "Catastrofali: imposte e detrazione spiegate",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.73.1",
+      "data": "2026-10-09",
+      "nome": "Catastrofali: imposte e detrazione spiegate",
+      "voci": [
+        "Landing Rischi Catastrofali: sotto il prezzo si spiega che è finale (niente imposte sui premi) e quanto si recupera con la detrazione del 19% nella dichiarazione dei redditi"
+      ]
+    },
     {
       "v": "0.73.0",
       "data": "2026-10-09",

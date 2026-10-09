@@ -1,8 +1,16 @@
 {
-  "versione": "0.74.0",
-  "nome": "Catastrofali: scheda prezzo rivista",
+  "versione": "0.74.1",
+  "nome": "Catastrofali: esenzione citata dal DIP",
   "data": "2026-10-09",
   "storia": [
+    {
+      "v": "0.74.1",
+      "data": "2026-10-09",
+      "nome": "Catastrofali: esenzione citata dal DIP",
+      "voci": [
+        "Landing Rischi Catastrofali: sotto la stima del premio c'è la frase del DIP aggiuntivo sull'esenzione dalle imposte sui premi, citata parola per parola e con la fonte"
+      ]
+    },
     {
       "v": "0.74.0",
       "data": "2026-10-09",

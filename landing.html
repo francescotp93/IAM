@@ -150,6 +150,8 @@
   .link-ric{display:block;margin:8px auto 0;background:none;border:none;color:var(--c1);font-weight:600;font-size:13px;cursor:pointer;text-decoration:underline}
   .lp-check{margin-top:4px} .lp-check li{border-top:none;padding:4px 0;font-weight:500}
   .lp-ok{color:var(--c1);font-weight:700;width:18px;flex-shrink:0}
+  .lp-fisc{font-size:12px;line-height:1.5;color:var(--ink);background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:8px 11px;margin:2px 0 8px;font-style:italic}
+  .lp-fisc span{display:block;font-style:normal;color:var(--muted);font-size:11px;margin-top:3px}
   /* La casella resta a sinistra e il testo scorre normale: con display:flex
      ogni grassetto diventava una colonna a sé e la frase si spezzava. */
   .consent{display:block;position:relative;padding-left:28px}
@@ -316,6 +318,7 @@ const PRODOTTI = {
         {k:'Limite di indennizzo fabbricato',v:'80% della somma'},
         {k:'Copertura attiva',v:'dal 20° giorno dal pagamento'},
         {k:'Durata',v:'annuale, tacito rinnovo'},
+        {k:'Imposte sui premi',v:'esenti (vedi DIP aggiuntivo)'},
       ],
       include:[
         'Danni materiali e diretti da terremoto al fabbricato e al contenuto, compresi incendio, esplosione e scoppio che ne derivano',
@@ -446,6 +449,12 @@ function renderPcard(){
    finché non sono verificate sul prodotto, e niente «in attesa del Set
    Informativo» davanti al cliente: è un'informazione interna. «da 60 €» è il
    premio minimo di polizza (RCAB_PMIN del motore). */
+/* Regime fiscale: si CITA il DIP aggiuntivo HDI (Mod. DAP5821, ed. 05/2026,
+   sezione «Regime fiscale»), parola per parola e con la fonte accanto, invece
+   di riassumerlo (decisione di Francesco, 09/10/2026). Niente detrazione: sta
+   solo nella nota tecnica interna. Se il DIP cambia, cambia questa frase. */
+var CN_FISCALE = 'Le garanzie previste dalla presente polizza sono esenti dall’applicazione delle imposte sui premi di assicurazione.';
+var CN_FISCALE_FONTE = 'DIP aggiuntivo Danni, Mod. DAP5821, ed. 05/2026 · Regime fiscale';
 function renderPcardCatnat(){
   const q=CN.q, online=!!(q&&q.vendita_online);
   const prezzo = q ? '<div class="v">'+eur(q.prezzo)+'</div>' : '<div class="v"><span style="font-size:22px;font-weight:600">da</span> € 60</div>';
@@ -460,6 +469,7 @@ function renderPcardCatnat(){
     '<div class="ph">'+P.nome+'</div><div class="psub">With Us Assicurazioni</div>'
     + '<div class="price-big"><div class="da" style="text-transform:uppercase;letter-spacing:.06em;font-size:11.5px">Stima del premio</div>'+prezzo+'<div class="u">all\'anno</div>'
     + '<div style="font-size:12px;color:var(--muted);font-weight:500;margin-top:4px">'+nota+'</div></div>'
+    + '<div class="lp-fisc">«'+esc(CN_FISCALE)+'»<span>'+esc(CN_FISCALE_FONTE)+'</span></div>'
     + '<ul class="incl lp-check">'+voci.map(v=>'<li><span class="lp-ok" aria-hidden="true">✓</span> '+v+'</li>').join('')+'</ul>'
     + '<div class="qrow" style="margin-top:12px"><input id="cn-cap" inputmode="numeric" maxlength="5" placeholder="CAP dell\'abitazione" value="'+esc(CN.cap)+'" oninput="CN.cap=this.value.replace(/\\D/g,\'\');cnCambiato()">'
     + '<input id="cn-val" inputmode="numeric" placeholder="Valore di ricostruzione (€, da 40.000)" value="'+esc(CN.valore)+'" oninput="CN.valore=this.value.replace(/\\D/g,\'\');cnCambiato()"></div>'
@@ -760,7 +770,7 @@ function ckStepEsigenze(){
     +sel('ab-eta','Età dell\'edificio',sc.eta)
     +'<div style="display:flex;gap:10px"><div style="flex:1"><label>Piani fuori terra dell\'edificio *</label><input id="ab-pft" type="number" min="1" step="1"></div><div style="flex:1"><label>Piani interrati o seminterrati *</label><input id="ab-pin" type="number" min="0" step="1"></div></div>'
     +'<div class="lp-h">Riepilogo della polizza</div>'
-    +'<div style="font-size:13px;line-height:1.6">CAP abitazione <b>'+esc(dt.cap||'')+'</b> · valore di ricostruzione <b>'+eur(dt.valore||0)+'</b><ul style="margin:6px 0 4px 18px;padding:0">'+gar+'</ul>Premio annuo <b>'+eur(q.prezzo||0)+'</b></div>'
+    +'<div style="font-size:13px;line-height:1.6">CAP abitazione <b>'+esc(dt.cap||'')+'</b> · valore di ricostruzione <b>'+eur(dt.valore||0)+'</b><ul style="margin:6px 0 4px 18px;padding:0">'+gar+'</ul>Premio annuo <b>'+eur(q.prezzo||0)+'</b><div style="font-size:12px;color:var(--muted);margin-top:4px">Regime fiscale: «'+esc(CN_FISCALE)+'» ('+esc(CN_FISCALE_FONTE)+')</div></div>'
     +'<div class="lp-h">Cosa devi sapere prima di acquistare</div>'
     +'<div class="lp-avv"><i class="ti ti-alert-triangle"></i><div>La copertura <b>parte dal 20° giorno</b> dopo il pagamento. In caso di danno restano a tuo carico una <b>franchigia del 10%</b> della somma assicurata (per l\'alluvione almeno 5.000 €), e per il fabbricato l\'indennizzo arriva <b>al massimo all\'80%</b> della somma. Se il valore assicurato è più basso del costo di ricostruzione, l\'indennizzo si riduce in proporzione. La polizza è annuale con <b>tacito rinnovo</b>: si disdice con raccomandata o PEC almeno 30 giorni prima della scadenza.</div></div>'
     +'<label class="consent" style="margin-top:0"><input type="checkbox" id="ck-es-avv"> Ho preso atto di carenza, franchigie, limiti di indennizzo e tacito rinnovo. *</label>'

@@ -8972,3 +8972,13 @@ cade si svuota con le fasce: un «0 scadenze» su un guasto sarebbe falso). Le
 fasce e «Solo non rinnovate» stanno nella testata, con gli stessi id. Le
 regole di `.rin-fascia` valgono anche per i Titoli (`#tit-fasce`): il vetro si
 applica **solo** dentro `.rin-hero`, mai alla classe nuda.
+
+### I titoli con lo stesso linguaggio (0.59.0, 09/10/2026)
+
+`#page-titoli` usa **le stesse classi** della testata dello scadenzario
+(`rin-kit`, `rin-hero`, `rin-pills`, `rin-hb`, `rin-filtri`, `rin-tab`): non
+una copia, una tavolozza sola per le due pagine sorelle del portafoglio. Le
+pastiglie (`titRenderChips`, chiamata da `titRenderFasce`) dicono oggi e quanti
+titoli si guardano; quando la lettura cade si svuotano insieme alle fasce. La
+cifra sotto ogni fascia non ha più uno stile in linea: è `rin-card-sub`, e la
+prova che la legge come secondo `span` resta valida.

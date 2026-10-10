@@ -9599,6 +9599,30 @@ vale: chi chiede un preventivo non è ancora un cliente (§76).
 - I due `<label>` della casella hanno il testo dentro uno `<span>`: la riga è
   una flex, e un `<i>` nudo diventava una colonna a sé.
 
-Aperto: il consenso marketing raccolto qui resta sulla richiesta e sul lead;
-quando il lead diventa un'anagrafica va portato in
-`quote_anagrafiche.consenso_marketing` — oggi nessuno lo fa.
+#### Il consenso arriva sulla scheda del cliente (10/10/2026)
+
+Quando l'operatore collega la richiesta a un'anagrafica (`dati.clienteId`,
+scritto da `pvSave`), il trigger `quote_lead_consenso` su `quote_preventivi`
+porta il consenso in `quote_anagrafiche.consenso_marketing` (origine «modulo
+sito», data del modulo). Migrazione
+`supabase/migrations/20261010_lead_consenso_in_anagrafica.sql` (applicata).
+Sta nel database perché le strade che collegano un cliente sono più di una.
+
+Lo porta solo se: il consenso è un vero `true`, la richiesta è del sito
+(`modulo='lead'`), **email o telefono della richiesta sono quelli della
+scheda**, dopo il modulo non c'è un'opposizione né una privacy firmata (la
+volontà più recente vince), e la scheda non ce l'ha già. L'esito resta sulla
+richiesta, `dati.consenso_portato` («portato» o il motivo). E `dati.privacy`
+la scrive **solo il server**: da un account si rimette com'era o si toglie.
+
+> **La trappola, presa dalla prova sul database vero.** La prima stesura
+> riconosceva il server con `current_user`. Dentro una funzione
+> `SECURITY DEFINER` `current_user` è **sempre il proprietario**: il controllo
+> diceva «server» a tutti, e un operatore poteva scrivere un consenso. Adesso
+> è `auth.role() = 'service_role'` (o una sessione senza token, cioè una
+> manutenzione diretta). Provato con sei casi in una transazione annullata;
+> la prova sul sorgente vieta `current_user` in quella riga.
+
+Aperto: un consenso portato sulla scheda sbagliata (richiesta collegata alla
+persona sbagliata con gli stessi contatti) non si toglie da solo; e il lead di
+`iam_lead` (pannello senza menu) non lo riceve.

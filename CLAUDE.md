@@ -9626,3 +9626,37 @@ la scrive **solo il server**: da un account si rimette com'era o si toglie.
 Aperto: un consenso portato sulla scheda sbagliata (richiesta collegata alla
 persona sbagliata con gli stessi contatti) non si toglie da solo; e il lead di
 `iam_lead` (pannello senza menu) non lo riceve.
+
+### La landing della RC capofamiglia dice quello che dice la polizza (0.79.0, 10/10/2026)
+
+> «Sistemiamo anche la parte del rc capo famiglia, migliora la landing» —
+> Francesco, con il link delle Condizioni HDI Globale Casa Mod. P5811 ed.
+> 06/2026 (identiche a `docs/casa/GlobaleCasa_Condizioni.pdf`).
+
+Il pacchetto (`vita` nella landing, RCVP nel preventivatore) è HDI Globale
+Casa con tre sezioni: RC della famiglia (art. 6.2.2), Tutela legale Opzione B
+«Vita privata» gestita da ARAG (art. 8.4) e Digital Assistance (art. 7.2).
+La scheda adesso ha `chips`, `compagnia` e `dettagli` (voci, coperture,
+esclusioni) presi da lì. Tre cose dicevano il falso o lo lasciavano credere:
+
+- **«Attiva da subito, emissione immediata»**: la tutela legale, tranne il
+  risarcimento danni e la difesa penale, parte **dopo 3 mesi** (art. 8.8).
+  Tolta, e la carenza è scritta fra le esclusioni.
+- **«a partire da € 12 al mese»** su un pacchetto che si paga **144 € all'anno**
+  e non parte da nessun'altra cifra. La scheda dei prezzi fissi mostra il
+  premio annuo grande e il mese come confronto (vale anche per Infortuni
+  Famiglia).
+- **Il `motivo` della configurazione** diceva «si attiva con un consulente» su
+  un prodotto venduto online.
+
+**I massimali non si scrivono**: stanno nella Scheda di Polizza del pacchetto,
+che nel repository non c'è. L'unico importo del capitolo RC è il tetto per USA,
+Canada e Messico (1.000.000 €, art. 6.6). Il questionario ha due domande in
+più: copertura per il lavoro (esclusa) e cani di razze pericolose o animali da
+sella (esclusi). La prova `vendita-distanza` lega ogni frase della scheda alla
+frase delle Condizioni che la regge e vieta importi senza fonte; cinque
+controprove.
+
+Aperto: i massimali RC e tutela legale del pacchetto, e se la HOME Assistance
+(che per le Condizioni accompagna sempre la Digital Assistance) è inclusa:
+vanno presi dalla Scheda di Polizza o dal portale HDI.

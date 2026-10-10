@@ -21,6 +21,10 @@
   .hp{position:absolute;left:-9999px;top:-9999px;}
   .consent{display:flex;gap:9px;align-items:flex-start;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.5;}
   .consent input{width:18px;height:18px;margin-top:2px;flex-shrink:0;}
+  .consent span{font-weight:500;}
+  .pv-box{margin-top:14px;padding:12px 14px;border:1px solid #d9dde5;border-radius:10px;background:#f7f8fa;font-size:11.5px;line-height:1.5;color:#4a5263;max-height:190px;overflow-y:auto;}
+  .pv-box p{margin:0 0 6px;} .pv-box .pv-t{font-weight:700;color:#2b3346;margin-bottom:6px;font-size:12px;}
+  .pv-box a{color:#0a8a5f;font-weight:600;} .pv-box .pv-link{margin:0;}
   .btn{width:100%;margin-top:16px;padding:13px;border:none;border-radius:11px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-size:15px;font-weight:800;cursor:pointer;}
   .btn:disabled{opacity:.6;cursor:default;}
   .msg{margin-top:12px;font-size:13px;text-align:center;}
@@ -60,7 +64,20 @@
         </select>
         <label for="messaggio">Messaggio (facoltativo)</label>
         <textarea id="messaggio" name="messaggio" placeholder="Scrivi qui le tue esigenze…"></textarea>
-        <label class="consent"><input type="checkbox" id="privacy" required> Acconsento al trattamento dei miei dati per essere ricontattato, ai sensi dell'informativa privacy (Reg. UE 2016/679).</label>
+        <!-- INFORMATIVA-LEAD: inizio (stesso testo in landing.html e widget.html, una prova lo sorveglia) -->
+      <div class="pv-box" role="region" aria-label="Informativa privacy">
+        <div class="pv-t">Informativa privacy (art. 13 Reg. UE 2016/679) &mdash; in breve</div>
+        <p><b>Titolare:</b> With Us Società Cooperativa, Vico Giunone 3, 91027 Paceco (TP) &middot; amministrazione@withusassicurazioni.it &middot; PEC withus.coop@pec.it.</p>
+        <p><b>Perché usiamo i tuoi dati:</b> per rispondere a questa richiesta, ricontattarti e prepararti un preventivo. È un trattamento che chiedi tu (misure precontrattuali, art. 6.1.b): senza questi dati non possiamo risponderti.</p>
+        <p><b>A chi li comunichiamo:</b> alle compagnie e agli intermediari con cui collaboriamo, solo per preparare il preventivo. Non vengono diffusi.</p>
+        <p><b>Per quanto tempo:</b> per il tempo necessario a gestire la richiesta e secondo i periodi indicati al punto 7 dell'informativa completa.</p>
+        <p><b>Offerte commerciali:</b> solo se lo autorizzi con la casella facoltativa qui sotto. Puoi revocare il consenso in qualsiasi momento.</p>
+        <p><b>I tuoi diritti:</b> accesso, rettifica, cancellazione, limitazione, opposizione e portabilità, scrivendo ai recapiti del titolare; puoi anche proporre reclamo al Garante per la protezione dei dati personali.</p>
+        <p class="pv-link">Informativa completa: <a href="https://api.withusassicurazioni.it/sign/privacy/informativa" target="_blank" rel="noopener">leggila qui</a> &middot; <a href="https://quoto.withusassicurazioni.it/docs/privacy/Informativa_Privacy_WithUs_PR01_rev4.1.pdf" target="_blank" rel="noopener">PDF (Mod. PR01 rev 4.1)</a></p>
+      </div>
+      <label class="consent"><input type="checkbox" id="privacy" required> <span>Ho letto l'informativa privacy e chiedo di essere ricontattato per questa richiesta. *</span></label>
+      <label class="consent"><input type="checkbox" id="consenso_mkt"> <span>Acconsento a ricevere offerte e comunicazioni commerciali di With Us su prodotti assicurativi (email, telefono, SMS, WhatsApp). <i>Facoltativo.</i></span></label>
+      <!-- INFORMATIVA-LEAD: fine -->
         <button class="btn" id="submit" type="submit">Invia richiesta</button>
         <div class="msg" id="msg"></div>
       </form>
@@ -96,7 +113,9 @@
           prodotto: document.getElementById('prodotto').value,
           messaggio: document.getElementById('messaggio').value.trim(),
           fonte: fonte,
-          azienda_web: document.getElementById('azienda_web').value
+          azienda_web: document.getElementById('azienda_web').value,
+          privacy_letta: document.getElementById('privacy').checked,
+          consenso_marketing: document.getElementById('consenso_mkt').checked
         })
       });
       var d = await r.json().catch(function(){return {};});

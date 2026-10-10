@@ -56,7 +56,9 @@ export async function creaLeadIAM({ nome, cognome, nominativo, telefono, email, 
       prodotto: prodotto || null,
       stato: 'nuovo',
       note: note || null,
-      consenso: consenso != null ? !!consenso : true,
+      /* Consenso al contatto commerciale: lo dà la persona, non il programma.
+         Chi non lo dice non l'ha dato (prima il ripiego era «sì»). */
+      consenso: consenso === true,
       utente_id: null, // contatto inbound: non appartiene a un utente finché non viene assegnato
       aggiornato_il: new Date().toISOString(),
     };

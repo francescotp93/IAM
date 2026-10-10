@@ -9564,3 +9564,41 @@ arriva, altrimenti «diretto». Il link `/l/` del Lab porta `canale=whatsapp`.
 Aperto: gli altri prodotti mostrano il prezzo senza un calcolo sul server, quindi
 per loro il passo «calcolo» resta vuoto; la landing di Infortuni Famiglia
 (`/infortuni-famiglia/`) è una pagina a sé e non è ancora contata.
+
+### L'informativa privacy visibile sui moduli di richiesta (0.78.0, 10/10/2026)
+
+> «Dobbiamo aggiungere il testo privacy visibile» — Francesco, dopo aver
+> chiesto se chi compila il modulo per un preventivo RCA dà un consenso valido.
+
+Per rispondere a una richiesta di preventivo il consenso **non serve**: sono
+misure precontrattuali chieste dall'interessato (art. 6.1.b). Serve invece
+l'**informativa nel momento della raccolta** (art. 13), e il **marketing
+vuole un consenso a parte**, libero e non spuntato (art. 7). Il soft spam non
+vale: chi chiede un preventivo non è ancora un cliente (§76).
+
+| pezzo | dove |
+|---|---|
+| l'informativa breve e le due caselle, **uguali** nei due moduli | blocco `INFORMATIVA-LEAD` in `landing.html` e `widget.html` |
+| la registrazione | `dati.privacy` in `server/lead.js` |
+| il lead in IAM | `consenso` in `server/iamLead.js` |
+| prove | `server/verifica/informativa-lead.test.mjs` — 8, tre controprove |
+
+- **Il testo breve dice solo fatti dell'informativa ufficiale PR01** (titolare,
+  PEC, destinatari, diritti, Garante) e rimanda al punto 7 per la
+  conservazione: una prova lo confronta con `docs/privacy/informativa-pr01.txt`.
+  Quando cambia la revisione si cambiano insieme PDF, testo e i due moduli.
+- **La casella obbligatoria è una presa visione**, non un «consenso al
+  trattamento»: chiamarla consenso diceva una cosa giuridicamente falsa.
+- **Il consenso marketing vale solo se è un vero `true`** («true» in stringa,
+  `1`, `on` non lo sono), e si registra con l'ora e la versione
+  dell'informativa (`PR01 rev 4.1`): è l'unico modo di dimostrarlo (art. 5.2).
+- **`creaLeadIAM` non mette più il consenso a «sì» di ripiego**: chi non lo
+  dice non l'ha dato. Vale anche per i lead nati dallo shop.
+- **Un modulo vecchio non viene rifiutato** (la richiesta di preventivo non
+  dipende dal marketing): la riga dice «presa visione non registrata».
+- I due `<label>` della casella hanno il testo dentro uno `<span>`: la riga è
+  una flex, e un `<i>` nudo diventava una colonna a sé.
+
+Aperto: il consenso marketing raccolto qui resta sulla richiesta e sul lead;
+quando il lead diventa un'anagrafica va portato in
+`quote_anagrafiche.consenso_marketing` — oggi nessuno lo fa.

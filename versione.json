@@ -1,8 +1,18 @@
 {
-  "versione": "0.77.0",
-  "nome": "Quante volte si aprono le landing",
-  "data": "2026-10-09",
+  "versione": "0.78.0",
+  "nome": "Informativa privacy visibile sui moduli di richiesta",
+  "data": "2026-10-10",
   "storia": [
+    {
+      "v": "0.78.0",
+      "data": "2026-10-10",
+      "nome": "Informativa privacy visibile sui moduli di richiesta",
+      "voci": [
+        "Landing e modulo per il sito: chi chiede un preventivo vede l'informativa privacy in breve prima di inviare, con il link a quella completa e al PDF",
+        "La casella obbligatoria ora dice «Ho letto l'informativa privacy», e c'è una casella a parte, facoltativa e non spuntata, per il consenso alle offerte commerciali",
+        "Ogni richiesta registra quale informativa è stata data, la presa visione e il consenso marketing con data e ora; l'email all'ufficio dice se il consenso c'è"
+      ]
+    },
     {
       "v": "0.77.0",
       "data": "2026-10-09",

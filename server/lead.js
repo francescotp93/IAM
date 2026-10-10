@@ -50,11 +50,29 @@ leadRouter.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Servono il nome e almeno un contatto (email o telefono).' });
   }
 
+  /* L'informativa (09/10/2026): il modulo la mostra per intero in breve, con
+     il link a quella completa, e chiede di dichiarare di averla letta. Qui si
+     REGISTRA quello che il modulo dice — versione dell'informativa, presa
+     visione e consenso marketing, con l'ora — perché «gliel'abbiamo data» si
+     dimostra solo così (accountability, art. 5.2). Il consenso marketing vale
+     solo se è un vero `true`: una casella non spuntata, assente o scritta in
+     un altro modo non è un consenso. Un modulo vecchio che non manda niente
+     non viene rifiutato (la richiesta di preventivo non dipende dal
+     marketing), ma la riga lo dichiara: presa visione non registrata. */
+  const ora = new Date().toISOString();
+  const privacy = {
+    informativa: 'PR01 rev 4.1',
+    presa_visione: b.privacy_letta === true,
+    presa_visione_il: b.privacy_letta === true ? ora : null,
+    consenso_marketing: b.consenso_marketing === true,
+    consenso_marketing_il: b.consenso_marketing === true ? ora : null,
+  };
+
   try {
-    const dati = { stato: 'richiesta', lead: true, contatto: { nome, email, telefono }, messaggio, fonte, prodottoInteresse: prodotto, ricevuto_il: new Date().toISOString() };
+    const dati = { stato: 'richiesta', lead: true, contatto: { nome, email, telefono }, messaggio, fonte, prodottoInteresse: prodotto, ricevuto_il: ora, privacy };
     await sbInsert({ modulo: 'lead', prodotto, cliente: nome, dati, creato_nome: ('Sito · ' + fonte).slice(0, 120) });
     // Lo ritrovo anche nella sezione Lead di IAM
-    try { await creaLeadIAM({ nominativo: nome, telefono, email, fonte, prodotto, note: messaggio || ('Richiesta dal sito · ' + fonte) }); } catch (_) {}
+    try { await creaLeadIAM({ nominativo: nome, telefono, email, fonte, prodotto, consenso: privacy.consenso_marketing, note: messaggio || ('Richiesta dal sito · ' + fonte) }); } catch (_) {}
 
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e6e8f0;border-radius:14px;overflow:hidden">
       <div style="background:linear-gradient(135deg,#3b5bfd,#2a45e0);color:#fff;padding:18px 22px;font-size:18px;font-weight:700">⚡ Nuovo lead dal sito</div>
@@ -63,7 +81,8 @@ leadRouter.post('/', async (req, res) => {
         <b>Telefono:</b> ${esc(telefono) || '—'}<br>
         <b>Email:</b> ${esc(email) || '—'}<br>
         <b>Prodotto d'interesse:</b> ${esc(prodotto)}<br>
-        <b>Fonte:</b> ${esc(fonte)}</p>
+        <b>Fonte:</b> ${esc(fonte)}<br>
+        <b>Informativa privacy:</b> ${privacy.presa_visione ? 'letta' : 'non registrata'} · <b>Consenso marketing:</b> ${privacy.consenso_marketing ? 'sì' : 'no'}</p>
         ${messaggio ? `<blockquote style="border-left:3px solid #3b5bfd;margin:12px 0;padding:8px 14px;color:#3a4254;background:#f5f7ff;border-radius:0 8px 8px 0">${esc(messaggio)}</blockquote>` : ''}
         <p style="color:#8b93a7;font-size:13px">Lo trovi in QUOTO → Richieste di preventivo.</p>
       </div></div>`;

@@ -77,6 +77,24 @@ await prova('i due moduli mandano al server la presa visione e il consenso', () 
   }
 });
 
+/* La regola che porta il consenso sulla scheda del cliente sta nel database
+   (provata sul database vero il 10/10/2026, sei casi, transazione annullata).
+   Qui si sorveglia il sorgente: le stesse regole non devono sparire. */
+await prova('il consenso arriva sulla scheda solo se è suo, ed è l\'ultima volontà', () => {
+  const sql = leggi('supabase/migrations/20261010_lead_consenso_in_anagrafica.sql')
+    .split('\n').filter(l => !/^\s*--/.test(l)).join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
+  const dich = (sql.match(/v_servizio boolean :=[^;]*;/) || [''])[0];
+  deve(dich, 'manca il controllo su chi scrive');
+  deve(!/current_user/.test(dich), 'chi scrive si riconosce con current_user: in una SECURITY DEFINER è sempre il proprietario, e il controllo direbbe «server» a tutti');
+  deve(/auth\.role\(\)/.test(dich), 'chi scrive non si riconosce dal ruolo nel token');
+  deve(/new\.dati - 'privacy'/.test(sql) && /old\.dati->'privacy'/.test(sql), 'la registrazione privacy si può scrivere da un account');
+  deve(/modulo is distinct from 'lead'/.test(sql) && /is distinct from 'true'/.test(sql), 'si porta un consenso che non è un vero sì, o da una richiesta che non è del sito');
+  deve(/contatti diversi/.test(sql), 'non si controlla che email o telefono siano quelli della scheda');
+  deve(/opposizione_marketing_il >= v_il/.test(sql) && /privacy_firma->>'firmato_il'/.test(sql), 'un consenso vecchio scavalca un\'opposizione o una privacy firmata dopo');
+  deve(/consenso_marketing is true/.test(sql), 'un consenso già presente viene riscritto');
+  deve(/'\{consenso_portato\}'/.test(sql), 'l\'esito non resta scritto sulla richiesta');
+});
+
 /* Il server: si fa girare la rotta vera con un finto Supabase. */
 const scritte = [];
 const fetchVero = globalThis.fetch;

@@ -33,8 +33,13 @@
 create or replace function public.quote_lead_consenso()
 returns trigger language plpgsql security definer set search_path to 'public' as $$
 declare
+  /* Chi scrive. NON current_user: dentro una funzione SECURITY DEFINER è
+     sempre il proprietario della funzione, e il controllo direbbe «server» a
+     tutti (l'ha trovato la prova sul database, 10/10/2026). Il server parla
+     con la chiave di servizio (ruolo nel token); una sessione senza token è
+     una manutenzione fatta direttamente sul database. */
   v_servizio boolean := coalesce(auth.role(), '') = 'service_role'
-                        or current_user in ('postgres', 'service_role', 'supabase_admin');
+                        or (auth.role() is null and session_user in ('postgres', 'supabase_admin'));
   v_cli text; v_prima text; v_il timestamptz; a record; v_esito text;
   v_mail text; v_tel text;
 begin

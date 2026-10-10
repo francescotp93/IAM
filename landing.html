@@ -251,9 +251,39 @@ const SAL = { attiva:{base:{s:900,n:1700},plus:{s:1460,n:2600},plat:{s:2800,n:54
 
 const PRODOTTI = {
   vita:      { nome:'RC Vita Privata', c1:'#1c8a52', c2:'#0f6b3c', img:IMG('1511895426328-dc8714191300'),
-    hl:'Proteggi oggi la tua <span class="accent">famiglia</span> da 12 € al mese.',
-    claim:'Una protezione semplice e conveniente per affrontare con serenità gli imprevisti della vita di tutti i giorni.',
-    benef:['RC vita privata: danni a terzi nel tempo libero','Tutela legale vita privata inclusa','Assistenza digitale e supporto da remoto','Attiva da subito, emissione immediata'],
+    /* RC del capofamiglia: il pacchetto HDI «Globale Casa» con tre sezioni
+       (RC della famiglia, Tutela legale Opzione B «Vita privata», Digital
+       Assistance). Ogni frase qui sotto viene dalle Condizioni di
+       Assicurazione Mod. P5811 ed. 06/2026 (artt. 6, 7.2, 8): la prova
+       vendita-distanza le confronta col PDF. I massimali NON si scrivono:
+       stanno nella Scheda di Polizza, e un numero indovinato qui sarebbe
+       una promessa che la polizza non mantiene. */
+    hl:'La <span class="accent">RC del capofamiglia</span>: 144 € l\'anno, pari a 12 € al mese.',
+    claim:'Copre i danni che tu o la tua famiglia potete causare involontariamente ad altri nella vita privata e nel tempo libero, con la tutela legale e l\'assistenza per i dispositivi digitali.',
+    benef:['Responsabilità civile della famiglia: danni involontari a terzi nella vita privata, in tutto il mondo','Tutela legale vita privata (gestita da ARAG)','Digital Assistance: aiuto da remoto e tecnico a casa per i tuoi dispositivi','Assicurati tu e il tuo nucleo familiare'],
+    chips:['Tutta la famiglia','144 € l\'anno','Valida in tutto il mondo'],
+    compagnia:'Prodotto «Globale Casa» di HDI Assicurazioni S.p.A., distribuito da With Us',
+    dettagli:{
+      voci:[
+        {k:'Premio',v:'144 € / anno'},
+        {k:'Chi è assicurato',v:'tu e il tuo nucleo familiare'},
+        {k:'RC della famiglia',v:'valida in tutto il mondo'},
+        {k:'USA, Canada e Messico',v:'fino a 1.000.000 € per sinistro'},
+        {k:'Tutela legale',v:'gestita da ARAG'},
+        {k:'Digital Assistance',v:'fino a 3 volte per tipo di intervento'},
+        {k:'Recesso (vendita a distanza)',v:'entro 14 giorni'},
+      ],
+      include:[
+        'Danni involontari a persone, cose e animali di altri nella vita privata, familiare e del tempo libero',
+        'Danni causati come pedone, in bicicletta (anche a pedalata assistita) o in monopattino elettrico, se usati secondo le regole',
+        'Danni causati dagli animali domestici e dai figli minori, anche quando li affidi gratuitamente a parenti o amici',
+        'Infortuni di colf, badanti e baby-sitter, se sei in regola con INAIL e i contributi',
+        'Danni da sport dilettantistico, hobby, bricolage e giardinaggio, e dalla casa in cui vivi anche in affitto',
+        'Tutela legale: spese di avvocato e periti per chiedere un risarcimento, controversie contrattuali da 258 a 51.000 €, difesa penale per reati colposi, contestazioni con enti previdenziali',
+        'Digital Assistance: assistenza da remoto e, se serve, tecnico a casa per smartphone, PC, tablet, stampanti e router, dal lunedì al sabato dalle 8 alle 21',
+      ],
+      escluso:'Non assicura: attività professionali o a scopo di lucro; veicoli e natanti a motore soggetti all\'assicurazione obbligatoria; cani di razze pericolose e animali da sella; caccia; cose in consegna o custodia; uso di armi; multe e sanzioni. La tutela legale non copre la circolazione stradale alla guida di veicoli a motore, il diritto di famiglia e le successioni, la materia fiscale; tranne che per chiedere un risarcimento e per la difesa penale, si attiva dopo 3 mesi dall\'inizio della polizza. La Digital Assistance non paga i pezzi di ricambio. Massimali, franchigie ed elenco completo sono nella Scheda di Polizza e nelle Condizioni di Assicurazione.',
+    },
     quote:{ tipo:'fisso', mese:12, anno:144 } },
   salute:    { nome:'Salute', c1:'#1565c0', c2:'#0d47a1', img:IMG('1576091160399-112ba8d25d1d'),
     hl:'La tua <span class="accent">salute</span> al primo posto.',
@@ -476,8 +506,8 @@ function renderPcard(){
   let priceHtml='';
   if (q.tipo==='fisso'){
     priceHtml = q.mese
-      ? '<div class="price-big"><div class="da">a partire da</div><div class="v">€ '+q.mese+'</div><div class="u">al mese · ('+eur(q.anno)+'/anno)</div></div>'
-      : '<div class="price-big"><div class="da">a partire da</div><div class="v">'+eur(q.anno)+'</div><div class="u">all\'anno</div></div>';
+      ? '<div class="price-big"><div class="da">premio annuo</div><div class="v">'+eur(q.anno)+'</div><div class="u">all\'anno · pari a € '+q.mese+' al mese</div></div>'
+      : '<div class="price-big"><div class="da">premio annuo</div><div class="v">'+eur(q.anno)+'</div><div class="u">all\'anno</div></div>';
   } else if (q.tipo==='salute'){
     const v = SAL[SS.tipo][SS.liv][SS.comp];
     priceHtml =

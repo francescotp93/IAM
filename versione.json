@@ -1,8 +1,19 @@
 {
-  "versione": "0.78.0",
-  "nome": "Informativa privacy visibile sui moduli di richiesta",
+  "versione": "0.79.0",
+  "nome": "RC capofamiglia: la landing dice quello che dice la polizza",
   "data": "2026-10-10",
   "storia": [
+    {
+      "v": "0.79.0",
+      "data": "2026-10-10",
+      "nome": "RC capofamiglia: la landing dice quello che dice la polizza",
+      "voci": [
+        "Landing RC capofamiglia (HDI Globale Casa): coperture, esclusioni e limiti presi dalle Condizioni Mod. P5811 ed. 06/2026, con chi è assicurato, la tutela legale ARAG e la Digital Assistance.",
+        "Il prezzo del pacchetto si legge come premio annuo (144 €), con il mese come confronto: non più «a partire da 12 €».",
+        "Tolta la promessa «emissione immediata»: la tutela legale, salvo risarcimenti e difesa penale, parte dopo 3 mesi.",
+        "Il questionario prima dell'acquisto chiede se serve una copertura per il lavoro e se in famiglia ci sono animali che la polizza esclude."
+      ]
+    },
     {
       "v": "0.78.0",
       "data": "2026-10-10",

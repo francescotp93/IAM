@@ -25,7 +25,7 @@
     "nome": "RC Vita Privata",
     "compagnia": "HDI Assicurazioni S.p.A. (prodotto Globale Casa)",
     "vendita_online": true,
-    "motivo": "Questo prodotto si attiva con un consulente With Us: lascia i tuoi recapiti e ti prepariamo il preventivo.",
+    "motivo": "Una protezione per tutta la famiglia, con tutela legale e assistenza digitale: attivala online o chiedi a un consulente With Us.",
     "documenti": [
       {
         "nome": "DIP Danni — Globale Casa",
@@ -41,7 +41,20 @@
       }
     ],
     "bisogno": "Vuoi una copertura per i danni che tu o la tua famiglia potete causare involontariamente ad altri nella vita privata?",
-    "domande": [],
+    "domande": [
+      {
+        "k": "vita_privata",
+        "d": "Hai capito che la polizza copre i danni causati nella vita privata e nel tempo libero, non quelli causati nel tuo lavoro?",
+        "serve": true,
+        "no": "Se ti serve una copertura per la tua attività di lavoro, questo prodotto non è adatto: ti ricontatta un consulente."
+      },
+      {
+        "k": "animali_esclusi",
+        "d": "In famiglia avete cani di razze pericolose o animali da sella?",
+        "serve": false,
+        "no": "I danni causati da questi animali la polizza non li copre: un consulente valuta con te la garanzia aggiuntiva."
+      }
+    ],
     "mancano": []
   },
   "infortuni-famiglia": {

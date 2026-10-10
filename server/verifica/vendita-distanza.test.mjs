@@ -165,5 +165,62 @@ prova('il premio non si vede prima del calcolo: si scopre quotando', () => {
   deve(!/€ 60|da<\/span>/.test(f), 'la scheda mostra ancora un prezzo fisso prima del calcolo');
   deve(/const testa = q\s*(?:\/\*[\s\S]*?\*\/\s*)?\?\s*'<div class="price-big/.test(f) && /:\s*'<div class="lp-gancio"/.test(f), 'senza calcolo la scheda non mostra la domanda al posto del numero');
 });
+prova('RC capofamiglia: ogni frase della landing sta nelle Condizioni HDI Globale Casa', () => {
+  /* Francesco, 10/10/2026: «migliora la landing», con il link delle Condizioni
+     Mod. P5811 ed. 06/2026 (identiche a docs/casa/GlobaleCasa_Condizioni.pdf).
+     Ogni affermazione della scheda è legata alla frase delle Condizioni che la
+     regge: se HDI cambia il testo, o qualcuno scrive una garanzia che non c'è,
+     la prova diventa rossa. */
+  const cond = execSync('pdftotext docs/casa/GlobaleCasa_Condizioni.pdf -', { cwd: RADICE, encoding: 'utf8' })
+    .replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
+  deve(cond.includes('Mod. P5811 – Ed. 06/2026'), 'le Condizioni in docs/casa non sono più la Mod. P5811 ed. 06/2026');
+  const l = fs.readFileSync(path.join(RADICE, 'landing.html'), 'utf8');
+  const v = l.slice(l.indexOf('  vita:      {'), l.indexOf('  salute:    {'));
+  const coppie = [
+    [/in tutto il mondo/, 'vale per i Sinistri verificatisi nel mondo intero'],
+    [/fino a 1\.000\.000 € per sinistro/, 'Danni verificatisi in U.S.A., Canada e Messico'],
+    [/nucleo familiare/, 'Assicurato persona fisica indicato sulla Scheda di Polizza e del suo Nucleo Familiare'],
+    [/gestita da ARAG|gestita da ARAG\)/, 'Avvalendosi di ARAG per la gestione dei Sinistri'],
+    [/fino a 3 volte per tipo/, 'fino a 3 volte per ciascun tipo'],
+    [/entro 14 giorni/, 'diritto di recesso entro il termine di 14 giorni'],
+    [/vita privata, familiare e del tempo libero/, 'ambito della vita privata, familiare e del tempo libero'],
+    [/pedalata assistita/, 'biciclette, comprese quelle a pedalata assistita'],
+    [/monopattino elettrico/, 'monopattini elettrici'],
+    [/colf, badanti e baby-sitter/, 'infortuni subiti dagli addetti ai servizi domestici e familiari'],
+    [/in regola con INAIL/, "in regola, al momento del Sinistro, con gli adempimenti dell'Assicurazione obbligatoria INAIL"],
+    [/anche in affitto/, 'anche se in comodato d\'uso, usufrutto o prese in locazione'],
+    [/da 258 a 51\.000 €/, 'superiore a Euro 258,00 ed inferiore a Euro 51.000,00'],
+    [/lunedì al sabato dalle 8 alle 21/, "dal lunedì al sabato dalle 8 alle 21"],
+    [/cani di razze pericolose e animali da sella/, 'Animali da Sella, cani appartenenti a Razze Canine Pericolose'],
+    [/caccia/, "dall'esercizio dell'attività venatoria"],
+    [/circolazione stradale/, 'con espressa esclusione della circolazione stradale'],
+    [/diritto di famiglia e le successioni/, 'vertenze concernenti il diritto di famiglia, delle successioni'],
+    [/dopo 3 mesi/, 'trascorsi 3 (tre) mesi dalla data di efficacia'],
+    [/pezzi di ricambio/, 'Sono escluse dalla Prestazione le spese per i pezzi di ricambio'],
+  ];
+  for (const [re, frase] of coppie) {
+    deve(re.test(v), 'la landing non dice più ' + re);
+    deve(cond.includes(frase), 'le Condizioni non dicono «' + frase + '»: la frase della landing ' + re + ' non ha più una fonte');
+  }
+  /* Quello che le Condizioni non dicono non si scrive: i massimali stanno
+     nella Scheda di Polizza, e l'emissione «immediata» non lo è per la tutela
+     legale (3 mesi). */
+  deve(!/emissione immediata|Attiva da subito/i.test(v), 'la landing promette un\'attivazione immediata: la tutela legale ha 3 mesi di carenza');
+  const numeri = (v.match(/[\d.]+(?:,\d+)? ?€/g) || []).map(x => x.replace(/ ?€/, ''));
+  for (const n of numeri) deve(['144', '12', '1.000.000', '258', '51.000'].includes(n), 'la landing scrive un importo senza fonte: ' + n + ' €');
+  /* Il pacchetto si paga a anno: il numero grande è l'anno, il mese è un
+     confronto, e un prezzo fisso non è «a partire da». */
+  const f = (l.match(/if \(q\.tipo==='fisso'\)\{[\s\S]*?\} else if/) || [''])[0];
+  deve(f && !/a partire da/.test(f) && /pari a € '\+q\.mese\+' al mese/.test(f), 'la scheda prezzo del pacchetto non mostra il premio annuo come numero principale');
+});
+prova('RC capofamiglia: il questionario chiede la vita privata e gli animali esclusi', () => {
+  const lista = esigenzeDi('vita');
+  for (const k of ['bisogno', 'vita_privata', 'animali_esclusi', 'letto_cosa_copre', 'doppia']) deve(lista.some(q => q.k === k), 'manca la domanda ' + k);
+  const giuste = Object.fromEntries(lista.map(q => [q.k, q.serve]));
+  deve(coerenza(giuste, {}, 'vita').coerente, 'le risposte giuste non risultano coerenti');
+  deve(!coerenza({ ...giuste, animali_esclusi: true }, {}, 'vita').coerente, 'chi ha un cane di razza pericolosa compra senza che nessuno glielo dica');
+  const cfg = configurazione('vita');
+  deve(cfg.vendita_online && !/si attiva con un consulente/.test(cfg.motivo), 'il messaggio commerciale dice il contrario della vendita online');
+});
 console.log('\n' + ok + ' superate, ' + ko + ' fallite\n');
 process.exit(ko ? 1 : 0);

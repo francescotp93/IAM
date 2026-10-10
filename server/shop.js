@@ -120,7 +120,7 @@ function leggiCliente(b){ return { nome:String(b?.nome||'').trim().slice(0,80), 
 const LANDING_BASE = process.env.LANDING_URL || 'https://quoto.withusassicurazioni.it/landing.html';
 const OGIMG = (id) => 'https://images.unsplash.com/photo-' + id + '?w=1200&h=630&fit=crop&q=70&auto=format';
 const META = {
-  'vita':            { n:'RC Vita Privata', d:'Proteggi la tua famiglia da 12 € al mese.', img:OGIMG('1511895426328-dc8714191300') },
+  'vita':            { n:'RC Vita Privata', d:'La RC del capofamiglia: 144 € l\'anno, pari a 12 € al mese.', img:OGIMG('1511895426328-dc8714191300') },
   'aglea-attiva':    { n:'Aglea Salus · Attiva', d:'Salute, ricovero, prevenzione e Long Term Care inclusa.', img:OGIMG('1576091160399-112ba8d25d1d') },
   'aglea-protezione':{ n:'Aglea Salus · Protezione', d:'Copertura sanitaria completa, ogni giorno.', img:OGIMG('1576091160399-112ba8d25d1d') },
   'aglea-ltc':       { n:'Aglea Salus · Long Term Care', d:'Una rendita a vita in caso di non autosufficienza.', img:OGIMG('1576091160399-112ba8d25d1d') },
